@@ -1,0 +1,13 @@
+{
+    "configuration": "default",
+    "documentId": "a94812fd0ec5507a1cfd3483",
+    "documentMicroversion": "792b25581177efd36bcfb2b8",
+    "elementId": "e90a05e6ce5d867e0ded4401",
+    "fullConfiguration": "default",
+    "id": "MILzq7A50TAofO/6f",
+    "isStandardContent": false,
+    "name": "linear_actuator_2 <1>",
+    "partId": "R8BH",
+    "suppressed": false,
+    "type": "Part"
+}
