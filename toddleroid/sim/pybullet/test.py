@@ -1,5 +1,5 @@
-import pybullet as p
 import numpy as np
+import pybullet as p
 
 p.connect(p.GUI)
 
