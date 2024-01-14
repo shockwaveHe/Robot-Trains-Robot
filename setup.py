@@ -4,6 +4,8 @@ from setuptools import find_packages, setup
 with open("requirements.txt") as f:
     requirements = f.read().splitlines()
 
+requirements.extend(["pigar", "onshape-to-robot"])
+
 setup(
     name="toddleroid",
     packages=find_packages(),
