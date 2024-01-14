@@ -5,18 +5,13 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: run_ik",
+            "name": "Python: run_pybullet",
             "type": "python",
             "request": "launch",
-            "program": "piano_dexterity/ik_solver/run_ik.py",
+            "program": "toddleroid/sim/pybullet/simulation.py",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": [
-                "--data_path",
-                "data/1114/processed/06_elizabeth",
-                "--data_name",
-                "ik_data.pkl"
-            ]
+            "args": []
         }
     ]
 }
