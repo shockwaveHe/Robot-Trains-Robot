@@ -16,6 +16,7 @@ conda create --name "$ENV_NAME" python="$PYTHON_VERSION" -y
 
 # Activate the environment
 echo "Activating the environment..."
+source ~/miniconda3/etc/profile.d/conda.sh
 conda activate "$ENV_NAME"
 
 # Install dependencies using pip

@@ -11,10 +11,11 @@ fi
 
 # Activate the environment
 echo "Activating the environment..."
+source ~/miniconda3/etc/profile.d/conda.sh
 conda activate "$ENV_NAME"
 
 # Export the environment dependencies to requirements.txt
 echo "Generating requirements.txt..."
-pigar generate
+pigar generate toddleroid
 
 echo "Export complete. requirements.txt is updated."
