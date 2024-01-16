@@ -4,6 +4,7 @@ from setuptools import find_packages, setup
 with open("requirements.txt") as f:
     requirements = f.read().splitlines()
 
+# TODO: Get rid of requirements.txt
 requirements.extend(["pigar==2.1.1", "onshape-to-robot==0.3.24", "control==0.9.4"])
 
 setup(

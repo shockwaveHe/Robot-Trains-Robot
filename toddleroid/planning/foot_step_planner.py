@@ -17,14 +17,14 @@ class PlanParameters:
 class Position:
     x: float
     y: float
-    theta: float
+    theta: float = 0.0
 
 
 @dataclass
-class Step:
+class FootStep:
     time: float
     position: Position
-    support_leg: str
+    support_leg: str = ""
 
 
 class FootStepPlanner:
@@ -43,7 +43,7 @@ class FootStepPlanner:
         current: Position,
         next_support_leg: str,
         status: str,
-    ) -> List[Step]:
+    ) -> List[FootStep]:
         """
         Calculate a series of foot steps to reach the goal position.
 
@@ -61,7 +61,7 @@ class FootStepPlanner:
         stride = self._calculate_strides(goal, current)
 
         if status == "start":
-            steps.append(Step(time, current, "both"))
+            steps.append(FootStep(time, current, "both"))
             time += self.params.period * 2.0
 
         if next_support_leg in ["left", "right"]:
@@ -119,7 +119,9 @@ class FootStepPlanner:
             and abs(goal.theta - current.theta) <= self.params.max_stride_th
         )
 
-    def _create_step(self, time: float, current: Position, support_leg: str) -> Step:
+    def _create_step(
+        self, time: float, current: Position, support_leg: str
+    ) -> FootStep:
         """
         Create a single foot step with adjusted y position based on support leg.
 
@@ -136,11 +138,13 @@ class FootStepPlanner:
             if support_leg == "left"
             else current.y - self.params.width
         )
-        return Step(time, Position(current.x, adjusted_y, current.theta), support_leg)
+        return FootStep(
+            time, Position(current.x, adjusted_y, current.theta), support_leg
+        )
 
     def _add_final_steps(
         self,
-        steps: List[Step],
+        steps: List[FootStep],
         goal: Position,
         time: float,
         next_support_leg: str,
@@ -164,7 +168,7 @@ class FootStepPlanner:
                 else goal.y - self.params.width
             )
             steps.append(
-                Step(
+                FootStep(
                     time,
                     Position(goal.x, adjusted_goal_y, goal.theta),
                     next_support_leg,
@@ -173,9 +177,9 @@ class FootStepPlanner:
             next_support_leg = "both"
             time += self.params.period
 
-        steps.append(Step(time, goal, next_support_leg))
+        steps.append(FootStep(time, goal, next_support_leg))
         time += 100.0  # Arbitrary time to indicate the robot is stationary
-        steps.append(Step(time, goal, next_support_leg))
+        steps.append(FootStep(time, goal, next_support_leg))
 
 
 if __name__ == "__main__":

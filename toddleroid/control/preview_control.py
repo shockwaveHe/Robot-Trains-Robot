@@ -4,6 +4,7 @@ from typing import List, Tuple
 import control
 import numpy as np
 
+from toddleroid.planning.foot_step_planner import FootStep, Position
 from toddleroid.utils.constants import GRAVITY
 from toddleroid.utils.data_utils import round_floats
 
@@ -16,15 +17,6 @@ class ControlParameters:
     period: float  # Control period
     Q_val: float  # Weighting for state cost
     H_val: float  # Weighting for control input cost
-
-
-@dataclass
-class Step:
-    """Data class to represent a step with time and position."""
-
-    time: float  # Time of the step
-    x: float  # X position of the step
-    y: float  # Y position of the step
 
 
 @dataclass
@@ -95,12 +87,12 @@ class PreviewControl:
         self.xp, self.yp = np.zeros((3, 1)), np.zeros((3, 1))
         self.ux, self.uy = 0.0, 0.0
 
-    def set_param(
+    def compute_control_pattern(
         self,
         t: float,
         current_x: np.ndarray,
         current_y: np.ndarray,
-        foot_steps: List[Step],
+        foot_steps: List[FootStep],
         pre_reset: bool = False,
     ) -> Tuple[List, np.ndarray, np.ndarray]:
         """
@@ -109,7 +101,7 @@ class PreviewControl:
             t (float): Current time.
             current_x (np.ndarray): Current x position.
             current_y (np.ndarray): Current y position.
-            foot_steps (List[Step]): List of footsteps.
+            foot_steps (List[FootStep]): List of footsteps.
             pre_reset (bool, optional): Flag to reset previous x and y. Defaults to False.
 
         Returns:
@@ -131,7 +123,7 @@ class PreviewControl:
         for i in range(num_steps):
             # Compute error and state difference
             px, py = np.dot(self.C_d, x), np.dot(self.C_d, y)
-            ex, ey = foot_steps[0].x - px, foot_steps[0].y - py
+            ex, ey = foot_steps[0].position.x - px, foot_steps[0].position.y - py
             X, Y = np.vstack([ex, x - self.xp]), np.vstack([ey, y - self.yp])
             self.xp, self.yp = x.copy(), y.copy()
 
@@ -143,8 +135,12 @@ class PreviewControl:
             for j in range(1, round(self.params.period / self.params.dt) - 1):
                 step_time = round((i + j) + t / self.params.dt)
                 if step_time >= round(foot_steps[index].time / self.params.dt):
-                    dux += self.f[j] * (foot_steps[index].x - foot_steps[index - 1].x)
-                    duy += self.f[j] * (foot_steps[index].y - foot_steps[index - 1].y)
+                    dux += self.f[j] * (
+                        foot_steps[index].position.x - foot_steps[index - 1].position.x
+                    )
+                    duy += self.f[j] * (
+                        foot_steps[index].position.y - foot_steps[index - 1].position.y
+                    )
                     index += 1
 
             # Update the state based on system dynamics
@@ -162,15 +158,15 @@ class PreviewControl:
 # Example usage
 if __name__ == "__main__":
     foot_steps = [
-        Step(time=0, x=0, y=0),
-        Step(time=0.34, x=0, y=0.06),
-        Step(time=0.68, x=0.05, y=-0.04),
-        Step(time=1.02, x=0.10, y=0.1),
-        Step(time=1.36, x=0.15, y=0.0),
-        Step(time=1.7, x=0.20, y=0.14),
-        Step(time=2.04, x=0.25, y=0.1),
-        Step(time=2.72, x=0.25, y=0.1),
-        Step(time=100, x=0.25, y=0.1),
+        FootStep(time=0, position=Position(x=0, y=0)),
+        FootStep(time=0.34, position=Position(x=0, y=0.06)),
+        FootStep(time=0.68, position=Position(x=0.05, y=-0.04)),
+        FootStep(time=1.02, position=Position(x=0.10, y=0.1)),
+        FootStep(time=1.36, position=Position(x=0.15, y=0.0)),
+        FootStep(time=1.7, position=Position(x=0.20, y=0.14)),
+        FootStep(time=2.04, position=Position(x=0.25, y=0.1)),
+        FootStep(time=2.72, position=Position(x=0.25, y=0.1)),
+        FootStep(time=100, position=Position(x=0.25, y=0.1)),
     ]
     x, y = np.zeros((3, 1)), np.zeros((3, 1))
 
@@ -187,7 +183,7 @@ if __name__ == "__main__":
     pc = PreviewControl(control_params, state_space)
 
     for i in range(len(foot_steps) - 2):
-        com, x, y = pc.set_param(foot_steps[i].time, x, y, foot_steps[i:])
+        com, x, y = pc.compute_control_pattern(foot_steps[i].time, x, y, foot_steps[i:])
         print(round_floats(com[-1], 6))
 
     print("Preview control simulation completed.")

@@ -3,13 +3,12 @@ import time
 import pybullet as p
 import pybullet_data
 
-from toddleroid.sim.robot import HumanoidRobot
-from toddleroid.utils.constants import GRAVITY
+from toddleroid.sim.pybullet.robot import HumanoidRobot
+from toddleroid.utils.constants import GRAVITY, TIMESTEP
 
 
 class PyBulletSim:
-    def __init__(self, timestep: float = 1.0 / 240.0):
-        self.timestep = timestep
+    def __init__(self):
         self.setup()
 
     def setup(self):
@@ -20,6 +19,7 @@ class PyBulletSim:
         p.connect(p.GUI)  # or p.DIRECT for non-graphical version
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         p.setGravity(0, 0, -GRAVITY)
+        p.setTimeStep(TIMESTEP)
         p.loadURDF("plane.urdf")
 
     def load_robot(self, robot: HumanoidRobot):
@@ -28,7 +28,7 @@ class PyBulletSim:
         """
         urdf_path = robot.get_urdf_path()
         robot.id = p.loadURDF(urdf_path)
-        self.put_robot_on_ground(robot.id, z_offset=0.01)
+        # self.put_robot_on_ground(robot.id, z_offset=0.01)
 
     def put_robot_on_ground(self, robot_id: int, z_offset: float):
         """
@@ -57,9 +57,9 @@ class PyBulletSim:
         Run the main simulation loop.
         """
         try:
-            while True:
+            while p.isConnected():
                 p.stepSimulation()
-                time.sleep(self.timestep)
+                # time.sleep(TIMESTEP)
         finally:
             p.disconnect()
 
