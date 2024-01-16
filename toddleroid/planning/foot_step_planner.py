@@ -182,6 +182,7 @@ class FootStepPlanner:
         steps.append(FootStep(time, goal, next_support_leg))
 
 
+# Example usage
 if __name__ == "__main__":
     planner_params = PlanParameters(
         max_stride_x=0.06,

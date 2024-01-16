@@ -5,16 +5,20 @@ import pybullet_data
 
 from toddleroid.sim.pybullet.robot import HumanoidRobot
 from toddleroid.utils.constants import GRAVITY, TIMESTEP
+from toddleroid.utils.file_utils import find_urdf_path
 
 
 class PyBulletSim:
+    """Class to set up and run a PyBullet simulation with a humanoid robot."""
+
     def __init__(self):
+        """Initialize and set up the simulation environment."""
         self.setup()
 
     def setup(self):
         """
         Set up the PyBullet simulation environment.
-        Initializes the PyBullet environment in GUI mode and sets the gravity for the simulation.
+        Initializes the PyBullet environment in GUI mode and sets the gravity and timestep.
         """
         p.connect(p.GUI)  # or p.DIRECT for non-graphical version
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
@@ -25,14 +29,21 @@ class PyBulletSim:
     def load_robot(self, robot: HumanoidRobot):
         """
         Load the robot URDF and set its initial position.
+
+        Args:
+            robot (HumanoidRobot): The humanoid robot to load.
         """
-        urdf_path = robot.get_urdf_path()
+        urdf_path = find_urdf_path(robot.name)
         robot.id = p.loadURDF(urdf_path)
         # self.put_robot_on_ground(robot.id, z_offset=0.01)
 
-    def put_robot_on_ground(self, robot_id: int, z_offset: float):
+    def put_robot_on_ground(self, robot_id: int, z_offset: float = 0.01):
         """
         Adjust the robot's position to place its lowest point at a specified offset above the ground.
+
+        Args:
+            robot_id (int): The ID of the robot in the simulation.
+            z_offset (float): The offset from the ground to place the robot. Default is 0.01.
         """
         num_joints = p.getNumJoints(robot_id)
         lowest_z = float("inf")
@@ -49,7 +60,6 @@ class PyBulletSim:
         # Calculate new base position
         base_pos, base_ori = p.getBasePositionAndOrientation(robot_id)
         new_base_pos = [base_pos[0], base_pos[1], base_pos[2] - lowest_z + z_offset]
-
         p.resetBasePositionAndOrientation(robot_id, new_base_pos, base_ori)
 
     def run(self):
@@ -68,4 +78,5 @@ if __name__ == "__main__":
     sim = PyBulletSim()
     robot = HumanoidRobot("Robotis_OP3")
     sim.load_robot(robot)
+    sim.put_robot_on_ground(robot.id)
     sim.run()

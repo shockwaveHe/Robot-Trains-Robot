@@ -23,8 +23,12 @@ export ONSHAPE_SECRET_KEY=Your_Secret_Key
 ```
 
 ### Best practices
-1. Write dataclass, yaml, and use argparse
-1. Write docstring, assert, and raise errors
+1. Use dataclass and argparse if possible
+1. Write Google style docstring
+1. Write type hint
+1. Assert, and raise errors if possible
+1. Use pure functions if possible
+1. Put the magic numbers together in one place
+1. Write inline document if possible
 1. Use shell scripts
 1. Consider writing unit tests
-1. Use pure functions if possible
