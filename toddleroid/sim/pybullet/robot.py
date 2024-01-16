@@ -3,7 +3,7 @@ from typing import Dict, List, Tuple
 
 import pybullet as p
 
-from toddleroid.robot_descriptions.config import robots_config
+from toddleroid.robot_descriptions.robot_config import robots_config
 
 
 # TODO: Condier bringing kinematics.py into this file.
