@@ -3,6 +3,7 @@
 ### Install the environment
 ```
 conda create --name toddleroid python=3.8
+conda activate toddleroid
 pip install -e .
 ```
 
