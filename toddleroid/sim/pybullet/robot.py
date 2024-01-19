@@ -3,7 +3,7 @@ from typing import Dict, List, Tuple
 
 import pybullet as p
 
-from toddleroid.robot_descriptions.robot_config import robots_config
+from toddleroid.robot_descriptions.robot_configs import robot_configs
 
 
 # TODO: Condier bringing kinematics.py into this file.
@@ -21,9 +21,9 @@ class HumanoidRobot:
             ValueError: If the robot name is not supported.
         """
         self.name = robot_name
-        if robot_name not in robots_config:
+        if robot_name not in robot_configs:
             raise ValueError(f"Robot '{robot_name}' is not supported.")
-        self.config = robots_config[robot_name]
+        self.config = robot_configs[robot_name]
         self.id = None
 
     @property
@@ -34,9 +34,11 @@ class HumanoidRobot:
         Returns:
             Dict[str, str]: Dictionary with keys 'left_foot_link' and 'right_foot_link' and their names.
         """
+        foot_keys = ["left_foot_link", "right_foot_link"]
         return {
-            "left_foot_link": self.config.left_foot_link,
-            "right_foot_link": self.config.right_foot_link,
+            k: self.config.canonical_name2link_name[k]
+            for k in foot_keys
+            if k in self.config.canonical_name2link_name
         }
 
     def _get_foot_indices(self) -> Dict[str, int]:
@@ -130,10 +132,10 @@ class HumanoidRobot:
         """
         # Magic numbers extracted from robot configuration
         L1, L12, L2, L3 = (
-            self.config.magic_numbers[key] for key in ["L1", "L12", "L2", "L3"]
+            self.config.named_lengths[key] for key in ["L1", "L12", "L2", "L3"]
         )
         OFFSET_X, OFFSET_Y = (
-            self.config.magic_numbers[key] for key in ["OFFSET_X", "OFFSET_Y"]
+            self.config.named_lengths[key] for key in ["OFFSET_X", "OFFSET_Y"]
         )
 
         # Decompose target position and orientation
@@ -201,13 +203,12 @@ class HumanoidRobot:
             List[float]: Updated list of joint angles with new values for the specified side.
         """
         # Initialize dictionary to map joint names to their degrees of freedom index
+        # Conjecture: 7 is the offset for position and quaternion values
+        # TODO: Update this to use joint name instead of link_name
         index_dof = {p.getBodyInfo(self.id)[0].decode("UTF-8"): -1}
-        for id in range(p.getNumJoints(self.id)):
-            joint_name = p.getJointInfo(self.id, id)[12].decode("UTF-8")
-            index_dof[joint_name] = p.getJointInfo(self.id, id)[3] - 7
-
-        # Prefix based on the side of the leg
-        prefix = "left" if side == "left" else "right"
+        for idx in range(p.getNumJoints(self.id)):
+            joint_name = p.getJointInfo(self.id, idx)[1].decode("UTF-8")
+            index_dof[joint_name] = p.getJointInfo(self.id, idx)[3] - 7
 
         # Define joint names and their corresponding angles
         joint_names = self.config.joint_names
@@ -226,7 +227,7 @@ class HumanoidRobot:
 
         # Update joint angles based on calculations
         for joint_name, angle in zip(joint_names, angles):
-            joint_index = index_dof[f"{prefix}_{joint_name}"]
+            joint_index = index_dof[f"{side}_{joint_name}"]
             if joint_index >= 0:  # Check if joint index is valid
                 joint_angles[joint_index] = angle
 
