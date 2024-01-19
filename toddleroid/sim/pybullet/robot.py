@@ -137,18 +137,16 @@ class HumanoidRobot:
         )
 
         # Decompose target position and orientation
-        target_x, tareget_y, target_z = target_foot_pos
+        target_x, target_y, target_z = target_foot_pos
         ankle_roll, ankle_pitch, waist_yaw = target_foot_ori
 
         # Adjust positions based on offsets and calculate new coordinates
         target_x -= OFFSET_X
-        tareget_y += -OFFSET_Y if side == "left" else OFFSET_Y
+        target_y += -OFFSET_Y if side == "left" else OFFSET_Y
         target_z = L1 + L12 + L2 + L3 - target_z
 
-        transformed_x = target_x * math.cos(waist_yaw) + tareget_y * math.sin(waist_yaw)
-        transformed_y = -target_x * math.sin(waist_yaw) + tareget_y * math.cos(
-            waist_yaw
-        )
+        transformed_x = target_x * math.cos(waist_yaw) + target_y * math.sin(waist_yaw)
+        transformed_y = -target_x * math.sin(waist_yaw) + target_y * math.cos(waist_yaw)
         transformed_z = target_z - L3
 
         # Calculate leg angles

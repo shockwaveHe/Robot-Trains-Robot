@@ -272,24 +272,11 @@ def main():
 
     random.seed(0)
     sim = PyBulletSim()
+    # A 0.3725 offset moves the robot slightly up from the ground
     robot = HumanoidRobot("Sustaina_OP")
     sim.load_robot(robot)
 
-    index = {p.getBodyInfo(robot.id)[0].decode("UTF-8"): -1}
-    for id in range(p.getNumJoints(robot.id)):
-        index[p.getJointInfo(robot.id, id)[12].decode("UTF-8")] = id
-
-    left_foot0 = p.getLinkState(robot.id, index["left_foot_link"])[0]
-    right_foot0 = p.getLinkState(robot.id, index["right_foot_link"])[0]
-
-    joint_angles = []
-    for id in range(p.getNumJoints(robot.id)):
-        if p.getJointInfo(robot.id, id)[3] > -1:
-            joint_angles += [0]
-
-    left_foot = [left_foot0[0] - 0.0, left_foot0[1] + 0.01, left_foot0[2] - 0.04]
-    right_foot = [right_foot0[0] - 0.0, right_foot0[1] - 0.01, right_foot0[2] - 0.04]
-
+    # TODO: Clean up the plan and control parameters
     planner_params = PlanParameters(
         max_stride_x=0.05,
         max_stride_y=0.03,
@@ -297,7 +284,6 @@ def main():
         period=0.34,
         width=0.06,
     )
-
     fsp = FootStepPlanner(planner_params)
 
     control_params = ControlParameters(dt=0.01, period=1.0, Q_val=1e8, H_val=1.0)
@@ -312,7 +298,25 @@ def main():
 
     pc = PreviewControl(control_params, state_space)
 
-    walking = Walking(robot, fsp, pc, left_foot, right_foot, joint_angles)
+    link_name2idx = {p.getBodyInfo(robot.id)[0].decode("UTF-8"): -1}
+    for idx in range(p.getNumJoints(robot.id)):
+        link_name2idx[p.getJointInfo(robot.id, idx)[12].decode("UTF-8")] = idx
+
+    left_foot = np.array(p.getLinkState(robot.id, link_name2idx["left_foot_link"])[0])
+    right_foot = np.array(p.getLinkState(robot.id, link_name2idx["right_foot_link"])[0])
+
+    left_offset_foot_to_sole = np.array([0.0, 0.01, -0.04])
+    right_offset_foot_to_sole = np.array([0.0, -0.01, -0.04])
+
+    left_sole = left_foot + left_offset_foot_to_sole
+    right_sole = right_foot + right_offset_foot_to_sole
+
+    joint_angles = []
+    for idx in range(p.getNumJoints(robot.id)):
+        if p.getJointInfo(robot.id, idx)[3] > -1:
+            joint_angles += [0]
+
+    walking = Walking(robot, fsp, pc, left_sole, right_sole, joint_angles)
 
     # goal position (x, y) theta
     foot_step = walking.set_goal_position(Position(x=0.4, y=0.0, theta=0.5))
@@ -338,11 +342,11 @@ def main():
                 else:
                     foot_step = walking.set_goal_position()
 
-        for id in range(p.getNumJoints(robot.id)):
-            qIndex = p.getJointInfo(robot.id, id)[3]
+        for idx in range(p.getNumJoints(robot.id)):
+            qIndex = p.getJointInfo(robot.id, idx)[3]
             if qIndex > -1:
                 p.setJointMotorControl2(
-                    robot.id, id, p.POSITION_CONTROL, joint_angles[qIndex - 7]
+                    robot.id, idx, p.POSITION_CONTROL, joint_angles[qIndex - 7]
                 )
 
         p.stepSimulation()
