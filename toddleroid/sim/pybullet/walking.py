@@ -17,7 +17,7 @@ class Walking:
         self,
         robot: HumanoidRobot,
         fsp: FootStepPlanner,
-        pc: PreviewControl,
+        pc: LQRPreviewController,
         left_foot0: List[float],
         right_foot0: List[float],
         joint_angles: List[float],
@@ -57,7 +57,7 @@ class Walking:
         self.next_support_leg = "right"
         self.foot_steps = []
 
-    def set_goal_position(self, pos: Optional[Position] = None) -> List[FootStep]:
+    def set_goal_position(self, pos: Optional[np.ndarray] = None) -> List[FootStep]:
         """
         Set the goal position for the humanoid robot.
 
@@ -76,7 +76,7 @@ class Walking:
         self._update_support_leg()
 
         # Update the theta value based on the current footstep.
-        self.theta = self.foot_steps[0].position.theta
+        self.theta = self.foot_steps[0].position[2]
 
         return self.foot_steps
 
@@ -87,7 +87,7 @@ class Walking:
         if len(self.foot_steps) > 3:
             del self.foot_steps[0]
 
-    def _update_foot_steps(self, pos: Position):
+    def _update_foot_steps(self, pos: np.ndarray):
         """Update the foot steps based on the given position."""
         if len(self.foot_steps) > 2:
             if not self.status == "start":
@@ -95,13 +95,15 @@ class Walking:
             else:
                 offset_y = 0.0
 
-            current = Position(
-                x=self.foot_steps[1].position.x,
-                y=self.foot_steps[1].position.y + offset_y,
-                theta=self.foot_steps[1].position.theta,
+            current = np.array(
+                [
+                    self.foot_steps[1].position[0],
+                    self.foot_steps[1].position[1] + offset_y,
+                    self.foot_steps[1].position[2],
+                ]
             )
         else:
-            current = Position(x=0.0, y=0.0, theta=0.0)
+            current = np.zeros(3)
 
         self.foot_steps = self.fsp.calculate_steps(
             pos, current, self.next_support_leg, self.status
@@ -111,12 +113,10 @@ class Walking:
     def _update_control_pattern(self):
         """Update the control pattern based on the foot steps."""
         t = self.foot_steps[0].time
-        self.pattern, x, y = self.pc.compute_control_pattern(
-            t, self.control_matrix[:, 0:1], self.control_matrix[:, 1:], self.foot_steps
+        self.pattern, com_state_curr = self.pc.compute_control_pattern(
+            t, self.control_matrix[:, :2], self.foot_steps
         )
-        self.control_matrix = np.array(
-            [[x[0, 0], y[0, 0]], [x[1, 0], y[1, 0]], [x[2, 0], y[2, 0]]]
-        )
+        self.control_matrix = com_state_curr.copy()
 
     def _update_support_leg(self):
         """Update the support leg and relevant offsets."""
@@ -126,10 +126,10 @@ class Walking:
         offset = np.array(
             [
                 [
-                    next_step.position.x,
-                    next_step.position.y
+                    next_step.position[0],
+                    next_step.position[1]
                     + (offset_y if support_leg == "left" else -offset_y),
-                    next_step.position.theta,
+                    next_step.position[2],
                 ]
             ]
         )
@@ -156,7 +156,7 @@ class Walking:
         pattern_first = self.pattern.pop(0)
         period = round((self.foot_steps[1].time - self.foot_steps[0].time) / 0.01)
         theta_change = (
-            self.foot_steps[1].position.theta - self.foot_steps[0].position.theta
+            self.foot_steps[1].position[2] - self.foot_steps[0].position[2]
         ) / period
         self.theta += theta_change
 
@@ -278,25 +278,17 @@ def main():
 
     # TODO: Clean up the plan and control parameters
     planner_params = PlanParameters(
-        max_stride_x=0.05,
-        max_stride_y=0.03,
-        max_stride_th=0.2,
+        max_stride=np.array([0.05, 0.03, 0.2]),
         period=0.34,
         width=0.06,
     )
     fsp = FootStepPlanner(planner_params)
 
-    control_params = ControlParameters(dt=0.01, period=1.0, Q_val=1e8, H_val=1.0)
+    control_params = LQRPreviewControlParameters(
+        com_height=0.3, dt=0.01, period=1.0, Q_val=1e8, R_val=1.0
+    )
 
-    robot_height = 0.30
-    # State-space matrices for preview control
-    A = np.array([[0, 1, 0], [0, 0, 1], [0, 0, 0]])
-    B = np.array([[0], [0], [1]])
-    C = np.array([[1, 0, -robot_height / GRAVITY]])
-    D = np.array([[0]])
-    state_space = StateSpace(A, B, C, D)
-
-    pc = PreviewControl(control_params, state_space)
+    pc = LQRPreviewController(control_params)
 
     link_name2idx = {p.getBodyInfo(robot.id)[0].decode("UTF-8"): -1}
     for idx in range(p.getNumJoints(robot.id)):
@@ -319,7 +311,7 @@ def main():
     walking = Walking(robot, fsp, pc, left_sole, right_sole, joint_angles)
 
     # goal position (x, y) theta
-    foot_step = walking.set_goal_position(Position(x=0.4, y=0.0, theta=0.5))
+    foot_step = walking.set_goal_position(np.array([0.4, 0.0, 0.5]))
     j = 0
     while p.isConnected():
         j += 1
@@ -337,7 +329,7 @@ def main():
                     )
                     print(f"Goal: ({x_goal}, {y_goal}, {theta_goal})")
                     foot_step = walking.set_goal_position(
-                        Position(x=x_goal, y=y_goal, theta=theta_goal)
+                        np.array([x_goal, y_goal, theta_goal])
                     )
                 else:
                     foot_step = walking.set_goal_position()

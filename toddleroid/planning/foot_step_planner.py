@@ -1,29 +1,22 @@
 from dataclasses import dataclass
 from typing import List
 
+import numpy as np
+
 from toddleroid.utils.data_utils import round_floats
 
 
 @dataclass
 class PlanParameters:
-    max_stride_x: float
-    max_stride_y: float
-    max_stride_th: float
+    max_stride: np.ndarray  # x, y, theta
     period: float
     width: float
 
 
 @dataclass
-class Position:
-    x: float
-    y: float
-    theta: float = 0.0
-
-
-@dataclass
 class FootStep:
     time: float
-    position: Position
+    position: np.ndarray  # x, y, theta
     support_leg: str = ""
 
 
@@ -39,8 +32,8 @@ class FootStepPlanner:
 
     def calculate_steps(
         self,
-        goal: Position,
-        current: Position,
+        goal: np.ndarray,
+        current: np.ndarray,
         next_support_leg: str,
         status: str,
     ) -> List[FootStep]:
@@ -48,8 +41,8 @@ class FootStepPlanner:
         Calculate a series of foot steps to reach the goal position.
 
         Args:
-            goal (FootPosition): Goal position and orientation.
-            current (FootPosition): Current position and orientation.
+            goal (np.ndarray): Goal position and orientation.
+            current (np.ndarray): Current position and orientation.
             next_support_leg (str): The next leg to move ('left' or 'right').
             status (str): The status of the robot ('start', 'walking', 'stop').
 
@@ -70,82 +63,68 @@ class FootStepPlanner:
 
         while not self._is_goal_reached(goal, current):
             time += self.params.period
-            current = Position(
-                current.x + stride.x, current.y + stride.y, current.theta + stride.theta
-            )
+            current = current + stride
             steps.append(self._create_step(time, current, next_support_leg))
             next_support_leg = "left" if next_support_leg == "right" else "right"
 
         self._add_final_steps(steps, goal, time, next_support_leg, status)
         return steps
 
-    def _calculate_strides(self, goal: Position, current: Position) -> Position:
+    def _calculate_strides(self, goal: np.ndarray, current: np.ndarray) -> np.ndarray:
         """
         Calculate the stride values in x, y, and theta directions to move from the current position to the goal.
 
         Args:
-            goal (Position): The goal position and orientation, represented as a Position object with x, y, and theta.
-            current (Position): The current position and orientation, also represented as a Position object.
+            goal (np.ndarray): The goal position and orientation, represented as x, y, and theta.
+            current (np.ndarray): The current position and orientation.
 
         Returns:
-            Position: A Position object representing the stride in x, y, and theta necessary to move towards the goal
-                    while respecting the maximum allowed strides.
+            np.ndarray: The stride in x, y, and theta necessary to move towards the goal while respecting
+                    the maximum allowed strides.
         """
-        max_step = max(
-            abs(goal.x - current.x) / self.params.max_stride_x,
-            abs(goal.y - current.y) / self.params.max_stride_y,
-            abs(goal.theta - current.theta) / self.params.max_stride_th,
-        )
-        return Position(
-            (goal.x - current.x) / max_step,
-            (goal.y - current.y) / max_step,
-            (goal.theta - current.theta) / max_step,
-        )
+        max_step = max(np.abs(goal - current) / self.params.max_stride)
+        return (goal - current) / max_step
 
-    def _is_goal_reached(self, goal: Position, current: Position) -> bool:
+    def _is_goal_reached(self, goal: np.ndarray, current: np.ndarray) -> bool:
         """
         Check if the goal position is reached.
 
         Args:
-            goal (FootPosition): Goal position and orientation.
-            current (FootPosition): Current position and orientation.
+            goal (np.ndarray): Goal position and orientation.
+            current (np.ndarray): Current position and orientation.
 
         Returns:
             bool: True if the goal is reached, False otherwise.
         """
-        return (
-            abs(goal.x - current.x) <= self.params.max_stride_x
-            and abs(goal.y - current.y) <= self.params.max_stride_y
-            and abs(goal.theta - current.theta) <= self.params.max_stride_th
-        )
+        return np.all(np.abs(goal - current) <= self.params.max_stride)
 
     def _create_step(
-        self, time: float, current: Position, support_leg: str
+        self, time: float, current: np.ndarray, support_leg: str
     ) -> FootStep:
         """
         Create a single foot step with adjusted y position based on support leg.
 
         Args:
             time (float): Time at which the step occurs.
-            current (FootPosition): Current position.
+            current (np.ndarray): Current position.
             support_leg (str): The supporting leg ('left' or 'right').
 
         Returns:
             Step: The foot step as a dataclass instance.
         """
         adjusted_y = (
-            current.y + self.params.width
+            current[1] + self.params.width
             if support_leg == "left"
-            else current.y - self.params.width
+            else current[1] - self.params.width
         )
         return FootStep(
-            time, Position(current.x, adjusted_y, current.theta), support_leg
+            time, np.array([current[0], adjusted_y, current[2]]), support_leg
         )
 
     def _add_final_steps(
         self,
         steps: List[FootStep],
-        goal: Position,
+        goal: np.ndarray,
         time: float,
         next_support_leg: str,
         status: str,
@@ -155,7 +134,7 @@ class FootStepPlanner:
 
         Args:
             steps (List[Step]): List of steps generated so far.
-            goal (FootPosition): Goal position.
+            goal (np.ndarray): Goal position.
             time (float): Current time in the step sequence.
             next_support_leg (str): The next leg to move ('left' or 'right').
             status (str): The status of the robot ('start', 'walking', 'stop').
@@ -163,14 +142,14 @@ class FootStepPlanner:
         if not status == "stop":
             time += self.params.period
             adjusted_goal_y = (
-                goal.y + self.params.width
+                goal[1] + self.params.width
                 if next_support_leg == "left"
-                else goal.y - self.params.width
+                else goal[1] - self.params.width
             )
             steps.append(
                 FootStep(
                     time,
-                    Position(goal.x, adjusted_goal_y, goal.theta),
+                    np.array([goal[0], adjusted_goal_y, goal[2]]),
                     next_support_leg,
                 )
             )
@@ -185,16 +164,14 @@ class FootStepPlanner:
 # Example usage
 if __name__ == "__main__":
     planner_params = PlanParameters(
-        max_stride_x=0.06,
-        max_stride_y=0.04,
-        max_stride_th=0.1,
+        max_stride=np.array([0.06, 0.04, 0.1]),
         period=0.34,
         width=0.044,
     )
     planner = FootStepPlanner(planner_params)
     foot_steps = planner.calculate_steps(
-        goal=Position(1.0, 0.0, 0.5),
-        current=Position(0.5, 0.0, 0.1),
+        goal=np.array([1.0, 0.0, 0.5]),
+        current=np.array([0.5, 0.0, 0.1]),
         next_support_leg="right",
         status="start",
     )
