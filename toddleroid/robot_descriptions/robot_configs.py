@@ -2,6 +2,16 @@
 
 import importlib
 import os
+from dataclasses import dataclass
+
+
+@dataclass
+class RobotConfig:
+    com_height: float = 0.0
+    joint_names: list = None
+    canonical_name2link_name: dict = None
+    link_name2canonical_name: dict = None
+    named_lengths: dict = None
 
 
 def load_robot_configs(

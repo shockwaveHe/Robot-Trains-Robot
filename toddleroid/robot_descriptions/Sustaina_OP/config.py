@@ -1,4 +1,4 @@
-from toddleroid.robot_descriptions.robot_config_def import *
+from toddleroid.robot_descriptions.robot_configs import RobotConfig
 
 canonical_name2link_name = {
     "left_foot_link": "left_foot_link",
@@ -9,6 +9,7 @@ link_name2canonical_name = {v: k for k, v in canonical_name2link_name.items()}
 
 
 sustaina_op_config = RobotConfig(
+    com_height=0.3,
     canonical_name2link_name=canonical_name2link_name,
     link_name2canonical_name=link_name2canonical_name,
     joint_names=[

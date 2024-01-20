@@ -6,7 +6,6 @@ import pybullet as p
 from toddleroid.robot_descriptions.robot_configs import robot_configs
 
 
-# TODO: Condier bringing kinematics.py into this file.
 class HumanoidRobot:
     """Class representing a humanoid robot."""
 

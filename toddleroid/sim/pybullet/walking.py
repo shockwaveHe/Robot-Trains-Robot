@@ -17,7 +17,7 @@ class Walking:
         self,
         robot: HumanoidRobot,
         fsp: FootStepPlanner,
-        pc: LQRPreviewController,
+        pc: BaseController,
         left_foot0: List[float],
         right_foot0: List[float],
         joint_angles: List[float],
@@ -28,7 +28,7 @@ class Walking:
         Args:
             robot (HumanoidRobot): The robot instance.
             fsp (FootStepPlanner): The footstep planner.
-            pc (PreviewControl): The preview control.
+            pc (BaseController): The preview control.
             left_foot0 (List[float]): Initial left foot position and orientation.
             right_foot0 (List[float]): Initial right foot position and orientation.
             joint_angles (List[float]): Initial joint angles.
@@ -39,15 +39,16 @@ class Walking:
         self.left_foot0, self.right_foot0 = left_foot0, right_foot0
         self.joint_angles = joint_angles
 
-        self.control_matrix = np.zeros((3, 2))
-        self.pattern = []
+        self.com_traj = []
+        self.com_state_curr = np.zeros((3, 2))
+
         self.left_up = self.right_up = 0.0
-        self.left_offset, self.left_offset_goal, self.left_offset_delta = (
+        self.left_offset, self.left_offset_target, self.left_offset_delta = (
             np.zeros((1, 3)),
             np.zeros((1, 3)),
             np.zeros((1, 3)),
         )
-        self.right_offset, self.right_offset_goal, self.right_offset_delta = (
+        self.right_offset, self.right_offset_target, self.right_offset_delta = (
             np.zeros((1, 3)),
             np.zeros((1, 3)),
             np.zeros((1, 3)),
@@ -57,22 +58,27 @@ class Walking:
         self.next_support_leg = "right"
         self.foot_steps = []
 
-    def set_goal_position(self, pos: Optional[np.ndarray] = None) -> List[FootStep]:
+    def plan_foot_steps(
+        self, com_pos_target: Optional[np.ndarray] = None
+    ) -> List[FootStep]:
         """
-        Set the goal position for the humanoid robot.
+        Set the target position for the humanoid robot.
 
         Args:
-            pos (Optional[Position]): The target position. If None, the robot starts or continues walking.
+            pos (Optional[np.ndarray]): The target position. If None, the robot starts or continues walking.
 
         Returns:
-            List[FootStep]: A list of footsteps towards the goal position.
+            List[FootStep]: A list of footsteps towards the target position.
         """
-        if pos is None:
+        if com_pos_target is None:
             self._handle_no_position()
         else:
-            self._update_foot_steps(pos)
+            self._update_foot_steps(com_pos_target)
 
-        self._update_control_pattern()
+        # Update the com trajectory based on the foot steps.
+        self.com_traj, self.com_state_curr = self.pc.compute_com_traj(
+            self.com_state_curr[:, :2], self.foot_steps
+        )
         self._update_support_leg()
 
         # Update the theta value based on the current footstep.
@@ -84,6 +90,7 @@ class Walking:
         """Handle the case when no position is provided."""
         if len(self.foot_steps) <= 4:
             self.status = "start"
+
         if len(self.foot_steps) > 3:
             del self.foot_steps[0]
 
@@ -110,14 +117,6 @@ class Walking:
         )
         self.status = "walking"
 
-    def _update_control_pattern(self):
-        """Update the control pattern based on the foot steps."""
-        t = self.foot_steps[0].time
-        self.pattern, com_state_curr = self.pc.compute_control_pattern(
-            t, self.control_matrix[:, :2], self.foot_steps
-        )
-        self.control_matrix = com_state_curr.copy()
-
     def _update_support_leg(self):
         """Update the support leg and relevant offsets."""
         support_leg = self.foot_steps[0].support_leg
@@ -135,14 +134,14 @@ class Walking:
         )
 
         if support_leg == "left":
-            self.right_offset_goal = offset
+            self.right_offset_target = offset
             self.right_offset_delta = (
-                self.right_offset_goal - self.right_offset
+                self.right_offset_target - self.right_offset
             ) / 17.0
             self.next_support_leg = "right"
         elif support_leg == "right":
-            self.left_offset_goal = offset
-            self.left_offset_delta = (self.left_offset_goal - self.left_offset) / 17.0
+            self.left_offset_target = offset
+            self.left_offset_delta = (self.left_offset_target - self.left_offset) / 17.0
             self.next_support_leg = "left"
 
     def get_next_position(self) -> Tuple[List[float], List[float], int]:
@@ -153,7 +152,7 @@ class Walking:
             Tuple containing the next joint angles, left foot position, right foot position,
             pattern X position, and remaining pattern length.
         """
-        pattern_first = self.pattern.pop(0)
+        com_attr = self.com_traj.pop(0)
         period = round((self.foot_steps[1].time - self.foot_steps[0].time) / 0.01)
         theta_change = (
             self.foot_steps[1].position[2] - self.foot_steps[0].position[2]
@@ -164,7 +163,7 @@ class Walking:
             self.left_up, self.left_offset = self._get_foot_offset(
                 self.left_up,
                 self.left_offset,
-                self.left_offset_goal,
+                self.left_offset_target,
                 self.left_offset_delta,
                 period,
             )
@@ -172,16 +171,16 @@ class Walking:
             self.right_up, self.right_offset = self._get_foot_offset(
                 self.right_up,
                 self.right_offset,
-                self.right_offset_goal,
+                self.right_offset_target,
                 self.right_offset_delta,
                 period,
             )
 
         left_foot_pos, left_foot_ori = self._get_foot_position(
-            self.left_foot0, self.left_offset, self.left_up, pattern_first
+            self.left_foot0, self.left_offset, self.left_up, com_attr
         )
         right_foot_pos, right_foot_ori = self._get_foot_position(
-            self.right_foot0, self.right_offset, self.right_up, pattern_first
+            self.right_foot0, self.right_offset, self.right_up, com_attr
         )
         self.joint_angles = self.robot.solve_ik(
             left_foot_pos,
@@ -190,15 +189,15 @@ class Walking:
             right_foot_ori,
             self.joint_angles,
         )
-        xp = [pattern_first[2], pattern_first[3]]
+        projected_com_pos = [com_attr[2], com_attr[3]]
 
-        return self.joint_angles, xp, len(self.pattern)
+        return self.joint_angles, projected_com_pos, len(self.com_traj)
 
     def _get_foot_offset(
         self,
         foot_up: float,
         foot_offset: np.ndarray,
-        foot_offset_goal: np.ndarray,
+        foot_offset_target: np.ndarray,
         foot_offset_delta: np.ndarray,
         period: int,
     ) -> Tuple[float, np.array]:
@@ -208,7 +207,7 @@ class Walking:
         Args:
             foot_up (float): Current vertical position of the foot.
             foot_offset (np.ndarray): Current offset of the foot.
-            foot_offset_goal (np.ndarray): Final goal offset for the foot.
+            foot_offset_target (np.ndarray): Final target offset for the foot.
             foot_offset_delta (np.ndarray): Change in offset per step.
             period (int): Total period of the current walking cycle.
             foot_side (str): Side of the foot ('left' or 'right').
@@ -223,7 +222,7 @@ class Walking:
         foot_height = 0.06
 
         # Determine the period range for foot movement
-        period_range = period - len(self.pattern)
+        period_range = period - len(self.com_traj)
 
         # Up or down foot movement
         if start_up < period_range <= end_up:
@@ -235,7 +234,7 @@ class Walking:
         if period_range > start_up:
             foot_offset += foot_offset_delta
             if period_range > (start_up + period_up * 2):
-                foot_offset = foot_offset_goal.copy()
+                foot_offset = foot_offset_target.copy()
 
         return foot_up, foot_offset
 
@@ -244,7 +243,7 @@ class Walking:
         foot_init: List[float],
         foot_offset: np.ndarray,
         foot_up: float,
-        pattern_first: List[float],
+        com_attr: List[float],
     ) -> List[float]:
         """
         Calculate the position of the foot based on the current offsets and height.
@@ -253,12 +252,12 @@ class Walking:
             foot_init (List[float]): Initial position and orientation of the foot.
             foot_offset (np.ndarray): Offset of the foot.
             foot_up (float): Height of the foot.
-            pattern_first (List[float]): First pattern position.
+            com_attr (List[float]): First pattern position.
 
         Returns:
             List[float]: Calculated position of the foot.
         """
-        offset = foot_offset - np.block([[pattern_first[0:2], 0]])
+        offset = foot_offset - np.block([[com_attr[0:2], 0]])
         foot_x = foot_init[0] + offset[0, 0]
         foot_y = foot_init[1] + offset[0, 1]
         foot_z = foot_init[2] + foot_up
@@ -270,22 +269,24 @@ class Walking:
 def main():
     import random
 
+    from toddleroid.sim.pybullet.walking_configs import walking_config
+
     random.seed(0)
     sim = PyBulletSim()
     # A 0.3725 offset moves the robot slightly up from the ground
     robot = HumanoidRobot("Sustaina_OP")
     sim.load_robot(robot)
 
-    # TODO: Clean up the plan and control parameters
-    planner_params = PlanParameters(
-        max_stride=np.array([0.05, 0.03, 0.2]),
-        period=0.34,
-        width=0.06,
+    fsp = FootStepPlanner(
+        FootStepPlanParameters(
+            max_stride=walking_config.max_stride,
+            period=walking_config.plan_period,
+            width=walking_config.width,
+        )
     )
-    fsp = FootStepPlanner(planner_params)
 
     control_params = LQRPreviewControlParameters(
-        com_height=0.3, dt=0.01, period=1.0, Q_val=1e8, R_val=1.0
+        com_height=robot.config.com_height, dt=0.01, period=1.0, Q_val=1e8, R_val=1.0
     )
 
     pc = LQRPreviewController(control_params)
@@ -310,8 +311,8 @@ def main():
 
     walking = Walking(robot, fsp, pc, left_sole, right_sole, joint_angles)
 
-    # goal position (x, y) theta
-    foot_step = walking.set_goal_position(np.array([0.4, 0.0, 0.5]))
+    # target position (x, y) theta
+    foot_steps = walking.plan_foot_steps(np.array([0.4, 0.0, 0.5]))
     j = 0
     while p.isConnected():
         j += 1
@@ -321,18 +322,18 @@ def main():
             print(f"joint_angles: {round_floats(joint_angles[7:], 6)}")
             j = 0
             if n == 0:
-                if len(foot_step) <= 5:
-                    x_goal, y_goal, theta_goal = (
+                if len(foot_steps) <= 5:
+                    target_x, target_y, theta_target = (
                         random.random() - 0.5,
                         random.random() - 0.5,
                         random.random() - 0.5,
                     )
-                    print(f"Goal: ({x_goal}, {y_goal}, {theta_goal})")
-                    foot_step = walking.set_goal_position(
-                        np.array([x_goal, y_goal, theta_goal])
+                    print(f"Goal: ({target_x}, {target_y}, {theta_target})")
+                    foot_steps = walking.plan_foot_steps(
+                        np.array([target_x, target_y, theta_target])
                     )
                 else:
-                    foot_step = walking.set_goal_position()
+                    foot_steps = walking.plan_foot_steps()
 
         for idx in range(p.getNumJoints(robot.id)):
             qIndex = p.getJointInfo(robot.id, idx)[3]

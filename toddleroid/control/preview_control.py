@@ -7,7 +7,6 @@ import numpy as np
 from toddleroid.control.base_controller import BaseController
 from toddleroid.planning.foot_step_planner import FootStep
 from toddleroid.utils.constants import GRAVITY
-from toddleroid.utils.data_utils import round_floats
 
 
 @dataclass
@@ -87,92 +86,68 @@ class LQRPreviewController(BaseController):
 
         # Initialize state variables on x and y axis
         self.com_state_prev = np.zeros((3, 2))
-        self.u = np.zeros(2)
+        self.control_input = np.zeros(2)
 
-    def compute_control_pattern(
+    def compute_com_traj(
         self,
-        t: float,
         com_state_curr: np.ndarray,
         foot_steps: List[FootStep],
         reset: bool = False,
-    ) -> Tuple[List, np.ndarray, np.ndarray]:
+    ) -> Tuple[List, np.ndarray]:
         """
-        Update the parameters based on the current position and foot steps.
+        Calculate the trajectory of the center of mass (COM) based on the current state and foot steps.
+
         Args:
-            t (float): Current time.
-            com_state_curr (np.ndarray): Current x and y position.
-            foot_steps (List[FootStep]): List of footsteps.
-            reset (bool, optional): Flag to reset previous x and y. Defaults to False.
+            com_state_curr (np.ndarray): Current state of the COM.
+            foot_steps (List[FootStep]): List of planned foot steps.
+            reset (bool, optional): Flag to reset previous COM state. Defaults to False.
 
         Returns:
-            Tuple[List, np.ndarray, np.ndarray]:
-                - List of Center of Mass positions.
-                - Updated x position.
-                - Updated y position.
+            Tuple[List, np.ndarray]:
+                - List of predicted COM positions.
+                - Updated COM state.
         """
-        # Initialize or reset current position and control inputs
         com_state = com_state_curr.copy()
 
         if reset:
             self.com_state_prev = com_state.copy()
-            self.u = np.zeros(2)
+            self.control_input = np.zeros(2)
 
-        com_list = []
-        # Calculate the center of mass positions
-        for i in range(round((foot_steps[1].time - t) / self.params.dt)):
-            # Compute error and state difference
-            p = self.C_d @ com_state
-            e = foot_steps[0].position[:2] - p
-            X = np.concatenate([e, com_state - self.com_state_prev])
+        com_traj = []
+        for step_index in range(
+            round((foot_steps[1].time - foot_steps[0].time) / self.params.dt)
+        ):
+            # Compute the projection of COM state
+            projected_com = self.C_d @ com_state
+            error = foot_steps[0].position[:2] - projected_com
+            state_diff = np.concatenate([error, com_state - self.com_state_prev])
             self.com_state_prev = com_state.copy()
 
             # Update control inputs based on LQR gain
-            du = (-self.lgr_gain @ X).squeeze()
+            control_update = (-self.lgr_gain @ state_diff).squeeze()
 
-            # Iterate through footstep timing
             index = 1
+            # Adjust control based on footstep timing
             for j in range(1, round(self.params.period / self.params.dt) - 1):
-                step_time = round((i + j) + t / self.params.dt)
-                if step_time >= round(foot_steps[index].time / self.params.dt):
-                    du += self.preview_control_gains[j] * (
+                step_index_future = round(
+                    (step_index + j) + foot_steps[0].time / self.params.dt
+                )
+                # This condition checks if the future step index has reached or surpassed
+                # the time of the next footstep. The time of the footstep is converted to an index
+                # by dividing by the time step and rounding.
+                if step_index_future >= round(foot_steps[index].time / self.params.dt):
+                    control_update += self.preview_control_gains[j] * (
                         foot_steps[index].position[:2]
                         - foot_steps[index - 1].position[:2]
                     )
+                    # Increment the index to consider the next footstep in subsequent iterations.
                     index += 1
 
-            # Update the state based on system dynamics
-            self.u += du
-            com_state = self.A_d @ com_state + self.B_d @ self.u[None]
+            # Apply control update to the state
+            self.control_input += control_update
+            com_state = self.A_d @ com_state + self.B_d @ self.control_input[None]
 
-            # Append the current com positions to the list
-            com_list.append(np.hstack([com_state[:1], p]).squeeze())
+            # Record the current COM position
+            com_traj.append(np.hstack([com_state[:1], projected_com]).squeeze())
 
-        return com_list, com_state
-
-
-# Example usage
-if __name__ == "__main__":
-    foot_steps = [
-        FootStep(time=0, position=Position(x=0, y=0)),
-        FootStep(time=0.34, position=Position(x=0, y=0.06)),
-        FootStep(time=0.68, position=Position(x=0.05, y=-0.04)),
-        FootStep(time=1.02, position=Position(x=0.10, y=0.1)),
-        FootStep(time=1.36, position=Position(x=0.15, y=0.0)),
-        FootStep(time=1.7, position=Position(x=0.20, y=0.14)),
-        FootStep(time=2.04, position=Position(x=0.25, y=0.1)),
-        FootStep(time=2.72, position=Position(x=0.25, y=0.1)),
-        FootStep(time=100, position=Position(x=0.25, y=0.1)),
-    ]
-    x, y = np.zeros((3, 1)), np.zeros((3, 1))
-
-    control_params = LQRPreviewControlParameters(
-        com_height=0.27, dt=0.01, period=1.0, Q_val=1e8, R_val=1.0
-    )
-
-    pc = LQRPreviewController(control_params)
-
-    for i in range(len(foot_steps) - 2):
-        com, x, y = pc.compute_control_pattern(foot_steps[i].time, x, y, foot_steps[i:])
-        print(round_floats(com[-1], 6))
-
-    print("Preview control simulation completed.")
+        return com_traj, com_state
