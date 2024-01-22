@@ -18,8 +18,8 @@ class Walking:
         robot: HumanoidRobot,
         fsp: FootStepPlanner,
         pc: BaseController,
-        left_foot0: List[float],
-        right_foot0: List[float],
+        left_sole_init: List[float],
+        right_sole_init: List[float],
         joint_angles: List[float],
     ):
         """
@@ -29,14 +29,14 @@ class Walking:
             robot (HumanoidRobot): The robot instance.
             fsp (FootStepPlanner): The footstep planner.
             pc (BaseController): The preview control.
-            left_foot0 (List[float]): Initial left foot position and orientation.
-            right_foot0 (List[float]): Initial right foot position and orientation.
+            left_sole_init (List[float]): Initial left foot position and orientation.
+            right_sole_init (List[float]): Initial right foot position and orientation.
             joint_angles (List[float]): Initial joint angles.
         """
         self.robot = robot
         self.fsp = fsp
         self.pc = pc
-        self.left_foot0, self.right_foot0 = left_foot0, right_foot0
+        self.left_sole_init, self.right_sole_init = left_sole_init, right_sole_init
         self.joint_angles = joint_angles
 
         self.com_traj = []
@@ -177,10 +177,10 @@ class Walking:
             )
 
         left_foot_pos, left_foot_ori = self._get_foot_position(
-            self.left_foot0, self.left_offset, self.left_up, com_attr
+            self.left_sole_init, self.left_offset, self.left_up, com_attr
         )
         right_foot_pos, right_foot_ori = self._get_foot_position(
-            self.right_foot0, self.right_offset, self.right_up, com_attr
+            self.right_sole_init, self.right_offset, self.right_up, com_attr
         )
         self.joint_angles = self.robot.solve_ik(
             left_foot_pos,
@@ -189,9 +189,10 @@ class Walking:
             right_foot_ori,
             self.joint_angles,
         )
-        projected_com_pos = [com_attr[2], com_attr[3]]
+        # projected_com_pos = [com_attr[2], com_attr[3]]
+        is_control_reached = len(self.com_traj) == 0
 
-        return self.joint_angles, projected_com_pos, len(self.com_traj)
+        return self.joint_angles, is_control_reached
 
     def _get_foot_offset(
         self,
@@ -277,51 +278,57 @@ def main():
     robot = HumanoidRobot("Sustaina_OP")
     sim.load_robot(robot)
 
-    fsp = FootStepPlanner(
-        FootStepPlanParameters(
-            max_stride=walking_config.max_stride,
-            period=walking_config.plan_period,
-            width=walking_config.width,
-        )
+    plan_params = FootStepPlanParameters(
+        max_stride=walking_config.max_stride,
+        period=walking_config.plan_period,
+        width=walking_config.width,
     )
+    fsp = FootStepPlanner(plan_params)
 
     control_params = LQRPreviewControlParameters(
-        com_height=robot.config.com_height, dt=0.01, period=1.0, Q_val=1e8, R_val=1.0
+        com_height=robot.config.com_height,
+        dt=walking_config.control_dt,
+        period=walking_config.control_period,
+        Q_val=walking_config.control_cost_Q_val,
+        R_val=walking_config.control_cost_R_val,
     )
-
     pc = LQRPreviewController(control_params)
 
     link_name2idx = {p.getBodyInfo(robot.id)[0].decode("UTF-8"): -1}
     for idx in range(p.getNumJoints(robot.id)):
         link_name2idx[p.getJointInfo(robot.id, idx)[12].decode("UTF-8")] = idx
 
-    left_foot = np.array(p.getLinkState(robot.id, link_name2idx["left_foot_link"])[0])
-    right_foot = np.array(p.getLinkState(robot.id, link_name2idx["right_foot_link"])[0])
+    left_foot_com = np.array(
+        p.getLinkState(robot.id, link_name2idx["left_foot_link"])[0]
+    )
+    right_foot_com = np.array(
+        p.getLinkState(robot.id, link_name2idx["right_foot_link"])[0]
+    )
 
-    left_offset_foot_to_sole = np.array([0.0, 0.01, -0.04])
-    right_offset_foot_to_sole = np.array([0.0, -0.01, -0.04])
-
-    left_sole = left_foot + left_offset_foot_to_sole
-    right_sole = right_foot + right_offset_foot_to_sole
+    left_sole_init = left_foot_com + robot.config.offsets["left_offset_foot_to_sole"]
+    right_sole_init = right_foot_com + robot.config.offsets["right_offset_foot_to_sole"]
 
     joint_angles = []
     for idx in range(p.getNumJoints(robot.id)):
         if p.getJointInfo(robot.id, idx)[3] > -1:
             joint_angles += [0]
 
-    walking = Walking(robot, fsp, pc, left_sole, right_sole, joint_angles)
+    walking = Walking(robot, fsp, pc, left_sole_init, right_sole_init, joint_angles)
 
+    # TODO: Consider moving this part to the walking class
     # target position (x, y) theta
-    foot_steps = walking.plan_foot_steps(np.array([0.4, 0.0, 0.5]))
-    j = 0
+    foot_steps = walking.plan_foot_steps(walking_config.target_pos_init)
+    sim_step = 0
     while p.isConnected():
-        j += 1
+        sim_step += 1
 
-        if j >= 10:
-            joint_angles, xp, n = walking.get_next_position()
+        if sim_step >= walking_config.sim_step_interval:
+            sim_step = 0
+
+            joint_angles, is_control_reached = walking.get_next_position()
             print(f"joint_angles: {round_floats(joint_angles[7:], 6)}")
-            j = 0
-            if n == 0:
+
+            if is_control_reached:
                 if len(foot_steps) <= 5:
                     target_x, target_y, theta_target = (
                         random.random() - 0.5,

@@ -131,10 +131,10 @@ class HumanoidRobot:
         """
         # Magic numbers extracted from robot configuration
         L1, L12, L2, L3 = (
-            self.config.named_lengths[key] for key in ["L1", "L12", "L2", "L3"]
+            self.config.offsets[key] for key in ["L1", "L12", "L2", "L3"]
         )
         OFFSET_X, OFFSET_Y = (
-            self.config.named_lengths[key] for key in ["OFFSET_X", "OFFSET_Y"]
+            self.config.offsets[key] for key in ["OFFSET_X", "OFFSET_Y"]
         )
 
         # Decompose target position and orientation
@@ -210,7 +210,7 @@ class HumanoidRobot:
             index_dof[joint_name] = p.getJointInfo(self.id, idx)[3] - 7
 
         # Define joint names and their corresponding angles
-        joint_names = self.config.joint_names
+        joint_names = self.config.half_joint_names
         angles = [
             waist_yaw,
             waist_roll,
