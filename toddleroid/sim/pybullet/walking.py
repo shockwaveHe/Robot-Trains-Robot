@@ -344,9 +344,11 @@ def main():
     right_sole_init = right_foot_com + robot.config.offsets["right_offset_foot_to_sole"]
 
     joint_angles = []
+    joint_names = []
     for idx in range(p.getNumJoints(robot.id)):
         if p.getJointInfo(robot.id, idx)[3] > -1:
             joint_angles += [0]
+            joint_names += [p.getJointInfo(robot.id, idx)[1].decode("UTF-8")]
 
     walking = Walking(robot, config, left_sole_init, right_sole_init, joint_angles)
 
@@ -361,7 +363,10 @@ def main():
             sim_step = 0
 
             joint_angles, is_control_reached = walking.compute_joint_angles()
-            print(f"joint_angles: {round_floats(joint_angles[7:], 6)}")
+            if robot.name == "sustaina_op":
+                print(f"joint_angles: {round_floats(joint_angles[7:], 6)}")
+            else:
+                print(f"joint_angles: {round_floats(joint_angles, 6)}")
 
             if is_control_reached:
                 if len(foot_steps) <= 5:

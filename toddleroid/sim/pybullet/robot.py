@@ -159,6 +159,7 @@ class HumanoidRobot:
         knee_disp = math.acos(min(max(leg_length / (2.0 * L1), -1.0), 1.0))
         waist_pitch = -pitch_angle - knee_disp
         knee_pitch = -pitch_angle + knee_disp
+        # TODO: Tune those magic numbers
 
         # Set and return updated joint angles
         return self._set_joint_angles(

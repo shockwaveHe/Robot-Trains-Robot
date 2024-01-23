@@ -13,7 +13,21 @@
             "justMyCode": true
         },
         {
-            "name": "Python: walk",
+            "name": "Python: walk_op",
+            "type": "python",
+            "request": "launch",
+            "program": "toddleroid/sim/pybullet/walking.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot-name",
+                "sustaina_op",
+                "--sleep-time",
+                "0.001",
+            ]
+        }
+        {
+            "name": "Python: walk_op3",
             "type": "python",
             "request": "launch",
             "program": "toddleroid/sim/pybullet/walking.py",
