@@ -1,3 +1,4 @@
+import argparse
 from typing import List, Optional, Tuple
 
 import numpy as np
@@ -272,11 +273,21 @@ def main():
 
     from toddleroid.sim.pybullet.walking_configs import walking_config
 
+    parser = argparse.ArgumentParser(description="Run the walking simulation.")
+    parser.add_argument(
+        "--robot-name",
+        type=str,
+        default="Sustaina_OP",
+        help="The name of the robot. Need to match the name in robot_descriptions.",
+    )
+    args = parser.parse_args()
+
     random.seed(0)
     sim = PyBulletSim()
     # A 0.3725 offset moves the robot slightly up from the ground
-    robot = HumanoidRobot("Sustaina_OP")
+    robot = HumanoidRobot(args.robot_name)
     sim.load_robot(robot)
+    sim.put_robot_on_ground(robot)
 
     plan_params = FootStepPlanParameters(
         max_stride=walking_config.max_stride,
@@ -299,10 +310,16 @@ def main():
         link_name2idx[p.getJointInfo(robot.id, idx)[12].decode("UTF-8")] = idx
 
     left_foot_com = np.array(
-        p.getLinkState(robot.id, link_name2idx["left_foot_link"])[0]
+        p.getLinkState(
+            robot.id,
+            link_name2idx[robot.config.canonical_name2link_name["left_foot_link"]],
+        )[0]
     )
     right_foot_com = np.array(
-        p.getLinkState(robot.id, link_name2idx["right_foot_link"])[0]
+        p.getLinkState(
+            robot.id,
+            link_name2idx[robot.config.canonical_name2link_name["right_foot_link"]],
+        )[0]
     )
 
     left_sole_init = left_foot_com + robot.config.offsets["left_offset_foot_to_sole"]

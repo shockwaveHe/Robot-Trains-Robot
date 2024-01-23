@@ -1,7 +1,7 @@
 import subprocess
 
 
-def test_walking():
+def test_op_walking():
     # Path to the walking.py script
     script_path = "toddleroid/sim/pybullet/walking.py"
 
@@ -11,7 +11,10 @@ def test_walking():
     try:
         # Run the script for 10 seconds and capture output
         result = subprocess.run(
-            ["python", script_path], capture_output=True, text=True, timeout=5
+            ["python", script_path, "--robot-name", "Sustaina_OP"],
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         captured_output = result.stdout
 

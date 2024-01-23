@@ -210,23 +210,40 @@ class HumanoidRobot:
             index_dof[joint_name] = p.getJointInfo(self.id, idx)[3] - 7
 
         # Define joint names and their corresponding angles
-        joint_names = self.config.half_joint_names
-        angles = [
-            waist_yaw,
-            waist_roll,
-            waist_pitch,
-            -waist_pitch,
-            waist_pitch,
-            knee_pitch,
-            -knee_pitch,
-            knee_pitch,
-            ankle_pitch,
-            ankle_roll - waist_roll,
-        ]
+        n_dof = len(self.config.joint_names)
+        if side == "left":
+            joint_names = self.config.joint_names[: n_dof // 2]
+        else:
+            joint_names = self.config.joint_names[n_dof // 2 :]
+
+        if self.name == "Sustaina_OP":
+            angles = [
+                waist_yaw,
+                waist_roll,
+                waist_pitch,
+                -waist_pitch,
+                waist_pitch,
+                knee_pitch,
+                -knee_pitch,
+                knee_pitch,
+                ankle_pitch,
+                ankle_roll - waist_roll,
+            ]
+        elif self.name == "Robotis_OP3":
+            angles = [
+                waist_yaw,
+                waist_roll,
+                waist_pitch,
+                knee_pitch,
+                ankle_pitch,
+                ankle_roll - waist_roll,
+            ]
+        else:
+            raise ValueError(f"Robot '{self.name}' is not supported.")
 
         # Update joint angles based on calculations
         for joint_name, angle in zip(joint_names, angles):
-            joint_index = index_dof[f"{side}_{joint_name}"]
+            joint_index = index_dof[joint_name]
             if joint_index >= 0:  # Check if joint index is valid
                 joint_angles[joint_index] = angle
 
@@ -243,6 +260,7 @@ if __name__ == "__main__":
     sim = PyBulletSim()
     robot = HumanoidRobot("Sustaina_OP")
     sim.load_robot(robot)
+    sim.put_robot_on_ground(robot)
 
     # Define target positions and orientations for left and right feet
     target_left_foot_pos, target_left_foot_ori = [0.2, 0.1, -0.2], [
