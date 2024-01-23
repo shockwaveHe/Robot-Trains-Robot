@@ -10,11 +10,10 @@ if [ ! -f "README.md" ] || [ ! -f "setup.py" ]; then
 fi
 
 conda_info=$(conda info)
-
-if [[ $conda_info == *"anaconda"* ]]; then
-    conda_name="anaconda3"
-elif [[ $conda_info == *"miniconda"* ]]; then
+if [[ $conda_info == *"miniconda"* ]]; then
     conda_name="miniconda3"
+elif [[ $conda_info == *"anaconda"* ]]; then
+    conda_name="anaconda3"
 else
     echo "Unable to determine the Conda distribution."
 fi
