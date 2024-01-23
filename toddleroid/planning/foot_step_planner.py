@@ -10,7 +10,7 @@ from toddleroid.utils.data_utils import round_floats
 class FootStepPlanParameters:
     max_stride: np.ndarray  # x, y, theta
     period: float
-    width: float
+    offset_y: float
 
 
 @dataclass
@@ -113,9 +113,9 @@ class FootStepPlanner:
             Step: The foot step as a dataclass instance.
         """
         adjusted_y = (
-            current[1] + self.params.width
+            current[1] + self.params.offset_y
             if support_leg == "left"
-            else current[1] - self.params.width
+            else current[1] - self.params.offset_y
         )
         return FootStep(
             time, np.array([current[0], adjusted_y, current[2]]), support_leg
@@ -142,9 +142,9 @@ class FootStepPlanner:
         if not status == "stop":
             time += self.params.period
             adjusted_target_y = (
-                target[1] + self.params.width
+                target[1] + self.params.offset_y
                 if next_support_leg == "left"
-                else target[1] - self.params.width
+                else target[1] - self.params.offset_y
             )
             steps.append(
                 FootStep(
@@ -166,7 +166,7 @@ if __name__ == "__main__":
     planner_params = FootStepPlanParameters(
         max_stride=np.array([0.06, 0.04, 0.1]),
         period=0.34,
-        width=0.044,
+        offset_y=0.044,
     )
     planner = FootStepPlanner(planner_params)
     foot_steps = planner.calculate_steps(

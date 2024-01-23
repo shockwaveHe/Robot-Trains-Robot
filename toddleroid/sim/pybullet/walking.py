@@ -1,4 +1,5 @@
 import argparse
+import time
 from typing import List, Optional, Tuple
 
 import numpy as np
@@ -8,6 +9,7 @@ from toddleroid.control.preview_control import *
 from toddleroid.planning.foot_step_planner import *
 from toddleroid.sim.pybullet.robot import HumanoidRobot
 from toddleroid.sim.pybullet.simulation import PyBulletSim
+from toddleroid.sim.pybullet.walking_configs import *
 from toddleroid.utils.data_utils import round_floats
 
 
@@ -17,8 +19,7 @@ class Walking:
     def __init__(
         self,
         robot: HumanoidRobot,
-        fsp: FootStepPlanner,
-        pc: BaseController,
+        config: WalkingConfig,
         left_sole_init: List[float],
         right_sole_init: List[float],
         joint_angles: List[float],
@@ -28,20 +29,42 @@ class Walking:
 
         Args:
             robot (HumanoidRobot): The robot instance.
-            fsp (FootStepPlanner): The footstep planner.
-            pc (BaseController): The preview control.
+            config (WalkingConfig): The walking configuration.
             left_sole_init (List[float]): Initial left foot position and orientation.
             right_sole_init (List[float]): Initial right foot position and orientation.
             joint_angles (List[float]): Initial joint angles.
         """
         self.robot = robot
-        self.fsp = fsp
-        self.pc = pc
+        self.config = config
+
+        plan_params = FootStepPlanParameters(
+            max_stride=config.max_stride,
+            period=config.plan_period,
+            offset_y=robot.config.offsets["y_offset_com_to_foot"],
+        )
+        self.fsp = FootStepPlanner(plan_params)
+
+        control_params = LQRPreviewControlParameters(
+            com_height=robot.config.com_height,
+            dt=config.control_dt,
+            period=config.control_period,
+            Q_val=config.control_cost_Q_val,
+            R_val=config.control_cost_R_val,
+        )
+        self.pc = LQRPreviewController(control_params)
+
         self.left_sole_init, self.right_sole_init = left_sole_init, right_sole_init
         self.joint_angles = joint_angles
 
         self.com_traj = []
         self.com_state_curr = np.zeros((3, 2))
+
+        self.foot_steps = []
+        self.status = "start"
+        self.next_support_leg = "right"
+
+        self.half_period = round(self.config.plan_period / self.config.control_dt / 2)
+        self.y_offset_com_to_foot = robot.config.offsets["y_offset_com_to_foot"]
 
         self.left_up = self.right_up = 0.0
         self.left_offset, self.left_offset_target, self.left_offset_delta = (
@@ -55,9 +78,6 @@ class Walking:
             np.zeros((1, 3)),
         )
         self.theta = 0
-        self.status = "start"
-        self.next_support_leg = "right"
-        self.foot_steps = []
 
     def plan_foot_steps(
         self, com_pos_target: Optional[np.ndarray] = None
@@ -99,7 +119,11 @@ class Walking:
         """Update the foot steps based on the given position."""
         if len(self.foot_steps) > 2:
             if not self.status == "start":
-                offset_y = -0.06 if self.next_support_leg == "left" else 0.06
+                offset_y = (
+                    -self.y_offset_com_to_foot
+                    if self.next_support_leg == "left"
+                    else self.y_offset_com_to_foot
+                )
             else:
                 offset_y = 0.0
 
@@ -122,7 +146,7 @@ class Walking:
         """Update the support leg and relevant offsets."""
         support_leg = self.foot_steps[0].support_leg
         next_step = self.foot_steps[1]
-        offset_y = 0.06 if next_step.support_leg != "both" else 0.0
+        offset_y = self.y_offset_com_to_foot if next_step.support_leg != "both" else 0.0
         offset = np.array(
             [
                 [
@@ -138,14 +162,16 @@ class Walking:
             self.right_offset_target = offset
             self.right_offset_delta = (
                 self.right_offset_target - self.right_offset
-            ) / 17.0
+            ) / self.half_period
             self.next_support_leg = "right"
         elif support_leg == "right":
             self.left_offset_target = offset
-            self.left_offset_delta = (self.left_offset_target - self.left_offset) / 17.0
+            self.left_offset_delta = (
+                self.left_offset_target - self.left_offset
+            ) / self.half_period
             self.next_support_leg = "left"
 
-    def get_next_position(self) -> Tuple[List[float], List[float], int]:
+    def compute_joint_angles(self) -> Tuple[List[float], List[float], int]:
         """
         Calculate the next position of the robot based on the walking pattern.
 
@@ -154,10 +180,12 @@ class Walking:
             pattern X position, and remaining pattern length.
         """
         com_attr = self.com_traj.pop(0)
-        period = round((self.foot_steps[1].time - self.foot_steps[0].time) / 0.01)
+        control_steps = round(
+            (self.foot_steps[1].time - self.foot_steps[0].time) / self.config.control_dt
+        )
         theta_change = (
             self.foot_steps[1].position[2] - self.foot_steps[0].position[2]
-        ) / period
+        ) / control_steps
         self.theta += theta_change
 
         if self.foot_steps[0].support_leg == "right":
@@ -166,7 +194,7 @@ class Walking:
                 self.left_offset,
                 self.left_offset_target,
                 self.left_offset_delta,
-                period,
+                control_steps,
             )
         elif self.foot_steps[0].support_leg == "left":
             self.right_up, self.right_offset = self._get_foot_offset(
@@ -174,7 +202,7 @@ class Walking:
                 self.right_offset,
                 self.right_offset_target,
                 self.right_offset_delta,
-                period,
+                control_steps,
             )
 
         left_foot_pos, left_foot_ori = self._get_foot_position(
@@ -201,7 +229,7 @@ class Walking:
         foot_offset: np.ndarray,
         foot_offset_target: np.ndarray,
         foot_offset_delta: np.ndarray,
-        period: int,
+        control_steps: int,
     ) -> Tuple[float, np.array]:
         """
         Update the position of the specified foot during the walking cycle.
@@ -211,31 +239,31 @@ class Walking:
             foot_offset (np.ndarray): Current offset of the foot.
             foot_offset_target (np.ndarray): Final target offset for the foot.
             foot_offset_delta (np.ndarray): Change in offset per step.
-            period (int): Total period of the current walking cycle.
+            control_steps (int): Total control_steps of the current walking cycle.
             foot_side (str): Side of the foot ('left' or 'right').
 
         Returns:
             Tuple[float, np.array]: Updated vertical position and offset of the foot.
         """
-        BOTH_FOOT = round(0.17 / 0.01)
-        start_up = round(BOTH_FOOT / 2)
-        end_up = round(period / 2)
+        start_up = round(
+            round(self.config.plan_period / 2 / self.config.control_dt) / 2
+        )
+        end_up = round(control_steps / 2)
         period_up = end_up - start_up
-        foot_height = 0.06
 
         # Determine the period range for foot movement
-        period_range = period - len(self.com_traj)
+        period_length = control_steps - len(self.com_traj)
 
         # Up or down foot movement
-        if start_up < period_range <= end_up:
-            foot_up += foot_height / period_up
+        if start_up < period_length <= end_up:
+            foot_up += self.config.foot_step_height / period_up
         elif foot_up > 0:
-            foot_up = max(foot_up - foot_height / period_up, 0.0)
+            foot_up = max(foot_up - self.config.foot_step_height / period_up, 0.0)
 
         # Move foot in the axes of x, y, theta
-        if period_range > start_up:
+        if period_length > start_up:
             foot_offset += foot_offset_delta
-            if period_range > (start_up + period_up * 2):
+            if period_length > (start_up + period_up * 2):
                 foot_offset = foot_offset_target.copy()
 
         return foot_up, foot_offset
@@ -271,14 +299,18 @@ class Walking:
 def main():
     import random
 
-    from toddleroid.sim.pybullet.walking_configs import walking_configs
-
     parser = argparse.ArgumentParser(description="Run the walking simulation.")
     parser.add_argument(
         "--robot-name",
         type=str,
         default="sustaina_op",
         help="The name of the robot. Need to match the name in robot_descriptions.",
+    )
+    parser.add_argument(
+        "--sleep-time",
+        type=float,
+        default=0.0,
+        help="Time to sleep between steps.",
     )
     args = parser.parse_args()
 
@@ -290,22 +322,6 @@ def main():
     sim.put_robot_on_ground(robot)
 
     config = walking_configs[args.robot_name]
-
-    plan_params = FootStepPlanParameters(
-        max_stride=config.max_stride,
-        period=config.plan_period,
-        width=config.width,
-    )
-    fsp = FootStepPlanner(plan_params)
-
-    control_params = LQRPreviewControlParameters(
-        com_height=robot.config.com_height,
-        dt=config.control_dt,
-        period=config.control_period,
-        Q_val=config.control_cost_Q_val,
-        R_val=config.control_cost_R_val,
-    )
-    pc = LQRPreviewController(control_params)
 
     link_name2idx = {p.getBodyInfo(robot.id)[0].decode("UTF-8"): -1}
     for idx in range(p.getNumJoints(robot.id)):
@@ -332,7 +348,7 @@ def main():
         if p.getJointInfo(robot.id, idx)[3] > -1:
             joint_angles += [0]
 
-    walking = Walking(robot, fsp, pc, left_sole_init, right_sole_init, joint_angles)
+    walking = Walking(robot, config, left_sole_init, right_sole_init, joint_angles)
 
     # TODO: Consider moving this part to the walking class
     # target position (x, y) theta
@@ -344,7 +360,7 @@ def main():
         if sim_step >= config.sim_step_interval:
             sim_step = 0
 
-            joint_angles, is_control_reached = walking.get_next_position()
+            joint_angles, is_control_reached = walking.compute_joint_angles()
             print(f"joint_angles: {round_floats(joint_angles[7:], 6)}")
 
             if is_control_reached:
@@ -369,6 +385,8 @@ def main():
                 )
 
         p.stepSimulation()
+        if args.sleep_time > 0:
+            time.sleep(args.sleep_time)
 
 
 if __name__ == "__main__":

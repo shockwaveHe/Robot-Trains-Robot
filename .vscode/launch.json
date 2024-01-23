@@ -21,7 +21,9 @@
             "justMyCode": true,
             "args": [
                 "--robot-name",
-                "robotis_op3"
+                "robotis_op3",
+                "--sleep-time",
+                "0.001",
             ]
         }
     ]

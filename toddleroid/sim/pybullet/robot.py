@@ -130,11 +130,9 @@ class HumanoidRobot:
             List[float]: Updated list of joint angles after calculation.
         """
         # Magic numbers extracted from robot configuration
-        L1, L12, L2, L3 = (
-            self.config.offsets[key] for key in ["L1", "L12", "L2", "L3"]
-        )
-        OFFSET_X, OFFSET_Y = (
-            self.config.offsets[key] for key in ["OFFSET_X", "OFFSET_Y"]
+        L1, L12, L2, L3, OFFSET_X, OFFSET_Y = (
+            self.config.offsets[key]
+            for key in ["L1", "L12", "L2", "L3", "OFFSET_X", "OFFSET_Y"]
         )
 
         # Decompose target position and orientation

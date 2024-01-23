@@ -37,5 +37,6 @@ robotis_op3_config = RobotConfig(
         "OFFSET_Y": 0.044,
         "left_offset_foot_to_sole": np.array([0.0, 0.01, -0.04]),
         "right_offset_foot_to_sole": np.array([0.0, -0.01, -0.04]),
+        "y_offset_com_to_foot": 0.06,
     },
 )

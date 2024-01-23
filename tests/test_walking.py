@@ -14,7 +14,7 @@ def test_op_walking():
             ["python", script_path, "--robot-name", "sustaina_op"],
             capture_output=True,
             text=True,
-            timeout=5,
+            timeout=3,
         )
         captured_output = result.stdout
 
