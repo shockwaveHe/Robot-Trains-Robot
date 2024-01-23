@@ -11,7 +11,7 @@ def test_op_walking():
     try:
         # Run the script for 10 seconds and capture output
         result = subprocess.run(
-            ["python", script_path, "--robot-name", "Sustaina_OP"],
+            ["python", script_path, "--robot-name", "sustaina_op"],
             capture_output=True,
             text=True,
             timeout=5,

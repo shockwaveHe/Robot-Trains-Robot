@@ -9,7 +9,7 @@ def find_urdf_path(robot_name: str) -> str:
     It raises a FileNotFoundError if no URDF file is found.
 
     Args:
-        robot_name: The name of the robot (e.g., 'Robotis_OP3').
+        robot_name: The name of the robot (e.g., 'robotis_op3').
 
     Returns:
         The file path to the robot's URDF file.
@@ -18,7 +18,7 @@ def find_urdf_path(robot_name: str) -> str:
         FileNotFoundError: If no URDF file is found in the robot's directory.
 
     Example:
-        robot_urdf_path = find_urdf_path("Robotis_OP3")
+        robot_urdf_path = find_urdf_path("robotis_op3")
         print(robot_urdf_path)
     """
     robot_dir = os.path.join("toddleroid", "robot_descriptions", robot_name)

@@ -216,7 +216,7 @@ class HumanoidRobot:
         else:
             joint_names = self.config.joint_names[n_dof // 2 :]
 
-        if self.name == "Sustaina_OP":
+        if self.name == "sustaina_op":
             angles = [
                 waist_yaw,
                 waist_roll,
@@ -229,7 +229,7 @@ class HumanoidRobot:
                 ankle_pitch,
                 ankle_roll - waist_roll,
             ]
-        elif self.name == "Robotis_OP3":
+        elif self.name == "robotis_op3":
             angles = [
                 waist_yaw,
                 waist_roll,
@@ -258,7 +258,7 @@ if __name__ == "__main__":
     from toddleroid.utils.data_utils import round_floats
 
     sim = PyBulletSim()
-    robot = HumanoidRobot("Sustaina_OP")
+    robot = HumanoidRobot("sustaina_op")
     sim.load_robot(robot)
     sim.put_robot_on_ground(robot)
 

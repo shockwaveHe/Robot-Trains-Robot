@@ -76,7 +76,7 @@ class PyBulletSim:
 
 if __name__ == "__main__":
     sim = PyBulletSim()
-    robot = HumanoidRobot("Robotis_OP3")
+    robot = HumanoidRobot("robotis_op3")
     sim.load_robot(robot)
     sim.put_robot_on_ground(robot)
     sim.run()

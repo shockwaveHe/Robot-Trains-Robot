@@ -271,13 +271,13 @@ class Walking:
 def main():
     import random
 
-    from toddleroid.sim.pybullet.walking_configs import walking_config
+    from toddleroid.sim.pybullet.walking_configs import walking_configs
 
     parser = argparse.ArgumentParser(description="Run the walking simulation.")
     parser.add_argument(
         "--robot-name",
         type=str,
-        default="Sustaina_OP",
+        default="sustaina_op",
         help="The name of the robot. Need to match the name in robot_descriptions.",
     )
     args = parser.parse_args()
@@ -289,19 +289,21 @@ def main():
     sim.load_robot(robot)
     sim.put_robot_on_ground(robot)
 
+    config = walking_configs[args.robot_name]
+
     plan_params = FootStepPlanParameters(
-        max_stride=walking_config.max_stride,
-        period=walking_config.plan_period,
-        width=walking_config.width,
+        max_stride=config.max_stride,
+        period=config.plan_period,
+        width=config.width,
     )
     fsp = FootStepPlanner(plan_params)
 
     control_params = LQRPreviewControlParameters(
         com_height=robot.config.com_height,
-        dt=walking_config.control_dt,
-        period=walking_config.control_period,
-        Q_val=walking_config.control_cost_Q_val,
-        R_val=walking_config.control_cost_R_val,
+        dt=config.control_dt,
+        period=config.control_period,
+        Q_val=config.control_cost_Q_val,
+        R_val=config.control_cost_R_val,
     )
     pc = LQRPreviewController(control_params)
 
@@ -334,12 +336,12 @@ def main():
 
     # TODO: Consider moving this part to the walking class
     # target position (x, y) theta
-    foot_steps = walking.plan_foot_steps(walking_config.target_pos_init)
+    foot_steps = walking.plan_foot_steps(config.target_pos_init)
     sim_step = 0
     while p.isConnected():
         sim_step += 1
 
-        if sim_step >= walking_config.sim_step_interval:
+        if sim_step >= config.sim_step_interval:
             sim_step = 0
 
             joint_angles, is_control_reached = walking.get_next_position()
