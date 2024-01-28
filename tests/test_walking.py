@@ -9,21 +9,30 @@ def test_op_walking():
     expected_output_file = "tests/expected_output.txt"
 
     try:
-        # Run the script for 10 seconds and capture output
         result = subprocess.run(
             ["python", script_path, "--robot-name", "sustaina_op"],
             capture_output=True,
             text=True,
-            timeout=3,
+            timeout=5,
         )
         captured_output = result.stdout
 
-        # Read the expected output from the file
-        with open(expected_output_file, "r") as file:
-            expected_output = file.read()
+    except subprocess.TimeoutExpired as e:
+        print("Script timed out. Partial output captured.")
+        captured_output = e.stdout.decode("utf-8") if e.stdout else ""
 
-        # Compare the captured output with the expected output
-        assert captured_output[:10000].strip() == expected_output[:10000].strip()
+    # Find the first occurrence of "joint_angles"
+    start_index = captured_output.find("joint_angles")
+    if start_index != -1:
+        captured_output = captured_output[start_index:]
 
-    except subprocess.TimeoutExpired:
-        print("Test stopped after 5 seconds.")
+    # Read the expected output from the file
+    with open(expected_output_file, "r") as file:
+        expected_output = file.read()
+
+    # Perform assertion
+    assert captured_output[: int(3e5)].strip() == expected_output[: int(3e5)].strip()
+
+
+if __name__ == "__main__":
+    test_op_walking()
