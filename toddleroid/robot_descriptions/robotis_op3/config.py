@@ -11,7 +11,7 @@ link_name2canonical_name = {v: k for k, v in canonical_name2link_name.items()}
 
 
 robotis_op3_config = RobotConfig(
-    com_height=0.36,
+    com_height=0.3,
     canonical_name2link_name=canonical_name2link_name,
     link_name2canonical_name=link_name2canonical_name,
     joint_names=[
@@ -29,14 +29,14 @@ robotis_op3_config = RobotConfig(
         "r_ank_roll",
     ],
     offsets={
-        "L1": 0.100,
-        "L12": 0.057,
-        "L2": 0.100,
-        "L3": 0.053,
-        "OFFSET_X": 0.0,
-        "OFFSET_Y": 0.044,
-        "left_offset_foot_to_sole": np.array([0.0, 0.0, 0.0]),
-        "right_offset_foot_to_sole": np.array([0.0, -0.0, 0.0]),
+        "z_offset_hip": 0.028,
+        "z_offset_thigh": 0.11,  # from the hip pitch joint to the knee joint
+        "z_offset_knee": 0.0,
+        "z_offset_shin": 0.11,  # from the knee joint to the ankle pitch joint
+        "x_offset_foot_to_ankle": 0.0,
+        "y_offset_foot_to_ankle": 0.044,
+        "left_offset_foot_to_sole": np.array([0.0, 0.01, 0.0]),
+        "right_offset_foot_to_sole": np.array([0.0, -0.01, 0.0]),
         "y_offset_com_to_foot": 0.06,
     },
 )

@@ -1,6 +1,7 @@
 import math
 from typing import Dict, List, Tuple
 
+import numpy as np
 import pybullet as p
 
 from toddleroid.robot_descriptions.robot_configs import robot_configs
@@ -129,79 +130,8 @@ class HumanoidRobot:
         Returns:
             List[float]: Updated list of joint angles after calculation.
         """
-        # Magic numbers extracted from robot configuration
-        L1, L12, L2, L3, OFFSET_X, OFFSET_Y = (
-            self.config.offsets[key]
-            for key in ["L1", "L12", "L2", "L3", "OFFSET_X", "OFFSET_Y"]
-        )
 
-        # Decompose target position and orientation
-        target_x, target_y, target_z = target_foot_pos
-        ankle_roll, ankle_pitch, waist_yaw = target_foot_ori
-
-        # Adjust positions based on offsets and calculate new coordinates
-        target_x -= OFFSET_X
-        target_y += -OFFSET_Y if side == "left" else OFFSET_Y
-        target_z = L1 + L12 + L2 + L3 - target_z
-
-        transformed_x = target_x * math.cos(waist_yaw) + target_y * math.sin(waist_yaw)
-        transformed_y = -target_x * math.sin(waist_yaw) + target_y * math.cos(waist_yaw)
-        transformed_z = target_z - L3
-
-        # Calculate leg angles
-        waist_roll = math.atan2(transformed_y, transformed_z)
-        projected_leg_length = transformed_y**2 + transformed_z**2
-        adjusted_leg_height = (
-            math.sqrt(max(projected_leg_length - transformed_x**2, 0.0)) - L12
-        )
-        pitch_angle = math.atan2(transformed_x, adjusted_leg_height)
-        leg_length = math.sqrt(transformed_x**2 + adjusted_leg_height**2)
-        knee_disp = math.acos(min(max(leg_length / (2.0 * L1), -1.0), 1.0))
-        waist_pitch = -pitch_angle - knee_disp
-        knee_pitch = -pitch_angle + knee_disp
-        # TODO: Tune those magic numbers
-
-        # Set and return updated joint angles
-        return self._set_joint_angles(
-            side,
-            waist_yaw,
-            waist_roll,
-            waist_pitch,
-            knee_pitch,
-            ankle_roll,
-            ankle_pitch,
-            joint_angles,
-        )
-
-    def _set_joint_angles(
-        self,
-        side: str,
-        waist_yaw: float,
-        waist_roll: float,
-        waist_pitch: float,
-        knee_pitch: float,
-        ankle_roll: float,
-        ankle_pitch: float,
-        joint_angles: List[float],
-    ) -> List[float]:
-        """
-        Sets the joint angles for the given leg side based on calculated angles.
-
-        Args:
-            side (str): The side of the leg ('left' or 'right').
-            waist_yaw (float): Angle for the waist yaw.
-            waist_roll (float): Angle for the waist roll.
-            waist_pitch (float): Angle for the waist pitch.
-            knee_pitch (float): Angle for the knee pitch.
-            ankle_roll (float): Angle for the ankle roll.
-            ankle_pitch (float): Angle for the ankle pitch.
-            joint_angles (List[float]): Current list of joint angles.
-
-        Returns:
-            List[float]: Updated list of joint angles with new values for the specified side.
-        """
         # Initialize dictionary to map joint names to their degrees of freedom index
-        # Conjecture: 7 is the offset for position and quaternion values
         # TODO: Update this to use joint name instead of link_name
         index_dof = {p.getBodyInfo(self.id)[0].decode("UTF-8"): -1}
         for idx in range(p.getNumJoints(self.id)):
@@ -215,7 +145,57 @@ class HumanoidRobot:
         else:
             joint_names = self.config.joint_names[n_dof // 2 :]
 
+        # Magic numbers extracted from robot configuration
+        (
+            z_offset_thigh,
+            z_offset_knee,
+            z_offset_shin,
+            x_offset_foot_to_ankle,
+            y_offset_foot_to_ankle,
+        ) = (
+            self.config.offsets[key]
+            for key in [
+                "z_offset_thigh",
+                "z_offset_knee",
+                "z_offset_shin",
+                "x_offset_foot_to_ankle",
+                "y_offset_foot_to_ankle",
+            ]
+        )
+
+        # Decompose target position and orientation
+        target_x, target_y, target_z = target_foot_pos
+        ankle_roll, ankle_pitch, waist_yaw = target_foot_ori
+
+        # Adjust positions based on offsets and calculate new coordinates
+        target_x += x_offset_foot_to_ankle
+        target_y += (
+            -y_offset_foot_to_ankle if side == "left" else y_offset_foot_to_ankle
+        )
+        target_z = z_offset_thigh + z_offset_knee + z_offset_shin - target_z
+
+        transformed_x = target_x * math.cos(waist_yaw) + target_y * math.sin(waist_yaw)
+        transformed_y = -target_x * math.sin(waist_yaw) + target_y * math.cos(waist_yaw)
+        transformed_z = target_z
+
+        waist_roll = math.atan2(transformed_y, transformed_z)
+
+        # Calculate leg angles
         if self.name == "sustaina_op":
+            adjusted_leg_height_sq = (
+                transformed_y**2 + transformed_z**2 - transformed_x**2
+            )
+            adjusted_leg_height = (
+                math.sqrt(max(0.0, adjusted_leg_height_sq)) - z_offset_knee
+            )
+            leg_pitch = math.atan2(transformed_x, adjusted_leg_height)
+            leg_length = math.sqrt(transformed_x**2 + adjusted_leg_height**2)
+            knee_disp = math.acos(
+                min(max(leg_length / (z_offset_thigh + z_offset_shin), -1.0), 1.0)
+            )
+            waist_pitch = -leg_pitch - knee_disp
+            knee_pitch = -leg_pitch + knee_disp
+
             angles = [
                 waist_yaw,
                 waist_roll,
@@ -229,12 +209,26 @@ class HumanoidRobot:
                 ankle_roll - waist_roll,
             ]
         elif self.name == "robotis_op3":
+            leg_projected_yz_length = math.sqrt(transformed_y**2 + transformed_z**2)
+            leg_length = math.sqrt(transformed_x**2 + leg_projected_yz_length**2)
+            leg_pitch = math.atan2(transformed_x, leg_projected_yz_length)
+            wrist_disp_cos = (
+                leg_length**2 + z_offset_shin**2 - z_offset_thigh**2
+            ) / (2 * leg_length * z_offset_shin)
+            wrist_disp = math.acos(min(max(wrist_disp_cos, -1.0), 1.0))
+            ankle_disp = math.asin(
+                z_offset_thigh / z_offset_shin * math.sin(wrist_disp)
+            )
+            waist_pitch = -leg_pitch - wrist_disp
+            knee_pitch = wrist_disp + ankle_disp
+            ankle_pitch += knee_pitch + waist_pitch
+
             angles = [
                 waist_yaw,
-                waist_roll,
-                waist_pitch,
-                knee_pitch,
-                ankle_pitch,
+                -waist_roll,
+                waist_pitch if side == "left" else -waist_pitch,
+                knee_pitch if side == "left" else -knee_pitch,
+                ankle_pitch if side == "left" else -ankle_pitch,
                 ankle_roll - waist_roll,
             ]
         else:

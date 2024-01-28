@@ -98,7 +98,7 @@ class Walking:
 
         # Update the com trajectory based on the foot steps.
         self.com_traj, self.com_state_curr = self.pc.compute_com_traj(
-            self.com_state_curr[:, :2], self.foot_steps
+            self.com_state_curr, self.foot_steps
         )
         self._update_support_leg()
 
@@ -352,9 +352,14 @@ def main():
 
     walking = Walking(robot, config, left_sole_init, right_sole_init, joint_angles)
 
+    if robot.name == "robotis_op3":
+        joint_angles[13] = np.pi / 4
+        joint_angles[16] = -np.pi / 4
+
     # TODO: Consider moving this part to the walking class
     # target position (x, y) theta
     foot_steps = walking.plan_foot_steps(config.target_pos_init)
+    # target_x, target_y, theta_target = config.target_pos_init
     sim_step = 0
     while p.isConnected():
         sim_step += 1
@@ -365,8 +370,10 @@ def main():
             joint_angles, is_control_reached = walking.compute_joint_angles()
             if robot.name == "sustaina_op":
                 print(f"joint_angles: {round_floats(joint_angles[7:], 6)}")
-            else:
+            elif robot.name == "robotis_op3":
                 print(f"joint_angles: {round_floats(joint_angles, 6)}")
+            else:
+                raise ValueError("Unknown robot name")
 
             if is_control_reached:
                 if len(foot_steps) <= 5:
@@ -376,6 +383,7 @@ def main():
                         random.random() - 0.5,
                     )
                     print(f"Goal: ({target_x}, {target_y}, {theta_target})")
+                    # target_x += 0.1
                     foot_steps = walking.plan_foot_steps(
                         np.array([target_x, target_y, theta_target])
                     )
