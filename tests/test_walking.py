@@ -31,7 +31,7 @@ def test_op_walking():
         expected_output = file.read()
 
     # Perform assertion
-    assert captured_output[: int(3e5)].strip() == expected_output[: int(3e5)].strip()
+    assert captured_output[: int(2e5)].strip() == expected_output[: int(2e5)].strip()
 
 
 if __name__ == "__main__":

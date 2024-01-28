@@ -42,7 +42,7 @@ class PyBulletSim:
         Adjust the robot's position to place its lowest point at a specified offset above the ground.
 
         Args:
-            robot.id (int): The ID of the robot in the simulation.
+            robot (HumanoidRobot): The humanoid robot.
             z_offset (float): The offset from the ground to place the robot. Default is 0.01.
         """
         num_joints = p.getNumJoints(robot.id)
