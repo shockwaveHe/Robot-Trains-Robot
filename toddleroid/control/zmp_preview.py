@@ -1,7 +1,4 @@
-from toddleroid.control.base_controller import BaseController
-
-
-class ZMPPreviewController(BaseController):
+class ZMPPreviewController:
     def __init__(self, params):
         # Initialize ZMP parameters
         self.params = params

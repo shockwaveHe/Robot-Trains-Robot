@@ -1,16 +1,16 @@
 import subprocess
 
 
-def test_op_walking():
+def run_test(task_name: str, robot_name: str):
     # Path to the walking.py script
-    script_path = "toddleroid/tasks/walking.py"
+    script_path = f"toddleroid/tasks/{task_name}.py"
 
     # Path to the expected output text file
-    expected_output_file = "tests/expected_output.txt"
+    expected_output_file = f"tests/{robot_name}_{task_name}_out.txt"
 
     try:
         result = subprocess.run(
-            ["python", script_path, "--robot-name", "sustaina_op"],
+            ["python", script_path, "--robot-name", robot_name],
             capture_output=True,
             text=True,
             timeout=5,
@@ -32,6 +32,14 @@ def test_op_walking():
 
     # Perform assertion
     assert captured_output[: int(2e5)].strip() == expected_output[: int(2e5)].strip()
+
+
+def test_op_walking():
+    run_test("walking", "sustaina_op")
+
+
+def test_op3_walking():
+    run_test("walking", "robotis_op3")
 
 
 if __name__ == "__main__":

@@ -4,7 +4,6 @@ from typing import List, Tuple
 import control
 import numpy as np
 
-from toddleroid.control.base_controller import BaseController
 from toddleroid.planning.foot_step_planner import FootStep
 from toddleroid.utils.constants import GRAVITY
 
@@ -20,7 +19,7 @@ class LQRPreviewControlParameters:
     R_val: float  # Weighting for control input cost
 
 
-class LQRPreviewController(BaseController):
+class LQRPreviewController:
     def __init__(self, params: LQRPreviewControlParameters):
         """
         Initialize the Preview Control system.

@@ -23,10 +23,9 @@ def main():
     args = parser.parse_args()
 
     random.seed(0)
-    sim = PyBulletSim()
     # A 0.3725 offset moves the robot slightly up from the ground
     robot = HumanoidRobot(args.robot_name)
-    sim.load_robot(robot)
+    sim = PyBulletSim(robot)
 
     joint_angles, joint_names = sim.initialize_named_joint_angles(robot)
 

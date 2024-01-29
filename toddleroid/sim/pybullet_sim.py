@@ -1,23 +1,18 @@
 import time
-from typing import List
 
 import numpy as np
 import pybullet as p
 import pybullet_data
 
-from toddleroid.sim.robot import HumanoidRobot
+from toddleroid.sim.base_sim import *
 from toddleroid.utils.constants import GRAVITY, TIMESTEP
-from toddleroid.utils.file_utils import find_urdf_path
+from toddleroid.utils.file_utils import find_description_path
 
 
-class PyBulletSim:
+class PyBulletSim(AbstractSim):
     """Class to set up and run a PyBullet simulation with a humanoid robot."""
 
-    def __init__(self):
-        """Initialize and set up the simulation environment."""
-        self.setup()
-
-    def setup(self):
+    def __init__(self, robot: Optional[HumanoidRobot] = None):
         """
         Set up the PyBullet simulation environment.
         Initializes the PyBullet environment in GUI mode and sets the gravity and timestep.
@@ -28,18 +23,11 @@ class PyBulletSim:
         p.setTimeStep(TIMESTEP)
         p.loadURDF("plane.urdf")
 
-    def load_robot(self, robot: HumanoidRobot):
-        """
-        Load the robot URDF and set its initial position.
-
-        Args:
-            robot (HumanoidRobot): The humanoid robot to load.
-        """
-        urdf_path = find_urdf_path(robot.name)
-        robot.id = p.loadURDF(urdf_path)
-        robot.joint_name2idx = self.get_joint_name2idx(robot)
-        robot.link_name2idx = self.get_link_name2idx(robot)
-        self.put_robot_on_ground(robot)
+        if robot is not None:
+            urdf_path = find_description_path(robot.name)
+            robot.id = p.loadURDF(urdf_path)
+            robot.joint_name2idx = self.get_joint_name2qidx(robot)
+            self.put_robot_on_ground(robot)
 
     def put_robot_on_ground(self, robot: HumanoidRobot, z_offset: float = 0.01):
         """
@@ -66,7 +54,7 @@ class PyBulletSim:
         new_base_pos = [base_pos[0], base_pos[1], base_pos[2] - lowest_z + z_offset]
         p.resetBasePositionAndOrientation(robot.id, new_base_pos, base_ori)
 
-    def get_joint_name2idx(self, robot: HumanoidRobot):
+    def get_joint_name2qidx(self, robot: HumanoidRobot):
         # -1 for the base link
         joint_name2idx = {p.getBodyInfo(robot.id)[0].decode("UTF-8"): -1}
         for idx in range(p.getNumJoints(robot.id)):
@@ -75,20 +63,16 @@ class PyBulletSim:
 
         return joint_name2idx
 
-    def get_link_name2idx(self, robot: HumanoidRobot):
-        # -1 for the base link
-        link_name2idx = {p.getBodyInfo(robot.id)[0].decode("UTF-8"): -1}
-        for idx in range(p.getNumJoints(robot.id)):
-            link_name = p.getJointInfo(robot.id, idx)[12].decode("UTF-8")
-            link_name2idx[link_name] = idx
-
-        return link_name2idx
-
     def get_link_pos(self, robot: HumanoidRobot, link_name: str):
-        link_pos = p.getLinkState(
-            robot.id, robot.link_name2idx[link_name], computeForwardKinematics=True
-        )[0]
-        return np.array(link_pos)
+        for idx in range(p.getNumJoints(robot.id)):
+            link_name_curr = p.getJointInfo(robot.id, idx)[12].decode("UTF-8")
+            if link_name_curr == link_name:
+                link_pos = p.getLinkState(robot.id, idx, computeForwardKinematics=True)[
+                    0
+                ]
+                return np.array(link_pos)
+
+        raise ValueError(f"Link name {link_name} not found.")
 
     def initialize_named_joint_angles(self, robot: HumanoidRobot):
         joint_angles = []
@@ -108,7 +92,12 @@ class PyBulletSim:
                     robot.id, idx, p.POSITION_CONTROL, joint_angles[qIndex - 7]
                 )
 
-    def simulate(self, step_func=None, step_params=None, sleep_time=0.0):
+    def simulate(
+        self,
+        step_func: Optional[Callable] = None,
+        step_params: Optional[Tuple] = None,
+        sleep_time: float = 0.0,
+    ):
         """
         Run the main simulation loop.
         """
@@ -127,7 +116,6 @@ class PyBulletSim:
 
 
 if __name__ == "__main__":
-    sim = PyBulletSim()
     robot = HumanoidRobot("robotis_op3")
-    sim.load_robot(robot)
+    sim = PyBulletSim(robot)
     sim.simulate()

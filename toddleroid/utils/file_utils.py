@@ -1,7 +1,7 @@
 import os
 
 
-def find_urdf_path(robot_name: str) -> str:
+def find_description_path(robot_name: str, suffix: str = ".urdf") -> str:
     """
     Dynamically finds the URDF file path for a given robot name.
 
@@ -24,7 +24,7 @@ def find_urdf_path(robot_name: str) -> str:
     robot_dir = os.path.join("toddleroid", "robot_descriptions", robot_name)
 
     for file in os.listdir(robot_dir):
-        if file.endswith(".urdf"):
+        if file.endswith(suffix):
             return os.path.join(robot_dir, file)
 
     raise FileNotFoundError(

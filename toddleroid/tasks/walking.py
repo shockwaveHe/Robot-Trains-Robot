@@ -6,6 +6,7 @@ import numpy as np
 
 from toddleroid.control.lqr_preview import *
 from toddleroid.planning.foot_step_planner import *
+from toddleroid.sim.mujoco_sim import MujoCoSim
 from toddleroid.sim.pybullet_sim import PyBulletSim
 from toddleroid.sim.robot import HumanoidRobot
 from toddleroid.tasks.walking_configs import *
@@ -303,7 +304,15 @@ def main():
         "--robot-name",
         type=str,
         default="sustaina_op",
+        choices=["sustaina_op", "robotis_op3"],
         help="The name of the robot. Need to match the name in robot_descriptions.",
+    )
+    parser.add_argument(
+        "--sim",
+        type=str,
+        default="pybullet",
+        choices=["pybullet", "mujoco"],
+        help="The simulator to use.",
     )
     parser.add_argument(
         "--sleep-time",
@@ -313,10 +322,14 @@ def main():
     )
     args = parser.parse_args()
 
-    sim = PyBulletSim()
     # A 0.3725 offset moves the robot slightly up from the ground
     robot = HumanoidRobot(args.robot_name)
-    sim.load_robot(robot)
+    if args.sim == "pybullet":
+        sim = PyBulletSim(robot)
+    elif args.sim == "mujoco":
+        sim = MujoCoSim(robot)
+    else:
+        raise ValueError("Unknown simulator")
 
     config = walking_configs[args.robot_name]
 

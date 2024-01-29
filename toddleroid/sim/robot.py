@@ -198,9 +198,8 @@ if __name__ == "__main__":
     from toddleroid.sim.pybullet_sim import PyBulletSim
     from toddleroid.utils.data_utils import round_floats
 
-    sim = PyBulletSim()
     robot = HumanoidRobot("sustaina_op")
-    sim.load_robot(robot)
+    sim = PyBulletSim(robot)
 
     # Define target positions and orientations for left and right feet
     target_left_foot_pos, target_left_foot_ori = [0.2, 0.1, -0.2], [
