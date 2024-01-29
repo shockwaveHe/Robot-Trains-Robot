@@ -27,7 +27,7 @@ def main():
     robot = HumanoidRobot(args.robot_name)
     sim = PyBulletSim(robot)
 
-    joint_angles, joint_names = sim.initialize_named_joint_angles(robot)
+    joint_angles, joint_names = sim.get_named_zero_joint_angles(robot)
 
     def step_func():
         if robot.name == "sustaina_op":

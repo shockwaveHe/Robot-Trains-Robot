@@ -39,6 +39,22 @@
                 "--sleep-time",
                 "0.001",
             ]
+        },
+        {
+            "name": "Python: walk_op3_mujoco",
+            "type": "python",
+            "request": "launch",
+            "program": "toddleroid/tasks/walking.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot-name",
+                "robotis_op3",
+                "--sim",
+                "mujoco",
+                "--sleep-time",
+                "0.001",
+            ]
         }
     ]
 }

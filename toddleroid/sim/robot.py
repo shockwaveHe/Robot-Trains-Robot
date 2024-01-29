@@ -24,7 +24,7 @@ class HumanoidRobot:
             raise ValueError(f"Robot '{robot_name}' is not supported.")
         self.config = robot_configs[robot_name]
         self.id = None
-        self.joint_name2idx = None
+        self.joint_name2qidx = None
 
     def solve_ik(
         self,
@@ -50,7 +50,7 @@ class HumanoidRobot:
         Raises:
             ValueError: If the robot has not been loaded yet.
         """
-        if self.id is None or self.joint_name2idx is None:
+        if self.id is None or self.joint_name2qidx is None:
             raise ValueError("Robot has not been loaded yet.")
 
         joint_angles = current_angles.copy()
@@ -184,7 +184,7 @@ class HumanoidRobot:
 
         # Update joint angles based on calculations
         for joint_name, angle in zip(joint_names, angles):
-            joint_index = self.joint_name2idx[joint_name]
+            joint_index = self.joint_name2qidx[joint_name]
             if joint_index >= 0:  # Check if joint index is valid
                 joint_angles[joint_index] = angle
 

@@ -1,40 +1,27 @@
 import time
 
 import mujoco
+import mujoco.viewer
+import numpy as np
 
-from toddleroid.sim.robot import HumanoidRobot
+from toddleroid.sim.base_sim import *
 from toddleroid.utils.constants import GRAVITY, TIMESTEP
-from toddleroid.utils.file_utils import find_urdf_path
+from toddleroid.utils.file_utils import find_description_path
 
 
-class MujoCoSim:
-    """Class to set up and run a PyBullet simulation with a humanoid robot."""
+class MujoCoSim(AbstractSim):
+    def __init__(self, robot: Optional[HumanoidRobot] = None):
+        """Initialize the MuJoCo simulation environment."""
+        self.model = None
+        self.data = None
 
-    def __init__(self):
-        """Initialize and set up the simulation environment."""
-        self.setup()
-
-    def setup(self):
-        """
-        Set up the PyBullet simulation environment.
-        Initializes the PyBullet environment in GUI mode and sets the gravity and timestep.
-        """
-        p.connect(p.GUI)  # or p.DIRECT for non-graphical version
-        p.setAdditionalSearchPath(pybullet_data.getDataPath())
-        p.setGravity(0, 0, -GRAVITY)
-        p.setTimeStep(TIMESTEP)
-        p.loadURDF("plane.urdf")
-
-    def load_robot(self, robot: HumanoidRobot):
-        """
-        Load the robot URDF and set its initial position.
-
-        Args:
-            robot (HumanoidRobot): The humanoid robot to load.
-        """
-        urdf_path = find_urdf_path(robot.name)
-        robot.id = p.loadURDF(urdf_path)
-        # self.put_robot_on_ground(robot.id, z_offset=0.01)
+        if robot is not None:
+            xml_path = find_description_path(robot.name, suffix="_scene.xml")
+            self.model = mujoco.MjModel.from_xml_path(xml_path)
+            self.data = mujoco.MjData(self.model)
+            robot.id = 0  # placeholder
+            robot.joint_name2qidx = self.get_joint_name2qidx(robot)
+            self.put_robot_on_ground(robot)
 
     def put_robot_on_ground(self, robot: HumanoidRobot, z_offset: float = 0.01):
         """
@@ -44,38 +31,85 @@ class MujoCoSim:
             robot (HumanoidRobot): The humanoid robot.
             z_offset (float): The offset from the ground to place the robot. Default is 0.01.
         """
-        num_joints = p.getNumJoints(robot.id)
         lowest_z = float("inf")
 
-        for i in range(-1, num_joints):  # -1 for the base link
-            if i == -1:
-                link_pos, _ = p.getBasePositionAndOrientation(robot.id)
-            else:
-                link_state = p.getLinkState(robot.id, i, computeForwardKinematics=True)
-                link_pos = link_state[0]
+        mujoco.mj_kinematics(self.model, self.data)
+        # Iterate through all body parts to find the lowest point
+        for i in range(self.model.nbody):
+            if self.data.body(i).name == "world":
+                continue
+            # To correpond to the PyBullet code, we use xipos instead of xpos
+            body_pos = self.data.body(i).xipos
+            lowest_z = min(lowest_z, body_pos[2])
 
-            lowest_z = min(lowest_z, link_pos[2])
+        base_link_name = robot.config.canonical_name2link_name["base_link"]
+        base_pos = self.data.body(base_link_name).xpos
+        desired_z = base_pos[2] - lowest_z + z_offset
+        if lowest_z < 0:
+            raise ValueError(
+                f"Robot is below the ground. Change the z value of {base_link_name} to be {desired_z}"
+            )
+        elif lowest_z > z_offset:
+            raise ValueError(
+                f"Robot is too high above the ground. Change the z value of {base_link_name} as {desired_z}"
+            )
 
-        # Calculate new base position
-        base_pos, base_ori = p.getBasePositionAndOrientation(robot.id)
-        new_base_pos = [base_pos[0], base_pos[1], base_pos[2] - lowest_z + z_offset]
-        p.resetBasePositionAndOrientation(robot.id, new_base_pos, base_ori)
+    def get_joint_name2qidx(self, robot: HumanoidRobot):
+        joint_name2qidx = {}
+        # 0 is an empty joint
+        for i in range(1, self.model.njnt):
+            joint_name2qidx[self.model.joint(i).name] = i - 1
+        return joint_name2qidx
 
-    def run(self):
-        """
-        Run the main simulation loop.
-        """
-        try:
-            while p.isConnected():
-                p.stepSimulation()
-                # time.sleep(TIMESTEP)
-        finally:
-            p.disconnect()
+    def get_link_pos(self, robot: HumanoidRobot, link_name: str):
+        mujoco.mj_kinematics(self.model, self.data)
+        link_pos = self.data.body(link_name).xpos
+        return np.array(link_pos)
+
+    def get_named_zero_joint_angles(self, robot: HumanoidRobot):
+        joint_angles = []
+        joint_names = []
+        # 0 is an empty joint
+        for i in range(1, self.model.njnt):
+            joint_angles.append(0)
+            joint_names.append(self.model.joint(i).name)
+        return joint_angles, joint_names
+
+    def set_joint_angles(self, robot: HumanoidRobot, joint_angles: List[float]):
+        for i in range(1, self.model.njnt):
+            # self.data.joint(i).qpos = joint_angles[i - 1]
+            self.data.actuator(i - 1).ctrl = joint_angles[i - 1]
+
+    def simulate(
+        self,
+        step_func: Optional[Callable] = None,
+        step_params: Optional[Tuple] = None,
+        sleep_time: float = 0.0,
+    ):
+        with mujoco.viewer.launch_passive(self.model, self.data) as viewer:
+            while viewer.is_running():
+                step_start = time.time()
+
+                mujoco.mj_step(self.model, self.data)
+
+                with viewer.lock():
+                    if step_func is not None:
+                        if step_params is None:
+                            step_func()
+                        else:
+                            step_params = step_func(*step_params)
+
+                viewer.sync()
+
+                time_until_next_step = sleep_time - (time.time() - step_start)
+                # time_until_next_step = self.model.opt.timestep - (
+                #     time.time() - step_start
+                # )
+                if time_until_next_step > 0:
+                    time.sleep(time_until_next_step)
 
 
 if __name__ == "__main__":
-    sim = PyBulletSim()
     robot = HumanoidRobot("robotis_op3")
-    sim.load_robot(robot)
-    sim.put_robot_on_ground(robot)
-    sim.run()
+    sim = MujoCoSim()
+    sim.simulate()

@@ -347,10 +347,10 @@ def main():
         right_foot_link_pos + robot.config.offsets["right_offset_foot_to_sole"]
     )
 
-    joint_angles, joint_names = sim.initialize_named_joint_angles(robot)
+    joint_angles, joint_names = sim.get_named_zero_joint_angles(robot)
     if robot.name == "robotis_op3":
-        joint_angles[13] = np.pi / 4
-        joint_angles[16] = -np.pi / 4
+        joint_angles[joint_names.index("l_sho_roll")] = np.pi / 4
+        joint_angles[joint_names.index("r_sho_roll")] = -np.pi / 4
 
     walking = Walking(
         robot, config, left_foot_pos_init, right_foot_pos_init, joint_angles

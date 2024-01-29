@@ -26,7 +26,7 @@ class PyBulletSim(AbstractSim):
         if robot is not None:
             urdf_path = find_description_path(robot.name)
             robot.id = p.loadURDF(urdf_path)
-            robot.joint_name2idx = self.get_joint_name2qidx(robot)
+            robot.joint_name2qidx = self.get_joint_name2qidx(robot)
             self.put_robot_on_ground(robot)
 
     def put_robot_on_ground(self, robot: HumanoidRobot, z_offset: float = 0.01):
@@ -56,12 +56,12 @@ class PyBulletSim(AbstractSim):
 
     def get_joint_name2qidx(self, robot: HumanoidRobot):
         # -1 for the base link
-        joint_name2idx = {p.getBodyInfo(robot.id)[0].decode("UTF-8"): -1}
+        joint_name2qidx = {p.getBodyInfo(robot.id)[0].decode("UTF-8"): -1}
         for idx in range(p.getNumJoints(robot.id)):
             joint_name = p.getJointInfo(robot.id, idx)[1].decode("UTF-8")
-            joint_name2idx[joint_name] = p.getJointInfo(robot.id, idx)[3] - 7
+            joint_name2qidx[joint_name] = p.getJointInfo(robot.id, idx)[3] - 7
 
-        return joint_name2idx
+        return joint_name2qidx
 
     def get_link_pos(self, robot: HumanoidRobot, link_name: str):
         for idx in range(p.getNumJoints(robot.id)):
@@ -74,7 +74,7 @@ class PyBulletSim(AbstractSim):
 
         raise ValueError(f"Link name {link_name} not found.")
 
-    def initialize_named_joint_angles(self, robot: HumanoidRobot):
+    def get_named_zero_joint_angles(self, robot: HumanoidRobot):
         joint_angles = []
         joint_names = []
         for idx in range(p.getNumJoints(robot.id)):
