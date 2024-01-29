@@ -3,7 +3,7 @@ import subprocess
 
 def test_op_walking():
     # Path to the walking.py script
-    script_path = "toddleroid/sim/walking.py"
+    script_path = "toddleroid/tasks/walking.py"
 
     # Path to the expected output text file
     expected_output_file = "tests/expected_output.txt"

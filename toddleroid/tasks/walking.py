@@ -9,7 +9,7 @@ from toddleroid.control.lqr_preview import *
 from toddleroid.planning.foot_step_planner import *
 from toddleroid.sim.pybullet_sim import PyBulletSim
 from toddleroid.sim.robot import HumanoidRobot
-from toddleroid.sim.walking_configs import *
+from toddleroid.tasks.walking_configs import *
 from toddleroid.utils.data_utils import round_floats
 
 
