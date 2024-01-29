@@ -1,9 +1,8 @@
 import argparse
-import time
+import random
 from typing import List, Optional, Tuple
 
 import numpy as np
-import pybullet as p
 
 from toddleroid.control.lqr_preview import *
 from toddleroid.planning.foot_step_planner import *
@@ -11,6 +10,8 @@ from toddleroid.sim.pybullet_sim import PyBulletSim
 from toddleroid.sim.robot import HumanoidRobot
 from toddleroid.tasks.walking_configs import *
 from toddleroid.utils.data_utils import round_floats
+
+random.seed(0)
 
 
 class Walking:
@@ -171,7 +172,7 @@ class Walking:
             ) / self.half_period
             self.next_support_leg = "left"
 
-    def compute_joint_angles(self) -> Tuple[List[float], List[float], int]:
+    def solve_joint_angles(self) -> Tuple[List[float], List[float], int]:
         """
         Calculate the next position of the robot based on the walking pattern.
 
@@ -297,8 +298,6 @@ class Walking:
 
 
 def main():
-    import random
-
     parser = argparse.ArgumentParser(description="Run the walking simulation.")
     parser.add_argument(
         "--robot-name",
@@ -314,60 +313,45 @@ def main():
     )
     args = parser.parse_args()
 
-    random.seed(0)
     sim = PyBulletSim()
     # A 0.3725 offset moves the robot slightly up from the ground
     robot = HumanoidRobot(args.robot_name)
     sim.load_robot(robot)
-    sim.put_robot_on_ground(robot)
 
     config = walking_configs[args.robot_name]
 
-    link_name2idx = {p.getBodyInfo(robot.id)[0].decode("UTF-8"): -1}
-    for idx in range(p.getNumJoints(robot.id)):
-        link_name2idx[p.getJointInfo(robot.id, idx)[12].decode("UTF-8")] = idx
-
-    left_foot_com = np.array(
-        p.getLinkState(
-            robot.id,
-            link_name2idx[robot.config.canonical_name2link_name["left_foot_link"]],
-        )[0]
+    left_foot_link_pos = sim.get_link_pos(
+        robot, robot.config.canonical_name2link_name["left_foot_link"]
     )
-    right_foot_com = np.array(
-        p.getLinkState(
-            robot.id,
-            link_name2idx[robot.config.canonical_name2link_name["right_foot_link"]],
-        )[0]
+    right_foot_link_pos = sim.get_link_pos(
+        robot, robot.config.canonical_name2link_name["right_foot_link"]
     )
 
-    left_sole_init = left_foot_com + robot.config.offsets["left_offset_foot_to_sole"]
-    right_sole_init = right_foot_com + robot.config.offsets["right_offset_foot_to_sole"]
+    left_foot_pos_init = (
+        left_foot_link_pos + robot.config.offsets["left_offset_foot_to_sole"]
+    )
+    right_foot_pos_init = (
+        right_foot_link_pos + robot.config.offsets["right_offset_foot_to_sole"]
+    )
 
-    joint_angles = []
-    joint_names = []
-    for idx in range(p.getNumJoints(robot.id)):
-        if p.getJointInfo(robot.id, idx)[3] > -1:
-            joint_angles += [0]
-            joint_names += [p.getJointInfo(robot.id, idx)[1].decode("UTF-8")]
-
-    walking = Walking(robot, config, left_sole_init, right_sole_init, joint_angles)
-
+    joint_angles, joint_names = sim.initialize_named_joint_angles(robot)
     if robot.name == "robotis_op3":
         joint_angles[13] = np.pi / 4
         joint_angles[16] = -np.pi / 4
 
-    # TODO: Consider moving this part to the walking class
-    # target position (x, y) theta
+    walking = Walking(
+        robot, config, left_foot_pos_init, right_foot_pos_init, joint_angles
+    )
+
+    sim_step_idx = 0
     foot_steps = walking.plan_foot_steps(config.target_pos_init)
-    # target_x, target_y, theta_target = config.target_pos_init
-    sim_step = 0
-    while p.isConnected():
-        sim_step += 1
 
-        if sim_step >= config.sim_step_interval:
-            sim_step = 0
-
-            joint_angles, is_control_reached = walking.compute_joint_angles()
+    # This function requires its parameters to be the same as its return values.
+    def step_func(sim_step_idx, foot_steps, joint_angles):
+        sim_step_idx += 1
+        if sim_step_idx >= config.sim_step_interval:
+            sim_step_idx = 0
+            joint_angles, is_control_reached = walking.solve_joint_angles()
             if robot.name == "sustaina_op":
                 print(f"joint_angles: {round_floats(joint_angles[7:], 6)}")
             elif robot.name == "robotis_op3":
@@ -390,16 +374,10 @@ def main():
                 else:
                     foot_steps = walking.plan_foot_steps()
 
-        for idx in range(p.getNumJoints(robot.id)):
-            qIndex = p.getJointInfo(robot.id, idx)[3]
-            if qIndex > -1:
-                p.setJointMotorControl2(
-                    robot.id, idx, p.POSITION_CONTROL, joint_angles[qIndex - 7]
-                )
+        sim.set_joint_angles(robot, joint_angles)
+        return sim_step_idx, foot_steps, joint_angles
 
-        p.stepSimulation()
-        if args.sleep_time > 0:
-            time.sleep(args.sleep_time)
+    sim.simulate(step_func, (sim_step_idx, foot_steps, joint_angles), args.sleep_time)
 
 
 if __name__ == "__main__":

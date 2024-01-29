@@ -2,7 +2,6 @@ import math
 from typing import Dict, List, Tuple
 
 import numpy as np
-import pybullet as p
 
 from toddleroid.robot_descriptions.robot_configs import robot_configs
 
@@ -25,37 +24,7 @@ class HumanoidRobot:
             raise ValueError(f"Robot '{robot_name}' is not supported.")
         self.config = robot_configs[robot_name]
         self.id = None
-
-    @property
-    def foot_names(self) -> Dict[str, str]:
-        """
-        Returns the names of the end effectors (feet).
-
-        Returns:
-            Dict[str, str]: Dictionary with keys 'left_foot_link' and 'right_foot_link' and their names.
-        """
-        foot_keys = ["left_foot_link", "right_foot_link"]
-        return {
-            k: self.config.canonical_name2link_name[k]
-            for k in foot_keys
-            if k in self.config.canonical_name2link_name
-        }
-
-    def _get_foot_indices(self) -> Dict[str, int]:
-        """
-        Retrieves the indices of the end effectors (feet).
-
-        Returns:
-            Dict[str, int]: Dictionary with keys 'left' and 'right' and joint indices as values.
-        """
-        name2indices = {}
-        for name, name_in_urdf in self.foot_names.items():
-            for id in range(p.getNumJoints(self.id)):
-                if p.getJointInfo(self.id, id)[12].decode("UTF-8") == name_in_urdf:
-                    name2indices[name] = id
-                    break
-
-        return name2indices
+        self.joint_name2idx = None
 
     def solve_ik(
         self,
@@ -63,7 +32,7 @@ class HumanoidRobot:
         target_left_foot_ori: List[float],
         target_right_foot_pos: List[float],
         target_right_foot_ori: List[float],
-        current_angles: List[float] = None,
+        current_angles: List[float],
     ) -> List[float]:
         """
         Solves inverse kinematics for the given foot positions and orientations.
@@ -81,27 +50,10 @@ class HumanoidRobot:
         Raises:
             ValueError: If the robot has not been loaded yet.
         """
-        if self.id is None:
+        if self.id is None or self.joint_name2idx is None:
             raise ValueError("Robot has not been loaded yet.")
 
-        # end_effector_indices = self._get_end_effector_indices()
-        # left_foot_index = end_effector_indices["left_foot_link"]
-        # right_foot_index = end_effector_indices["right_foot_link"]
-
-        # joint_angles = p.calculateInverseKinematics2(
-        #     self.id,
-        #     [left_foot_index, right_foot_index],
-        #     [target_left_foot_pos, target_right_foot_pos],
-        #     [target_left_foot_ori, target_right_foot_ori],
-        #     maxNumIterations=1000,
-
-        if current_angles is None:
-            joint_angles = []
-            for id in range(p.getNumJoints(self.id)):
-                if p.getJointInfo(self.id, id)[3] > -1:
-                    joint_angles += [0]
-        else:
-            joint_angles = current_angles.copy()
+        joint_angles = current_angles.copy()
 
         self._calculate_leg_angles(
             target_left_foot_pos, target_left_foot_ori, "left", joint_angles
@@ -133,10 +85,6 @@ class HumanoidRobot:
 
         # Initialize dictionary to map joint names to their degrees of freedom index
         # TODO: Update this to use joint name instead of link_name
-        index_dof = {p.getBodyInfo(self.id)[0].decode("UTF-8"): -1}
-        for idx in range(p.getNumJoints(self.id)):
-            joint_name = p.getJointInfo(self.id, idx)[1].decode("UTF-8")
-            index_dof[joint_name] = p.getJointInfo(self.id, idx)[3] - 7
 
         # Define joint names and their corresponding angles
         n_dof = len(self.config.joint_names)
@@ -236,7 +184,7 @@ class HumanoidRobot:
 
         # Update joint angles based on calculations
         for joint_name, angle in zip(joint_names, angles):
-            joint_index = index_dof[joint_name]
+            joint_index = self.joint_name2idx[joint_name]
             if joint_index >= 0:  # Check if joint index is valid
                 joint_angles[joint_index] = angle
 
@@ -253,7 +201,6 @@ if __name__ == "__main__":
     sim = PyBulletSim()
     robot = HumanoidRobot("sustaina_op")
     sim.load_robot(robot)
-    sim.put_robot_on_ground(robot)
 
     # Define target positions and orientations for left and right feet
     target_left_foot_pos, target_left_foot_ori = [0.2, 0.1, -0.2], [
@@ -263,6 +210,7 @@ if __name__ == "__main__":
     ]
     target_right_foot_pos, target_right_foot_ori = [0.2, -0.1, -0.2], [0, 0, 0]
 
+    # TODO: Get current joint angles from robot
     joint_angles = robot.solve_ik(
         target_left_foot_pos,
         target_left_foot_ori,

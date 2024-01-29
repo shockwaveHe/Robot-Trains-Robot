@@ -1,5 +1,7 @@
 import time
+from typing import List
 
+import numpy as np
 import pybullet as p
 import pybullet_data
 
@@ -35,7 +37,9 @@ class PyBulletSim:
         """
         urdf_path = find_urdf_path(robot.name)
         robot.id = p.loadURDF(urdf_path)
-        # self.put_robot_on_ground(robot.id, z_offset=0.01)
+        robot.joint_name2idx = self.get_joint_name2idx(robot)
+        robot.link_name2idx = self.get_link_name2idx(robot)
+        self.put_robot_on_ground(robot)
 
     def put_robot_on_ground(self, robot: HumanoidRobot, z_offset: float = 0.01):
         """
@@ -62,14 +66,62 @@ class PyBulletSim:
         new_base_pos = [base_pos[0], base_pos[1], base_pos[2] - lowest_z + z_offset]
         p.resetBasePositionAndOrientation(robot.id, new_base_pos, base_ori)
 
-    def run(self):
+    def get_joint_name2idx(self, robot: HumanoidRobot):
+        # -1 for the base link
+        joint_name2idx = {p.getBodyInfo(robot.id)[0].decode("UTF-8"): -1}
+        for idx in range(p.getNumJoints(robot.id)):
+            joint_name = p.getJointInfo(robot.id, idx)[1].decode("UTF-8")
+            joint_name2idx[joint_name] = p.getJointInfo(robot.id, idx)[3] - 7
+
+        return joint_name2idx
+
+    def get_link_name2idx(self, robot: HumanoidRobot):
+        # -1 for the base link
+        link_name2idx = {p.getBodyInfo(robot.id)[0].decode("UTF-8"): -1}
+        for idx in range(p.getNumJoints(robot.id)):
+            link_name = p.getJointInfo(robot.id, idx)[12].decode("UTF-8")
+            link_name2idx[link_name] = idx
+
+        return link_name2idx
+
+    def get_link_pos(self, robot: HumanoidRobot, link_name: str):
+        link_pos = p.getLinkState(
+            robot.id, robot.link_name2idx[link_name], computeForwardKinematics=True
+        )[0]
+        return np.array(link_pos)
+
+    def initialize_named_joint_angles(self, robot: HumanoidRobot):
+        joint_angles = []
+        joint_names = []
+        for idx in range(p.getNumJoints(robot.id)):
+            if p.getJointInfo(robot.id, idx)[3] > -1:
+                joint_angles += [0]
+                joint_names += [p.getJointInfo(robot.id, idx)[1].decode("UTF-8")]
+
+        return joint_angles, joint_names
+
+    def set_joint_angles(self, robot: HumanoidRobot, joint_angles: List[float]):
+        for idx in range(p.getNumJoints(robot.id)):
+            qIndex = p.getJointInfo(robot.id, idx)[3]
+            if qIndex > -1:
+                p.setJointMotorControl2(
+                    robot.id, idx, p.POSITION_CONTROL, joint_angles[qIndex - 7]
+                )
+
+    def simulate(self, step_func=None, step_params=None, sleep_time=0.0):
         """
         Run the main simulation loop.
         """
         try:
             while p.isConnected():
+                if step_func is not None:
+                    if step_params is None:
+                        step_func()
+                    else:
+                        step_params = step_func(*step_params)
                 p.stepSimulation()
-                # time.sleep(TIMESTEP)
+                if sleep_time > 0:
+                    time.sleep(sleep_time)
         finally:
             p.disconnect()
 
@@ -78,5 +130,4 @@ if __name__ == "__main__":
     sim = PyBulletSim()
     robot = HumanoidRobot("robotis_op3")
     sim.load_robot(robot)
-    sim.put_robot_on_ground(robot)
-    sim.run()
+    sim.simulate()
