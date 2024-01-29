@@ -16,7 +16,7 @@
             "name": "Python: walk_op",
             "type": "python",
             "request": "launch",
-            "program": "toddleroid/sim/pybullet/walking.py",
+            "program": "toddleroid/sim/walking.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -30,7 +30,7 @@
             "name": "Python: walk_op3",
             "type": "python",
             "request": "launch",
-            "program": "toddleroid/sim/pybullet/walking.py",
+            "program": "toddleroid/sim/walking.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [

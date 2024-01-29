@@ -4,8 +4,8 @@ import time
 
 import pybullet as p
 
-from toddleroid.sim.pybullet.robot import HumanoidRobot
-from toddleroid.sim.pybullet.simulation import PyBulletSim
+from toddleroid.sim.pybullet_sim import PyBulletSim
+from toddleroid.sim.robot import HumanoidRobot
 from toddleroid.utils.data_utils import round_floats
 
 

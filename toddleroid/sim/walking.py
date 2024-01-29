@@ -5,11 +5,11 @@ from typing import List, Optional, Tuple
 import numpy as np
 import pybullet as p
 
-from toddleroid.control.preview_control import *
+from toddleroid.control.lqr_preview import *
 from toddleroid.planning.foot_step_planner import *
-from toddleroid.sim.pybullet.robot import HumanoidRobot
-from toddleroid.sim.pybullet.simulation import PyBulletSim
-from toddleroid.sim.pybullet.walking_configs import *
+from toddleroid.sim.pybullet_sim import PyBulletSim
+from toddleroid.sim.robot import HumanoidRobot
+from toddleroid.sim.walking_configs import *
 from toddleroid.utils.data_utils import round_floats
 
 

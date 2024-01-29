@@ -247,7 +247,7 @@ class HumanoidRobot:
 if __name__ == "__main__":
     import numpy as np
 
-    from toddleroid.sim.pybullet.simulation import PyBulletSim
+    from toddleroid.sim.pybullet_sim import PyBulletSim
     from toddleroid.utils.data_utils import round_floats
 
     sim = PyBulletSim()

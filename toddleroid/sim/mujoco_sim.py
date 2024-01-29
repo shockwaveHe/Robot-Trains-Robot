@@ -1,14 +1,13 @@
 import time
 
-import pybullet as p
-import pybullet_data
+import mujoco
 
-from toddleroid.sim.pybullet.robot import HumanoidRobot
+from toddleroid.sim.robot import HumanoidRobot
 from toddleroid.utils.constants import GRAVITY, TIMESTEP
 from toddleroid.utils.file_utils import find_urdf_path
 
 
-class PyBulletSim:
+class MujoCoSim:
     """Class to set up and run a PyBullet simulation with a humanoid robot."""
 
     def __init__(self):
