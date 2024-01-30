@@ -59,7 +59,7 @@
     <geom type="mesh" solref=".004 1"/>
     <joint damping="1.084" armature="0.045" frictionloss="0.03"/>
     <site group="5" type="sphere"/>
-    <position kp="21.1" ctrlrange="-3.141592 3.141592" forcerange="-5 5"/>
+    <!-- <position kp="21.1" ctrlrange="-3.141592 3.141592" forcerange="-5 5"/> -->
     <default class="collision">
       <geom group="3"/>
       <default class="foot">
@@ -239,25 +239,25 @@
   </contact>
 
   <actuator>
-    <position name="head_pan_act" joint="head_pan"/>
-    <position name="head_tilt_act" joint="head_tilt"/>
-    <position name="l_sho_pitch_act" joint="l_sho_pitch"/>
-    <position name="l_sho_roll_act" joint="l_sho_roll"/>
-    <position name="l_el_act" joint="l_el"/>
-    <position name="r_sho_pitch_act" joint="r_sho_pitch"/>
-    <position name="r_sho_roll_act" joint="r_sho_roll"/>
-    <position name="r_el_act" joint="r_el"/>
-    <position name="l_hip_yaw_act" joint="l_hip_yaw"/>
-    <position name="l_hip_roll_act" joint="l_hip_roll"/>
-    <position name="l_hip_pitch_act" joint="l_hip_pitch"/>
-    <position name="l_knee_act" joint="l_knee"/>
-    <position name="l_ank_pitch_act" joint="l_ank_pitch"/>
-    <position name="l_ank_roll_act" joint="l_ank_roll"/>
-    <position name="r_hip_yaw_act" joint="r_hip_yaw"/>
-    <position name="r_hip_roll_act" joint="r_hip_roll"/>
-    <position name="r_hip_pitch_act" joint="r_hip_pitch"/>
-    <position name="r_knee_act" joint="r_knee"/>
-    <position name="r_ank_pitch_act" joint="r_ank_pitch"/>
-    <position name="r_ank_roll_act" joint="r_ank_roll"/>
+    <motor name="head_pan_act" joint="head_pan"/>
+    <motor name="head_tilt_act" joint="head_tilt"/>
+    <motor name="l_sho_pitch_act" joint="l_sho_pitch"/>
+    <motor name="l_sho_roll_act" joint="l_sho_roll"/>
+    <motor name="l_el_act" joint="l_el"/>
+    <motor name="r_sho_pitch_act" joint="r_sho_pitch"/>
+    <motor name="r_sho_roll_act" joint="r_sho_roll"/>
+    <motor name="r_el_act" joint="r_el"/>
+    <motor name="l_hip_yaw_act" joint="l_hip_yaw"/>
+    <motor name="l_hip_roll_act" joint="l_hip_roll"/>
+    <motor name="l_hip_pitch_act" joint="l_hip_pitch"/>
+    <motor name="l_knee_act" joint="l_knee"/>
+    <motor name="l_ank_pitch_act" joint="l_ank_pitch"/>
+    <motor name="l_ank_roll_act" joint="l_ank_roll"/>
+    <motor name="r_hip_yaw_act" joint="r_hip_yaw"/>
+    <motor name="r_hip_roll_act" joint="r_hip_roll"/>
+    <motor name="r_hip_pitch_act" joint="r_hip_pitch"/>
+    <motor name="r_knee_act" joint="r_knee"/>
+    <motor name="r_ank_pitch_act" joint="r_ank_pitch"/>
+    <motor name="r_ank_roll_act" joint="r_ank_roll"/>
   </actuator>
 </mujoco>

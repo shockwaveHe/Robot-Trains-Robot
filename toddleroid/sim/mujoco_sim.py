@@ -77,8 +77,11 @@ class MujoCoSim(AbstractSim):
 
     def set_joint_angles(self, robot: HumanoidRobot, joint_angles: List[float]):
         for i in range(1, self.model.njnt):
-            # self.data.joint(i).qpos = joint_angles[i - 1]
-            self.data.actuator(i - 1).ctrl = joint_angles[i - 1]
+            self.data.actuator(i - 1).ctrl = (
+                -robot.config.gains["kp"]
+                * (self.data.joint(i).qpos - joint_angles[i - 1])
+                - robot.config.gains["kv"] * self.data.joint(i).qvel
+            )
 
     def simulate(
         self,

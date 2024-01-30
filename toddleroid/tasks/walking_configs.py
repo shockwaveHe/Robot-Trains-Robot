@@ -16,9 +16,10 @@ class WalkingConfig:
     target_pos_init: np.ndarray = None  # x, y, theta
     sim_step_interval: int = 0
     foot_step_height: float = 0.0
+    y_offset_com_to_foot: float = 0.0
 
 
-sustaina_op_walking_config = WalkingConfig(
+sustaina_op_pybullet_walking_config = WalkingConfig(
     max_stride=np.array([0.05, 0.03, 0.2]),
     plan_period=0.34,
     control_dt=0.01,
@@ -28,9 +29,10 @@ sustaina_op_walking_config = WalkingConfig(
     target_pos_init=np.array([0.4, 0.0, 0.5]),
     sim_step_interval=10,
     foot_step_height=0.06,
+    y_offset_com_to_foot=0.06,
 )
 
-robotis_op3_walking_config = WalkingConfig(
+robotis_op3_pybullet_walking_config = WalkingConfig(
     max_stride=np.array([0.05, 0.03, 0.2]),
     plan_period=0.34,
     control_dt=0.01,
@@ -40,9 +42,24 @@ robotis_op3_walking_config = WalkingConfig(
     target_pos_init=np.array([0.4, 0.0, 0.5]),
     sim_step_interval=10,
     foot_step_height=0.06,
+    y_offset_com_to_foot=0.05,
+)
+
+robotis_op3_mujoco_walking_config = WalkingConfig(
+    max_stride=np.array([0.05, 0.03, 0.2]),
+    plan_period=0.6,  # This is proabably the most important parameter to change
+    control_dt=0.01,
+    control_period=1.0,
+    control_cost_Q_val=1e8,
+    control_cost_R_val=1.0,
+    target_pos_init=np.array([0.4, 0.0, 0.5]),
+    sim_step_interval=10,
+    foot_step_height=0.06,
+    y_offset_com_to_foot=0.06,
 )
 
 walking_configs = {
-    "sustaina_op": sustaina_op_walking_config,
-    "robotis_op3": robotis_op3_walking_config,
+    "sustaina_op_pybullet": sustaina_op_pybullet_walking_config,
+    "robotis_op3_pybullet": robotis_op3_pybullet_walking_config,
+    "robotis_op3_mujoco": robotis_op3_mujoco_walking_config,
 }

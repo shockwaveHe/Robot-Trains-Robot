@@ -42,7 +42,7 @@ class Walking:
         plan_params = FootStepPlanParameters(
             max_stride=config.max_stride,
             period=config.plan_period,
-            offset_y=robot.config.offsets["y_offset_com_to_foot"],
+            offset_y=config.y_offset_com_to_foot,
         )
         self.fsp = FootStepPlanner(plan_params)
 
@@ -66,7 +66,6 @@ class Walking:
         self.next_support_leg = "right"
 
         self.half_period = round(self.config.plan_period / self.config.control_dt / 2)
-        self.y_offset_com_to_foot = robot.config.offsets["y_offset_com_to_foot"]
 
         self.left_up = self.right_up = 0.0
         self.left_offset, self.left_offset_target, self.left_offset_delta = (
@@ -117,19 +116,19 @@ class Walking:
         if len(self.foot_steps) > 3:
             del self.foot_steps[0]
 
-    def _update_foot_steps(self, pos: np.ndarray):
+    def _update_foot_steps(self, com_pos_target: np.ndarray):
         """Update the foot steps based on the given position."""
         if len(self.foot_steps) > 2:
             if not self.status == "start":
                 offset_y = (
-                    -self.y_offset_com_to_foot
+                    -self.config.y_offset_com_to_foot
                     if self.next_support_leg == "left"
-                    else self.y_offset_com_to_foot
+                    else self.config.y_offset_com_to_foot
                 )
             else:
                 offset_y = 0.0
 
-            current = np.array(
+            com_pos_curr = np.array(
                 [
                     self.foot_steps[1].position[0],
                     self.foot_steps[1].position[1] + offset_y,
@@ -137,10 +136,10 @@ class Walking:
                 ]
             )
         else:
-            current = np.zeros(3)
+            com_pos_curr = np.zeros(3)
 
         self.foot_steps = self.fsp.calculate_steps(
-            pos, current, self.next_support_leg, self.status
+            com_pos_target, com_pos_curr, self.next_support_leg, self.status
         )
         self.status = "walking"
 
@@ -148,7 +147,9 @@ class Walking:
         """Update the support leg and relevant offsets."""
         support_leg = self.foot_steps[0].support_leg
         next_step = self.foot_steps[1]
-        offset_y = self.y_offset_com_to_foot if next_step.support_leg != "both" else 0.0
+        offset_y = (
+            self.config.y_offset_com_to_foot if next_step.support_leg != "both" else 0.0
+        )
         offset = np.array(
             [
                 [
@@ -331,7 +332,7 @@ def main():
     else:
         raise ValueError("Unknown simulator")
 
-    config = walking_configs[args.robot_name]
+    config = walking_configs[f"{args.robot_name}_{args.sim}"]
 
     left_foot_link_pos = sim.get_link_pos(
         robot, robot.config.canonical_name2link_name["left_foot_link"]
