@@ -84,6 +84,9 @@ class PyBulletSim(AbstractSim):
 
         return joint_angles, joint_names
 
+    def get_com_state(self, robot: HumanoidRobot):
+        pass
+
     def set_joint_angles(self, robot: HumanoidRobot, joint_angles: List[float]):
         for idx in range(p.getNumJoints(robot.id)):
             qIndex = p.getJointInfo(robot.id, idx)[3]

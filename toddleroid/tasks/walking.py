@@ -65,7 +65,7 @@ class Walking:
         self.status = "start"
         self.next_support_leg = "right"
 
-        self.half_period = round(self.config.plan_period / self.config.control_dt / 2)
+        self.control_steps = round(self.config.plan_period / self.config.control_dt)
 
         self.left_up = self.right_up = 0.0
         self.left_offset, self.left_offset_target, self.left_offset_delta = (
@@ -78,10 +78,12 @@ class Walking:
             np.zeros((1, 3)),
             np.zeros((1, 3)),
         )
-        self.theta = 0
+        self.theta_curr = 0
 
     def plan_foot_steps(
-        self, com_pos_target: Optional[np.ndarray] = None
+        self,
+        com_pos_target: Optional[np.ndarray] = None,
+        com_state_fb: Optional[np.ndarray] = None,
     ) -> List[FootStep]:
         """
         Set the target position for the humanoid robot.
@@ -97,14 +99,18 @@ class Walking:
         else:
             self._update_foot_steps(com_pos_target)
 
+        if com_state_fb is not None:
+            self.com_state_curr = com_state_fb
+
         # Update the com trajectory based on the foot steps.
         self.com_traj, self.com_state_curr = self.pc.compute_com_traj(
             self.com_state_curr, self.foot_steps
         )
+
         self._update_support_leg()
 
         # Update the theta value based on the current footstep.
-        self.theta = self.foot_steps[0].position[2]
+        self.theta_curr = self.foot_steps[0].position[2]
 
         return self.foot_steps, self.com_traj
 
@@ -163,15 +169,15 @@ class Walking:
 
         if support_leg == "left":
             self.right_offset_target = offset
-            self.right_offset_delta = (
-                self.right_offset_target - self.right_offset
-            ) / self.half_period
+            self.right_offset_delta = (self.right_offset_target - self.right_offset) / (
+                self.control_steps / 2
+            )
             self.next_support_leg = "right"
         elif support_leg == "right":
             self.left_offset_target = offset
-            self.left_offset_delta = (
-                self.left_offset_target - self.left_offset
-            ) / self.half_period
+            self.left_offset_delta = (self.left_offset_target - self.left_offset) / (
+                self.control_steps / 2
+            )
             self.next_support_leg = "left"
 
     def solve_joint_angles(self) -> Tuple[List[float], List[float], int]:
@@ -183,13 +189,10 @@ class Walking:
             pattern X position, and remaining pattern length.
         """
         com_pos = self.com_traj.pop(0)
-        control_steps = round(
-            (self.foot_steps[1].time - self.foot_steps[0].time) / self.config.control_dt
-        )
         theta_change = (
             self.foot_steps[1].position[2] - self.foot_steps[0].position[2]
-        ) / control_steps
-        self.theta += theta_change
+        ) / self.control_steps
+        self.theta_curr += theta_change
 
         if self.foot_steps[0].support_leg == "right":
             self.left_up, self.left_offset = self._get_foot_offset(
@@ -197,7 +200,6 @@ class Walking:
                 self.left_offset,
                 self.left_offset_target,
                 self.left_offset_delta,
-                control_steps,
             )
         elif self.foot_steps[0].support_leg == "left":
             self.right_up, self.right_offset = self._get_foot_offset(
@@ -205,7 +207,6 @@ class Walking:
                 self.right_offset,
                 self.right_offset_target,
                 self.right_offset_delta,
-                control_steps,
             )
 
         left_foot_pos, left_foot_ori = self._get_foot_position(
@@ -221,9 +222,9 @@ class Walking:
             right_foot_ori,
             self.joint_angles,
         )
-        is_control_reached = len(self.com_traj) == 0
+        is_traj_completed = len(self.com_traj) == 0
 
-        return self.joint_angles, is_control_reached
+        return self.joint_angles, is_traj_completed
 
     def _get_foot_offset(
         self,
@@ -231,7 +232,6 @@ class Walking:
         foot_offset: np.ndarray,
         foot_offset_target: np.ndarray,
         foot_offset_delta: np.ndarray,
-        control_steps: int,
     ) -> Tuple[float, np.array]:
         """
         Update the position of the specified foot during the walking cycle.
@@ -247,25 +247,24 @@ class Walking:
         Returns:
             Tuple[float, np.array]: Updated vertical position and offset of the foot.
         """
-        start_up = round(
-            round(self.config.plan_period / 2 / self.config.control_dt) / 2
-        )
-        end_up = round(control_steps / 2)
-        period_up = end_up - start_up
+        move_up_step_start = round(self.control_steps / 4)
+        move_up_step_end = round(self.control_steps / 2)
+        move_up_period = move_up_step_end - move_up_step_start
 
         # Determine the period range for foot movement
-        period_length = control_steps - len(self.com_traj)
+        control_steps_left_curr = self.control_steps - len(self.com_traj)
 
         # Up or down foot movement
-        if start_up < period_length <= end_up:
-            foot_up += self.config.foot_step_height / period_up
-        elif foot_up > 0:
-            foot_up = max(foot_up - self.config.foot_step_height / period_up, 0.0)
+        foot_up_delta = self.config.foot_step_height / move_up_period
+        if move_up_step_start < control_steps_left_curr <= move_up_step_end:
+            foot_up += foot_up_delta
+        else:
+            foot_up = max(foot_up - foot_up_delta, 0.0)
 
         # Move foot in the axes of x, y, theta
-        if period_length > start_up:
+        if control_steps_left_curr > move_up_step_start:
             foot_offset += foot_offset_delta
-            if period_length > (start_up + period_up * 2):
+            if control_steps_left_curr > (move_up_step_start + move_up_period * 2):
                 foot_offset = foot_offset_target.copy()
 
         return foot_up, foot_offset
@@ -293,7 +292,7 @@ class Walking:
         foot_x = foot_init[0] + offset[0, 0]
         foot_y = foot_init[1] + offset[0, 1]
         foot_z = foot_init[2] + foot_up
-        foot_theta = self.theta - offset[0, 2]
+        foot_theta = self.theta_curr - offset[0, 2]
 
         return [foot_x, foot_y, foot_z], [0.0, 0.0, foot_theta]
 
@@ -313,6 +312,12 @@ def main():
         default="pybullet",
         choices=["pybullet", "mujoco"],
         help="The simulator to use.",
+    )
+    parser.add_argument(
+        "--use-feedback",
+        action="store_true",
+        default=False,
+        help="Whether to use feedback control or not.",
     )
     parser.add_argument(
         "--sleep-time",
@@ -364,7 +369,7 @@ def main():
         sim_step_idx += 1
         if sim_step_idx >= config.sim_step_interval:
             sim_step_idx = 0
-            joint_angles, is_control_reached = walking.solve_joint_angles()
+            joint_angles, is_traj_completed = walking.solve_joint_angles()
             if robot.name == "sustaina_op":
                 print(f"joint_angles: {round_floats(joint_angles[7:], 6)}")
             elif robot.name == "robotis_op3":
@@ -372,7 +377,7 @@ def main():
             else:
                 raise ValueError("Unknown robot name")
 
-            if is_control_reached:
+            if is_traj_completed:
                 if len(foot_steps) <= 5:
                     target_x, target_y, theta_target = (
                         random.random() - 0.5,
@@ -380,12 +385,18 @@ def main():
                         random.random() - 0.5,
                     )
                     print(f"Goal: ({target_x}, {target_y}, {theta_target})")
-                    # target_x += 0.1
-                    foot_steps, com_traj = walking.plan_foot_steps(
-                        np.array([target_x, target_y, theta_target])
-                    )
+                    com_pos_target = np.array([target_x, target_y, theta_target])
                 else:
-                    foot_steps, com_traj = walking.plan_foot_steps()
+                    com_pos_target = None
+
+                if args.use_feedback:
+                    com_state_fb = sim.get_com_state(robot)
+                else:
+                    com_state_fb = None
+
+                foot_steps, com_traj = walking.plan_foot_steps(
+                    com_pos_target, com_state_fb
+                )
 
         sim.set_joint_angles(robot, joint_angles)
         return sim_step_idx, foot_steps, com_traj, joint_angles

@@ -55,7 +55,7 @@ robotis_op3_mujoco_walking_config = WalkingConfig(
     target_pos_init=np.array([0.4, 0.0, 0.5]),
     sim_step_interval=10,
     foot_step_height=0.06,
-    y_offset_com_to_foot=0.06,
+    y_offset_com_to_foot=0.05,
 )
 
 walking_configs = {

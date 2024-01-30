@@ -116,10 +116,8 @@ class LQRPreviewController:
         for step_index in range(
             round((foot_steps[1].time - foot_steps[0].time) / self.params.dt)
         ):
-            # Compute the projection of COM state
-            projected_com = self.C_d @ com_state
-            error = foot_steps[0].position[:2] - projected_com
-            state_diff = np.concatenate([error, com_state - self.com_state_prev])
+            state_error = foot_steps[0].position[:2] - self.C_d @ com_state
+            state_diff = np.concatenate([state_error, com_state - self.com_state_prev])
             self.com_state_prev = com_state.copy()
 
             # Update control inputs based on LQR gain

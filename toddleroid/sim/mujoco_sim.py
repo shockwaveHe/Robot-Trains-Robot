@@ -82,6 +82,15 @@ class MujoCoSim(AbstractSim):
             joint_names.append(self.model.joint(i).name)
         return joint_angles, joint_names
 
+    def get_com_state(self, robot: HumanoidRobot):
+        # TODO: Replace this with an IMU sensor
+        mujoco.mj_kinematics(self.model, self.data)
+        base_link_name = robot.config.canonical_name2link_name["base_link"]
+        com_pos = self.data.body(base_link_name).xipos[:2]
+        com_vel = self.data.body(base_link_name).cvel[3:5]
+        com_acc = self.data.body(base_link_name).cacc[3:5]
+        return np.array([com_pos, com_vel, com_acc])
+
     def set_joint_angles(self, robot: HumanoidRobot, joint_angles: List[float]):
         for i in range(1, self.model.njnt):
             self.data.actuator(i - 1).ctrl = (
