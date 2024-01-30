@@ -391,7 +391,12 @@ def main():
         sim.set_joint_angles(robot, joint_angles)
         return sim_step_idx, foot_steps, joint_angles
 
-    sim.simulate(step_func, (sim_step_idx, foot_steps, joint_angles), args.sleep_time)
+    sim.simulate(
+        step_func,
+        (sim_step_idx, foot_steps, joint_angles),
+        args.sleep_time,
+        vis_flags=["foot_steps"],
+    )
 
 
 if __name__ == "__main__":

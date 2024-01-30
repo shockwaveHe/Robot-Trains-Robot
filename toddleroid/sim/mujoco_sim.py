@@ -3,6 +3,7 @@ import time
 import mujoco
 import mujoco.viewer
 import numpy as np
+from transforms3d.euler import euler2mat
 
 from toddleroid.sim.base_sim import *
 from toddleroid.utils.constants import GRAVITY, TIMESTEP
@@ -22,6 +23,12 @@ class MujoCoSim(AbstractSim):
             robot.id = 0  # placeholder
             robot.joint_name2qidx = self.get_joint_name2qidx(robot)
             self.put_robot_on_ground(robot)
+
+            self.foot_size_x, self.foot_size_y, self.foot_size_z = (
+                robot.config.offsets["x_offset_sole"],
+                robot.config.offsets["y_offset_sole"],
+                robot.config.offsets["z_offset_sole"],
+            )
 
     def put_robot_on_ground(self, robot: HumanoidRobot, z_offset: float = 0.01):
         """
@@ -86,30 +93,68 @@ class MujoCoSim(AbstractSim):
     def simulate(
         self,
         step_func: Optional[Callable] = None,
-        step_params: Optional[Tuple] = None,
+        step_params: Optional[Dict] = None,
         sleep_time: float = 0.0,
+        vis_flags: Optional[List] = [],
     ):
-        with mujoco.viewer.launch_passive(self.model, self.data) as viewer:
-            while viewer.is_running():
-                step_start = time.time()
+        viewer = mujoco.viewer.launch_passive(self.model, self.data)
 
-                mujoco.mj_step(self.model, self.data)
+        def vis_foot_steps():
+            viewer.user_scn.ngeom = 0
+            i = 0
+            # step_params: sim_step_idx, foot_steps, joint_angles
+            for foot_step in step_params[1]:
+                if foot_step.support_leg == "both":
+                    continue
 
-                with viewer.lock():
-                    if step_func is not None:
-                        if step_params is None:
-                            step_func()
-                        else:
-                            step_params = step_func(*step_params)
+                mujoco.mjv_initGeom(
+                    viewer.user_scn.geoms[i],
+                    type=mujoco.mjtGeom.mjGEOM_LINEBOX,
+                    size=[
+                        self.foot_size_x / 2,
+                        self.foot_size_y / 2,
+                        self.foot_size_z / 2,
+                    ],
+                    pos=np.array(
+                        [
+                            foot_step.position[0],
+                            foot_step.position[1],
+                            self.foot_size_z / 2,
+                        ]
+                    ),
+                    mat=euler2mat(0, 0, foot_step.position[2]).flatten(),
+                    rgba=[0, 0, 1, 1]
+                    if foot_step.support_leg == "left"
+                    else [0, 1, 0, 1],
+                )
+                i += 1
+            viewer.user_scn.ngeom = i
 
-                viewer.sync()
+        while viewer.is_running():
+            step_start = time.time()
 
-                time_until_next_step = sleep_time - (time.time() - step_start)
-                # time_until_next_step = self.model.opt.timestep - (
-                #     time.time() - step_start
-                # )
-                if time_until_next_step > 0:
-                    time.sleep(time_until_next_step)
+            mujoco.mj_step(self.model, self.data)
+
+            with viewer.lock():
+                if step_func is not None:
+                    if step_params is None:
+                        step_func()
+                    else:
+                        step_params = step_func(*step_params)
+
+                if "foot_steps" in vis_flags:
+                    vis_foot_steps()
+
+            viewer.sync()
+
+            time_until_next_step = sleep_time - (time.time() - step_start)
+            # time_until_next_step = self.model.opt.timestep - (
+            #     time.time() - step_start
+            # )
+            if time_until_next_step > 0:
+                time.sleep(time_until_next_step)
+
+        viewer.close()
 
 
 if __name__ == "__main__":

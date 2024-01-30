@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 from toddleroid.sim.robot import HumanoidRobot
 
@@ -31,5 +31,6 @@ class AbstractSim(ABC):
         step_func: Optional[Callable] = None,
         step_params: Optional[Tuple] = None,
         sleep_time: float = 0.0,
+        vis_flags: Optional[List] = [],
     ):
         pass
