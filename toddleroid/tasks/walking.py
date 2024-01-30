@@ -106,7 +106,7 @@ class Walking:
         # Update the theta value based on the current footstep.
         self.theta = self.foot_steps[0].position[2]
 
-        return self.foot_steps
+        return self.foot_steps, self.com_traj
 
     def _handle_no_position(self):
         """Handle the case when no position is provided."""
@@ -182,7 +182,7 @@ class Walking:
             Tuple containing the next joint angles, left foot position, right foot position,
             pattern X position, and remaining pattern length.
         """
-        com_attr = self.com_traj.pop(0)
+        com_pos = self.com_traj.pop(0)
         control_steps = round(
             (self.foot_steps[1].time - self.foot_steps[0].time) / self.config.control_dt
         )
@@ -209,10 +209,10 @@ class Walking:
             )
 
         left_foot_pos, left_foot_ori = self._get_foot_position(
-            self.left_sole_init, self.left_offset, self.left_up, com_attr
+            self.left_sole_init, self.left_offset, self.left_up, com_pos
         )
         right_foot_pos, right_foot_ori = self._get_foot_position(
-            self.right_sole_init, self.right_offset, self.right_up, com_attr
+            self.right_sole_init, self.right_offset, self.right_up, com_pos
         )
         self.joint_angles = self.robot.solve_ik(
             left_foot_pos,
@@ -221,7 +221,6 @@ class Walking:
             right_foot_ori,
             self.joint_angles,
         )
-        # projected_com_pos = [com_attr[2], com_attr[3]]
         is_control_reached = len(self.com_traj) == 0
 
         return self.joint_angles, is_control_reached
@@ -276,7 +275,7 @@ class Walking:
         foot_init: List[float],
         foot_offset: np.ndarray,
         foot_up: float,
-        com_attr: List[float],
+        com_pos: List[float],
     ) -> List[float]:
         """
         Calculate the position of the foot based on the current offsets and height.
@@ -285,12 +284,12 @@ class Walking:
             foot_init (List[float]): Initial position and orientation of the foot.
             foot_offset (np.ndarray): Offset of the foot.
             foot_up (float): Height of the foot.
-            com_attr (List[float]): First pattern position.
+            com_pos (List[float]): First pattern position.
 
         Returns:
             List[float]: Calculated position of the foot.
         """
-        offset = foot_offset - np.block([[com_attr[0:2], 0]])
+        offset = foot_offset - np.concatenate([com_pos, [0.0]])
         foot_x = foot_init[0] + offset[0, 0]
         foot_y = foot_init[1] + offset[0, 1]
         foot_z = foot_init[2] + foot_up
@@ -358,10 +357,10 @@ def main():
     )
 
     sim_step_idx = 0
-    foot_steps = walking.plan_foot_steps(config.target_pos_init)
+    foot_steps, com_traj = walking.plan_foot_steps(config.target_pos_init)
 
     # This function requires its parameters to be the same as its return values.
-    def step_func(sim_step_idx, foot_steps, joint_angles):
+    def step_func(sim_step_idx, foot_steps, com_traj, joint_angles):
         sim_step_idx += 1
         if sim_step_idx >= config.sim_step_interval:
             sim_step_idx = 0
@@ -382,20 +381,20 @@ def main():
                     )
                     print(f"Goal: ({target_x}, {target_y}, {theta_target})")
                     # target_x += 0.1
-                    foot_steps = walking.plan_foot_steps(
+                    foot_steps, com_traj = walking.plan_foot_steps(
                         np.array([target_x, target_y, theta_target])
                     )
                 else:
-                    foot_steps = walking.plan_foot_steps()
+                    foot_steps, com_traj = walking.plan_foot_steps()
 
         sim.set_joint_angles(robot, joint_angles)
-        return sim_step_idx, foot_steps, joint_angles
+        return sim_step_idx, foot_steps, com_traj, joint_angles
 
     sim.simulate(
         step_func,
-        (sim_step_idx, foot_steps, joint_angles),
+        (sim_step_idx, foot_steps, com_traj, joint_angles),
         args.sleep_time,
-        vis_flags=["foot_steps"],
+        vis_flags=["foot_steps", "com_traj"],
     )
 
 

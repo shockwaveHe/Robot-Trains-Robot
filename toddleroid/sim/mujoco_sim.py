@@ -100,9 +100,8 @@ class MujoCoSim(AbstractSim):
         viewer = mujoco.viewer.launch_passive(self.model, self.data)
 
         def vis_foot_steps():
-            viewer.user_scn.ngeom = 0
-            i = 0
-            # step_params: sim_step_idx, foot_steps, joint_angles
+            i = viewer.user_scn.ngeom
+            # step_params: sim_step_idx, foot_steps, com_traj, joint_angles
             for foot_step in step_params[1]:
                 if foot_step.support_leg == "both":
                     continue
@@ -130,6 +129,21 @@ class MujoCoSim(AbstractSim):
                 i += 1
             viewer.user_scn.ngeom = i
 
+        def vis_com_traj():
+            i = viewer.user_scn.ngeom
+            # step_params: sim_step_idx, foot_steps, com_traj, joint_angles
+            for com_pos in step_params[2]:
+                mujoco.mjv_initGeom(
+                    viewer.user_scn.geoms[i],
+                    type=mujoco.mjtGeom.mjGEOM_CYLINDER,
+                    size=np.array([0.01, 0.0075, 0.01]),
+                    pos=np.array([com_pos[0], com_pos[1], 0.5]),
+                    mat=np.eye(3).flatten(),
+                    rgba=[1, 0, 0, 1],
+                )
+                i += 1
+            viewer.user_scn.ngeom = i
+
         while viewer.is_running():
             step_start = time.time()
 
@@ -142,8 +156,11 @@ class MujoCoSim(AbstractSim):
                     else:
                         step_params = step_func(*step_params)
 
+                viewer.user_scn.ngeom = 0
                 if "foot_steps" in vis_flags:
                     vis_foot_steps()
+                if "com_traj" in vis_flags:
+                    vis_com_traj()
 
             viewer.sync()
 

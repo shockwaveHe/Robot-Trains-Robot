@@ -52,8 +52,8 @@
                 "robotis_op3",
                 "--sim",
                 "mujoco",
-                "--sleep-time",
-                "0.001",
+                // "--sleep-time",
+                // "0.001",
             ]
         }
     ]

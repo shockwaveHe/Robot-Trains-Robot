@@ -147,6 +147,6 @@ class LQRPreviewController:
             com_state = self.A_d @ com_state + self.B_d @ self.control_input[None]
 
             # Record the current COM position
-            com_traj.append(np.hstack([com_state[:1], projected_com]).squeeze())
+            com_traj.append(com_state[0])
 
         return com_traj, com_state
