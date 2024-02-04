@@ -83,9 +83,6 @@ class HumanoidRobot:
             List[float]: Updated list of joint angles after calculation.
         """
 
-        # Initialize dictionary to map joint names to their degrees of freedom index
-        # TODO: Update this to use joint name instead of link_name
-
         # Define joint names and their corresponding angles
         n_dof = len(self.config.joint_names)
         if side == "left":

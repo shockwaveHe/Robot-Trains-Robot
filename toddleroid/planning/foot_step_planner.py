@@ -112,6 +112,8 @@ class FootStepPlanner:
         Returns:
             Step: The foot step as a dataclass instance.
         """
+        # TODO: Update the footstep planner to correctly handle the orientation of the foot
+        # Also, figure out why the stride is always smaller than planned
         adjusted_y = (
             current[1] + self.params.offset_y
             if support_leg == "left"
