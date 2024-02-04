@@ -1,0 +1,73 @@
+links:
+  body_link:
+    joints:
+      - name: head_pan
+        child: head_pan_link
+      - name: l_sho_pitch
+        child: l_sho_pitch_link
+      - name: r_sho_pitch
+        child: r_sho_pitch_link
+      - name: l_hip_yaw
+        child: l_hip_yaw_link
+      - name: r_hip_yaw
+        child: r_hip_yaw_link
+  head_pan_link:
+    joints:
+      - name: head_tilt
+        child: head_tilt_link
+  l_sho_pitch_link:
+    joints:
+      - name: l_sho_roll
+        child: l_sho_roll_link
+  l_sho_roll_link:
+    joints:
+      - name: l_el
+        child: l_el_link
+  r_sho_pitch_link:
+    joints:
+      - name: r_sho_roll
+        child: r_sho_roll_link
+  r_sho_roll_link:
+    joints:
+      - name: r_el
+        child: r_el_link
+  l_hip_yaw_link:
+    joints:
+      - name: l_hip_roll
+        child: l_hip_roll_link
+  l_hip_roll_link:
+    joints:
+      - name: l_hip_pitch
+        child: l_hip_pitch_link
+  l_hip_pitch_link:
+    joints:
+      - name: l_knee
+        child: l_knee_link
+  l_knee_link:
+    joints:
+      - name: l_ank_pitch
+        child: l_ank_pitch_link
+  l_ank_pitch_link:
+    joints:
+      - name: l_ank_roll
+        child: l_ank_roll_link
+  r_hip_yaw_link:
+    joints:
+      - name: r_hip_roll
+        child: r_hip_roll_link
+  r_hip_roll_link:
+    joints:
+      - name: r_hip_pitch
+        child: r_hip_pitch_link
+  r_hip_pitch_link:
+    joints:
+      - name: r_knee
+        child: r_knee_link
+  r_knee_link:
+    joints:
+      - name: r_ank_pitch
+        child: r_ank_pitch_link
+  r_ank_pitch_link:
+    joints:
+      - name: r_ank_roll
+        child: r_ank_roll_link

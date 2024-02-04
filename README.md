@@ -7,6 +7,8 @@ conda activate toddleroid
 pip install -e .
 ```
 
+Install pygraphviz according to [these instructions](https://pygraphviz.github.io/documentation/stable/install.html).
+
 ### Export the environment
 ```
 pigar generate
