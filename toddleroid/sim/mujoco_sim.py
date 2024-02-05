@@ -49,16 +49,16 @@ class MujoCoSim(AbstractSim):
             body_pos = self.data.body(i).xipos
             lowest_z = min(lowest_z, body_pos[2])
 
-        base_link_name = robot.config.canonical_name2link_name["base_link"]
-        base_pos = self.data.body(base_link_name).xpos
+        body_link_name = robot.config.canonical_name2link_name["body_link"]
+        base_pos = self.data.body(body_link_name).xpos
         desired_z = base_pos[2] - lowest_z + z_offset
         if lowest_z < 0:
             raise ValueError(
-                f"Robot is below the ground. Change the z value of {base_link_name} to be {desired_z}"
+                f"Robot is below the ground. Change the z value of {body_link_name} to be {desired_z}"
             )
         elif lowest_z > z_offset:
             raise ValueError(
-                f"Robot is too high above the ground. Change the z value of {base_link_name} as {desired_z}"
+                f"Robot is too high above the ground. Change the z value of {body_link_name} as {desired_z}"
             )
 
     def get_joint_name2qidx(self, robot: HumanoidRobot):
@@ -85,10 +85,10 @@ class MujoCoSim(AbstractSim):
     def get_com_state(self, robot: HumanoidRobot):
         # TODO: Replace this with an IMU sensor
         mujoco.mj_kinematics(self.model, self.data)
-        base_link_name = robot.config.canonical_name2link_name["base_link"]
-        com_pos = self.data.body(base_link_name).xipos[:2]
-        com_vel = self.data.body(base_link_name).cvel[3:5]
-        com_acc = self.data.body(base_link_name).cacc[3:5]
+        body_link_name = robot.config.canonical_name2link_name["body_link"]
+        com_pos = self.data.body(body_link_name).xipos[:2]
+        com_vel = self.data.body(body_link_name).cvel[3:5]
+        com_acc = self.data.body(body_link_name).cacc[3:5]
         return np.array([com_pos, com_vel, com_acc])
 
     def set_joint_angles(self, robot: HumanoidRobot, joint_angles: List[float]):
@@ -131,9 +131,11 @@ class MujoCoSim(AbstractSim):
                         ]
                     ),
                     mat=euler2mat(0, 0, foot_step.position[2]).flatten(),
-                    rgba=[0, 0, 1, 1]
-                    if foot_step.support_leg == "left"
-                    else [0, 1, 0, 1],
+                    rgba=(
+                        [0, 0, 1, 1]
+                        if foot_step.support_leg == "left"
+                        else [0, 1, 0, 1]
+                    ),
                 )
                 i += 1
             viewer.user_scn.ngeom = i

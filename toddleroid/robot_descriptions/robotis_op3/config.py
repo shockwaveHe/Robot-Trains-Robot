@@ -3,7 +3,7 @@ import numpy as np
 from toddleroid.robot_descriptions.robot_configs import RobotConfig
 
 canonical_name2link_name = {
-    "base_link": "body_link",
+    "body_link": "body_link",
     "left_foot_link": "l_ank_roll_link",
     "right_foot_link": "r_ank_roll_link",
 }

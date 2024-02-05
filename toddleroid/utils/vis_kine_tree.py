@@ -29,10 +29,14 @@ def parse_urdf_to_links_and_joints(urdf_path):
         parent_link = joint.find("parent").attrib["link"]
         child_link = joint.find("child").attrib["link"]
         joint_name = joint.attrib["name"]
+        joint_type = joint.attrib["type"]  # Store the joint type
 
         if parent_link not in links:
             links[parent_link] = {"joints": []}
-        links[parent_link]["joints"].append({"name": joint_name, "child": child_link})
+        # Include the joint type in the stored information
+        links[parent_link]["joints"].append(
+            {"name": joint_name, "child": child_link, "type": joint_type}
+        )
 
         if child_link not in links:
             links[child_link] = {"joints": []}
@@ -49,31 +53,54 @@ def vis_kine_tree(
     links_and_joints,
     output_path=None,
     figsize=(10, 10),
-    fixed_node_size=5000,
-    font_size=12,
+    fixed_node_size=3000,
+    font_size=6,
 ):
     G = nx.DiGraph()
     add_nodes_and_edges(links_and_joints, G)
 
-    # Set up the figure and axis
     plt.figure(figsize=figsize)
     pos = graphviz_layout(G, prog="dot")
 
-    # Draw nodes with a fixed size that should generally fit the wrapped text
     nx.draw_networkx_nodes(
         G, pos, node_shape="o", node_size=fixed_node_size, node_color="skyblue"
     )
-
-    # Wrap labels and draw them
     wrapped_labels = {node: textwrap.fill(node, width=20) for node in G.nodes()}
     nx.draw_networkx_labels(G, pos, labels=wrapped_labels, font_size=font_size)
-
-    # Draw edges
     nx.draw_networkx_edges(G, pos, arrowstyle="-|>", arrowsize=20, edge_color="gray")
 
-    # Draw edge labels with automatic alignment and rotation based on edge direction
+    # Define colors for different joint types
+    joint_colors = {
+        "fixed": "blue",
+        "revolute": "green",
+        "prismatic": "red",
+        # Add more joint types and colors if needed
+    }
+
+    # Create a legend for the joint types
+    legend_labels = {
+        jtype: plt.Line2D(
+            [0],
+            [0],
+            color=color,
+            marker="o",
+            linestyle="None",
+            markersize=10,
+            label=jtype,
+        )
+        for jtype, color in joint_colors.items()
+    }
+
+    # Draw edge labels with colors based on joint type
     edge_labels = nx.get_edge_attributes(G, "label")
     for (start, end), label in edge_labels.items():
+        joint_info = links_and_joints[start]["joints"]
+        joint_type = next(
+            (item for item in joint_info if item["child"] == end), {}
+        ).get("type", "unknown")
+        edge_color = joint_colors.get(
+            joint_type, "black"
+        )  # Default color if type is not in joint_colors
         x_start, y_start = pos[start]
         x_end, y_end = pos[end]
         label_x, label_y = (x_start + x_end) / 2, (y_start + y_end) / 2
@@ -82,15 +109,16 @@ def vis_kine_tree(
             label_x,
             label_y,
             label,
-            c="green",
+            color=edge_color,
             rotation="horizontal",
             horizontalalignment="center",
             verticalalignment="center",
             fontsize=font_size,
-            bbox=dict(facecolor="white", edgecolor="none", alpha=1.0),
+            bbox=dict(facecolor="white", edgecolor="none", alpha=0.5),
         )
 
-    # Turn off axis and show/save the plot
+    plt.legend(handles=legend_labels.values(), loc="upper left")
+
     plt.axis("off")
     plt.tight_layout()
 

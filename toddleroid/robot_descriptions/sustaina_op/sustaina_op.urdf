@@ -55,14 +55,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/body.stl"/>
+        <mesh filename="package:///meshes/body.stl"/>
       </geometry>
       <material name="white"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/body.stl"/>
+        <mesh filename="package:///meshes/body.stl"/>
       </geometry>
     </collision>
   </link>
@@ -84,14 +84,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/head.stl"/>
+        <mesh filename="package:///meshes/head.stl"/>
       </geometry>
       <material name="grey"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/head.stl"/>
+        <mesh filename="package:///meshes/head.stl"/>
       </geometry>
     </collision>
   </link>
@@ -127,14 +127,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/shoulder.stl"/>
+        <mesh filename="package:///meshes/shoulder.stl"/>
       </geometry>
       <material name="black"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/shoulder.stl"/>
+        <mesh filename="package:///meshes/shoulder.stl"/>
       </geometry>
     </collision>
   </link>
@@ -147,14 +147,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/arm.stl"/>
+        <mesh filename="package:///meshes/arm.stl"/>
       </geometry>
       <material name="grey"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/arm.stl"/>
+        <mesh filename="package:///meshes/arm.stl"/>
       </geometry>
     </collision>
   </link>
@@ -167,14 +167,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/hand.stl"/>
+        <mesh filename="package:///meshes/hand.stl"/>
       </geometry>
       <material name="white"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/hand.stl"/>
+        <mesh filename="package:///meshes/hand.stl"/>
       </geometry>
     </collision>
   </link>
@@ -210,7 +210,7 @@
     <visual>
       <origin rpy="0 0 3.14159265359" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/shoulder.stl"/>
+        <mesh filename="package:///meshes/shoulder.stl"/>
       </geometry>
       <material name="black"/>
     </visual>
@@ -218,7 +218,7 @@
       <!-- fix shoulder collision.stl -->
       <origin rpy="0 0 3.14159265359" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/shoulder.stl"/>
+        <mesh filename="package:///meshes/shoulder.stl"/>
       </geometry>
     </collision>
   </link>
@@ -231,14 +231,14 @@
     <visual>
       <origin rpy="0 0 3.14159265359" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/arm.stl"/>
+        <mesh filename="package:///meshes/arm.stl"/>
       </geometry>
       <material name="grey"/>
     </visual>
     <collision>
       <origin rpy="0 0 3.14159265359" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/arm.stl"/>
+        <mesh filename="package:///meshes/arm.stl"/>
       </geometry>
     </collision>
   </link>
@@ -251,14 +251,14 @@
     <visual>
       <origin rpy="0 0 3.14159265359" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/hand.stl"/>
+        <mesh filename="package:///meshes/hand.stl"/>
       </geometry>
       <material name="white"/>
     </visual>
     <collision>
       <origin rpy="0 0 3.14159265359" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/hand.stl"/>
+        <mesh filename="package:///meshes/hand.stl"/>
       </geometry>
     </collision>
   </link>
@@ -360,14 +360,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/waist_yaw.stl"/>
+        <mesh filename="package:///meshes/waist_yaw.stl"/>
       </geometry>
       <material name="white"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/waist_yaw.stl"/>
+        <mesh filename="package:///meshes/waist_yaw.stl"/>
       </geometry>
     </collision>
   </link>
@@ -380,14 +380,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/waist_roll.stl"/>
+        <mesh filename="package:///meshes/waist_roll.stl"/>
       </geometry>
       <material name="black"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/waist_roll.stl"/>
+        <mesh filename="package:///meshes/waist_roll.stl"/>
       </geometry>
     </collision>
   </link>
@@ -400,14 +400,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/slider_crank.stl"/>
+        <mesh filename="package:///meshes/slider_crank.stl"/>
       </geometry>
       <material name="white"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/slider_crank.stl"/>
+        <mesh filename="package:///meshes/slider_crank.stl"/>
       </geometry>
     </collision>
   </link>
@@ -420,14 +420,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/waist_pitch.stl"/>
+        <mesh filename="package:///meshes/waist_pitch.stl"/>
       </geometry>
       <material name="grey"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/waist_pitch.stl"/>
+        <mesh filename="package:///meshes/waist_pitch.stl"/>
       </geometry>
     </collision>
   </link>
@@ -440,14 +440,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/waist_pitch_mimic.stl"/>
+        <mesh filename="package:///meshes/waist_pitch_mimic.stl"/>
       </geometry>
       <material name="grey"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/waist_pitch_mimic.stl"/>
+        <mesh filename="package:///meshes/waist_pitch_mimic.stl"/>
       </geometry>
     </collision>
   </link>
@@ -460,14 +460,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/knee_pitch.stl"/>
+        <mesh filename="package:///meshes/knee_pitch.stl"/>
       </geometry>
       <material name="black"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/knee_pitch.stl"/>
+        <mesh filename="package:///meshes/knee_pitch.stl"/>
       </geometry>
     </collision>
   </link>
@@ -480,14 +480,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/waist_pitch.stl"/>
+        <mesh filename="package:///meshes/waist_pitch.stl"/>
       </geometry>
       <material name="grey"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/waist_pitch.stl"/>
+        <mesh filename="package:///meshes/waist_pitch.stl"/>
       </geometry>
     </collision>
   </link>
@@ -500,14 +500,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/waist_pitch_mimic.stl"/>
+        <mesh filename="package:///meshes/waist_pitch_mimic.stl"/>
       </geometry>
       <material name="grey"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/waist_pitch_mimic.stl"/>
+        <mesh filename="package:///meshes/waist_pitch_mimic.stl"/>
       </geometry>
     </collision>
   </link>
@@ -520,14 +520,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/independent_pitch.stl"/>
+        <mesh filename="package:///meshes/independent_pitch.stl"/>
       </geometry>
       <material name="black"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/independent_pitch.stl"/>
+        <mesh filename="package:///meshes/independent_pitch.stl"/>
       </geometry>
     </collision>
   </link>
@@ -540,14 +540,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/ankle_pitch.stl"/>
+        <mesh filename="package:///meshes/ankle_pitch.stl"/>
       </geometry>
       <material name="white"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/ankle_pitch.stl"/>
+        <mesh filename="package:///meshes/ankle_pitch.stl"/>
       </geometry>
     </collision>
   </link>
@@ -560,14 +560,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/ankle_roll_left.stl"/>
+        <mesh filename="package:///meshes/ankle_roll_left.stl"/>
       </geometry>
       <material name="black"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/ankle_roll_left.stl"/>
+        <mesh filename="package:///meshes/ankle_roll_left.stl"/>
       </geometry>
     </collision>
   </link>
@@ -675,14 +675,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/waist_yaw.stl"/>
+        <mesh filename="package:///meshes/waist_yaw.stl"/>
       </geometry>
       <material name="white"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/waist_yaw.stl"/>
+        <mesh filename="package:///meshes/waist_yaw.stl"/>
       </geometry>
     </collision>
   </link>
@@ -695,14 +695,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/waist_roll.stl"/>
+        <mesh filename="package:///meshes/waist_roll.stl"/>
       </geometry>
       <material name="black"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/waist_roll.stl"/>
+        <mesh filename="package:///meshes/waist_roll.stl"/>
       </geometry>
     </collision>
   </link>
@@ -715,14 +715,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/slider_crank.stl"/>
+        <mesh filename="package:///meshes/slider_crank.stl"/>
       </geometry>
       <material name="white"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/slider_crank.stl"/>
+        <mesh filename="package:///meshes/slider_crank.stl"/>
       </geometry>
     </collision>
   </link>
@@ -735,14 +735,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/waist_pitch.stl"/>
+        <mesh filename="package:///meshes/waist_pitch.stl"/>
       </geometry>
       <material name="grey"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/waist_pitch.stl"/>
+        <mesh filename="package:///meshes/waist_pitch.stl"/>
       </geometry>
     </collision>
   </link>
@@ -755,14 +755,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/waist_pitch_mimic.stl"/>
+        <mesh filename="package:///meshes/waist_pitch_mimic.stl"/>
       </geometry>
       <material name="grey"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/waist_pitch_mimic.stl"/>
+        <mesh filename="package:///meshes/waist_pitch_mimic.stl"/>
       </geometry>
     </collision>
   </link>
@@ -775,14 +775,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/knee_pitch.stl"/>
+        <mesh filename="package:///meshes/knee_pitch.stl"/>
       </geometry>
       <material name="black"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/knee_pitch.stl"/>
+        <mesh filename="package:///meshes/knee_pitch.stl"/>
       </geometry>
     </collision>
   </link>
@@ -795,14 +795,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/waist_pitch.stl"/>
+        <mesh filename="package:///meshes/waist_pitch.stl"/>
       </geometry>
       <material name="grey"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/waist_pitch.stl"/>
+        <mesh filename="package:///meshes/waist_pitch.stl"/>
       </geometry>
     </collision>
   </link>
@@ -815,14 +815,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/waist_pitch_mimic.stl"/>
+        <mesh filename="package:///meshes/waist_pitch_mimic.stl"/>
       </geometry>
       <material name="grey"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/waist_pitch_mimic.stl"/>
+        <mesh filename="package:///meshes/waist_pitch_mimic.stl"/>
       </geometry>
     </collision>
   </link>
@@ -835,14 +835,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/independent_pitch.stl"/>
+        <mesh filename="package:///meshes/independent_pitch.stl"/>
       </geometry>
       <material name="black"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/independent_pitch.stl"/>
+        <mesh filename="package:///meshes/independent_pitch.stl"/>
       </geometry>
     </collision>
   </link>
@@ -855,14 +855,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/ankle_pitch.stl"/>
+        <mesh filename="package:///meshes/ankle_pitch.stl"/>
       </geometry>
       <material name="white"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/ankle_pitch.stl"/>
+        <mesh filename="package:///meshes/ankle_pitch.stl"/>
       </geometry>
     </collision>
   </link>
@@ -875,14 +875,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/ankle_roll_right.stl"/>
+        <mesh filename="package:///meshes/ankle_roll_right.stl"/>
       </geometry>
       <material name="black"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package:///meshes/STL/ankle_roll_right.stl"/>
+        <mesh filename="package:///meshes/ankle_roll_right.stl"/>
       </geometry>
     </collision>
   </link>
