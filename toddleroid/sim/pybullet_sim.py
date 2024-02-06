@@ -65,7 +65,7 @@ class PyBulletSim(AbstractSim):
                 "type": jointInfo[2],
                 "lowerLimit": jointInfo[8],
                 "upperLimit": jointInfo[9],
-                "active": not name.endswith("_passive"),
+                "active": name in robot.config.joint_names,
             }
 
         return joints_info

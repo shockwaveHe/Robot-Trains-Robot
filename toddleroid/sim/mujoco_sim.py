@@ -4,6 +4,7 @@ import mujoco
 import mujoco.viewer
 import numpy as np
 from transforms3d.euler import euler2mat
+from transforms3d.quaternions import mat2quat, quat2mat
 
 from toddleroid.sim.base_sim import *
 from toddleroid.utils.constants import GRAVITY, TIMESTEP
@@ -11,7 +12,7 @@ from toddleroid.utils.file_utils import find_description_path
 
 
 class MujoCoSim(AbstractSim):
-    def __init__(self, robot: Optional[HumanoidRobot] = None):
+    def __init__(self, robot: Optional[HumanoidRobot] = None, fixed: bool = False):
         """Initialize the MuJoCo simulation environment."""
         self.model = None
         self.data = None
@@ -22,13 +23,17 @@ class MujoCoSim(AbstractSim):
             self.data = mujoco.MjData(self.model)
             robot.id = 0  # placeholder
             robot.joints_info = self.get_joints_info(robot)
-            self.put_robot_on_ground(robot)
+            if not fixed:
+                self.put_robot_on_ground(robot)
 
-            self.foot_size_x, self.foot_size_y, self.foot_size_z = (
-                robot.config.offsets["x_offset_sole"],
-                robot.config.offsets["y_offset_sole"],
-                robot.config.offsets["z_offset_sole"],
-            )
+            if "x_offset_sole" in robot.config.offsets:
+                self.foot_size_x = robot.config.offsets["x_offset_sole"]
+
+            if "y_offset_sole" in robot.config.offsets:
+                self.foot_size_y = robot.config.offsets["y_offset_sole"]
+
+            if "z_offset_sole" in robot.config.offsets:
+                self.foot_size_z = robot.config.offsets["z_offset_sole"]
 
     def put_robot_on_ground(self, robot: HumanoidRobot, z_offset: float = 0.01):
         """
@@ -72,6 +77,33 @@ class MujoCoSim(AbstractSim):
         mujoco.mj_kinematics(self.model, self.data)
         link_pos = self.data.body(link_name).xpos
         return np.array(link_pos)
+
+    def get_link_quat(self, robot: HumanoidRobot, link_name: str):
+        mujoco.mj_kinematics(self.model, self.data)
+        link_quat = self.data.body(link_name).xquat
+        return np.array(link_quat)
+
+    def get_link_relpose(
+        self, robot: HumanoidRobot, link_name_1: str, link_name_2: str
+    ):
+        mujoco.mj_kinematics(self.model, self.data)
+        # Get the position and orientation (quaternion) of each body
+        pos1 = self.data.body(link_name_1).xpos
+        quat1 = self.data.body(link_name_1).xquat
+        pos2 = self.data.body(link_name_2).xpos
+        quat2 = self.data.body(link_name_2).xquat
+
+        print(f"pos1: {pos1}, quat1: {quat1}")
+        print(f"pos2: {pos2}, quat2: {quat2}")
+
+        # Compute the relative position (simple subtraction)
+        rel_pos = pos2 - pos1
+
+        # For orientation, compute the relative quaternion
+        rel_mat = np.dot(np.linalg.inv(quat2mat(quat1)), quat2mat(quat2))
+        rel_quat = mat2quat(rel_mat)
+
+        return np.concatenate([rel_pos, rel_quat])
 
     def initialize_joint_angles(self, robot: HumanoidRobot):
         joint_angles = {}

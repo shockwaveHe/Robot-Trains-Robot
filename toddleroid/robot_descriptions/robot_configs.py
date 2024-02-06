@@ -35,4 +35,4 @@ def load_robot_configs(
 
 
 robot_configs = load_robot_configs()
-print(robot_configs)
+# print(robot_configs)

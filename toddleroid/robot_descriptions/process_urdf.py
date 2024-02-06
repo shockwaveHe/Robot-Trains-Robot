@@ -3,16 +3,41 @@ import os
 import shutil
 import xml.etree.ElementTree as ET
 
+from toddleroid.utils.file_utils import *
+
+
+def parse_urdf_for_closing_links(urdf_path):
+    tree = ET.parse(urdf_path)
+    root = tree.getroot()
+
+    closing_links = {}
+    for link in root.findall(".//link"):
+        link_name = link.get("name")
+        if link_name.startswith("closing_"):
+            base_name = "_".join(link_name.split("_")[:-1])
+            if base_name in closing_links:
+                closing_links[base_name] = (closing_links[base_name], link_name)
+            else:
+                closing_links[base_name] = link_name
+
+    return closing_links
+
 
 def process_urdf_and_stl_files(robot_dir):
     robot_name = os.path.basename(robot_dir)
 
     # Check for URDF file in the base directory
-    urdf_file = "robot.urdf"
-    urdf_path = os.path.join(robot_dir, urdf_file)
-    if not os.path.exists(urdf_path):
-        print("No URDF file found in the robot directory.")
-        return
+    is_urdf_found = False
+    urdf_names = ["robot.urdf", robot_name + ".urdf"]
+    urdf_path = ""
+    for urdf_name in urdf_names:
+        urdf_path = os.path.join(robot_dir, urdf_name)
+        if os.path.exists(urdf_path):
+            is_urdf_found = True
+            break
+
+    if not is_urdf_found:
+        raise ValueError("No URDF file found in the robot directory.")
 
     # Parse the URDF file
     tree = ET.parse(urdf_path)
@@ -32,32 +57,41 @@ def process_urdf_and_stl_files(robot_dir):
             mesh.set("filename", new_path)
             referenced_stls.add(filename)
 
-    # Save changes to the URDF
-    tree.write(urdf_path)
+    # Check if the <mujoco> element already exists
+    mujoco = root.find("./mujoco")
+    if mujoco is None:
+        # Create and insert the <mujoco> element
+        mujoco = ET.Element("mujoco")
+        compiler = ET.SubElement(mujoco, "compiler")
+        compiler.set("meshdir", "./meshes/")
+        compiler.set("balanceinertia", "true")
+        compiler.set("discardvisual", "false")
+        root.insert(0, mujoco)
+
+    pretty_xml = prettify(root, urdf_path)
+
+    # Write the modified XML back to the URDF file
+    with open(urdf_path, "w") as urdf_file:
+        urdf_file.write(pretty_xml)
+
+    # Delete STL and PART files if not referenced
+    for subdir, _, files in os.walk(robot_dir):
+        for file in files:
+            if file.endswith((".stl", ".part")) and file not in referenced_stls:
+                file_path = os.path.join(subdir, file)
+                os.remove(file_path)
 
     # Create 'meshes' directory if not exists
     meshes_dir = os.path.join(robot_dir, "meshes")
     if not os.path.exists(meshes_dir):
         os.makedirs(meshes_dir)
 
-    # Move or delete STL and PART files based on whether they're referenced
-    for subdir, _, files in os.walk(robot_dir):
-        for file in files:
-            if file.endswith((".stl", ".part")):
-                file_path = os.path.join(subdir, file)
-                if file in referenced_stls:
-                    shutil.move(file_path, os.path.join(meshes_dir, file))
-                else:
-                    os.remove(file_path)
-
-    # Add XML declaration if missing
-    with open(urdf_path, "r+") as urdf_file:
-        content = urdf_file.read()
-        if not content.startswith('<?xml version="1.0" ?>'):
-            content = '<?xml version="1.0" ?>\n' + content
-            urdf_file.seek(0)
-            urdf_file.write(content)
-            urdf_file.truncate()
+    # Move referenced STL files to 'meshes' directory
+    for stl in referenced_stls:
+        source_path = os.path.join(robot_dir, stl)
+        target_path = os.path.join(meshes_dir, stl)
+        if os.path.exists(source_path):
+            shutil.move(source_path, target_path)
 
     # Rename URDF file to match the base directory name if necessary
     new_urdf_path = os.path.join(robot_dir, robot_name + ".urdf")

@@ -29,6 +29,8 @@ sudo apt-get install meshlab
 ```
 [Config doc](https://onshape-to-robot.readthedocs.io/en/latest/config.html)
 
+Use VScode Extension XML Tools to format the XML files.
+
 ### Best practices
 1. Use dataclass and argparse if possible
 1. Write Google style docstring
