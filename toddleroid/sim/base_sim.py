@@ -10,7 +10,7 @@ class AbstractSim(ABC):
         pass
 
     @abstractmethod
-    def get_joint_name2qidx(self, robot: HumanoidRobot):
+    def get_joints_info(self, robot: HumanoidRobot):
         pass
 
     @abstractmethod
@@ -18,7 +18,7 @@ class AbstractSim(ABC):
         pass
 
     @abstractmethod
-    def get_named_zero_joint_angles(self, robot: HumanoidRobot):
+    def initialize_joint_angles(self, robot: HumanoidRobot):
         pass
 
     @abstractmethod

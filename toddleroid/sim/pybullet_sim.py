@@ -12,7 +12,7 @@ from toddleroid.utils.file_utils import find_description_path
 class PyBulletSim(AbstractSim):
     """Class to set up and run a PyBullet simulation with a humanoid robot."""
 
-    def __init__(self, robot: Optional[HumanoidRobot] = None):
+    def __init__(self, robot: Optional[HumanoidRobot] = None, fixed: bool = False):
         """
         Set up the PyBullet simulation environment.
         Initializes the PyBullet environment in GUI mode and sets the gravity and timestep.
@@ -25,9 +25,10 @@ class PyBulletSim(AbstractSim):
 
         if robot is not None:
             urdf_path = find_description_path(robot.name)
-            robot.id = p.loadURDF(urdf_path)
-            robot.joint_name2qidx = self.get_joint_name2qidx(robot)
-            self.put_robot_on_ground(robot)
+            robot.id = p.loadURDF(urdf_path, useFixedBase=fixed)
+            robot.joints_info = self.get_joints_info(robot)
+            if not fixed:
+                self.put_robot_on_ground(robot)
 
     def put_robot_on_ground(self, robot: HumanoidRobot, z_offset: float = 0.01):
         """
@@ -54,14 +55,20 @@ class PyBulletSim(AbstractSim):
         new_base_pos = [base_pos[0], base_pos[1], base_pos[2] - lowest_z + z_offset]
         p.resetBasePositionAndOrientation(robot.id, new_base_pos, base_ori)
 
-    def get_joint_name2qidx(self, robot: HumanoidRobot):
-        # -1 for the base link
-        joint_name2qidx = {p.getBodyInfo(robot.id)[0].decode("UTF-8"): -1}
-        for idx in range(p.getNumJoints(robot.id)):
-            joint_name = p.getJointInfo(robot.id, idx)[1].decode("UTF-8")
-            joint_name2qidx[joint_name] = p.getJointInfo(robot.id, idx)[3] - 7
+    def get_joints_info(self, robot: HumanoidRobot):
+        joints_info = {}
+        for k in range(p.getNumJoints(robot.id)):
+            jointInfo = p.getJointInfo(robot.id, k)
+            name = jointInfo[1].decode("utf-8")
+            joints_info[name] = {
+                "idx": k,
+                "type": jointInfo[2],
+                "lowerLimit": jointInfo[8],
+                "upperLimit": jointInfo[9],
+                "active": not name.endswith("_passive"),
+            }
 
-        return joint_name2qidx
+        return joints_info
 
     def get_link_pos(self, robot: HumanoidRobot, link_name: str):
         for idx in range(p.getNumJoints(robot.id)):
@@ -74,26 +81,21 @@ class PyBulletSim(AbstractSim):
 
         raise ValueError(f"Link name {link_name} not found.")
 
-    def get_named_zero_joint_angles(self, robot: HumanoidRobot):
-        joint_angles = []
-        joint_names = []
-        for idx in range(p.getNumJoints(robot.id)):
-            if p.getJointInfo(robot.id, idx)[3] > -1:
-                joint_angles += [0]
-                joint_names += [p.getJointInfo(robot.id, idx)[1].decode("UTF-8")]
+    def initialize_joint_angles(self, robot: HumanoidRobot):
+        joint_angles = {}
+        for name, info in robot.joints_info.items():
+            if info["active"] and info["type"] != p.JOINT_FIXED:
+                joint_angles[name] = p.getJointState(robot.id, info["idx"])[0]
 
-        return joint_angles, joint_names
+        return joint_angles
 
     def get_com_state(self, robot: HumanoidRobot):
         pass
 
-    def set_joint_angles(self, robot: HumanoidRobot, joint_angles: List[float]):
-        for idx in range(p.getNumJoints(robot.id)):
-            qIndex = p.getJointInfo(robot.id, idx)[3]
-            if qIndex > -1:
-                p.setJointMotorControl2(
-                    robot.id, idx, p.POSITION_CONTROL, joint_angles[qIndex - 7]
-                )
+    def set_joint_angles(self, robot: HumanoidRobot, joint_angles: Dict[str, float]):
+        for joint_name, angle in joint_angles.items():
+            joint_idx = robot.joints_info[joint_name]["idx"]
+            p.setJointMotorControl2(robot.id, joint_idx, p.POSITION_CONTROL, angle)
 
     def simulate(
         self,

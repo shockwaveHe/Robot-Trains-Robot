@@ -352,10 +352,10 @@ def main():
         right_foot_link_pos + robot.config.offsets["right_offset_foot_to_sole"]
     )
 
-    joint_angles, joint_names = sim.get_named_zero_joint_angles(robot)
+    joint_angles = sim.initialize_joint_angles(robot)
     if robot.name == "robotis_op3":
-        joint_angles[joint_names.index("l_sho_roll")] = np.pi / 4
-        joint_angles[joint_names.index("r_sho_roll")] = -np.pi / 4
+        joint_angles["l_sho_roll"] = np.pi / 4
+        joint_angles["r_sho_roll"] = -np.pi / 4
 
     walking = Walking(
         robot, config, left_foot_pos_init, right_foot_pos_init, joint_angles
@@ -371,9 +371,11 @@ def main():
             sim_step_idx = 0
             joint_angles, is_traj_completed = walking.solve_joint_angles()
             if robot.name == "sustaina_op":
-                print(f"joint_angles: {round_floats(joint_angles[7:], 6)}")
+                print(
+                    f"joint_angles: {round_floats(list(joint_angles.values())[7:], 6)}"
+                )
             elif robot.name == "robotis_op3":
-                print(f"joint_angles: {round_floats(joint_angles, 6)}")
+                print(f"joint_angles: {round_floats(list(joint_angles.values()), 6)}")
             else:
                 raise ValueError("Unknown robot name")
 

@@ -27,13 +27,13 @@ def main():
     robot = HumanoidRobot(args.robot_name)
     sim = PyBulletSim(robot)
 
-    joint_angles, joint_names = sim.get_named_zero_joint_angles(robot)
+    joint_angles = sim.initialize_joint_angles(robot)
 
     def step_func():
         if robot.name == "sustaina_op":
-            print(f"joint_angles: {round_floats(joint_angles[7:], 6)}")
+            print(f"joint_angles: {round_floats(list(joint_angles.values())[7:], 6)}")
         elif robot.name == "robotis_op3":
-            print(f"joint_angles: {round_floats(joint_angles, 6)}")
+            print(f"joint_angles: {round_floats(list(joint_angles.values()), 6)}")
         else:
             raise ValueError("Unknown robot name")
 

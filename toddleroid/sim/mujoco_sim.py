@@ -21,7 +21,7 @@ class MujoCoSim(AbstractSim):
             self.model = mujoco.MjModel.from_xml_path(xml_path)
             self.data = mujoco.MjData(self.model)
             robot.id = 0  # placeholder
-            robot.joint_name2qidx = self.get_joint_name2qidx(robot)
+            robot.joints_info = self.get_joints_info(robot)
             self.put_robot_on_ground(robot)
 
             self.foot_size_x, self.foot_size_y, self.foot_size_z = (
@@ -61,26 +61,24 @@ class MujoCoSim(AbstractSim):
                 f"Robot is too high above the ground. Change the z value of {body_link_name} as {desired_z}"
             )
 
-    def get_joint_name2qidx(self, robot: HumanoidRobot):
-        joint_name2qidx = {}
+    def get_joints_info(self, robot: HumanoidRobot):
+        joints_info = {}
         # 0 is an empty joint
         for i in range(1, self.model.njnt):
-            joint_name2qidx[self.model.joint(i).name] = i - 1
-        return joint_name2qidx
+            joints_info[self.model.joint(i).name] = i - 1
+        return joints_info
 
     def get_link_pos(self, robot: HumanoidRobot, link_name: str):
         mujoco.mj_kinematics(self.model, self.data)
         link_pos = self.data.body(link_name).xpos
         return np.array(link_pos)
 
-    def get_named_zero_joint_angles(self, robot: HumanoidRobot):
-        joint_angles = []
-        joint_names = []
+    def initialize_joint_angles(self, robot: HumanoidRobot):
+        joint_angles = {}
         # 0 is an empty joint
         for i in range(1, self.model.njnt):
-            joint_angles.append(0)
-            joint_names.append(self.model.joint(i).name)
-        return joint_angles, joint_names
+            joint_angles[self.model.joint(i).name] = self.data.qpos[i - 1]
+        return joint_angles
 
     def get_com_state(self, robot: HumanoidRobot):
         # TODO: Replace this with an IMU sensor
@@ -91,11 +89,11 @@ class MujoCoSim(AbstractSim):
         com_acc = self.data.body(body_link_name).cacc[3:5]
         return np.array([com_pos, com_vel, com_acc])
 
-    def set_joint_angles(self, robot: HumanoidRobot, joint_angles: List[float]):
+    def set_joint_angles(self, robot: HumanoidRobot, joint_angles: Dict[str, float]):
         for i in range(1, self.model.njnt):
             self.data.actuator(i - 1).ctrl = (
                 -robot.config.gains["kp"]
-                * (self.data.joint(i).qpos - joint_angles[i - 1])
+                * (self.data.joint(i).qpos - joint_angles[self.model.joint(i).name])
                 - robot.config.gains["kv"] * self.data.joint(i).qvel
             )
 

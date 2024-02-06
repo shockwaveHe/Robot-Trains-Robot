@@ -1,3 +1,4 @@
+import copy
 import math
 from typing import Dict, List, Tuple
 
@@ -24,7 +25,7 @@ class HumanoidRobot:
             raise ValueError(f"Robot '{robot_name}' is not supported.")
         self.config = robot_configs[robot_name]
         self.id = None
-        self.joint_name2qidx = None
+        self.joints_info = None
 
     def solve_ik(
         self,
@@ -32,7 +33,7 @@ class HumanoidRobot:
         target_left_foot_ori: List[float],
         target_right_foot_pos: List[float],
         target_right_foot_ori: List[float],
-        current_angles: List[float],
+        joint_angles_curr: List[float],
     ) -> List[float]:
         """
         Solves inverse kinematics for the given foot positions and orientations.
@@ -50,10 +51,10 @@ class HumanoidRobot:
         Raises:
             ValueError: If the robot has not been loaded yet.
         """
-        if self.id is None or self.joint_name2qidx is None:
+        if self.id is None or self.joints_info is None:
             raise ValueError("Robot has not been loaded yet.")
 
-        joint_angles = current_angles.copy()
+        joint_angles = copy.deepcopy(joint_angles_curr)
 
         self._calculate_leg_angles(
             target_left_foot_pos, target_left_foot_ori, "left", joint_angles
@@ -68,7 +69,7 @@ class HumanoidRobot:
         target_foot_pos: Tuple[float, float, float],
         target_foot_ori: Tuple[float, float, float],
         side: str,
-        joint_angles: List[float],
+        joint_angles: Dict[str, float],
     ) -> List[float]:
         """
         Calculates the leg angles based on the target foot position and orientation.
@@ -180,10 +181,8 @@ class HumanoidRobot:
             raise ValueError(f"Robot '{self.name}' is not supported.")
 
         # Update joint angles based on calculations
-        for joint_name, angle in zip(joint_names, angles):
-            joint_index = self.joint_name2qidx[joint_name]
-            if joint_index >= 0:  # Check if joint index is valid
-                joint_angles[joint_index] = angle
+        for name, angle in zip(joint_names, angles):
+            joint_angles[name] = angle
 
         return joint_angles
 
