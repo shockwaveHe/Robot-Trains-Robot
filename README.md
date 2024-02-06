@@ -24,6 +24,10 @@ export ONSHAPE_API=https://cad.onshape.com
 export ONSHAPE_ACCESS_KEY=Your_Access_Key
 export ONSHAPE_SECRET_KEY=Your_Secret_Key
 ```
+```
+sudo apt-get install meshlab
+```
+[Config doc](https://onshape-to-robot.readthedocs.io/en/latest/config.html)
 
 ### Best practices
 1. Use dataclass and argparse if possible

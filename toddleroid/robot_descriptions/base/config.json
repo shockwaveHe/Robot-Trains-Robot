@@ -1,0 +1,10 @@
+{
+    "documentId": "de27574d3819ae67d4ddc642",
+    "outputFormat": "urdf",
+    "assemblyName": "URDF",
+    "robotName": "base",
+    "mergeSTLs": "all",
+    "mergeSTLsCollisions": true,
+    "simplifySTLs": "all",
+    "maxSTLSize": 1
+}
