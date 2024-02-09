@@ -1,0 +1,676 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+  <class>Dialog</class>
+  <widget class="QDialog" name="Dialog">
+    <property name="geometry">
+      <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>663</width>
+        <height>549</height>
+      </rect>
+    </property>
+    <property name="windowTitle">
+      <string>Dialog</string>
+    </property>
+    <widget class="QCheckBox" name="checkBox">
+      <property name="geometry">
+        <rect>
+          <x>300</x>
+          <y>40</y>
+          <width>96</width>
+          <height>19</height>
+        </rect>
+      </property>
+      <property name="text">
+        <string>Force Off</string>
+      </property>
+    </widget>
+    <widget class="QGroupBox" name="groupBox">
+      <property name="geometry">
+        <rect>
+          <x>10</x>
+          <y>10</y>
+          <width>401</width>
+          <height>211</height>
+        </rect>
+      </property>
+      <property name="title">
+        <string>Servo Test</string>
+      </property>
+      <widget class="QTextEdit" name="txtPresentPosition">
+        <property name="geometry">
+          <rect>
+            <x>10</x>
+            <y>170</y>
+            <width>90</width>
+            <height>28</height>
+          </rect>
+        </property>
+        <property name="readOnly">
+          <bool>true</bool>
+        </property>
+      </widget>
+      <widget class="QPushButton" name="SStrokieLimit">
+        <property name="geometry">
+          <rect>
+            <x>110</x>
+            <y>50</y>
+            <width>151</width>
+            <height>28</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>Short Stroke Limit</string>
+        </property>
+      </widget>
+      <widget class="QPushButton" name="PresentPosition">
+        <property name="geometry">
+          <rect>
+            <x>110</x>
+            <y>170</y>
+            <width>151</width>
+            <height>28</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>Present Position</string>
+        </property>
+      </widget>
+      <widget class="QTextEdit" name="txtGoalPosition">
+        <property name="geometry">
+          <rect>
+            <x>10</x>
+            <y>20</y>
+            <width>90</width>
+            <height>28</height>
+          </rect>
+        </property>
+      </widget>
+      <widget class="QPushButton" name="LStrokeLimit">
+        <property name="geometry">
+          <rect>
+            <x>110</x>
+            <y>80</y>
+            <width>151</width>
+            <height>28</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>Long Stroke Limit</string>
+        </property>
+      </widget>
+      <widget class="QTextEdit" name="txtSStrokeLimit">
+        <property name="geometry">
+          <rect>
+            <x>10</x>
+            <y>50</y>
+            <width>90</width>
+            <height>28</height>
+          </rect>
+        </property>
+      </widget>
+      <widget class="QPushButton" name="GoalPosition">
+        <property name="geometry">
+          <rect>
+            <x>110</x>
+            <y>20</y>
+            <width>151</width>
+            <height>28</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>Goal Position</string>
+        </property>
+      </widget>
+      <widget class="QTextEdit" name="txtLStrokeLimit">
+        <property name="geometry">
+          <rect>
+            <x>10</x>
+            <y>80</y>
+            <width>90</width>
+            <height>28</height>
+          </rect>
+        </property>
+      </widget>
+      <widget class="QPushButton" name="GoalSpeed">
+        <property name="geometry">
+          <rect>
+            <x>110</x>
+            <y>110</y>
+            <width>151</width>
+            <height>28</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>Goal Speed</string>
+        </property>
+      </widget>
+      <widget class="QTextEdit" name="txtGoalSpeed">
+        <property name="geometry">
+          <rect>
+            <x>10</x>
+            <y>110</y>
+            <width>90</width>
+            <height>28</height>
+          </rect>
+        </property>
+      </widget>
+      <widget class="QTextEdit" name="txtGoalCurrent">
+        <property name="geometry">
+          <rect>
+            <x>10</x>
+            <y>140</y>
+            <width>90</width>
+            <height>28</height>
+          </rect>
+        </property>
+      </widget>
+      <widget class="QPushButton" name="GoalCurrent">
+        <property name="geometry">
+          <rect>
+            <x>110</x>
+            <y>140</y>
+            <width>151</width>
+            <height>28</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>Goal Current</string>
+        </property>
+      </widget>
+    </widget>
+    <widget class="QGroupBox" name="groupBox_2">
+      <property name="geometry">
+        <rect>
+          <x>420</x>
+          <y>10</y>
+          <width>221</width>
+          <height>161</height>
+        </rect>
+      </property>
+      <property name="title">
+        <string>Port Setting</string>
+      </property>
+      <widget class="QLabel" name="label">
+        <property name="geometry">
+          <rect>
+            <x>10</x>
+            <y>25</y>
+            <width>64</width>
+            <height>15</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>Port</string>
+        </property>
+      </widget>
+      <widget class="QLabel" name="label_2">
+        <property name="geometry">
+          <rect>
+            <x>10</x>
+            <y>60</y>
+            <width>64</width>
+            <height>15</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>Baudrate</string>
+        </property>
+      </widget>
+      <widget class="QLabel" name="label_3">
+        <property name="geometry">
+          <rect>
+            <x>10</x>
+            <y>95</y>
+            <width>64</width>
+            <height>15</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>Servo ID</string>
+        </property>
+      </widget>
+      <widget class="QComboBox" name="Port">
+        <property name="geometry">
+          <rect>
+            <x>90</x>
+            <y>20</y>
+            <width>121</width>
+            <height>28</height>
+          </rect>
+        </property>
+      </widget>
+      <widget class="QComboBox" name="Baudrate">
+        <property name="geometry">
+          <rect>
+            <x>90</x>
+            <y>55</y>
+            <width>121</width>
+            <height>28</height>
+          </rect>
+        </property>
+      </widget>
+      <widget class="QTextEdit" name="ServoID">
+        <property name="geometry">
+          <rect>
+            <x>90</x>
+            <y>90</y>
+            <width>121</width>
+            <height>28</height>
+          </rect>
+        </property>
+      </widget>
+      <widget class="QPushButton" name="Connect">
+        <property name="geometry">
+          <rect>
+            <x>90</x>
+            <y>120</y>
+            <width>121</width>
+            <height>28</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>Connect</string>
+        </property>
+      </widget>
+    </widget>
+    <widget class="QGroupBox" name="group2">
+      <property name="geometry">
+        <rect>
+          <x>10</x>
+          <y>230</y>
+          <width>631</width>
+          <height>121</height>
+        </rect>
+      </property>
+      <property name="title">
+        <string>Port Setting</string>
+      </property>
+      <widget class="QTextEdit" name="writeAddr">
+        <property name="geometry">
+          <rect>
+            <x>10</x>
+            <y>45</y>
+            <width>90</width>
+            <height>28</height>
+          </rect>
+        </property>
+      </widget>
+      <widget class="QTextEdit" name="writeAddrBytes">
+        <property name="geometry">
+          <rect>
+            <x>110</x>
+            <y>45</y>
+            <width>90</width>
+            <height>28</height>
+          </rect>
+        </property>
+      </widget>
+      <widget class="QTextEdit" name="writeData">
+        <property name="geometry">
+          <rect>
+            <x>210</x>
+            <y>45</y>
+            <width>90</width>
+            <height>28</height>
+          </rect>
+        </property>
+      </widget>
+      <widget class="QTextEdit" name="readAddr">
+        <property name="geometry">
+          <rect>
+            <x>10</x>
+            <y>80</y>
+            <width>90</width>
+            <height>28</height>
+          </rect>
+        </property>
+      </widget>
+      <widget class="QTextEdit" name="readAddrBytes">
+        <property name="geometry">
+          <rect>
+            <x>110</x>
+            <y>80</y>
+            <width>90</width>
+            <height>28</height>
+          </rect>
+        </property>
+      </widget>
+      <widget class="QTextEdit" name="ReadData">
+        <property name="geometry">
+          <rect>
+            <x>210</x>
+            <y>80</y>
+            <width>90</width>
+            <height>28</height>
+          </rect>
+        </property>
+        <property name="readOnly">
+          <bool>false</bool>
+        </property>
+      </widget>
+      <widget class="QLabel" name="label_4">
+        <property name="geometry">
+          <rect>
+            <x>10</x>
+            <y>20</y>
+            <width>91</width>
+            <height>16</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>Addr</string>
+        </property>
+        <property name="alignment">
+          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+        </property>
+      </widget>
+      <widget class="QLabel" name="label_5">
+        <property name="geometry">
+          <rect>
+            <x>110</x>
+            <y>20</y>
+            <width>91</width>
+            <height>16</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>Addr Bytes</string>
+        </property>
+        <property name="alignment">
+          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+        </property>
+      </widget>
+      <widget class="QLabel" name="label_6">
+        <property name="geometry">
+          <rect>
+            <x>210</x>
+            <y>20</y>
+            <width>91</width>
+            <height>16</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>Data</string>
+        </property>
+        <property name="alignment">
+          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+        </property>
+      </widget>
+      <widget class="QPushButton" name="Write">
+        <property name="geometry">
+          <rect>
+            <x>310</x>
+            <y>45</y>
+            <width>93</width>
+            <height>28</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>Write</string>
+        </property>
+      </widget>
+      <widget class="QPushButton" name="Read">
+        <property name="geometry">
+          <rect>
+            <x>310</x>
+            <y>82</y>
+            <width>93</width>
+            <height>28</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>Read</string>
+        </property>
+      </widget>
+    </widget>
+    <widget class="QGroupBox" name="groupBox_4">
+      <property name="geometry">
+        <rect>
+          <x>10</x>
+          <y>360</y>
+          <width>261</width>
+          <height>181</height>
+        </rect>
+      </property>
+      <property name="title">
+        <string>Error Display</string>
+      </property>
+      <widget class="QCheckBox" name="InsError">
+        <property name="geometry">
+          <rect>
+            <x>20</x>
+            <y>25</y>
+            <width>96</width>
+            <height>19</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>Instruction Error</string>
+        </property>
+      </widget>
+      <widget class="QCheckBox" name="OverloadError">
+        <property name="geometry">
+          <rect>
+            <x>20</x>
+            <y>50</y>
+            <width>150</width>
+            <height>19</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>Overload Error</string>
+        </property>
+      </widget>
+      <widget class="QCheckBox" name="ChecksumError">
+        <property name="geometry">
+          <rect>
+            <x>20</x>
+            <y>75</y>
+            <width>150</width>
+            <height>19</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>CheckSum Error</string>
+        </property>
+      </widget>
+      <widget class="QCheckBox" name="RangeError">
+        <property name="geometry">
+          <rect>
+            <x>20</x>
+            <y>100</y>
+            <width>150</width>
+            <height>19</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>Range Error</string>
+        </property>
+      </widget>
+      <widget class="QCheckBox" name="StrokeError">
+        <property name="geometry">
+          <rect>
+            <x>20</x>
+            <y>125</y>
+            <width>150</width>
+            <height>19</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>Stroke Error</string>
+        </property>
+      </widget>
+      <widget class="QCheckBox" name="VoltageError">
+        <property name="geometry">
+          <rect>
+            <x>20</x>
+            <y>150</y>
+            <width>150</width>
+            <height>19</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>Input Voltage Error</string>
+        </property>
+      </widget>
+      <widget class="QPushButton" name="ErrorRead">
+        <property name="geometry">
+          <rect>
+            <x>180</x>
+            <y>20</y>
+            <width>71</width>
+            <height>28</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>Read</string>
+        </property>
+      </widget>
+    </widget>
+    <widget class="QGroupBox" name="groupBox_5">
+      <property name="geometry">
+        <rect>
+          <x>280</x>
+          <y>360</y>
+          <width>261</width>
+          <height>181</height>
+        </rect>
+      </property>
+      <property name="title">
+        <string>Error ShutDown</string>
+      </property>
+      <widget class="QCheckBox" name="InsSD">
+        <property name="geometry">
+          <rect>
+            <x>20</x>
+            <y>25</y>
+            <width>96</width>
+            <height>19</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>Instruction Error</string>
+        </property>
+      </widget>
+      <widget class="QCheckBox" name="OverloadSD">
+        <property name="geometry">
+          <rect>
+            <x>20</x>
+            <y>50</y>
+            <width>150</width>
+            <height>19</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>Overload Error</string>
+        </property>
+      </widget>
+      <widget class="QCheckBox" name="CheckSumSD">
+        <property name="geometry">
+          <rect>
+            <x>20</x>
+            <y>75</y>
+            <width>150</width>
+            <height>19</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>CheckSum Error</string>
+        </property>
+      </widget>
+      <widget class="QCheckBox" name="RangeSD">
+        <property name="geometry">
+          <rect>
+            <x>20</x>
+            <y>100</y>
+            <width>150</width>
+            <height>19</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>Range Error</string>
+        </property>
+      </widget>
+      <widget class="QCheckBox" name="StrokeSD">
+        <property name="geometry">
+          <rect>
+            <x>20</x>
+            <y>125</y>
+            <width>150</width>
+            <height>19</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>Stroke Error</string>
+        </property>
+      </widget>
+      <widget class="QCheckBox" name="VolatageSD">
+        <property name="geometry">
+          <rect>
+            <x>20</x>
+            <y>150</y>
+            <width>150</width>
+            <height>19</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>Input Voltage Error</string>
+        </property>
+      </widget>
+      <widget class="QPushButton" name="SDRead">
+        <property name="geometry">
+          <rect>
+            <x>180</x>
+            <y>20</y>
+            <width>71</width>
+            <height>28</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>Read</string>
+        </property>
+      </widget>
+      <widget class="QPushButton" name="SDWrite">
+        <property name="geometry">
+          <rect>
+            <x>180</x>
+            <y>50</y>
+            <width>71</width>
+            <height>28</height>
+          </rect>
+        </property>
+        <property name="text">
+          <string>Write</string>
+        </property>
+      </widget>
+    </widget>
+    <widget class="QPushButton" name="close">
+      <property name="geometry">
+        <rect>
+          <x>550</x>
+          <y>370</y>
+          <width>93</width>
+          <height>171</height>
+        </rect>
+      </property>
+      <property name="text">
+        <string>Close</string>
+      </property>
+    </widget>
+    <zorder>groupBox</zorder>
+    <zorder>checkBox</zorder>
+    <zorder>groupBox_2</zorder>
+    <zorder>group2</zorder>
+    <zorder>groupBox_4</zorder>
+    <zorder>groupBox_5</zorder>
+    <zorder>close</zorder>
+  </widget>
+  <resources/>
+  <connections/>
+  <slots>
+    <slot>Connect()</slot>
+    <slot>SerialPort()</slot>
+  </slots>
+</ui>
