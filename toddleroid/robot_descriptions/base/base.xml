@@ -245,8 +245,8 @@
   </contact>
   <actuator>
     <position name="knee_act" joint="knee" kp="1e4" ctrlrange="-1.0472 2.0944" />
-    <position name="ank_act1_act" joint="ank_act1" kp="1e6" ctrlrange="-0.017 0.017" />
-    <position name="ank_act2_act" joint="ank_act2" kp="1e6" ctrlrange="-0.017 0.017" />
+    <position name="ank_pitch_act" joint="ank_pitch" kp="1e4" ctrlrange="-1.5708 1.5708" />
+    <position name="ank_roll_act" joint="ank_roll" kp="1e4" ctrlrange="-1.5708 1.5708" />
   </actuator>
   <equality>
     <weld body1="ank_act_rod_head" body2="ank_act_rod" solimp="0.9999 0.9999 0.001 0.5 2" />
