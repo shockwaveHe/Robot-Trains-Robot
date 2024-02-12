@@ -36,6 +36,23 @@ def update_joint_params(root, act_params):
                     )
 
 
+def update_geom_classes(root, geom_keys):
+    for geom in root.findall(".//geom[@mesh]"):
+        mesh_name = geom.get("mesh")
+
+        # Determine the class based on the mesh name
+        if "visual" in mesh_name:
+            geom.set("class", "visual")
+        elif "collision" in mesh_name:
+            geom.set("class", "collision")
+        else:
+            raise ValueError(f"Unknown class for mesh: {mesh_name}")
+
+        for attr in geom_keys:
+            if attr in geom.attrib:
+                del geom.attrib[attr]
+
+
 def add_default_settings(root):
     # Create or find the <default> element
     default = root.find("default")
@@ -44,19 +61,27 @@ def add_default_settings(root):
 
     default = ET.SubElement(root, "default")
 
-    # Create or update the <joint> settings within <default>
-    joint_default = default.find("joint")
-    if joint_default is None:
-        joint_default = ET.SubElement(default, "joint")
+    # Set <joint> settings
+    ET.SubElement(default, "joint", {"frictionloss": "0.03"})
 
-    joint_default.attrib = {"frictionloss": "0.03"}
+    # Set <position> settings
+    ET.SubElement(default, "position", {"forcelimited": "false"})
 
-    # Create or update the <position> settings within <default>
-    position_default = default.find("position")
-    if position_default is None:
-        position_default = ET.SubElement(default, "position")
+    # Set <geom> settings
+    ET.SubElement(default, "geom", {"type": "mesh", "solref": ".004 1"})
 
-    position_default.attrib = {"forcelimited": "false"}
+    # Add <default class="visual"> settings
+    visual_default = ET.SubElement(default, "default", {"class": "visual"})
+    ET.SubElement(
+        visual_default,
+        "geom",
+        {"contype": "0", "conaffinity": "0", "group": "2", "density": "0"},
+    )
+
+    # Add <default class="collision"> settings
+    collision_default = ET.SubElement(default, "default", {"class": "collision"})
+    # Group 3's visualization is diabled by default
+    ET.SubElement(collision_default, "geom", {"group": "3"})
 
 
 def add_contact_exclusion_to_mjcf(root):
@@ -237,6 +262,7 @@ def process_mjcf_files(robot_name):
         root, "body_link_collision.stl", "body_link_collision_simplified.stl"
     )
     update_joint_params(root, robot.config.act_params)
+    update_geom_classes(root, ["type", "contype", "conaffinity", "group", "density"])
     add_contact_exclusion_to_mjcf(root)
     add_actuators_to_mjcf(root, robot.config.act_params)
     add_equality_constraints_for_leaves(root, robot.config.constraint_pairs)

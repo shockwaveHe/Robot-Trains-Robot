@@ -43,4 +43,5 @@ def test_op3_walking():
 
 
 if __name__ == "__main__":
-    test_op_walking()
+    # test_op_walking()
+    pass

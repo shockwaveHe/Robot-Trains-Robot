@@ -86,7 +86,7 @@ class HumanoidRobot:
 
         # Define joint names and their corresponding angles
         n_dof = len(self.config.act_params)
-        joint_names = list(self.config.joint_params.keys())
+        joint_names = list(self.config.act_params.keys())
         if side == "left":
             half_joint_names = joint_names[: n_dof // 2]
         else:
