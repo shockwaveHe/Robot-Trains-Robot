@@ -1,8 +1,9 @@
 {
-    "documentId": "de27574d3819ae67d4ddc642",
+    "documentId": "d2a8be5ce536cd2e18740efa",
     "outputFormat": "urdf",
     "assemblyName": "URDF",
     "robotName": "base",
+    "addDummyBaseLink": true,
     "mergeSTLs": "all",
     "mergeSTLsCollisions": true,
     "simplifySTLs": "all",

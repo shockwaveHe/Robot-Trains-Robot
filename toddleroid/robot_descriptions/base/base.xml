@@ -1,12 +1,22 @@
 <mujoco model="base">
   <compiler angle="radian" meshdir="./meshes/" />
   <asset>
+    <mesh name="body_link_visual" file="body_link_visual.stl" />
+    <mesh name="body_link_collision" file="body_link_collision.stl" />
+    <mesh name="neck_link_visual" file="neck_link_visual.stl" />
+    <mesh name="neck_link_collision" file="neck_link_collision.stl" />
+    <mesh name="head_link_visual" file="head_link_visual.stl" />
+    <mesh name="head_link_collision" file="head_link_collision.stl" />
+    <mesh name="hip_yaw_link_visual" file="hip_yaw_link_visual.stl" />
+    <mesh name="hip_yaw_link_collision" file="hip_yaw_link_collision.stl" />
+    <mesh name="hip_roll_link_visual" file="hip_roll_link_visual.stl" />
+    <mesh name="hip_roll_link_collision" file="hip_roll_link_collision.stl" />
     <mesh name="hip_pitch_link_visual" file="hip_pitch_link_visual.stl" />
     <mesh name="hip_pitch_link_collision" file="hip_pitch_link_collision.stl" />
     <mesh name="knee_link_visual" file="knee_link_visual.stl" />
     <mesh name="knee_link_collision" file="knee_link_collision.stl" />
-    <mesh name="ank_base_link_visual" file="ank_base_link_visual.stl" />
-    <mesh name="ank_base_link_collision" file="ank_base_link_collision.stl" />
+    <mesh name="left_ank_base_link_visual" file="left_ank_base_link_visual.stl" />
+    <mesh name="left_ank_base_link_collision" file="left_ank_base_link_collision.stl" />
     <mesh name="ank_pitch_link_visual" file="ank_pitch_link_visual.stl" />
     <mesh name="ank_pitch_link_collision" file="ank_pitch_link_collision.stl" />
     <mesh name="ank_roll_link_visual" file="ank_roll_link_visual.stl" />
@@ -37,106 +47,448 @@
     <mesh name="ank_act_link_2_collision" file="ank_act_link_2_collision.stl" />
     <mesh name="ank_act_rod_2_visual" file="ank_act_rod_2_visual.stl" />
     <mesh name="ank_act_rod_2_collision" file="ank_act_rod_2_collision.stl" />
+    <mesh name="hip_yaw_link_2_visual" file="hip_yaw_link_2_visual.stl" />
+    <mesh name="hip_yaw_link_2_collision" file="hip_yaw_link_2_collision.stl" />
+    <mesh name="hip_roll_link_2_visual" file="hip_roll_link_2_visual.stl" />
+    <mesh name="hip_roll_link_2_collision" file="hip_roll_link_2_collision.stl" />
+    <mesh name="hip_pitch_link_2_visual" file="hip_pitch_link_2_visual.stl" />
+    <mesh name="hip_pitch_link_2_collision" file="hip_pitch_link_2_collision.stl" />
+    <mesh name="knee_link_2_visual" file="knee_link_2_visual.stl" />
+    <mesh name="knee_link_2_collision" file="knee_link_2_collision.stl" />
+    <mesh name="right_ank_base_link_visual" file="right_ank_base_link_visual.stl" />
+    <mesh name="right_ank_base_link_collision" file="right_ank_base_link_collision.stl" />
+    <mesh name="ank_pitch_link_2_visual" file="ank_pitch_link_2_visual.stl" />
+    <mesh name="ank_pitch_link_2_collision" file="ank_pitch_link_2_collision.stl" />
+    <mesh name="ank_roll_link_2_visual" file="ank_roll_link_2_visual.stl" />
+    <mesh name="ank_roll_link_2_collision" file="ank_roll_link_2_collision.stl" />
+    <mesh name="ank_rigid_foot_link_2_visual" file="ank_rigid_foot_link_2_visual.stl" />
+    <mesh name="ank_rigid_foot_link_2_collision" file="ank_rigid_foot_link_2_collision.stl" />
+    <mesh name="ank_rr_link_3_visual" file="ank_rr_link_3_visual.stl" />
+    <mesh name="ank_rr_link_3_collision" file="ank_rr_link_3_collision.stl" />
+    <mesh name="ank_act_rod_head_3_visual" file="ank_act_rod_head_3_visual.stl" />
+    <mesh name="ank_act_rod_head_3_collision" file="ank_act_rod_head_3_collision.stl" />
+    <mesh name="ank_rr_link_4_visual" file="ank_rr_link_4_visual.stl" />
+    <mesh name="ank_rr_link_4_collision" file="ank_rr_link_4_collision.stl" />
+    <mesh name="ank_act_rod_head_4_visual" file="ank_act_rod_head_4_visual.stl" />
+    <mesh name="ank_act_rod_head_4_collision" file="ank_act_rod_head_4_collision.stl" />
+    <mesh name="ank_b_link_3_visual" file="ank_b_link_3_visual.stl" />
+    <mesh name="ank_b_link_3_collision" file="ank_b_link_3_collision.stl" />
+    <mesh name="ank_act_link_head_3_visual" file="ank_act_link_head_3_visual.stl" />
+    <mesh name="ank_act_link_head_3_collision" file="ank_act_link_head_3_collision.stl" />
+    <mesh name="ank_act_link_3_visual" file="ank_act_link_3_visual.stl" />
+    <mesh name="ank_act_link_3_collision" file="ank_act_link_3_collision.stl" />
+    <mesh name="ank_act_rod_3_visual" file="ank_act_rod_3_visual.stl" />
+    <mesh name="ank_act_rod_3_collision" file="ank_act_rod_3_collision.stl" />
+    <mesh name="ank_b_link_4_visual" file="ank_b_link_4_visual.stl" />
+    <mesh name="ank_b_link_4_collision" file="ank_b_link_4_collision.stl" />
+    <mesh name="ank_act_link_head_4_visual" file="ank_act_link_head_4_visual.stl" />
+    <mesh name="ank_act_link_head_4_collision" file="ank_act_link_head_4_collision.stl" />
+    <mesh name="ank_act_link_4_visual" file="ank_act_link_4_visual.stl" />
+    <mesh name="ank_act_link_4_collision" file="ank_act_link_4_collision.stl" />
+    <mesh name="ank_act_rod_4_visual" file="ank_act_rod_4_visual.stl" />
+    <mesh name="ank_act_rod_4_collision" file="ank_act_rod_4_collision.stl" />
+    <mesh name="sho_pitch_link_visual" file="sho_pitch_link_visual.stl" />
+    <mesh name="sho_pitch_link_collision" file="sho_pitch_link_collision.stl" />
+    <mesh name="sho_roll_link_visual" file="sho_roll_link_visual.stl" />
+    <mesh name="sho_roll_link_collision" file="sho_roll_link_collision.stl" />
+    <mesh name="elb_link_visual" file="elb_link_visual.stl" />
+    <mesh name="elb_link_collision" file="elb_link_collision.stl" />
+    <mesh name="sho_pitch_link_2_visual" file="sho_pitch_link_2_visual.stl" />
+    <mesh name="sho_pitch_link_2_collision" file="sho_pitch_link_2_collision.stl" />
+    <mesh name="sho_roll_link_2_visual" file="sho_roll_link_2_visual.stl" />
+    <mesh name="sho_roll_link_2_collision" file="sho_roll_link_2_collision.stl" />
+    <mesh name="elb_link_2_visual" file="elb_link_2_visual.stl" />
+    <mesh name="elb_link_2_collision" file="elb_link_2_collision.stl" />
   </asset>
   <worldbody>
-    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.615686 0.811765 0.929412 1" mesh="hip_pitch_link_visual" />
-    <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="hip_pitch_link_collision" />
-    <body name="knee_link" pos="0 -0.005 0.2" quat="0.353553 -0.353553 0.612372 0.612372">
-      <inertial pos="0.0294841 -0.0148423 -0.000903038" quat="0.0375329 0.641904 -0.273531 0.715354" mass="0.018649" diaginertia="2.21639e-05 2.20065e-05 2.33909e-06" />
-      <joint name="knee" pos="0 0 0" axis="0 0 1" range="-1.0472 2.0944" />
-      <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.629899 0.73715 0.8015 1" mesh="knee_link_visual" />
-      <geom type="mesh" rgba="0.629899 0.73715 0.8015 1" mesh="knee_link_collision" />
-      <geom pos="0 0 -0.0065" quat="0.502266 0 0 -0.864713" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.545554 0.721139 0.87072 1" mesh="ank_base_link_visual" />
-      <geom pos="0 0 -0.0065" quat="0.502266 0 0 -0.864713" type="mesh" rgba="0.545554 0.721139 0.87072 1" mesh="ank_base_link_collision" />
-      <body name="ank_pitch_link" pos="0.0868632 -0.0495459 0.0144" quat="0.9666 0 0 -0.256289">
-        <inertial pos="3.92205e-08 0.00058468 -0.0145999" quat="1 0 -2.26034e-06 0" mass="0.00413667" diaginertia="4.32524e-07 3.95224e-07 8.58837e-08" />
-        <joint name="ank_pitch" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
-        <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.631572 0.728365 0.78644 1" mesh="ank_pitch_link_visual" />
-        <geom type="mesh" rgba="0.631572 0.728365 0.78644 1" mesh="ank_pitch_link_collision" />
-        <body name="ank_roll_link" pos="0 0.0015 -0.0146" quat="0.5 0.5 -0.5 0.5">
-          <inertial pos="-6.27851e-10 -0.0270097 0.00684725" quat="0.997572 -0.0696444 0 0" mass="0.0136395" diaginertia="1.03162e-05 9.02517e-06 2.69441e-06" />
-          <joint name="ank_roll" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
-          <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.615686 0.811765 0.929412 1" mesh="ank_roll_link_visual" />
-          <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="ank_roll_link_collision" />
-          <geom pos="0 -0.0225 0.0256" quat="0.5 -0.5 -0.5 -0.5" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.615686 0.811765 0.929412 1" mesh="ank_rigid_foot_link_visual" />
-          <geom pos="0 -0.0225 0.0256" quat="0.5 -0.5 -0.5 -0.5" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="ank_rigid_foot_link_collision" />
-          <body name="ank_rr_link" pos="0.01 -0.0125 0.0406" quat="0.0327205 0 0 0.999465">
-            <inertial pos="2.99627e-05 -0.00692413 -0.0019" quat="0.492532 0.507358 -0.492532 0.507358" mass="0.000475851" diaginertia="1.47441e-08 1.1042e-08 9.56224e-09" />
-            <joint name="ank_R11" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
-            <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.615686 0.811765 0.929412 1" mesh="ank_rr_link_visual" />
-            <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="ank_rr_link_collision" />
-            <body name="ank_act_rod_head" pos="0.002 -0.01 -0.0019" quat="0.00613825 -0.70708 0.00613825 -0.70708">
-              <inertial pos="-5.78284e-11 0.0033987 -0.00200558" quat="0.500173 0.499827 -0.499827 0.500173" mass="0.0006608" diaginertia="1.15383e-08 1.06758e-08 2.37737e-09" />
-              <joint name="ank_R21" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
-              <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.972549 0.529412 0.00392157 1" mesh="ank_act_rod_head_visual" />
-              <geom type="mesh" rgba="0.972549 0.529412 0.00392157 1" mesh="ank_act_rod_head_collision" />
+    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.535806 0.69998 0.84668 1" mesh="body_link_visual" />
+    <geom type="mesh" rgba="0.535806 0.69998 0.84668 1" mesh="body_link_collision" />
+    <geom pos="0 -0.04 0.475" quat="0 -1 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.615686 0.811765 0.929412 1" mesh="neck_link_visual" />
+    <geom pos="0 -0.04 0.475" quat="0 -1 0 0" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="neck_link_collision" />
+    <geom pos="0 -0.065 0.525" quat="0 -1 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.823529 0.823529 1 1" mesh="head_link_visual" />
+    <geom pos="0 -0.065 0.525" quat="0 -1 0 0" type="mesh" rgba="0.823529 0.823529 1 1" mesh="head_link_collision" />
+    <body name="hip_yaw_link" pos="0.035 -0.04 0.3236" quat="0.707107 0 0 0.707107">
+      <inertial pos="0 0 -0.00845313" quat="0 0.707107 0 0.707107" mass="0.00527406" diaginertia="1.88733e-06 1.79665e-06 7.61436e-07" />
+      <joint name="left_hip_yaw" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+      <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.615686 0.811765 0.929412 1" mesh="hip_yaw_link_visual" />
+      <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="hip_yaw_link_collision" />
+      <body name="hip_roll_link" pos="0.019 0 -0.0275" quat="0 0.707107 0 0.707107">
+        <inertial pos="-0.0120002 -0.000495888 -0.018504" quat="0.654458 0.267712 0.652088 0.27349" mass="0.0980124" diaginertia="2.78674e-05 2.68492e-05 2.02212e-05" />
+        <joint name="left_hip_roll" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+        <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.950187 0.706789 0.0616121 1" mesh="hip_roll_link_visual" />
+        <geom type="mesh" rgba="0.950187 0.706789 0.0616121 1" mesh="hip_roll_link_collision" />
+        <body name="hip_pitch_link" pos="-0.024 -0.019 -0.019" quat="0.5 -0.5 0.5 0.5">
+          <inertial pos="-0.000144651 0.0558519 0.0271569" quat="0.474559 0.518278 -0.52175 0.483693" mass="0.0751447" diaginertia="4.24541e-05 4.01922e-05 1.41665e-05" />
+          <joint name="left_hip_pitch" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+          <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.615686 0.811765 0.929412 1" mesh="hip_pitch_link_visual" />
+          <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="hip_pitch_link_collision" />
+          <body name="knee_link" pos="0 0.1075 0.0215" quat="0 -0.866025 -0.5 0">
+            <inertial pos="0.0294841 -0.0148423 -0.000903038" quat="0.0375329 0.641904 -0.273531 0.715354" mass="0.018649" diaginertia="2.21639e-05 2.20065e-05 2.33909e-06" />
+            <joint name="left_knee" pos="0 0 0" axis="0 0 1" range="-1.0472 2.0944" />
+            <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.629899 0.73715 0.8015 1" mesh="knee_link_visual" />
+            <geom type="mesh" rgba="0.629899 0.73715 0.8015 1" mesh="knee_link_collision" />
+            <geom pos="0 0 -0.0065" quat="0.502266 0 0 -0.864713" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.545554 0.721139 0.87072 1" mesh="left_ank_base_link_visual" />
+            <geom pos="0 0 -0.0065" quat="0.502266 0 0 -0.864713" type="mesh" rgba="0.545554 0.721139 0.87072 1" mesh="left_ank_base_link_collision" />
+            <body name="ank_pitch_link" pos="0.0868632 -0.0495459 0.0144" quat="0.9666 0 0 -0.256289">
+              <inertial pos="3.92205e-08 0.00058468 -0.0145999" quat="1 0 -2.26034e-06 0" mass="0.00413667" diaginertia="4.32524e-07 3.95224e-07 8.58837e-08" />
+              <joint name="left_ank_pitch" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+              <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.631572 0.728365 0.78644 1" mesh="ank_pitch_link_visual" />
+              <geom type="mesh" rgba="0.631572 0.728365 0.78644 1" mesh="ank_pitch_link_collision" />
+              <body name="ank_roll_link" pos="0 0.0015 -0.0146" quat="0.5 0.5 -0.5 0.5">
+                <inertial pos="-6.27851e-10 -0.0270097 0.00684725" quat="0.997572 -0.0696444 0 0" mass="0.0136395" diaginertia="1.03162e-05 9.02517e-06 2.69441e-06" />
+                <joint name="left_ank_roll" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.615686 0.811765 0.929412 1" mesh="ank_roll_link_visual" />
+                <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="ank_roll_link_collision" />
+                <geom pos="0 -0.0225 0.0256" quat="0.5 -0.5 -0.5 -0.5" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.615686 0.811765 0.929412 1" mesh="ank_rigid_foot_link_visual" />
+                <geom pos="0 -0.0225 0.0256" quat="0.5 -0.5 -0.5 -0.5" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="ank_rigid_foot_link_collision" />
+                <body name="ank_rr_link" pos="0.01 -0.0125 0.0406" quat="0.0327205 0 0 0.999465">
+                  <inertial pos="2.99627e-05 -0.00692413 -0.0019" quat="0.492532 0.507358 -0.492532 0.507358" mass="0.000475851" diaginertia="1.47441e-08 1.1042e-08 9.56224e-09" />
+                  <joint name="left_ank_R11" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                  <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.615686 0.811765 0.929412 1" mesh="ank_rr_link_visual" />
+                  <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="ank_rr_link_collision" />
+                  <body name="ank_act_rod_head" pos="0.002 -0.01 -0.0019" quat="0.00613825 -0.70708 0.00613825 -0.70708">
+                    <inertial pos="-5.78284e-11 0.0033987 -0.00200558" quat="0.500173 0.499827 -0.499827 0.500173" mass="0.0006608" diaginertia="1.15383e-08 1.06758e-08 2.37737e-09" />
+                    <joint name="left_ank_R21" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.972549 0.529412 0.00392157 1" mesh="ank_act_rod_head_visual" />
+                    <geom type="mesh" rgba="0.972549 0.529412 0.00392157 1" mesh="ank_act_rod_head_collision" />
+                  </body>
+                </body>
+                <body name="ank_rr_link_2" pos="-0.01 -0.0125 0.0406" quat="0.999286 0 0 0.0377814">
+                  <inertial pos="2.99627e-05 0.00692413 -0.0019" quat="0.507358 0.492532 -0.507358 0.492532" mass="0.000475851" diaginertia="1.47441e-08 1.1042e-08 9.56224e-09" />
+                  <joint name="left_ank_R12" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                  <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.615686 0.811765 0.929412 1" mesh="ank_rr_link_2_visual" />
+                  <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="ank_rr_link_2_collision" />
+                  <body name="ank_act_rod_head_2" pos="0.002 0.01 -0.0019" quat="0.707106 -0.00110637 0.707106 -0.00110637">
+                    <inertial pos="-5.78284e-11 0.0033987 -0.00200558" quat="0.500173 0.499827 -0.499827 0.500173" mass="0.0006608" diaginertia="1.15383e-08 1.06758e-08 2.37737e-09" />
+                    <joint name="left_ank_R22" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.972549 0.529412 0.00392157 1" mesh="ank_act_rod_head_2_visual" />
+                    <geom type="mesh" rgba="0.972549 0.529412 0.00392157 1" mesh="ank_act_rod_head_2_collision" />
+                  </body>
+                </body>
+              </body>
             </body>
-          </body>
-          <body name="ank_rr_link_2" pos="-0.01 -0.0125 0.0406" quat="0.999211 0 0 0.0397255">
-            <inertial pos="2.99627e-05 0.00692413 -0.0019" quat="0.507358 0.492532 -0.507358 0.492532" mass="0.000475851" diaginertia="1.47441e-08 1.1042e-08 9.56224e-09" />
-            <joint name="ank_R12" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
-            <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.615686 0.811765 0.929412 1" mesh="ank_rr_link_2_visual" />
-            <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="ank_rr_link_2_collision" />
-            <body name="ank_act_rod_head_2" pos="0.002 0.01 -0.0019" quat="0.707106 -0.00110638 0.707106 -0.00110638">
-              <inertial pos="-5.78284e-11 0.0033987 -0.00200558" quat="0.500173 0.499827 -0.499827 0.500173" mass="0.0006608" diaginertia="1.15383e-08 1.06758e-08 2.37737e-09" />
-              <joint name="ank_R22" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
-              <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.972549 0.529412 0.00392157 1" mesh="ank_act_rod_head_2_visual" />
-              <geom type="mesh" rgba="0.972549 0.529412 0.00392157 1" mesh="ank_act_rod_head_2_collision" />
+            <body name="ank_b_link" pos="-0.000568863 -0.0211806 0.0169" quat="0.374972 -0.622738 -0.334958 -0.599496">
+              <inertial pos="-4.941e-09 -5.95087e-09 -0.00871659" quat="0.707107 0 0 0.707107" mass="0.000895837" diaginertia="4.5804e-08 3.38225e-08 2.59468e-08" />
+              <joint name="left_ank_B11" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+              <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.615686 0.811765 0.929412 1" mesh="ank_b_link_visual" />
+              <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="ank_b_link_collision" />
+              <body name="ank_act_link_head" pos="-0.0045 0 -0.017" quat="0.00613825 0.70708 -0.00613825 -0.70708">
+                <inertial pos="8.53022e-09 -0.00234722 -0.00430002" quat="0 0.707107 0 0.707107" mass="0.00305177" diaginertia="6.24511e-08 5.62547e-08 5.29704e-08" />
+                <joint name="left_ank_B21" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.880566 0.888618 0.906205 1" mesh="ank_act_link_head_visual" />
+                <geom type="mesh" rgba="0.880566 0.888618 0.906205 1" mesh="ank_act_link_head_collision" />
+                <body name="ank_act_link" pos="0 -0.00605 -0.0043" quat="1.92951e-06 -1.92951e-06 0.707107 0.707107">
+                  <inertial pos="0.00490842 -0.000138024 -0.029947" quat="0.709913 0.00132323 0.0043477 0.704274" mass="0.0447822" diaginertia="1.81889e-05 1.52606e-05 5.14874e-06" />
+                  <joint name="left_ank_B31" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                  <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.620044 0.588367 0.498971 1" mesh="ank_act_link_visual" />
+                  <geom type="mesh" rgba="0.620044 0.588367 0.498971 1" mesh="ank_act_link_collision" />
+                  <body name="ank_act_rod" pos="2.27221e-06 0 -0.0592073" quat="0 0.949751 -0.313006 0">
+                    <inertial pos="-2.7255e-06 -1.26678e-05 0.00600548" quat="1 0.000927596 -0.000172789 -1.60279e-07" mass="0.00269456" diaginertia="3.22318e-07 3.22313e-07 1.87455e-08" />
+                    <joint name="left_ank_act1" pos="0 0 0" axis="0 0 1" type="slide" range="-0.017 0.017" />
+                    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.800168 0.892915 0.945471 1" mesh="ank_act_rod_visual" />
+                    <geom type="mesh" rgba="0.800168 0.892915 0.945471 1" mesh="ank_act_rod_collision" />
+                  </body>
+                </body>
+              </body>
             </body>
-          </body>
-        </body>
-      </body>
-      <body name="ank_b_link" pos="-0.000568863 -0.0211806 0.0169" quat="0.374972 -0.622738 -0.334958 -0.599496">
-        <inertial pos="-4.941e-09 -5.95087e-09 -0.00871659" quat="0.707107 0 0 0.707107" mass="0.000895837" diaginertia="4.5804e-08 3.38225e-08 2.59468e-08" />
-        <joint name="ank_B11" pos="0 0 0" axis="0 0 1" range="-3.14159 0" />
-        <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.615686 0.811765 0.929412 1" mesh="ank_b_link_visual" />
-        <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="ank_b_link_collision" />
-        <body name="ank_act_link_head" pos="-0.0045 0 -0.017" quat="0.00613825 0.70708 -0.00613825 -0.70708">
-          <inertial pos="8.53022e-09 -0.00234722 -0.00430002" quat="0 0.707107 0 0.707107" mass="0.00305177" diaginertia="6.24511e-08 5.62547e-08 5.29704e-08" />
-          <joint name="ank_B21" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
-          <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.880566 0.888618 0.906205 1" mesh="ank_act_link_head_visual" />
-          <geom type="mesh" rgba="0.880566 0.888618 0.906205 1" mesh="ank_act_link_head_collision" />
-          <body name="ank_act_link" pos="0 -0.00605 -0.0043" quat="-1.92951e-06 1.92951e-06 -0.707107 -0.707107">
-            <inertial pos="0.00490842 -0.000138024 -0.029947" quat="0.709913 0.00132323 0.0043477 0.704274" mass="0.0447822" diaginertia="1.81889e-05 1.52606e-05 5.14874e-06" />
-            <joint name="ank_B31" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
-            <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.620044 0.588367 0.498971 1" mesh="ank_act_link_visual" />
-            <geom type="mesh" rgba="0.620044 0.588367 0.498971 1" mesh="ank_act_link_collision" />
-            <body name="ank_act_rod" pos="2.27221e-06 0 -0.0592073" quat="0 0.949751 -0.313006 0">
-              <inertial pos="-2.7255e-06 -1.26678e-05 0.00600548" quat="1 0.000927596 -0.000172789 -1.60279e-07" mass="0.00269456" diaginertia="3.22318e-07 3.22313e-07 1.87455e-08" />
-              <joint name="ank_act1" pos="0 0 0" axis="0 0 1" type="slide" range="-0.017 0.017" />
-              <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.800168 0.892915 0.945471 1" mesh="ank_act_rod_visual" />
-              <geom type="mesh" rgba="0.800168 0.892915 0.945471 1" mesh="ank_act_rod_collision" />
-            </body>
-          </body>
-        </body>
-      </body>
-      <body name="ank_b_link_2" pos="-0.00122286 -0.0223272 -0.018" quat="0.379165 0.625071 0.330585 -0.596853">
-        <inertial pos="-4.941e-09 5.95087e-09 0.00871659" quat="0.707107 0 0 0.707107" mass="0.000895837" diaginertia="4.5804e-08 3.38225e-08 2.59468e-08" />
-        <joint name="ank_B12" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
-        <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.615686 0.811765 0.929412 1" mesh="ank_b_link_2_visual" />
-        <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="ank_b_link_2_collision" />
-        <body name="ank_act_link_head_2" pos="0.0045 0 0.017" quat="0.00110638 -0.707106 0.00110638 -0.707106">
-          <inertial pos="8.53022e-09 -0.00234722 -0.00430002" quat="0 0.707107 0 0.707107" mass="0.00305177" diaginertia="6.24511e-08 5.62547e-08 5.29704e-08" />
-          <joint name="ank_B22" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
-          <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.880566 0.888618 0.906205 1" mesh="ank_act_link_head_2_visual" />
-          <geom type="mesh" rgba="0.880566 0.888618 0.906205 1" mesh="ank_act_link_head_2_collision" />
-          <body name="ank_act_link_2" pos="0 -0.00605 -0.0043" quat="1.92951e-06 -1.92951e-06 0.707107 0.707107">
-            <inertial pos="0.00490842 -0.000138024 -0.029947" quat="0.709913 0.00132323 0.0043477 0.704274" mass="0.0447822" diaginertia="1.81889e-05 1.52606e-05 5.14874e-06" />
-            <joint name="ank_B32" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
-            <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.620044 0.588367 0.498971 1" mesh="ank_act_link_2_visual" />
-            <geom type="mesh" rgba="0.620044 0.588367 0.498971 1" mesh="ank_act_link_2_collision" />
-            <body name="ank_act_rod_2" pos="2.27221e-06 0 -0.0592459" quat="0 -0.949751 0.313006 0">
-              <inertial pos="-2.7255e-06 -1.26678e-05 0.00600548" quat="1 0.000927596 -0.000172789 -1.60279e-07" mass="0.00269456" diaginertia="3.22318e-07 3.22313e-07 1.87455e-08" />
-              <joint name="ank_act2" pos="0 0 0" axis="0 0 1" type="slide" range="-0.017 0.017" />
-              <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.800168 0.892915 0.945471 1" mesh="ank_act_rod_2_visual" />
-              <geom type="mesh" rgba="0.800168 0.892915 0.945471 1" mesh="ank_act_rod_2_collision" />
+            <body name="ank_b_link_2" pos="-0.00122286 -0.0223272 -0.018" quat="0.378003 0.624426 0.331801 -0.59759">
+              <inertial pos="-4.941e-09 5.95087e-09 0.00871659" quat="0.707107 0 0 0.707107" mass="0.000895837" diaginertia="4.5804e-08 3.38225e-08 2.59468e-08" />
+              <joint name="left_ank_B12" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+              <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.615686 0.811765 0.929412 1" mesh="ank_b_link_2_visual" />
+              <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="ank_b_link_2_collision" />
+              <body name="ank_act_link_head_2" pos="-0.0045 0 0.017" quat="0.707106 0.00110637 -0.707106 -0.00110637">
+                <inertial pos="8.53022e-09 0.00234722 -0.00429998" quat="0 0.707107 0 0.707107" mass="0.00305177" diaginertia="6.24511e-08 5.62547e-08 5.29704e-08" />
+                <joint name="left_ank_B22" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.880566 0.888618 0.906205 1" mesh="ank_act_link_head_2_visual" />
+                <geom type="mesh" rgba="0.880566 0.888618 0.906205 1" mesh="ank_act_link_head_2_collision" />
+                <body name="ank_act_link_2" pos="0 0.00605 -0.0043" quat="1.92951e-06 1.92951e-06 -0.707107 0.707107">
+                  <inertial pos="0.00490842 -0.000138024 -0.029947" quat="0.709913 0.00132323 0.0043477 0.704274" mass="0.0447822" diaginertia="1.81889e-05 1.52606e-05 5.14874e-06" />
+                  <joint name="left_ank_B32" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                  <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.620044 0.588367 0.498971 1" mesh="ank_act_link_2_visual" />
+                  <geom type="mesh" rgba="0.620044 0.588367 0.498971 1" mesh="ank_act_link_2_collision" />
+                  <body name="ank_act_rod_2" pos="2.27221e-06 0 -0.0592465" quat="0 -0.949751 0.313006 0">
+                    <inertial pos="-2.7255e-06 -1.26678e-05 0.00600548" quat="1 0.000927596 -0.000172789 -1.60279e-07" mass="0.00269456" diaginertia="3.22318e-07 3.22313e-07 1.87455e-08" />
+                    <joint name="left_ank_act2" pos="0 0 0" axis="0 0 1" type="slide" range="-0.017 0.017" />
+                    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.800168 0.892915 0.945471 1" mesh="ank_act_rod_2_visual" />
+                    <geom type="mesh" rgba="0.800168 0.892915 0.945471 1" mesh="ank_act_rod_2_collision" />
+                  </body>
+                </body>
+              </body>
             </body>
           </body>
         </body>
       </body>
     </body>
+    <body name="hip_yaw_link_2" pos="-0.035 -0.04 0.3236" quat="0.707107 0 0 0.707107">
+      <inertial pos="0 0 -0.00845313" quat="0 0.707107 0 0.707107" mass="0.00527406" diaginertia="1.88733e-06 1.79665e-06 7.61436e-07" />
+      <joint name="right_hip_yaw" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+      <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.615686 0.811765 0.929412 1" mesh="hip_yaw_link_2_visual" />
+      <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="hip_yaw_link_2_collision" />
+      <body name="hip_roll_link_2" pos="0.019 0 -0.0275" quat="0 -0.707107 0 -0.707107">
+        <inertial pos="-0.0120002 -0.000495888 -0.018504" quat="0.654458 0.267712 0.652088 0.27349" mass="0.0980124" diaginertia="2.78674e-05 2.68492e-05 2.02212e-05" />
+        <joint name="right_hip_roll" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+        <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.950187 0.706789 0.0616121 1" mesh="hip_roll_link_2_visual" />
+        <geom type="mesh" rgba="0.950187 0.706789 0.0616121 1" mesh="hip_roll_link_2_collision" />
+        <body name="hip_pitch_link_2" pos="-0.024 -0.019 -0.019" quat="0.5 -0.5 -0.5 -0.5">
+          <inertial pos="-0.000144651 -0.0558519 0.0108431" quat="0.483693 0.52175 -0.518278 0.474559" mass="0.0751447" diaginertia="4.24541e-05 4.01922e-05 1.41665e-05" />
+          <joint name="right_hip_pitch" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+          <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.615686 0.811765 0.929412 1" mesh="hip_pitch_link_2_visual" />
+          <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="hip_pitch_link_2_collision" />
+          <body name="knee_link_2" pos="0 -0.1075 0.0165" quat="0.866025 0 0 -0.5">
+            <inertial pos="0.027784 -0.0178229 -0.000903039" quat="0.321826 0.693101 -0.0804387 0.639975" mass="0.018649" diaginertia="2.21639e-05 2.20065e-05 2.33909e-06" />
+            <joint name="right_knee" pos="0 0 0" axis="0 0 1" range="-1.0472 2.0944" />
+            <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.629899 0.73715 0.8015 1" mesh="knee_link_2_visual" />
+            <geom type="mesh" rgba="0.629899 0.73715 0.8015 1" mesh="knee_link_2_collision" />
+            <geom pos="0 0 -0.0065" quat="0.864713 0 0 0.502266" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.545554 0.721139 0.87072 1" mesh="right_ank_base_link_visual" />
+            <geom pos="0 0 -0.0065" quat="0.864713 0 0 0.502266" type="mesh" rgba="0.545554 0.721139 0.87072 1" mesh="right_ank_base_link_collision" />
+            <body name="ank_pitch_link_2" pos="0.0868632 -0.0495459 0.0144" quat="0.9666 0 0 -0.256289">
+              <inertial pos="3.92205e-08 0.00058468 -0.0145999" quat="1 0 -2.26034e-06 0" mass="0.00413667" diaginertia="4.32524e-07 3.95224e-07 8.58837e-08" />
+              <joint name="right_ank_pitch" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+              <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.631572 0.728365 0.78644 1" mesh="ank_pitch_link_2_visual" />
+              <geom type="mesh" rgba="0.631572 0.728365 0.78644 1" mesh="ank_pitch_link_2_collision" />
+              <body name="ank_roll_link_2" pos="0 0.0015 -0.0146" quat="0.5 -0.5 0.5 0.5">
+                <inertial pos="-6.27851e-10 -0.0270097 0.00684725" quat="0.997572 -0.0696444 0 0" mass="0.0136395" diaginertia="1.03162e-05 9.02517e-06 2.69441e-06" />
+                <joint name="right_ank_roll" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.615686 0.811765 0.929412 1" mesh="ank_roll_link_2_visual" />
+                <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="ank_roll_link_2_collision" />
+                <geom pos="0 -0.0225 0.0256" quat="0.5 -0.5 -0.5 -0.5" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.615686 0.811765 0.929412 1" mesh="ank_rigid_foot_link_2_visual" />
+                <geom pos="0 -0.0225 0.0256" quat="0.5 -0.5 -0.5 -0.5" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="ank_rigid_foot_link_2_collision" />
+                <body name="ank_rr_link_3" pos="0.01 -0.0125 0.0406" quat="0.0361161 0 0 0.999348">
+                  <inertial pos="2.99627e-05 -0.00692413 -0.0019" quat="0.492532 0.507358 -0.492532 0.507358" mass="0.000475851" diaginertia="1.47441e-08 1.1042e-08 9.56224e-09" />
+                  <joint name="right_ank_R11" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                  <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.615686 0.811765 0.929412 1" mesh="ank_rr_link_3_visual" />
+                  <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="ank_rr_link_3_collision" />
+                  <body name="ank_act_rod_head_3" pos="0.002 -0.01 -0.0019" quat="0.0125308 -0.706996 0.0125308 -0.706996">
+                    <inertial pos="-5.78284e-11 0.0033987 -0.00200558" quat="0.500173 0.499827 -0.499827 0.500173" mass="0.0006608" diaginertia="1.15383e-08 1.06758e-08 2.37737e-09" />
+                    <joint name="right_ank_R21" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.972549 0.529412 0.00392157 1" mesh="ank_act_rod_head_3_visual" />
+                    <geom type="mesh" rgba="0.972549 0.529412 0.00392157 1" mesh="ank_act_rod_head_3_collision" />
+                  </body>
+                </body>
+                <body name="ank_rr_link_4" pos="-0.01 -0.0125 0.0406" quat="0.999409 0 0 0.0343869">
+                  <inertial pos="2.99627e-05 0.00692413 -0.0019" quat="0.507358 0.492532 -0.507358 0.492532" mass="0.000475851" diaginertia="1.47441e-08 1.1042e-08 9.56224e-09" />
+                  <joint name="right_ank_R12" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                  <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.615686 0.811765 0.929412 1" mesh="ank_rr_link_4_visual" />
+                  <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="ank_rr_link_4_collision" />
+                  <body name="ank_act_rod_head_4" pos="0.002 0.01 -0.0019" quat="0.706889 -0.0175592 0.706889 -0.0175592">
+                    <inertial pos="-5.78284e-11 0.0033987 -0.00200558" quat="0.500173 0.499827 -0.499827 0.500173" mass="0.0006608" diaginertia="1.15383e-08 1.06758e-08 2.37737e-09" />
+                    <joint name="right_ank_R22" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.972549 0.529412 0.00392157 1" mesh="ank_act_rod_head_4_visual" />
+                    <geom type="mesh" rgba="0.972549 0.529412 0.00392157 1" mesh="ank_act_rod_head_4_collision" />
+                  </body>
+                </body>
+              </body>
+            </body>
+            <body name="ank_b_link_3" pos="0.0185955 0.012418 -0.018" quat="0.598219 0.332841 -0.623873 0.377007">
+              <inertial pos="-4.941e-09 -5.95087e-09 -0.00871659" quat="0.707107 0 0 0.707107" mass="0.000895837" diaginertia="4.5804e-08 3.38225e-08 2.59468e-08" />
+              <joint name="right_ank_B11" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+              <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.615686 0.811765 0.929412 1" mesh="ank_b_link_3_visual" />
+              <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="ank_b_link_3_collision" />
+              <body name="ank_act_link_head_3" pos="0.0045 0 -0.017" quat="0.0125308 -0.706996 0.0125308 -0.706996">
+                <inertial pos="8.53022e-09 0.00234722 -0.00429998" quat="0 0.707107 0 0.707107" mass="0.00305177" diaginertia="6.24511e-08 5.62547e-08 5.29704e-08" />
+                <joint name="right_ank_B21" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.880566 0.888618 0.906205 1" mesh="ank_act_link_head_3_visual" />
+                <geom type="mesh" rgba="0.880566 0.888618 0.906205 1" mesh="ank_act_link_head_3_collision" />
+                <body name="ank_act_link_3" pos="0 0.00605 -0.0043" quat="0.707107 0.707107 1.92951e-06 -1.92951e-06">
+                  <inertial pos="0.00490842 -0.000138024 -0.029947" quat="0.709913 0.00132323 0.0043477 0.704274" mass="0.0447822" diaginertia="1.81889e-05 1.52606e-05 5.14874e-06" />
+                  <joint name="right_ank_B31" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                  <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.620044 0.588367 0.498971 1" mesh="ank_act_link_3_visual" />
+                  <geom type="mesh" rgba="0.620044 0.588367 0.498971 1" mesh="ank_act_link_3_collision" />
+                  <body name="ank_act_rod_3" pos="2.27221e-06 0 -0.0593008" quat="0 0.949751 -0.313006 0">
+                    <inertial pos="-2.7255e-06 -1.26678e-05 0.00600548" quat="1 0.000927596 -0.000172789 -1.60279e-07" mass="0.00269456" diaginertia="3.22318e-07 3.22313e-07 1.87455e-08" />
+                    <joint name="right_ank_act1" pos="0 0 0" axis="0 0 1" type="slide" range="-0.017 0.017" />
+                    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.800168 0.892915 0.945471 1" mesh="ank_act_rod_3_visual" />
+                    <geom type="mesh" rgba="0.800168 0.892915 0.945471 1" mesh="ank_act_rod_3_collision" />
+                  </body>
+                </body>
+              </body>
+            </body>
+            <body name="ank_b_link_4" pos="0.0179415 0.0112715 0.0169" quat="0.59887 -0.33392 0.623296 0.375971">
+              <inertial pos="-4.941e-09 5.95087e-09 0.00871659" quat="0.707107 0 0 0.707107" mass="0.000895837" diaginertia="4.5804e-08 3.38225e-08 2.59468e-08" />
+              <joint name="right_ank_B12" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+              <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.615686 0.811765 0.929412 1" mesh="ank_b_link_4_visual" />
+              <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="ank_b_link_4_collision" />
+              <body name="ank_act_link_head_4" pos="0.0045 0 0.017" quat="0.706889 -0.0175592 0.706889 -0.0175592">
+                <inertial pos="8.53022e-09 -0.00234722 -0.00430002" quat="0 0.707107 0 0.707107" mass="0.00305177" diaginertia="6.24511e-08 5.62547e-08 5.29704e-08" />
+                <joint name="right_ank_B22" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.880566 0.888618 0.906205 1" mesh="ank_act_link_head_4_visual" />
+                <geom type="mesh" rgba="0.880566 0.888618 0.906205 1" mesh="ank_act_link_head_4_collision" />
+                <body name="ank_act_link_4" pos="0 -0.00605 -0.0043" quat="0.707107 -0.707107 -1.92951e-06 -1.92951e-06">
+                  <inertial pos="0.00490842 -0.000138024 -0.029947" quat="0.709913 0.00132323 0.0043477 0.704274" mass="0.0447822" diaginertia="1.81889e-05 1.52606e-05 5.14874e-06" />
+                  <joint name="right_ank_B32" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                  <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.620044 0.588367 0.498971 1" mesh="ank_act_link_4_visual" />
+                  <geom type="mesh" rgba="0.620044 0.588367 0.498971 1" mesh="ank_act_link_4_collision" />
+                  <body name="ank_act_rod_4" pos="2.27221e-06 0 -0.0593056" quat="0 -0.949751 0.313006 0">
+                    <inertial pos="-2.7255e-06 -1.26678e-05 0.00600548" quat="1 0.000927596 -0.000172789 -1.60279e-07" mass="0.00269456" diaginertia="3.22318e-07 3.22313e-07 1.87455e-08" />
+                    <joint name="right_ank_act2" pos="0 0 0" axis="0 0 1" type="slide" range="-0.017 0.017" />
+                    <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.800168 0.892915 0.945471 1" mesh="ank_act_rod_4_visual" />
+                    <geom type="mesh" rgba="0.800168 0.892915 0.945471 1" mesh="ank_act_rod_4_collision" />
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+    <body name="sho_pitch_link" pos="0.0605 -0.045 0.455" quat="0.5 -0.5 -0.5 0.5">
+      <inertial pos="-3.04914e-09 0.00219805 -0.0084441" quat="0.200747 0.678012 0.200747 0.678012" mass="0.00507148" diaginertia="1.93715e-06 1.69407e-06 7.63481e-07" />
+      <joint name="left_sho_pitch" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+      <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.615686 0.811765 0.929412 1" mesh="sho_pitch_link_visual" />
+      <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="sho_pitch_link_collision" />
+      <body name="sho_roll_link" pos="-0.019 0.009 -0.0275" quat="0.707107 0 -0.707107 0">
+        <inertial pos="-0.04475 -2.1437e-09 -0.0187666" quat="0.500054 0.500053 0.499947 0.499946" mass="0.140539" diaginertia="0.000182839 0.00017787 2.55429e-05" />
+        <joint name="left_sho_roll" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+        <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.412437 0.53141 0.727559 1" mesh="sho_roll_link_visual" />
+        <geom type="mesh" rgba="0.412437 0.53141 0.727559 1" mesh="sho_roll_link_collision" />
+        <body name="elb_link" pos="-0.0895 0 0" quat="0 -0.707107 0.707107 0">
+          <inertial pos="0.00358099 0.0516929 0.019" quat="0.705958 0.705958 -0.0402878 -0.0402878" mass="0.0115872" diaginertia="9.8923e-06 8.05666e-06 2.82583e-06" />
+          <joint name="left_elb" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+          <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.632763 0.72211 0.775718 1" mesh="elb_link_visual" />
+          <geom type="mesh" rgba="0.632763 0.72211 0.775718 1" mesh="elb_link_collision" />
+        </body>
+      </body>
+    </body>
+    <body name="sho_pitch_link_2" pos="-0.0605 -0.045 0.455" quat="0.5 -0.5 0.5 -0.5">
+      <inertial pos="-3.04914e-09 0.00219805 -0.0084441" quat="0.200747 0.678012 0.200747 0.678012" mass="0.00507148" diaginertia="1.93715e-06 1.69407e-06 7.63481e-07" />
+      <joint name="right_sho_pitch" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+      <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.615686 0.811765 0.929412 1" mesh="sho_pitch_link_2_visual" />
+      <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="sho_pitch_link_2_collision" />
+      <body name="sho_roll_link_2" pos="0.019 0.009 -0.0275" quat="0 -0.707107 0 -0.707107">
+        <inertial pos="-0.04475 -2.1437e-09 -0.0187666" quat="0.500054 0.500053 0.499947 0.499946" mass="0.140539" diaginertia="0.000182839 0.00017787 2.55429e-05" />
+        <joint name="right_sho_roll" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+        <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.412437 0.53141 0.727559 1" mesh="sho_roll_link_2_visual" />
+        <geom type="mesh" rgba="0.412437 0.53141 0.727559 1" mesh="sho_roll_link_2_collision" />
+        <body name="elb_link_2" pos="-0.0895 0 0" quat="0 -0.707107 -0.707107 0">
+          <inertial pos="0.00358099 -0.0516929 0.019" quat="0.705958 0.705958 0.0402878 0.0402878" mass="0.0115872" diaginertia="9.8923e-06 8.05666e-06 2.82583e-06" />
+          <joint name="right_elb" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+          <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.632763 0.72211 0.775718 1" mesh="elb_link_2_visual" />
+          <geom type="mesh" rgba="0.632763 0.72211 0.775718 1" mesh="elb_link_2_collision" />
+        </body>
+      </body>
+    </body>
   </worldbody>
   <contact>
+    <exclude body1="hip_yaw_link" body2="hip_roll_link" />
+    <exclude body1="hip_yaw_link" body2="hip_pitch_link" />
+    <exclude body1="hip_yaw_link" body2="knee_link" />
+    <exclude body1="hip_yaw_link" body2="ank_pitch_link" />
+    <exclude body1="hip_yaw_link" body2="ank_roll_link" />
+    <exclude body1="hip_yaw_link" body2="ank_rr_link" />
+    <exclude body1="hip_yaw_link" body2="ank_act_rod_head" />
+    <exclude body1="hip_yaw_link" body2="ank_rr_link_2" />
+    <exclude body1="hip_yaw_link" body2="ank_act_rod_head_2" />
+    <exclude body1="hip_yaw_link" body2="ank_b_link" />
+    <exclude body1="hip_yaw_link" body2="ank_act_link_head" />
+    <exclude body1="hip_yaw_link" body2="ank_act_link" />
+    <exclude body1="hip_yaw_link" body2="ank_act_rod" />
+    <exclude body1="hip_yaw_link" body2="ank_b_link_2" />
+    <exclude body1="hip_yaw_link" body2="ank_act_link_head_2" />
+    <exclude body1="hip_yaw_link" body2="ank_act_link_2" />
+    <exclude body1="hip_yaw_link" body2="ank_act_rod_2" />
+    <exclude body1="hip_yaw_link" body2="hip_yaw_link_2" />
+    <exclude body1="hip_yaw_link" body2="hip_roll_link_2" />
+    <exclude body1="hip_yaw_link" body2="hip_pitch_link_2" />
+    <exclude body1="hip_yaw_link" body2="knee_link_2" />
+    <exclude body1="hip_yaw_link" body2="ank_pitch_link_2" />
+    <exclude body1="hip_yaw_link" body2="ank_roll_link_2" />
+    <exclude body1="hip_yaw_link" body2="ank_rr_link_3" />
+    <exclude body1="hip_yaw_link" body2="ank_act_rod_head_3" />
+    <exclude body1="hip_yaw_link" body2="ank_rr_link_4" />
+    <exclude body1="hip_yaw_link" body2="ank_act_rod_head_4" />
+    <exclude body1="hip_yaw_link" body2="ank_b_link_3" />
+    <exclude body1="hip_yaw_link" body2="ank_act_link_head_3" />
+    <exclude body1="hip_yaw_link" body2="ank_act_link_3" />
+    <exclude body1="hip_yaw_link" body2="ank_act_rod_3" />
+    <exclude body1="hip_yaw_link" body2="ank_b_link_4" />
+    <exclude body1="hip_yaw_link" body2="ank_act_link_head_4" />
+    <exclude body1="hip_yaw_link" body2="ank_act_link_4" />
+    <exclude body1="hip_yaw_link" body2="ank_act_rod_4" />
+    <exclude body1="hip_yaw_link" body2="sho_pitch_link" />
+    <exclude body1="hip_yaw_link" body2="sho_roll_link" />
+    <exclude body1="hip_yaw_link" body2="elb_link" />
+    <exclude body1="hip_yaw_link" body2="sho_pitch_link_2" />
+    <exclude body1="hip_yaw_link" body2="sho_roll_link_2" />
+    <exclude body1="hip_yaw_link" body2="elb_link_2" />
+    <exclude body1="hip_roll_link" body2="hip_pitch_link" />
+    <exclude body1="hip_roll_link" body2="knee_link" />
+    <exclude body1="hip_roll_link" body2="ank_pitch_link" />
+    <exclude body1="hip_roll_link" body2="ank_roll_link" />
+    <exclude body1="hip_roll_link" body2="ank_rr_link" />
+    <exclude body1="hip_roll_link" body2="ank_act_rod_head" />
+    <exclude body1="hip_roll_link" body2="ank_rr_link_2" />
+    <exclude body1="hip_roll_link" body2="ank_act_rod_head_2" />
+    <exclude body1="hip_roll_link" body2="ank_b_link" />
+    <exclude body1="hip_roll_link" body2="ank_act_link_head" />
+    <exclude body1="hip_roll_link" body2="ank_act_link" />
+    <exclude body1="hip_roll_link" body2="ank_act_rod" />
+    <exclude body1="hip_roll_link" body2="ank_b_link_2" />
+    <exclude body1="hip_roll_link" body2="ank_act_link_head_2" />
+    <exclude body1="hip_roll_link" body2="ank_act_link_2" />
+    <exclude body1="hip_roll_link" body2="ank_act_rod_2" />
+    <exclude body1="hip_roll_link" body2="hip_yaw_link_2" />
+    <exclude body1="hip_roll_link" body2="hip_roll_link_2" />
+    <exclude body1="hip_roll_link" body2="hip_pitch_link_2" />
+    <exclude body1="hip_roll_link" body2="knee_link_2" />
+    <exclude body1="hip_roll_link" body2="ank_pitch_link_2" />
+    <exclude body1="hip_roll_link" body2="ank_roll_link_2" />
+    <exclude body1="hip_roll_link" body2="ank_rr_link_3" />
+    <exclude body1="hip_roll_link" body2="ank_act_rod_head_3" />
+    <exclude body1="hip_roll_link" body2="ank_rr_link_4" />
+    <exclude body1="hip_roll_link" body2="ank_act_rod_head_4" />
+    <exclude body1="hip_roll_link" body2="ank_b_link_3" />
+    <exclude body1="hip_roll_link" body2="ank_act_link_head_3" />
+    <exclude body1="hip_roll_link" body2="ank_act_link_3" />
+    <exclude body1="hip_roll_link" body2="ank_act_rod_3" />
+    <exclude body1="hip_roll_link" body2="ank_b_link_4" />
+    <exclude body1="hip_roll_link" body2="ank_act_link_head_4" />
+    <exclude body1="hip_roll_link" body2="ank_act_link_4" />
+    <exclude body1="hip_roll_link" body2="ank_act_rod_4" />
+    <exclude body1="hip_roll_link" body2="sho_pitch_link" />
+    <exclude body1="hip_roll_link" body2="sho_roll_link" />
+    <exclude body1="hip_roll_link" body2="elb_link" />
+    <exclude body1="hip_roll_link" body2="sho_pitch_link_2" />
+    <exclude body1="hip_roll_link" body2="sho_roll_link_2" />
+    <exclude body1="hip_roll_link" body2="elb_link_2" />
+    <exclude body1="hip_pitch_link" body2="knee_link" />
+    <exclude body1="hip_pitch_link" body2="ank_pitch_link" />
+    <exclude body1="hip_pitch_link" body2="ank_roll_link" />
+    <exclude body1="hip_pitch_link" body2="ank_rr_link" />
+    <exclude body1="hip_pitch_link" body2="ank_act_rod_head" />
+    <exclude body1="hip_pitch_link" body2="ank_rr_link_2" />
+    <exclude body1="hip_pitch_link" body2="ank_act_rod_head_2" />
+    <exclude body1="hip_pitch_link" body2="ank_b_link" />
+    <exclude body1="hip_pitch_link" body2="ank_act_link_head" />
+    <exclude body1="hip_pitch_link" body2="ank_act_link" />
+    <exclude body1="hip_pitch_link" body2="ank_act_rod" />
+    <exclude body1="hip_pitch_link" body2="ank_b_link_2" />
+    <exclude body1="hip_pitch_link" body2="ank_act_link_head_2" />
+    <exclude body1="hip_pitch_link" body2="ank_act_link_2" />
+    <exclude body1="hip_pitch_link" body2="ank_act_rod_2" />
+    <exclude body1="hip_pitch_link" body2="hip_yaw_link_2" />
+    <exclude body1="hip_pitch_link" body2="hip_roll_link_2" />
+    <exclude body1="hip_pitch_link" body2="hip_pitch_link_2" />
+    <exclude body1="hip_pitch_link" body2="knee_link_2" />
+    <exclude body1="hip_pitch_link" body2="ank_pitch_link_2" />
+    <exclude body1="hip_pitch_link" body2="ank_roll_link_2" />
+    <exclude body1="hip_pitch_link" body2="ank_rr_link_3" />
+    <exclude body1="hip_pitch_link" body2="ank_act_rod_head_3" />
+    <exclude body1="hip_pitch_link" body2="ank_rr_link_4" />
+    <exclude body1="hip_pitch_link" body2="ank_act_rod_head_4" />
+    <exclude body1="hip_pitch_link" body2="ank_b_link_3" />
+    <exclude body1="hip_pitch_link" body2="ank_act_link_head_3" />
+    <exclude body1="hip_pitch_link" body2="ank_act_link_3" />
+    <exclude body1="hip_pitch_link" body2="ank_act_rod_3" />
+    <exclude body1="hip_pitch_link" body2="ank_b_link_4" />
+    <exclude body1="hip_pitch_link" body2="ank_act_link_head_4" />
+    <exclude body1="hip_pitch_link" body2="ank_act_link_4" />
+    <exclude body1="hip_pitch_link" body2="ank_act_rod_4" />
+    <exclude body1="hip_pitch_link" body2="sho_pitch_link" />
+    <exclude body1="hip_pitch_link" body2="sho_roll_link" />
+    <exclude body1="hip_pitch_link" body2="elb_link" />
+    <exclude body1="hip_pitch_link" body2="sho_pitch_link_2" />
+    <exclude body1="hip_pitch_link" body2="sho_roll_link_2" />
+    <exclude body1="hip_pitch_link" body2="elb_link_2" />
     <exclude body1="knee_link" body2="ank_pitch_link" />
     <exclude body1="knee_link" body2="ank_roll_link" />
     <exclude body1="knee_link" body2="ank_rr_link" />
@@ -151,6 +503,30 @@
     <exclude body1="knee_link" body2="ank_act_link_head_2" />
     <exclude body1="knee_link" body2="ank_act_link_2" />
     <exclude body1="knee_link" body2="ank_act_rod_2" />
+    <exclude body1="knee_link" body2="hip_yaw_link_2" />
+    <exclude body1="knee_link" body2="hip_roll_link_2" />
+    <exclude body1="knee_link" body2="hip_pitch_link_2" />
+    <exclude body1="knee_link" body2="knee_link_2" />
+    <exclude body1="knee_link" body2="ank_pitch_link_2" />
+    <exclude body1="knee_link" body2="ank_roll_link_2" />
+    <exclude body1="knee_link" body2="ank_rr_link_3" />
+    <exclude body1="knee_link" body2="ank_act_rod_head_3" />
+    <exclude body1="knee_link" body2="ank_rr_link_4" />
+    <exclude body1="knee_link" body2="ank_act_rod_head_4" />
+    <exclude body1="knee_link" body2="ank_b_link_3" />
+    <exclude body1="knee_link" body2="ank_act_link_head_3" />
+    <exclude body1="knee_link" body2="ank_act_link_3" />
+    <exclude body1="knee_link" body2="ank_act_rod_3" />
+    <exclude body1="knee_link" body2="ank_b_link_4" />
+    <exclude body1="knee_link" body2="ank_act_link_head_4" />
+    <exclude body1="knee_link" body2="ank_act_link_4" />
+    <exclude body1="knee_link" body2="ank_act_rod_4" />
+    <exclude body1="knee_link" body2="sho_pitch_link" />
+    <exclude body1="knee_link" body2="sho_roll_link" />
+    <exclude body1="knee_link" body2="elb_link" />
+    <exclude body1="knee_link" body2="sho_pitch_link_2" />
+    <exclude body1="knee_link" body2="sho_roll_link_2" />
+    <exclude body1="knee_link" body2="elb_link_2" />
     <exclude body1="ank_pitch_link" body2="ank_roll_link" />
     <exclude body1="ank_pitch_link" body2="ank_rr_link" />
     <exclude body1="ank_pitch_link" body2="ank_act_rod_head" />
@@ -164,6 +540,30 @@
     <exclude body1="ank_pitch_link" body2="ank_act_link_head_2" />
     <exclude body1="ank_pitch_link" body2="ank_act_link_2" />
     <exclude body1="ank_pitch_link" body2="ank_act_rod_2" />
+    <exclude body1="ank_pitch_link" body2="hip_yaw_link_2" />
+    <exclude body1="ank_pitch_link" body2="hip_roll_link_2" />
+    <exclude body1="ank_pitch_link" body2="hip_pitch_link_2" />
+    <exclude body1="ank_pitch_link" body2="knee_link_2" />
+    <exclude body1="ank_pitch_link" body2="ank_pitch_link_2" />
+    <exclude body1="ank_pitch_link" body2="ank_roll_link_2" />
+    <exclude body1="ank_pitch_link" body2="ank_rr_link_3" />
+    <exclude body1="ank_pitch_link" body2="ank_act_rod_head_3" />
+    <exclude body1="ank_pitch_link" body2="ank_rr_link_4" />
+    <exclude body1="ank_pitch_link" body2="ank_act_rod_head_4" />
+    <exclude body1="ank_pitch_link" body2="ank_b_link_3" />
+    <exclude body1="ank_pitch_link" body2="ank_act_link_head_3" />
+    <exclude body1="ank_pitch_link" body2="ank_act_link_3" />
+    <exclude body1="ank_pitch_link" body2="ank_act_rod_3" />
+    <exclude body1="ank_pitch_link" body2="ank_b_link_4" />
+    <exclude body1="ank_pitch_link" body2="ank_act_link_head_4" />
+    <exclude body1="ank_pitch_link" body2="ank_act_link_4" />
+    <exclude body1="ank_pitch_link" body2="ank_act_rod_4" />
+    <exclude body1="ank_pitch_link" body2="sho_pitch_link" />
+    <exclude body1="ank_pitch_link" body2="sho_roll_link" />
+    <exclude body1="ank_pitch_link" body2="elb_link" />
+    <exclude body1="ank_pitch_link" body2="sho_pitch_link_2" />
+    <exclude body1="ank_pitch_link" body2="sho_roll_link_2" />
+    <exclude body1="ank_pitch_link" body2="elb_link_2" />
     <exclude body1="ank_roll_link" body2="ank_rr_link" />
     <exclude body1="ank_roll_link" body2="ank_act_rod_head" />
     <exclude body1="ank_roll_link" body2="ank_rr_link_2" />
@@ -176,6 +576,30 @@
     <exclude body1="ank_roll_link" body2="ank_act_link_head_2" />
     <exclude body1="ank_roll_link" body2="ank_act_link_2" />
     <exclude body1="ank_roll_link" body2="ank_act_rod_2" />
+    <exclude body1="ank_roll_link" body2="hip_yaw_link_2" />
+    <exclude body1="ank_roll_link" body2="hip_roll_link_2" />
+    <exclude body1="ank_roll_link" body2="hip_pitch_link_2" />
+    <exclude body1="ank_roll_link" body2="knee_link_2" />
+    <exclude body1="ank_roll_link" body2="ank_pitch_link_2" />
+    <exclude body1="ank_roll_link" body2="ank_roll_link_2" />
+    <exclude body1="ank_roll_link" body2="ank_rr_link_3" />
+    <exclude body1="ank_roll_link" body2="ank_act_rod_head_3" />
+    <exclude body1="ank_roll_link" body2="ank_rr_link_4" />
+    <exclude body1="ank_roll_link" body2="ank_act_rod_head_4" />
+    <exclude body1="ank_roll_link" body2="ank_b_link_3" />
+    <exclude body1="ank_roll_link" body2="ank_act_link_head_3" />
+    <exclude body1="ank_roll_link" body2="ank_act_link_3" />
+    <exclude body1="ank_roll_link" body2="ank_act_rod_3" />
+    <exclude body1="ank_roll_link" body2="ank_b_link_4" />
+    <exclude body1="ank_roll_link" body2="ank_act_link_head_4" />
+    <exclude body1="ank_roll_link" body2="ank_act_link_4" />
+    <exclude body1="ank_roll_link" body2="ank_act_rod_4" />
+    <exclude body1="ank_roll_link" body2="sho_pitch_link" />
+    <exclude body1="ank_roll_link" body2="sho_roll_link" />
+    <exclude body1="ank_roll_link" body2="elb_link" />
+    <exclude body1="ank_roll_link" body2="sho_pitch_link_2" />
+    <exclude body1="ank_roll_link" body2="sho_roll_link_2" />
+    <exclude body1="ank_roll_link" body2="elb_link_2" />
     <exclude body1="ank_rr_link" body2="ank_act_rod_head" />
     <exclude body1="ank_rr_link" body2="ank_rr_link_2" />
     <exclude body1="ank_rr_link" body2="ank_act_rod_head_2" />
@@ -187,6 +611,30 @@
     <exclude body1="ank_rr_link" body2="ank_act_link_head_2" />
     <exclude body1="ank_rr_link" body2="ank_act_link_2" />
     <exclude body1="ank_rr_link" body2="ank_act_rod_2" />
+    <exclude body1="ank_rr_link" body2="hip_yaw_link_2" />
+    <exclude body1="ank_rr_link" body2="hip_roll_link_2" />
+    <exclude body1="ank_rr_link" body2="hip_pitch_link_2" />
+    <exclude body1="ank_rr_link" body2="knee_link_2" />
+    <exclude body1="ank_rr_link" body2="ank_pitch_link_2" />
+    <exclude body1="ank_rr_link" body2="ank_roll_link_2" />
+    <exclude body1="ank_rr_link" body2="ank_rr_link_3" />
+    <exclude body1="ank_rr_link" body2="ank_act_rod_head_3" />
+    <exclude body1="ank_rr_link" body2="ank_rr_link_4" />
+    <exclude body1="ank_rr_link" body2="ank_act_rod_head_4" />
+    <exclude body1="ank_rr_link" body2="ank_b_link_3" />
+    <exclude body1="ank_rr_link" body2="ank_act_link_head_3" />
+    <exclude body1="ank_rr_link" body2="ank_act_link_3" />
+    <exclude body1="ank_rr_link" body2="ank_act_rod_3" />
+    <exclude body1="ank_rr_link" body2="ank_b_link_4" />
+    <exclude body1="ank_rr_link" body2="ank_act_link_head_4" />
+    <exclude body1="ank_rr_link" body2="ank_act_link_4" />
+    <exclude body1="ank_rr_link" body2="ank_act_rod_4" />
+    <exclude body1="ank_rr_link" body2="sho_pitch_link" />
+    <exclude body1="ank_rr_link" body2="sho_roll_link" />
+    <exclude body1="ank_rr_link" body2="elb_link" />
+    <exclude body1="ank_rr_link" body2="sho_pitch_link_2" />
+    <exclude body1="ank_rr_link" body2="sho_roll_link_2" />
+    <exclude body1="ank_rr_link" body2="elb_link_2" />
     <exclude body1="ank_act_rod_head" body2="ank_rr_link_2" />
     <exclude body1="ank_act_rod_head" body2="ank_act_rod_head_2" />
     <exclude body1="ank_act_rod_head" body2="ank_b_link" />
@@ -197,6 +645,30 @@
     <exclude body1="ank_act_rod_head" body2="ank_act_link_head_2" />
     <exclude body1="ank_act_rod_head" body2="ank_act_link_2" />
     <exclude body1="ank_act_rod_head" body2="ank_act_rod_2" />
+    <exclude body1="ank_act_rod_head" body2="hip_yaw_link_2" />
+    <exclude body1="ank_act_rod_head" body2="hip_roll_link_2" />
+    <exclude body1="ank_act_rod_head" body2="hip_pitch_link_2" />
+    <exclude body1="ank_act_rod_head" body2="knee_link_2" />
+    <exclude body1="ank_act_rod_head" body2="ank_pitch_link_2" />
+    <exclude body1="ank_act_rod_head" body2="ank_roll_link_2" />
+    <exclude body1="ank_act_rod_head" body2="ank_rr_link_3" />
+    <exclude body1="ank_act_rod_head" body2="ank_act_rod_head_3" />
+    <exclude body1="ank_act_rod_head" body2="ank_rr_link_4" />
+    <exclude body1="ank_act_rod_head" body2="ank_act_rod_head_4" />
+    <exclude body1="ank_act_rod_head" body2="ank_b_link_3" />
+    <exclude body1="ank_act_rod_head" body2="ank_act_link_head_3" />
+    <exclude body1="ank_act_rod_head" body2="ank_act_link_3" />
+    <exclude body1="ank_act_rod_head" body2="ank_act_rod_3" />
+    <exclude body1="ank_act_rod_head" body2="ank_b_link_4" />
+    <exclude body1="ank_act_rod_head" body2="ank_act_link_head_4" />
+    <exclude body1="ank_act_rod_head" body2="ank_act_link_4" />
+    <exclude body1="ank_act_rod_head" body2="ank_act_rod_4" />
+    <exclude body1="ank_act_rod_head" body2="sho_pitch_link" />
+    <exclude body1="ank_act_rod_head" body2="sho_roll_link" />
+    <exclude body1="ank_act_rod_head" body2="elb_link" />
+    <exclude body1="ank_act_rod_head" body2="sho_pitch_link_2" />
+    <exclude body1="ank_act_rod_head" body2="sho_roll_link_2" />
+    <exclude body1="ank_act_rod_head" body2="elb_link_2" />
     <exclude body1="ank_rr_link_2" body2="ank_act_rod_head_2" />
     <exclude body1="ank_rr_link_2" body2="ank_b_link" />
     <exclude body1="ank_rr_link_2" body2="ank_act_link_head" />
@@ -206,6 +678,30 @@
     <exclude body1="ank_rr_link_2" body2="ank_act_link_head_2" />
     <exclude body1="ank_rr_link_2" body2="ank_act_link_2" />
     <exclude body1="ank_rr_link_2" body2="ank_act_rod_2" />
+    <exclude body1="ank_rr_link_2" body2="hip_yaw_link_2" />
+    <exclude body1="ank_rr_link_2" body2="hip_roll_link_2" />
+    <exclude body1="ank_rr_link_2" body2="hip_pitch_link_2" />
+    <exclude body1="ank_rr_link_2" body2="knee_link_2" />
+    <exclude body1="ank_rr_link_2" body2="ank_pitch_link_2" />
+    <exclude body1="ank_rr_link_2" body2="ank_roll_link_2" />
+    <exclude body1="ank_rr_link_2" body2="ank_rr_link_3" />
+    <exclude body1="ank_rr_link_2" body2="ank_act_rod_head_3" />
+    <exclude body1="ank_rr_link_2" body2="ank_rr_link_4" />
+    <exclude body1="ank_rr_link_2" body2="ank_act_rod_head_4" />
+    <exclude body1="ank_rr_link_2" body2="ank_b_link_3" />
+    <exclude body1="ank_rr_link_2" body2="ank_act_link_head_3" />
+    <exclude body1="ank_rr_link_2" body2="ank_act_link_3" />
+    <exclude body1="ank_rr_link_2" body2="ank_act_rod_3" />
+    <exclude body1="ank_rr_link_2" body2="ank_b_link_4" />
+    <exclude body1="ank_rr_link_2" body2="ank_act_link_head_4" />
+    <exclude body1="ank_rr_link_2" body2="ank_act_link_4" />
+    <exclude body1="ank_rr_link_2" body2="ank_act_rod_4" />
+    <exclude body1="ank_rr_link_2" body2="sho_pitch_link" />
+    <exclude body1="ank_rr_link_2" body2="sho_roll_link" />
+    <exclude body1="ank_rr_link_2" body2="elb_link" />
+    <exclude body1="ank_rr_link_2" body2="sho_pitch_link_2" />
+    <exclude body1="ank_rr_link_2" body2="sho_roll_link_2" />
+    <exclude body1="ank_rr_link_2" body2="elb_link_2" />
     <exclude body1="ank_act_rod_head_2" body2="ank_b_link" />
     <exclude body1="ank_act_rod_head_2" body2="ank_act_link_head" />
     <exclude body1="ank_act_rod_head_2" body2="ank_act_link" />
@@ -214,6 +710,30 @@
     <exclude body1="ank_act_rod_head_2" body2="ank_act_link_head_2" />
     <exclude body1="ank_act_rod_head_2" body2="ank_act_link_2" />
     <exclude body1="ank_act_rod_head_2" body2="ank_act_rod_2" />
+    <exclude body1="ank_act_rod_head_2" body2="hip_yaw_link_2" />
+    <exclude body1="ank_act_rod_head_2" body2="hip_roll_link_2" />
+    <exclude body1="ank_act_rod_head_2" body2="hip_pitch_link_2" />
+    <exclude body1="ank_act_rod_head_2" body2="knee_link_2" />
+    <exclude body1="ank_act_rod_head_2" body2="ank_pitch_link_2" />
+    <exclude body1="ank_act_rod_head_2" body2="ank_roll_link_2" />
+    <exclude body1="ank_act_rod_head_2" body2="ank_rr_link_3" />
+    <exclude body1="ank_act_rod_head_2" body2="ank_act_rod_head_3" />
+    <exclude body1="ank_act_rod_head_2" body2="ank_rr_link_4" />
+    <exclude body1="ank_act_rod_head_2" body2="ank_act_rod_head_4" />
+    <exclude body1="ank_act_rod_head_2" body2="ank_b_link_3" />
+    <exclude body1="ank_act_rod_head_2" body2="ank_act_link_head_3" />
+    <exclude body1="ank_act_rod_head_2" body2="ank_act_link_3" />
+    <exclude body1="ank_act_rod_head_2" body2="ank_act_rod_3" />
+    <exclude body1="ank_act_rod_head_2" body2="ank_b_link_4" />
+    <exclude body1="ank_act_rod_head_2" body2="ank_act_link_head_4" />
+    <exclude body1="ank_act_rod_head_2" body2="ank_act_link_4" />
+    <exclude body1="ank_act_rod_head_2" body2="ank_act_rod_4" />
+    <exclude body1="ank_act_rod_head_2" body2="sho_pitch_link" />
+    <exclude body1="ank_act_rod_head_2" body2="sho_roll_link" />
+    <exclude body1="ank_act_rod_head_2" body2="elb_link" />
+    <exclude body1="ank_act_rod_head_2" body2="sho_pitch_link_2" />
+    <exclude body1="ank_act_rod_head_2" body2="sho_roll_link_2" />
+    <exclude body1="ank_act_rod_head_2" body2="elb_link_2" />
     <exclude body1="ank_b_link" body2="ank_act_link_head" />
     <exclude body1="ank_b_link" body2="ank_act_link" />
     <exclude body1="ank_b_link" body2="ank_act_rod" />
@@ -221,32 +741,515 @@
     <exclude body1="ank_b_link" body2="ank_act_link_head_2" />
     <exclude body1="ank_b_link" body2="ank_act_link_2" />
     <exclude body1="ank_b_link" body2="ank_act_rod_2" />
+    <exclude body1="ank_b_link" body2="hip_yaw_link_2" />
+    <exclude body1="ank_b_link" body2="hip_roll_link_2" />
+    <exclude body1="ank_b_link" body2="hip_pitch_link_2" />
+    <exclude body1="ank_b_link" body2="knee_link_2" />
+    <exclude body1="ank_b_link" body2="ank_pitch_link_2" />
+    <exclude body1="ank_b_link" body2="ank_roll_link_2" />
+    <exclude body1="ank_b_link" body2="ank_rr_link_3" />
+    <exclude body1="ank_b_link" body2="ank_act_rod_head_3" />
+    <exclude body1="ank_b_link" body2="ank_rr_link_4" />
+    <exclude body1="ank_b_link" body2="ank_act_rod_head_4" />
+    <exclude body1="ank_b_link" body2="ank_b_link_3" />
+    <exclude body1="ank_b_link" body2="ank_act_link_head_3" />
+    <exclude body1="ank_b_link" body2="ank_act_link_3" />
+    <exclude body1="ank_b_link" body2="ank_act_rod_3" />
+    <exclude body1="ank_b_link" body2="ank_b_link_4" />
+    <exclude body1="ank_b_link" body2="ank_act_link_head_4" />
+    <exclude body1="ank_b_link" body2="ank_act_link_4" />
+    <exclude body1="ank_b_link" body2="ank_act_rod_4" />
+    <exclude body1="ank_b_link" body2="sho_pitch_link" />
+    <exclude body1="ank_b_link" body2="sho_roll_link" />
+    <exclude body1="ank_b_link" body2="elb_link" />
+    <exclude body1="ank_b_link" body2="sho_pitch_link_2" />
+    <exclude body1="ank_b_link" body2="sho_roll_link_2" />
+    <exclude body1="ank_b_link" body2="elb_link_2" />
     <exclude body1="ank_act_link_head" body2="ank_act_link" />
     <exclude body1="ank_act_link_head" body2="ank_act_rod" />
     <exclude body1="ank_act_link_head" body2="ank_b_link_2" />
     <exclude body1="ank_act_link_head" body2="ank_act_link_head_2" />
     <exclude body1="ank_act_link_head" body2="ank_act_link_2" />
     <exclude body1="ank_act_link_head" body2="ank_act_rod_2" />
+    <exclude body1="ank_act_link_head" body2="hip_yaw_link_2" />
+    <exclude body1="ank_act_link_head" body2="hip_roll_link_2" />
+    <exclude body1="ank_act_link_head" body2="hip_pitch_link_2" />
+    <exclude body1="ank_act_link_head" body2="knee_link_2" />
+    <exclude body1="ank_act_link_head" body2="ank_pitch_link_2" />
+    <exclude body1="ank_act_link_head" body2="ank_roll_link_2" />
+    <exclude body1="ank_act_link_head" body2="ank_rr_link_3" />
+    <exclude body1="ank_act_link_head" body2="ank_act_rod_head_3" />
+    <exclude body1="ank_act_link_head" body2="ank_rr_link_4" />
+    <exclude body1="ank_act_link_head" body2="ank_act_rod_head_4" />
+    <exclude body1="ank_act_link_head" body2="ank_b_link_3" />
+    <exclude body1="ank_act_link_head" body2="ank_act_link_head_3" />
+    <exclude body1="ank_act_link_head" body2="ank_act_link_3" />
+    <exclude body1="ank_act_link_head" body2="ank_act_rod_3" />
+    <exclude body1="ank_act_link_head" body2="ank_b_link_4" />
+    <exclude body1="ank_act_link_head" body2="ank_act_link_head_4" />
+    <exclude body1="ank_act_link_head" body2="ank_act_link_4" />
+    <exclude body1="ank_act_link_head" body2="ank_act_rod_4" />
+    <exclude body1="ank_act_link_head" body2="sho_pitch_link" />
+    <exclude body1="ank_act_link_head" body2="sho_roll_link" />
+    <exclude body1="ank_act_link_head" body2="elb_link" />
+    <exclude body1="ank_act_link_head" body2="sho_pitch_link_2" />
+    <exclude body1="ank_act_link_head" body2="sho_roll_link_2" />
+    <exclude body1="ank_act_link_head" body2="elb_link_2" />
     <exclude body1="ank_act_link" body2="ank_act_rod" />
     <exclude body1="ank_act_link" body2="ank_b_link_2" />
     <exclude body1="ank_act_link" body2="ank_act_link_head_2" />
     <exclude body1="ank_act_link" body2="ank_act_link_2" />
     <exclude body1="ank_act_link" body2="ank_act_rod_2" />
+    <exclude body1="ank_act_link" body2="hip_yaw_link_2" />
+    <exclude body1="ank_act_link" body2="hip_roll_link_2" />
+    <exclude body1="ank_act_link" body2="hip_pitch_link_2" />
+    <exclude body1="ank_act_link" body2="knee_link_2" />
+    <exclude body1="ank_act_link" body2="ank_pitch_link_2" />
+    <exclude body1="ank_act_link" body2="ank_roll_link_2" />
+    <exclude body1="ank_act_link" body2="ank_rr_link_3" />
+    <exclude body1="ank_act_link" body2="ank_act_rod_head_3" />
+    <exclude body1="ank_act_link" body2="ank_rr_link_4" />
+    <exclude body1="ank_act_link" body2="ank_act_rod_head_4" />
+    <exclude body1="ank_act_link" body2="ank_b_link_3" />
+    <exclude body1="ank_act_link" body2="ank_act_link_head_3" />
+    <exclude body1="ank_act_link" body2="ank_act_link_3" />
+    <exclude body1="ank_act_link" body2="ank_act_rod_3" />
+    <exclude body1="ank_act_link" body2="ank_b_link_4" />
+    <exclude body1="ank_act_link" body2="ank_act_link_head_4" />
+    <exclude body1="ank_act_link" body2="ank_act_link_4" />
+    <exclude body1="ank_act_link" body2="ank_act_rod_4" />
+    <exclude body1="ank_act_link" body2="sho_pitch_link" />
+    <exclude body1="ank_act_link" body2="sho_roll_link" />
+    <exclude body1="ank_act_link" body2="elb_link" />
+    <exclude body1="ank_act_link" body2="sho_pitch_link_2" />
+    <exclude body1="ank_act_link" body2="sho_roll_link_2" />
+    <exclude body1="ank_act_link" body2="elb_link_2" />
     <exclude body1="ank_act_rod" body2="ank_b_link_2" />
     <exclude body1="ank_act_rod" body2="ank_act_link_head_2" />
     <exclude body1="ank_act_rod" body2="ank_act_link_2" />
     <exclude body1="ank_act_rod" body2="ank_act_rod_2" />
+    <exclude body1="ank_act_rod" body2="hip_yaw_link_2" />
+    <exclude body1="ank_act_rod" body2="hip_roll_link_2" />
+    <exclude body1="ank_act_rod" body2="hip_pitch_link_2" />
+    <exclude body1="ank_act_rod" body2="knee_link_2" />
+    <exclude body1="ank_act_rod" body2="ank_pitch_link_2" />
+    <exclude body1="ank_act_rod" body2="ank_roll_link_2" />
+    <exclude body1="ank_act_rod" body2="ank_rr_link_3" />
+    <exclude body1="ank_act_rod" body2="ank_act_rod_head_3" />
+    <exclude body1="ank_act_rod" body2="ank_rr_link_4" />
+    <exclude body1="ank_act_rod" body2="ank_act_rod_head_4" />
+    <exclude body1="ank_act_rod" body2="ank_b_link_3" />
+    <exclude body1="ank_act_rod" body2="ank_act_link_head_3" />
+    <exclude body1="ank_act_rod" body2="ank_act_link_3" />
+    <exclude body1="ank_act_rod" body2="ank_act_rod_3" />
+    <exclude body1="ank_act_rod" body2="ank_b_link_4" />
+    <exclude body1="ank_act_rod" body2="ank_act_link_head_4" />
+    <exclude body1="ank_act_rod" body2="ank_act_link_4" />
+    <exclude body1="ank_act_rod" body2="ank_act_rod_4" />
+    <exclude body1="ank_act_rod" body2="sho_pitch_link" />
+    <exclude body1="ank_act_rod" body2="sho_roll_link" />
+    <exclude body1="ank_act_rod" body2="elb_link" />
+    <exclude body1="ank_act_rod" body2="sho_pitch_link_2" />
+    <exclude body1="ank_act_rod" body2="sho_roll_link_2" />
+    <exclude body1="ank_act_rod" body2="elb_link_2" />
     <exclude body1="ank_b_link_2" body2="ank_act_link_head_2" />
     <exclude body1="ank_b_link_2" body2="ank_act_link_2" />
     <exclude body1="ank_b_link_2" body2="ank_act_rod_2" />
+    <exclude body1="ank_b_link_2" body2="hip_yaw_link_2" />
+    <exclude body1="ank_b_link_2" body2="hip_roll_link_2" />
+    <exclude body1="ank_b_link_2" body2="hip_pitch_link_2" />
+    <exclude body1="ank_b_link_2" body2="knee_link_2" />
+    <exclude body1="ank_b_link_2" body2="ank_pitch_link_2" />
+    <exclude body1="ank_b_link_2" body2="ank_roll_link_2" />
+    <exclude body1="ank_b_link_2" body2="ank_rr_link_3" />
+    <exclude body1="ank_b_link_2" body2="ank_act_rod_head_3" />
+    <exclude body1="ank_b_link_2" body2="ank_rr_link_4" />
+    <exclude body1="ank_b_link_2" body2="ank_act_rod_head_4" />
+    <exclude body1="ank_b_link_2" body2="ank_b_link_3" />
+    <exclude body1="ank_b_link_2" body2="ank_act_link_head_3" />
+    <exclude body1="ank_b_link_2" body2="ank_act_link_3" />
+    <exclude body1="ank_b_link_2" body2="ank_act_rod_3" />
+    <exclude body1="ank_b_link_2" body2="ank_b_link_4" />
+    <exclude body1="ank_b_link_2" body2="ank_act_link_head_4" />
+    <exclude body1="ank_b_link_2" body2="ank_act_link_4" />
+    <exclude body1="ank_b_link_2" body2="ank_act_rod_4" />
+    <exclude body1="ank_b_link_2" body2="sho_pitch_link" />
+    <exclude body1="ank_b_link_2" body2="sho_roll_link" />
+    <exclude body1="ank_b_link_2" body2="elb_link" />
+    <exclude body1="ank_b_link_2" body2="sho_pitch_link_2" />
+    <exclude body1="ank_b_link_2" body2="sho_roll_link_2" />
+    <exclude body1="ank_b_link_2" body2="elb_link_2" />
     <exclude body1="ank_act_link_head_2" body2="ank_act_link_2" />
     <exclude body1="ank_act_link_head_2" body2="ank_act_rod_2" />
+    <exclude body1="ank_act_link_head_2" body2="hip_yaw_link_2" />
+    <exclude body1="ank_act_link_head_2" body2="hip_roll_link_2" />
+    <exclude body1="ank_act_link_head_2" body2="hip_pitch_link_2" />
+    <exclude body1="ank_act_link_head_2" body2="knee_link_2" />
+    <exclude body1="ank_act_link_head_2" body2="ank_pitch_link_2" />
+    <exclude body1="ank_act_link_head_2" body2="ank_roll_link_2" />
+    <exclude body1="ank_act_link_head_2" body2="ank_rr_link_3" />
+    <exclude body1="ank_act_link_head_2" body2="ank_act_rod_head_3" />
+    <exclude body1="ank_act_link_head_2" body2="ank_rr_link_4" />
+    <exclude body1="ank_act_link_head_2" body2="ank_act_rod_head_4" />
+    <exclude body1="ank_act_link_head_2" body2="ank_b_link_3" />
+    <exclude body1="ank_act_link_head_2" body2="ank_act_link_head_3" />
+    <exclude body1="ank_act_link_head_2" body2="ank_act_link_3" />
+    <exclude body1="ank_act_link_head_2" body2="ank_act_rod_3" />
+    <exclude body1="ank_act_link_head_2" body2="ank_b_link_4" />
+    <exclude body1="ank_act_link_head_2" body2="ank_act_link_head_4" />
+    <exclude body1="ank_act_link_head_2" body2="ank_act_link_4" />
+    <exclude body1="ank_act_link_head_2" body2="ank_act_rod_4" />
+    <exclude body1="ank_act_link_head_2" body2="sho_pitch_link" />
+    <exclude body1="ank_act_link_head_2" body2="sho_roll_link" />
+    <exclude body1="ank_act_link_head_2" body2="elb_link" />
+    <exclude body1="ank_act_link_head_2" body2="sho_pitch_link_2" />
+    <exclude body1="ank_act_link_head_2" body2="sho_roll_link_2" />
+    <exclude body1="ank_act_link_head_2" body2="elb_link_2" />
     <exclude body1="ank_act_link_2" body2="ank_act_rod_2" />
+    <exclude body1="ank_act_link_2" body2="hip_yaw_link_2" />
+    <exclude body1="ank_act_link_2" body2="hip_roll_link_2" />
+    <exclude body1="ank_act_link_2" body2="hip_pitch_link_2" />
+    <exclude body1="ank_act_link_2" body2="knee_link_2" />
+    <exclude body1="ank_act_link_2" body2="ank_pitch_link_2" />
+    <exclude body1="ank_act_link_2" body2="ank_roll_link_2" />
+    <exclude body1="ank_act_link_2" body2="ank_rr_link_3" />
+    <exclude body1="ank_act_link_2" body2="ank_act_rod_head_3" />
+    <exclude body1="ank_act_link_2" body2="ank_rr_link_4" />
+    <exclude body1="ank_act_link_2" body2="ank_act_rod_head_4" />
+    <exclude body1="ank_act_link_2" body2="ank_b_link_3" />
+    <exclude body1="ank_act_link_2" body2="ank_act_link_head_3" />
+    <exclude body1="ank_act_link_2" body2="ank_act_link_3" />
+    <exclude body1="ank_act_link_2" body2="ank_act_rod_3" />
+    <exclude body1="ank_act_link_2" body2="ank_b_link_4" />
+    <exclude body1="ank_act_link_2" body2="ank_act_link_head_4" />
+    <exclude body1="ank_act_link_2" body2="ank_act_link_4" />
+    <exclude body1="ank_act_link_2" body2="ank_act_rod_4" />
+    <exclude body1="ank_act_link_2" body2="sho_pitch_link" />
+    <exclude body1="ank_act_link_2" body2="sho_roll_link" />
+    <exclude body1="ank_act_link_2" body2="elb_link" />
+    <exclude body1="ank_act_link_2" body2="sho_pitch_link_2" />
+    <exclude body1="ank_act_link_2" body2="sho_roll_link_2" />
+    <exclude body1="ank_act_link_2" body2="elb_link_2" />
+    <exclude body1="ank_act_rod_2" body2="hip_yaw_link_2" />
+    <exclude body1="ank_act_rod_2" body2="hip_roll_link_2" />
+    <exclude body1="ank_act_rod_2" body2="hip_pitch_link_2" />
+    <exclude body1="ank_act_rod_2" body2="knee_link_2" />
+    <exclude body1="ank_act_rod_2" body2="ank_pitch_link_2" />
+    <exclude body1="ank_act_rod_2" body2="ank_roll_link_2" />
+    <exclude body1="ank_act_rod_2" body2="ank_rr_link_3" />
+    <exclude body1="ank_act_rod_2" body2="ank_act_rod_head_3" />
+    <exclude body1="ank_act_rod_2" body2="ank_rr_link_4" />
+    <exclude body1="ank_act_rod_2" body2="ank_act_rod_head_4" />
+    <exclude body1="ank_act_rod_2" body2="ank_b_link_3" />
+    <exclude body1="ank_act_rod_2" body2="ank_act_link_head_3" />
+    <exclude body1="ank_act_rod_2" body2="ank_act_link_3" />
+    <exclude body1="ank_act_rod_2" body2="ank_act_rod_3" />
+    <exclude body1="ank_act_rod_2" body2="ank_b_link_4" />
+    <exclude body1="ank_act_rod_2" body2="ank_act_link_head_4" />
+    <exclude body1="ank_act_rod_2" body2="ank_act_link_4" />
+    <exclude body1="ank_act_rod_2" body2="ank_act_rod_4" />
+    <exclude body1="ank_act_rod_2" body2="sho_pitch_link" />
+    <exclude body1="ank_act_rod_2" body2="sho_roll_link" />
+    <exclude body1="ank_act_rod_2" body2="elb_link" />
+    <exclude body1="ank_act_rod_2" body2="sho_pitch_link_2" />
+    <exclude body1="ank_act_rod_2" body2="sho_roll_link_2" />
+    <exclude body1="ank_act_rod_2" body2="elb_link_2" />
+    <exclude body1="hip_yaw_link_2" body2="hip_roll_link_2" />
+    <exclude body1="hip_yaw_link_2" body2="hip_pitch_link_2" />
+    <exclude body1="hip_yaw_link_2" body2="knee_link_2" />
+    <exclude body1="hip_yaw_link_2" body2="ank_pitch_link_2" />
+    <exclude body1="hip_yaw_link_2" body2="ank_roll_link_2" />
+    <exclude body1="hip_yaw_link_2" body2="ank_rr_link_3" />
+    <exclude body1="hip_yaw_link_2" body2="ank_act_rod_head_3" />
+    <exclude body1="hip_yaw_link_2" body2="ank_rr_link_4" />
+    <exclude body1="hip_yaw_link_2" body2="ank_act_rod_head_4" />
+    <exclude body1="hip_yaw_link_2" body2="ank_b_link_3" />
+    <exclude body1="hip_yaw_link_2" body2="ank_act_link_head_3" />
+    <exclude body1="hip_yaw_link_2" body2="ank_act_link_3" />
+    <exclude body1="hip_yaw_link_2" body2="ank_act_rod_3" />
+    <exclude body1="hip_yaw_link_2" body2="ank_b_link_4" />
+    <exclude body1="hip_yaw_link_2" body2="ank_act_link_head_4" />
+    <exclude body1="hip_yaw_link_2" body2="ank_act_link_4" />
+    <exclude body1="hip_yaw_link_2" body2="ank_act_rod_4" />
+    <exclude body1="hip_yaw_link_2" body2="sho_pitch_link" />
+    <exclude body1="hip_yaw_link_2" body2="sho_roll_link" />
+    <exclude body1="hip_yaw_link_2" body2="elb_link" />
+    <exclude body1="hip_yaw_link_2" body2="sho_pitch_link_2" />
+    <exclude body1="hip_yaw_link_2" body2="sho_roll_link_2" />
+    <exclude body1="hip_yaw_link_2" body2="elb_link_2" />
+    <exclude body1="hip_roll_link_2" body2="hip_pitch_link_2" />
+    <exclude body1="hip_roll_link_2" body2="knee_link_2" />
+    <exclude body1="hip_roll_link_2" body2="ank_pitch_link_2" />
+    <exclude body1="hip_roll_link_2" body2="ank_roll_link_2" />
+    <exclude body1="hip_roll_link_2" body2="ank_rr_link_3" />
+    <exclude body1="hip_roll_link_2" body2="ank_act_rod_head_3" />
+    <exclude body1="hip_roll_link_2" body2="ank_rr_link_4" />
+    <exclude body1="hip_roll_link_2" body2="ank_act_rod_head_4" />
+    <exclude body1="hip_roll_link_2" body2="ank_b_link_3" />
+    <exclude body1="hip_roll_link_2" body2="ank_act_link_head_3" />
+    <exclude body1="hip_roll_link_2" body2="ank_act_link_3" />
+    <exclude body1="hip_roll_link_2" body2="ank_act_rod_3" />
+    <exclude body1="hip_roll_link_2" body2="ank_b_link_4" />
+    <exclude body1="hip_roll_link_2" body2="ank_act_link_head_4" />
+    <exclude body1="hip_roll_link_2" body2="ank_act_link_4" />
+    <exclude body1="hip_roll_link_2" body2="ank_act_rod_4" />
+    <exclude body1="hip_roll_link_2" body2="sho_pitch_link" />
+    <exclude body1="hip_roll_link_2" body2="sho_roll_link" />
+    <exclude body1="hip_roll_link_2" body2="elb_link" />
+    <exclude body1="hip_roll_link_2" body2="sho_pitch_link_2" />
+    <exclude body1="hip_roll_link_2" body2="sho_roll_link_2" />
+    <exclude body1="hip_roll_link_2" body2="elb_link_2" />
+    <exclude body1="hip_pitch_link_2" body2="knee_link_2" />
+    <exclude body1="hip_pitch_link_2" body2="ank_pitch_link_2" />
+    <exclude body1="hip_pitch_link_2" body2="ank_roll_link_2" />
+    <exclude body1="hip_pitch_link_2" body2="ank_rr_link_3" />
+    <exclude body1="hip_pitch_link_2" body2="ank_act_rod_head_3" />
+    <exclude body1="hip_pitch_link_2" body2="ank_rr_link_4" />
+    <exclude body1="hip_pitch_link_2" body2="ank_act_rod_head_4" />
+    <exclude body1="hip_pitch_link_2" body2="ank_b_link_3" />
+    <exclude body1="hip_pitch_link_2" body2="ank_act_link_head_3" />
+    <exclude body1="hip_pitch_link_2" body2="ank_act_link_3" />
+    <exclude body1="hip_pitch_link_2" body2="ank_act_rod_3" />
+    <exclude body1="hip_pitch_link_2" body2="ank_b_link_4" />
+    <exclude body1="hip_pitch_link_2" body2="ank_act_link_head_4" />
+    <exclude body1="hip_pitch_link_2" body2="ank_act_link_4" />
+    <exclude body1="hip_pitch_link_2" body2="ank_act_rod_4" />
+    <exclude body1="hip_pitch_link_2" body2="sho_pitch_link" />
+    <exclude body1="hip_pitch_link_2" body2="sho_roll_link" />
+    <exclude body1="hip_pitch_link_2" body2="elb_link" />
+    <exclude body1="hip_pitch_link_2" body2="sho_pitch_link_2" />
+    <exclude body1="hip_pitch_link_2" body2="sho_roll_link_2" />
+    <exclude body1="hip_pitch_link_2" body2="elb_link_2" />
+    <exclude body1="knee_link_2" body2="ank_pitch_link_2" />
+    <exclude body1="knee_link_2" body2="ank_roll_link_2" />
+    <exclude body1="knee_link_2" body2="ank_rr_link_3" />
+    <exclude body1="knee_link_2" body2="ank_act_rod_head_3" />
+    <exclude body1="knee_link_2" body2="ank_rr_link_4" />
+    <exclude body1="knee_link_2" body2="ank_act_rod_head_4" />
+    <exclude body1="knee_link_2" body2="ank_b_link_3" />
+    <exclude body1="knee_link_2" body2="ank_act_link_head_3" />
+    <exclude body1="knee_link_2" body2="ank_act_link_3" />
+    <exclude body1="knee_link_2" body2="ank_act_rod_3" />
+    <exclude body1="knee_link_2" body2="ank_b_link_4" />
+    <exclude body1="knee_link_2" body2="ank_act_link_head_4" />
+    <exclude body1="knee_link_2" body2="ank_act_link_4" />
+    <exclude body1="knee_link_2" body2="ank_act_rod_4" />
+    <exclude body1="knee_link_2" body2="sho_pitch_link" />
+    <exclude body1="knee_link_2" body2="sho_roll_link" />
+    <exclude body1="knee_link_2" body2="elb_link" />
+    <exclude body1="knee_link_2" body2="sho_pitch_link_2" />
+    <exclude body1="knee_link_2" body2="sho_roll_link_2" />
+    <exclude body1="knee_link_2" body2="elb_link_2" />
+    <exclude body1="ank_pitch_link_2" body2="ank_roll_link_2" />
+    <exclude body1="ank_pitch_link_2" body2="ank_rr_link_3" />
+    <exclude body1="ank_pitch_link_2" body2="ank_act_rod_head_3" />
+    <exclude body1="ank_pitch_link_2" body2="ank_rr_link_4" />
+    <exclude body1="ank_pitch_link_2" body2="ank_act_rod_head_4" />
+    <exclude body1="ank_pitch_link_2" body2="ank_b_link_3" />
+    <exclude body1="ank_pitch_link_2" body2="ank_act_link_head_3" />
+    <exclude body1="ank_pitch_link_2" body2="ank_act_link_3" />
+    <exclude body1="ank_pitch_link_2" body2="ank_act_rod_3" />
+    <exclude body1="ank_pitch_link_2" body2="ank_b_link_4" />
+    <exclude body1="ank_pitch_link_2" body2="ank_act_link_head_4" />
+    <exclude body1="ank_pitch_link_2" body2="ank_act_link_4" />
+    <exclude body1="ank_pitch_link_2" body2="ank_act_rod_4" />
+    <exclude body1="ank_pitch_link_2" body2="sho_pitch_link" />
+    <exclude body1="ank_pitch_link_2" body2="sho_roll_link" />
+    <exclude body1="ank_pitch_link_2" body2="elb_link" />
+    <exclude body1="ank_pitch_link_2" body2="sho_pitch_link_2" />
+    <exclude body1="ank_pitch_link_2" body2="sho_roll_link_2" />
+    <exclude body1="ank_pitch_link_2" body2="elb_link_2" />
+    <exclude body1="ank_roll_link_2" body2="ank_rr_link_3" />
+    <exclude body1="ank_roll_link_2" body2="ank_act_rod_head_3" />
+    <exclude body1="ank_roll_link_2" body2="ank_rr_link_4" />
+    <exclude body1="ank_roll_link_2" body2="ank_act_rod_head_4" />
+    <exclude body1="ank_roll_link_2" body2="ank_b_link_3" />
+    <exclude body1="ank_roll_link_2" body2="ank_act_link_head_3" />
+    <exclude body1="ank_roll_link_2" body2="ank_act_link_3" />
+    <exclude body1="ank_roll_link_2" body2="ank_act_rod_3" />
+    <exclude body1="ank_roll_link_2" body2="ank_b_link_4" />
+    <exclude body1="ank_roll_link_2" body2="ank_act_link_head_4" />
+    <exclude body1="ank_roll_link_2" body2="ank_act_link_4" />
+    <exclude body1="ank_roll_link_2" body2="ank_act_rod_4" />
+    <exclude body1="ank_roll_link_2" body2="sho_pitch_link" />
+    <exclude body1="ank_roll_link_2" body2="sho_roll_link" />
+    <exclude body1="ank_roll_link_2" body2="elb_link" />
+    <exclude body1="ank_roll_link_2" body2="sho_pitch_link_2" />
+    <exclude body1="ank_roll_link_2" body2="sho_roll_link_2" />
+    <exclude body1="ank_roll_link_2" body2="elb_link_2" />
+    <exclude body1="ank_rr_link_3" body2="ank_act_rod_head_3" />
+    <exclude body1="ank_rr_link_3" body2="ank_rr_link_4" />
+    <exclude body1="ank_rr_link_3" body2="ank_act_rod_head_4" />
+    <exclude body1="ank_rr_link_3" body2="ank_b_link_3" />
+    <exclude body1="ank_rr_link_3" body2="ank_act_link_head_3" />
+    <exclude body1="ank_rr_link_3" body2="ank_act_link_3" />
+    <exclude body1="ank_rr_link_3" body2="ank_act_rod_3" />
+    <exclude body1="ank_rr_link_3" body2="ank_b_link_4" />
+    <exclude body1="ank_rr_link_3" body2="ank_act_link_head_4" />
+    <exclude body1="ank_rr_link_3" body2="ank_act_link_4" />
+    <exclude body1="ank_rr_link_3" body2="ank_act_rod_4" />
+    <exclude body1="ank_rr_link_3" body2="sho_pitch_link" />
+    <exclude body1="ank_rr_link_3" body2="sho_roll_link" />
+    <exclude body1="ank_rr_link_3" body2="elb_link" />
+    <exclude body1="ank_rr_link_3" body2="sho_pitch_link_2" />
+    <exclude body1="ank_rr_link_3" body2="sho_roll_link_2" />
+    <exclude body1="ank_rr_link_3" body2="elb_link_2" />
+    <exclude body1="ank_act_rod_head_3" body2="ank_rr_link_4" />
+    <exclude body1="ank_act_rod_head_3" body2="ank_act_rod_head_4" />
+    <exclude body1="ank_act_rod_head_3" body2="ank_b_link_3" />
+    <exclude body1="ank_act_rod_head_3" body2="ank_act_link_head_3" />
+    <exclude body1="ank_act_rod_head_3" body2="ank_act_link_3" />
+    <exclude body1="ank_act_rod_head_3" body2="ank_act_rod_3" />
+    <exclude body1="ank_act_rod_head_3" body2="ank_b_link_4" />
+    <exclude body1="ank_act_rod_head_3" body2="ank_act_link_head_4" />
+    <exclude body1="ank_act_rod_head_3" body2="ank_act_link_4" />
+    <exclude body1="ank_act_rod_head_3" body2="ank_act_rod_4" />
+    <exclude body1="ank_act_rod_head_3" body2="sho_pitch_link" />
+    <exclude body1="ank_act_rod_head_3" body2="sho_roll_link" />
+    <exclude body1="ank_act_rod_head_3" body2="elb_link" />
+    <exclude body1="ank_act_rod_head_3" body2="sho_pitch_link_2" />
+    <exclude body1="ank_act_rod_head_3" body2="sho_roll_link_2" />
+    <exclude body1="ank_act_rod_head_3" body2="elb_link_2" />
+    <exclude body1="ank_rr_link_4" body2="ank_act_rod_head_4" />
+    <exclude body1="ank_rr_link_4" body2="ank_b_link_3" />
+    <exclude body1="ank_rr_link_4" body2="ank_act_link_head_3" />
+    <exclude body1="ank_rr_link_4" body2="ank_act_link_3" />
+    <exclude body1="ank_rr_link_4" body2="ank_act_rod_3" />
+    <exclude body1="ank_rr_link_4" body2="ank_b_link_4" />
+    <exclude body1="ank_rr_link_4" body2="ank_act_link_head_4" />
+    <exclude body1="ank_rr_link_4" body2="ank_act_link_4" />
+    <exclude body1="ank_rr_link_4" body2="ank_act_rod_4" />
+    <exclude body1="ank_rr_link_4" body2="sho_pitch_link" />
+    <exclude body1="ank_rr_link_4" body2="sho_roll_link" />
+    <exclude body1="ank_rr_link_4" body2="elb_link" />
+    <exclude body1="ank_rr_link_4" body2="sho_pitch_link_2" />
+    <exclude body1="ank_rr_link_4" body2="sho_roll_link_2" />
+    <exclude body1="ank_rr_link_4" body2="elb_link_2" />
+    <exclude body1="ank_act_rod_head_4" body2="ank_b_link_3" />
+    <exclude body1="ank_act_rod_head_4" body2="ank_act_link_head_3" />
+    <exclude body1="ank_act_rod_head_4" body2="ank_act_link_3" />
+    <exclude body1="ank_act_rod_head_4" body2="ank_act_rod_3" />
+    <exclude body1="ank_act_rod_head_4" body2="ank_b_link_4" />
+    <exclude body1="ank_act_rod_head_4" body2="ank_act_link_head_4" />
+    <exclude body1="ank_act_rod_head_4" body2="ank_act_link_4" />
+    <exclude body1="ank_act_rod_head_4" body2="ank_act_rod_4" />
+    <exclude body1="ank_act_rod_head_4" body2="sho_pitch_link" />
+    <exclude body1="ank_act_rod_head_4" body2="sho_roll_link" />
+    <exclude body1="ank_act_rod_head_4" body2="elb_link" />
+    <exclude body1="ank_act_rod_head_4" body2="sho_pitch_link_2" />
+    <exclude body1="ank_act_rod_head_4" body2="sho_roll_link_2" />
+    <exclude body1="ank_act_rod_head_4" body2="elb_link_2" />
+    <exclude body1="ank_b_link_3" body2="ank_act_link_head_3" />
+    <exclude body1="ank_b_link_3" body2="ank_act_link_3" />
+    <exclude body1="ank_b_link_3" body2="ank_act_rod_3" />
+    <exclude body1="ank_b_link_3" body2="ank_b_link_4" />
+    <exclude body1="ank_b_link_3" body2="ank_act_link_head_4" />
+    <exclude body1="ank_b_link_3" body2="ank_act_link_4" />
+    <exclude body1="ank_b_link_3" body2="ank_act_rod_4" />
+    <exclude body1="ank_b_link_3" body2="sho_pitch_link" />
+    <exclude body1="ank_b_link_3" body2="sho_roll_link" />
+    <exclude body1="ank_b_link_3" body2="elb_link" />
+    <exclude body1="ank_b_link_3" body2="sho_pitch_link_2" />
+    <exclude body1="ank_b_link_3" body2="sho_roll_link_2" />
+    <exclude body1="ank_b_link_3" body2="elb_link_2" />
+    <exclude body1="ank_act_link_head_3" body2="ank_act_link_3" />
+    <exclude body1="ank_act_link_head_3" body2="ank_act_rod_3" />
+    <exclude body1="ank_act_link_head_3" body2="ank_b_link_4" />
+    <exclude body1="ank_act_link_head_3" body2="ank_act_link_head_4" />
+    <exclude body1="ank_act_link_head_3" body2="ank_act_link_4" />
+    <exclude body1="ank_act_link_head_3" body2="ank_act_rod_4" />
+    <exclude body1="ank_act_link_head_3" body2="sho_pitch_link" />
+    <exclude body1="ank_act_link_head_3" body2="sho_roll_link" />
+    <exclude body1="ank_act_link_head_3" body2="elb_link" />
+    <exclude body1="ank_act_link_head_3" body2="sho_pitch_link_2" />
+    <exclude body1="ank_act_link_head_3" body2="sho_roll_link_2" />
+    <exclude body1="ank_act_link_head_3" body2="elb_link_2" />
+    <exclude body1="ank_act_link_3" body2="ank_act_rod_3" />
+    <exclude body1="ank_act_link_3" body2="ank_b_link_4" />
+    <exclude body1="ank_act_link_3" body2="ank_act_link_head_4" />
+    <exclude body1="ank_act_link_3" body2="ank_act_link_4" />
+    <exclude body1="ank_act_link_3" body2="ank_act_rod_4" />
+    <exclude body1="ank_act_link_3" body2="sho_pitch_link" />
+    <exclude body1="ank_act_link_3" body2="sho_roll_link" />
+    <exclude body1="ank_act_link_3" body2="elb_link" />
+    <exclude body1="ank_act_link_3" body2="sho_pitch_link_2" />
+    <exclude body1="ank_act_link_3" body2="sho_roll_link_2" />
+    <exclude body1="ank_act_link_3" body2="elb_link_2" />
+    <exclude body1="ank_act_rod_3" body2="ank_b_link_4" />
+    <exclude body1="ank_act_rod_3" body2="ank_act_link_head_4" />
+    <exclude body1="ank_act_rod_3" body2="ank_act_link_4" />
+    <exclude body1="ank_act_rod_3" body2="ank_act_rod_4" />
+    <exclude body1="ank_act_rod_3" body2="sho_pitch_link" />
+    <exclude body1="ank_act_rod_3" body2="sho_roll_link" />
+    <exclude body1="ank_act_rod_3" body2="elb_link" />
+    <exclude body1="ank_act_rod_3" body2="sho_pitch_link_2" />
+    <exclude body1="ank_act_rod_3" body2="sho_roll_link_2" />
+    <exclude body1="ank_act_rod_3" body2="elb_link_2" />
+    <exclude body1="ank_b_link_4" body2="ank_act_link_head_4" />
+    <exclude body1="ank_b_link_4" body2="ank_act_link_4" />
+    <exclude body1="ank_b_link_4" body2="ank_act_rod_4" />
+    <exclude body1="ank_b_link_4" body2="sho_pitch_link" />
+    <exclude body1="ank_b_link_4" body2="sho_roll_link" />
+    <exclude body1="ank_b_link_4" body2="elb_link" />
+    <exclude body1="ank_b_link_4" body2="sho_pitch_link_2" />
+    <exclude body1="ank_b_link_4" body2="sho_roll_link_2" />
+    <exclude body1="ank_b_link_4" body2="elb_link_2" />
+    <exclude body1="ank_act_link_head_4" body2="ank_act_link_4" />
+    <exclude body1="ank_act_link_head_4" body2="ank_act_rod_4" />
+    <exclude body1="ank_act_link_head_4" body2="sho_pitch_link" />
+    <exclude body1="ank_act_link_head_4" body2="sho_roll_link" />
+    <exclude body1="ank_act_link_head_4" body2="elb_link" />
+    <exclude body1="ank_act_link_head_4" body2="sho_pitch_link_2" />
+    <exclude body1="ank_act_link_head_4" body2="sho_roll_link_2" />
+    <exclude body1="ank_act_link_head_4" body2="elb_link_2" />
+    <exclude body1="ank_act_link_4" body2="ank_act_rod_4" />
+    <exclude body1="ank_act_link_4" body2="sho_pitch_link" />
+    <exclude body1="ank_act_link_4" body2="sho_roll_link" />
+    <exclude body1="ank_act_link_4" body2="elb_link" />
+    <exclude body1="ank_act_link_4" body2="sho_pitch_link_2" />
+    <exclude body1="ank_act_link_4" body2="sho_roll_link_2" />
+    <exclude body1="ank_act_link_4" body2="elb_link_2" />
+    <exclude body1="ank_act_rod_4" body2="sho_pitch_link" />
+    <exclude body1="ank_act_rod_4" body2="sho_roll_link" />
+    <exclude body1="ank_act_rod_4" body2="elb_link" />
+    <exclude body1="ank_act_rod_4" body2="sho_pitch_link_2" />
+    <exclude body1="ank_act_rod_4" body2="sho_roll_link_2" />
+    <exclude body1="ank_act_rod_4" body2="elb_link_2" />
+    <exclude body1="sho_pitch_link" body2="sho_roll_link" />
+    <exclude body1="sho_pitch_link" body2="elb_link" />
+    <exclude body1="sho_pitch_link" body2="sho_pitch_link_2" />
+    <exclude body1="sho_pitch_link" body2="sho_roll_link_2" />
+    <exclude body1="sho_pitch_link" body2="elb_link_2" />
+    <exclude body1="sho_roll_link" body2="elb_link" />
+    <exclude body1="sho_roll_link" body2="sho_pitch_link_2" />
+    <exclude body1="sho_roll_link" body2="sho_roll_link_2" />
+    <exclude body1="sho_roll_link" body2="elb_link_2" />
+    <exclude body1="elb_link" body2="sho_pitch_link_2" />
+    <exclude body1="elb_link" body2="sho_roll_link_2" />
+    <exclude body1="elb_link" body2="elb_link_2" />
+    <exclude body1="sho_pitch_link_2" body2="sho_roll_link_2" />
+    <exclude body1="sho_pitch_link_2" body2="elb_link_2" />
+    <exclude body1="sho_roll_link_2" body2="elb_link_2" />
   </contact>
   <actuator>
-    <position name="knee_act" joint="knee" kp="1e4" ctrlrange="-1.0472 2.0944" />
-    <position name="ank_pitch_act" joint="ank_pitch" kp="1e4" ctrlrange="-1.5708 1.5708" />
-    <position name="ank_roll_act" joint="ank_roll" kp="1e4" ctrlrange="-1.5708 1.5708" />
+    <position name="left_hip_yaw_act" joint="left_hip_yaw" kp="1e4" ctrlrange="-1.5708 1.5708" />
+    <position name="left_hip_roll_act" joint="left_hip_roll" kp="1e4" ctrlrange="-1.5708 1.5708" />
+    <position name="left_hip_pitch_act" joint="left_hip_pitch" kp="1e4" ctrlrange="-1.5708 1.5708" />
+    <position name="left_knee_act" joint="left_knee" kp="1e4" ctrlrange="-1.0472 2.0944" />
+    <position name="left_ank_pitch_act" joint="left_ank_pitch" kp="1e4" ctrlrange="-1.5708 1.5708" />
+    <position name="left_ank_roll_act" joint="left_ank_roll" kp="1e4" ctrlrange="-1.5708 1.5708" />
+    <position name="right_hip_yaw_act" joint="right_hip_yaw" kp="1e4" ctrlrange="-1.5708 1.5708" />
+    <position name="right_hip_roll_act" joint="right_hip_roll" kp="1e4" ctrlrange="-1.5708 1.5708" />
+    <position name="right_hip_pitch_act" joint="right_hip_pitch" kp="1e4" ctrlrange="-1.5708 1.5708" />
+    <position name="right_knee_act" joint="right_knee" kp="1e4" ctrlrange="-1.0472 2.0944" />
+    <position name="right_ank_pitch_act" joint="right_ank_pitch" kp="1e4" ctrlrange="-1.5708 1.5708" />
+    <position name="right_ank_roll_act" joint="right_ank_roll" kp="1e4" ctrlrange="-1.5708 1.5708" />
+    <position name="left_sho_pitch_act" joint="left_sho_pitch" kp="1e4" ctrlrange="-1.5708 1.5708" />
+    <position name="left_sho_roll_act" joint="left_sho_roll" kp="1e4" ctrlrange="-1.5708 1.5708" />
+    <position name="left_elb_act" joint="left_elb" kp="1e4" ctrlrange="-1.5708 1.5708" />
+    <position name="right_sho_pitch_act" joint="right_sho_pitch" kp="1e4" ctrlrange="-1.5708 1.5708" />
+    <position name="right_sho_roll_act" joint="right_sho_roll" kp="1e4" ctrlrange="-1.5708 1.5708" />
+    <position name="right_elb_act" joint="right_elb" kp="1e4" ctrlrange="-1.5708 1.5708" />
   </actuator>
   <equality>
     <weld body1="ank_act_rod_head" body2="ank_act_rod" solimp="0.9999 0.9999 0.001 0.5 2" />
