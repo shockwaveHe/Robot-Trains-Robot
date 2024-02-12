@@ -83,49 +83,40 @@ class HumanoidRobot:
         Returns:
             List[float]: Updated list of joint angles after calculation.
         """
-
-        # Define joint names and their corresponding angles
-        n_dof = len(self.config.act_params)
-        joint_names = list(self.config.act_params.keys())
-        if side == "left":
-            half_joint_names = joint_names[: n_dof // 2]
-        else:
-            half_joint_names = joint_names[n_dof // 2 :]
-
         # Magic numbers extracted from robot configuration
         (
             z_offset_thigh,
             z_offset_knee,
             z_offset_shin,
-            x_offset_foot_to_ankle,
-            y_offset_foot_to_ankle,
+            x_offset_ankle_to_foot,
+            y_offset_ankle_to_foot,
         ) = (
             self.config.offsets[key]
             for key in [
                 "z_offset_thigh",
                 "z_offset_knee",
                 "z_offset_shin",
-                "x_offset_foot_to_ankle",
-                "y_offset_foot_to_ankle",
+                "x_offset_ankle_to_foot",
+                "y_offset_ankle_to_foot",
             ]
         )
 
         # Decompose target position and orientation
         target_x, target_y, target_z = target_foot_pos
-        ankle_roll, ankle_pitch, waist_yaw = target_foot_ori
+        ankle_roll, ankle_pitch, hip_yaw = target_foot_ori
 
         # Adjust positions based on offsets and calculate new coordinates
-        target_x += x_offset_foot_to_ankle
+        target_x += x_offset_ankle_to_foot
         target_y += (
-            -y_offset_foot_to_ankle if side == "left" else y_offset_foot_to_ankle
+            -y_offset_ankle_to_foot if side == "left" else y_offset_ankle_to_foot
         )
         target_z = z_offset_thigh + z_offset_knee + z_offset_shin - target_z
 
-        transformed_x = target_x * math.cos(waist_yaw) + target_y * math.sin(waist_yaw)
-        transformed_y = -target_x * math.sin(waist_yaw) + target_y * math.cos(waist_yaw)
+        transformed_x = target_x * math.cos(hip_yaw) + target_y * math.sin(hip_yaw)
+        transformed_y = -target_x * math.sin(hip_yaw) + target_y * math.cos(hip_yaw)
         transformed_z = target_z
 
-        waist_roll = math.atan2(transformed_y, transformed_z)
+        hip_roll = math.atan2(transformed_y, transformed_z)
 
         # Calculate leg angles
         if self.name == "sustaina_op":
@@ -140,21 +131,21 @@ class HumanoidRobot:
             knee_disp = math.acos(
                 min(max(leg_length / (z_offset_thigh + z_offset_shin), -1.0), 1.0)
             )
-            waist_pitch = -leg_pitch - knee_disp
+            hip_pitch = -leg_pitch - knee_disp
             knee_pitch = -leg_pitch + knee_disp
 
-            angles = [
-                waist_yaw,
-                waist_roll,
-                waist_pitch,
-                -waist_pitch,
-                waist_pitch,
-                knee_pitch,
-                -knee_pitch,
-                knee_pitch,
-                ankle_pitch,
-                ankle_roll - waist_roll,
-            ]
+            angles_dict = {
+                "waist_yaw_joint": hip_yaw,
+                "waist_roll_joint": hip_roll,
+                "waist_pitch_joint": hip_pitch,
+                "knee_pitch_mimic_joint": -hip_pitch,
+                "waist_pitch_mimic_joint": hip_pitch,
+                "knee_pitch_joint": knee_pitch,
+                "ankle_pitch_mimic_joint": -knee_pitch,
+                "shin_pitch_mimic_joint": knee_pitch,
+                "ankle_pitch_joint": ankle_pitch,
+                "ankle_roll_joint": ankle_roll - hip_roll,
+            }
         elif self.name == "robotis_op3":
             leg_projected_yz_length = math.sqrt(transformed_y**2 + transformed_z**2)
             leg_length = math.sqrt(transformed_x**2 + leg_projected_yz_length**2)
@@ -166,24 +157,29 @@ class HumanoidRobot:
             ankle_disp = math.asin(
                 z_offset_thigh / z_offset_shin * math.sin(wrist_disp)
             )
-            waist_pitch = -leg_pitch - wrist_disp
+            hip_pitch = -leg_pitch - wrist_disp
             knee_pitch = wrist_disp + ankle_disp
-            ankle_pitch += knee_pitch + waist_pitch
+            ankle_pitch += knee_pitch + hip_pitch
 
-            angles = [
-                waist_yaw,
-                -waist_roll,
-                waist_pitch if side == "left" else -waist_pitch,
-                knee_pitch if side == "left" else -knee_pitch,
-                ankle_pitch if side == "left" else -ankle_pitch,
-                ankle_roll - waist_roll,
-            ]
+            angles_dict = {
+                "hip_yaw": hip_yaw,
+                "hip_roll": -hip_roll,
+                "hip_pitch": hip_pitch if side == "left" else -hip_pitch,
+                "knee": knee_pitch if side == "left" else -knee_pitch,
+                "ank_pitch": ankle_pitch if side == "left" else -ankle_pitch,
+                "ank_roll": ankle_roll - hip_roll,
+            }
         else:
             raise ValueError(f"Robot '{self.name}' is not supported.")
 
         # Update joint angles based on calculations
-        for name, angle in zip(half_joint_names, angles):
-            joint_angles[name] = angle
+        for name, angle in angles_dict.items():
+            if f"{side}_{name}" in joint_angles:
+                joint_angles[f"{side}_{name}"] = angle
+            elif f"{side[0]}_{name}" in joint_angles:
+                joint_angles[f"{side[0]}_{name}"] = angle
+            else:
+                raise ValueError(f"Joint '{name}' not found in joint angles.")
 
         return joint_angles
 

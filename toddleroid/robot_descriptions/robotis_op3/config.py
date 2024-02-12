@@ -52,14 +52,38 @@ robotis_op3_config = RobotConfig(
         "r_ank_roll": ActuatorParameters(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
+        "l_sho_pitch": ActuatorParameters(
+            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+        ),
+        "l_sho_roll": ActuatorParameters(
+            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+        ),
+        "l_el": ActuatorParameters(
+            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+        ),
+        "r_sho_pitch": ActuatorParameters(
+            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+        ),
+        "r_sho_roll": ActuatorParameters(
+            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+        ),
+        "r_el": ActuatorParameters(
+            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+        ),
+        "head_pan": ActuatorParameters(
+            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+        ),
+        "head_tilt": ActuatorParameters(
+            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+        ),
     },
     offsets={
         "z_offset_hip": 0.028,
         "z_offset_thigh": 0.11,  # from the hip pitch joint to the knee joint
         "z_offset_knee": 0.0,
         "z_offset_shin": 0.11,  # from the knee joint to the ankle pitch joint
-        "x_offset_foot_to_ankle": 0.0,
-        "y_offset_foot_to_ankle": 0.044,
+        "x_offset_ankle_to_foot": 0.0,
+        "y_offset_ankle_to_foot": 0.044,
         "left_offset_foot_to_sole": np.array([0.0, 0.01, 0.0]),
         "right_offset_foot_to_sole": np.array([0.0, -0.01, 0.0]),
         "x_offset_sole": 0.127,

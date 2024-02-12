@@ -86,8 +86,8 @@ base_config = RobotConfig(
         # "z_offset_thigh": 0.11,  # from the hip pitch joint to the knee joint
         # "z_offset_knee": 0.0,
         # "z_offset_shin": 0.11,  # from the knee joint to the ankle pitch joint
-        # "x_offset_foot_to_ankle": 0.0,
-        # "y_offset_foot_to_ankle": 0.044,
+        # "x_offset_ankle_to_foot": 0.0,
+        # "y_offset_ankle_to_foot": 0.044,
         # "left_offset_foot_to_sole": np.array([0.0, 0.01, 0.0]),
         # "right_offset_foot_to_sole": np.array([0.0, -0.01, 0.0]),
         # "x_offset_sole": 0.127,

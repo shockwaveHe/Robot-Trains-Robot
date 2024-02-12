@@ -22,6 +22,9 @@ sustaina_op_config = RobotConfig(
         "left_waist_roll_joint": ActuatorParameters(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
+        "left_waist_roll_mimic_joint": ActuatorParameters(
+            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+        ),
         "left_waist_pitch_joint": ActuatorParameters(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
@@ -50,6 +53,9 @@ sustaina_op_config = RobotConfig(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
         "right_waist_roll_joint": ActuatorParameters(
+            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+        ),
+        "right_waist_roll_mimic_joint": ActuatorParameters(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
         "right_waist_pitch_joint": ActuatorParameters(
@@ -82,8 +88,8 @@ sustaina_op_config = RobotConfig(
         "z_offset_thigh": 0.1,
         "z_offset_knee": 0.057,
         "z_offset_shin": 0.1,
-        "x_offset_foot_to_ankle": 0.0,
-        "y_offset_foot_to_ankle": 0.044,
+        "x_offset_ankle_to_foot": 0.0,
+        "y_offset_ankle_to_foot": 0.044,
         "left_offset_foot_to_sole": np.array([0.0, 0.01, -0.04]),
         "right_offset_foot_to_sole": np.array([0.0, -0.01, -0.04]),
     },

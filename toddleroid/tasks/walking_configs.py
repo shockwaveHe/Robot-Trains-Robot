@@ -46,7 +46,7 @@ robotis_op3_pybullet_walking_config = WalkingConfig(
 )
 
 robotis_op3_mujoco_walking_config = WalkingConfig(
-    max_stride=np.array([0.05, 0.03, 0.2]),
+    max_stride=np.array([0.05, 0.01, 0.2]),
     plan_period=0.6,  # This is proabably the most important parameter to change
     control_dt=0.01,
     control_period=1.0,

@@ -370,14 +370,7 @@ def main():
         if sim_step_idx >= config.sim_step_interval:
             sim_step_idx = 0
             joint_angles, is_traj_completed = walking.solve_joint_angles()
-            if robot.name == "sustaina_op":
-                print(
-                    f"joint_angles: {round_floats(list(joint_angles.values())[7:], 6)}"
-                )
-            elif robot.name == "robotis_op3":
-                print(f"joint_angles: {round_floats(list(joint_angles.values()), 6)}")
-            else:
-                raise ValueError("Unknown robot name")
+            print(f"joint_angles: {round_floats(list(joint_angles.values()), 6)}")
 
             if is_traj_completed:
                 if len(foot_steps) <= 5:
