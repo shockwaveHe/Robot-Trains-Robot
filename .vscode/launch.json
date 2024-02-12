@@ -56,6 +56,23 @@
                 // "--sleep-time",
                 // "0.001",
             ]
+        },
+        {
+            "name": "Python: walk_base_mujoco",
+            "type": "python",
+            "request": "launch",
+            "program": "toddleroid/tasks/walking.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot-name",
+                "base",
+                "--sim",
+                "mujoco",
+                // "--use-feedback",
+                // "--sleep-time",
+                // "0.001",
+            ]
         }
     ]
 }

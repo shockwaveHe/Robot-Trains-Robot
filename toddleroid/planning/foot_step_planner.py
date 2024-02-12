@@ -30,7 +30,7 @@ class FootStepPlanner:
         """
         self.params = params
 
-    def calculate_steps(
+    def compute_steps(
         self,
         target: np.ndarray,
         current: np.ndarray,
@@ -51,7 +51,7 @@ class FootStepPlanner:
         """
         steps = []
         time = 0.0
-        stride = self._calculate_strides(target, current)
+        stride = self._compute_strides(target, current)
 
         if status == "start":
             steps.append(FootStep(time, current, "both"))
@@ -70,7 +70,7 @@ class FootStepPlanner:
         self._add_final_steps(steps, target, time, next_support_leg, status)
         return steps
 
-    def _calculate_strides(self, target: np.ndarray, current: np.ndarray) -> np.ndarray:
+    def _compute_strides(self, target: np.ndarray, current: np.ndarray) -> np.ndarray:
         """
         Calculate the stride values in x, y, and theta directions to move from the current position to the target.
 
@@ -171,7 +171,7 @@ if __name__ == "__main__":
         offset_y=0.044,
     )
     planner = FootStepPlanner(planner_params)
-    foot_steps = planner.calculate_steps(
+    foot_steps = planner.compute_steps(
         target=np.array([1.0, 0.0, 0.5]),
         current=np.array([0.5, 0.0, 0.1]),
         next_support_leg="right",

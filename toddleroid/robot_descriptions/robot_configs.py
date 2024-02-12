@@ -3,6 +3,7 @@
 import importlib
 import os
 from dataclasses import dataclass
+from typing import Callable
 
 
 @dataclass
@@ -13,6 +14,7 @@ class RobotConfig:
     canonical_name2link_name: dict = None
     link_name2canonical_name: dict = None
     offsets: dict = None
+    compute_leg_angles: Callable = None
 
 
 @dataclass

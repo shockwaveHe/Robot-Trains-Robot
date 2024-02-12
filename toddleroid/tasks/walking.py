@@ -144,7 +144,7 @@ class Walking:
         else:
             com_pos_curr = np.zeros(3)
 
-        self.foot_steps = self.fsp.calculate_steps(
+        self.foot_steps = self.fsp.compute_steps(
             com_pos_target, com_pos_curr, self.next_support_leg, self.status
         )
         self.status = "walking"
@@ -303,14 +303,12 @@ def main():
         "--robot-name",
         type=str,
         default="sustaina_op",
-        choices=["sustaina_op", "robotis_op3"],
         help="The name of the robot. Need to match the name in robot_descriptions.",
     )
     parser.add_argument(
         "--sim",
         type=str,
         default="pybullet",
-        choices=["pybullet", "mujoco"],
         help="The simulator to use.",
     )
     parser.add_argument(

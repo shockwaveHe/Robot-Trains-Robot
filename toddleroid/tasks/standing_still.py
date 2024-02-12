@@ -30,13 +30,7 @@ def main():
     joint_angles = sim.initialize_joint_angles(robot)
 
     def step_func():
-        if robot.name == "sustaina_op":
-            print(f"joint_angles: {round_floats(list(joint_angles.values())[7:], 6)}")
-        elif robot.name == "robotis_op3":
-            print(f"joint_angles: {round_floats(list(joint_angles.values()), 6)}")
-        else:
-            raise ValueError("Unknown robot name")
-
+        print(f"joint_angles: {round_floats(list(joint_angles.values()), 6)}")
         sim.set_joint_angles(robot, joint_angles)
 
     sim.simulate(step_func, sleep_time=args.sleep_time)
