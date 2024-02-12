@@ -28,6 +28,9 @@
   </joint>
   -->
   <!-- body link -->
+  <mujoco>
+    <compiler meshdir="./meshes/" balanceinertia="true" discardvisual="false"/>
+  </mujoco>
   <link name="body_link">
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>

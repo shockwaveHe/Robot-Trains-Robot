@@ -1,6 +1,6 @@
 import numpy as np
 
-from toddleroid.robot_descriptions.robot_configs import RobotConfig
+from toddleroid.robot_descriptions.robot_configs import ActuatorParameters, RobotConfig
 
 canonical_name2link_name = {
     "body_link": "body_link",
@@ -15,29 +15,71 @@ base_config = RobotConfig(
     com_height=0.3,
     canonical_name2link_name=canonical_name2link_name,
     link_name2canonical_name=link_name2canonical_name,
-    joint_names=[
-        "left_hip_yaw",
-        "left_hip_roll",
-        "left_hip_pitch",
-        "left_knee",
-        "left_ank_pitch",
-        "left_ank_roll",
-        # "left_ank_act1",
-        # "left_ank_act2",
-        "right_hip_yaw",
-        "right_hip_roll",
-        "right_hip_pitch",
-        "right_knee",
-        "right_ank_pitch",
-        "right_ank_roll",
-        # "right_ank_act1",
-        # "right_ank_act2",
-        "left_sho_pitch",
-        "left_sho_roll",
-        "left_elb",
-        "right_sho_pitch",
-        "right_sho_roll",
-        "right_elb",
+    act_params={
+        "left_hip_yaw": ActuatorParameters(
+            type="position", damping=0.1, armature=2.977e-6, kp=2.0, kv=0.1
+        ),
+        "left_hip_roll": ActuatorParameters(
+            type="position", damping=0.1, armature=2.700e-5, kp=2.0, kv=0.1
+        ),
+        "left_hip_pitch": ActuatorParameters(
+            type="position", damping=0.1, armature=2.700e-5, kp=2.0, kv=0.1
+        ),
+        "left_knee": ActuatorParameters(
+            type="position", damping=0.1, armature=1e-7, kp=2.0, kv=0.1
+        ),
+        "left_ank_pitch": ActuatorParameters(
+            type="position", damping=0.1, armature=1e-7, kp=2.0, kv=0.1
+        ),
+        "left_ank_roll": ActuatorParameters(
+            type="position", damping=0.1, armature=1e-7, kp=2.0, kv=0.1
+        ),
+        # "left_ank_act1": ActuatorParameters(type="position", damping=0.1, armature=1e-7, kp=10.0, kv=0.1),
+        # "left_ank_act2": ActuatorParameters(type="position", damping=0.1, armature=1e-7, kp=10.0, kv=0.1),
+        "right_hip_yaw": ActuatorParameters(
+            type="position", damping=0.1, armature=2.977e-6, kp=2.0, kv=0.1
+        ),
+        "right_hip_roll": ActuatorParameters(
+            type="position", damping=0.1, armature=2.700e-5, kp=2.0, kv=0.1
+        ),
+        "right_hip_pitch": ActuatorParameters(
+            type="position", damping=0.1, armature=2.700e-5, kp=2.0, kv=0.1
+        ),
+        "right_knee": ActuatorParameters(
+            type="position", damping=0.1, armature=1e-7, kp=2.0, kv=0.1
+        ),
+        "right_ank_pitch": ActuatorParameters(
+            type="position", damping=0.1, armature=1e-7, kp=2.0, kv=0.1
+        ),
+        "right_ank_roll": ActuatorParameters(
+            type="position", damping=0.1, armature=1e-7, kp=2.0, kv=0.1
+        ),
+        # "right_ank_act1": ActuatorParameters(type="position", damping=0.1, armature=1e-7, kp=10.0, kv=0.1),
+        # "right_ank_act2": ActuatorParameters(type="position", damping=0.1, armature=1e-7, kp=10.0, kv=0.1),
+        "left_sho_pitch": ActuatorParameters(
+            type="position", damping=0.1, armature=1.735e-5, kp=5.0, kv=0.1
+        ),
+        "left_sho_roll": ActuatorParameters(
+            type="position", damping=0.1, armature=1.735e-5, kp=5.0, kv=0.1
+        ),
+        "left_elb": ActuatorParameters(
+            type="position", damping=0.1, armature=1.735e-5, kp=5.0, kv=0.1
+        ),
+        "right_sho_pitch": ActuatorParameters(
+            type="position", damping=0.1, armature=1.735e-5, kp=5.0, kv=0.1
+        ),
+        "right_sho_roll": ActuatorParameters(
+            type="position", damping=0.1, armature=1.735e-5, kp=5.0, kv=0.1
+        ),
+        "right_elb": ActuatorParameters(
+            type="position", damping=0.1, armature=1.735e-5, kp=5.0, kv=0.1
+        ),
+    },
+    constraint_pairs=[
+        ("ank_act_rod_head", "ank_act_rod"),
+        ("ank_act_rod_head_2", "ank_act_rod_2"),
+        ("ank_act_rod_head_3", "ank_act_rod_3"),
+        ("ank_act_rod_head_4", "ank_act_rod_4"),
     ],
     offsets={
         # "z_offset_hip": 0.028,
@@ -51,9 +93,5 @@ base_config = RobotConfig(
         # "x_offset_sole": 0.127,
         # "y_offset_sole": 0.076,
         # "z_offset_sole": 0.002,
-    },
-    gains={
-        "kp": 100,
-        "kv": 10,
     },
 )

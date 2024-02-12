@@ -74,8 +74,7 @@
   <worldbody>
     <light name="spotlight" mode="targetbodycom" target="body_link" pos="0 -1 2"/>
     <body name="body_link" pos="0 0 0.28625">
-      <inertial pos="-0.01501 0.00013 0.06582" quat="0.704708 0.704003 0.0667707 -0.0575246" mass="1.34928"
-        diaginertia="0.00341264 0.00316574 0.00296931"/>
+      <inertial pos="-0.01501 0.00013 0.06582" quat="0.704708 0.704003 0.0667707 -0.0575246" mass="1.34928" diaginertia="0.00341264 0.00316574 0.00296931"/>
       <freejoint/>
       <geom mesh="body" class="visual"/>
       <geom mesh="bodyc" class="collision"/>
@@ -85,38 +84,32 @@
       <geom mesh="body4c" class="collision"/>
       <site name="torso"/>
       <body name="head_pan_link" pos="-0.001 0 0.1365">
-        <inertial pos="0.00233 0 0.00823" quat="0.663575 0.663575 0.244272 -0.244272" mass="0.01176"
-          diaginertia="4.23401e-06 3.60599e-06 1.65e-06"/>
+        <inertial pos="0.00233 0 0.00823" quat="0.663575 0.663575 0.244272 -0.244272" mass="0.01176" diaginertia="4.23401e-06 3.60599e-06 1.65e-06"/>
         <joint name="head_pan" axis="0 0 1"/>
         <geom mesh="h1" class="visual"/>
         <geom mesh="h1c" class="collision"/>
         <body name="head_tilt_link" pos="0.01 0.019 0.0285">
-          <inertial pos="0.0023 -0.01863 0.0277" quat="0.997312 0.00973825 0.0726131 -0.00102702" mass="0.13631"
-            diaginertia="0.000107452 8.72266e-05 4.39413e-05"/>
+          <inertial pos="0.0023 -0.01863 0.0277" quat="0.997312 0.00973825 0.0726131 -0.00102702" mass="0.13631" diaginertia="0.000107452 8.72266e-05 4.39413e-05"/>
           <joint name="head_tilt" axis="0 -1 0"/>
           <geom mesh="h2" class="visual"/>
           <geom mesh="h2c" class="collision"/>
           <geom mesh="h21c" class="collision"/>
           <geom mesh="h22c" class="collision"/>
-          <camera name="egocentric" pos="0.01425 -0.019 0.04975" fovy="43.3" mode="fixed"
-            euler="0.0 -1.570796 -1.570796"/>
+          <camera name="egocentric" pos="0.01425 -0.019 0.04975" fovy="43.3" mode="fixed" euler="0.0 -1.570796 -1.570796"/>
         </body>
       </body>
       <body name="l_sho_pitch_link" pos="-0.001 0.06 0.111">
-        <inertial pos="0 0.00823 -0.00233" quat="0.244272 0.663575 0.244272 0.663575" mass="0.01176"
-          diaginertia="4.23401e-06 3.60599e-06 1.65e-06"/>
+        <inertial pos="0 0.00823 -0.00233" quat="0.244272 0.663575 0.244272 0.663575" mass="0.01176" diaginertia="4.23401e-06 3.60599e-06 1.65e-06"/>
         <joint name="l_sho_pitch" axis="0 1 0"/>
         <geom mesh="la1" class="visual"/>
         <geom mesh="la1c" class="collision"/>
         <body name="l_sho_roll_link" pos="0.019 0.0285 -0.01">
-          <inertial pos="-0.01844 0.04514 0.00028" quat="0.501853 0.50038 -0.498173 0.499588" mass="0.17758"
-            diaginertia="0.000234742 0.00022804 3.04183e-05"/>
+          <inertial pos="-0.01844 0.04514 0.00028" quat="0.501853 0.50038 -0.498173 0.499588" mass="0.17758" diaginertia="0.000234742 0.00022804 3.04183e-05"/>
           <joint name="l_sho_roll" axis="-1 0 0"/>
           <geom mesh="la2" class="visual"/>
           <geom mesh="la2c" class="collision"/>
           <body name="l_el_link" pos="0 0.0904 -0.0001">
-            <inertial pos="-0.019 0.07033 0.0038" quat="0.483289 0.51617 -0.51617 0.483289" mass="0.04127"
-              diaginertia="6.8785e-05 6.196e-05 1.2065e-05"/>
+            <inertial pos="-0.019 0.07033 0.0038" quat="0.483289 0.51617 -0.51617 0.483289" mass="0.04127" diaginertia="6.8785e-05 6.196e-05 1.2065e-05"/>
             <joint name="l_el" axis="1 0 0"/>
             <geom mesh="la3" class="visual"/>
             <geom mesh="la3c" class="collision"/>
@@ -124,20 +117,17 @@
         </body>
       </body>
       <body name="r_sho_pitch_link" pos="-0.001 -0.06 0.111">
-        <inertial pos="0 -0.00823 -0.00233" quat="-0.244272 0.663575 -0.244272 0.663575" mass="0.01176"
-          diaginertia="4.23401e-06 3.60599e-06 1.65e-06"/>
+        <inertial pos="0 -0.00823 -0.00233" quat="-0.244272 0.663575 -0.244272 0.663575" mass="0.01176" diaginertia="4.23401e-06 3.60599e-06 1.65e-06"/>
         <joint name="r_sho_pitch" axis="0 -1 0"/>
         <geom mesh="ra1" class="visual"/>
         <geom mesh="ra1c" class="collision"/>
         <body name="r_sho_roll_link" pos="0.019 -0.0285 -0.01">
-          <inertial pos="-0.01844 -0.04514 0.00028" quat="0.50038 0.501853 -0.499588 0.498173" mass="0.17758"
-            diaginertia="0.000234742 0.00022804 3.04183e-05"/>
+          <inertial pos="-0.01844 -0.04514 0.00028" quat="0.50038 0.501853 -0.499588 0.498173" mass="0.17758" diaginertia="0.000234742 0.00022804 3.04183e-05"/>
           <joint name="r_sho_roll" axis="-1 0 0"/>
           <geom mesh="ra2" class="visual"/>
           <geom mesh="ra2c" class="collision"/>
           <body name="r_el_link" pos="0 -0.0904 -0.0001">
-            <inertial pos="-0.019 -0.07033 0.0038" quat="0.51617 0.483289 -0.483289 0.51617" mass="0.04127"
-              diaginertia="6.8785e-05 6.196e-05 1.2065e-05"/>
+            <inertial pos="-0.019 -0.07033 0.0038" quat="0.51617 0.483289 -0.483289 0.51617" mass="0.04127" diaginertia="6.8785e-05 6.196e-05 1.2065e-05"/>
             <joint name="r_el" axis="1 0 0"/>
             <geom mesh="ra3" class="visual"/>
             <geom mesh="ra3c" class="collision"/>
@@ -145,20 +135,17 @@
         </body>
       </body>
       <body name="l_hip_yaw_link" pos="0 0.035 0">
-        <inertial pos="-0.00157 0 -0.00774" quat="0.499041 0.500957 0.500957 0.499041" mass="0.01181"
-          diaginertia="4.3e-06 4.12004e-06 1.50996e-06"/>
+        <inertial pos="-0.00157 0 -0.00774" quat="0.499041 0.500957 0.500957 0.499041" mass="0.01181" diaginertia="4.3e-06 4.12004e-06 1.50996e-06"/>
         <joint name="l_hip_yaw" axis="0 0 -1"/>
         <geom mesh="ll1" class="visual"/>
         <geom mesh="ll1c" class="collision"/>
         <body name="l_hip_roll_link" pos="-0.024 0 -0.0285">
-          <inertial pos="0.00388 0.00028 -0.01214" quat="0.502657 0.490852 0.498494 0.507842" mass="0.17886"
-            diaginertia="0.000125243 0.000108598 4.65693e-05"/>
+          <inertial pos="0.00388 0.00028 -0.01214" quat="0.502657 0.490852 0.498494 0.507842" mass="0.17886" diaginertia="0.000125243 0.000108598 4.65693e-05"/>
           <joint name="l_hip_roll" axis="-1 0 0"/>
           <geom mesh="ll2" class="visual"/>
           <geom mesh="ll2c" class="collision"/>
           <body name="l_hip_pitch_link" pos="0.0241 0.019 0">
-            <inertial pos="0.00059 -0.01901 -0.08408" quat="0.999682 0.0246915 0.00447825 -0.002482" mass="0.11543"
-              diaginertia="0.000104996 9.63044e-05 2.47492e-05"/>
+            <inertial pos="0.00059 -0.01901 -0.08408" quat="0.999682 0.0246915 0.00447825 -0.002482" mass="0.11543" diaginertia="0.000104996 9.63044e-05 2.47492e-05"/>
             <joint name="l_hip_pitch" axis="0 1 0"/>
             <geom mesh="ll3" class="visual"/>
             <geom mesh="ll3c" class="collision"/>
@@ -168,14 +155,12 @@
               <geom mesh="ll4" class="visual"/>
               <geom mesh="ll4c" class="collision"/>
               <body name="l_ank_pitch_link" pos="0 0 -0.11">
-                <inertial pos="-0.02022 -0.01872 0.01214" quat="0.490852 0.502657 0.507842 0.498494" mass="0.17886"
-                  diaginertia="0.000125243 0.000108598 4.65693e-05"/>
+                <inertial pos="-0.02022 -0.01872 0.01214" quat="0.490852 0.502657 0.507842 0.498494" mass="0.17886" diaginertia="0.000125243 0.000108598 4.65693e-05"/>
                 <joint name="l_ank_pitch" axis="0 -1 0"/>
                 <geom mesh="ll5" class="visual"/>
                 <geom mesh="ll5c" class="collision"/>
                 <body name="l_ank_roll_link" pos="-0.0241 -0.019 0">
-                  <inertial pos="0.02373 0.01037 -0.0276" quat="0.0078515 0.707601 0.0113965 0.706477" mass="0.06934"
-                    diaginertia="0.000115818 7.87135e-05 4.03389e-05"/>
+                  <inertial pos="0.02373 0.01037 -0.0276" quat="0.0078515 0.707601 0.0113965 0.706477" mass="0.06934" diaginertia="0.000115818 7.87135e-05 4.03389e-05"/>
                   <joint name="l_ank_roll" axis="1 0 0"/>
                   <geom mesh="ll6" class="visual"/>
                   <!-- <geom mesh="ll6c" class="collision" /> -->
@@ -188,20 +173,17 @@
         </body>
       </body>
       <body name="r_hip_yaw_link" pos="0 -0.035 0">
-        <inertial pos="-0.00157 0 -0.00774" quat="0.499041 0.500957 0.500957 0.499041" mass="0.01181"
-          diaginertia="4.3e-06 4.12004e-06 1.50996e-06"/>
+        <inertial pos="-0.00157 0 -0.00774" quat="0.499041 0.500957 0.500957 0.499041" mass="0.01181" diaginertia="4.3e-06 4.12004e-06 1.50996e-06"/>
         <joint name="r_hip_yaw" axis="0 0 -1"/>
         <geom mesh="rl1" class="visual"/>
         <geom mesh="rl1c" class="collision"/>
         <body name="r_hip_roll_link" pos="-0.024 0 -0.0285">
-          <inertial pos="0.00388 -0.00028 -0.01214" quat="0.507842 0.498494 0.490852 0.502657" mass="0.17886"
-            diaginertia="0.000125243 0.000108598 4.65693e-05"/>
+          <inertial pos="0.00388 -0.00028 -0.01214" quat="0.507842 0.498494 0.490852 0.502657" mass="0.17886" diaginertia="0.000125243 0.000108598 4.65693e-05"/>
           <joint name="r_hip_roll" axis="-1 0 0"/>
           <geom mesh="rl2" class="visual"/>
           <geom mesh="rl2c" class="collision"/>
           <body name="r_hip_pitch_link" pos="0.0241 -0.019 0">
-            <inertial pos="0.00059 0.01901 -0.08408" quat="0.999682 -0.0246915 0.00447825 0.002482" mass="0.11543"
-              diaginertia="0.000104996 9.63044e-05 2.47492e-05"/>
+            <inertial pos="0.00059 0.01901 -0.08408" quat="0.999682 -0.0246915 0.00447825 0.002482" mass="0.11543" diaginertia="0.000104996 9.63044e-05 2.47492e-05"/>
             <joint name="r_hip_pitch" axis="0 -1 0"/>
             <geom mesh="rl3" class="visual"/>
             <geom mesh="rl3c" class="collision"/>
@@ -211,14 +193,12 @@
               <geom mesh="rl4" class="visual"/>
               <geom mesh="rl4c" class="collision"/>
               <body name="r_ank_pitch_link" pos="0 0 -0.11">
-                <inertial pos="-0.02022 0.01872 0.01214" quat="0.498494 0.507842 0.502657 0.490852" mass="0.17886"
-                  diaginertia="0.000125243 0.000108598 4.65693e-05"/>
+                <inertial pos="-0.02022 0.01872 0.01214" quat="0.498494 0.507842 0.502657 0.490852" mass="0.17886" diaginertia="0.000125243 0.000108598 4.65693e-05"/>
                 <joint name="r_ank_pitch" axis="0 1 0"/>
                 <geom mesh="rl5" class="visual"/>
                 <geom mesh="rl5c" class="collision"/>
                 <body name="r_ank_roll_link" pos="-0.0241 0.019 0">
-                  <inertial pos="0.02373 -0.01037 -0.0276" quat="-0.0078515 0.707601 -0.0113965 0.706477" mass="0.06934"
-                    diaginertia="0.000115818 7.87135e-05 4.03389e-05"/>
+                  <inertial pos="0.02373 -0.01037 -0.0276" quat="-0.0078515 0.707601 -0.0113965 0.706477" mass="0.06934" diaginertia="0.000115818 7.87135e-05 4.03389e-05"/>
                   <joint name="r_ank_roll" axis="1 0 0"/>
                   <geom mesh="rl6" class="visual"/>
                   <!-- <geom mesh="rl6c" class="collision" /> -->

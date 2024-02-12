@@ -1,6 +1,6 @@
 import numpy as np
 
-from toddleroid.robot_descriptions.robot_configs import RobotConfig
+from toddleroid.robot_descriptions.robot_configs import ActuatorParameters, RobotConfig
 
 canonical_name2link_name = {
     "body_link": "body_link",
@@ -15,20 +15,44 @@ robotis_op3_config = RobotConfig(
     com_height=0.3,
     canonical_name2link_name=canonical_name2link_name,
     link_name2canonical_name=link_name2canonical_name,
-    joint_names=[
-        "l_hip_yaw",
-        "l_hip_roll",
-        "l_hip_pitch",
-        "l_knee",
-        "l_ank_pitch",
-        "l_ank_roll",
-        "r_hip_yaw",
-        "r_hip_roll",
-        "r_hip_pitch",
-        "r_knee",
-        "r_ank_pitch",
-        "r_ank_roll",
-    ],
+    act_params={
+        "l_hip_yaw": ActuatorParameters(
+            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+        ),
+        "l_hip_roll": ActuatorParameters(
+            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+        ),
+        "l_hip_pitch": ActuatorParameters(
+            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+        ),
+        "l_knee": ActuatorParameters(
+            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+        ),
+        "l_ank_pitch": ActuatorParameters(
+            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+        ),
+        "l_ank_roll": ActuatorParameters(
+            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+        ),
+        "r_hip_yaw": ActuatorParameters(
+            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+        ),
+        "r_hip_roll": ActuatorParameters(
+            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+        ),
+        "r_hip_pitch": ActuatorParameters(
+            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+        ),
+        "r_knee": ActuatorParameters(
+            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+        ),
+        "r_ank_pitch": ActuatorParameters(
+            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+        ),
+        "r_ank_roll": ActuatorParameters(
+            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+        ),
+    },
     offsets={
         "z_offset_hip": 0.028,
         "z_offset_thigh": 0.11,  # from the hip pitch joint to the knee joint
@@ -41,9 +65,5 @@ robotis_op3_config = RobotConfig(
         "x_offset_sole": 0.127,
         "y_offset_sole": 0.076,
         "z_offset_sole": 0.002,
-    },
-    gains={
-        "kp": 100,
-        "kv": 10,
     },
 )

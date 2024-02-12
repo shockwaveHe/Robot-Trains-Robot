@@ -85,11 +85,12 @@ class HumanoidRobot:
         """
 
         # Define joint names and their corresponding angles
-        n_dof = len(self.config.joint_names)
+        n_dof = len(self.config.act_params)
+        joint_names = list(self.config.joint_params.keys())
         if side == "left":
-            joint_names = self.config.joint_names[: n_dof // 2]
+            half_joint_names = joint_names[: n_dof // 2]
         else:
-            joint_names = self.config.joint_names[n_dof // 2 :]
+            half_joint_names = joint_names[n_dof // 2 :]
 
         # Magic numbers extracted from robot configuration
         (
@@ -181,7 +182,7 @@ class HumanoidRobot:
             raise ValueError(f"Robot '{self.name}' is not supported.")
 
         # Update joint angles based on calculations
-        for name, angle in zip(joint_names, angles):
+        for name, angle in zip(half_joint_names, angles):
             joint_angles[name] = angle
 
         return joint_angles

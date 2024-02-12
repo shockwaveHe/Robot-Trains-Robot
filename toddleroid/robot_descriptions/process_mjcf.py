@@ -2,6 +2,7 @@ import argparse
 import os
 import shutil
 import xml.etree.ElementTree as ET
+from dataclasses import fields
 from itertools import combinations
 
 import numpy as np
@@ -10,7 +11,32 @@ from toddleroid.sim.robot import HumanoidRobot
 from toddleroid.utils.file_utils import *
 
 
-def add_default_settings(root, act_type="position"):
+def replace_mesh_file(root, old_file, new_file):
+    # Find all mesh elements
+    for mesh in root.findall(".//mesh"):
+        # Check if the file attribute matches the old file name
+        if mesh.get("file") == old_file:
+            # Replace with the new file name
+            mesh.set("file", new_file)
+
+
+def update_joint_params(root, act_params):
+    if act_params is None:
+        return
+
+    # Iterate over all joints in the XML
+    for joint in root.findall(".//joint"):
+        joint_name = joint.get("name")
+        # Check if the joint name is in the provided armature dictionary
+        if joint_name in act_params:
+            for field in fields(act_params[joint_name]):
+                if field.name in ["damping", "armature"]:
+                    joint.set(
+                        field.name, str(getattr(act_params[joint_name], field.name))
+                    )
+
+
+def add_default_settings(root):
     # Create or find the <default> element
     default = root.find("default")
     if default is not None:
@@ -22,17 +48,15 @@ def add_default_settings(root, act_type="position"):
     joint_default = default.find("joint")
     if joint_default is None:
         joint_default = ET.SubElement(default, "joint")
-    joint_default.attrib = {
-        "damping": "1.084",
-        "armature": "0.045",
-        "frictionloss": "0.03",
-    }
+
+    joint_default.attrib = {"frictionloss": "0.03"}
 
     # Create or update the <position> settings within <default>
-    position_default = default.find(act_type)
+    position_default = default.find("position")
     if position_default is None:
-        position_default = ET.SubElement(default, act_type)
-    position_default.attrib = {"kv": "10", "forcelimited": "false"}
+        position_default = ET.SubElement(default, "position")
+
+    position_default.attrib = {"forcelimited": "false"}
 
 
 def add_contact_exclusion_to_mjcf(root):
@@ -58,7 +82,7 @@ def add_contact_exclusion_to_mjcf(root):
             ET.SubElement(contact, "exclude", body1=body1, body2=body2)
 
 
-def add_actuators_to_mjcf(root, act_list, act_type="position"):
+def add_actuators_to_mjcf(root, act_params):
     # Create <actuator> element if it doesn't exist
     actuator = root.find("./actuator")
     if actuator is not None:
@@ -68,21 +92,21 @@ def add_actuators_to_mjcf(root, act_list, act_type="position"):
 
     for joint in root.findall(".//joint"):
         joint_name = joint.get("name")
-        joint_type = joint.get("type")
-        if joint_name in act_list:
+        if joint_name in act_params:
             motor_name = f"{joint_name}_act"
             # Retrieve control range from joint, if available
-            if act_type == "position":
+            if act_params[joint_name].type == "position":
                 ctrlrange = joint.get("range", "-3.141592 3.141592")
             else:
                 ctrlrange = "0 0"
 
             ET.SubElement(
                 actuator,
-                act_type,
+                act_params[joint_name].type,
                 name=motor_name,
                 joint=joint_name,
-                kp="1e6" if joint_type == "slide" else "1e4",
+                kp=str(act_params[joint_name].kp),
+                kv=str(act_params[joint_name].kv),
                 ctrlrange=ctrlrange,
             )
 
@@ -209,16 +233,14 @@ def process_mjcf_files(robot_name):
     root = tree.getroot()
 
     robot = HumanoidRobot(robot_name)
-    body_pairs = [
-        ("ank_act_rod_head", "ank_act_rod"),
-        ("ank_act_rod_head_2", "ank_act_rod_2"),
-    ]
-    act_type = "position"
-
+    replace_mesh_file(
+        root, "body_link_collision.stl", "body_link_collision_simplified.stl"
+    )
+    update_joint_params(root, robot.config.act_params)
     add_contact_exclusion_to_mjcf(root)
-    add_actuators_to_mjcf(root, robot.config.joint_names, act_type)
-    add_equality_constraints_for_leaves(root, body_pairs)
-    add_default_settings(root, act_type)
+    add_actuators_to_mjcf(root, robot.config.act_params)
+    add_equality_constraints_for_leaves(root, robot.config.constraint_pairs)
+    add_default_settings(root)
 
     tree.write(mjcf_path)
 

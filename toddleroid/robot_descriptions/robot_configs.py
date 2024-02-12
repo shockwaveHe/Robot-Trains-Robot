@@ -8,11 +8,20 @@ from dataclasses import dataclass
 @dataclass
 class RobotConfig:
     com_height: float = 0.0
-    joint_names: list = None
+    act_params: dict = None
+    constraint_pairs: list = None
     canonical_name2link_name: dict = None
     link_name2canonical_name: dict = None
     offsets: dict = None
-    gains: dict = None
+
+
+@dataclass
+class ActuatorParameters:
+    type: str = ""
+    damping: float = 0.0
+    armature: float = 0.0
+    kp: float = 0.0
+    kv: float = 0.0
 
 
 def load_robot_configs(

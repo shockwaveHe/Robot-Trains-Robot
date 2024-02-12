@@ -77,7 +77,11 @@ def process_urdf_and_stl_files(robot_dir):
     # Delete STL and PART files if not referenced
     for subdir, _, files in os.walk(robot_dir):
         for file in files:
-            if file.endswith((".stl", ".part")) and file not in referenced_stls:
+            if (
+                file.endswith((".stl", ".part"))
+                and file not in referenced_stls
+                and not "simplified" in file
+            ):
                 file_path = os.path.join(subdir, file)
                 os.remove(file_path)
 
@@ -104,6 +108,7 @@ def main():
     parser.add_argument(
         "--robot-name",
         type=str,
+        default="base",
         help="The name of the robot. Need to match the name in robot_descriptions.",
     )
     args = parser.parse_args()
