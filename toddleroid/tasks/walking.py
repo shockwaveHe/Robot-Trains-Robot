@@ -354,6 +354,9 @@ def main():
     if robot.name == "robotis_op3":
         joint_angles["l_sho_roll"] = np.pi / 4
         joint_angles["r_sho_roll"] = -np.pi / 4
+    elif robot.name == "base":
+        joint_angles["left_sho_roll"] = -np.pi / 4
+        joint_angles["right_sho_roll"] = np.pi / 4
 
     walking = Walking(
         robot, config, left_foot_pos_init, right_foot_pos_init, joint_angles

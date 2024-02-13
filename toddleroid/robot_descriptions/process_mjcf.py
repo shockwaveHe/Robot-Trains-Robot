@@ -124,6 +124,7 @@ def add_equality_constraints_for_leaves(root, body_pairs):
             body1=body1,
             body2=body2,
             solimp="0.9999 0.9999 0.001 0.5 2",
+            solref="0.0001 1",
         )
 
 
@@ -191,7 +192,10 @@ def add_body_link(root, config, urdf_path):
     worldbody = root.find(".//worldbody")
 
     body_link = ET.Element(
-        "body", name=config.canonical_name2link_name["body_link"], pos="0 0 0"
+        "body",
+        name=config.canonical_name2link_name["body_link"],
+        pos="0 0 0",
+        quat="1 0 0 0",
     )
 
     ET.SubElement(

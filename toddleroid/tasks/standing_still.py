@@ -1,6 +1,7 @@
 import argparse
 import random
 
+from toddleroid.sim.mujoco_sim import MujoCoSim
 from toddleroid.sim.pybullet_sim import PyBulletSim
 from toddleroid.sim.robot import HumanoidRobot
 from toddleroid.utils.data_utils import round_floats
@@ -15,6 +16,12 @@ def main():
         help="The name of the robot. Need to match the name in robot_descriptions.",
     )
     parser.add_argument(
+        "--sim",
+        type=str,
+        default="pybullet",
+        help="The simulator to use.",
+    )
+    parser.add_argument(
         "--sleep-time",
         type=float,
         default=0.0,
@@ -25,7 +32,12 @@ def main():
     random.seed(0)
     # A 0.3725 offset moves the robot slightly up from the ground
     robot = HumanoidRobot(args.robot_name)
-    sim = PyBulletSim(robot)
+    if args.sim == "pybullet":
+        sim = PyBulletSim(robot)
+    elif args.sim == "mujoco":
+        sim = MujoCoSim(robot)
+    else:
+        raise ValueError("Unknown simulator")
 
     joint_angles = sim.initialize_joint_angles(robot)
 

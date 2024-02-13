@@ -26,14 +26,14 @@ class MujoCoSim(AbstractSim):
             if not fixed:
                 self.put_robot_on_ground(robot)
 
-            if "x_offset_sole" in robot.config.offsets:
-                self.foot_size_x = robot.config.offsets["x_offset_sole"]
+            if "foot_size_x" in robot.config.offsets:
+                self.foot_size_x = robot.config.offsets["foot_size_x"]
 
-            if "y_offset_sole" in robot.config.offsets:
-                self.foot_size_y = robot.config.offsets["y_offset_sole"]
+            if "foot_size_y" in robot.config.offsets:
+                self.foot_size_y = robot.config.offsets["foot_size_y"]
 
-            if "z_offset_sole" in robot.config.offsets:
-                self.foot_size_z = robot.config.offsets["z_offset_sole"]
+            if "foot_size_z" in robot.config.offsets:
+                self.foot_size_z = robot.config.offsets["foot_size_z"]
 
     def put_robot_on_ground(self, robot: HumanoidRobot, z_offset: float = 0.02):
         """
@@ -116,7 +116,7 @@ class MujoCoSim(AbstractSim):
         joint_angles = {}
         for name, info in robot.joints_info.items():
             if info["active"]:
-                joint_angles[name] = self.data.joint(name).qpos
+                joint_angles[name] = self.data.joint(name).qpos.item()
         return joint_angles
 
     def get_com_state(self, robot: HumanoidRobot):
