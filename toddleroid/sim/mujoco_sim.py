@@ -35,7 +35,7 @@ class MujoCoSim(AbstractSim):
             if "z_offset_sole" in robot.config.offsets:
                 self.foot_size_z = robot.config.offsets["z_offset_sole"]
 
-    def put_robot_on_ground(self, robot: HumanoidRobot, z_offset: float = 0.01):
+    def put_robot_on_ground(self, robot: HumanoidRobot, z_offset: float = 0.02):
         """
         Adjust the robot's position to place its lowest point at a specified offset above the ground.
 
@@ -68,9 +68,16 @@ class MujoCoSim(AbstractSim):
 
     def get_joints_info(self, robot: HumanoidRobot):
         joints_info = {}
-        # 0 is an empty joint
         for i in range(1, self.model.njnt):
-            joints_info[self.model.joint(i).name] = i - 1
+            name = self.model.joint(i).name
+            joints_info[name] = {
+                "idx": self.model.joint(i).id,
+                "type": self.model.joint(i).type,
+                "lowerLimit": self.model.joint(i).range[0],
+                "upperLimit": self.model.joint(i).range[1],
+                "active": name in robot.config.act_params.keys(),
+            }
+
         return joints_info
 
     def get_link_pos(self, robot: HumanoidRobot, link_name: str):
@@ -107,9 +114,9 @@ class MujoCoSim(AbstractSim):
 
     def initialize_joint_angles(self, robot: HumanoidRobot):
         joint_angles = {}
-        # 0 is an empty joint
-        for i in range(1, self.model.njnt):
-            joint_angles[self.model.joint(i).name] = self.data.qpos[i - 1]
+        for name, info in robot.joints_info.items():
+            if info["active"]:
+                joint_angles[name] = self.data.joint(name).qpos
         return joint_angles
 
     def get_com_state(self, robot: HumanoidRobot):
@@ -122,13 +129,12 @@ class MujoCoSim(AbstractSim):
         return np.array([com_pos, com_vel, com_acc])
 
     def set_joint_angles(self, robot: HumanoidRobot, joint_angles: Dict[str, float]):
-        for i in range(1, self.model.njnt):
-            joint_name = self.model.joint(i).name
+        for joint_name, angle in joint_angles.items():
             kp = robot.config.act_params[joint_name].kp
             kv = robot.config.act_params[joint_name].kv
-            self.data.actuator(i - 1).ctrl = (
-                -kp * (self.data.joint(i).qpos - joint_angles[joint_name])
-                - kv * self.data.joint(i).qvel
+            self.data.actuator(f"{joint_name}_act").ctrl = (
+                -kp * (self.data.joint(joint_name).qpos - angle)
+                - kv * self.data.joint(joint_name).qvel
             )
 
     def simulate(

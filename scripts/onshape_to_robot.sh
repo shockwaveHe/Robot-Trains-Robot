@@ -2,7 +2,7 @@
 
 ROBOT_NAME="base"
 URDF_PATH=toddleroid/robot_descriptions/$ROBOT_NAME/$ROBOT_NAME.urdf
-MJCF_PATH=toddleroid/robot_descriptions/$ROBOT_NAME/$ROBOT_NAME.xml
+MJCF_DEBUG_PATH=toddleroid/robot_descriptions/$ROBOT_NAME/${ROBOT_NAME}_debug.xml
 
 printf "Do you want to export urdf from onshape? (y/n)"
 read -r -p " > " run_onshape
@@ -58,7 +58,7 @@ read -r -p " > " run_mujoco
 
 if [ "$run_mujoco" == "y" ]; then
     printf "Simulation running...\n\n"
-    python -m mujoco.viewer --mjcf=$MJCF_PATH
+    python -m mujoco.viewer --mjcf=$MJCF_DEBUG_PATH
 else
     printf "Simulation skipped.\n\n"
 fi

@@ -6,6 +6,7 @@ from dataclasses import fields
 from itertools import combinations
 
 import numpy as np
+from transforms3d.euler import euler2quat
 
 from toddleroid.sim.robot import HumanoidRobot
 from toddleroid.utils.file_utils import *
@@ -107,35 +108,6 @@ def add_contact_exclusion_to_mjcf(root):
             ET.SubElement(contact, "exclude", body1=body1, body2=body2)
 
 
-def add_actuators_to_mjcf(root, act_params):
-    # Create <actuator> element if it doesn't exist
-    actuator = root.find("./actuator")
-    if actuator is not None:
-        root.remove(actuator)
-
-    actuator = ET.SubElement(root, "actuator")
-
-    for joint in root.findall(".//joint"):
-        joint_name = joint.get("name")
-        if joint_name in act_params:
-            motor_name = f"{joint_name}_act"
-            # Retrieve control range from joint, if available
-            if act_params[joint_name].type == "position":
-                ctrlrange = joint.get("range", "-3.141592 3.141592")
-            else:
-                ctrlrange = "0 0"
-
-            ET.SubElement(
-                actuator,
-                act_params[joint_name].type,
-                name=motor_name,
-                joint=joint_name,
-                kp=str(act_params[joint_name].kp),
-                kv=str(act_params[joint_name].kv),
-                ctrlrange=ctrlrange,
-            )
-
-
 def add_equality_constraints_for_leaves(root, body_pairs):
     # Ensure there is an <equality> element
     equality = root.find("./equality")
@@ -153,6 +125,110 @@ def add_equality_constraints_for_leaves(root, body_pairs):
             body2=body2,
             solimp="0.9999 0.9999 0.001 0.5 2",
         )
+
+
+def add_actuators_to_mjcf(root, act_params):
+    # Create <actuator> element if it doesn't exist
+    actuator = root.find("./actuator")
+    if actuator is not None:
+        root.remove(actuator)
+
+    actuator = ET.SubElement(root, "actuator")
+
+    for joint in root.findall(".//joint"):
+        joint_name = joint.get("name")
+        if joint_name in act_params:
+            motor_name = f"{joint_name}_act"
+            ctrlrange = joint.get("range", "-3.141592 3.141592")
+            ET.SubElement(
+                actuator,
+                "position",
+                name=motor_name,
+                joint=joint_name,
+                kp=str(act_params[joint_name].kp),
+                kv=str(act_params[joint_name].kv),
+                ctrlrange=ctrlrange,
+            )
+
+
+def parse_urdf_body_link(config, urdf_path):
+    urdf_tree = ET.parse(urdf_path)
+    urdf_root = urdf_tree.getroot()
+
+    # Assuming you want to extract properties for 'body_link'
+    body_link = urdf_root.find(
+        f"link[@name='{config.canonical_name2link_name['body_link']}']"
+    )
+    inertial = body_link.find("inertial") if body_link is not None else None
+
+    if inertial is None:
+        return None
+    else:
+        origin = inertial.find("origin").attrib
+        mass = inertial.find("mass").attrib["value"]
+        inertia = inertial.find("inertia").attrib
+
+        pos = [float(x) for x in origin["xyz"].split(" ")]
+        quat = euler2quat(*[float(x) for x in origin["rpy"].split(" ")])
+        diaginertia = [
+            float(x) for x in [inertia["ixx"], inertia["iyy"], inertia["izz"]]
+        ]
+        properties = {
+            "pos": " ".join([f"{x:.6f}" for x in pos]),
+            "quat": " ".join([f"{x:.6f}" for x in quat]),
+            "mass": f"{float(mass):.8f}",
+            "diaginertia": " ".join(f"{x:.5e}" for x in diaginertia),
+        }
+        return properties
+
+
+def add_body_link(root, config, urdf_path):
+    properties = parse_urdf_body_link(config, urdf_path)
+    if properties is None:
+        print("No inertial properties found in URDF file.")
+        return
+
+    worldbody = root.find(".//worldbody")
+
+    body_link = ET.Element(
+        "body", name=config.canonical_name2link_name["body_link"], pos="0 0 0"
+    )
+
+    ET.SubElement(
+        body_link,
+        "inertial",
+        pos=properties["pos"],
+        quat=properties["quat"],
+        mass=properties["mass"],
+        diaginertia=properties["diaginertia"],
+    )
+    ET.SubElement(body_link, "freejoint")
+
+    existing_elements = list(worldbody)
+    worldbody.insert(0, body_link)
+    for element in existing_elements:
+        worldbody.remove(element)
+        body_link.append(element)
+
+
+def update_actuator_types(root, act_params):
+    # Create <actuator> element if it doesn't exist
+    actuator = root.find("./actuator")
+    if actuator is not None:
+        root.remove(actuator)
+
+    actuator = ET.SubElement(root, "actuator")
+
+    for joint in root.findall(".//joint"):
+        joint_name = joint.get("name")
+        if joint_name in act_params:
+            motor_name = f"{joint_name}_act"
+            ET.SubElement(
+                actuator,
+                act_params[joint_name].type,
+                name=motor_name,
+                joint=joint_name,
+            )
 
 
 def create_base_scene_xml(mjcf_path):
@@ -245,30 +321,44 @@ def create_base_scene_xml(mjcf_path):
     tree.write(os.path.join(os.path.dirname(mjcf_path), f"{robot_name}_scene.xml"))
 
 
-def process_mjcf_files(robot_name):
-    robot_dir = os.path.join("toddleroid", "robot_descriptions", robot_name)
-    source_mjcf_path = os.path.join("mjmodel.xml")
-    mjcf_path = os.path.join(robot_dir, robot_name + ".xml")
-    if os.path.exists(source_mjcf_path):
-        shutil.move(source_mjcf_path, mjcf_path)
-
-    create_base_scene_xml(mjcf_path)
-
-    tree = ET.parse(mjcf_path)
-    root = tree.getroot()
-
-    robot = HumanoidRobot(robot_name)
+def process_mjcf_debug_file(root, config):
     replace_mesh_file(
         root, "body_link_collision.stl", "body_link_collision_simplified.stl"
     )
-    update_joint_params(root, robot.config.act_params)
+    update_joint_params(root, config.act_params)
     update_geom_classes(root, ["type", "contype", "conaffinity", "group", "density"])
     add_contact_exclusion_to_mjcf(root)
-    add_actuators_to_mjcf(root, robot.config.act_params)
-    add_equality_constraints_for_leaves(root, robot.config.constraint_pairs)
+    add_actuators_to_mjcf(root, config.act_params)
+    add_equality_constraints_for_leaves(root, config.constraint_pairs)
     add_default_settings(root)
 
-    tree.write(mjcf_path)
+
+def process_mjcf_file(root, config, urdf_path):
+    update_actuator_types(root, config.act_params)
+    add_body_link(root, config, urdf_path)
+
+
+def process_mjcf_files(robot_name):
+    robot = HumanoidRobot(robot_name)
+
+    robot_dir = os.path.join("toddleroid", "robot_descriptions", robot_name)
+    source_mjcf_path = os.path.join("mjmodel.xml")
+    mjcf_debug_path = os.path.join(robot_dir, robot_name + "_debug.xml")
+    if os.path.exists(source_mjcf_path):
+        shutil.move(source_mjcf_path, mjcf_debug_path)
+
+    xml_tree = ET.parse(mjcf_debug_path)
+    xml_root = xml_tree.getroot()
+
+    process_mjcf_debug_file(xml_root, robot.config)
+    xml_tree.write(mjcf_debug_path)
+
+    urdf_path = os.path.join(robot_dir, robot_name + ".urdf")
+    mjcf_path = os.path.join(robot_dir, robot_name + ".xml")
+    process_mjcf_file(xml_root, robot.config, urdf_path)
+    xml_tree.write(mjcf_path)
+
+    create_base_scene_xml(mjcf_path)
 
 
 def main():

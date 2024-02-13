@@ -6,8 +6,8 @@ from toddleroid.robot_descriptions.robot_configs import ActuatorParameters, Robo
 
 canonical_name2link_name = {
     "body_link": "body_link",
-    "left_foot_link": "l_ank_roll_link",
-    "right_foot_link": "r_ank_roll_link",
+    "left_foot_link": "ank_roll_link",
+    "right_foot_link": "ank_roll_link_2",
 }
 
 link_name2canonical_name = {v: k for k, v in canonical_name2link_name.items()}
@@ -72,62 +72,62 @@ base_config = RobotConfig(
     link_name2canonical_name=link_name2canonical_name,
     act_params={
         "left_hip_yaw": ActuatorParameters(
-            type="position", damping=0.1, armature=2.977e-6, kp=2.0, kv=0.1
+            type="motor", damping=0.1, armature=2.977e-6, kp=2.0, kv=0.1
         ),
         "left_hip_roll": ActuatorParameters(
-            type="position", damping=0.1, armature=2.700e-5, kp=2.0, kv=0.1
+            type="motor", damping=0.1, armature=2.700e-5, kp=2.0, kv=0.1
         ),
         "left_hip_pitch": ActuatorParameters(
-            type="position", damping=0.1, armature=2.700e-5, kp=2.0, kv=0.1
+            type="motor", damping=0.1, armature=2.700e-5, kp=2.0, kv=0.1
         ),
         "left_knee": ActuatorParameters(
-            type="position", damping=0.1, armature=1e-7, kp=2.0, kv=0.1
+            type="motor", damping=0.1, armature=1e-7, kp=2.0, kv=0.1
         ),
         "left_ank_pitch": ActuatorParameters(
-            type="position", damping=0.1, armature=1e-7, kp=2.0, kv=0.1
+            type="motor", damping=0.1, armature=1e-7, kp=2.0, kv=0.1
         ),
         "left_ank_roll": ActuatorParameters(
-            type="position", damping=0.1, armature=1e-7, kp=2.0, kv=0.1
+            type="motor", damping=0.1, armature=1e-7, kp=2.0, kv=0.1
         ),
-        # "left_ank_act1": ActuatorParameters(type="position", damping=0.1, armature=1e-7, kp=10.0, kv=0.1),
-        # "left_ank_act2": ActuatorParameters(type="position", damping=0.1, armature=1e-7, kp=10.0, kv=0.1),
+        # "left_ank_act1": ActuatorParameters(type="motor", damping=0.1, armature=1e-7, kp=10.0, kv=0.1),
+        # "left_ank_act2": ActuatorParameters(type="motor", damping=0.1, armature=1e-7, kp=10.0, kv=0.1),
         "right_hip_yaw": ActuatorParameters(
-            type="position", damping=0.1, armature=2.977e-6, kp=2.0, kv=0.1
+            type="motor", damping=0.1, armature=2.977e-6, kp=2.0, kv=0.1
         ),
         "right_hip_roll": ActuatorParameters(
-            type="position", damping=0.1, armature=2.700e-5, kp=2.0, kv=0.1
+            type="motor", damping=0.1, armature=2.700e-5, kp=2.0, kv=0.1
         ),
         "right_hip_pitch": ActuatorParameters(
-            type="position", damping=0.1, armature=2.700e-5, kp=2.0, kv=0.1
+            type="motor", damping=0.1, armature=2.700e-5, kp=2.0, kv=0.1
         ),
         "right_knee": ActuatorParameters(
-            type="position", damping=0.1, armature=1e-7, kp=2.0, kv=0.1
+            type="motor", damping=0.1, armature=1e-7, kp=2.0, kv=0.1
         ),
         "right_ank_pitch": ActuatorParameters(
-            type="position", damping=0.1, armature=1e-7, kp=2.0, kv=0.1
+            type="motor", damping=0.1, armature=1e-7, kp=2.0, kv=0.1
         ),
         "right_ank_roll": ActuatorParameters(
-            type="position", damping=0.1, armature=1e-7, kp=2.0, kv=0.1
+            type="motor", damping=0.1, armature=1e-7, kp=2.0, kv=0.1
         ),
-        # "right_ank_act1": ActuatorParameters(type="position", damping=0.1, armature=1e-7, kp=10.0, kv=0.1),
-        # "right_ank_act2": ActuatorParameters(type="position", damping=0.1, armature=1e-7, kp=10.0, kv=0.1),
+        # "right_ank_act1": ActuatorParameters(type="motor", damping=0.1, armature=1e-7, kp=10.0, kv=0.1),
+        # "right_ank_act2": ActuatorParameters(type="motor", damping=0.1, armature=1e-7, kp=10.0, kv=0.1),
         "left_sho_pitch": ActuatorParameters(
-            type="position", damping=0.1, armature=1.735e-5, kp=5.0, kv=0.1
+            type="motor", damping=0.1, armature=1.735e-5, kp=5.0, kv=0.1
         ),
         "left_sho_roll": ActuatorParameters(
-            type="position", damping=0.1, armature=1.735e-5, kp=5.0, kv=0.1
+            type="motor", damping=0.1, armature=1.735e-5, kp=5.0, kv=0.1
         ),
         "left_elb": ActuatorParameters(
-            type="position", damping=0.1, armature=1.735e-5, kp=5.0, kv=0.1
+            type="motor", damping=0.1, armature=1.735e-5, kp=5.0, kv=0.1
         ),
         "right_sho_pitch": ActuatorParameters(
-            type="position", damping=0.1, armature=1.735e-5, kp=5.0, kv=0.1
+            type="motor", damping=0.1, armature=1.735e-5, kp=5.0, kv=0.1
         ),
         "right_sho_roll": ActuatorParameters(
-            type="position", damping=0.1, armature=1.735e-5, kp=5.0, kv=0.1
+            type="motor", damping=0.1, armature=1.735e-5, kp=5.0, kv=0.1
         ),
         "right_elb": ActuatorParameters(
-            type="position", damping=0.1, armature=1.735e-5, kp=5.0, kv=0.1
+            type="motor", damping=0.1, armature=1.735e-5, kp=5.0, kv=0.1
         ),
     },
     constraint_pairs=[
