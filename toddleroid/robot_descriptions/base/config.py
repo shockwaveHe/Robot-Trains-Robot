@@ -57,12 +57,12 @@ def compute_leg_angles(target_foot_pos, target_foot_ori, side, offsets):
     ankle_pitch += knee_pitch + hip_pitch
 
     angles_dict = {
-        "hip_yaw": hip_yaw,
+        "hip_yaw": -hip_yaw,
         "hip_roll": -hip_roll,
         "hip_pitch": hip_pitch,
         "knee": -knee_pitch if side == "left" else knee_pitch,
         "ank_pitch": ankle_pitch if side == "left" else -ankle_pitch,
-        "ank_roll": ankle_roll - hip_roll,
+        "ank_roll": ankle_roll + hip_roll,
     }
     return angles_dict
 
@@ -204,8 +204,8 @@ base_config = RobotConfig(
         "z_offset_shin": 0.1,  # from the knee joint to the ankle pitch joint
         "x_offset_ankle_to_foot": 0.0,
         "y_offset_ankle_to_foot": 0.044,
-        "left_offset_foot_to_sole": np.array([0.0, 0.01, -0.02]),
-        "right_offset_foot_to_sole": np.array([0.0, -0.01, -0.02]),
+        "left_offset_foot_to_sole": np.array([0.0, 0.01, -0.03]),
+        "right_offset_foot_to_sole": np.array([0.0, -0.01, -0.03]),
         "foot_size_x": 0.095,
         "foot_size_y": 0.03,
         "foot_size_z": 0.004,
