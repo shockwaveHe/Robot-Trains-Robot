@@ -31,6 +31,9 @@ sudo apt-get install meshlab
 
 Use VScode Extension XML Tools to format the XML files.
 
+### Actuation
+- MightyZap: Update the firmware if you cannot search the motor.
+
 ### Best practices
 1. Use dataclass and argparse if possible
 1. Write Google style docstring

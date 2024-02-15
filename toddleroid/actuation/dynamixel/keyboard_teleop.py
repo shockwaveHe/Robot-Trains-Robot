@@ -1,10 +1,9 @@
 import time
 
 import numpy as np
-from leap_node import LeapNode
 from pynput import keyboard
 
-import toddleroid.actuation.dynamixel.leap_hand_utils as lhu
+from toddleroid.actuation.dynamixel.dynamixel_node import *
 
 
 class KeyboardListener:
@@ -21,71 +20,65 @@ class KeyboardListener:
             pass
 
 
+def get_key_mappings(n_motors):
+    add_keys = "1234567890"[:n_motors]
+    minus_keys = "qwertyuiop"[:n_motors]
+
+    add_key_mappings = {key: i for i, key in enumerate(add_keys)}
+    minus_key_mappings = {key: i for i, key in enumerate(minus_keys)}
+
+    print("Key Mappings for Increasing Position:", add_key_mappings)
+    print("Key Mappings for Decreasing Position:", minus_key_mappings)
+
+    return add_key_mappings, minus_key_mappings
+
+
+def pretty_print_positions(target_pos_rad, actual_pos_rad):
+    # Convert radians to degrees for user-friendly output
+    target_pos_deg = np.degrees(target_pos_rad)
+    actual_pos_deg = np.degrees(actual_pos_rad)
+
+    # Creating formatted strings for target and actual positions
+    target_pos_str = ", ".join(f"{pos:.2f}°" for pos in target_pos_deg)
+    actual_pos_str = ", ".join(f"{pos:.2f}°" for pos in actual_pos_deg)
+
+    print("Position:\n" f"  Target: {target_pos_str}\n" f"  Actual: {actual_pos_str}")
+
+
 def main():
+    n_motors = 3
+    init_pos = np.radians([135, 180, 180])
+    dynamixel_node = DynamixelNode(DynamixelConfig(), n_motors, init_pos)
+
     listener = KeyboardListener()
-    leap_hand = LeapNode()
 
-    curr_pos = lhu.allegro_to_LEAPhand(np.zeros(16), zeros=False)
-    curr_pos = np.array(curr_pos)
-    pos_stride = 0.2
+    add_key_mappings, minus_key_mappings = get_key_mappings(n_motors)
+    pos_stride = np.radians(5)
+    frequency = 20  # Frequency of loop execution
 
-    add_key_mappings = {
-        "q": 0,
-        "a": 1,
-        "z": 2,
-        "e": 3,
-        "d": 4,
-        "c": 5,
-        "t": 6,
-        "g": 7,
-        "b": 8,
-        "u": 9,
-        "j": 10,
-        "o": 11,
-        "1": 12,
-        "3": 13,
-        "5": 14,
-        "7": 15,
-    }
+    try:
+        while True:
+            key_pressed = listener.key
+            if key_pressed:
+                index = None
+                if listener.key in add_key_mappings:
+                    index = add_key_mappings[listener.key]
+                elif listener.key in minus_key_mappings:
+                    index = minus_key_mappings[listener.key]
 
-    minus_key_mappings = {
-        "w": 0,
-        "s": 1,
-        "x": 2,
-        "r": 3,
-        "f": 4,
-        "v": 5,
-        "y": 6,
-        "h": 7,
-        "n": 8,
-        "i": 9,
-        "k": 10,
-        "p": 11,
-        "2": 12,
-        "4": 13,
-        "6": 14,
-        "8": 15,
-    }
+                if index is not None:
+                    dynamixel_node.curr_pos[index] += (
+                        pos_stride if listener.key in add_key_mappings else -pos_stride
+                    )
+                    dynamixel_node.set_pos(dynamixel_node.curr_pos)
+                    pretty_print_positions(
+                        dynamixel_node.curr_pos, dynamixel_node.read_pos()
+                    )
 
-    frequency = 20
-    while True:
-        try:
-            if listener.key in add_key_mappings:
-                index = add_key_mappings[listener.key]
-                curr_pos[index] += pos_stride
-            elif listener.key in minus_key_mappings:
-                index = minus_key_mappings[listener.key]
-                curr_pos[index] -= pos_stride
-            else:
-                continue
-
-            leap_hand.set_leap(curr_pos)
-            print("Position: " + str(leap_hand.read_pos()))
-        except KeyboardInterrupt:
-            break
-
-        listener.key = ""
-        time.sleep(1 / frequency)
+            listener.key = ""
+            time.sleep(1 / frequency)
+    except KeyboardInterrupt:
+        print("Interrupted by user, exiting...")
 
 
 if __name__ == "__main__":
