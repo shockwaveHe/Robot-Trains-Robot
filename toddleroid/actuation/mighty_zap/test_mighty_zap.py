@@ -1,10 +1,11 @@
 import sys
 import time
 
-import PythonLibMightyZap_FC
 import serial
 
-MightyZap = PythonLibMightyZap_FC
+from toddleroid.actuation.mighty_zap import mighty_zap
+
+MightyZap = mighty_zap
 
 Actuator_ID = 0
 

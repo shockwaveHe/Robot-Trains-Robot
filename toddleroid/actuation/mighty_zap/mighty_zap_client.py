@@ -1,20 +1,21 @@
 import glob
 import sys
 
-import PythonLibMightyZap_FC
 import serial
 from PyQt5 import QtCore, QtWidgets, uic
 
+from toddleroid.actuation.mighty_zap import mighty_zap
+
 QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
 QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)
-MightyZap = PythonLibMightyZap_FC
+MightyZap = mighty_zap
 isOpen = 0
 
 
 class Form(QtWidgets.QDialog):
     def __init__(self, parent=None):
         QtWidgets.QDialog.__init__(self, parent)
-        self.ui = uic.loadUi("toddleroid/actuation/mighty_zap/PyQtMightyZapDemo_FC.ui")
+        self.ui = uic.loadUi("toddleroid/actuation/mighty_zap/mighty_zap_client.ui")
         self.ui.Baudrate.addItem("9600")
         self.ui.Baudrate.addItem("19200")
         self.ui.Baudrate.addItem("57600")
