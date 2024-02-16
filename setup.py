@@ -6,7 +6,13 @@ with open("requirements.txt") as f:
 
 # TODO: Get rid of requirements.txt
 requirements.extend(
-    ["pigar==2.1.1", "onshape-to-robot==0.3.24", "control==0.9.4", "pytest==7.4.4"]
+    [
+        "pigar==2.1.1",
+        "onshape-to-robot==0.3.24",
+        "control==0.9.4",
+        "pytest==7.4.4",
+        "pygraphviz==1.11",
+    ]
 )
 
 setup(

@@ -1,0 +1,11 @@
+{
+    "documentId": "d2a8be5ce536cd2e18740efa",
+    "outputFormat": "urdf",
+    "assemblyName": "left_3R+RH5_leg",
+    "robotName": "left_3R+RH5_leg",
+    "addDummyBaseLink": false,
+    "mergeSTLs": "all",
+    "mergeSTLsCollisions": true,
+    "simplifySTLs": "all",
+    "maxSTLSize": 1
+}

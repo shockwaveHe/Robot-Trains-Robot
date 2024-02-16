@@ -1,8 +1,13 @@
 #!/bin/bash
 REPO_NAME="toddlerbot"
-ROBOT_NAME="toddlerbot"
+ROBOT_NAME="base"
+BODY_NAME="4R_body"
+ARM_NAME="OP3_arm"
+LEG_NAME="3R+RH5_leg"
 URDF_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/$ROBOT_NAME.urdf
-MJCF_DEBUG_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/${ROBOT_NAME}_debug.xml
+MJCF_FIXED_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/${ROBOT_NAME}_fixed.xml
+
+# All the body parts to be exported in OnShape
 ASSEMBLY_LIST="4R_body left_3R+RH5_leg right_3R+RH5_leg left_OP3_arm right_OP3_arm"
 
 printf "Do you want to export urdf from onshape? (y/n)"
@@ -10,7 +15,7 @@ read -r -p " > " run_onshape
 
 if [ "$run_onshape" == "y" ]; then
     printf "Exporting...\n\n"
-    python $REPO_NAME/robot_descriptions/get_urdf.py --robot-name $ROBOT_NAME --assembly_list $ASSEMBLY_LIST --parallel
+    python $REPO_NAME/robot_descriptions/get_urdf.py --assembly-list $ASSEMBLY_LIST
 else
     printf "Export skipped.\n\n"
 fi
@@ -19,7 +24,7 @@ printf "Do you want to process the urdf? (y/n)"
 read -r -p " > " run_process
 if [ "$run_process" == "y" ]; then
     printf "Processing...\n\n"
-    python $REPO_NAME/robot_descriptions/process_urdf.py --robot-name $ROBOT_NAME
+    python $REPO_NAME/robot_descriptions/process_urdf.py --robot-name $ROBOT_NAME --body-name $BODY_NAME --arm-name $ARM_NAME --leg-name $LEG_NAME
     
     printf "Visualizing the kinematic tree...\n\n"
     python $REPO_NAME/utils/vis_kine_tree.py \
@@ -59,7 +64,7 @@ read -r -p " > " run_mujoco
 
 if [ "$run_mujoco" == "y" ]; then
     printf "Simulation running...\n\n"
-    python -m mujoco.viewer --mjcf=$MJCF_DEBUG_PATH
+    python -m mujoco.viewer --mjcf=$MJCF_FIXED_PATH
 else
     printf "Simulation skipped.\n\n"
 fi

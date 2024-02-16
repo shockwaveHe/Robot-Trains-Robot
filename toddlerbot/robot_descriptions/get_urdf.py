@@ -13,7 +13,6 @@ from toddlerbot.utils.file_utils import *
 
 @dataclass
 class OnShapeConfig:
-    robot_name: str
     assembly_list: List[str]
     # The following are the default values for the config.json file
     documentId: str = "d2a8be5ce536cd2e18740efa"
@@ -43,15 +42,7 @@ def process_urdf_and_stl_files(assembly_path):
         filename_attr = mesh.get("filename")
         if filename_attr and filename_attr.startswith("package:///"):
             filename = os.path.basename(filename_attr)
-            new_path = f"package:///meshes/{filename}"
-            mesh.set("filename", new_path)
             referenced_stls.add(filename)
-
-    pretty_xml = prettify(root, urdf_path)
-
-    # Write the modified XML back to the URDF file
-    with open(urdf_path, "w") as urdf_file:
-        urdf_file.write(pretty_xml)
 
     # Delete STL and PART files if not referenced
     for entry in os.scandir(assembly_path):
@@ -72,10 +63,27 @@ def process_urdf_and_stl_files(assembly_path):
 
     # Move referenced STL files to 'meshes' directory
     for stl in referenced_stls:
+        if "left" in robot_name and not "left" in stl:
+            new_stl = "left_" + stl
+        elif "right" in robot_name and not "right" in stl:
+            new_stl = "right_" + stl
+        else:
+            new_stl = stl
+
+        # Update the filename attribute in the URDF file
+        for mesh in root.findall(".//mesh"):
+            filename_attr = mesh.get("filename")
+            if filename_attr and filename_attr.endswith(stl):
+                mesh.set("filename", f"package:///meshes/{new_stl}")
+
         source_path = os.path.join(assembly_path, stl)
-        target_path = os.path.join(meshes_dir, stl)
         if os.path.exists(source_path):
-            shutil.move(source_path, target_path)
+            shutil.move(source_path, os.path.join(meshes_dir, new_stl))
+
+    pretty_xml = prettify(root, urdf_path)
+    # Write the modified XML back to the URDF file
+    with open(urdf_path, "w") as urdf_file:
+        urdf_file.write(pretty_xml)
 
     # Rename URDF file to match the base directory name if necessary
     new_urdf_path = os.path.join(assembly_path, robot_name + ".urdf")
@@ -83,11 +91,10 @@ def process_urdf_and_stl_files(assembly_path):
         os.rename(urdf_path, new_urdf_path)
 
 
-def process_assembly(onshape_config, robot_dir, assembly_name):
-    assembly_path = os.path.join(robot_dir, assembly_name)
+def process_assembly(onshape_config, assembly_dir, assembly_name):
+    assembly_path = os.path.join(assembly_dir, assembly_name)
     os.makedirs(assembly_path, exist_ok=True)
     json_file_path = os.path.join(assembly_path, "config.json")
-
     # Map the URDFConfig to the desired JSON structure
     json_data = {
         "documentId": onshape_config.documentId,
@@ -112,9 +119,7 @@ def process_assembly(onshape_config, robot_dir, assembly_name):
 
 
 def run_onshape_to_robot(onshape_config, parallel=False):
-    robot_dir = os.path.join(
-        "toddlerbot", "robot_descriptions", onshape_config.robot_name
-    )
+    assembly_dir = os.path.join("toddlerbot", "robot_descriptions", "assemblies")
 
     if parallel:
         # Use ThreadPoolExecutor to parallelize processing
@@ -123,7 +128,7 @@ def run_onshape_to_robot(onshape_config, parallel=False):
         ) as executor:
             futures = [
                 executor.submit(
-                    process_assembly, onshape_config, robot_dir, assembly_name
+                    process_assembly, onshape_config, assembly_dir, assembly_name
                 )
                 for assembly_name in onshape_config.assembly_list
             ]
@@ -137,19 +142,13 @@ def run_onshape_to_robot(onshape_config, parallel=False):
     else:
         # Process each assembly in series
         for assembly_name in onshape_config.assembly_list:
-            process_assembly(onshape_config, robot_dir, assembly_name)
+            process_assembly(onshape_config, assembly_dir, assembly_name)
 
 
 def main():
     parser = argparse.ArgumentParser(description="Process the urdf.")
     parser.add_argument(
-        "--robot_name",
-        type=str,
-        default="toddlerbot",
-        help="The name of the robot. Need to match the name in robot_descriptions.",
-    )
-    parser.add_argument(
-        "--assembly_list",
+        "--assembly-list",
         type=str,
         nargs="+",  # Indicates that one or more arguments will be consumed.
         required=True,
@@ -163,7 +162,7 @@ def main():
     args = parser.parse_args()
 
     run_onshape_to_robot(
-        OnShapeConfig(robot_name=args.robot_name, assembly_list=args.assembly_list),
+        OnShapeConfig(assembly_list=args.assembly_list),
         args.parallel,
     )
 

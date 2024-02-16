@@ -1,12 +1,20 @@
 import argparse
 import os
-import shutil
 import xml.etree.ElementTree as ET
+from dataclasses import dataclass
 
 from toddlerbot.utils.file_utils import *
 
 
-def find_root_link(root):
+@dataclass
+class URDFConfig:
+    robot_name: str
+    body_name: str
+    arm_name: str
+    leg_name: str
+
+
+def find_root_link_name(root):
     child_links = {joint.find("child").get("link") for joint in root.findall("joint")}
     all_links = {link.get("name") for link in root.findall("link")}
 
@@ -18,56 +26,126 @@ def find_root_link(root):
         raise ValueError("Could not find root link in URDF")
 
 
-def assemble_urdf(assembly_list, urdf_config, robot_dir):
-    # Parse the target URDF
-    target_urdf_path = os.path.join(robot_dir, urdf_config.robot_name + ".urdf")
-    target_tree = ET.parse(target_urdf_path)
-    target_root = target_tree.getroot()
+def update_link_names_and_references(body_root, part_root):
+    """
+    Updates link names in part_root to ensure uniqueness in body_root and updates all references.
 
-    for joint in target_root.findall("joint"):
+    Args:
+    - body_root: The root XML element of the main URDF body.
+    - part_root: The root XML element of the part URDF being merged.
+
+    Returns:
+    - None: The function directly modifies part_root in-place.
+    """
+    existing_links = {link.attrib["name"] for link in body_root.findall("link")}
+
+    # Function to find or generate a unique link name
+    def get_unique_name(old_name):
+        if old_name not in existing_links:
+            return old_name
+        i = 2
+        if old_name.split("_")[-1].isdigit():
+            old_name = "_".join(old_name.split("_")[:-1])
+
+        while f"{old_name}_{i}" in existing_links:
+            i += 1
+        return f"{old_name}_{i}"
+
+    # Update link names in part_root and collect changes
+    name_changes = {}
+    for link in part_root.findall("link"):
+        old_name = link.attrib["name"]
+        new_name = get_unique_name(old_name)
+        if old_name != new_name:
+            link.attrib["name"] = new_name
+            name_changes[old_name] = new_name
+            existing_links.add(new_name)
+
+    for joint in part_root.findall("joint"):
+        for tag in ["parent", "child"]:
+            link_element = joint.find(tag)
+            if link_element is not None and link_element.attrib["link"] in name_changes:
+                link_element.attrib["link"] = name_changes[link_element.attrib["link"]]
+
+
+def assemble_urdf(urdf_config):
+    # Parse the target URDF
+    description_dir = os.path.join("toddlerbot", "robot_descriptions")
+    assembly_dir = os.path.join(description_dir, "assemblies")
+
+    body_urdf_path = os.path.join(
+        assembly_dir, urdf_config.body_name, urdf_config.body_name + ".urdf"
+    )
+    body_tree = ET.parse(body_urdf_path)
+    body_root = body_tree.getroot()
+    body_root.set("name", urdf_config.robot_name)
+
+    assembly_list = [
+        "left_" + urdf_config.arm_name,
+        "right_" + urdf_config.arm_name,
+        "left_" + urdf_config.leg_name,
+        "right_" + urdf_config.leg_name,
+    ]
+
+    for element in list(body_root):
+        # Before appending, update the filename attribute in <mesh> tags
+        for mesh in element.findall(".//mesh"):
+            mesh.attrib["filename"] = mesh.attrib["filename"].replace(
+                "package:///", f"../assemblies/{urdf_config.body_name}/"
+            )
+
+    for joint in body_root.findall("joint"):
         child_link = joint.find("child")
         child_link_name = child_link.attrib.get("link")
 
         if not "leg" in child_link_name and not "arm" in child_link_name:
             continue
 
-        for link in target_root.findall("link"):
+        for link in body_root.findall("link"):
             if link.attrib.get("name") == child_link_name.lower():
-                target_root.remove(link)
+                body_root.remove(link)
 
         source_urdf_path = None
         for assembly_name in assembly_list:
             if assembly_name.lower() == child_link_name.lower():
-                # Parse the source URDF
                 source_urdf_path = os.path.join(
-                    robot_dir, assembly_name, assembly_name + ".urdf"
+                    assembly_dir, assembly_name, assembly_name + ".urdf"
                 )
                 break
 
         if source_urdf_path is None:
             raise ValueError(f"Could not find source URDF for link '{child_link_name}'")
 
-        source_tree = ET.parse(source_urdf_path)
-        source_root = source_tree.getroot()
+        part_tree = ET.parse(source_urdf_path)
+        part_root = part_tree.getroot()
 
-        new_child_link_name = find_root_link(source_root)
-        child_link.set("link", new_child_link_name)
+        update_link_names_and_references(body_root, part_root)
+        child_link.set("link", find_root_link_name(part_root))
 
-        for element in list(source_root):
-            target_root.append(element)
+        for element in list(part_root):
+            # Before appending, update the filename attribute in <mesh> tags
+            for mesh in element.findall(".//mesh"):
+                mesh.attrib["filename"] = mesh.attrib["filename"].replace(
+                    "package:///", f"../assemblies/{assembly_name}/"
+                )
+
+            body_root.append(element)
 
     # Check if the <mujoco> element already exists
-    mujoco = target_root.find("./mujoco")
+    mujoco = body_root.find("./mujoco")
     if mujoco is None:
         # Create and insert the <mujoco> element
         mujoco = ET.Element("mujoco")
         compiler = ET.SubElement(mujoco, "compiler")
-        compiler.set("meshdir", "./meshes/")
+        compiler.set("strippath", "false")
         compiler.set("balanceinertia", "true")
         compiler.set("discardvisual", "false")
-        target_root.insert(0, mujoco)
+        body_root.insert(0, mujoco)
 
-    target_tree.write(target_urdf_path)
+    target_robot_dir = os.path.join(description_dir, urdf_config.robot_name)
+    os.makedirs(target_robot_dir, exist_ok=True)
+    target_urdf_path = os.path.join(target_robot_dir, urdf_config.robot_name + ".urdf")
+    body_tree.write(target_urdf_path)
 
 
 def main():
@@ -78,12 +156,29 @@ def main():
         default="base",
         help="The name of the robot. Need to match the name in robot_descriptions.",
     )
+    parser.add_argument(
+        "--body-name",
+        type=str,
+        required=True,
+        help="The name of the body.",
+    )
+    parser.add_argument(
+        "--arm-name",
+        type=str,
+        required=True,
+        help="The name of the arm.",
+    )
+    parser.add_argument(
+        "--leg-name",
+        type=str,
+        required=True,
+        help="The name of the leg.",
+    )
     args = parser.parse_args()
 
-    robot_dir = os.path.join(
-        os.path.join("toddlerbot", "robot_descriptions"), args.robot_name
+    assemble_urdf(
+        URDFConfig(args.robot_name, args.body_name, args.arm_name, args.leg_name)
     )
-    process_urdf_and_stl_files(robot_dir)
 
 
 if __name__ == "__main__":

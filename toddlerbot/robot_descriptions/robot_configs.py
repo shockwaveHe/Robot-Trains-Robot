@@ -27,10 +27,11 @@ class ActuatorParameters:
 
 
 def load_robot_configs(
-    base_path="toddlerbot/robot_descriptions", ignore_dirs=["__pycache__"]
+    base_path="toddlerbot/robot_descriptions", ignore_dirs=["__pycache__", "assemblies"]
 ):
     configs = {}
-    for robot_name in os.listdir(base_path):
+    for entry in os.scandir(base_path):
+        robot_name = entry.name
         if robot_name in ignore_dirs:
             continue
         robot_path = os.path.join(base_path, robot_name)

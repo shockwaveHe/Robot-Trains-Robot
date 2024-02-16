@@ -1,9 +1,9 @@
 {
     "documentId": "d2a8be5ce536cd2e18740efa",
     "outputFormat": "urdf",
-    "assemblyName": "URDF",
-    "robotName": "base",
-    "addDummyBaseLink": true,
+    "assemblyName": "left_OP3_arm",
+    "robotName": "left_OP3_arm",
+    "addDummyBaseLink": false,
     "mergeSTLs": "all",
     "mergeSTLsCollisions": true,
     "simplifySTLs": "all",

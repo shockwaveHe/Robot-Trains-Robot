@@ -25,14 +25,17 @@ def find_description_path(robot_name: str, suffix: str = ".urdf") -> str:
         print(robot_urdf_path)
     """
     robot_dir = os.path.join("toddlerbot", "robot_descriptions", robot_name)
+    if os.path.exists(robot_dir):
+        description_path = os.path.join(robot_dir, robot_name + suffix)
+        if os.path.exists(description_path):
+            return description_path
+    else:
+        assembly_dir = os.path.join("toddlerbot", "robot_descriptions", "assemblies")
+        description_path = os.path.join(assembly_dir, robot_name + suffix)
+        if os.path.exists(description_path):
+            return description_path
 
-    for file in os.listdir(robot_dir):
-        if file.endswith(suffix):
-            return os.path.join(robot_dir, file)
-
-    raise FileNotFoundError(
-        f"No URDF file found in the directory '{robot_dir}' for robot '{robot_name}'."
-    )
+    raise FileNotFoundError(f"No URDF file found for robot '{robot_name}'.")
 
 
 def is_xml_pretty_printed(file_path):

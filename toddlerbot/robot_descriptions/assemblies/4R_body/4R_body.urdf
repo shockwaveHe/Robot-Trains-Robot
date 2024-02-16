@@ -1,0 +1,224 @@
+<?xml version="1.0" ?><robot name="4R_body">  
+  <link name="base_link"/>  
+  <joint name="base_link_to_base" type="fixed">    
+    <parent link="base_link"/>    
+    <child link="body_link"/>    
+    <origin rpy="0.0 0 0" xyz="0 0 0"/>    
+  </joint>  
+  <link name="body_link">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/body_link_visual.stl"/>        
+      </geometry>      
+      <material name="body_link_material">        
+        <color rgba="0.55996023298811625768 0.73378146029516932991 0.87169628976554425215 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/body_link_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="0.00047812883477954504999 3.0739283047541449712e-07 0.38121158953748185416" rpy="0 0 0"/>      
+      <mass value="0.67608257475273081383"/>      
+      <inertia ixx="0.0031022286229082179053" ixy="-4.7652709113430271378e-09" ixz="6.3573332153048944153e-05" iyy="0.0024203844758186906887" iyz="8.1740734981126049984e-10" izz="0.0017849397724631664922"/>      
+    </inertial>    
+  </link>  
+
+  <link name="neck_link">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/neck_link_visual.stl"/>        
+      </geometry>      
+      <material name="neck_link_material">        
+        <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/neck_link_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="3.067903593042405049e-19 8.1623837661629239318e-19 -0.020000000000000000416" rpy="0 0 0"/>      
+      <mass value="0.017530087007031042168"/>      
+      <inertia ixx="3.3234123284163032003e-06" ixy="-1.0338857654327673847e-106" ixz="0" iyy="3.3234123284163027768e-06" iyz="0" izz="1.9721347882909923679e-06"/>      
+    </inertial>    
+  </link>  
+
+  <link name="head_link">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/head_link_visual.stl"/>        
+      </geometry>      
+      <material name="head_link_material">        
+        <color rgba="0.79607843137254896693 0.82352941176470584317 0.93725490196078442562 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/head_link_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="0.0011121374382810685771 0.0023003089133866879389 -0.012472157860955830275" rpy="0 0 0"/>      
+      <mass value="0.075015538754886992856"/>      
+      <inertia ixx="6.8018019107715040579e-06" ixy="6.7244456377383520563e-07" ixz="2.3059386910262405484e-09" iyy="4.5222250439264420976e-05" iyz="-1.2119065455131639306e-08" izz="4.5708811148256761484e-05"/>      
+    </inertial>    
+  </link>  
+
+  <joint name="head" type="fixed">    
+    <origin xyz="0 1.7347234759768070944e-18 -0.039999999999999980016" rpy="0 -1.0509729472670562853e-99 -4.1486002514987779604e-69"/>    
+    <parent link="neck_link"/>    
+    <child link="head_link"/>    
+    <axis xyz="0 0 1"/>    
+    <limit effort="1" velocity="20"/>    
+    <joint_properties friction="0.0"/>    
+  </joint>  
+
+  <joint name="neck" type="fixed">    
+    <origin xyz="0.010000000000000005412 -7.4035645855646046943e-18 0.45008542000000001382" rpy="-3.141592653589793116 2.5403140807248779693e-85 1.570796326794896558"/>    
+    <parent link="body_link"/>    
+    <child link="neck_link"/>    
+    <axis xyz="0 0 1"/>    
+    <limit effort="1" velocity="20"/>    
+    <joint_properties friction="0.0"/>    
+  </joint>  
+
+  <link name="left_3r+rh5_leg">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_3r+rh5_leg_visual.stl"/>        
+      </geometry>      
+      <material name="left_3r+rh5_leg_material">        
+        <color rgba="0.72627467524447186786 0.71260494176759736629 0.53290000169217222048 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_3r+rh5_leg_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="0.011496654461754633042 -0.0030041941685012706238 -0.13165875163319465391" rpy="0 0 0"/>      
+      <mass value="0.31997833445896267657"/>      
+      <inertia ixx="0.0021623154111834524613" ixy="3.8982022063705335712e-07" ixz="0.00026498010383904229163" iyy="0.0022281720068891204024" iyz="-2.293619157558169768e-05" izz="0.00016060949991968001375"/>      
+    </inertial>    
+  </link>  
+
+  <joint name="left_hip_yaw" type="revolute">    
+    <origin xyz="0.0099999999999999915345 0.034999999999999982514 0.29868541999999997927" rpy="-1.2830740121451429552e-26 -6.1232339959922830135e-17 3.1415926535897598093"/>    
+    <parent link="body_link"/>    
+    <child link="left_3r+rh5_leg"/>    
+    <axis xyz="0 0 1"/>    
+    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558"/>    
+    <joint_properties friction="0.0"/>    
+  </joint>  
+
+  <link name="right_3r+rh5_leg">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/right_3r+rh5_leg_visual.stl"/>        
+      </geometry>      
+      <material name="right_3r+rh5_leg_material">        
+        <color rgba="0.7262746754500511992 0.71260494158326370684 0.53290000095507372713 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/right_3r+rh5_leg_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="0.010878708253177254289 0.0034348696167475849771 -0.1316530279765812661" rpy="0 0 0"/>      
+      <mass value="0.31997833386413643275"/>      
+      <inertia ixx="0.0021613731823740623197" ixy="1.2062419208767824485e-06" ixz="0.0002548659292410345497" iyy="0.0022254561699114991553" iyz="1.7389919807931310714e-05" izz="0.0001575432457846977761"/>      
+    </inertial>    
+  </link>  
+
+  <joint name="right_hip_yaw" type="revolute">    
+    <origin xyz="0.0099999999999999897998 -0.034999999999999989453 0.29868541999999997927" rpy="-2.8487879681803368219e-27 -6.1232339957719874427e-17 -3.1415926535897793492"/>    
+    <parent link="body_link"/>    
+    <child link="right_3r+rh5_leg"/>    
+    <axis xyz="0 0 1"/>    
+    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558"/>    
+    <joint_properties friction="0.0"/>    
+  </joint>  
+
+  <link name="left_op3_arm">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_op3_arm_visual.stl"/>        
+      </geometry>      
+      <material name="left_op3_arm_material">        
+        <color rgba="0.43523473395306988554 0.55451173083354088345 0.73762059152478276491 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_op3_arm_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="-0.00020870187266119950733 0.008516597982190596966 -0.077300388864323471561" rpy="0 0 0"/>      
+      <mass value="0.1571979940418067323"/>      
+      <inertia ixx="0.00031144888768403367757" ixy="1.5866524066529993936e-08" ixz="1.6569417508437787605e-07" iyy="0.00031881972937998210964" iyz="-2.0709890631883860372e-06" izz="3.0672546414051314796e-05"/>      
+    </inertial>    
+  </link>  
+
+  <joint name="left_sho_pitch" type="revolute">    
+    <origin xyz="0.009999999999999812858 0.060500000000000025979 0.43008541999999988503" rpy="-1.5707963267948708008 3.5465916442993729594e-14 -3.1415926535897371608"/>    
+    <parent link="body_link"/>    
+    <child link="left_op3_arm"/>    
+    <axis xyz="0 0 1"/>    
+    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558"/>    
+    <joint_properties friction="0.0"/>    
+  </joint>  
+
+  <link name="right_op3_arm">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/right_op3_arm_visual.stl"/>        
+      </geometry>      
+      <material name="right_op3_arm_material">        
+        <color rgba="0.435234733953069719 0.5545117308335406614 0.73762059152478243185 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/right_op3_arm_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="0.0002087016227927656752 0.0085166018152484698062 -0.077300388864323277271" rpy="0 0 0"/>      
+      <mass value="0.15719799404180678781"/>      
+      <inertia ixx="0.00031144888826657545064" ixy="-1.5851769803180894599e-08" ixz="-1.656928408015884935e-07" iyy="0.00031881972939637454175" iyz="-2.1382841643535528997e-06" izz="3.0672547012990988423e-05"/>      
+    </inertial>    
+  </link>  
+
+  <joint name="right_sho_pitch" type="revolute">    
+    <origin xyz="0.0099999999999999932693 -0.06050000000000008149 0.43008541999999999605" rpy="-1.570796326794896336 6.9606380272961593273e-16 1.3836137928249486855e-31"/>    
+    <parent link="body_link"/>    
+    <child link="right_op3_arm"/>    
+    <axis xyz="0 0 1"/>    
+    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558"/>    
+    <joint_properties friction="0.0"/>    
+  </joint>  
+
+
+</robot>

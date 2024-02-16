@@ -1,0 +1,11 @@
+{
+    "documentId": "d2a8be5ce536cd2e18740efa",
+    "outputFormat": "urdf",
+    "assemblyName": "4R_body",
+    "robotName": "4R_body",
+    "addDummyBaseLink": true,
+    "mergeSTLs": "all",
+    "mergeSTLsCollisions": true,
+    "simplifySTLs": "all",
+    "maxSTLSize": 1
+}

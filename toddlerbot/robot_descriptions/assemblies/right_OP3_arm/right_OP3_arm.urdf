@@ -1,0 +1,90 @@
+<?xml version="1.0" ?><robot name="right_OP3_arm">  
+  <link name="sho_pitch_link">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/right_sho_pitch_link_visual.stl"/>        
+      </geometry>      
+      <material name="sho_pitch_link_material">        
+        <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/right_sho_pitch_link_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="-3.0491385354136435218e-09 0.0021980515983192256725 -0.0084441034778715839959" rpy="0 0 0"/>      
+      <mass value="0.005071479984796780846"/>      
+      <inertia ixx="7.6348105206556708263e-07" ixy="1.1155743466407112611e-13" ixz="9.7455164554343733298e-15" iyy="1.7661180179823188739e-06" iyz="1.1100867450486858202e-07" izz="1.8650955603811039782e-06"/>      
+    </inertial>    
+  </link>  
+
+  <link name="sho_roll_link">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/right_sho_roll_link_visual.stl"/>        
+      </geometry>      
+      <material name="sho_roll_link_material">        
+        <color rgba="0.41243716778099159814 0.53141040174499620807 0.72755857506443610827 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/right_sho_roll_link_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="-0.044750001317538180834 -2.1437068092471038151e-09 -0.018766560050921397146" rpy="0 0 0"/>      
+      <mass value="0.14053933881247795967"/>      
+      <inertia ixx="2.5542860709012180694e-05" ixy="3.3646029014726126016e-08" ixz="-2.9382216719718211582e-12" iyy="0.00018283946647031771074" iyz="-7.6178893453431347045e-12" izz="0.00017786975360446828534"/>      
+    </inertial>    
+  </link>  
+
+  <link name="elb_link">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/right_elb_link_visual.stl"/>        
+      </geometry>      
+      <material name="elb_link_material">        
+        <color rgba="0.632763333624367319 0.72211014553089536427 0.77571823267481221365 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/right_elb_link_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="0.0035809919318979597895 -0.051692930824585016369 0.019000000360375909197" rpy="0 0 0"/>      
+      <mass value="0.011587175244532097601"/>      
+      <inertia ixx="9.8008364445091835835e-06" ixy="7.9870408555378004964e-07" ixz="-2.3421923325125110387e-13" iyy="2.9172843721889862441e-06" iyz="2.5739601650249702971e-14" izz="8.0566619883510791155e-06"/>      
+    </inertial>    
+  </link>  
+
+  <joint name="right_elb" type="revolute">    
+    <origin xyz="-0.08949999999999827538 -7.2650219173908681114e-15 1.0956513474269513608e-14" rpy="-3.1415926535897145122 9.187667647645342109e-14 1.5707963267949796027"/>    
+    <parent link="sho_roll_link"/>    
+    <child link="elb_link"/>    
+    <axis xyz="0 0 1"/>    
+    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558"/>    
+    <joint_properties friction="0.0"/>    
+  </joint>  
+
+  <joint name="right_sho_roll" type="revolute">    
+    <origin xyz="0.018999999999999954425 0.0089999999999999576866 -0.027499999999999899525" rpy="-3.1415926535896976368 -1.5707963267948958919 0"/>    
+    <parent link="sho_pitch_link"/>    
+    <child link="sho_roll_link"/>    
+    <axis xyz="0 0 1"/>    
+    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558"/>    
+    <joint_properties friction="0.0"/>    
+  </joint>  
+
+
+</robot>

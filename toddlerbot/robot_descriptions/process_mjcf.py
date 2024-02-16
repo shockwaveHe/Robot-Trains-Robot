@@ -325,7 +325,7 @@ def create_base_scene_xml(mjcf_path):
     tree.write(os.path.join(os.path.dirname(mjcf_path), f"{robot_name}_scene.xml"))
 
 
-def process_mjcf_debug_file(root, config):
+def process_mjcf_fixed_file(root, config):
     replace_mesh_file(
         root, "body_link_collision.stl", "body_link_collision_simplified.stl"
     )
@@ -347,15 +347,15 @@ def process_mjcf_files(robot_name):
 
     robot_dir = os.path.join("toddlerbot", "robot_descriptions", robot_name)
     source_mjcf_path = os.path.join("mjmodel.xml")
-    mjcf_debug_path = os.path.join(robot_dir, robot_name + "_debug.xml")
+    mjcf_fixed_path = os.path.join(robot_dir, robot_name + "_fixed.xml")
     if os.path.exists(source_mjcf_path):
-        shutil.move(source_mjcf_path, mjcf_debug_path)
+        shutil.move(source_mjcf_path, mjcf_fixed_path)
 
-    xml_tree = ET.parse(mjcf_debug_path)
+    xml_tree = ET.parse(mjcf_fixed_path)
     xml_root = xml_tree.getroot()
 
-    process_mjcf_debug_file(xml_root, robot.config)
-    xml_tree.write(mjcf_debug_path)
+    process_mjcf_fixed_file(xml_root, robot.config)
+    xml_tree.write(mjcf_fixed_path)
 
     urdf_path = os.path.join(robot_dir, robot_name + ".urdf")
     mjcf_path = os.path.join(robot_dir, robot_name + ".xml")
