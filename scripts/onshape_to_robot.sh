@@ -24,7 +24,7 @@ printf "Do you want to process the urdf? (y/n)"
 read -r -p " > " run_process
 if [ "$run_process" == "y" ]; then
     printf "Processing...\n\n"
-    python $REPO_NAME/robot_descriptions/process_urdf.py --robot-name $ROBOT_NAME --body-name $BODY_NAME --arm-name $ARM_NAME --leg-name $LEG_NAME
+    python $REPO_NAME/robot_descriptions/assemble_urdf.py --robot-name $ROBOT_NAME --body-name $BODY_NAME --arm-name $ARM_NAME --leg-name $LEG_NAME
     
     printf "Visualizing the kinematic tree...\n\n"
     python $REPO_NAME/utils/vis_kine_tree.py \
