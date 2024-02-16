@@ -1,15 +1,16 @@
 #!/bin/bash
 
-ROBOT_NAME="base"
+ROBOT_NAME="toddlerbot"
 URDF_PATH=toddleroid/robot_descriptions/$ROBOT_NAME/$ROBOT_NAME.urdf
 MJCF_DEBUG_PATH=toddleroid/robot_descriptions/$ROBOT_NAME/${ROBOT_NAME}_debug.xml
+ASSEMBLY_LIST="4R_body left_3R+RH5_leg right_3R+RH5_leg left_OP3_arm right_OP3_arm"
 
 printf "Do you want to export urdf from onshape? (y/n)"
 read -r -p " > " run_onshape
 
 if [ "$run_onshape" == "y" ]; then
     printf "Exporting...\n\n"
-    onshape-to-robot toddleroid/robot_descriptions/$ROBOT_NAME
+    python toddleroid/robot_descriptions/get_urdf.py --robot-name $ROBOT_NAME --assembly_list $ASSEMBLY_LIST --parallel
 else
     printf "Export skipped.\n\n"
 fi
