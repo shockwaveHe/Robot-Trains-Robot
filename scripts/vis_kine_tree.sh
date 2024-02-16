@@ -1,11 +1,8 @@
 #!/bin/bash
-URDF_PATH=toddleroid/robot_descriptions/robotis_op3/robotis_op3.urdf
-# YAML_PATH=toddleroid/robot_descriptions/kine_tree_template.yml
+REPO_NAME="toddlerbot"
+ROBOT_NAME="robotis_op3"
+URDF_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/$ROBOT_NAME.urdf
 
-python toddleroid/utils/vis_kine_tree.py \
+python $REPO_NAME/utils/vis_kine_tree.py \
     --path $URDF_PATH \
-    -o toddleroid/robot_descriptions/kine_tree_template.png
-
-# python toddleroid/utils/vis_kine_tree.py \
-#     --path $YAML_PATH \
-#     -o toddleroid/robot_descriptions/kine_tree_template.png
+    -o $REPO_NAME/robot_descriptions/${ROBOT_NAME}_kine_tree.png

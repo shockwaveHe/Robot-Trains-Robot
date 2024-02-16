@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Define environment name and Python version
-ENV_NAME="toddleroid"
+ENV_NAME="toddlerbot"
 PYTHON_VERSION="3.8"
 
 # Check if the script is run from the root of the repo
 if [ ! -f "README.md" ] || [ ! -f "setup.py" ]; then
-    echo "Error: Script must be run from the root directory of the toddleroid repository."
+    echo "Error: Script must be run from the root directory of the toddlerbot repository."
     exit 1
 fi
 

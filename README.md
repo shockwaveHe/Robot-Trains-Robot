@@ -1,9 +1,9 @@
-# toddleroid
+# toddlerbot
 
 ### Install the environment
 ```
-conda create --name toddleroid python=3.8
-conda activate toddleroid
+conda create --name toddlerbot python=3.8
+conda activate toddlerbot
 pip install -e .
 ```
 

@@ -3,7 +3,7 @@ import subprocess
 
 def run_test(task_name: str, robot_name: str):
     # Path to the walking.py script
-    script_path = f"toddleroid/tasks/{task_name}.py"
+    script_path = f"toddlerbot/tasks/{task_name}.py"
 
     # Path to the expected output text file
     expected_output_file = f"tests/{robot_name}_{task_name}_out.txt"

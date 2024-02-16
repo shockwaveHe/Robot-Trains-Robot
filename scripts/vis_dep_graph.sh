@@ -1,5 +1,5 @@
 #!/bin/bash
-MODULE_NAME="toddleroid"
+MODULE_NAME="toddlerbot"
 
 # Directory where the output file will be saved
 OUTPUT_DIR="results"

@@ -16,7 +16,7 @@
             "name": "Python: walk_op",
             "type": "python",
             "request": "launch",
-            "program": "toddleroid/tasks/walking.py",
+            "program": "toddlerbot/tasks/walking.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -30,7 +30,7 @@
             "name": "Python: walk_op3",
             "type": "python",
             "request": "launch",
-            "program": "toddleroid/tasks/walking.py",
+            "program": "toddlerbot/tasks/walking.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -44,7 +44,7 @@
             "name": "Python: walk_op3_mujoco",
             "type": "python",
             "request": "launch",
-            "program": "toddleroid/tasks/walking.py",
+            "program": "toddlerbot/tasks/walking.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -61,7 +61,7 @@
             "name": "Python: walk_base_mujoco",
             "type": "python",
             "request": "launch",
-            "program": "toddleroid/tasks/walking.py",
+            "program": "toddlerbot/tasks/walking.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [

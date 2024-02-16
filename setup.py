@@ -10,7 +10,7 @@ requirements.extend(
 )
 
 setup(
-    name="toddleroid",
+    name="toddlerbot",
     packages=find_packages(),
     install_requires=requirements,
 )
