@@ -9,7 +9,7 @@ from toddlerbot.utils.constants import GRAVITY
 
 
 @dataclass
-class LQRPreviewControlParameters:
+class ZMPPreviewControlParameters:
     """Data class to hold control parameters for preview control."""
 
     com_height: float  # Height of the center of mass
@@ -19,8 +19,8 @@ class LQRPreviewControlParameters:
     R_val: float  # Weighting for control input cost
 
 
-class LQRPreviewController:
-    def __init__(self, params: LQRPreviewControlParameters):
+class ZMPPreviewController:
+    def __init__(self, params: ZMPPreviewControlParameters):
         """
         Initialize the Preview Control system.
 
@@ -33,7 +33,7 @@ class LQRPreviewController:
 
     def _setup(self):
         """
-        Set up the preview control parameters and compute the LQR gain.
+        Set up the preview control parameters and compute the gain.
         """
         # Discretize the continuous state-space system
 
@@ -65,10 +65,11 @@ class LQRPreviewController:
 
         # Solve the discrete-time algebraic Riccati equation
         # The gain matrix is chosen to minimize the cost function
-        dare_sol_mat, _, self.lgr_gain = control.dare(extended_A, extended_B, Q, R)
+        dare_sol_mat, _, gain_mat = control.dare(extended_A, extended_B, Q, R)
+        self.gain = -gain_mat
 
-        # Compute the LQR gain for the closed-loop system
-        closed_loop_system_mat = extended_A - extended_B @ self.lgr_gain
+        # Compute the gain for the closed-loop system
+        closed_loop_system_mat = extended_A + extended_B @ self.gain
         # Define the reference input matrix for preview control
         reference_input_mat = np.block([[1.0], [np.zeros((3, 1))]])
         # Calculate the preview control gains for a defined period based on sampling time
@@ -77,11 +78,13 @@ class LQRPreviewController:
             preview_control_gain = (
                 -np.linalg.inv(R + extended_B.transpose() @ dare_sol_mat @ extended_B)
                 @ extended_B.transpose()
-                @ np.linalg.matrix_power(closed_loop_system_mat.transpose(), i - 1)
+                @ np.linalg.matrix_power(closed_loop_system_mat.transpose(), i)
                 @ dare_sol_mat
                 @ reference_input_mat
             ).item()
             self.preview_control_gains.append(preview_control_gain)
+
+        self.preview_control_gains = np.array(self.preview_control_gains)
 
         # Initialize state variables on x and y axis
         self.com_state_prev = np.zeros((3, 2))
@@ -93,58 +96,46 @@ class LQRPreviewController:
         foot_steps: List[FootStep],
         reset: bool = False,
     ) -> Tuple[List, np.ndarray]:
-        """
-        Calculate the trajectory of the center of mass (COM) based on the current state and foot steps.
-
-        Args:
-            com_state_curr (np.ndarray): Current state of the COM.
-            foot_steps (List[FootStep]): List of planned foot steps.
-            reset (bool, optional): Flag to reset previous COM state. Defaults to False.
-
-        Returns:
-            Tuple[List, np.ndarray]:
-                - List of predicted COM positions.
-                - Updated COM state.
-        """
-        com_state = com_state_curr.copy()
-
+        """Calculate the trajectory of the center of mass (COM) based on the current state and foot steps."""
         if reset:
-            self.com_state_prev = com_state.copy()
+            self.com_state_prev = com_state_curr.copy()
             self.control_input = np.zeros(2)
 
+        # Prepare the timing and positions matrix for all foot steps in advance
+        times = np.array([fs.time for fs in foot_steps])
+        positions = np.stack([fs.position[:2] for fs in foot_steps])
+
+        # Calculate the number of steps for the control loop based on the first two foot steps
+        control_steps = round((times[1] - times[0]) / self.params.dt)
+        preview_steps = round(self.params.period / self.params.dt)
+
         com_traj = []
-        for step_index in range(
-            round((foot_steps[1].time - foot_steps[0].time) / self.params.dt)
-        ):
-            state_error = foot_steps[0].position[:2] - self.C_d @ com_state
-            state_diff = np.concatenate([state_error, com_state - self.com_state_prev])
-            self.com_state_prev = com_state.copy()
+        for step_index in range(control_steps):
+            # Calculate the current footstep's position error
+            state_error = positions[0] - self.C_d @ com_state_curr
+            state_diff = np.concatenate(
+                [state_error, com_state_curr - self.com_state_prev]
+            )
+            self.com_state_prev = com_state_curr.copy()
 
-            # Update control inputs based on LQR gain
-            control_update = (-self.lgr_gain @ state_diff).squeeze()
-
+            control_update = (self.gain @ state_diff).squeeze()
             index = 1
             # Adjust control based on footstep timing
-            for j in range(1, round(self.params.period / self.params.dt) - 1):
-                step_index_future = round(
-                    (step_index + j) + foot_steps[0].time / self.params.dt
-                )
-                # This condition checks if the future step index has reached or surpassed
-                # the time of the next footstep. The time of the footstep is converted to an index
-                # by dividing by the time step and rounding.
-                if step_index_future >= round(foot_steps[index].time / self.params.dt):
+            for j in range(preview_steps - 2):
+                future_steps = round((times[index] - times[0]) / self.params.dt)
+                if step_index + j >= future_steps - 1:
                     control_update += self.preview_control_gains[j] * (
-                        foot_steps[index].position[:2]
-                        - foot_steps[index - 1].position[:2]
+                        positions[index] - positions[index - 1]
                     )
-                    # Increment the index to consider the next footstep in subsequent iterations.
                     index += 1
+                    print(f"step_index: {step_index}, j: {j}, index: {index}")
 
-            # Apply control update to the state
             self.control_input += control_update
-            com_state = self.A_d @ com_state + self.B_d @ self.control_input[None]
+            com_state_curr = (
+                self.A_d @ com_state_curr + self.B_d @ self.control_input[None]
+            )
 
             # Record the current COM position
-            com_traj.append(com_state[0])
+            com_traj.append(com_state_curr[0].copy())
 
-        return com_traj, com_state
+        return com_traj, com_state_curr

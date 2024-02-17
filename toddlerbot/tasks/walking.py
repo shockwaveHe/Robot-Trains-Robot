@@ -4,7 +4,7 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 
-from toddlerbot.control.lqr_preview import *
+from toddlerbot.control.zmp_preview_control import *
 from toddlerbot.planning.foot_step_planner import *
 from toddlerbot.sim.mujoco_sim import MujoCoSim
 from toddlerbot.sim.pybullet_sim import PyBulletSim
@@ -46,14 +46,14 @@ class Walking:
         )
         self.fsp = FootStepPlanner(plan_params)
 
-        control_params = LQRPreviewControlParameters(
+        control_params = ZMPPreviewControlParameters(
             com_height=robot.config.com_height,
             dt=config.control_dt,
             period=config.control_period,
             Q_val=config.control_cost_Q_val,
             R_val=config.control_cost_R_val,
         )
-        self.pc = LQRPreviewController(control_params)
+        self.pc = ZMPPreviewController(control_params)
 
         self.left_sole_init, self.right_sole_init = left_sole_init, right_sole_init
         self.joint_angles = joint_angles

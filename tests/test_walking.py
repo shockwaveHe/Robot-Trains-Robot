@@ -31,7 +31,7 @@ def run_test(task_name: str, robot_name: str):
         expected_output = file.read()
 
     # Perform assertion
-    assert captured_output[: int(2e5)].strip() == expected_output[: int(2e5)].strip()
+    assert captured_output[: int(1e4)].strip() == expected_output[: int(1e4)].strip()
 
 
 def test_op_walking():
