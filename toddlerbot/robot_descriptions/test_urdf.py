@@ -59,6 +59,8 @@ def main():
 
             # print(f"joint_angles: {round_floats(joint_angles, 6)}")
             sim.set_joint_angles(robot, joint_angles)
+        else:
+            raise ValueError("Only pybullet is supported for now.")
 
         sim_step_idx += 1
 

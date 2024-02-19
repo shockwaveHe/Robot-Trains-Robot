@@ -7,68 +7,73 @@ import numpy as np
 class WalkingConfig:
     """Data class to hold walking parameters."""
 
-    max_stride: np.ndarray = None  # x, y, theta
-    plan_period: float = 0.0
+    plan_max_stride: np.ndarray = None  # x, y, theta
+    plan_t_step: float = 0.0
     control_dt: float = 0.0
-    control_period: float = 0.0
+    control_t_preview: float = 0.0
     control_cost_Q_val: float = 0.0
     control_cost_R_val: float = 0.0
-    target_pos_init: np.ndarray = None  # x, y, theta
-    sim_step_interval: int = 0
+    target_pose_init: np.ndarray = None  # x, y, theta
+    actuator_steps: int = 0
     foot_step_height: float = 0.0
-    y_offset_com_to_foot: float = 0.0
+    squat_height: float = 0.0
+    y_offset_zmp: float = 0.0
 
 
 sustaina_op_pybullet_walking_config = WalkingConfig(
-    max_stride=np.array([0.05, 0.03, 0.2]),
-    plan_period=0.34,
+    plan_max_stride=np.array([0.05, 0.03, 0.2]),
+    plan_t_step=0.4,
     control_dt=0.01,
-    control_period=1.0,
-    control_cost_Q_val=1e8,
-    control_cost_R_val=1.0,
-    target_pos_init=np.array([0.4, 0.0, 0.5]),
-    sim_step_interval=10,
+    control_t_preview=1.0,
+    control_cost_Q_val=1.0,
+    control_cost_R_val=1e-6,
+    target_pose_init=np.array([0.4, 0.0, 0.5]),
+    actuator_steps=10,
     foot_step_height=0.06,
-    y_offset_com_to_foot=0.06,
+    squat_height=0.03,
+    y_offset_zmp=0.05,
 )
 
 robotis_op3_pybullet_walking_config = WalkingConfig(
-    max_stride=np.array([0.05, 0.03, 0.2]),
-    plan_period=0.34,
+    plan_max_stride=np.array([0.05, 0.01, 0.2]),
+    plan_t_step=0.4,
     control_dt=0.01,
-    control_period=1.0,
-    control_cost_Q_val=1e8,
-    control_cost_R_val=1.0,
-    target_pos_init=np.array([0.4, 0.0, 0.5]),
-    sim_step_interval=10,
+    control_t_preview=1.0,
+    control_cost_Q_val=1.0,
+    control_cost_R_val=1e-6,
+    target_pose_init=np.array([0.4, 0.0, 0.5]),
+    actuator_steps=10,
     foot_step_height=0.06,
-    y_offset_com_to_foot=0.05,
+    squat_height=0.03,
+    y_offset_zmp=0.05,
 )
 
 robotis_op3_mujoco_walking_config = WalkingConfig(
-    max_stride=np.array([0.05, 0.01, 0.2]),
-    plan_period=0.6,  # This is proabably the most important parameter to change
+    plan_max_stride=np.array([0.05, 0.01, 0.2]),
+    plan_t_step=0.6,
     control_dt=0.01,
-    control_period=1.0,
-    control_cost_Q_val=1e8,
-    control_cost_R_val=1.0,
-    target_pos_init=np.array([0.4, 0.0, 0.5]),
-    sim_step_interval=10,
+    control_t_preview=1.0,
+    control_cost_Q_val=1.0,
+    control_cost_R_val=1e-6,
+    target_pose_init=np.array([0.4, 0.0, 0.5]),
+    actuator_steps=10,
     foot_step_height=0.06,
-    y_offset_com_to_foot=0.05,
+    squat_height=0.03,
+    y_offset_zmp=0.05,
 )
 
 base_mujoco_walking_config = WalkingConfig(
-    max_stride=np.array([0.05, 0.01, 0.2]),
-    plan_period=0.75,  # This is proabably the most important parameter to change
+    plan_max_stride=np.array([0.05, 0.01, 0.2]),
+    plan_t_step=0.6,
     control_dt=0.01,
-    control_period=1.0,
-    control_cost_Q_val=1e8,
-    control_cost_R_val=1.0,
-    target_pos_init=np.array([0.4, 0.0, 0.5]),
-    sim_step_interval=10,
-    foot_step_height=0.02,
-    y_offset_com_to_foot=0.05,
+    control_t_preview=1.0,
+    control_cost_Q_val=1.0,
+    control_cost_R_val=1e-6,
+    target_pose_init=np.array([0.4, 0.0, 0.5]),
+    actuator_steps=10,
+    foot_step_height=0.04,
+    squat_height=0.03,
+    y_offset_zmp=0.05,
 )
 
 walking_configs = {

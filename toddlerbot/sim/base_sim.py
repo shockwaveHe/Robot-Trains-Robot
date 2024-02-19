@@ -21,9 +21,13 @@ class AbstractSim(ABC):
     def initialize_joint_angles(self, robot: HumanoidRobot):
         pass
 
-    @abstractmethod
-    def get_com_state(self, robot: HumanoidRobot):
-        pass
+    # @abstractmethod
+    # def get_zmp(self, robot: HumanoidRobot):
+    #     pass
+
+    # @abstractmethod
+    # def get_com(self, robot: HumanoidRobot):
+    #     pass
 
     @abstractmethod
     def set_joint_angles(self, robot: HumanoidRobot, joint_angles: List[float]):

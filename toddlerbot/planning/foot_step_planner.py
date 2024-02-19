@@ -2,15 +2,14 @@ from dataclasses import dataclass
 from typing import List
 
 import numpy as np
-
-from toddlerbot.utils.data_utils import round_floats
+from scipy.interpolate import CubicHermiteSpline
 
 
 @dataclass
 class FootStepPlanParameters:
     max_stride: np.ndarray  # x, y, theta
-    period: float
-    offset_y: float
+    t_step: float
+    y_offset_zmp: float
 
 
 @dataclass
@@ -22,160 +21,156 @@ class FootStep:
 
 class FootStepPlanner:
     def __init__(self, params: FootStepPlanParameters):
-        """
-        Initialize the foot step planner with given parameters.
-
-        Args:
-            params (PlanParameters): Parameters for foot step planning.
-        """
         self.params = params
 
     def compute_steps(
         self,
-        target: np.ndarray,
-        current: np.ndarray,
-        next_support_leg: str,
-        status: str,
+        foot_step_curr: np.ndarray,
+        target_pose: np.ndarray,
     ) -> List[FootStep]:
-        """
-        Calculate a series of foot steps to reach the target position.
-
-        Args:
-            target (np.ndarray): Goal position and orientation.
-            current (np.ndarray): Current position and orientation.
-            next_support_leg (str): The next leg to move ('left' or 'right').
-            status (str): The status of the robot ('start', 'walking', 'stop').
-
-        Returns:
-            List[Step]: A list of steps to reach the target position.
-        """
-        steps = []
+        y_offset = self.params.y_offset_zmp
+        foot_steps = []
         time = 0.0
-        stride = self._compute_strides(target, current)
 
-        if status == "start":
-            steps.append(FootStep(time, current, "both"))
-            time += self.params.period * 2.0
+        foot_steps.append(FootStep(time, foot_step_curr, "both"))
+        time += self.params.t_step
 
-        if next_support_leg in ["left", "right"]:
-            steps.append(self._create_step(time, current, next_support_leg))
-            next_support_leg = "left" if next_support_leg == "right" else "right"
-
-        while not self._is_target_reached(target, current):
-            time += self.params.period
-            current = current + stride
-            steps.append(self._create_step(time, current, next_support_leg))
-            next_support_leg = "left" if next_support_leg == "right" else "right"
-
-        self._add_final_steps(steps, target, time, next_support_leg, status)
-        return steps
-
-    def _compute_strides(self, target: np.ndarray, current: np.ndarray) -> np.ndarray:
-        """
-        Calculate the stride values in x, y, and theta directions to move from the current position to the target.
-
-        Args:
-            target (np.ndarray): The target position and orientation, represented as x, y, and theta.
-            current (np.ndarray): The current position and orientation.
-
-        Returns:
-            np.ndarray: The stride in x, y, and theta necessary to move towards the target while respecting
-                    the maximum allowed strides.
-        """
-        max_step = max(np.abs(target - current) / self.params.max_stride)
-        return (target - current) / max_step
-
-    def _is_target_reached(self, target: np.ndarray, current: np.ndarray) -> bool:
-        """
-        Check if the target position is reached.
-
-        Args:
-            target (np.ndarray): Goal position and orientation.
-            current (np.ndarray): Current position and orientation.
-
-        Returns:
-            bool: True if the target is reached, False otherwise.
-        """
-        return np.all(np.abs(target - current) <= self.params.max_stride)
-
-    def _create_step(
-        self, time: float, current: np.ndarray, support_leg: str
-    ) -> FootStep:
-        """
-        Create a single foot step with adjusted y position based on support leg.
-
-        Args:
-            time (float): Time at which the step occurs.
-            current (np.ndarray): Current position.
-            support_leg (str): The supporting leg ('left' or 'right').
-
-        Returns:
-            Step: The foot step as a dataclass instance.
-        """
-        # TODO: Update the footstep planner to correctly handle the orientation of the foot
-        # Also, figure out why the stride is always smaller than planned
-        adjusted_y = (
-            current[1] + self.params.offset_y
-            if support_leg == "left"
-            else current[1] - self.params.offset_y
+        sampled_spline_x, sampled_spline_y = self.generate_and_sample_hermite_path(
+            foot_step_curr, target_pose
         )
-        return FootStep(
-            time, np.array([current[0], adjusted_y, current[2]]), support_leg
+        # Combine x and y components into a single path
+        path = np.vstack((sampled_spline_x, sampled_spline_y)).T
+
+        # Generate footsteps along the path
+        # Ignore the first point and the last point
+        dx = np.gradient(sampled_spline_x)
+        dy = np.gradient(sampled_spline_y)
+
+        # Normalize the tangent vectors to get the direction of the tangent at each point
+        norms = np.sqrt(dx**2 + dy**2)
+        nx = -dy / norms
+        ny = dx / norms
+
+        nx[0] = -np.sin(foot_step_curr[2])
+        ny[0] = np.cos(foot_step_curr[2])
+        nx[-1] = -np.sin(target_pose[2])
+        ny[-1] = np.cos(target_pose[2])
+
+        left_foot_x = sampled_spline_x + nx * y_offset
+        left_foot_y = sampled_spline_y + ny * y_offset
+        right_foot_x = sampled_spline_x - nx * y_offset
+        right_foot_y = sampled_spline_y - ny * y_offset
+
+        left_first_step_length = np.linalg.norm(
+            [left_foot_x[1] - left_foot_x[0], left_foot_y[1] - left_foot_y[0]]
         )
-
-    def _add_final_steps(
-        self,
-        steps: List[FootStep],
-        target: np.ndarray,
-        time: float,
-        next_support_leg: str,
-        status: str,
-    ) -> None:
-        """
-        Add final steps to reach the target position.
-
-        Args:
-            steps (List[Step]): List of steps generated so far.
-            target (np.ndarray): Goal position.
-            time (float): Current time in the step sequence.
-            next_support_leg (str): The next leg to move ('left' or 'right').
-            status (str): The status of the robot ('start', 'walking', 'stop').
-        """
-        if not status == "stop":
-            time += self.params.period
-            adjusted_target_y = (
-                target[1] + self.params.offset_y
-                if next_support_leg == "left"
-                else target[1] - self.params.offset_y
-            )
-            steps.append(
-                FootStep(
-                    time,
-                    np.array([target[0], adjusted_target_y, target[2]]),
-                    next_support_leg,
+        right_first_step_length = np.linalg.norm(
+            [right_foot_x[1] - right_foot_x[0], right_foot_y[1] - right_foot_y[0]]
+        )
+        support_leg = (
+            "left" if left_first_step_length > right_first_step_length else "right"
+        )
+        for i in range(len(left_foot_x)):
+            if support_leg == "left":
+                position = np.array(
+                    [left_foot_x[i], left_foot_y[i], np.arctan2(-nx[i], ny[i])]
                 )
+            else:
+                position = np.array(
+                    [right_foot_x[i], right_foot_y[i], np.arctan2(-nx[i], ny[i])]
+                )
+            foot_steps.append(FootStep(time, position, support_leg))
+
+            time += self.params.t_step
+            support_leg = "left" if support_leg == "right" else "right"
+
+        # Add the final step(s) with the foot together or stopped position
+        foot_steps.append(FootStep(time, target_pose, "both"))
+
+        return path, foot_steps
+
+    def generate_and_sample_hermite_path(
+        self, foot_step_curr, target_pose, high_res_stride=1e-3
+    ):
+        x0, y0, theta0 = foot_step_curr
+        xn, yn, thetan = target_pose
+
+        # High-resolution Hermite spline interpolation
+        path_distance = np.linalg.norm([xn - x0, yn - y0])
+        num_high_res_points = int(path_distance / high_res_stride)
+        t_high_res = np.linspace(0, 1, num_high_res_points)
+        t0_vec = np.array([np.cos(theta0), np.sin(theta0)]) * path_distance
+        tn_vec = np.array([np.cos(thetan), np.sin(thetan)]) * path_distance
+        spline_x = CubicHermiteSpline([0, 1], [x0, xn], [t0_vec[0], tn_vec[0]])(
+            t_high_res
+        )
+        spline_y = CubicHermiteSpline([0, 1], [y0, yn], [t0_vec[1], tn_vec[1]])(
+            t_high_res
+        )
+
+        dx = np.gradient(spline_x)
+        dy = np.gradient(spline_y)
+        spline_theta = np.arctan2(dy, dx)
+
+        sampled_path_x = [x0]
+        sampled_path_y = [y0]
+        last_x, last_y, last_theta = x0, y0, theta0
+        for i in range(1, len(spline_x)):
+            # Calculate distance from the last sampled point to the current point
+            l1_distance = np.abs(
+                [
+                    spline_x[i] - last_x,
+                    spline_y[i] - last_y,
+                    spline_theta[i] - last_theta,
+                ]
             )
-            next_support_leg = "both"
-            time += self.params.period
 
-        steps.append(FootStep(time, target, next_support_leg))
-        time += 100.0  # Arbitrary time to indicate the robot is stationary
-        steps.append(FootStep(time, target, next_support_leg))
+            # If adding the next point would exceed the max_stride, or it's the last point, sample it
+            if np.any(l1_distance >= self.params.max_stride) or i == len(spline_x) - 1:
+                sampled_path_x.append(spline_x[i])
+                sampled_path_y.append(spline_y[i])
+                last_x, last_y, last_theta = spline_x[i], spline_y[i], spline_theta[i]
+
+        return np.array(sampled_path_x), np.array(sampled_path_y)
 
 
-# Example usage
 if __name__ == "__main__":
+    import random
+
+    random.seed(0)
+
+    from toddlerbot.utils.vis_planning import *
+
     planner_params = FootStepPlanParameters(
-        max_stride=np.array([0.06, 0.04, 0.1]),
-        period=0.34,
-        offset_y=0.044,
+        max_stride=np.array(([0.05, 0.05, np.pi / 8])),
+        t_step=0.75,
+        y_offset_zmp=0.04,
     )
     planner = FootStepPlanner(planner_params)
-    foot_steps = planner.compute_steps(
-        target=np.array([1.0, 0.0, 0.5]),
-        current=np.array([0.5, 0.0, 0.1]),
-        next_support_leg="right",
-        status="start",
-    )
-    for step in foot_steps:
-        print(round_floats(step, 4))
+
+    for i in range(3):
+        target_pose = np.array(
+            [
+                random.uniform(-1, 1),
+                random.uniform(-1, 1),
+                random.uniform(0.0, np.pi),
+            ]
+        )
+        path, foot_steps = planner.compute_steps(
+            foot_step_curr=np.array([0, 0, 0]),
+            target_pose=target_pose,
+        )
+
+        draw_footsteps(
+            path,
+            foot_steps,
+            [0.1, 0.05],
+            planner_params.y_offset_zmp,
+            fig_size=(8, 8),
+            title=f"Footsteps Planning: {target_pose[0]:.2f} {target_pose[1]:.2f} {target_pose[2]:.2f}",
+            x_label="Position X",
+            y_label="Position Y",
+            save_config=True,
+            save_path="results/plots",
+            time_suffix=f"{i}",
+        )()

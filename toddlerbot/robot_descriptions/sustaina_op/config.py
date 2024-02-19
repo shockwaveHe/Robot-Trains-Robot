@@ -18,13 +18,6 @@ def compute_leg_angles(target_foot_pos, target_foot_ori, side, offsets):
     target_x, target_y, target_z = target_foot_pos
     ankle_roll, ankle_pitch, hip_yaw = target_foot_ori
 
-    # Adjust positions based on offsets and compute new coordinates
-    target_x += offsets["x_offset_ankle_to_foot"]
-    target_y += (
-        -offsets["y_offset_ankle_to_foot"]
-        if side == "left"
-        else offsets["y_offset_ankle_to_foot"]
-    )
     target_z = (
         offsets["z_offset_thigh"]
         + offsets["z_offset_knee"]
@@ -69,7 +62,6 @@ def compute_leg_angles(target_foot_pos, target_foot_ori, side, offsets):
 
 
 sustaina_op_config = RobotConfig(
-    com_height=0.3,
     canonical_name2link_name=canonical_name2link_name,
     link_name2canonical_name=link_name2canonical_name,
     act_params={
@@ -140,15 +132,13 @@ sustaina_op_config = RobotConfig(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
     },
+    com_z=0.3,
     offsets={
         "z_offset_hip": 0.053,
         "z_offset_thigh": 0.1,
         "z_offset_knee": 0.057,
         "z_offset_shin": 0.1,
-        "x_offset_ankle_to_foot": 0.0,
-        "y_offset_ankle_to_foot": 0.044,
-        "left_offset_foot_to_sole": np.array([0.0, 0.01, -0.04]),
-        "right_offset_foot_to_sole": np.array([0.0, -0.01, -0.04]),
+        "y_offset_hip_to_ank": 0.044,
     },
     compute_leg_angles=compute_leg_angles,
 )

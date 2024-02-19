@@ -89,7 +89,10 @@ class PyBulletSim(AbstractSim):
 
         return joint_angles
 
-    def get_com_state(self, robot: HumanoidRobot):
+    def get_zmp(self, robot: HumanoidRobot):
+        pass
+
+    def get_com(self, robot: HumanoidRobot):
         pass
 
     def set_joint_angles(self, robot: HumanoidRobot, joint_angles: Dict[str, float]):

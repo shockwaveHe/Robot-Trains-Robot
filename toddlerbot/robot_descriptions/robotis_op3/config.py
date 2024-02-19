@@ -18,13 +18,6 @@ def compute_leg_angles(target_foot_pos, target_foot_ori, side, offsets):
     target_x, target_y, target_z = target_foot_pos
     ankle_roll, ankle_pitch, hip_yaw = target_foot_ori
 
-    # Adjust positions based on offsets and compute new coordinates
-    target_x += offsets["x_offset_ankle_to_foot"]
-    target_y += (
-        -offsets["y_offset_ankle_to_foot"]
-        if side == "left"
-        else offsets["y_offset_ankle_to_foot"]
-    )
     target_z = (
         offsets["z_offset_thigh"]
         + offsets["z_offset_knee"]
@@ -45,15 +38,15 @@ def compute_leg_angles(target_foot_pos, target_foot_ori, side, offsets):
     leg_projected_yz_length = math.sqrt(transformed_y**2 + transformed_z**2)
     leg_length = math.sqrt(transformed_x**2 + leg_projected_yz_length**2)
     leg_pitch = math.atan2(transformed_x, leg_projected_yz_length)
-    wrist_disp_cos = (
-        leg_length**2 + offsets["z_offset_shin"] ** 2 - offsets["z_offset_thigh"] ** 2
-    ) / (2 * leg_length * offsets["z_offset_shin"])
-    wrist_disp = math.acos(min(max(wrist_disp_cos, -1.0), 1.0))
+    hip_disp_cos = (
+        leg_length**2 + offsets["z_offset_thigh"] ** 2 - offsets["z_offset_shin"] ** 2
+    ) / (2 * leg_length * offsets["z_offset_thigh"])
+    hip_disp = math.acos(min(max(hip_disp_cos, -1.0), 1.0))
     ankle_disp = math.asin(
-        offsets["z_offset_thigh"] / offsets["z_offset_shin"] * math.sin(wrist_disp)
+        offsets["z_offset_thigh"] / offsets["z_offset_shin"] * math.sin(hip_disp)
     )
-    hip_pitch = -leg_pitch - wrist_disp
-    knee_pitch = wrist_disp + ankle_disp
+    hip_pitch = -leg_pitch - hip_disp
+    knee_pitch = hip_disp + ankle_disp
     ankle_pitch += knee_pitch + hip_pitch
 
     angles_dict = {
@@ -68,7 +61,6 @@ def compute_leg_angles(target_foot_pos, target_foot_ori, side, offsets):
 
 
 robotis_op3_config = RobotConfig(
-    com_height=0.3,
     canonical_name2link_name=canonical_name2link_name,
     link_name2canonical_name=link_name2canonical_name,
     act_params={
@@ -133,15 +125,13 @@ robotis_op3_config = RobotConfig(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
     },
+    com_z=0.3,
     offsets={
         "z_offset_hip": 0.028,
         "z_offset_thigh": 0.11,  # from the hip pitch joint to the knee joint
         "z_offset_knee": 0.0,
         "z_offset_shin": 0.11,  # from the knee joint to the ankle pitch joint
-        "x_offset_ankle_to_foot": 0.0,
-        "y_offset_ankle_to_foot": 0.044,
-        "left_offset_foot_to_sole": np.array([0.0, 0.01, 0.0]),
-        "right_offset_foot_to_sole": np.array([0.0, -0.01, 0.0]),
+        "y_offset_hip_to_ank": 0.044,
         "foot_size_x": 0.127,
         "foot_size_y": 0.076,
         "foot_size_z": 0.002,

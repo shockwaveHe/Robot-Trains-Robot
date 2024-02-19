@@ -102,15 +102,15 @@
   </asset>
   <worldbody>
     <body name="body_link" pos="0 0 0" quat="1 0 0 0">
-      <inertial pos="0.000478 0.000000 0.381212" quat="1.000000 0.000000 0.000000 0.000000" mass="0.67608257" diaginertia="3.10223e-03 2.42038e-03 1.78494e-03" />
+      <inertial pos="-0.015922 0.000000 0.381126" quat="1.000000 0.000000 0.000000 0.000000" mass="0.67608257" diaginertia="3.10223e-03 2.42038e-03 1.78494e-03" />
       <freejoint />
       <geom rgba="0.55996 0.733781 0.871696 1" mesh="body_link_visual" class="visual" />
       <geom rgba="0.55996 0.733781 0.871696 1" mesh="body_link_collision" class="collision" />
-      <geom pos="0.01 0 0.450085" quat="0 -0.707107 -0.707107 0" rgba="0.615686 0.811765 0.929412 1" mesh="neck_link_visual" class="visual" />
-      <geom pos="0.01 0 0.450085" quat="0 -0.707107 -0.707107 0" rgba="0.615686 0.811765 0.929412 1" mesh="neck_link_collision" class="collision" />
-      <geom pos="0.01 0 0.490085" quat="0 -0.707107 -0.707107 0" rgba="0.796078 0.823529 0.937255 1" mesh="head_link_visual" class="visual" />
-      <geom pos="0.01 0 0.490085" quat="0 -0.707107 -0.707107 0" rgba="0.796078 0.823529 0.937255 1" mesh="head_link_collision" class="collision" />
-      <body name="hip_yaw_link" pos="0.01 0.035 0.298685" quat="0 0 0 1">
+      <geom pos="-0.0064 0 0.45" quat="0 -0.707107 -0.707107 0" rgba="0.615686 0.811765 0.929412 1" mesh="neck_link_visual" class="visual" />
+      <geom pos="-0.0064 0 0.45" quat="0 -0.707107 -0.707107 0" rgba="0.615686 0.811765 0.929412 1" mesh="neck_link_collision" class="collision" />
+      <geom pos="-0.0064 0 0.49" quat="0 -0.707107 -0.707107 0" rgba="0.796078 0.823529 0.937255 1" mesh="head_link_visual" class="visual" />
+      <geom pos="-0.0064 0 0.49" quat="0 -0.707107 -0.707107 0" rgba="0.796078 0.823529 0.937255 1" mesh="head_link_collision" class="collision" />
+      <body name="hip_yaw_link" pos="-0.0064 0.035 0.2986" quat="0 0 0 1">
         <inertial pos="0 0 -0.00845313" quat="0 0.707107 0 0.707107" mass="0.00527406" diaginertia="1.88733e-06 1.79665e-06 7.61436e-07" />
         <joint name="left_hip_yaw" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="1.084" armature="0.045" />
         <geom rgba="0.615686 0.811765 0.929412 1" mesh="left_hip_yaw_link_visual" class="visual" />
@@ -222,7 +222,7 @@
           </body>
         </body>
       </body>
-      <body name="hip_yaw_link_2" pos="0.01 -0.035 0.298685" quat="0 0 0 -1">
+      <body name="hip_yaw_link_2" pos="-0.0064 -0.035 0.2986" quat="0 0 0 -1">
         <inertial pos="0 0 -0.00845313" quat="0 0.707107 0 0.707107" mass="0.00527406" diaginertia="1.88733e-06 1.79665e-06 7.61436e-07" />
         <joint name="right_hip_yaw" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="1.084" armature="0.045" />
         <geom rgba="0.615686 0.811765 0.929412 1" mesh="right_hip_yaw_link_visual" class="visual" />
@@ -334,7 +334,7 @@
           </body>
         </body>
       </body>
-      <body name="sho_pitch_link" pos="0.01 0.0605 0.430085" quat="0 0 0.707107 -0.707107">
+      <body name="sho_pitch_link" pos="-0.0064 0.0605 0.43" quat="0 0 0.707107 -0.707107">
         <inertial pos="-3.04914e-09 0.00219805 -0.0084441" quat="0.200747 0.678012 0.200747 0.678012" mass="0.00507148" diaginertia="1.93715e-06 1.69407e-06 7.63481e-07" />
         <joint name="left_sho_pitch" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="1.084" armature="0.045" />
         <geom rgba="0.615686 0.811765 0.929412 1" mesh="left_sho_pitch_link_visual" class="visual" />
@@ -352,7 +352,7 @@
           </body>
         </body>
       </body>
-      <body name="sho_pitch_link_2" pos="0.01 -0.0605 0.430085" quat="0.707107 -0.707107 0 0">
+      <body name="sho_pitch_link_2" pos="-0.0064 -0.0605 0.43" quat="0.707107 -0.707107 0 0">
         <inertial pos="-3.04914e-09 0.00219805 -0.0084441" quat="0.200747 0.678012 0.200747 0.678012" mass="0.00507148" diaginertia="1.93715e-06 1.69407e-06 7.63481e-07" />
         <joint name="right_sho_pitch" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="1.084" armature="0.045" />
         <geom rgba="0.615686 0.811765 0.929412 1" mesh="right_sho_pitch_link_visual" class="visual" />

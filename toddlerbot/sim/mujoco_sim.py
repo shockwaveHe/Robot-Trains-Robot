@@ -119,14 +119,15 @@ class MujoCoSim(AbstractSim):
                 joint_angles[name] = self.data.joint(name).qpos.item()
         return joint_angles
 
-    def get_com_state(self, robot: HumanoidRobot):
+    def get_zmp(self, robot: HumanoidRobot):
+        pass
+
+    def get_com(self, robot: HumanoidRobot):
         # TODO: Replace this with an IMU sensor
-        mujoco.mj_kinematics(self.model, self.data)
+        mujoco.mj_comPos(self.model, self.data)
         body_link_name = robot.config.canonical_name2link_name["body_link"]
-        com_pos = self.data.body(body_link_name).xipos[:2]
-        com_vel = self.data.body(body_link_name).cvel[3:5]
-        com_acc = self.data.body(body_link_name).cacc[3:5]
-        return np.array([com_pos, com_vel, com_acc])
+        com_pos = self.data.body(body_link_name).subtree_com
+        return com_pos
 
     def set_joint_angles(self, robot: HumanoidRobot, joint_angles: Dict[str, float]):
         for joint_name, angle in joint_angles.items():
@@ -136,6 +137,14 @@ class MujoCoSim(AbstractSim):
                 -kp * (self.data.joint(joint_name).qpos - angle)
                 - kv * self.data.joint(joint_name).qvel
             )
+
+    def get_joint_angles_error(
+        self, robot: HumanoidRobot, joint_angles: Dict[str, float]
+    ):
+        joint_angles_error = {}
+        for joint_name, angle in joint_angles.items():
+            joint_angles_error[joint_name] = self.data.joint(joint_name).qpos - angle
+        return joint_angles_error
 
     def simulate(
         self,

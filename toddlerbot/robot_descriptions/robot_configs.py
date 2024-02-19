@@ -8,7 +8,7 @@ from typing import Callable
 
 @dataclass
 class RobotConfig:
-    com_height: float = 0.0
+    com_z: float = 0.0
     act_params: dict = None
     constraint_pairs: list = None
     canonical_name2link_name: dict = None
