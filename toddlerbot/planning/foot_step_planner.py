@@ -9,7 +9,7 @@ from scipy.interpolate import CubicHermiteSpline
 class FootStepPlanParameters:
     max_stride: np.ndarray  # x, y, theta
     t_step: float
-    y_offset_zmp: float
+    y_offset_com_to_foot: float
 
 
 @dataclass
@@ -25,18 +25,18 @@ class FootStepPlanner:
 
     def compute_steps(
         self,
-        foot_step_curr: np.ndarray,
+        curr_pose: np.ndarray,
         target_pose: np.ndarray,
     ) -> List[FootStep]:
-        y_offset = self.params.y_offset_zmp
+        y_offset = self.params.y_offset_com_to_foot
         foot_steps = []
         time = 0.0
 
-        foot_steps.append(FootStep(time, foot_step_curr, "both"))
+        foot_steps.append(FootStep(time, curr_pose, "both"))
         time += self.params.t_step
 
         sampled_spline_x, sampled_spline_y = self.generate_and_sample_hermite_path(
-            foot_step_curr, target_pose
+            curr_pose, target_pose
         )
         # Combine x and y components into a single path
         path = np.vstack((sampled_spline_x, sampled_spline_y)).T
@@ -51,8 +51,8 @@ class FootStepPlanner:
         nx = -dy / norms
         ny = dx / norms
 
-        nx[0] = -np.sin(foot_step_curr[2])
-        ny[0] = np.cos(foot_step_curr[2])
+        nx[0] = -np.sin(curr_pose[2])
+        ny[0] = np.cos(curr_pose[2])
         nx[-1] = -np.sin(target_pose[2])
         ny[-1] = np.cos(target_pose[2])
 
@@ -86,13 +86,16 @@ class FootStepPlanner:
 
         # Add the final step(s) with the foot together or stopped position
         foot_steps.append(FootStep(time, target_pose, "both"))
+        # Add another step for the robot to stabilize
+        time += self.params.t_step
+        foot_steps.append(FootStep(time, target_pose, "both"))
 
         return path, foot_steps
 
     def generate_and_sample_hermite_path(
-        self, foot_step_curr, target_pose, high_res_stride=1e-3
+        self, curr_pose, target_pose, high_res_stride=1e-3
     ):
-        x0, y0, theta0 = foot_step_curr
+        x0, y0, theta0 = curr_pose
         xn, yn, thetan = target_pose
 
         # High-resolution Hermite spline interpolation
@@ -144,7 +147,7 @@ if __name__ == "__main__":
     planner_params = FootStepPlanParameters(
         max_stride=np.array(([0.05, 0.05, np.pi / 8])),
         t_step=0.75,
-        y_offset_zmp=0.04,
+        y_offset_com_to_foot=0.04,
     )
     planner = FootStepPlanner(planner_params)
 
@@ -157,7 +160,7 @@ if __name__ == "__main__":
             ]
         )
         path, foot_steps = planner.compute_steps(
-            foot_step_curr=np.array([0, 0, 0]),
+            curr_pose=np.array([0, 0, 0]),
             target_pose=target_pose,
         )
 
@@ -165,7 +168,7 @@ if __name__ == "__main__":
             path,
             foot_steps,
             [0.1, 0.05],
-            planner_params.y_offset_zmp,
+            planner_params.y_offset_com_to_foot,
             fig_size=(8, 8),
             title=f"Footsteps Planning: {target_pose[0]:.2f} {target_pose[1]:.2f} {target_pose[2]:.2f}",
             x_label="Position X",

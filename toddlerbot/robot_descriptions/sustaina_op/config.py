@@ -33,7 +33,9 @@ def compute_leg_angles(target_foot_pos, target_foot_ori, side, offsets):
     )
     transformed_z = target_z
 
-    hip_roll = math.atan2(transformed_y, transformed_z)
+    hip_roll = math.atan2(
+        transformed_y, transformed_z + offsets["z_offset_hip_roll_to_pitch"]
+    )
 
     adjusted_leg_height_sq = transformed_y**2 + transformed_z**2 - transformed_x**2
     adjusted_leg_height = (
@@ -134,11 +136,11 @@ sustaina_op_config = RobotConfig(
     },
     com_z=0.3,
     offsets={
-        "z_offset_hip": 0.053,
+        "z_offset_hip_roll_to_pitch": 0.0,
         "z_offset_thigh": 0.1,
         "z_offset_knee": 0.057,
         "z_offset_shin": 0.1,
-        "y_offset_hip_to_ank": 0.044,
+        "y_offset_com_to_foot": 0.044,
     },
     compute_leg_angles=compute_leg_angles,
 )

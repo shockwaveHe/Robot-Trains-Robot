@@ -104,6 +104,7 @@
     <body name="body_link" pos="0 0 0" quat="1 0 0 0">
       <inertial pos="-0.015922 0.000000 0.381126" quat="1.000000 0.000000 0.000000 0.000000" mass="0.67608257" diaginertia="3.10223e-03 2.42038e-03 1.78494e-03" />
       <freejoint />
+      <site name="torso" fromto="0.01 0 0.4 -0.01 0 0.4" type="cylinder" size="0.005 0.005 1" group="3" />
       <geom rgba="0.55996 0.733781 0.871696 1" mesh="body_link_visual" class="visual" />
       <geom rgba="0.55996 0.733781 0.871696 1" mesh="body_link_collision" class="collision" />
       <geom pos="-0.0064 0 0.45" quat="0 -0.707107 -0.707107 0" rgba="0.615686 0.811765 0.929412 1" mesh="neck_link_visual" class="visual" />

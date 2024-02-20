@@ -31,7 +31,7 @@ sustaina_op_pybullet_walking_config = WalkingConfig(
     actuator_steps=10,
     foot_step_height=0.06,
     squat_height=0.03,
-    y_offset_zmp=0.05,
+    y_offset_zmp=0.06,
 )
 
 robotis_op3_pybullet_walking_config = WalkingConfig(
@@ -45,7 +45,7 @@ robotis_op3_pybullet_walking_config = WalkingConfig(
     actuator_steps=10,
     foot_step_height=0.06,
     squat_height=0.03,
-    y_offset_zmp=0.05,
+    y_offset_zmp=0.06,
 )
 
 robotis_op3_mujoco_walking_config = WalkingConfig(
@@ -59,21 +59,21 @@ robotis_op3_mujoco_walking_config = WalkingConfig(
     actuator_steps=10,
     foot_step_height=0.06,
     squat_height=0.03,
-    y_offset_zmp=0.05,
+    y_offset_zmp=0.06,
 )
 
 base_mujoco_walking_config = WalkingConfig(
-    plan_max_stride=np.array([0.05, 0.01, 0.2]),
+    plan_max_stride=np.array([0.05, 0.01, np.pi / 8]),
     plan_t_step=0.6,
     control_dt=0.01,
     control_t_preview=1.0,
     control_cost_Q_val=1.0,
     control_cost_R_val=1e-6,
-    target_pose_init=np.array([0.4, 0.0, 0.5]),
+    target_pose_init=np.array([0.1, 0.0, 0.785]),
     actuator_steps=10,
     foot_step_height=0.04,
     squat_height=0.03,
-    y_offset_zmp=0.05,
+    y_offset_zmp=0.06,
 )
 
 walking_configs = {

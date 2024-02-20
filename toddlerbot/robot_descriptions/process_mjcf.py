@@ -21,6 +21,20 @@ def replace_mesh_file(root, old_file, new_file):
             mesh.set("file", new_file)
 
 
+def add_torso_site(root):
+    worldbody = root.find("worldbody")
+    site_attributes = {
+        "name": "torso",
+        "fromto": "0.01 0 0.4 -0.01 0 0.4",
+        "type": "cylinder",
+        "size": "0.005 0.005 1",
+        "group": "3",
+    }
+
+    site_element = ET.Element("site", site_attributes)
+    worldbody.insert(0, site_element)
+
+
 def update_joint_params(root, act_params):
     if act_params is None:
         return
@@ -329,6 +343,7 @@ def process_mjcf_fixed_file(root, config):
     replace_mesh_file(
         root, "body_link_collision.stl", "body_link_collision_simplified.stl"
     )
+    add_torso_site(root)
     update_joint_params(root, config.act_params)
     update_geom_classes(root, ["type", "contype", "conaffinity", "group", "density"])
     add_contact_exclusion_to_mjcf(root)

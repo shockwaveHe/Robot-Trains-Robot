@@ -33,7 +33,9 @@ def compute_leg_angles(target_foot_pos, target_foot_ori, side, offsets):
     )
     transformed_z = target_z
 
-    hip_roll = math.atan2(transformed_y, transformed_z)
+    hip_roll = math.atan2(
+        transformed_y, transformed_z + offsets["z_offset_hip_roll_to_pitch"]
+    )
 
     leg_projected_yz_length = math.sqrt(transformed_y**2 + transformed_z**2)
     leg_length = math.sqrt(transformed_x**2 + leg_projected_yz_length**2)
@@ -126,15 +128,13 @@ robotis_op3_config = RobotConfig(
         ),
     },
     com_z=0.3,
+    foot_size=[0.127, 0.076, 0.002],
     offsets={
-        "z_offset_hip": 0.028,
+        "z_offset_hip_roll_to_pitch": 0.0,
         "z_offset_thigh": 0.11,  # from the hip pitch joint to the knee joint
         "z_offset_knee": 0.0,
         "z_offset_shin": 0.11,  # from the knee joint to the ankle pitch joint
-        "y_offset_hip_to_ank": 0.044,
-        "foot_size_x": 0.127,
-        "foot_size_y": 0.076,
-        "foot_size_z": 0.002,
+        "y_offset_com_to_foot": 0.044,
     },
     compute_leg_angles=compute_leg_angles,
 )

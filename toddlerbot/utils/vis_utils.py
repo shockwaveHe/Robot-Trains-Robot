@@ -6,6 +6,8 @@ import time
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+sns.set_theme(style="darkgrid")
+
 
 def make_vis_function(
     func,
@@ -15,7 +17,6 @@ def make_vis_function(
     save_config=False,
     save_path=None,
     time_suffix=None,
-    style="darkgrid",
     blocking=True,
 ):
     """
@@ -36,6 +37,9 @@ def make_vis_function(
         else:
             suffix = time_suffix
 
+        if len(suffix) > 0:
+            suffix = f"_{suffix}"
+
         # Save configuration if requested
         if save_config and save_path:
             config = {
@@ -43,7 +47,7 @@ def make_vis_function(
                 "parameters": kwargs,
             }
 
-            config_file_name = f"{title.lower().replace(' ', '_')}_config_{suffix}.pkl"
+            config_file_name = f"{title.lower().replace(' ', '_')}_config{suffix}.pkl"
             config_path = os.path.join(save_path, config_file_name)
             with open(config_path, "wb") as file:
                 pickle.dump(config, file)
@@ -51,8 +55,6 @@ def make_vis_function(
 
         if not blocking:
             return
-
-        sns.set_theme(style=style)
 
         # Execute the original function
         result = func(*args, **kwargs)
@@ -72,7 +74,7 @@ def make_vis_function(
                 os.makedirs(save_path)
 
             file_path = os.path.join(
-                save_path, f"{title.lower().replace(' ', '_')}_{suffix}.png"
+                save_path, f"{title.lower().replace(' ', '_')}{suffix}.png"
             )
             plt.savefig(file_path)
             print(f"Graph saved as: {file_path}")

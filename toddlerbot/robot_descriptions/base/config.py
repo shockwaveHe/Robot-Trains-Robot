@@ -33,7 +33,9 @@ def compute_leg_angles(target_foot_pos, target_foot_ori, side, offsets):
     )
     transformed_z = target_z
 
-    hip_roll = math.atan2(transformed_y, transformed_z)
+    hip_roll = math.atan2(
+        transformed_y, transformed_z + offsets["z_offset_hip_roll_to_pitch"]
+    )
 
     leg_projected_yz_length = math.sqrt(transformed_y**2 + transformed_z**2)
     leg_length = math.sqrt(transformed_x**2 + leg_projected_yz_length**2)
@@ -130,15 +132,14 @@ base_config = RobotConfig(
         ("ank_act_rod_head_4", "ank_act_rod_4"),
     ],
     com_z=0.315,
+    foot_size=[0.095, 0.03, 0.004],
     offsets={
-        "z_offset_hip": 0.0515,  # from the hip yaw joint to the hip pitch joint
+        "z_offset_hip_roll_to_pitch": 0.024,  # from the hip roll joint to the hip pitch joint
         "z_offset_thigh": 0.1075,  # from the hip pitch joint to the knee joint
         "z_offset_knee": 0.0,
         "z_offset_shin": 0.1,
-        "y_offset_hip_to_ank": 0.0377,  # ZMP is the foot center by default
-        "foot_size_x": 0.095,
-        "foot_size_y": 0.03,
-        "foot_size_z": 0.004,
+        "x_offset_com_to_foot": 0.0049,  # from the hip center to the foot
+        "y_offset_com_to_foot": 0.0377,  # from the hip center to the foot
     },
     compute_leg_angles=compute_leg_angles,
 )

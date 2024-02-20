@@ -21,9 +21,13 @@ def plot_line_graph(
     save_config=False,
     save_path=None,
     time_suffix=None,
+    ax=None,
 ):
-    def plot():
+    if ax is None:
         plt.figure(figsize=fig_size)
+        ax = plt.gca()
+
+    def plot():
         # Ensure line_styles and line_colors are lists and have sufficient length
         line_styles_local = line_styles if line_styles is not None else LINE_STYLES
         line_colors_local = line_colors if line_colors is not None else LINE_COLORS
@@ -43,7 +47,7 @@ def plot_line_graph(
                 xi = x_local[i] if isinstance(x_local[0], list) else x_local
                 style = line_styles_local[i % len(line_styles_local)]
                 color = line_colors_local[i % len(line_colors_local)]
-                plt.plot(
+                ax.plot(
                     xi,
                     sub_y,
                     style,
@@ -51,7 +55,7 @@ def plot_line_graph(
                     label=legend_labels[i] if legend_labels else None,
                 )
         else:  # Single line
-            plt.plot(
+            ax.plot(
                 x_local,
                 y,
                 line_styles_local[0],

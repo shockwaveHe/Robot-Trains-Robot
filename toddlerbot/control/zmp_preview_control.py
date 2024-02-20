@@ -17,6 +17,8 @@ class ZMPPreviewControlParameters:
     t_preview: float  # Control period
     Q_val: float  # Weighting for state cost
     R_val: float  # Weighting for control input cost
+    y_offset_com_to_foot: float  # Offset of the center of mass from the foot
+    y_offset_zmp: float  # Offset of the zero moment point from the center of mass
 
 
 class ZMPPreviewController:
@@ -86,7 +88,27 @@ class ZMPPreviewController:
         # Prepare the timing and positions matrix for all foot steps in advance
         dt = self.params.dt
         fs_times = np.array([fs.time for fs in foot_steps])
-        fs_positions = np.array([fs.position[:2] for fs in foot_steps])
+
+        y_offset_disp = self.params.y_offset_zmp - self.params.y_offset_com_to_foot
+        fs_positions = []
+        for fs in foot_steps:
+            x, y, theta = fs.position
+            if fs.support_leg == "left":
+                fs_positions.append(
+                    [
+                        x - np.sin(theta) * y_offset_disp,
+                        y + np.cos(theta) * y_offset_disp,
+                    ]
+                )
+            elif fs.support_leg == "right":
+                fs_positions.append(
+                    [
+                        x + np.sin(theta) * y_offset_disp,
+                        y - np.cos(theta) * y_offset_disp,
+                    ]
+                )
+            else:
+                fs_positions.append([x, y])
 
         zmp_ref = []
         i = 0

@@ -40,7 +40,7 @@ def draw_footsteps(
     path,
     foot_steps,
     foot_size,
-    y_offset_hip_to_ank,
+    y_offset_com_to_foot,
     fig_size=(10, 6),
     title=None,
     x_label=None,
@@ -48,19 +48,20 @@ def draw_footsteps(
     save_config=False,
     save_path=None,
     time_suffix=None,
+    ax=None,
 ):
-    def plot():
-        # Setup plot
+    if ax is None:
         fig, ax = plt.subplots(figsize=fig_size)
-
         ax.set_aspect("equal")
+
+    def plot():
         ax.plot(path[:, 0], path[:, 1], "r-", label="Cubic Hermite Path")
 
         # Draw each footstep
         for step in foot_steps:
             if step.support_leg == "both":
-                dx = -y_offset_hip_to_ank * np.sin(step.position[2])
-                dy = y_offset_hip_to_ank * np.cos(step.position[2])
+                dx = -y_offset_com_to_foot * np.sin(step.position[2])
+                dy = y_offset_com_to_foot * np.cos(step.position[2])
 
                 left_foot_pos = [step.position[0] + dx, step.position[1] + dy]
                 draw_foot(ax, left_foot_pos, foot_size, step.position[2], "left")

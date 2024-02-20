@@ -26,14 +26,7 @@ class MujoCoSim(AbstractSim):
             if not fixed:
                 self.put_robot_on_ground(robot)
 
-            if "foot_size_x" in robot.config.offsets:
-                self.foot_size_x = robot.config.offsets["foot_size_x"]
-
-            if "foot_size_y" in robot.config.offsets:
-                self.foot_size_y = robot.config.offsets["foot_size_y"]
-
-            if "foot_size_z" in robot.config.offsets:
-                self.foot_size_z = robot.config.offsets["foot_size_z"]
+            self.foot_size = robot.config.foot_size
 
     def put_robot_on_ground(self, robot: HumanoidRobot, z_offset: float = 0.02):
         """
@@ -129,6 +122,12 @@ class MujoCoSim(AbstractSim):
         com_pos = self.data.body(body_link_name).subtree_com
         return com_pos
 
+    def get_torso_pose(self, robot: HumanoidRobot):
+        mujoco.mj_kinematics(self.model, self.data)
+        torso_pos = self.data.site("torso").xpos.copy()
+        torso_mat = self.data.site("torso").xmat.copy().reshape(3, 3)
+        return torso_pos, torso_mat
+
     def set_joint_angles(self, robot: HumanoidRobot, joint_angles: Dict[str, float]):
         for joint_name, angle in joint_angles.items():
             kp = robot.config.act_params[joint_name].kp
@@ -149,16 +148,16 @@ class MujoCoSim(AbstractSim):
     def simulate(
         self,
         step_func: Optional[Callable] = None,
-        step_params: Optional[Dict] = None,
+        step_params: Optional[Tuple] = None,
         sleep_time: float = 0.0,
         vis_flags: Optional[List] = [],
     ):
         viewer = mujoco.viewer.launch_passive(self.model, self.data)
+        sim_step_idx, path, foot_steps, com_traj, joint_angles = step_params
 
         def vis_foot_steps():
             i = viewer.user_scn.ngeom
-            # step_params: sim_step_idx, foot_steps, com_traj, joint_angles
-            for foot_step in step_params[1]:
+            for foot_step in foot_steps:
                 if foot_step.support_leg == "both":
                     continue
 
@@ -166,15 +165,15 @@ class MujoCoSim(AbstractSim):
                     viewer.user_scn.geoms[i],
                     type=mujoco.mjtGeom.mjGEOM_LINEBOX,
                     size=[
-                        self.foot_size_x / 2,
-                        self.foot_size_y / 2,
-                        self.foot_size_z / 2,
+                        self.foot_size[0] / 2,
+                        self.foot_size[1] / 2,
+                        self.foot_size[2] / 2,
                     ],
                     pos=np.array(
                         [
                             foot_step.position[0],
                             foot_step.position[1],
-                            self.foot_size_z / 2,
+                            self.foot_size[2] / 2,
                         ]
                     ),
                     mat=euler2mat(0, 0, foot_step.position[2]).flatten(),
@@ -189,18 +188,52 @@ class MujoCoSim(AbstractSim):
 
         def vis_com_traj():
             i = viewer.user_scn.ngeom
-            # step_params: sim_step_idx, foot_steps, com_traj, joint_angles
-            for com_pos in step_params[2]:
+            for com_pos in com_traj:
                 mujoco.mjv_initGeom(
                     viewer.user_scn.geoms[i],
                     type=mujoco.mjtGeom.mjGEOM_CYLINDER,
-                    size=np.array([0.01, 0.0075, 0.01]),
-                    pos=np.array([com_pos[0], com_pos[1], 0.5]),
+                    size=np.array([0.005, 0.001, 0.005]),
+                    pos=np.array([com_pos[0], com_pos[1], 0.005]),
                     mat=np.eye(3).flatten(),
                     rgba=[1, 0, 0, 1],
                 )
                 i += 1
             viewer.user_scn.ngeom = i
+
+        def vis_path():
+            i = viewer.user_scn.ngeom
+            for j in range(len(path) - 1):
+                mujoco.mjv_initGeom(
+                    viewer.user_scn.geoms[i],
+                    type=mujoco.mjtGeom.mjGEOM_LINE,
+                    size=np.array([1, 1, 1]),
+                    pos=np.array([0, 0, 0]),
+                    mat=np.eye(3).flatten(),
+                    rgba=[0, 0, 0, 1],
+                )
+                mujoco.mjv_connector(
+                    viewer.user_scn.geoms[i],
+                    mujoco.mjtGeom.mjGEOM_LINE,
+                    100,
+                    np.array([*path[j], 0.0]),
+                    np.array([*path[j + 1], 0.0]),
+                )
+                i += 1
+            viewer.user_scn.ngeom = i
+
+        def vis_torso():
+            i = viewer.user_scn.ngeom
+            torso_pos = self.data.site("torso").xpos
+            torso_mat = self.data.site("torso").xmat
+            mujoco.mjv_initGeom(
+                viewer.user_scn.geoms[i],
+                type=mujoco.mjtGeom.mjGEOM_ARROW,
+                size=np.array([0.005, 0.005, 0.15]),
+                pos=torso_pos,
+                mat=torso_mat,
+                rgba=[1, 0, 0, 1],
+            )
+            viewer.user_scn.ngeom = i + 1
 
         while viewer.is_running():
             step_start = time.time()
@@ -219,6 +252,10 @@ class MujoCoSim(AbstractSim):
                     vis_foot_steps()
                 if "com_traj" in vis_flags:
                     vis_com_traj()
+                if "path" in vis_flags:
+                    vis_path()
+                if "torso" in vis_flags:
+                    vis_torso()
 
             viewer.sync()
 
