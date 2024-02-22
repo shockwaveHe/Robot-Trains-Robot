@@ -17,8 +17,8 @@ class ZMPPreviewControlParameters:
     t_preview: float  # Control period
     Q_val: float  # Weighting for state cost
     R_val: float  # Weighting for control input cost
-    y_offset_com_to_foot: float  # Offset of the center of mass from the foot
-    y_offset_zmp: float  # Offset of the zero moment point from the center of mass
+    x_offset_com_to_foot: float  # Offset of the center of mass from the foot
+    y_disp_zmp: float  # Offset of the zero moment point from the center of mass
 
 
 class ZMPPreviewController:
@@ -89,26 +89,38 @@ class ZMPPreviewController:
         dt = self.params.dt
         fs_times = np.array([fs.time for fs in foot_steps])
 
-        y_offset_disp = self.params.y_offset_zmp - self.params.y_offset_com_to_foot
         fs_positions = []
         for fs in foot_steps:
             x, y, theta = fs.position
             if fs.support_leg == "left":
                 fs_positions.append(
                     [
-                        x - np.sin(theta) * y_offset_disp,
-                        y + np.cos(theta) * y_offset_disp,
+                        x
+                        + np.cos(theta) * self.params.x_offset_com_to_foot
+                        - np.sin(theta) * self.params.y_disp_zmp,
+                        y
+                        + np.sin(theta) * self.params.x_offset_com_to_foot
+                        + np.cos(theta) * self.params.y_disp_zmp,
                     ]
                 )
             elif fs.support_leg == "right":
                 fs_positions.append(
                     [
-                        x + np.sin(theta) * y_offset_disp,
-                        y - np.cos(theta) * y_offset_disp,
+                        x
+                        + np.cos(theta) * self.params.x_offset_com_to_foot
+                        + np.sin(theta) * self.params.y_disp_zmp,
+                        y
+                        + np.sin(theta) * self.params.x_offset_com_to_foot
+                        - np.cos(theta) * self.params.y_disp_zmp,
                     ]
                 )
             else:
-                fs_positions.append([x, y])
+                fs_positions.append(
+                    [
+                        x + np.cos(theta) * self.params.x_offset_com_to_foot,
+                        y + np.sin(theta) * self.params.x_offset_com_to_foot,
+                    ]
+                )
 
         zmp_ref = []
         i = 0

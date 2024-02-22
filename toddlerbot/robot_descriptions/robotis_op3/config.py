@@ -25,12 +25,8 @@ def compute_leg_angles(target_foot_pos, target_foot_ori, side, offsets):
         - target_z
     )
 
-    transformed_x = target_x * math.cos(target_foot_ori[2]) + target_y * math.sin(
-        target_foot_ori[2]
-    )
-    transformed_y = -target_x * math.sin(target_foot_ori[2]) + target_y * math.cos(
-        target_foot_ori[2]
-    )
+    transformed_x = target_x * math.cos(hip_yaw) + target_y * math.sin(hip_yaw)
+    transformed_y = -target_x * math.sin(hip_yaw) + target_y * math.cos(hip_yaw)
     transformed_z = target_z
 
     hip_roll = math.atan2(

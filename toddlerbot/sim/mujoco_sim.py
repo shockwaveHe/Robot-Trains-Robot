@@ -191,8 +191,8 @@ class MujoCoSim(AbstractSim):
             for com_pos in com_traj:
                 mujoco.mjv_initGeom(
                     viewer.user_scn.geoms[i],
-                    type=mujoco.mjtGeom.mjGEOM_CYLINDER,
-                    size=np.array([0.005, 0.001, 0.005]),
+                    type=mujoco.mjtGeom.mjGEOM_SPHERE,
+                    size=np.array([0.001, 0.001, 0.001]),
                     pos=np.array([com_pos[0], com_pos[1], 0.005]),
                     mat=np.eye(3).flatten(),
                     rgba=[1, 0, 0, 1],

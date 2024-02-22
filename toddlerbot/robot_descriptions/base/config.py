@@ -17,6 +17,7 @@ def compute_leg_angles(target_foot_pos, target_foot_ori, side, offsets):
     # Decompose target position and orientation
     target_x, target_y, target_z = target_foot_pos
     ankle_roll, ankle_pitch, hip_yaw = target_foot_ori
+    hip_yaw = -hip_yaw
 
     target_z = (
         offsets["z_offset_thigh"]
@@ -25,12 +26,8 @@ def compute_leg_angles(target_foot_pos, target_foot_ori, side, offsets):
         - target_z
     )
 
-    transformed_x = target_x * math.cos(target_foot_ori[2]) + target_y * math.sin(
-        target_foot_ori[2]
-    )
-    transformed_y = -target_x * math.sin(target_foot_ori[2]) + target_y * math.cos(
-        target_foot_ori[2]
-    )
+    transformed_x = target_x * math.cos(hip_yaw) + target_y * math.sin(hip_yaw)
+    transformed_y = -target_x * math.sin(hip_yaw) + target_y * math.cos(hip_yaw)
     transformed_z = target_z
 
     hip_roll = math.atan2(
@@ -52,7 +49,7 @@ def compute_leg_angles(target_foot_pos, target_foot_ori, side, offsets):
     ankle_pitch += knee_pitch + hip_pitch
 
     angles_dict = {
-        "hip_yaw": -hip_yaw,
+        "hip_yaw": hip_yaw,
         "hip_roll": -hip_roll,
         "hip_pitch": hip_pitch,
         "knee": -knee_pitch if side == "left" else knee_pitch,
@@ -67,62 +64,62 @@ base_config = RobotConfig(
     link_name2canonical_name=link_name2canonical_name,
     act_params={
         "left_hip_yaw": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
         "left_hip_roll": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
         "left_hip_pitch": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
         "left_knee": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
         "left_ank_pitch": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
         "left_ank_roll": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
         # "left_ank_act1": ActuatorParameters(type="motor", damping=0.1, armature=1e-7, kp=10.0, kv=0.1),
         # "left_ank_act2": ActuatorParameters(type="motor", damping=0.1, armature=1e-7, kp=10.0, kv=0.1),
         "right_hip_yaw": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
         "right_hip_roll": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
         "right_hip_pitch": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
         "right_knee": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
         "right_ank_pitch": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
         "right_ank_roll": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
         # "right_ank_act1": ActuatorParameters(type="motor", damping=0.1, armature=1e-7, kp=10.0, kv=0.1),
         # "right_ank_act2": ActuatorParameters(type="motor", damping=0.1, armature=1e-7, kp=10.0, kv=0.1),
         "left_sho_pitch": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
         "left_sho_roll": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
         "left_elb": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
         "right_sho_pitch": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
         "right_sho_roll": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
         "right_elb": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
+            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
     },
     constraint_pairs=[
@@ -138,7 +135,6 @@ base_config = RobotConfig(
         "z_offset_thigh": 0.1075,  # from the hip pitch joint to the knee joint
         "z_offset_knee": 0.0,
         "z_offset_shin": 0.1,
-        "x_offset_com_to_foot": 0.0049,  # from the hip center to the foot
         "y_offset_com_to_foot": 0.0377,  # from the hip center to the foot
     },
     compute_leg_angles=compute_leg_angles,

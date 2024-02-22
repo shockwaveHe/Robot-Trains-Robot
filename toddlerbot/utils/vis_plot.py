@@ -6,6 +6,7 @@ from toddlerbot.utils.vis_utils import *
 
 LINE_STYLES = ["-", "--", "-.", ":"]
 LINE_COLORS = ["b", "g", "r", "c", "m", "y", "k"]
+LINE_MARKERS = ["o", "s", "D", "v", "^", "<", ">"]
 
 
 def plot_line_graph(
@@ -22,6 +23,7 @@ def plot_line_graph(
     save_path=None,
     time_suffix=None,
     ax=None,
+    checkpoint_period=None,
 ):
     if ax is None:
         plt.figure(figsize=fig_size)
@@ -54,6 +56,11 @@ def plot_line_graph(
                     color=color,
                     label=legend_labels[i] if legend_labels else None,
                 )
+
+                if checkpoint_period and checkpoint_period[i]:
+                    for idx, value in enumerate(sub_y):
+                        if idx % checkpoint_period[i] == 0:
+                            ax.plot(xi[idx], value, LINE_MARKERS[i], color=color)
         else:  # Single line
             ax.plot(
                 x_local,
@@ -62,6 +69,16 @@ def plot_line_graph(
                 color=line_colors_local[0],
                 label=legend_labels[0] if legend_labels else None,
             )
+
+            if checkpoint_period and checkpoint_period[0]:
+                for idx, value in enumerate(y):
+                    if idx % checkpoint_period[0] == 0:
+                        ax.plot(
+                            x_local[idx],
+                            value,
+                            LINE_MARKERS[0],
+                            color=line_colors_local[0],
+                        )
 
         if legend_labels:
             plt.legend()
