@@ -9,6 +9,22 @@ pip install -e .
 
 Install pygraphviz according to [these instructions](https://pygraphviz.github.io/documentation/stable/install.html).
 
+Apple Sillicon M1/M2 specific commands:
+```
+CONDA_SUBDIR=osx-arm64 conda create -n toddlerbot python=3.8
+conda activate toddlerbot
+conda config --env --set subdir osx-arm64
+
+brew install graphviz
+export C_INCLUDE_PATH=/opt/homebrew/opt/graphviz/include
+export LIBRARY_PATH=/opt/homebrew/opt/graphviz/lib
+pip install pygraphviz
+pip install -e .
+```
+
+Run MuJoCo-related scripts with `mjpython` instead of `python`.
+Add `"python": "path/to/mjpython"` in `launch.json` for the VSCode debugger.
+
 ### Export the environment
 ```
 pigar generate
