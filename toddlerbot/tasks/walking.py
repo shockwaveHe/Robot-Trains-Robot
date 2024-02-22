@@ -264,7 +264,6 @@ def main():
     )
     args = parser.parse_args()
 
-    # A 0.3725 offset moves the robot slightly up from the ground
     robot = HumanoidRobot(args.robot_name)
     if args.sim == "pybullet":
         sim = PyBulletSim(robot)
