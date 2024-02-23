@@ -225,13 +225,13 @@ class Walking:
             + np.cos(self.theta_curr) * self.x_offset_com_to_foot
             - np.sin(self.theta_curr) * self.y_offset_com_to_foot,
             right_offset[1]
-            - np.sin(self.theta_curr) * self.x_offset_com_to_foot
+            + np.sin(self.theta_curr) * self.x_offset_com_to_foot
             + np.cos(self.theta_curr) * self.y_offset_com_to_foot,
             self.config.squat_height + self.right_up,
         ]
 
-        if self.idx == 179:
-            print("stop")
+        # if self.idx == 0:
+        #     print("stop")
 
         return left_foot_pos, left_foot_ori, right_foot_pos, right_foot_ori
 
@@ -296,6 +296,7 @@ def main():
     )
     foot_steps_vis = copy.deepcopy(foot_steps)
 
+    # TODO: fix the URDF CoM offset.
     # TODO: fix the small y_offset and let the body rotate with the hip
     # TODO: add the feedback control and the next plan
     # TODO: clean up the code
@@ -389,12 +390,13 @@ def main():
                 time_suffix="",
                 legend_labels=["ZMP Ref", "ZMP Traj", "CoM Ref", "Com Traj"],
                 ax=ax,
-                checkpoint_period=[
-                    0,
-                    0,
-                    round(walking.fs_steps / 4),
-                    round(walking.fs_steps / 4),
-                ],
+                # checkpoint_period=[
+                #     0,
+                #     0,
+                #     round(walking.fs_steps / 4),
+                #     round(walking.fs_steps / 4),
+                # ],
+                checkpoint_period=[0, 0, 0, 0],
             )()
 
             plot_line_graph(

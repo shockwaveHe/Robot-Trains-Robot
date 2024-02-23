@@ -25,6 +25,10 @@ pip install -e .
 Run MuJoCo-related scripts with `mjpython` instead of `python`.
 Add `"python": "path/to/mjpython"` in `launch.json` for the VSCode debugger.
 
+```
+plt.switch_backend("Agg")
+```
+
 ### Export the environment
 ```
 pigar generate
