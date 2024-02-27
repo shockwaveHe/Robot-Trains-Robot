@@ -328,8 +328,8 @@ def main():
             com_traj_record.append(com_pos)
 
             if status == "finished":
-                tracking_error = abs(
-                    np.array(target_pose) - np.array([*torso_pos[:2], torso_theta])
+                tracking_error = np.array(target_pose) - np.array(
+                    [*torso_pos[:2], torso_theta]
                 )
                 print(f"Tracking error: {round_floats(tracking_error, 6)}")
 

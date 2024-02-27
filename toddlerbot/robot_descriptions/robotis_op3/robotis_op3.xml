@@ -82,7 +82,7 @@
       <geom mesh="body2c" class="collision"/>
       <geom mesh="body3c" class="collision"/>
       <geom mesh="body4c" class="collision"/>
-      <site name="torso"/>
+      <site name="torso" fromto="0.01 0 0.1 -0.01 0 0.1" type="cylinder" size="0.005 0.005 1" group="3" />
       <body name="head_pan_link" pos="-0.001 0 0.1365">
         <inertial pos="0.00233 0 0.00823" quat="0.663575 0.663575 0.244272 -0.244272" mass="0.01176" diaginertia="4.23401e-06 3.60599e-06 1.65e-06"/>
         <joint name="head_pan" axis="0 0 1"/>

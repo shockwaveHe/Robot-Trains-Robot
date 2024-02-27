@@ -80,12 +80,14 @@ def assemble_urdf(urdf_config):
     body_root = body_tree.getroot()
     body_root.set("name", urdf_config.robot_name)
 
-    assembly_list = [
-        "left_" + urdf_config.arm_name,
-        "right_" + urdf_config.arm_name,
-        "left_" + urdf_config.leg_name,
-        "right_" + urdf_config.leg_name,
-    ]
+    assembly_list = []
+    if len(urdf_config.arm_name) > 0:
+        assembly_list.append("left_" + urdf_config.arm_name)
+        assembly_list.append("right_" + urdf_config.arm_name)
+
+    if len(urdf_config.leg_name) > 0:
+        assembly_list.append("left_" + urdf_config.leg_name)
+        assembly_list.append("right_" + urdf_config.leg_name)
 
     for element in list(body_root):
         # Before appending, update the filename attribute in <mesh> tags
@@ -98,7 +100,9 @@ def assemble_urdf(urdf_config):
         child_link = joint.find("child")
         child_link_name = child_link.attrib.get("link")
 
-        if not "leg" in child_link_name and not "arm" in child_link_name:
+        if not ("leg" in child_link_name and len(urdf_config.leg_name) > 0) and not (
+            "arm" in child_link_name and len(urdf_config.arm_name) > 0
+        ):
             continue
 
         for link in body_root.findall("link"):
@@ -159,19 +163,19 @@ def main():
     parser.add_argument(
         "--body-name",
         type=str,
-        required=True,
+        default="4R_body",
         help="The name of the body.",
     )
     parser.add_argument(
         "--arm-name",
         type=str,
-        required=True,
+        default="OP3_arm",
         help="The name of the arm.",
     )
     parser.add_argument(
         "--leg-name",
         type=str,
-        required=True,
+        default="3R+RH5_leg",
         help="The name of the leg.",
     )
     args = parser.parse_args()
