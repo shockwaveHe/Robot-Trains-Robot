@@ -6,6 +6,7 @@ import time
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+plt.switch_backend("Agg")
 sns.set_theme(style="darkgrid")
 
 

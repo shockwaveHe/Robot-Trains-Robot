@@ -55,7 +55,8 @@
                 // "--use-feedback",
                 // "--sleep-time",
                 // "0.001",
-            ]
+            ],
+            "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
         },
         {
             "name": "Python: walk_base_mujoco",
@@ -72,7 +73,8 @@
                 // "--use-feedback",
                 // "--sleep-time",
                 // "0.001",
-            ]
+            ],
+            "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
         }
     ]
 }

@@ -10,6 +10,7 @@ MightyZap = mighty_zap
 Actuator_ID = 0
 
 MightyZap.OpenMightyZap("/dev/ttyUSB0", 57600)
+# MightyZap.OpenMightyZap("/dev/tty.usbserial-0001", 57600)
 time.sleep(0.1)
 pos = 0
 

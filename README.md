@@ -34,6 +34,24 @@ plt.switch_backend("Agg")
 pigar generate
 ```
 
+### Install Arduino in VSCode on MacOS
+```
+brew install arduino-cli
+```
+Install the Arduino VSCode extension.
+
+Open VSCode settings:
+1. Set Arduino Command Path: arduino-cli
+1. Set Arduino Path: /opt/homebrew/bin
+1. Set Use Arduino Cli: yes
+
+Follow this [tutorial](https://learn.adafruit.com/adafruit-feather-m4-can-express/arduino-ide-setup).
+
+```
+screen /dev/tty.usbxxxxx 115200
+```
+
+
 ### Get the robot URDF fron OnShape
 To go any further, you will need to obtain API key and secret from the [OnShape developer portal](https://dev-portal.onshape.com/keys).
 
