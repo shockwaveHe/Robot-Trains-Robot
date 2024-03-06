@@ -4,7 +4,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 from toddlerbot.sim.robot import HumanoidRobot
 
 
-class AbstractSim(ABC):
+class BaseSim(ABC):
     @abstractmethod
     def __init__(self, robot: Optional[HumanoidRobot] = None):
         pass

@@ -11,7 +11,7 @@ from toddlerbot.utils.constants import GRAVITY, TIMESTEP
 from toddlerbot.utils.file_utils import find_description_path
 
 
-class MujoCoSim(AbstractSim):
+class MujoCoSim(BaseSim):
     def __init__(self, robot: Optional[HumanoidRobot] = None, fixed: bool = False):
         """Initialize the MuJoCo simulation environment."""
         self.model = None

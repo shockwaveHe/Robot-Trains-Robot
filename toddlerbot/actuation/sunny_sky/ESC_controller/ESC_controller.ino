@@ -22,7 +22,7 @@ const float VB_MIN = 0;    // Min voltage [V]
 const float VB_MAX = 80;   // Max voltage [V]
 
 // Target commands
-float pos_cmd = 0.0; // Target position command [rad]
+float pos_cmd = 1.57; // Target position command [rad]
 // const float vel_cmd = 0.0;          // Target velocity command [rad/s]
 // const uint16_t kp   = 512;            // Proportional gain
 // const uint16_t kd   = 256;            // Derivative gain
@@ -69,8 +69,8 @@ void loop()
     else
     {
         //                       pos, vel, kp , kd , I_FF
-        // encodePacket(cmd_packet, pos_cmd, 0.0, 40, 50, 0.0);    // hold position
-        encodePacket(cmd_packet, 0.0, 0.0, 0, 5, 0.0); // compliance
+        encodePacket(cmd_packet, pos_cmd, 0.0, 40, 50, 0.0); // hold position
+        // encodePacket(cmd_packet, 0.0, 0.0, 0, 5, 0.0); // compliance
         // encodePacket(cmd_packet, 0.0, 0.0, 0, 0, 1.0);      // torque mode
         // encodePacket(cmd_packet, 0.0, 0.0, 0, 1, 0.0);    // Constant speed ??
     }

@@ -53,7 +53,7 @@
             "cStandard": "c11",
             "cppStandard": "c++11",
             "defines": [
-                "__SKETCH_NAME__=\"\"\"ESC_controller.ino\"\"\"",
+                "__SKETCH_NAME__=\"\"\"sunny_sky.ino\"\"\"",
                 "F_CPU=120000000L",
                 "ARDUINO=10607",
                 "ARDUINO_FEATHER_M4_CAN",

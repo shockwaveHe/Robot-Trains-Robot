@@ -9,7 +9,7 @@ from toddlerbot.utils.constants import GRAVITY, TIMESTEP
 from toddlerbot.utils.file_utils import find_description_path
 
 
-class PyBulletSim(AbstractSim):
+class PyBulletSim(BaseSim):
     """Class to set up and run a PyBullet simulation with a humanoid robot."""
 
     def __init__(self, robot: Optional[HumanoidRobot] = None, fixed: bool = False):
