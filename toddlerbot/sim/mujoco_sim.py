@@ -6,7 +6,7 @@ import numpy as np
 from transforms3d.euler import euler2mat
 from transforms3d.quaternions import mat2quat, quat2mat
 
-from toddlerbot.sim.base_sim import *
+from toddlerbot.sim import *
 from toddlerbot.utils.constants import GRAVITY, TIMESTEP
 from toddlerbot.utils.file_utils import find_description_path
 
@@ -14,6 +14,8 @@ from toddlerbot.utils.file_utils import find_description_path
 class MujoCoSim(BaseSim):
     def __init__(self, robot: Optional[HumanoidRobot] = None, fixed: bool = False):
         """Initialize the MuJoCo simulation environment."""
+        super().__init__(robot)
+
         self.model = None
         self.data = None
 

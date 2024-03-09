@@ -4,7 +4,7 @@ import numpy as np
 import pybullet as p
 import pybullet_data
 
-from toddlerbot.sim.base_sim import *
+from toddlerbot.sim import *
 from toddlerbot.utils.constants import GRAVITY, TIMESTEP
 from toddlerbot.utils.file_utils import find_description_path
 
@@ -17,6 +17,8 @@ class PyBulletSim(BaseSim):
         Set up the PyBullet simulation environment.
         Initializes the PyBullet environment in GUI mode and sets the gravity and timestep.
         """
+        super().__init__(robot)
+
         p.connect(p.GUI)  # or p.DIRECT for non-graphical version
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         p.setGravity(0, 0, -GRAVITY)
