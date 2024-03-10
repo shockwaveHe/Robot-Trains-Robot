@@ -10,7 +10,7 @@ class BaseSim(ABC):
         pass
 
     @abstractmethod
-    def get_joints_info(self, robot: HumanoidRobot):
+    def initialize_joint_angles(self, robot: HumanoidRobot):
         pass
 
     @abstractmethod
@@ -18,16 +18,12 @@ class BaseSim(ABC):
         pass
 
     @abstractmethod
-    def initialize_joint_angles(self, robot: HumanoidRobot):
+    def get_com(self, robot: HumanoidRobot):
         pass
 
-    # @abstractmethod
-    # def get_zmp(self, robot: HumanoidRobot):
-    #     pass
-
-    # @abstractmethod
-    # def get_com(self, robot: HumanoidRobot):
-    #     pass
+    @abstractmethod
+    def get_zmp(self, robot: HumanoidRobot):
+        pass
 
     @abstractmethod
     def set_joint_angles(self, robot: HumanoidRobot, joint_angles: List[float]):

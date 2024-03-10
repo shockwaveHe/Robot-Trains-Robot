@@ -6,7 +6,7 @@ import pybullet as p
 from toddlerbot.sim.mujoco_sim import MujoCoSim
 from toddlerbot.sim.pybullet_sim import PyBulletSim
 from toddlerbot.sim.robot import HumanoidRobot
-from toddlerbot.utils.data_utils import round_floats
+from toddlerbot.utils.math_utils import round_floats
 
 
 def main():

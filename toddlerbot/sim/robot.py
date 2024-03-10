@@ -3,8 +3,10 @@ import math
 from typing import Dict, List, Tuple
 
 import numpy as np
+from yourdfpy import URDF
 
 from toddlerbot.robot_descriptions.robot_configs import robot_configs
+from toddlerbot.utils.file_utils import find_description_path
 
 
 class HumanoidRobot:
@@ -20,12 +22,28 @@ class HumanoidRobot:
         Raises:
             ValueError: If the robot name is not supported.
         """
-        self.name = robot_name
         if robot_name not in robot_configs:
             raise ValueError(f"Robot '{robot_name}' is not supported.")
+
+        self.name = robot_name
         self.config = robot_configs[robot_name]
-        self.id = None
-        self.joints_info = None
+        urdf_path = find_description_path(robot_name)
+        self.urdf = URDF.load(urdf_path)
+
+        self.id = 0
+        self.joints_info = self.get_joints_info()
+
+    def get_joints_info(self):
+        joints_info = {}
+        for joint in self.urdf.actuated_joints:
+            joints_info[joint.name] = {
+                "type": joint.type,
+                "lowerLimit": joint.limit.lower,
+                "upperLimit": joint.limit.upper,
+                "active": joint.name in self.config.act_params.keys(),
+            }
+
+        return joints_info
 
     def solve_ik(
         self,
@@ -105,64 +123,21 @@ if __name__ == "__main__":
     import numpy as np
 
     from toddlerbot.sim.pybullet_sim import PyBulletSim
-    from toddlerbot.utils.data_utils import round_floats
+    from toddlerbot.utils.math_utils import round_floats
 
-    robot = HumanoidRobot("sustaina_op")
+    robot = HumanoidRobot("base")
     sim = PyBulletSim(robot)
 
     # Define target positions and orientations for left and right feet
-    target_left_foot_pos, target_left_foot_ori = [0.2, 0.1, -0.2], [
-        0,
-        0,
-        0,
-    ]
-    target_right_foot_pos, target_right_foot_ori = [0.2, -0.1, -0.2], [0, 0, 0]
+    target_left_foot_pos = [0.2, 0.1, -0.2]
+    target_right_foot_pos = [0.2, -0.1, -0.2]
 
-    # TODO: Get current joint angles from robot
     joint_angles = robot.solve_ik(
         target_left_foot_pos,
-        target_left_foot_ori,
+        [0, 0, 0],
         target_right_foot_pos,
-        target_right_foot_ori,
+        [0, 0, 0],
     )
 
     rounded_joint_angles = round_floats(joint_angles, 3)
     print(f"Joint angles: {rounded_joint_angles}")
-
-    expected_joint_angles = np.array(
-        [
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0.122,
-            0,
-            -0.51,
-            0.51,
-            -0.51,
-            0.51,
-            0,
-            -0.122,
-            -0.51,
-            -0.51,
-            0,
-            -0.122,
-            0,
-            -0.51,
-            0.51,
-            -0.51,
-            0.51,
-            0,
-            0.122,
-            -0.51,
-            -0.51,
-        ]
-    )
-
-    assert np.allclose(
-        rounded_joint_angles, expected_joint_angles
-    ), "Joint Angles does not match expected values."

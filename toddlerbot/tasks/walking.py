@@ -11,7 +11,7 @@ from toddlerbot.sim.mujoco_sim import MujoCoSim
 from toddlerbot.sim.pybullet_sim import PyBulletSim
 from toddlerbot.sim.robot import HumanoidRobot
 from toddlerbot.tasks.walking_configs import *
-from toddlerbot.utils.data_utils import round_floats
+from toddlerbot.utils.math_utils import round_floats
 from toddlerbot.utils.vis_planning import *
 from toddlerbot.utils.vis_plot import *
 

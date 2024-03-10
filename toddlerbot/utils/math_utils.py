@@ -1,6 +1,7 @@
 from dataclasses import is_dataclass
 
 import numpy as np
+from transforms3d.quaternions import mat2quat, quat2mat
 
 
 def round_floats(obj, precision):
@@ -29,3 +30,20 @@ def round_floats(obj, precision):
         )
 
     return obj
+
+
+def quatxyzw2mat(quat):
+    return quat2mat([quat[3], quat[0], quat[1], quat[2]])
+
+
+def mat2quatxyzw(mat):
+    quat = mat2quat(mat)
+    return [quat[1], quat[2], quat[3], quat[0]]
+
+
+def quatwxyz2mat(quat):
+    return quat2mat(quat)
+
+
+def mat2quatwxyz(mat):
+    return mat2quat(mat)

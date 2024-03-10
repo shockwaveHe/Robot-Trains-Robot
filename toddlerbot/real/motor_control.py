@@ -1,10 +1,16 @@
 from toddlerbot.actuation.dynamixel.dynamixel_control import *
 from toddlerbot.actuation.mighty_zap.mighty_zap_control import *
 from toddlerbot.actuation.sunny_sky.sunny_sky_control import *
+from toddlerbot.sim import *
 
 
-class MotorController:
-    def __init__(self):
+class MotorController(BaseSim):
+    def __init__(
+        self,
+        robot: Optional[HumanoidRobot] = None,
+    ):
+        super().__init__(robot)
+
         self.dynamixel_config = DynamixelConfig(
             port="/dev/tty.usbserial-FT8ISUJY",
             kP=[100, 200, 200, 100, 200, 200],
@@ -30,7 +36,28 @@ class MotorController:
             self.mighty_zap_config, motor_ids=[0, 1]
         )
 
-    def set_joint_positions(self, joint_positions):
+    def get_joints_info(self, robot: HumanoidRobot):
+        joints_info = {}
+        for i in range(1, self.model.njnt):
+            name = self.model.joint(i).name
+            joints_info[name] = {
+                "idx": self.model.joint(i).id,
+                "type": self.model.joint(i).type,
+                "lowerLimit": self.model.joint(i).range[0],
+                "upperLimit": self.model.joint(i).range[1],
+                "active": name in robot.config.act_params.keys(),
+            }
+
+        return joints_info
+
+    def initialize_joint_angles(self, robot: HumanoidRobot):
+        joint_angles = {}
+        for name, info in robot.joints_info.items():
+            if info["active"]:
+                joint_angles[name] = self.data.joint(name).qpos.item()
+        return joint_angles
+
+    def set_joint_angles(self, joint_positions):
         self.dynamixel_controller.set_pos(joint_positions[:6])
         self.sunny_sky_controller.set_pos(joint_positions[6:7])
         self.mighty_zap_controller.set_pos(joint_positions[7:9])
@@ -51,7 +78,7 @@ if __name__ == "__main__":
     motor_controller = MotorController()
     i = 0
     while i < 30:
-        motor_controller.set_joint_positions(
+        motor_controller.set_joint_angles(
             [*np.radians([150, 165, 165, 210, 165, 195]), np.pi / 4, 3000, 3000]
         )
         state_dict = motor_controller.read_state()
@@ -66,7 +93,7 @@ if __name__ == "__main__":
 
     i = 0
     while i < 30:
-        motor_controller.set_joint_positions(
+        motor_controller.set_joint_angles(
             [
                 *motor_controller.dynamixel_config.init_pos,
                 0,

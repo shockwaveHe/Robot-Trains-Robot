@@ -7,6 +7,7 @@ import pybullet_data
 from toddlerbot.sim import *
 from toddlerbot.utils.constants import GRAVITY, TIMESTEP
 from toddlerbot.utils.file_utils import find_description_path
+from toddlerbot.utils.math_utils import quatxyzw2mat
 
 
 class PyBulletSim(BaseSim):
@@ -28,9 +29,17 @@ class PyBulletSim(BaseSim):
         if robot is not None:
             urdf_path = find_description_path(robot.name)
             robot.id = p.loadURDF(urdf_path, useFixedBase=fixed)
-            robot.joints_info = self.get_joints_info(robot)
+            self.name2idx = self.get_name2idx(robot)
             if not fixed:
                 self.put_robot_on_ground(robot)
+
+    def initialize_joint_angles(self, robot: HumanoidRobot):
+        joint_angles = {}
+        for name, info in robot.joints_info.items():
+            if info["active"]:
+                joint_angles[name] = p.getJointState(robot.id, self.name2idx[name])[0]
+
+        return joint_angles
 
     def put_robot_on_ground(self, robot: HumanoidRobot, z_offset: float = 0.01):
         """
@@ -57,20 +66,14 @@ class PyBulletSim(BaseSim):
         new_base_pos = [base_pos[0], base_pos[1], base_pos[2] - lowest_z + z_offset]
         p.resetBasePositionAndOrientation(robot.id, new_base_pos, base_ori)
 
-    def get_joints_info(self, robot: HumanoidRobot):
-        joints_info = {}
-        for k in range(p.getNumJoints(robot.id)):
-            jointInfo = p.getJointInfo(robot.id, k)
+    def get_name2idx(self, robot: HumanoidRobot):
+        name2idx = {}
+        for i in range(p.getNumJoints(robot.id)):
+            jointInfo = p.getJointInfo(robot.id, i)
             name = jointInfo[1].decode("utf-8")
-            joints_info[name] = {
-                "idx": k,
-                "type": jointInfo[2],
-                "lowerLimit": jointInfo[8],
-                "upperLimit": jointInfo[9],
-                "active": name in robot.config.act_params.keys(),
-            }
+            name2idx[name] = i
 
-        return joints_info
+        return name2idx
 
     def get_link_pos(self, robot: HumanoidRobot, link_name: str):
         for idx in range(p.getNumJoints(robot.id)):
@@ -83,24 +86,28 @@ class PyBulletSim(BaseSim):
 
         raise ValueError(f"Link name {link_name} not found.")
 
-    def initialize_joint_angles(self, robot: HumanoidRobot):
-        joint_angles = {}
-        for name, info in robot.joints_info.items():
-            if info["active"] and info["type"] != p.JOINT_FIXED:
-                joint_angles[name] = p.getJointState(robot.id, info["idx"])[0]
+    def get_com(self, robot: HumanoidRobot):
+        base_pos, base_ori = p.getBasePositionAndOrientation(robot.id)
 
-        return joint_angles
+        return np.array(base_pos)
 
     def get_zmp(self, robot: HumanoidRobot):
         pass
 
-    def get_com(self, robot: HumanoidRobot):
-        pass
+    def get_torso_pose(self, robot: HumanoidRobot):
+        torso_pos, torso_ori = p.getBasePositionAndOrientation(robot.id)
+        return torso_pos, quatxyzw2mat(torso_ori)
 
     def set_joint_angles(self, robot: HumanoidRobot, joint_angles: Dict[str, float]):
-        for joint_name, angle in joint_angles.items():
-            joint_idx = robot.joints_info[joint_name]["idx"]
-            p.setJointMotorControl2(robot.id, joint_idx, p.POSITION_CONTROL, angle)
+        for name, angle in joint_angles.items():
+            p.setJointMotorControl2(
+                robot.id,
+                self.name2idx[name],
+                p.POSITION_CONTROL,
+                angle,
+                positionGain=robot.config.act_params[name].kp * 1e-4,
+                velocityGain=robot.config.act_params[name].kv * 1e-1,
+            )
 
     def simulate(
         self,

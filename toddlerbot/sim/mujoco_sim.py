@@ -20,15 +20,20 @@ class MujoCoSim(BaseSim):
         self.data = None
 
         if robot is not None:
+            self.foot_size = robot.config.foot_size
+
             xml_path = find_description_path(robot.name, suffix="_scene.xml")
             self.model = mujoco.MjModel.from_xml_path(xml_path)
             self.data = mujoco.MjData(self.model)
-            robot.id = 0  # placeholder
-            robot.joints_info = self.get_joints_info(robot)
             if not fixed:
                 self.put_robot_on_ground(robot)
 
-            self.foot_size = robot.config.foot_size
+    def initialize_joint_angles(self, robot: HumanoidRobot):
+        joint_angles = {}
+        for name, info in robot.joints_info.items():
+            if info["active"]:
+                joint_angles[name] = self.data.joint(name).qpos.item()
+        return joint_angles
 
     def put_robot_on_ground(self, robot: HumanoidRobot, z_offset: float = 0.02):
         """
@@ -61,20 +66,6 @@ class MujoCoSim(BaseSim):
                 f"Robot is too high above the ground. Change the z value of {body_link_name} as {desired_z}"
             )
 
-    def get_joints_info(self, robot: HumanoidRobot):
-        joints_info = {}
-        for i in range(1, self.model.njnt):
-            name = self.model.joint(i).name
-            joints_info[name] = {
-                "idx": self.model.joint(i).id,
-                "type": self.model.joint(i).type,
-                "lowerLimit": self.model.joint(i).range[0],
-                "upperLimit": self.model.joint(i).range[1],
-                "active": name in robot.config.act_params.keys(),
-            }
-
-        return joints_info
-
     def get_link_pos(self, robot: HumanoidRobot, link_name: str):
         mujoco.mj_kinematics(self.model, self.data)
         link_pos = self.data.body(link_name).xpos
@@ -85,38 +76,6 @@ class MujoCoSim(BaseSim):
         link_quat = self.data.body(link_name).xquat
         return np.array(link_quat)
 
-    def get_link_relpose(
-        self, robot: HumanoidRobot, link_name_1: str, link_name_2: str
-    ):
-        mujoco.mj_kinematics(self.model, self.data)
-        # Get the position and orientation (quaternion) of each body
-        pos1 = self.data.body(link_name_1).xpos
-        quat1 = self.data.body(link_name_1).xquat
-        pos2 = self.data.body(link_name_2).xpos
-        quat2 = self.data.body(link_name_2).xquat
-
-        print(f"pos1: {pos1}, quat1: {quat1}")
-        print(f"pos2: {pos2}, quat2: {quat2}")
-
-        # Compute the relative position (simple subtraction)
-        rel_pos = pos2 - pos1
-
-        # For orientation, compute the relative quaternion
-        rel_mat = np.dot(np.linalg.inv(quat2mat(quat1)), quat2mat(quat2))
-        rel_quat = mat2quat(rel_mat)
-
-        return np.concatenate([rel_pos, rel_quat])
-
-    def initialize_joint_angles(self, robot: HumanoidRobot):
-        joint_angles = {}
-        for name, info in robot.joints_info.items():
-            if info["active"]:
-                joint_angles[name] = self.data.joint(name).qpos.item()
-        return joint_angles
-
-    def get_zmp(self, robot: HumanoidRobot):
-        pass
-
     def get_com(self, robot: HumanoidRobot):
         # TODO: Replace this with an IMU sensor
         mujoco.mj_comPos(self.model, self.data)
@@ -124,11 +83,22 @@ class MujoCoSim(BaseSim):
         com_pos = self.data.body(body_link_name).subtree_com
         return com_pos
 
+    def get_zmp(self, robot: HumanoidRobot):
+        pass
+
     def get_torso_pose(self, robot: HumanoidRobot):
         mujoco.mj_kinematics(self.model, self.data)
         torso_pos = self.data.site("torso").xpos.copy()
         torso_mat = self.data.site("torso").xmat.copy().reshape(3, 3)
         return torso_pos, torso_mat
+
+    def get_joint_angles_error(
+        self, robot: HumanoidRobot, joint_angles: Dict[str, float]
+    ):
+        joint_angles_error = {}
+        for joint_name, angle in joint_angles.items():
+            joint_angles_error[joint_name] = self.data.joint(joint_name).qpos - angle
+        return joint_angles_error
 
     def set_joint_angles(self, robot: HumanoidRobot, joint_angles: Dict[str, float]):
         for joint_name, angle in joint_angles.items():
@@ -139,14 +109,6 @@ class MujoCoSim(BaseSim):
                 - kv * self.data.joint(joint_name).qvel
             )
 
-    def get_joint_angles_error(
-        self, robot: HumanoidRobot, joint_angles: Dict[str, float]
-    ):
-        joint_angles_error = {}
-        for joint_name, angle in joint_angles.items():
-            joint_angles_error[joint_name] = self.data.joint(joint_name).qpos - angle
-        return joint_angles_error
-
     def simulate(
         self,
         step_func: Optional[Callable] = None,
@@ -155,7 +117,8 @@ class MujoCoSim(BaseSim):
         vis_flags: Optional[List] = [],
     ):
         viewer = mujoco.viewer.launch_passive(self.model, self.data)
-        sim_step_idx, path, foot_steps, com_traj, joint_angles = step_params
+        if step_params is not None:
+            sim_step_idx, path, foot_steps, com_traj, joint_angles = step_params
 
         def vis_foot_steps():
             i = viewer.user_scn.ngeom
@@ -249,15 +212,15 @@ class MujoCoSim(BaseSim):
                     else:
                         step_params = step_func(*step_params)
 
-                viewer.user_scn.ngeom = 0
-                if "foot_steps" in vis_flags:
-                    vis_foot_steps()
-                if "com_traj" in vis_flags:
-                    vis_com_traj()
-                if "path" in vis_flags:
-                    vis_path()
-                if "torso" in vis_flags:
-                    vis_torso()
+                        viewer.user_scn.ngeom = 0
+                        if "foot_steps" in vis_flags:
+                            vis_foot_steps()
+                        if "com_traj" in vis_flags:
+                            vis_com_traj()
+                        if "path" in vis_flags:
+                            vis_path()
+                        if "torso" in vis_flags:
+                            vis_torso()
 
             viewer.sync()
 

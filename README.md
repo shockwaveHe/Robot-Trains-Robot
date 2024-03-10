@@ -20,6 +20,9 @@ export C_INCLUDE_PATH=/opt/homebrew/opt/graphviz/include
 export LIBRARY_PATH=/opt/homebrew/opt/graphviz/lib
 pip install pygraphviz
 pip install -e .
+
+# If there is yourdfpy import error, run this.
+pip install lxml==4.9.4
 ```
 
 Run MuJoCo-related scripts with `mjpython` instead of `python`.
