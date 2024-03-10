@@ -8,6 +8,7 @@ URDF_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/$ROBOT_NAME.urdf
 MJCF_FIXED_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/${ROBOT_NAME}_fixed.xml
 
 # All the body parts to be exported in OnShape
+DOC_ID_LIST="d2a8be5ce536cd2e18740efa d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe 93bd073d2ef7800c8ba429de 93bd073d2ef7800c8ba429de"
 ASSEMBLY_LIST="4R_body left_3R+RH5_leg right_3R+RH5_leg left_OP3_arm right_OP3_arm"
 
 printf "Do you want to export urdf from onshape? (y/n)"
@@ -15,7 +16,7 @@ read -r -p " > " run_onshape
 
 if [ "$run_onshape" == "y" ]; then
     printf "Exporting...\n\n"
-    python $REPO_NAME/robot_descriptions/get_urdf.py --assembly-list $ASSEMBLY_LIST
+    python $REPO_NAME/robot_descriptions/get_urdf.py --doc-id-list $DOC_ID_LIST --assembly-list $ASSEMBLY_LIST
 else
     printf "Export skipped.\n\n"
 fi

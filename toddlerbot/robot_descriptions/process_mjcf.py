@@ -340,9 +340,9 @@ def create_base_scene_xml(mjcf_path):
 
 
 def process_mjcf_fixed_file(root, config):
-    replace_mesh_file(
-        root, "body_link_collision.stl", "body_link_collision_simplified.stl"
-    )
+    # replace_mesh_file(
+    #     root, "body_link_collision.stl", "body_link_collision_simplified.stl"
+    # )
     add_torso_site(root)
     update_joint_params(root, config.act_params)
     update_geom_classes(root, ["type", "contype", "conaffinity", "group", "density"])
@@ -365,6 +365,10 @@ def process_mjcf_files(robot_name):
     mjcf_fixed_path = os.path.join(robot_dir, robot_name + "_fixed.xml")
     if os.path.exists(source_mjcf_path):
         shutil.move(source_mjcf_path, mjcf_fixed_path)
+    else:
+        raise ValueError(
+            "No MJCF file found. Remember to click the button save_xml to save the model to mjmodel.xml in the root directory."
+        )
 
     xml_tree = ET.parse(mjcf_fixed_path)
     xml_root = xml_tree.getroot()

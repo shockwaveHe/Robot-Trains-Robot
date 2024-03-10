@@ -62,12 +62,17 @@ export ONSHAPE_API=https://cad.onshape.com
 export ONSHAPE_ACCESS_KEY=Your_Access_Key
 export ONSHAPE_SECRET_KEY=Your_Secret_Key
 ```
+This is important:
 ```
 sudo apt-get install meshlab
 ```
 [Config doc](https://onshape-to-robot.readthedocs.io/en/latest/config.html)
 
 Use VScode Extension XML Tools to format the XML files.
+```
+bash scripts/onshape_to_robot.sh
+```
+Manually replace the body_link_collision.stl.
 
 ### Actuation
 - MightyZap: Update the firmware if you cannot search the motor.

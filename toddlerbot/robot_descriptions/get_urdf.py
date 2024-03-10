@@ -4,7 +4,6 @@ import os
 import shutil
 import subprocess
 import xml.etree.ElementTree as ET
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import List
 
@@ -13,9 +12,9 @@ from toddlerbot.utils.file_utils import *
 
 @dataclass
 class OnShapeConfig:
+    doc_id_list: List[str]
     assembly_list: List[str]
     # The following are the default values for the config.json file
-    documentId: str = "d2a8be5ce536cd2e18740efa"
     mergeSTLs: str = "all"
     mergeSTLsCollisions: bool = True
     simplifySTLs: str = "all"
@@ -48,11 +47,7 @@ def process_urdf_and_stl_files(assembly_path):
     for entry in os.scandir(assembly_path):
         if entry.is_file():  # Check if the entry is a file
             file = entry.name
-            if (
-                file.endswith((".stl", ".part"))
-                and file not in referenced_stls
-                and "simplified" not in file
-            ):
+            if file.endswith((".stl", ".part")) and file not in referenced_stls:
                 file_path = os.path.join(assembly_path, file)
                 os.remove(file_path)
 
@@ -80,6 +75,8 @@ def process_urdf_and_stl_files(assembly_path):
         if os.path.exists(source_path):
             shutil.move(source_path, os.path.join(meshes_dir, new_stl))
 
+    # TODO: Automate the body collision link automation
+
     pretty_xml = prettify(root, urdf_path)
     # Write the modified XML back to the URDF file
     with open(urdf_path, "w") as urdf_file:
@@ -91,62 +88,49 @@ def process_urdf_and_stl_files(assembly_path):
         os.rename(urdf_path, new_urdf_path)
 
 
-def process_assembly(onshape_config, assembly_dir, assembly_name):
-    assembly_path = os.path.join(assembly_dir, assembly_name)
-    os.makedirs(assembly_path, exist_ok=True)
-    json_file_path = os.path.join(assembly_path, "config.json")
-    # Map the URDFConfig to the desired JSON structure
-    json_data = {
-        "documentId": onshape_config.documentId,
-        "outputFormat": "urdf",
-        "assemblyName": assembly_name,
-        "robotName": assembly_name,
-        "addDummyBaseLink": "body" in assembly_name.lower(),
-        "mergeSTLs": onshape_config.mergeSTLs,
-        "mergeSTLsCollisions": onshape_config.mergeSTLsCollisions,
-        "simplifySTLs": onshape_config.simplifySTLs,
-        "maxSTLSize": onshape_config.maxSTLSize,
-    }
-
-    # Write the JSON data to a file
-    with open(json_file_path, "w") as json_file:
-        json.dump(json_data, json_file, indent=4)
-
-    # Execute the command
-    subprocess.run(f"onshape-to-robot {assembly_path}", shell=True)
-
-    process_urdf_and_stl_files(assembly_path)
-
-
-def run_onshape_to_robot(onshape_config, parallel=False):
+def run_onshape_to_robot(onshape_config):
     assembly_dir = os.path.join("toddlerbot", "robot_descriptions", "assemblies")
 
-    if parallel:
-        # Use ThreadPoolExecutor to parallelize processing
-        with ThreadPoolExecutor(
-            max_workers=len(onshape_config.assembly_list)
-        ) as executor:
-            futures = [
-                executor.submit(
-                    process_assembly, onshape_config, assembly_dir, assembly_name
-                )
-                for assembly_name in onshape_config.assembly_list
-            ]
+    # Process each assembly in series
+    for doc_id, assembly_name in zip(
+        onshape_config.doc_id_list, onshape_config.assembly_list
+    ):
+        assembly_path = os.path.join(assembly_dir, assembly_name)
+        shutil.rmtree(assembly_path)
+        os.makedirs(assembly_path)
+        json_file_path = os.path.join(assembly_path, "config.json")
+        # Map the URDFConfig to the desired JSON structure
+        json_data = {
+            "documentId": doc_id,
+            "outputFormat": "urdf",
+            "assemblyName": assembly_name,
+            "robotName": assembly_name,
+            "addDummyBaseLink": "body" in assembly_name.lower(),
+            "mergeSTLs": onshape_config.mergeSTLs,
+            "mergeSTLsCollisions": onshape_config.mergeSTLsCollisions,
+            "simplifySTLs": onshape_config.simplifySTLs,
+            "maxSTLSize": onshape_config.maxSTLSize,
+        }
 
-            # Optionally, wait for all futures to complete and handle exceptions
-            for future in futures:
-                try:
-                    future.result()  # This will raise exceptions if any occurred within a thread
-                except Exception as e:
-                    print(f"Error processing assembly: {e}")
-    else:
-        # Process each assembly in series
-        for assembly_name in onshape_config.assembly_list:
-            process_assembly(onshape_config, assembly_dir, assembly_name)
+        # Write the JSON data to a file
+        with open(json_file_path, "w") as json_file:
+            json.dump(json_data, json_file, indent=4)
+
+        # Execute the command
+        subprocess.run(f"onshape-to-robot {assembly_path}", shell=True)
+
+        process_urdf_and_stl_files(assembly_path)
 
 
 def main():
     parser = argparse.ArgumentParser(description="Process the urdf.")
+    parser.add_argument(
+        "--doc-id-list",
+        type=str,
+        nargs="+",  # Indicates that one or more arguments will be consumed.
+        required=True,
+        help="The names of the documents. Need to match the names in OnShape.",
+    )
     parser.add_argument(
         "--assembly-list",
         type=str,
@@ -154,16 +138,10 @@ def main():
         required=True,
         help="The names of the assemblies. Need to match the names in OnShape.",
     )
-    parser.add_argument(
-        "--parallel",
-        action="store_true",
-        help="Whether to run onshape-to-robot in parallel.",
-    )
     args = parser.parse_args()
 
     run_onshape_to_robot(
-        OnShapeConfig(assembly_list=args.assembly_list),
-        args.parallel,
+        OnShapeConfig(doc_id_list=args.doc_id_list, assembly_list=args.assembly_list)
     )
 
 
