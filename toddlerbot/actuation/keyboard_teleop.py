@@ -3,7 +3,7 @@ import time
 import numpy as np
 from pynput import keyboard
 
-from toddlerbot.actuation.dynamixel.dynamixel_node import *
+from toddlerbot.actuation.dynamixel.dynamixel_control import *
 
 
 class KeyboardListener:
@@ -48,7 +48,7 @@ def pretty_print_positions(target_pos_rad, actual_pos_rad):
 def main():
     n_motors = 3
     init_pos = np.radians([135, 180, 180])
-    dynamixel_node = DynamixelNode(DynamixelConfig(), n_motors, init_pos)
+    dynamixel_node = DynamixelController(DynamixelConfig(), n_motors, init_pos)
 
     listener = KeyboardListener()
 

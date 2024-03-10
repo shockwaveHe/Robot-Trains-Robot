@@ -215,19 +215,6 @@ def WritePacket(buff, size):
         MZap.write([buff[i]])
 
 
-def reg_write(ID, addr, datz, size):
-    global MIGHTYZAP_WRITE_DATA
-    i = 0
-    setID(ID)
-    SetProtocalHeader()
-    SetProtocolInstruction(MIGHTYZAP_REG_WRITE)
-    AddProtocolFactor(addr)
-    for i in range(0, size):
-        AddProtocolFactor(data[i])
-    SetProtocollength_checksum()
-    SendPacket()
-
-
 def action(ID):
     global MIGHTYZAP_WRITE_DATA
     setID(ID)

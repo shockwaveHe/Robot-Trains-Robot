@@ -15,7 +15,7 @@ isOpen = 0
 class Form(QtWidgets.QDialog):
     def __init__(self, parent=None):
         QtWidgets.QDialog.__init__(self, parent)
-        self.ui = uic.loadUi("toddlerbot/actuation/mighty_zap/mighty_zap_client.ui")
+        self.ui = uic.loadUi("toddlerbot/actuation/mighty_zap/mighty_zap_app.ui")
         self.ui.Baudrate.addItem("9600")
         self.ui.Baudrate.addItem("19200")
         self.ui.Baudrate.addItem("57600")
