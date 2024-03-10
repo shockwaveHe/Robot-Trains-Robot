@@ -50,11 +50,11 @@ def compute_leg_angles(target_foot_pos, target_foot_ori, side, offsets):
 
     angles_dict = {
         "hip_yaw": hip_yaw,
-        "hip_roll": -hip_roll if side == "left" else hip_roll,
-        "hip_pitch": hip_pitch if side == "left" else -hip_pitch,
-        "knee": -knee_pitch if side == "left" else knee_pitch,
+        "hip_roll": hip_roll if side == "left" else -hip_roll,
+        "hip_pitch": -hip_pitch if side == "left" else hip_pitch,
+        "knee": knee_pitch if side == "left" else -knee_pitch,
         "ank_pitch": ankle_pitch if side == "left" else -ankle_pitch,
-        "ank_roll": ankle_roll + hip_roll,
+        "ank_roll": ankle_roll - hip_roll,
     }
     return angles_dict
 
@@ -128,14 +128,14 @@ base_config = RobotConfig(
         ("12lf_rod_end_3", "12lf_rod_3"),
         ("12lf_rod_end_4", "12lf_rod_4"),
     ],
-    com_z=0.315,
+    com_z=0.323,
     foot_size=[0.095, 0.03, 0.004],
     offsets={
         "z_offset_hip_roll_to_pitch": 0.024,  # from the hip roll joint to the hip pitch joint
-        "z_offset_thigh": 0.1075,  # from the hip pitch joint to the knee joint
+        "z_offset_thigh": 0.098,  # from the hip pitch joint to the knee joint
         "z_offset_knee": 0.0,
         "z_offset_shin": 0.1,
-        "y_offset_com_to_foot": 0.0377,  # from the hip center to the foot
+        "y_offset_com_to_foot": 0.035,  # from the hip center to the foot
     },
     compute_leg_angles=compute_leg_angles,
 )

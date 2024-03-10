@@ -296,7 +296,6 @@ def main():
     )
     foot_steps_vis = copy.deepcopy(foot_steps)
 
-    # TODO: fix the URDF CoM offset.
     # TODO: fix the small y_offset and let the body rotate with the hip
     # TODO: add the feedback control and the next plan
     # TODO: clean up the code
