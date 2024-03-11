@@ -23,6 +23,10 @@ class BaseController(ABC):
     def read_state(self):
         pass
 
+    @abstractmethod
+    def close_motors(self):
+        pass
+
     # @abstractmethod
     # def set_vel(self, vel):
     #     pass

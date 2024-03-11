@@ -9,6 +9,7 @@ from toddlerbot.control.zmp_preview_control import *
 from toddlerbot.planning.foot_step_planner import *
 from toddlerbot.sim.mujoco_sim import MujoCoSim
 from toddlerbot.sim.pybullet_sim import PyBulletSim
+from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.sim.robot import HumanoidRobot
 from toddlerbot.tasks.walking_configs import *
 from toddlerbot.utils.math_utils import round_floats
@@ -25,13 +26,12 @@ class Walking:
         self,
         robot: HumanoidRobot,
         config: WalkingConfig,
-        com_pos_init: np.ndarray,
         joint_angles: List[float],
     ):
         self.robot = robot
         self.config = config
         self.fs_steps = round(config.plan_t_step / config.control_dt)
-        self.x_offset_com_to_foot = com_pos_init[0]
+        self.x_offset_com_to_foot = robot.config.com[0]
         self.y_offset_com_to_foot = robot.config.offsets["y_offset_com_to_foot"]
 
         plan_params = FootStepPlanParameters(
@@ -42,7 +42,7 @@ class Walking:
         self.fsp = FootStepPlanner(plan_params)
 
         control_params = ZMPPreviewControlParameters(
-            com_z=robot.config.com_z - config.squat_height,
+            com_z=robot.config.com[2] - config.squat_height,
             dt=config.control_dt,
             t_preview=config.control_t_preview,
             Q_val=config.control_cost_Q_val,
@@ -54,7 +54,7 @@ class Walking:
 
         self.curr_pose = None
         self.com_curr = np.concatenate(
-            [com_pos_init[None, :2], np.zeros((2, 2))], axis=0
+            [np.array(robot.config.com)[None, :2], np.zeros((2, 2))], axis=0
         )
         self.joint_angles = joint_angles
 
@@ -269,6 +269,8 @@ def main():
         sim = PyBulletSim(robot)
     elif args.sim == "mujoco":
         sim = MujoCoSim(robot)
+    elif args.sim == "real":
+        sim = RealWorld(robot)
     else:
         raise ValueError("Unknown simulator")
 
@@ -282,8 +284,7 @@ def main():
         joint_angles["left_sho_roll"] = -np.pi / 2
         joint_angles["right_sho_roll"] = np.pi / 2
 
-    com_pos_init = sim.get_com(robot)
-    walking = Walking(robot, config, com_pos_init, joint_angles)
+    walking = Walking(robot, config, joint_angles)
 
     torso_pos_init, torso_mat_init = sim.get_torso_pose(robot)
     curr_pose = np.concatenate(
@@ -292,7 +293,7 @@ def main():
     target_pose = config.target_pose_init
 
     path, foot_steps, com_traj = walking.plan_and_control(
-        curr_pose, target_pose, com_pos_init
+        curr_pose, target_pose, np.array(robot.config.com)
     )
     foot_steps_vis = copy.deepcopy(foot_steps)
 
@@ -345,59 +346,6 @@ def main():
         )
     finally:
         if args.sim == "mujoco":
-            fig, ax = plt.subplots(figsize=(10, 6))
-            ax.set_aspect("equal")
-
-            draw_footsteps(
-                path,
-                foot_steps_vis,
-                robot.config.foot_size[:2],
-                robot.config.offsets["y_offset_com_to_foot"],
-                title="Footsteps Planning",
-                save_path="results/plots",
-                time_suffix="",
-                ax=ax,
-            )()
-
-            zmp_ref_record_x = [record[0] for record in walking.zmp_ref_record]
-            zmp_ref_record_y = [record[1] for record in walking.zmp_ref_record]
-            zmp_traj_record_x = [record[0] for record in walking.zmp_traj_record]
-            zmp_traj_record_y = [record[1] for record in walking.zmp_traj_record]
-            com_ref_record_x = [record[0] for record in walking.com_traj_record]
-            com_ref_record_y = [record[1] for record in walking.com_traj_record]
-            com_traj_record_x = [record[0] for record in com_traj_record]
-            com_traj_record_y = [record[1] for record in com_traj_record]
-
-            plot_line_graph(
-                [
-                    zmp_ref_record_y,
-                    zmp_traj_record_y,
-                    com_ref_record_y,
-                    com_traj_record_y,
-                ],
-                x=[
-                    zmp_ref_record_x,
-                    zmp_traj_record_x,
-                    com_ref_record_x,
-                    com_traj_record_x,
-                ],
-                title="Footsteps Planning",
-                x_label="X",
-                y_label="Y",
-                save_config=True,
-                save_path="results/plots",
-                time_suffix="",
-                legend_labels=["ZMP Ref", "ZMP Traj", "CoM Ref", "Com Traj"],
-                ax=ax,
-                # checkpoint_period=[
-                #     0,
-                #     0,
-                #     round(walking.fs_steps / 4),
-                #     round(walking.fs_steps / 4),
-                # ],
-                checkpoint_period=[0, 0, 0, 0],
-            )()
-
             plot_line_graph(
                 joint_angle_errors,
                 title="Joint Angle Errors",
@@ -407,6 +355,59 @@ def main():
                 save_path="results/plots",
                 time_suffix="",
             )()
+
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.set_aspect("equal")
+
+        draw_footsteps(
+            path,
+            foot_steps_vis,
+            robot.config.foot_size[:2],
+            robot.config.offsets["y_offset_com_to_foot"],
+            title="Footsteps Planning",
+            save_path="results/plots",
+            time_suffix="",
+            ax=ax,
+        )()
+
+        zmp_ref_record_x = [record[0] for record in walking.zmp_ref_record]
+        zmp_ref_record_y = [record[1] for record in walking.zmp_ref_record]
+        zmp_traj_record_x = [record[0] for record in walking.zmp_traj_record]
+        zmp_traj_record_y = [record[1] for record in walking.zmp_traj_record]
+        com_ref_record_x = [record[0] for record in walking.com_traj_record]
+        com_ref_record_y = [record[1] for record in walking.com_traj_record]
+        com_traj_record_x = [record[0] for record in com_traj_record]
+        com_traj_record_y = [record[1] for record in com_traj_record]
+
+        plot_line_graph(
+            [
+                zmp_ref_record_y,
+                zmp_traj_record_y,
+                com_ref_record_y,
+                com_traj_record_y,
+            ],
+            x=[
+                zmp_ref_record_x,
+                zmp_traj_record_x,
+                com_ref_record_x,
+                com_traj_record_x,
+            ],
+            title="Footsteps Planning",
+            x_label="X",
+            y_label="Y",
+            save_config=True,
+            save_path="results/plots",
+            time_suffix="",
+            legend_labels=["ZMP Ref", "ZMP Traj", "CoM Ref", "Com Traj"],
+            ax=ax,
+            # checkpoint_period=[
+            #     0,
+            #     0,
+            #     round(walking.fs_steps / 4),
+            #     round(walking.fs_steps / 4),
+            # ],
+            checkpoint_period=[0, 0, 0, 0],
+        )()
 
 
 if __name__ == "__main__":

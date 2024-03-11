@@ -61,6 +61,15 @@ class DynamixelController(BaseController):
         )
         self.client.write_desired_pos(self.motor_ids, np.array(self.config.init_pos))
 
+    def close_motors(self):
+        self.read_state()
+        open_clients = list(DynamixelClient.OPEN_CLIENTS)
+        for open_client in open_clients:
+            if open_client.port_handler.is_using:
+                logging.warning("Forcing client to close.")
+            open_client.port_handler.is_using = False
+            open_client.disconnect()
+
     # Receive pos and directly control the robot
     def set_pos(self, pos):
         self.client.write_desired_pos(self.motor_ids, np.array(pos))
@@ -109,5 +118,7 @@ if __name__ == "__main__":
             break
 
         i += 1
+
+    controller.close_motors()
 
     print("Process completed successfully.")

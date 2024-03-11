@@ -25,10 +25,6 @@ class ZMPPreviewController:
     def __init__(self, params: ZMPPreviewControlParameters):
         """
         Initialize the Preview Control system.
-
-        Args:
-            params (ControlParameters): Control parameters including dt, period, Q_val, and R_val.
-            com_z (float): height of the center of mass.
         """
         self.params = params
         self._setup()

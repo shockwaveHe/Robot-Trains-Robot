@@ -35,6 +35,9 @@ class MightyZapController(BaseController):
         print("MightyZap: Initializing motors...")
         self.set_pos(self.config.init_pos)
 
+    def close_motors(self):
+        mighty_zap.CloseMightyZap()
+
     # Receive LEAP pos and directly control the robot
     def set_pos(self, pos):
         for i in self.motor_ids:
@@ -65,5 +68,7 @@ if __name__ == "__main__":
             break
 
     controller.set_pos(init_pos)
+
+    controller.close_motors()
 
     print("Process completed successfully.")

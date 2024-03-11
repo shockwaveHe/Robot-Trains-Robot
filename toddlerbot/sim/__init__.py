@@ -13,13 +13,9 @@ class BaseSim(ABC):
     def get_link_pos(self, robot: HumanoidRobot, link_name: str):
         pass
 
-    @abstractmethod
-    def get_com(self, robot: HumanoidRobot):
-        pass
-
-    @abstractmethod
-    def get_zmp(self, robot: HumanoidRobot):
-        pass
+    # @abstractmethod
+    # def get_zmp(self, robot: HumanoidRobot):
+    #     pass
 
     @abstractmethod
     def set_joint_angles(self, robot: HumanoidRobot, joint_angles: List[float]):

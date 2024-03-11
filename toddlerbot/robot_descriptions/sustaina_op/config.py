@@ -130,7 +130,7 @@ sustaina_op_config = RobotConfig(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
     },
-    com_z=0.3,
+    com=[0, 0, 0.3],
     offsets={
         "z_offset_hip_roll_to_pitch": 0.0,
         "z_offset_thigh": 0.1,

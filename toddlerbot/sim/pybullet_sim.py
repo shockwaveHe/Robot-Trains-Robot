@@ -78,14 +78,6 @@ class PyBulletSim(BaseSim):
 
         raise ValueError(f"Link name {link_name} not found.")
 
-    def get_com(self, robot: HumanoidRobot):
-        base_pos, base_ori = p.getBasePositionAndOrientation(robot.id)
-
-        return np.array(base_pos)
-
-    def get_zmp(self, robot: HumanoidRobot):
-        pass
-
     def get_torso_pose(self, robot: HumanoidRobot):
         torso_pos, torso_ori = p.getBasePositionAndOrientation(robot.id)
         return torso_pos, quatxyzw2mat(torso_ori)

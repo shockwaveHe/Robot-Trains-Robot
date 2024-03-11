@@ -3,12 +3,12 @@
 import importlib
 import os
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, List
 
 
 @dataclass
 class RobotConfig:
-    com_z: float = 0.0
+    com: List[float] = None
     act_params: dict = None
     constraint_pairs: list = None
     canonical_name2link_name: dict = None

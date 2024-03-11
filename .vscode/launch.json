@@ -75,6 +75,38 @@
                 // "0.001",
             ],
             "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
+        },
+        {
+            "name": "Python: stand_base_real",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/tasks/standing.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot-name",
+                "base",
+                "--sim",
+                "real",
+                // "--sleep-time",
+                // "0.001",
+            ]
+        }
+        {
+            "name": "Python: walking_base_real",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/tasks/walking.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot-name",
+                "base",
+                "--sim",
+                "real",
+                // "--sleep-time",
+                // "0.001",
+            ]
         }
     ]
 }

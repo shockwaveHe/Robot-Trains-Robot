@@ -9,7 +9,7 @@ https://os.mbed.com/users/benkatz/code/CanMaster/
 import struct
 import time
 from dataclasses import dataclass
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 import serial
@@ -20,14 +20,14 @@ from toddlerbot.actuation import BaseController
 @dataclass
 class SunnySkyConfig:
     port: str
+    init_pos: List[float]
     kP: int = 80
-    kD: int = 50
+    kD: int = 100
     baudrate: int = 115200
     tx_data_prefix: str = ">tx_data:"
     tx_timeout: float = 1.0
     joint_limits: Tuple = (-1.57, 1.57)
     gear_ratio: float = 2.0
-    p_tol: float = 0.01
 
 
 @dataclass
@@ -130,28 +130,17 @@ class SunnySkyController(BaseController):
         )
 
         for id, p_des in zip(self.motor_ids, pos):
-            p_error = float("inf")
-            while p_error > self.config.p_tol:
-                # start_time = time.time()
-
-                # Create command with dynamic kd and fixed kp, i_ff
-                cmd = SunnySkyCommand(
-                    id=id,
-                    p_des=p_des,
-                    v_des=0.0,
-                    kp=self.config.kP,
-                    kd=self.config.kD,
-                    i_ff=0.0,
-                )
-                self.send_command(cmd)
-                state = self.read_state()
-                p_error = abs(pos - state[id][0])
-
-                # print(
-                #     f"Command Output: ID={id}, Position={state[id][0]}, Velocity={state[id][1]}, Current={state[id][2]}, Voltage={state[id][3]}"
-                # )
-                # print(f"Position Error: {p_error}")
-                # print(f"Control Frequency: {1 / (time.time() - start_time):.2f} Hz")
+            # Create command with dynamic kd and fixed kp, i_ff
+            # TODO: Implement adaptive control
+            cmd = SunnySkyCommand(
+                id=id,
+                p_des=p_des,
+                v_des=0.0,
+                kp=self.config.kP,
+                kd=self.config.kD,
+                i_ff=0.0,
+            )
+            self.send_command(cmd)
 
     def read_state(self):
         self.client.reset_input_buffer()

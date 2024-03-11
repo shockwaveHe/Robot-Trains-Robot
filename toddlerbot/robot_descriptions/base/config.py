@@ -128,7 +128,7 @@ base_config = RobotConfig(
         ("12lf_rod_end_3", "12lf_rod_3"),
         ("12lf_rod_end_4", "12lf_rod_4"),
     ],
-    com_z=0.323,
+    com=[-0.014, 0, 0.323],
     foot_size=[0.095, 0.03, 0.004],
     offsets={
         "z_offset_hip_roll_to_pitch": 0.024,  # from the hip roll joint to the hip pitch joint

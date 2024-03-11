@@ -69,16 +69,6 @@ class MujoCoSim(BaseSim):
         link_quat = self.data.body(link_name).xquat
         return np.array(link_quat)
 
-    def get_com(self, robot: HumanoidRobot):
-        # TODO: Replace this with an IMU sensor
-        mujoco.mj_comPos(self.model, self.data)
-        body_link_name = robot.config.canonical_name2link_name["body_link"]
-        com_pos = self.data.body(body_link_name).subtree_com
-        return com_pos
-
-    def get_zmp(self, robot: HumanoidRobot):
-        pass
-
     def get_torso_pose(self, robot: HumanoidRobot):
         mujoco.mj_kinematics(self.model, self.data)
         torso_pos = self.data.site("torso").xpos.copy()

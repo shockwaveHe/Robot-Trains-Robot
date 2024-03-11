@@ -123,7 +123,7 @@ robotis_op3_config = RobotConfig(
             type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
     },
-    com_z=0.36,
+    com=[0, 0, 0.36],
     foot_size=[0.127, 0.08, 0.002],
     offsets={
         "z_offset_hip_roll_to_pitch": 0.0,
