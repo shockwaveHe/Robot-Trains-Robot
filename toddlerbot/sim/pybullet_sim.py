@@ -33,14 +33,6 @@ class PyBulletSim(BaseSim):
             if not fixed:
                 self.put_robot_on_ground(robot)
 
-    def initialize_joint_angles(self, robot: HumanoidRobot):
-        joint_angles = {}
-        for name, info in robot.joints_info.items():
-            if info["active"]:
-                joint_angles[name] = p.getJointState(robot.id, self.name2idx[name])[0]
-
-        return joint_angles
-
     def put_robot_on_ground(self, robot: HumanoidRobot, z_offset: float = 0.01):
         """
         Adjust the robot's position to place its lowest point at a specified offset above the ground.

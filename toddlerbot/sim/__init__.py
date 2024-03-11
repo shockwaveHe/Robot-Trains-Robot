@@ -10,10 +10,6 @@ class BaseSim(ABC):
         pass
 
     @abstractmethod
-    def initialize_joint_angles(self, robot: HumanoidRobot):
-        pass
-
-    @abstractmethod
     def get_link_pos(self, robot: HumanoidRobot, link_name: str):
         pass
 

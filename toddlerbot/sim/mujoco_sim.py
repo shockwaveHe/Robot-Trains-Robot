@@ -28,13 +28,6 @@ class MujoCoSim(BaseSim):
             if not fixed:
                 self.put_robot_on_ground(robot)
 
-    def initialize_joint_angles(self, robot: HumanoidRobot):
-        joint_angles = {}
-        for name, info in robot.joints_info.items():
-            if info["active"]:
-                joint_angles[name] = self.data.joint(name).qpos.item()
-        return joint_angles
-
     def put_robot_on_ground(self, robot: HumanoidRobot, z_offset: float = 0.02):
         """
         Adjust the robot's position to place its lowest point at a specified offset above the ground.
@@ -96,17 +89,17 @@ class MujoCoSim(BaseSim):
         self, robot: HumanoidRobot, joint_angles: Dict[str, float]
     ):
         joint_angles_error = {}
-        for joint_name, angle in joint_angles.items():
-            joint_angles_error[joint_name] = self.data.joint(joint_name).qpos - angle
+        for name, angle in joint_angles.items():
+            joint_angles_error[name] = self.data.joint(name).qpos - angle
         return joint_angles_error
 
     def set_joint_angles(self, robot: HumanoidRobot, joint_angles: Dict[str, float]):
-        for joint_name, angle in joint_angles.items():
-            kp = robot.config.act_params[joint_name].kp
-            kv = robot.config.act_params[joint_name].kv
-            self.data.actuator(f"{joint_name}_act").ctrl = (
-                -kp * (self.data.joint(joint_name).qpos - angle)
-                - kv * self.data.joint(joint_name).qvel
+        for name, angle in joint_angles.items():
+            kp = robot.config.act_params[name].kp
+            kv = robot.config.act_params[name].kv
+            self.data.actuator(f"{name}_act").ctrl = (
+                -kp * (self.data.joint(name).qpos - angle)
+                - kv * self.data.joint(name).qvel
             )
 
     def simulate(

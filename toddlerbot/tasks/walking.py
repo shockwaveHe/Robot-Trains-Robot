@@ -274,7 +274,7 @@ def main():
 
     config = walking_configs[f"{args.robot_name}_{args.sim}"]
 
-    joint_angles = sim.initialize_joint_angles(robot)
+    joint_angles = robot.initialize_joint_angles()
     if robot.name == "robotis_op3":
         joint_angles["l_sho_roll"] = np.pi / 2
         joint_angles["r_sho_roll"] = -np.pi / 2

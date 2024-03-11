@@ -47,7 +47,7 @@ def main():
     else:
         raise ValueError("Unknown simulator")
 
-    joint_angles = sim.initialize_joint_angles(robot)
+    joint_angles = robot.initialize_joint_angles()
 
     if args.real:
         motor_controller = MotorController()

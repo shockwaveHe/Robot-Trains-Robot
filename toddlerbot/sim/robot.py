@@ -35,8 +35,9 @@ class HumanoidRobot:
 
     def get_joints_info(self):
         joints_info = {}
-        for joint in self.urdf.actuated_joints:
+        for joint, angle in zip(self.urdf.actuated_joints, self.urdf.cfg):
             joints_info[joint.name] = {
+                "init_angle": angle,
                 "type": joint.type,
                 "lowerLimit": joint.limit.lower,
                 "upperLimit": joint.limit.upper,
@@ -44,6 +45,14 @@ class HumanoidRobot:
             }
 
         return joints_info
+
+    def initialize_joint_angles(self):
+        joint_angles = {}
+        for name, info in self.joints_info.items():
+            if info["active"]:
+                joint_angles[name] = info["init_angle"]
+
+        return joint_angles
 
     def solve_ik(
         self,
