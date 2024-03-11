@@ -97,8 +97,8 @@ class PyBulletSim(BaseSim):
                 self.name2idx[name],
                 p.POSITION_CONTROL,
                 angle,
-                positionGain=robot.config.act_params[name].kp * 1e-4,
-                velocityGain=robot.config.act_params[name].kv * 1e-1,
+                # positionGain=robot.config.act_params[name].kp * 1e-4,
+                # velocityGain=robot.config.act_params[name].kv * 1e-1,
             )
 
     def simulate(

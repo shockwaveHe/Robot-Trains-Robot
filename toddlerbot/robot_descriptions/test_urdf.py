@@ -53,11 +53,7 @@ def main():
     # This function requires its parameters to be the same as its return values.
     def step_func(sim_step_idx):
         if args.sim == "pybullet":
-            joint_angles = {}
-            for name in controls.keys():
-                joint_angles[name] = p.readUserDebugParameter(controls[name])
-
-            # print(f"joint_angles: {round_floats(joint_angles, 6)}")
+            joint_angles = robot.initialize_joint_angles()
             sim.set_joint_angles(robot, joint_angles)
         else:
             raise ValueError("Only pybullet is supported for now.")

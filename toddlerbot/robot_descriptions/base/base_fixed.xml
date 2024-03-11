@@ -130,24 +130,24 @@
                 <joint name="left_ank_roll" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="1.084" armature="0.045" />
                 <geom rgba="0.615686 0.811765 0.929412 1" mesh="left_ank_roll_link_visual" class="visual" />
                 <geom rgba="0.615686 0.811765 0.929412 1" mesh="left_ank_roll_link_collision" class="collision" />
-                <body name="ank_rr_link" pos="0.01 0.0125 -0.033" quat="0 -0.0477335 0.99886 0">
-                  <inertial pos="3.45935e-05 -0.00629994 -0.0019" quat="0.479847 0.519372 -0.479847 0.519372" mass="0.000442898" diaginertia="1.3107e-08 9.09397e-09 8.37402e-09" />
+                <body name="ank_rr_link" pos="-0.01 0.0125 -0.033" quat="0 0.998779 -0.049395 0">
+                  <inertial pos="3.45935e-05 0.00629994 -0.0019" quat="0.519372 0.479847 -0.519372 0.479847" mass="0.000442898" diaginertia="1.3107e-08 9.09397e-09 8.37402e-09" />
                   <joint name="left_ank_R11" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
                   <geom rgba="0.615686 0.811765 0.929412 1" mesh="left_ank_rr_link_visual" class="visual" />
                   <geom rgba="0.615686 0.811765 0.929412 1" mesh="left_ank_rr_link_collision" class="collision" />
-                  <body name="12lf_rod_end" pos="0.0021 -0.01 -0.0019" quat="0.0295472 -0.706489 0.0295472 -0.706489">
+                  <body name="12lf_rod_end" pos="0.0021 0.01 -0.0019" quat="0.706489 -0.0295473 0.706489 -0.0295473">
                     <inertial pos="-5.78284e-11 0.0033987 -0.00200558" quat="0.500173 0.499827 -0.499827 0.500173" mass="0.0006608" diaginertia="1.15383e-08 1.06758e-08 2.37737e-09" />
                     <joint name="left_ank_R21" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
                     <geom rgba="0.972549 0.529412 0.00392157 1" mesh="left_12lf_rod_end_visual" class="visual" />
                     <geom rgba="0.972549 0.529412 0.00392157 1" mesh="left_12lf_rod_end_collision" class="collision" />
                   </body>
                 </body>
-                <body name="ank_rr_link_2" pos="-0.01 0.0125 -0.033" quat="0 0.998779 -0.049395 0">
-                  <inertial pos="3.45935e-05 0.00629994 -0.0019" quat="0.519372 0.479847 -0.519372 0.479847" mass="0.000442898" diaginertia="1.3107e-08 9.09397e-09 8.37402e-09" />
+                <body name="ank_rr_link_2" pos="0.01 0.0125 -0.033" quat="0 -0.0477335 0.99886 0">
+                  <inertial pos="3.45935e-05 -0.00629994 -0.0019" quat="0.479847 0.519372 -0.479847 0.519372" mass="0.000442898" diaginertia="1.3107e-08 9.09397e-09 8.37402e-09" />
                   <joint name="left_ank_R12" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
                   <geom rgba="0.615686 0.811765 0.929412 1" mesh="left_ank_rr_link_2_visual" class="visual" />
                   <geom rgba="0.615686 0.811765 0.929412 1" mesh="left_ank_rr_link_2_collision" class="collision" />
-                  <body name="12lf_rod_end_2" pos="0.0021 0.01 -0.0019" quat="0.706489 -0.0295473 0.706489 -0.0295473">
+                  <body name="12lf_rod_end_2" pos="0.0021 -0.01 -0.0019" quat="0.0295472 -0.706489 0.0295472 -0.706489">
                     <inertial pos="-5.78284e-11 0.0033987 -0.00200558" quat="0.500173 0.499827 -0.499827 0.500173" mass="0.0006608" diaginertia="1.15383e-08 1.06758e-08 2.37737e-09" />
                     <joint name="left_ank_R22" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
                     <geom rgba="0.972549 0.529412 0.00392157 1" mesh="left_12lf_rod_end_2_visual" class="visual" />
@@ -156,12 +156,12 @@
                 </body>
               </body>
             </body>
-            <body name="ball_joint_container" pos="0.018 -0.01 -0.0115" quat="0.706301 -0.0337527 -0.706301 0.0337527">
+            <body name="ball_joint_container" pos="0.018 -0.01 0.0283" quat="0.0349275 -0.706244 -0.0349275 0.706244">
               <inertial pos="0 0 -0.00971253" quat="0.707107 0 0 0.707107" mass="4.80374e-05" diaginertia="8.47542e-10 7.18655e-10 1.86253e-10" />
               <joint name="left_ank_B11" pos="0 0 0" axis="0 0 1" range="-0.785398 0.785398" />
               <geom rgba="0.615686 0.811765 0.929412 1" mesh="left_ball_joint_container_visual" class="visual" />
               <geom rgba="0.615686 0.811765 0.929412 1" mesh="left_ball_joint_container_collision" class="collision" />
-              <body name="ball_joint_ball" pos="0 0 -0.0115" quat="0.706489 0.0295472 -0.706489 -0.0295472">
+              <body name="ball_joint_ball" pos="0 0 -0.0115" quat="0.0295473 0.706489 0.0295473 0.706489">
                 <inertial pos="0 -0.00103087 0" quat="0.707107 0.707107 0 0" mass="4.40538e-05" diaginertia="3.1285e-10 3.12853e-10 6.25696e-11" />
                 <joint name="left_ank_B21" pos="0 0 0" axis="0 0 1" range="-0.785398 0.785398" />
                 <geom rgba="0.32913 0.443105 0.692049 1" mesh="left_ball_joint_ball_visual" class="visual" />
@@ -171,7 +171,7 @@
                   <joint name="left_ank_B31" pos="0 0 0" axis="0 0 1" range="-0.785398 0.785398" />
                   <geom rgba="0.620044 0.588367 0.498971 1" mesh="left_12lf_visual" class="visual" />
                   <geom rgba="0.620044 0.588367 0.498971 1" mesh="left_12lf_collision" class="collision" />
-                  <body name="12lf_rod" pos="2.27221e-06 0 -0.0593565" quat="0 0.949751 -0.313006 0">
+                  <body name="12lf_rod" pos="2.27221e-06 0 -0.0593562" quat="0 -0.949751 0.313006 0">
                     <inertial pos="-2.7255e-06 -1.26678e-05 0.00600548" quat="1 0.000927596 -0.000172789 -1.60279e-07" mass="0.00269456" diaginertia="3.22318e-07 3.22313e-07 1.87455e-08" />
                     <joint name="left_ank_act1" pos="0 0 0" axis="0 0 1" type="slide" range="-0.018 0.018" />
                     <geom rgba="0.800168 0.892915 0.945471 1" mesh="left_12lf_rod_visual" class="visual" />
@@ -180,12 +180,12 @@
                 </body>
               </body>
             </body>
-            <body name="ball_joint_container_2" pos="0.018 -0.01 0.0283" quat="0.0349275 -0.706244 -0.0349275 0.706244">
+            <body name="ball_joint_container_2" pos="0.018 -0.01 -0.0115" quat="0.706301 -0.0337527 -0.706301 0.0337527">
               <inertial pos="0 0 -0.00971253" quat="0.707107 0 0 0.707107" mass="4.80374e-05" diaginertia="8.47542e-10 7.18655e-10 1.86253e-10" />
               <joint name="left_ank_B12" pos="0 0 0" axis="0 0 1" range="-0.785398 0.785398" />
               <geom rgba="0.615686 0.811765 0.929412 1" mesh="left_ball_joint_container_2_visual" class="visual" />
               <geom rgba="0.615686 0.811765 0.929412 1" mesh="left_ball_joint_container_2_collision" class="collision" />
-              <body name="ball_joint_ball_2" pos="0 0 -0.0115" quat="0.0295473 0.706489 0.0295473 0.706489">
+              <body name="ball_joint_ball_2" pos="0 0 -0.0115" quat="0.706489 0.0295472 -0.706489 -0.0295472">
                 <inertial pos="0 -0.00103087 0" quat="0.707107 0.707107 0 0" mass="4.40538e-05" diaginertia="3.1285e-10 3.12853e-10 6.25696e-11" />
                 <joint name="left_ank_B22" pos="0 0 0" axis="0 0 1" range="-0.785398 0.785398" />
                 <geom rgba="0.32913 0.443105 0.692049 1" mesh="left_ball_joint_ball_2_visual" class="visual" />
@@ -195,7 +195,7 @@
                   <joint name="left_ank_B32" pos="0 0 0" axis="0 0 1" range="-0.785398 0.785398" />
                   <geom rgba="0.620044 0.588367 0.498971 1" mesh="left_12lf_2_visual" class="visual" />
                   <geom rgba="0.620044 0.588367 0.498971 1" mesh="left_12lf_2_collision" class="collision" />
-                  <body name="12lf_rod_2" pos="2.27221e-06 0 -0.0593562" quat="0 -0.949751 0.313006 0">
+                  <body name="12lf_rod_2" pos="2.27221e-06 0 -0.0593565" quat="0 0.949751 -0.313006 0">
                     <inertial pos="-2.7255e-06 -1.26678e-05 0.00600548" quat="1 0.000927596 -0.000172789 -1.60279e-07" mass="0.00269456" diaginertia="3.22318e-07 3.22313e-07 1.87455e-08" />
                     <joint name="left_ank_act2" pos="0 0 0" axis="0 0 1" type="slide" range="-0.018 0.018" />
                     <geom rgba="0.800168 0.892915 0.945471 1" mesh="left_12lf_rod_2_visual" class="visual" />
