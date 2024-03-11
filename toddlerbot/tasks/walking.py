@@ -340,8 +340,8 @@ def main():
         sim.simulate(
             step_func,
             (0, path, foot_steps, com_traj, joint_angles),
-            args.sleep_time,
             vis_flags=["foot_steps", "com_traj", "path", "torso"],
+            sleep_time=args.sleep_time,
         )
     finally:
         if args.sim == "mujoco":

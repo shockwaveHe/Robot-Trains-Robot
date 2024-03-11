@@ -64,6 +64,7 @@ class SunnySkyController(BaseController):
         print("SunnySky: Initializing motors...")
         for id in self.motor_ids:
             self.enable_motor(id)
+            self.set_pos(self.config.init_pos)
 
     def close_motors(self):
         for id in self.motor_ids:

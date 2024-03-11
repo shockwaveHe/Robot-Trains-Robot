@@ -134,8 +134,14 @@ base_config = RobotConfig(
         "z_offset_hip_roll_to_pitch": 0.024,  # from the hip roll joint to the hip pitch joint
         "z_offset_thigh": 0.098,  # from the hip pitch joint to the knee joint
         "z_offset_knee": 0.0,
-        "z_offset_shin": 0.1,
+        "z_offset_shin": 0.1,  # from the knee joint to the ankle roll joint
         "y_offset_com_to_foot": 0.035,  # from the hip center to the foot
+        # Below are for the ankle IK
+        "s1": [-0.0295, 0.0199, 0.09],
+        "f1E": [-0.0371, 0.01, -0.0125],
+        "nE": [1, 0, 0],
+        "r": 0.01,
+        "mighty_zap_len": 0.0752,
     },
     compute_leg_angles=compute_leg_angles,
 )

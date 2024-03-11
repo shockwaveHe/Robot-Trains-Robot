@@ -106,8 +106,8 @@ class MujoCoSim(BaseSim):
         self,
         step_func: Optional[Callable] = None,
         step_params: Optional[Tuple] = None,
-        sleep_time: float = 0.0,
         vis_flags: Optional[List] = [],
+        sleep_time: float = 0.0,
     ):
         viewer = mujoco.viewer.launch_passive(self.model, self.data)
         if step_params is not None:

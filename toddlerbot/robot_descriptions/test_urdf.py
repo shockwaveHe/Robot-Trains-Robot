@@ -66,7 +66,7 @@ def main():
 
         return (sim_step_idx,)
 
-    sim.simulate(step_func, (sim_step_idx,), args.sleep_time, vis_flags=[])
+    sim.simulate(step_func, (sim_step_idx,), sleep_time=args.sleep_time)
 
 
 if __name__ == "__main__":

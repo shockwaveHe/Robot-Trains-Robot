@@ -105,8 +105,8 @@ class PyBulletSim(BaseSim):
         self,
         step_func: Optional[Callable] = None,
         step_params: Optional[Tuple] = None,
-        sleep_time: float = 0.0,
         vis_flags: Optional[List] = [],
+        sleep_time: float = 0.0,
     ):
         """
         Run the main simulation loop.

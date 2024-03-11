@@ -54,8 +54,9 @@ Follow this [tutorial](https://learn.adafruit.com/adafruit-feather-m4-can-expres
 screen /dev/tty.usbxxxxx 115200
 ```
 
-
 ### Get the robot URDF fron OnShape
+This only works in Ubuntu so far.
+
 To go any further, you will need to obtain API key and secret from the [OnShape developer portal](https://dev-portal.onshape.com/keys).
 
 We recommend you to store your API key and secret in environment variables, you can add something like this in your .bashrc:
