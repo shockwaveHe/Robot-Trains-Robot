@@ -91,7 +91,7 @@
                 // "--sleep-time",
                 // "0.001",
             ]
-        }
+        },
         {
             "name": "Python: walking_base_real",
             "type": "python",

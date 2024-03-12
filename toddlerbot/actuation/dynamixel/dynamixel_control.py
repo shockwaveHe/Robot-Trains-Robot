@@ -60,6 +60,7 @@ class DynamixelController(BaseController):
             2,
         )
         self.client.write_desired_pos(self.motor_ids, np.array(self.config.init_pos))
+        time.sleep(1)
 
     def close_motors(self):
         self.read_state()

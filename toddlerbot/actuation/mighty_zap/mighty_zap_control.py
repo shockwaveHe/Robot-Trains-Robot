@@ -1,3 +1,4 @@
+import time
 from dataclasses import dataclass
 from typing import List
 
@@ -34,6 +35,7 @@ class MightyZapController(BaseController):
     def initialize_motors(self):
         print("MightyZap: Initializing motors...")
         self.set_pos(self.config.init_pos)
+        time.sleep(1)
 
     def close_motors(self):
         mighty_zap.CloseMightyZap()
@@ -53,7 +55,7 @@ class MightyZapController(BaseController):
 
 
 if __name__ == "__main__":
-    init_pos = [1800, 1800]
+    init_pos = [1808, 1808]
     controller = MightyZapController(
         MightyZapConfig(port="/dev/tty.usbserial-0001", init_pos=init_pos),
         motor_ids=[0, 1],
@@ -68,6 +70,7 @@ if __name__ == "__main__":
             break
 
     controller.set_pos(init_pos)
+    time.sleep(1)
 
     controller.close_motors()
 
