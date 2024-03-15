@@ -81,11 +81,12 @@ def plot_line_graph(
                         )
 
         if legend_labels:
-            plt.legend()
+            ax.legend()
 
     # Create and return a visualization function using the make_vis_function
     vis_function = make_vis_function(
         plot,
+        ax=ax,
         title=title,
         x_label=x_label,
         y_label=y_label,

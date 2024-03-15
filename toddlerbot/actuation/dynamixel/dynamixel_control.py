@@ -3,7 +3,7 @@ from typing import List
 
 import numpy as np
 
-from toddlerbot.actuation import BaseController
+from toddlerbot.actuation import *
 from toddlerbot.actuation.dynamixel.dynamixel_client import *
 
 
@@ -17,6 +17,14 @@ class DynamixelConfig:
     init_pos: List[float]
     baudrate: int = 57600
     control_mode: int = 5
+
+
+@dataclass
+class DynamixelState:
+    time: float
+    pos: float
+    vel: float
+    current: float
 
 
 class DynamixelController(BaseController):
@@ -36,13 +44,13 @@ class DynamixelController(BaseController):
             )
             client.connect()
 
-            print(f"Dynamixel: Connected to the port: {self.config.port}")
+            log(f"Connected to the port: {self.config.port}", header="Dynamixel")
             return client
         except Exception as e:
             raise ConnectionError("Could not connect to the Dynamixel port.")
 
     def initialize_motors(self):
-        print("Dynamixel: Initializing motors...")
+        log("Initializing motors...", header="Dynamixel")
         self.client.sync_write(
             self.motor_ids,
             np.ones(len(self.motor_ids)) * self.config.control_mode,
@@ -60,7 +68,7 @@ class DynamixelController(BaseController):
             2,
         )
         self.client.write_desired_pos(self.motor_ids, np.array(self.config.init_pos))
-        time.sleep(1)
+        time.sleep(0.1)
 
     def close_motors(self):
         self.read_state()
@@ -77,7 +85,17 @@ class DynamixelController(BaseController):
 
     # read state
     def read_state(self):
-        return self.client.read_pos_vel_cur()
+        state_dict = {}
+        pos_arr, vel_arr, current_arr = self.client.read_pos_vel_cur()
+        for i, id in enumerate(self.motor_ids):
+            state_dict[id] = DynamixelState(
+                time=time.time(),
+                pos=pos_arr[i],
+                vel=vel_arr[i],
+                current=current_arr[i],
+            )
+
+        return state_dict
 
 
 if __name__ == "__main__":
@@ -98,9 +116,7 @@ if __name__ == "__main__":
     while i < 30:
         controller.set_pos(pos)
         state = controller.read_state()
-        # print(state)
         p_error = np.abs(state[0] - pos)
-        print(p_error)
 
         if p_error.mean() < 0.01:
             break
@@ -111,9 +127,7 @@ if __name__ == "__main__":
     while i < 30:
         controller.set_pos(controller.config.init_pos)
         state = controller.read_state()
-        # print(state)
         p_error = np.abs(state[0] - controller.config.init_pos)
-        print(p_error)
 
         if p_error.mean() < 0.01:
             break
@@ -122,4 +136,4 @@ if __name__ == "__main__":
 
     controller.close_motors()
 
-    print("Process completed successfully.")
+    log("Process completed successfully.", header="Dynamixel")

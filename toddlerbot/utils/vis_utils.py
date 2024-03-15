@@ -8,12 +8,15 @@ import seaborn as sns
 
 from toddlerbot.utils.misc_utils import log
 
-plt.switch_backend("Agg")
+backend_curr = "Agg"
+non_interactive_backends = ["Agg", "SVG", "PDF", "PS"]
+plt.switch_backend(backend_curr)
 sns.set_theme(style="darkgrid")
 
 
 def make_vis_function(
     func,
+    ax=None,
     title=None,
     x_label=None,
     y_label=None,
@@ -50,7 +53,7 @@ def make_vis_function(
                 "parameters": kwargs,
             }
 
-            config_file_name = f"{title.lower().replace(' ', '_')}_config{suffix}.pkl"
+            config_file_name = f"{title.lower().replace(' ', '_')}{suffix}_config.pkl"
             config_path = os.path.join(save_path, config_file_name)
             with open(config_path, "wb") as file:
                 pickle.dump(config, file)
@@ -63,13 +66,13 @@ def make_vis_function(
         result = func(*args, **kwargs)
 
         if title:
-            plt.title(title)
+            ax.set_title(title)
         if x_label:
-            plt.xlabel(x_label)
+            ax.set_xlabel(x_label)
         if y_label:
-            plt.ylabel(y_label)
+            ax.set_ylabel(y_label)
 
-        plt.grid(True)
+        ax.grid(True)
         plt.tight_layout()
 
         if save_path:
@@ -82,7 +85,8 @@ def make_vis_function(
             plt.savefig(file_path)
             log(f"Graph saved as: {file_path}", header="Visualization")
         else:
-            plt.show()
+            if backend_curr not in non_interactive_backends:
+                plt.show()
 
         return result
 

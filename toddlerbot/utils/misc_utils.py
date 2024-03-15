@@ -1,14 +1,21 @@
 import logging
 
-logging.getLogger("matplotlib.font_manager").setLevel(logging.ERROR)
-
 from colorama import Fore, Style, init
 
 # Initialize colorama to auto-reset color codes after each print statement
 init(autoreset=True)
 
 # Set up basic configuration for logging
-logging.basicConfig(level=logging.DEBUG, format="%(message)s")
+logging.basicConfig(level=logging.WARNING)
+
+# Configure your specific logger
+my_logger = logging.getLogger("my_logger")
+my_logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler()
+formatter = logging.Formatter("%(message)s")
+handler.setFormatter(formatter)
+my_logger.addHandler(handler)
+my_logger.propagate = False
 
 
 def log(message, header=None, level="info"):
@@ -21,10 +28,8 @@ def log(message, header=None, level="info"):
     """
     header_msg = f"[{header}] " if header is not None else ""
     if level == "error":
-        logging.error(Fore.RED + "[Error] " + header_msg + message + Style.RESET_ALL)
+        my_logger.error(Fore.RED + "[Error] " + header_msg + message)
     elif level == "warning":
-        logging.warning(
-            Fore.YELLOW + "[Warning] " + header_msg + message + Style.RESET_ALL
-        )
+        my_logger.warning(Fore.YELLOW + "[Warning] " + header_msg + message)
     else:
-        logging.info(Fore.WHITE + "[Info] " + header_msg + message + Style.RESET_ALL)
+        my_logger.info(Fore.WHITE + "[Info] " + header_msg + message)

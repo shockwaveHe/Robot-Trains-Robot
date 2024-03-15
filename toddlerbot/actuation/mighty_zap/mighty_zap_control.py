@@ -4,7 +4,7 @@ from typing import List
 
 import numpy as np
 
-from toddlerbot.actuation import BaseController
+from toddlerbot.actuation import *
 from toddlerbot.actuation.mighty_zap import mighty_zap
 
 
@@ -13,6 +13,12 @@ class MightyZapConfig:
     port: str
     init_pos: List[float]
     baudrate: int = 57600
+
+
+@dataclass
+class MightyZapState:
+    time: float
+    pos: float
 
 
 class MightyZapController(BaseController):
@@ -28,14 +34,14 @@ class MightyZapController(BaseController):
     def connect_to_client(self):
         try:
             mighty_zap.OpenMightyZap(self.config.port, self.config.baudrate)
-            print(f"MightyZap: Connected to the port: {self.config.port}")
+            log(f"Connected to the port: {self.config.port}", header="MightyZap")
         except Exception as e:
             raise ConnectionError("Could not connect to any MightyZap port.")
 
     def initialize_motors(self):
-        print("MightyZap: Initializing motors...")
+        log("Initializing motors...", header="MightyZap")
         self.set_pos(self.config.init_pos)
-        time.sleep(1)
+        time.sleep(0.1)
 
     def close_motors(self):
         mighty_zap.CloseMightyZap()
@@ -47,11 +53,13 @@ class MightyZapController(BaseController):
 
     # read position
     def read_state(self):
-        pos = []
-        for i in self.motor_ids:
-            pos.append(mighty_zap.PresentPosition(i))
+        state_dict = {}
+        for i, id in enumerate(self.motor_ids):
+            state_dict[id] = MightyZapState(
+                time=time.time(), pos=mighty_zap.PresentPosition(id)
+            )
 
-        return pos
+        return state_dict
 
 
 if __name__ == "__main__":
@@ -64,7 +72,10 @@ if __name__ == "__main__":
     controller.set_pos([3000, 3000])
     while True:
         state = controller.read_state()
-        print(f"Actuator 1 Position: {state[0]}, Actuator 2 Position: {state[1]}")
+        log(
+            f"Actuator 1 Position: {state[0]}, Actuator 2 Position: {state[1]}",
+            header="MightyZap",
+        )
 
         if state[0] >= 2990 and state[1] >= 2990:
             break
@@ -74,4 +85,4 @@ if __name__ == "__main__":
 
     controller.close_motors()
 
-    print("Process completed successfully.")
+    log("Process completed successfully.", header="MightyZap")

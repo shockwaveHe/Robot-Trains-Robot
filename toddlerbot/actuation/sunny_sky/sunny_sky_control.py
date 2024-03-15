@@ -15,9 +15,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 import serial
 
-from toddlerbot.actuation import BaseController
-from toddlerbot.utils.math_utils import interpolate
-from toddlerbot.utils.misc_utils import log
+from toddlerbot.actuation import *
 
 
 @dataclass
@@ -28,12 +26,13 @@ class SunnySkyConfig:
     kD_schedule: Tuple = (0.1, 20)
     # overshoot: float = 0.1
     vel: float = np.pi / 2
+    interp_method: str = "cubic"
     current_limit: float = 4.0
+    joint_limits: Tuple = (-np.pi / 2, np.pi / 2)
+    gear_ratio: float = 2.0
     baudrate: int = 115200
     tx_data_prefix: str = ">tx_data:"
     tx_timeout: float = 1.0
-    joint_limits: Tuple = (-np.pi / 2, np.pi / 2)
-    gear_ratio: float = 2.0
 
 
 @dataclass
@@ -62,7 +61,6 @@ class SunnySkyController(BaseController):
         self.config = config
         self.motor_ids = motor_ids
         self.init_pos = {id: 0.0 for id in motor_ids}
-        self.time_start = time.time()
 
         self.client = self.connect_to_client()
         self.initialize_motors()
@@ -84,6 +82,8 @@ class SunnySkyController(BaseController):
             self.calibrate_motor(id)
 
         self.set_pos([0.0] * len(self.motor_ids))
+
+        time.sleep(0.1)
 
     def close_motors(self):
         for id in self.motor_ids:
@@ -189,7 +189,7 @@ class SunnySkyController(BaseController):
                 pos_driven,
                 delta_t,
                 time_curr,
-                interp_type="cubic",
+                interp_type=self.config.interp_method,
             )
             pos_interp = (
                 pos_interp_driven + self.init_pos[id]
@@ -267,7 +267,7 @@ class SunnySkyController(BaseController):
                 if id_recv == id:
                     p = p / self.config.gear_ratio - self.init_pos[id]
                     return SunnySkyState(
-                        time=time.time() - self.time_start,
+                        time=time.time(),
                         pos=p,
                         vel=v,
                         current=t,
@@ -293,7 +293,7 @@ if __name__ == "__main__":
     from toddlerbot.utils.vis_plot import plot_line_graph
 
     id = 1
-    config = SunnySkyConfig(port="/dev/tty.usbmodem1301")
+    config = SunnySkyConfig(port="/dev/tty.usbmodem1201")
     controller = SunnySkyController(config, motor_ids=[id])
 
     pos_seq_ref = [0.0, np.pi / 4, -np.pi / 4, np.pi / 4, -np.pi / 4, np.pi / 4, 0.0]
@@ -301,11 +301,11 @@ if __name__ == "__main__":
 
     time_seq = []
     pos_seq = []
-    time_offset = time.time() - controller.time_start
+    time_start = time.time()
     try:
         for pos_ref in pos_seq_ref:
             state_dict = controller.set_pos([pos_ref])
-            time_seq += [state.time - time_offset for state in state_dict[id]]
+            time_seq += [state.time - time_start for state in state_dict[id]]
             pos_seq += [state.pos for state in state_dict[id]]
     finally:
         controller.close_motors()

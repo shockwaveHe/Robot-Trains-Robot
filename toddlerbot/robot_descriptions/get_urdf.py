@@ -75,7 +75,7 @@ def process_urdf_and_stl_files(assembly_path):
         if os.path.exists(source_path):
             shutil.move(source_path, os.path.join(meshes_dir, new_stl))
 
-    # TODO: Automate the body collision link automation
+    # TODO: Automate the body collision link creation
 
     pretty_xml = prettify(root, urdf_path)
     # Write the modified XML back to the URDF file
