@@ -21,15 +21,19 @@ const float I_MAX = 4;     // Max current [A]
 const float VB_MIN = 0;    // Min voltage [V]
 const float VB_MAX = 80;   // Max voltage [V]
 
-// Target commands
-byte cmd_packet[8];
-
+// Data received from the serial port
 const byte numBytes = 32;
 byte receivedBytes[numBytes]; // an array to store the received data
+boolean newData = false;
 char startMarker = '<';
 char endMarker = '>';
 
-boolean newData = false;
+// Target commands
+float p_des, v_des, i_ff;
+uint16_t kp, kd;
+
+// State variables
+float p, v, t, vb; // Position, velocity, current, voltage
 
 void setup()
 {
@@ -59,61 +63,41 @@ void loop()
 {
     recvWithStartEndMarkers();
 
-    if (newData == true)
-    {
-        // Serial.print(">Received data: ");
-        // for (int i = 0; i < numBytes; i++)
-        // {
-        //     Serial.print(receivedBytes[i]);
-        //     if (receivedBytes[i + 1] == '\0')
-        //     {
-        //         Serial.println();
-        //         break;
-        //     }
-        //     else
-        //     {
-        //         Serial.print(", ");
-        //     }
-        // }
-
-        encodePacket();
-
-        newData = false;
+    byte cmd_packet[8];
+    if (newData == true && receivedBytes[0] == 0xFF)
+    { // Check for special command pattern
+        memcpy(cmd_packet, receivedBytes, 8);
     }
-
-    // Serial.print(">Packet data: ");
-    // for (int i = 0; i < 8; i++)
-    // {
-    //     Serial.print(cmd_packet[i]);
-    //     if (i == 7)
-    //     {
-    //         Serial.println();
-    //     }
-    //     else
-    //     {
-    //         Serial.print(", ");
-    //     }
-    // }
-
-    // Send packet
-    CAN.beginPacket(1);
-    for (int i = 0; i < 8; i++)
+    else
     {
-        CAN.write(cmd_packet[i]);
-    }
-    CAN.endPacket();
-
-    int packetSize = CAN.parsePacket();
-    // non zero packet size means things waiting in buffer
-    if (packetSize && packetSize == 7)
-    {
-        byte packet[8];
-        for (int i = 0; i < 7; i++)
+        if (newData == true)
         {
-            packet[i] = CAN.read();
+
+            // Handle regular command packets
+            memcpy(&p_des, &receivedBytes[1], sizeof(p_des));
+            memcpy(&v_des, &receivedBytes[1 + sizeof(p_des)], sizeof(v_des));
+            memcpy(&kp, &receivedBytes[1 + sizeof(p_des) + sizeof(v_des)], sizeof(kp));
+            memcpy(&kd, &receivedBytes[1 + sizeof(p_des) + sizeof(v_des) + sizeof(kp)], sizeof(kd));
+            memcpy(&i_ff, &receivedBytes[1 + sizeof(p_des) + sizeof(v_des) + sizeof(kp) + sizeof(kd)], sizeof(i_ff));
+
+            Serial.println(">rx_data:" + String(p_des) + "," + String(v_des) + "," + String(kp) + "," + String(kd) + "," + String(i_ff));
         }
-        decodePacket(packet);
+
+        // Check if the position command hits the hardware limit
+        if (t < I_MIN || t > I_MAX)
+        {
+            p_des = p;
+        }
+        encodePacket(cmd_packet);
     }
+
+    newData = false;
+
+    sendPacket(cmd_packet);
+
+    byte state_packet[8];
+    readPacket(state_packet);
+    decodePacket(state_packet);
 
     // Loop statistics
     // float loopTime = (micros() - currentMicros) / 1000000.0;
@@ -164,57 +148,45 @@ void recvWithStartEndMarkers()
     }
 }
 
-// void sendWithStartEndMarkers(uint8_t id, float p, float v, float t, float vb)
-// {
-//     char buffer[1 + 1 + 4 * sizeof(float) + 1]; // Buffer size includes start/end markers and data
+void sendPacket(byte packet[8])
+{
+    CAN.beginPacket(1);
+    for (int i = 0; i < 8; i++)
+    {
+        CAN.write(packet[i]);
+    }
+    CAN.endPacket();
+}
 
-//     buffer[0] = startMarker;
-//     buffer[1] = id; // Assuming the ID is directly after the start marker
-//     // Copy the floats into the buffer, starting after the ID
-//     memcpy(buffer + 2, &p, sizeof(p));
-//     memcpy(buffer + 2 + sizeof(p), &v, sizeof(v));
-//     memcpy(buffer + 2 + sizeof(p) + sizeof(v), &t, sizeof(t));
-//     memcpy(buffer + 2 + sizeof(p) + sizeof(v) + sizeof(t), &vb, sizeof(vb));
-//     buffer[sizeof(buffer) - 1] = endMarker; // Set the last byte as the end marker
-
-//     Serial.write(buffer, sizeof(buffer));
-// }
+void readPacket(byte packet[8])
+{
+    int packetSize = CAN.parsePacket();
+    if (packetSize && packetSize == 7)
+    {
+        for (int i = 0; i < 7; i++)
+        {
+            packet[i] = CAN.read();
+        }
+    }
+}
 
 // Purpose: Given a command, modify the packet array
 // Note: id is 11 bits, packet can contain up to 8 bytes of data
-void encodePacket()
+void encodePacket(byte packet[8])
 {
-    if (receivedBytes[0] == 0xFF)
-    { // Check for special command pattern
-        memcpy(cmd_packet, receivedBytes, 8);
-    }
-    else
-    { // Handle regular command packets
-        float p_des, v_des, i_ff;
-        uint16_t kp, kd;
+    uint16_t pos_cmd = float_to_uint(p_des, P_MIN, P_MAX, 16); // 16 bits 65535
+    uint16_t vel_cmd = float_to_uint(v_des, V_MIN, V_MAX, 12); // 12 bits 4095
+    uint16_t ffi_cmd = float_to_uint(i_ff, I_MIN, I_MAX, 12);  // 12 bits
 
-        memcpy(&p_des, &receivedBytes[1], sizeof(p_des));
-        memcpy(&v_des, &receivedBytes[1 + sizeof(p_des)], sizeof(v_des));
-        memcpy(&kp, &receivedBytes[1 + sizeof(p_des) + sizeof(v_des)], sizeof(kp));
-        memcpy(&kd, &receivedBytes[1 + sizeof(p_des) + sizeof(v_des) + sizeof(kp)], sizeof(kd));
-        memcpy(&i_ff, &receivedBytes[1 + sizeof(p_des) + sizeof(v_des) + sizeof(kp) + sizeof(kd)], sizeof(i_ff));
-
-        Serial.println(">rx_data:" + String(p_des) + "," + String(v_des) + "," + String(kp) + "," + String(kd) + "," + String(i_ff));
-
-        uint16_t pos_cmd = float_to_uint(p_des, P_MIN, P_MAX, 16); // 16 bits 65535
-        uint16_t vel_cmd = float_to_uint(v_des, V_MIN, V_MAX, 12); // 12 bits 4095
-        uint16_t ffi_cmd = float_to_uint(i_ff, I_MIN, I_MAX, 12);  // 12 bits
-
-        // Packing the commands into the packet array
-        cmd_packet[0] = pos_cmd >> 8;                               // Position command high byte
-        cmd_packet[1] = pos_cmd & 0xFF;                             // Position command low byte
-        cmd_packet[2] = (vel_cmd >> 4) & 0xFF;                      // Velocity command high part
-        cmd_packet[3] = ((vel_cmd & 0xF) << 4) | ((kp >> 8) & 0xF); // Velocity low part + Kp high part
-        cmd_packet[4] = kp & 0xFF;                                  // Kp low byte
-        cmd_packet[5] = kd >> 4;                                    // Kd high part
-        cmd_packet[6] = ((kd & 0xF) << 4) | ((ffi_cmd >> 8) & 0xF); // Kd low part + Feed-forward current high part
-        cmd_packet[7] = ffi_cmd & 0xFF;                             // Feed-forward current low byte
-    }
+    // Packing the commands into the packet array
+    packet[0] = pos_cmd >> 8;                               // Position command high byte
+    packet[1] = pos_cmd & 0xFF;                             // Position command low byte
+    packet[2] = (vel_cmd >> 4) & 0xFF;                      // Velocity command high part
+    packet[3] = ((vel_cmd & 0xF) << 4) | ((kp >> 8) & 0xF); // Velocity low part + Kp high part
+    packet[4] = kp & 0xFF;                                  // Kp low byte
+    packet[5] = kd >> 4;                                    // Kd high part
+    packet[6] = ((kd & 0xF) << 4) | ((ffi_cmd >> 8) & 0xF); // Kd low part + Feed-forward current high part
+    packet[7] = ffi_cmd & 0xFF;                             // Feed-forward current low byte
 }
 
 /*
@@ -226,13 +198,6 @@ void encodePacket()
  */
 void decodePacket(byte packet[8])
 {
-    // for (size_t i = 0; i < 8; i++)
-    // {
-    //     Serial.print(packet[i], HEX);
-    //     Serial.print(" "); // Add space between bytes for readability
-    // }
-    // Serial.println(); // End of line after printing the array
-
     // Decoding the packet from bin
     uint8_t id = packet[0];
     uint16_t p_raw = (packet[1] << 8) | packet[2];
@@ -244,25 +209,12 @@ void decodePacket(byte packet[8])
     signed_t_raw += (abs(signed_t_raw - last_t_raw) > 4000) ? ((signed_t_raw < last_t_raw) ? 4096 : -4096) : 0;
     last_t_raw = signed_t_raw;
 
-    float p = uint_to_float(p_raw, P_MIN, P_MAX, 16);
-    float v = uint_to_float(v_raw, V_MIN, V_MAX, 12);
-    float t = int_to_float_overflow(signed_t_raw, I_MIN, I_MAX, 12); // Special treatment for current, it might go out of range and wrap around.
-    float vb = uint_to_float(vb_raw, VB_MIN, VB_MAX, 8);
-
-    // Printing decoded values
-    // Serial.println();
-    // Serial.print(">Position[rad]:");
-    // Serial.println(p); // Serial.print(",");
-    // Serial.print(">Velocity[rad/s]:");
-    // Serial.println(v); // Serial.print(",");
-    // Serial.print(">Current[A]:");
-    // Serial.println(t); // Serial.print(",");
-    // Serial.print(">Voltage[V]:");
-    // Serial.println(vb); // Serial.print(",");
+    p = uint_to_float(p_raw, P_MIN, P_MAX, 16);
+    v = uint_to_float(v_raw, V_MIN, V_MAX, 12);
+    t = int_to_float_overflow(signed_t_raw, I_MIN, I_MAX, 12); // Special treatment for current, it might go out of range and wrap around.
+    vb = uint_to_float(vb_raw, VB_MIN, VB_MAX, 8);
 
     Serial.println(">tx_data:" + String(id) + "," + String(p) + "," + String(v) + "," + String(t) + "," + String(vb));
-
-    // sendWithStartEndMarkers(id, p, v, t, vb);
 }
 
 // Convert uint [0,2^bits) to float [minv,maxv)

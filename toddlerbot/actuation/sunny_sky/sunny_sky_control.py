@@ -8,6 +8,7 @@ https://os.mbed.com/users/benkatz/code/CanMaster/
 
 import struct
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple
 
@@ -15,16 +16,19 @@ import numpy as np
 import serial
 
 from toddlerbot.actuation import BaseController
+from toddlerbot.utils.math_utils import interpolate
+from toddlerbot.utils.misc_utils import log
 
 
 @dataclass
 class SunnySkyConfig:
     port: str
-    init_pos: float = np.pi
     kP: int = 40
-    kD: int = 8
+    kD: int = 50
+    kD_schedule: Tuple = (0.1, 20)
     # overshoot: float = 0.1
-    vel: float = np.pi
+    vel: float = np.pi / 2
+    current_limit: float = 4.0
     baudrate: int = 115200
     tx_data_prefix: str = ">tx_data:"
     tx_timeout: float = 1.0
@@ -34,12 +38,21 @@ class SunnySkyConfig:
 
 @dataclass
 class SunnySkyCommand:
-    id: int = 1
-    p_des: float = 0.0
-    v_des: float = 0.0
-    kP: int = 40
-    kD: int = 8
-    i_ff: float = 0.0
+    id: int
+    p_des: float
+    v_des: float
+    kP: int
+    kD: int
+    i_ff: float
+
+
+@dataclass
+class SunnySkyState:
+    time: float
+    pos: float
+    vel: float
+    current: float
+    voltage: float
 
 
 class SunnySkyController(BaseController):
@@ -48,6 +61,8 @@ class SunnySkyController(BaseController):
 
         self.config = config
         self.motor_ids = motor_ids
+        self.init_pos = {id: 0.0 for id in motor_ids}
+        self.time_start = time.time()
 
         self.client = self.connect_to_client()
         self.initialize_motors()
@@ -57,18 +72,18 @@ class SunnySkyController(BaseController):
             client = serial.Serial(
                 self.config.port, baudrate=self.config.baudrate, timeout=0.05
             )
-            print(f"SunnySky: Connected to the port: {self.config.port}")
+            log(f"Connected to the port: {self.config.port}", header="SunnySky")
             return client
         except Exception as e:
             raise ConnectionError("Could not connect to any SunnySky port.")
 
     def initialize_motors(self):
-        print("SunnySky: Initializing motors...")
+        log("Initializing motors...", header="SunnySky")
         for id in self.motor_ids:
             self.enable_motor(id)
+            self.calibrate_motor(id)
 
         self.set_pos([0.0] * len(self.motor_ids))
-        time.sleep(1)
 
     def close_motors(self):
         for id in self.motor_ids:
@@ -83,6 +98,7 @@ class SunnySkyController(BaseController):
 
         Sends data over CAN, reads response, and populates rx_data with the response.
         """
+        self.client.reset_output_buffer()
         b = struct.pack(
             "<B2f2Hf",
             command.id,
@@ -92,14 +108,12 @@ class SunnySkyController(BaseController):
             command.kD,
             command.i_ff,
         )
-        self.client.reset_output_buffer()
         self.write_to_serial_with_markers(b)
 
     def enable_motor(self, id):
         """
         Puts motor with CAN ID "id" into torque-control mode. 2nd red LED will turn on
         """
-        # print(f"Enabling motor with ID {id}...")
         b = b"\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFC"
         b = b + bytes(bytearray([id]))
         self.write_to_serial_with_markers(b)
@@ -110,7 +124,6 @@ class SunnySkyController(BaseController):
         """
         Removes motor with CAN ID "id" from torque-control mode. 2nd red LED will turn off
         """
-        # print(f"Disabling motor with ID {id}...")
         b = b"\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFD"
         b = b + bytes(bytearray([id]))
         self.write_to_serial_with_markers(b)
@@ -120,106 +133,183 @@ class SunnySkyController(BaseController):
         """
         Zero Position Sensor. Sets the mechanical position to zero.
         """
-        # print(f"Zeroing motor with ID {id}...")
         b = b"\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFE"
         b = b + bytes(bytearray([id]))
         self.write_to_serial_with_markers(b)
         time.sleep(0.1)
 
-    def set_pos(self, pos, vel=None, kP=None, kD=None, i_ff=None):
-        """
-        Set the position of the motor
-        """
-        pos_raw = np.clip(pos, self.config.joint_limits[0], self.config.joint_limits[1])
+    def calibrate_motor(self, id):
+        log(f"Calibrating motor with ID {id}...", header="SunnySky")
+        pos_curr = self._read_state_single(id).pos
+        joint_range = self.config.joint_limits[1] - self.config.joint_limits[0]
+
+        log(f"Setting lower limit for motor with ID {id}...", header="SunnySky")
+        lower_limit_state_list = self._set_pos_single(
+            id, pos_curr - joint_range, limit=False
+        )
+        time.sleep(0.1)
+        self.lower_limit = lower_limit_state_list[-1].pos
+
+        log(f"Setting upper limit for motor with ID {id}...", header="SunnySky")
+        upper_limit_state_list = self._set_pos_single(
+            id, pos_curr + joint_range, limit=False
+        )
+        time.sleep(0.1)
+        self.upper_limit = upper_limit_state_list[-1].pos
+
+        log(f"Setting zero position for motor with ID {id}...", header="SunnySky")
+        zero_pos = self.lower_limit + np.pi / 2
+        self._set_pos_single(id, zero_pos, limit=False)
+        time.sleep(0.1)
+        self.init_pos[id] = zero_pos
+
+    def _set_pos_single(
+        self, id, pos, limit=True, schedule=True, vel=None, kP=None, kD=None, i_ff=None
+    ):
+        # Create command with dynamic kd and fixed kp, i_ff
+        if limit:
+            pos_driven = np.clip(pos, *self.config.joint_limits)
+        else:
+            pos_driven = pos
+
         if vel is None:
             vel = self.config.vel
 
-        for id, p_des_raw in zip(self.motor_ids, pos_raw):
-            # Create command with dynamic kd and fixed kp, i_ff
-            time_start = time.time()
-            time_now = 0
-            p_start_raw = self.read_state()[id][0]
-            delta_t = np.abs(p_des_raw - p_start_raw) / vel
-            # print(
-            #     f"Moving motor {id} from {p_start_raw} to {p_des_raw} in {delta_t} seconds..."
-            # )
-            while time_now <= delta_t:
-                time_now = time.time() - time_start
-                pos_interp_raw = np.interp(
-                    time_now, [0, delta_t], [p_start_raw, p_des_raw]
-                )
-                pos_interp = (
-                    pos_interp_raw * self.config.gear_ratio + self.config.init_pos
-                )
-                # print(time_now, pos_interp_raw, pos_interp)
+        time_start = time.time()
+        time_curr = 0
 
-                cmd = SunnySkyCommand(
-                    id=id,
-                    p_des=pos_interp,
-                    v_des=0.0,
-                    kP=self.config.kP if kP is None else kP,
-                    kD=self.config.kD if kD is None else kD,
-                    i_ff=0.0 if i_ff is None else i_ff,
+        state = self._read_state_single(id)
+        state_list = [state]
+        pos_start_driven = state.pos
+        delta_t = np.abs(pos_driven - pos_start_driven) / vel
+        while time_curr <= delta_t:
+            time_curr = time.time() - time_start
+            pos_interp_driven = interpolate(
+                pos_start_driven,
+                pos_driven,
+                delta_t,
+                time_curr,
+                interp_type="cubic",
+            )
+            pos_interp = (
+                pos_interp_driven + self.init_pos[id]
+            ) * self.config.gear_ratio
+
+            if schedule and abs(state.pos - pos_driven) < self.config.kD_schedule[0]:
+                kD_curr = self.config.kD_schedule[1]
+            else:
+                kD_curr = self.config.kD if kD is None else kD
+
+            cmd = SunnySkyCommand(
+                id=id,
+                p_des=pos_interp,
+                v_des=0.0,
+                kP=self.config.kP if kP is None else kP,
+                kD=kD_curr,
+                i_ff=0.0 if i_ff is None else i_ff,
+            )
+            self.send_command(cmd)
+
+            state = self._read_state_single(id)
+            state_list.append(state)
+
+            if abs(state.current) > self.config.current_limit:
+                warning_str = f"Current limit reached: {state.current} A"
+                if limit:
+                    raise ValueError(warning_str)
+                else:
+                    log(warning_str, header="SunnySky", level="warning")
+                    return state_list
+
+        return state_list
+
+    def set_pos(
+        self, pos, limit=True, schedule=True, vel=None, kP=None, kD=None, i_ff=None
+    ):
+        """
+        Set the position of the motor
+        """
+        with ThreadPoolExecutor(max_workers=len(self.motor_ids)) as executor:
+            future_dict = {}
+            for id, p in zip(self.motor_ids, pos):
+                future_dict[id] = executor.submit(
+                    self._set_pos_single,
+                    id,
+                    p,
+                    limit,
+                    schedule,
+                    vel[id] if vel is not None and id in vel else None,
+                    kP[id] if kP is not None and id in kP else None,
+                    kD[id] if kD is not None and id in kD else None,
+                    i_ff[id] if i_ff is not None and id in i_ff else None,
                 )
-                self.send_command(cmd)
 
-                self.client.reset_input_buffer()
+            state_dict = {}
+            for id in self.motor_ids:
+                state_dict[id] = future_dict[id].result()
 
-    def read_state(self):
+            return state_dict
+
+    def _read_state_single(self, id):
         self.client.reset_input_buffer()
 
-        state = {}
-        start_time = time.time()
-        while time.time() - start_time < self.config.tx_timeout:
+        time_start = time.time()
+        time_curr = 0
+        while time_curr < self.config.tx_timeout:
             line = self.client.readline()
             decoded_line = line.decode().strip()
+            time_curr = time.time() - time_start
+
             if decoded_line.startswith(self.config.tx_data_prefix):
                 _, data_str = decoded_line.split(self.config.tx_data_prefix, 1)
-                id, p, v, t, vb = map(float, data_str.split(","))
-                id = int(id)
-                p = (p - self.config.init_pos) / self.config.gear_ratio
-                if not id in state:
-                    state[id] = p, v, t, vb
+                id_recv, p, v, t, vb = map(float, data_str.split(","))
+                id_recv = int(id_recv)
+                if id_recv == id:
+                    p = p / self.config.gear_ratio - self.init_pos[id]
+                    return SunnySkyState(
+                        time=time.time() - self.time_start,
+                        pos=p,
+                        vel=v,
+                        current=t,
+                        voltage=vb,
+                    )
 
-                if sorted(list(state.keys())) == sorted(self.motor_ids):
-                    return state
+        return None
 
-        return state
+    def read_state(self):
+        with ThreadPoolExecutor(max_workers=len(self.motor_ids)) as executor:
+            future_dict = {}
+            for id in self.motor_ids:
+                future_dict[id] = executor.submit(self._read_state_single, id)
+
+            state_dict = {}
+            for id in self.motor_ids:
+                state_dict[id] = future_dict[id].result()
+
+            return state_dict
 
 
 if __name__ == "__main__":
     from toddlerbot.utils.vis_plot import plot_line_graph
 
+    id = 1
     config = SunnySkyConfig(port="/dev/tty.usbmodem1301")
-    controller = SunnySkyController(config, motor_ids=[1])
+    controller = SunnySkyController(config, motor_ids=[id])
 
-    pos_seq_ref = [
-        0.0,
-        np.pi / 6,
-        0.0,
-        -np.pi / 6,
-        0.0,
-        np.pi / 6,
-        0.0,
-        -np.pi / 6,
-        0.0,
-        np.pi / 6,
-        0.0,
-    ]
+    pos_seq_ref = [0.0, np.pi / 4, -np.pi / 4, np.pi / 4, -np.pi / 4, np.pi / 4, 0.0]
     time_seq_ref = [0.0] + list(np.cumsum(np.abs(np.diff(pos_seq_ref))) / config.vel)
 
     time_seq = []
     pos_seq = []
-    time_start = time.time()
+    time_offset = time.time() - controller.time_start
     try:
         for pos_ref in pos_seq_ref:
-            controller.set_pos([pos_ref])
-            pos_now = controller.read_state()[1][0]
-            time_now = time.time() - time_start
-            pos_seq.append(pos_now)
-            time_seq.append(time_now)
+            state_dict = controller.set_pos([pos_ref])
+            time_seq += [state.time - time_offset for state in state_dict[id]]
+            pos_seq += [state.pos for state in state_dict[id]]
     finally:
         controller.close_motors()
+        log("Process completed successfully.", header="SunnySky")
 
         plot_line_graph(
             [pos_seq_ref, pos_seq],
@@ -232,4 +322,3 @@ if __name__ == "__main__":
             time_suffix=f"",
             legend_labels=["ref", "real"],
         )()
-        print("Process completed successfully.")

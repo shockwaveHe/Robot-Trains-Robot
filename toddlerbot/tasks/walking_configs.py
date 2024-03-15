@@ -48,5 +48,5 @@ walking_configs = {
     ),
     "robotis_op3_mujoco": WalkingConfig.create_config(),
     "base_mujoco": WalkingConfig.create_config(),
-    "base_real": WalkingConfig.create_config(),
+    "base_real": WalkingConfig.create_config(squat_height=0.01, actuator_steps=5),
 }

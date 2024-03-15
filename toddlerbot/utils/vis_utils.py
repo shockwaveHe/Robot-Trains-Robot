@@ -6,6 +6,8 @@ import time
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+from toddlerbot.utils.misc_utils import log
+
 plt.switch_backend("Agg")
 sns.set_theme(style="darkgrid")
 
@@ -52,7 +54,7 @@ def make_vis_function(
             config_path = os.path.join(save_path, config_file_name)
             with open(config_path, "wb") as file:
                 pickle.dump(config, file)
-                print(f"Configuration saved to: {config_path}")
+                log(f"Configuration saved to: {config_path}", header="Visualization")
 
         if not blocking:
             return
@@ -78,7 +80,7 @@ def make_vis_function(
                 save_path, f"{title.lower().replace(' ', '_')}{suffix}.png"
             )
             plt.savefig(file_path)
-            print(f"Graph saved as: {file_path}")
+            log(f"Graph saved as: {file_path}", header="Visualization")
         else:
             plt.show()
 

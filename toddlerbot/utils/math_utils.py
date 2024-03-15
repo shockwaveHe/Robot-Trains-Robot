@@ -41,9 +41,29 @@ def mat2quatxyzw(mat):
     return [quat[1], quat[2], quat[3], quat[0]]
 
 
-def quatwxyz2mat(quat):
-    return quat2mat(quat)
+def interpolate(p_start, p_end, delta_t, t, interp_type="linear"):
+    """
+    Interpolate position at time t using specified interpolation type.
 
+    Parameters:
+    - p_start: Initial position.
+    - p_end: Desired end position.
+    - delta_t: Total duration from start to end.
+    - t: Current time (within 0 to delta_t).
+    - interp_type: Type of interpolation ('linear', 'quadratic', 'cubic').
 
-def mat2quatwxyz(mat):
-    return mat2quat(mat)
+    Returns:
+    - Position at time t.
+    """
+    if interp_type == "linear":
+        return p_start + (p_end - p_start) * (t / delta_t)
+    elif interp_type == "quadratic":
+        a = (-p_end + p_start) / delta_t**2
+        b = (2 * p_end - 2 * p_start) / delta_t
+        return a * t**2 + b * t + p_start
+    elif interp_type == "cubic":
+        a = (2 * p_start - 2 * p_end) / delta_t**3
+        b = (3 * p_end - 3 * p_start) / delta_t**2
+        return a * t**3 + b * t**2 + p_start
+    else:
+        raise ValueError("Unsupported interpolation type: {}".format(interp_type))
