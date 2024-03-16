@@ -201,9 +201,9 @@ class Walking:
         self.theta_curr = 0.0
         left_foot_theta = self.theta_curr - self.left_pos[2]
         right_foot_theta = self.theta_curr - self.right_pos[2]
-        print(
-            f"theta_curr: {self.theta_curr}, left_foot_theta: {left_foot_theta}, right_foot_theta: {right_foot_theta}"
-        )
+        # print(
+        #     f"theta_curr: {self.theta_curr}, left_foot_theta: {left_foot_theta}, right_foot_theta: {right_foot_theta}"
+        # )
         left_foot_ori = [0, 0, left_foot_theta]
         right_foot_ori = [0, 0, right_foot_theta]
 
@@ -301,15 +301,17 @@ def main():
     # TODO: add the feedback control and the next plan
     # TODO: clean up the code
 
-    joint_angle_errors = []
     com_traj_record = []
+
+    time_start = time.time()
+    time_seq_ref = []
+    time_seq_dict = {}
+    joint_angle_ref_dict = {}
+    joint_angle_dict = {}
 
     # This function requires its parameters to be the same as its return values.
     def step_func(sim_step_idx, path, foot_steps, com_traj, joint_angles):
         sim_step_idx += 1
-        if args.sim == "mujoco":
-            joint_angles_error = sim.get_joint_angles_error(robot, joint_angles)
-            joint_angle_errors.append(np.linalg.norm(list(joint_angles_error.values())))
 
         if sim_step_idx >= config.actuator_steps:
             sim_step_idx = 0
@@ -333,7 +335,33 @@ def main():
                 )
                 print(f"Tracking error: {round_floats(tracking_error, 6)}")
 
+        time_ref = time.time() - time_start
+        time_seq_ref.append(time_ref)
+        for name, angle in joint_angles.items():
+            if name not in joint_angle_ref_dict:
+                joint_angle_ref_dict[name] = []
+            joint_angle_ref_dict[name].append(angle)
+
         sim.set_joint_angles(robot, joint_angles)
+
+        state_dict = sim.read_state()
+        for name in joint_angles.keys():
+            if name in sim.dynamixel_joint2motor:
+                motor_state = state_dict["dynamixel"][sim.dynamixel_joint2motor[name]]
+            elif name in sim.sunny_sky_joint2motor:
+                motor_state = state_dict["sunny_sky"][sim.sunny_sky_joint2motor[name]]
+            elif name in sim.mighty_zap_joint2motor:
+                motor_state = state_dict["mighty_zap"][sim.mighty_zap_joint2motor[name]]
+            else:
+                motor_state = None
+
+            if motor_state is not None:
+                if name not in time_seq_dict:
+                    time_seq_dict[name] = []
+                    joint_angle_dict[name] = []
+
+                time_seq_dict[name].append(motor_state.time - time_start)
+                joint_angle_dict[name].append(motor_state.pos)
 
         return sim_step_idx, path, foot_steps, com_traj, joint_angles
 
@@ -345,16 +373,13 @@ def main():
             sleep_time=args.sleep_time,
         )
     finally:
-        if args.sim == "mujoco":
-            plot_line_graph(
-                joint_angle_errors,
-                title="Joint Angle Errors",
-                x_label="Simulation Step",
-                y_label="Joint Angle Error",
-                save_config=True,
-                save_path="results/plots",
-                time_suffix="",
-            )()
+        plot_joint_tracking(
+            time_seq_dict,
+            time_seq_ref,
+            joint_angle_dict,
+            joint_angle_ref_dict,
+            robot.joint2type,
+        )
 
         fig, ax = plt.subplots(figsize=(10, 6))
         ax.set_aspect("equal")

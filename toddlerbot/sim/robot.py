@@ -33,6 +33,15 @@ class HumanoidRobot:
         self.id = 0
         self.joints_info = self.get_joints_info()
 
+        self.joint2type = {}
+        for name in self.joints_info.keys():
+            if "hip" in name:
+                self.joint2type[name] = "dynamixel"
+            elif "knee" in name:
+                self.joint2type[name] = "sunny_sky"
+            elif "ank" in name:
+                self.joint2type[name] = "mighty_zap"
+
     def get_joints_info(self):
         joints_info = {}
         for joint, angle in zip(self.urdf.actuated_joints, self.urdf.cfg):

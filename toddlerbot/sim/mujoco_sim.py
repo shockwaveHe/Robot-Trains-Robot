@@ -216,6 +216,9 @@ class MujoCoSim(BaseSim):
 
         viewer.close()
 
+    def close(self):
+        pass
+
 
 if __name__ == "__main__":
     robot = HumanoidRobot("robotis_op3")

@@ -71,7 +71,6 @@ class DynamixelController(BaseController):
         time.sleep(0.1)
 
     def close_motors(self):
-        self.read_state()
         open_clients = list(DynamixelClient.OPEN_CLIENTS)
         for open_client in open_clients:
             if open_client.port_handler.is_using:

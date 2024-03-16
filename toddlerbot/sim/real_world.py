@@ -1,5 +1,8 @@
 from concurrent.futures import ThreadPoolExecutor
 
+from autograd import grad
+from autograd import numpy as np_grad  # Use autograd's wrapped numpy
+from scipy.optimize import minimize
 from transforms3d.axangles import axangle2mat
 
 from toddlerbot.actuation.dynamixel.dynamixel_control import *
@@ -13,6 +16,7 @@ class RealWorld(BaseSim):
     def __init__(self, robot: Optional[HumanoidRobot] = None):
         super().__init__(robot)
         self.robot = robot
+        self.ankle_pos_last = np_grad.array([0, 0])
 
         self.dynamixel_joint2motor = {
             "left_hip_yaw": 7,
@@ -25,7 +29,7 @@ class RealWorld(BaseSim):
         self.dynamixel_init_pos = np.radians([135, 180, 180, 225, 180, 180])
         self.dynamixel_config = DynamixelConfig(
             port="/dev/tty.usbserial-FT8ISUJY",
-            kP=[100, 200, 200, 100, 200, 200],
+            kP=[200, 400, 400, 200, 400, 400],
             kI=[0, 0, 0, 0, 0, 0],
             kD=[100, 100, 100, 100, 100, 100],
             current_limit=[350, 350, 350, 350, 350, 350],
@@ -34,7 +38,7 @@ class RealWorld(BaseSim):
         self.sunny_sky_joint2motor = {"left_knee": 1}
         self.sunny_sky_config = SunnySkyConfig(port="/dev/tty.usbmodem1201")
 
-        self.mighty_zap_init_pos = self.ankle_ik([0, 0])
+        self.mighty_zap_init_pos = [int(x) for x in self.ankle_ik([0, 0])]
         self.mighty_zap_config = MightyZapConfig(
             port="/dev/tty.usbserial-0001", init_pos=self.mighty_zap_init_pos
         )
@@ -79,62 +83,47 @@ class RealWorld(BaseSim):
         )
         sunny_sky_pos = [joint_angles[k] for k in self.sunny_sky_joint2motor.keys()]
         ankle_pos = [-joint_angles[k] for k in self.mighty_zap_joint2motor.keys()]
-        mighty_zap_pos = self.ankle_ik(ankle_pos)
+        mighty_zap_pos = [int(x) for x in self.ankle_ik(ankle_pos)]
 
-        log(f"{round_floats(dynamixel_pos, 4)}", header="Dynamixel")
-        log(f"{round_floats(sunny_sky_pos, 4)}", header="SunnySky")
-        log(f"{mighty_zap_pos}", header="MightyZap")
+        log(f"{round_floats(dynamixel_pos, 4)}", header="Dynamixel", level="debug")
+        log(f"{round_floats(sunny_sky_pos, 4)}", header="SunnySky", level="debug")
+        log(f"{mighty_zap_pos}", header="MightyZap", level="debug")
 
         # Execute set_pos calls in parallel
         with ThreadPoolExecutor(max_workers=3) as executor:
-            executor.submit(self.dynamixel_controller.set_pos, dynamixel_pos)
+            # executor.submit(self.dynamixel_controller.set_pos, dynamixel_pos)
             executor.submit(self.sunny_sky_controller.set_pos, sunny_sky_pos)
-            executor.submit(self.mighty_zap_controller.set_pos, mighty_zap_pos)
+            # executor.submit(self.mighty_zap_controller.set_pos, mighty_zap_pos)
 
-    def ankle_fk(self, d1, d2):
-        # Implemented based on page 3 of the following paper:
-        # http://link.springer.com/10.1007/978-3-319-93188-3_49
-        # Notations are from the paper.
+    def ankle_fk(self, mighty_zap_pos):
+        def objective_function(ankle_pos, target_pos):
+            pos = self.ankle_ik(-ankle_pos)
+            error = np_grad.linalg.norm(np_grad.array(pos) - np_grad.array(target_pos))
+            return error
 
-        # TODO: Double check the implementation
-        offsets = self.robot.config.offsets
+        def ankle_ik_gradient(ankle_pos, target_pos):
+            return grad(objective_function, argnum=0)(ankle_pos, target_pos)
 
-        s1 = np.array(offsets["s1"])
-        s2 = np.array([s1[0], -s1[1], s1[2]])
-        f1E = np.array(offsets["f1E"])
-        f2E = np.array([f1E[0], -f1E[1], f1E[2]])
-        nE = np.array(offsets["nE"])
-        r = offsets["r"]
-        mighty_zap_len = offsets["mighty_zap_len"]
-
-        d1_raw = (d1 * 1e-5) + mighty_zap_len
-        d2_raw = (d2 * 1e-5) + mighty_zap_len
-
-        n_hat = nE
-        f1 = f1E
-        f2 = f2E
-
-        # Calculate the ankle position
-        n_hat = n_hat / np.linalg.norm(n_hat)
-        f1 = f1 / np.linalg.norm(f1)
-        f2 = f2 / np.linalg.norm(f2)
-
-        # Calculate the ankle position
-        delta1 = d1_raw * n_hat
-        delta2 = d2_raw * n_hat
-
-        ankle_pos = np.array(
-            [
-                np.arctan2(
-                    np.linalg.norm(np.cross(n_hat, delta1)), np.dot(n_hat, delta1)
-                ),
-                np.arctan2(
-                    np.linalg.norm(np.cross(n_hat, delta2)), np.dot(n_hat, delta2)
-                ),
-            ]
+        result = minimize(
+            lambda x: objective_function(x, mighty_zap_pos),
+            self.ankle_pos_last,  # Initial guess
+            jac=lambda x: ankle_ik_gradient(x, mighty_zap_pos),
+            method="L-BFGS-B",
+            bounds=[(-np.pi / 2, np.pi / 2), (-np.pi / 2, np.pi / 2)],
+            options={"ftol": 1e-1},
         )
+        print(result)
 
-        return ankle_pos
+        if result.success:
+            optimized_ankle_pos = result.x
+            log(
+                f"Optimized ankle position: {optimized_ankle_pos}",
+                header="MightyZap",
+                level="debug",
+            )
+            return optimized_ankle_pos
+        else:
+            raise ValueError(f"Optimization failed: {result.message}")
 
     def ankle_ik(self, ankle_pos):
         # Implemented based on page 3 of the following paper:
@@ -143,33 +132,47 @@ class RealWorld(BaseSim):
 
         offsets = self.robot.config.offsets
 
-        s1 = np.array(offsets["s1"])
-        s2 = np.array([s1[0], -s1[1], s1[2]])
-        f1E = np.array(offsets["f1E"])
-        f2E = np.array([f1E[0], -f1E[1], f1E[2]])
-        nE = np.array(offsets["nE"])
+        s1 = np_grad.array(offsets["s1"])
+        s2 = np_grad.array([s1[0], -s1[1], s1[2]])
+        f1E = np_grad.array(offsets["f1E"])
+        f2E = np_grad.array([f1E[0], -f1E[1], f1E[2]])
+        nE = np_grad.array(offsets["nE"])
         r = offsets["r"]
         mighty_zap_len = offsets["mighty_zap_len"]
 
-        R = axangle2mat([1, 0, 0], ankle_pos[0]) @ axangle2mat([0, 1, 0], ankle_pos[1])
-        n_hat = R @ nE
-        f1 = R @ f1E
-        f2 = R @ f2E
+        R_roll = np_grad.array(
+            [
+                [1, 0, 0],
+                [0, np_grad.cos(ankle_pos[0]), -np_grad.sin(ankle_pos[0])],
+                [0, np_grad.sin(ankle_pos[0]), np_grad.cos(ankle_pos[0])],
+            ]
+        )
+        R_pitch = np_grad.array(
+            [
+                [np_grad.cos(ankle_pos[1]), 0, np_grad.sin(ankle_pos[1])],
+                [0, 1, 0],
+                [-np_grad.sin(ankle_pos[1]), 0, np_grad.cos(ankle_pos[1])],
+            ]
+        )
+        R = np_grad.dot(R_roll, R_pitch)
+        n_hat = np_grad.dot(R, nE)
+        f1 = np_grad.dot(R, f1E)
+        f2 = np_grad.dot(R, f2E)
         delta1 = s1 - f1
         delta2 = s2 - f2
 
-        d1_raw = np.sqrt(
-            np.dot(n_hat, delta1) ** 2
-            + (np.linalg.norm(np.cross(n_hat, delta1)) - r) ** 2
+        d1_raw = np_grad.sqrt(
+            np_grad.dot(n_hat, delta1) ** 2
+            + (np_grad.linalg.norm(np_grad.cross(n_hat, delta1)) - r) ** 2
         )
-        d2_raw = np.sqrt(
-            np.dot(n_hat, delta2) ** 2
-            + (np.linalg.norm(np.cross(n_hat, delta2)) - r) ** 2
+        d2_raw = np_grad.sqrt(
+            np_grad.dot(n_hat, delta2) ** 2
+            + (np_grad.linalg.norm(np_grad.cross(n_hat, delta2)) - r) ** 2
         )
-        d1 = int((d1_raw - mighty_zap_len) * 1e5)
-        d2 = int((d2_raw - mighty_zap_len) * 1e5)
+        d1 = (d1_raw - mighty_zap_len) * 1e5
+        d2 = (d2_raw - mighty_zap_len) * 1e5
 
-        return [d1, d2]
+        return np_grad.array([d1, d2])
 
     def read_state(self):
         with ThreadPoolExecutor(max_workers=3) as executor:
@@ -188,9 +191,12 @@ class RealWorld(BaseSim):
                     self.dynamixel_init_pos[i] - dynamixel_state[id].pos
                 )
 
-            ankle_pos = self.ankle_fk(mighty_zap_state[0].pos, mighty_zap_state[1].pos)
-            mighty_zap_state[0].pos = ankle_pos[0]
-            mighty_zap_state[1].pos = ankle_pos[1]
+            ankle_pos = self.ankle_fk(
+                [mighty_zap_state[0].pos, mighty_zap_state[1].pos]
+            )
+            for i in range(len(ankle_pos)):
+                mighty_zap_state[i].pos = ankle_pos[i]
+                self.ankle_pos_last[i] = ankle_pos[i]
 
             return {
                 "dynamixel": dynamixel_state,
@@ -240,15 +246,6 @@ if __name__ == "__main__":
 
     joint_angles = robot.initialize_joint_angles()
 
-    joint2type = {}
-    for name in joint_angles.keys():
-        if name in sim.dynamixel_joint2motor:
-            joint2type[name] = "dynamixel"
-        elif name in sim.sunny_sky_joint2motor:
-            joint2type[name] = "sunny_sky"
-        elif name in sim.mighty_zap_joint2motor:
-            joint2type[name] = "mighty_zap"
-
     time_start = time.time()
     time_seq_ref = []
     time_seq_dict = {}
@@ -288,55 +285,10 @@ if __name__ == "__main__":
 
     sim.close()
 
-    x_list = []
-    y_list = []
-    legend_labels = []
-    for name in time_seq_dict.keys():
-        x_list.append(time_seq_dict[name])
-        x_list.append(time_seq_ref)
-        y_list.append(joint_angle_dict[name])
-        y_list.append(joint_angle_ref_dict[name])
-        legend_labels.append(name)
-        legend_labels.append(name + "_ref")
-
-    fig, axs = plt.subplots(3, 3, figsize=(15, 10))
-    plt.subplots_adjust(hspace=0.4, wspace=0.4)
-
-    time_suffix = "tracking"
-    colors_dict = {
-        "dynamixel": "cyan",
-        "sunny_sky": "oldlace",
-        "mighty_zap": "whitesmoke",
-    }
-    for i, ax in enumerate(axs.flat):
-        ax.set_ylim([-np.pi / 2, np.pi / 2])
-        ax.set_facecolor(colors_dict[joint2type[legend_labels[2 * i]]])
-        plot_line_graph(
-            y_list[2 * i : 2 * i + 2],
-            x_list[2 * i : 2 * i + 2],
-            title=f"{legend_labels[2*i]}",
-            x_label="time (s)",
-            y_label="position (rad)",
-            save_config=True if i == len(axs.flat) - 1 else False,
-            save_path="results/plots" if i == len(axs.flat) - 1 else None,
-            time_suffix=time_suffix,
-            ax=ax,
-            legend_labels=legend_labels[2 * i : 2 * i + 2],
-        )()
-
-    time_str = time.strftime("%Y%m%d_%H%M%S")
-    file_name_before = f"{legend_labels[-2]}_{time_suffix}"
-    file_name_after = f"joint_angles_{time_suffix}_{time_str}"
-    os.rename(
-        os.path.join("results/plots", f"{file_name_before}.png"),
-        os.path.join("results/plots", f"{file_name_after}.png"),
-    )
-    os.rename(
-        os.path.join("results/plots", f"{file_name_before}_config.pkl"),
-        os.path.join("results/plots", f"{file_name_after}_config.pkl"),
-    )
-
-    log(
-        f"Renamed the files from {file_name_before} to {file_name_after}",
-        header="RealWorld",
+    plot_joint_tracking(
+        time_seq_dict,
+        time_seq_ref,
+        joint_angle_dict,
+        joint_angle_ref_dict,
+        robot.joint2type,
     )

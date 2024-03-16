@@ -74,6 +74,7 @@ def draw_footsteps(
 
     vis_function = make_vis_function(
         plot,
+        ax=ax,
         title=title,
         x_label=x_label,
         y_label=y_label,

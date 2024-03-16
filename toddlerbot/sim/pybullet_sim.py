@@ -114,7 +114,10 @@ class PyBulletSim(BaseSim):
                 if sleep_time > 0:
                     time.sleep(sleep_time)
         finally:
-            p.disconnect()
+            self.close()
+
+    def close(self):
+        p.disconnect()
 
 
 if __name__ == "__main__":

@@ -137,7 +137,10 @@ base_config = RobotConfig(
         "z_offset_shin": 0.1,  # from the knee joint to the ankle roll joint
         "y_offset_com_to_foot": 0.035,  # from the hip center to the foot
         # Below are for the ankle IK
-        "s1": [-0.0295, 0.0199, 0.09],
+        # Implemented based on page 3 of the following paper:
+        # http://link.springer.com/10.1007/978-3-319-93188-3_49
+        # Notations are from the paper.
+        "s1": [-0.0295, 0.0199, 0.085],
         "f1E": [-0.0371, 0.01, -0.0125],
         "nE": [1, 0, 0],
         "r": 0.01,
