@@ -55,6 +55,12 @@ def interpolate(p_start, p_end, delta_t, t, interp_type="linear"):
     Returns:
     - Position at time t.
     """
+    if t <= 0:
+        return p_start
+
+    if t >= delta_t:
+        return p_end
+
     if interp_type == "linear":
         return p_start + (p_end - p_start) * (t / delta_t)
     elif interp_type == "quadratic":

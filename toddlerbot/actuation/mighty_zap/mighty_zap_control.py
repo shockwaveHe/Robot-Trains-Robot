@@ -1,5 +1,7 @@
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from threading import Lock
 from typing import List
 
 import numpy as np
@@ -12,6 +14,8 @@ from toddlerbot.actuation.mighty_zap import mighty_zap
 class MightyZapConfig:
     port: str
     init_pos: List[float]
+    vel: float = 1000
+    interp_method: str = "cubic"
     baudrate: int = 57600
 
 
@@ -27,6 +31,7 @@ class MightyZapController(BaseController):
 
         self.config = config
         self.motor_ids = motor_ids
+        self.serial_lock = Lock()
 
         self.client = self.connect_to_client()
         self.initialize_motors()
@@ -44,22 +49,81 @@ class MightyZapController(BaseController):
         time.sleep(0.1)
 
     def close_motors(self):
+        for id in self.motor_ids:
+            mighty_zap.ForceEnable(id, 0)
+
         mighty_zap.CloseMightyZap()
 
     # Receive LEAP pos and directly control the robot
-    def set_pos(self, pos):
-        for i in self.motor_ids:
-            mighty_zap.GoalPosition(i, pos[i])
+    def _set_pos_single(self, id, pos, vel=None):
+        if vel is None:
+            vel = self.config.vel
+
+        time_start = time.time()
+        time_curr = 0
+
+        state = self._read_state_single(id)
+        state_list = [state]
+        pos_start = state.pos
+        delta_t = np.abs(pos - pos_start) / vel
+        while time_curr <= delta_t:
+            time_curr = time.time() - time_start
+            pos_interp = interpolate(
+                pos_start,
+                pos,
+                delta_t,
+                time_curr,
+                interp_type=self.config.interp_method,
+            )
+            with self.serial_lock:
+                mighty_zap.GoalPosition(id, round(pos_interp))
+
+            state = self._read_state_single(id)
+            state_list.append(state)
+
+            # print(
+            #     f"ID: {id}, Start: {pos_start}, Pos: {state.pos}, Ref: {pos_interp}, Time: {time_curr}"
+            # )
+
+        return state_list
+
+    def set_pos(self, pos, vel=None):
+        with ThreadPoolExecutor(max_workers=len(self.motor_ids)) as executor:
+            future_dict = {}
+            for id, p in zip(self.motor_ids, pos):
+                future_dict[id] = executor.submit(
+                    self._set_pos_single,
+                    id,
+                    p,
+                    vel is None and self.config.vel or vel,
+                )
+
+            state_dict = {}
+            for id in self.motor_ids:
+                state_dict[id] = future_dict[id].result()
+
+            return state_dict
+
+    def _read_state_single(self, id):
+        with self.serial_lock:
+            pos = -1
+            while pos < 0:
+                pos = mighty_zap.PresentPosition(id)
+
+        return MightyZapState(time=time.time(), pos=pos)
 
     # read position
     def read_state(self):
-        state_dict = {}
-        for i, id in enumerate(self.motor_ids):
-            state_dict[id] = MightyZapState(
-                time=time.time(), pos=mighty_zap.PresentPosition(id)
-            )
+        with ThreadPoolExecutor(max_workers=len(self.motor_ids)) as executor:
+            future_dict = {}
+            for id in self.motor_ids:
+                future_dict[id] = executor.submit(self._read_state_single, id)
 
-        return state_dict
+            state_dict = {}
+            for id in self.motor_ids:
+                state_dict[id] = future_dict[id].result()
+
+            return state_dict
 
 
 if __name__ == "__main__":
@@ -77,7 +141,7 @@ if __name__ == "__main__":
             header="MightyZap",
         )
 
-        if state[0] >= 2990 and state[1] >= 2990:
+        if state[0].pos >= 2990 and state[1].pos >= 2990:
             break
 
     controller.set_pos(init_pos)

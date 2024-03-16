@@ -1,8 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 
-from autograd import grad
-from autograd import numpy as np_grad  # Use autograd's wrapped numpy
-from scipy.optimize import minimize
+from scipy.optimize import root
 from transforms3d.axangles import axangle2mat
 
 from toddlerbot.actuation.dynamixel.dynamixel_control import *
@@ -16,7 +14,7 @@ class RealWorld(BaseSim):
     def __init__(self, robot: Optional[HumanoidRobot] = None):
         super().__init__(robot)
         self.robot = robot
-        self.ankle_pos_last = np_grad.array([0, 0])
+        self.ankle_pos_last = [0, 0]
 
         self.dynamixel_joint2motor = {
             "left_hip_yaw": 7,
@@ -36,9 +34,9 @@ class RealWorld(BaseSim):
             init_pos=self.dynamixel_init_pos,
         )
         self.sunny_sky_joint2motor = {"left_knee": 1}
-        self.sunny_sky_config = SunnySkyConfig(port="/dev/tty.usbmodem1201")
+        self.sunny_sky_config = SunnySkyConfig(port="/dev/tty.usbmodem21201")
 
-        self.mighty_zap_init_pos = [int(x) for x in self.ankle_ik([0, 0])]
+        self.mighty_zap_init_pos = self.ankle_ik([0, 0])
         self.mighty_zap_config = MightyZapConfig(
             port="/dev/tty.usbserial-0001", init_pos=self.mighty_zap_init_pos
         )
@@ -82,8 +80,8 @@ class RealWorld(BaseSim):
             [joint_angles[k] for k in self.dynamixel_joint2motor.keys()]
         )
         sunny_sky_pos = [joint_angles[k] for k in self.sunny_sky_joint2motor.keys()]
-        ankle_pos = [-joint_angles[k] for k in self.mighty_zap_joint2motor.keys()]
-        mighty_zap_pos = [int(x) for x in self.ankle_ik(ankle_pos)]
+        ankle_pos = [joint_angles[k] for k in self.mighty_zap_joint2motor.keys()]
+        mighty_zap_pos = self.ankle_ik(ankle_pos)
 
         log(f"{round_floats(dynamixel_pos, 4)}", header="Dynamixel", level="debug")
         log(f"{round_floats(sunny_sky_pos, 4)}", header="SunnySky", level="debug")
@@ -91,36 +89,30 @@ class RealWorld(BaseSim):
 
         # Execute set_pos calls in parallel
         with ThreadPoolExecutor(max_workers=3) as executor:
-            # executor.submit(self.dynamixel_controller.set_pos, dynamixel_pos)
+            executor.submit(self.dynamixel_controller.set_pos, dynamixel_pos)
             executor.submit(self.sunny_sky_controller.set_pos, sunny_sky_pos)
-            # executor.submit(self.mighty_zap_controller.set_pos, mighty_zap_pos)
+            executor.submit(self.mighty_zap_controller.set_pos, mighty_zap_pos)
 
     def ankle_fk(self, mighty_zap_pos):
         def objective_function(ankle_pos, target_pos):
-            pos = self.ankle_ik(-ankle_pos)
-            error = np_grad.linalg.norm(np_grad.array(pos) - np_grad.array(target_pos))
+            pos = self.ankle_ik(ankle_pos)
+            error = np.array(pos) - np.array(target_pos)
             return error
 
-        def ankle_ik_gradient(ankle_pos, target_pos):
-            return grad(objective_function, argnum=0)(ankle_pos, target_pos)
-
-        result = minimize(
+        result = root(
             lambda x: objective_function(x, mighty_zap_pos),
-            self.ankle_pos_last,  # Initial guess
-            jac=lambda x: ankle_ik_gradient(x, mighty_zap_pos),
-            method="L-BFGS-B",
-            bounds=[(-np.pi / 2, np.pi / 2), (-np.pi / 2, np.pi / 2)],
-            options={"ftol": 1e-1},
+            self.ankle_pos_last,
+            method="hybr",
+            options={"xtol": 1e-6},
         )
-        print(result)
 
         if result.success:
             optimized_ankle_pos = result.x
-            log(
-                f"Optimized ankle position: {optimized_ankle_pos}",
-                header="MightyZap",
-                level="debug",
-            )
+            # log(
+            #     f"Optimized ankle position: {optimized_ankle_pos}",
+            #     header="MightyZap",
+            #     level="debug",
+            # )
             return optimized_ankle_pos
         else:
             raise ValueError(f"Optimization failed: {result.message}")
@@ -131,48 +123,49 @@ class RealWorld(BaseSim):
         # Notations are from the paper.
 
         offsets = self.robot.config.offsets
-
-        s1 = np_grad.array(offsets["s1"])
-        s2 = np_grad.array([s1[0], -s1[1], s1[2]])
-        f1E = np_grad.array(offsets["f1E"])
-        f2E = np_grad.array([f1E[0], -f1E[1], f1E[2]])
-        nE = np_grad.array(offsets["nE"])
+        s1 = np.array(offsets["s1"])
+        s2 = np.array([s1[0], -s1[1], s1[2]])
+        f1E = np.array(offsets["f1E"])
+        f2E = np.array([f1E[0], -f1E[1], f1E[2]])
+        nE = np.array(offsets["nE"])
         r = offsets["r"]
         mighty_zap_len = offsets["mighty_zap_len"]
 
-        R_roll = np_grad.array(
+        ankle_roll = -ankle_pos[0]
+        ankle_pitch = -ankle_pos[1]
+        R_roll = np.array(
             [
                 [1, 0, 0],
-                [0, np_grad.cos(ankle_pos[0]), -np_grad.sin(ankle_pos[0])],
-                [0, np_grad.sin(ankle_pos[0]), np_grad.cos(ankle_pos[0])],
+                [0, np.cos(ankle_roll), -np.sin(ankle_roll)],
+                [0, np.sin(ankle_roll), np.cos(ankle_roll)],
             ]
         )
-        R_pitch = np_grad.array(
+        R_pitch = np.array(
             [
-                [np_grad.cos(ankle_pos[1]), 0, np_grad.sin(ankle_pos[1])],
+                [np.cos(ankle_pitch), 0, np.sin(ankle_pitch)],
                 [0, 1, 0],
-                [-np_grad.sin(ankle_pos[1]), 0, np_grad.cos(ankle_pos[1])],
+                [-np.sin(ankle_pitch), 0, np.cos(ankle_pitch)],
             ]
         )
-        R = np_grad.dot(R_roll, R_pitch)
-        n_hat = np_grad.dot(R, nE)
-        f1 = np_grad.dot(R, f1E)
-        f2 = np_grad.dot(R, f2E)
+        R = np.dot(R_roll, R_pitch)
+        n_hat = np.dot(R, nE)
+        f1 = np.dot(R, f1E)
+        f2 = np.dot(R, f2E)
         delta1 = s1 - f1
         delta2 = s2 - f2
 
-        d1_raw = np_grad.sqrt(
-            np_grad.dot(n_hat, delta1) ** 2
-            + (np_grad.linalg.norm(np_grad.cross(n_hat, delta1)) - r) ** 2
+        d1_raw = np.sqrt(
+            np.dot(n_hat, delta1) ** 2
+            + (np.linalg.norm(np.cross(n_hat, delta1)) - r) ** 2
         )
-        d2_raw = np_grad.sqrt(
-            np_grad.dot(n_hat, delta2) ** 2
-            + (np_grad.linalg.norm(np_grad.cross(n_hat, delta2)) - r) ** 2
+        d2_raw = np.sqrt(
+            np.dot(n_hat, delta2) ** 2
+            + (np.linalg.norm(np.cross(n_hat, delta2)) - r) ** 2
         )
         d1 = (d1_raw - mighty_zap_len) * 1e5
         d2 = (d2_raw - mighty_zap_len) * 1e5
 
-        return np_grad.array([d1, d2])
+        return np.array([d1, d2])
 
     def read_state(self):
         with ThreadPoolExecutor(max_workers=3) as executor:

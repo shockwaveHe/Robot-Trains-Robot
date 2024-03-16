@@ -27,7 +27,9 @@ def log(message, header=None, level="info"):
     - level: The log level (ERROR, WARNING, INFO).
     """
     header_msg = f"[{header}] " if header is not None else ""
-    if level == "error":
+    if level == "debug":
+        my_logger.debug(Fore.CYAN + "[Debug] " + header_msg + message)
+    elif level == "error":
         my_logger.error(Fore.RED + "[Error] " + header_msg + message)
     elif level == "warning":
         my_logger.warning(Fore.YELLOW + "[Warning] " + header_msg + message)

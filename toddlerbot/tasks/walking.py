@@ -316,12 +316,12 @@ def main():
         if sim_step_idx >= config.actuator_steps:
             sim_step_idx = 0
             status, joint_angles = walking.solve_joint_angles()
-            print(f"joint_angles: {round_floats(list(joint_angles.values()), 6)}")
+            # print(f"joint_angles: {round_floats(list(joint_angles.values()), 6)}")
 
             torso_pos, torso_mat = sim.get_torso_pose(robot)
             torso_mat_delta = torso_mat @ torso_mat_init.T
             torso_theta = np.arctan2(torso_mat_delta[1, 0], torso_mat_delta[0, 0])
-            print(f"torso_pos: {torso_pos}, torso_theta: {torso_theta}")
+            # print(f"torso_pos: {torso_pos}, torso_theta: {torso_theta}")
 
             com_pos = [
                 torso_pos[0] + np.cos(torso_theta) * walking.x_offset_com_to_foot,
@@ -333,7 +333,10 @@ def main():
                 tracking_error = np.array(target_pose) - np.array(
                     [*torso_pos[:2], torso_theta]
                 )
-                print(f"Tracking error: {round_floats(tracking_error, 6)}")
+                log(
+                    f"Tracking error: {round_floats(tracking_error, 6)}",
+                    header="Walking",
+                )
 
         time_ref = time.time() - time_start
         time_seq_ref.append(time_ref)

@@ -10,6 +10,7 @@ import struct
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
+from threading import Lock
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -61,6 +62,7 @@ class SunnySkyController(BaseController):
         self.config = config
         self.motor_ids = motor_ids
         self.init_pos = {id: 0.0 for id in motor_ids}
+        self.serial_lock = Lock()
 
         self.client = self.connect_to_client()
         self.initialize_motors()
@@ -90,7 +92,8 @@ class SunnySkyController(BaseController):
             self.disable_motor(id)
 
     def write_to_serial_with_markers(self, data):
-        self.client.write(b"<" + data + b">")
+        with self.serial_lock:
+            self.client.write(b"<" + data + b">")
 
     def send_command(self, command: SunnySkyCommand):
         """
@@ -150,12 +153,12 @@ class SunnySkyController(BaseController):
         time.sleep(0.1)
         self.lower_limit = lower_limit_state_list[-1].pos
 
-        log(f"Setting upper limit for motor with ID {id}...", header="SunnySky")
-        upper_limit_state_list = self._set_pos_single(
-            id, pos_curr + joint_range, limit=False
-        )
-        time.sleep(0.1)
-        self.upper_limit = upper_limit_state_list[-1].pos
+        # log(f"Setting upper limit for motor with ID {id}...", header="SunnySky")
+        # upper_limit_state_list = self._set_pos_single(
+        #     id, pos_curr + joint_range, limit=False
+        # )
+        # time.sleep(0.1)
+        # self.upper_limit = upper_limit_state_list[-1].pos
 
         log(f"Setting zero position for motor with ID {id}...", header="SunnySky")
         zero_pos = self.lower_limit + np.pi / 2
@@ -256,7 +259,9 @@ class SunnySkyController(BaseController):
         time_start = time.time()
         time_curr = 0
         while time_curr < self.config.tx_timeout:
-            line = self.client.readline()
+            with self.serial_lock:
+                line = self.client.readline()
+
             decoded_line = line.decode().strip()
             time_curr = time.time() - time_start
 
