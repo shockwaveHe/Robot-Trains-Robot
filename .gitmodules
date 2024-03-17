@@ -1,0 +1,3 @@
+[submodule "toddlerbot/actuation/sunny_sky/knee_esc"]
+	path = toddlerbot/actuation/sunny_sky/knee_esc
+	url = git@github.com:weizhuowang/knee_esc.git

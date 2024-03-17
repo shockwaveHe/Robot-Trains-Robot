@@ -37,6 +37,41 @@ plt.switch_backend("Agg")
 pigar generate
 ```
 
+### Flush code to the ESC board
+```
+brew install open-ocd
+brew install gcc-arm-embedded
+```
+Install these VSCode extensions:
+1. C/C++
+1. C/C++ Extension Pack
+1. Cortex-Debug
+1. Makefile Tools
+
+```
+git submodule update --init --recursive
+```
+
+Add the following configuration to launch.json:
+```
+{
+    "cwd": "${workspaceRoot}",
+    "executable": "toddlerbot/actuation/sunny_sky/knee_esc/Release/motorcontrol.elf",
+    "name": "Flush Knee ESC",
+    "request": "launch",
+    "type": "cortex-debug",
+    "servertype": "openocd",
+    "configFiles": [
+        "toddlerbot/actuation/sunny_sky/knee_esc/daplink.cfg"
+    ],
+    "searchDir": [],
+    "runToEntryPoint": "main",
+    "showDevDebugOutput": "none"
+}
+```
+Connect the ESC board to the computer.
+Run Flush Knee ESC from the "Run and Debug" panel.
+
 ### Install Arduino in VSCode on MacOS
 ```
 brew install arduino-cli

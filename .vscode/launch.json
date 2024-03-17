@@ -107,6 +107,21 @@
                 // "--sleep-time",
                 // "0.001",
             ]
+        },
+        {
+            "cwd": "${workspaceRoot}",
+            "executable": "toddlerbot/actuation/sunny_sky/knee_esc/Release/motorcontrol.elf",
+            "name": "Flush Knee ESC",
+            "request": "launch",
+            "type": "cortex-debug",
+            "servertype": "openocd",
+            "configFiles": [
+                "toddlerbot/actuation/sunny_sky/knee_esc/daplink.cfg"
+            ],
+            "searchDir": [],
+            "runToEntryPoint": "main",
+            "showDevDebugOutput": "none"
         }
+        
     ]
 }
