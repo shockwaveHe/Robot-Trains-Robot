@@ -126,3 +126,44 @@ Manually replace the body_link_collision.stl.
 1. Write inline document if possible
 1. Use shell scripts
 1. Consider writing unit tests
+
+### Install legged_gym
+Change line 135 in `isaacgym/python/isaacgym/torch_utils.py` from 
+```
+def get_axis_params(value, axis_idx, x_value=0., dtype=np.float, n_dims=3):
+```
+to
+```
+def get_axis_params(value, axis_idx, x_value=0., dtype=float, n_dims=3):
+```
+
+Run
+```
+pip install tensorboard
+```
+
+Change `~/anaconda3/envs/toddlerbot/lib/python3.8/site-packages/torch/utils/tensorboard/__init__.py` from
+```
+import tensorboard
+from setuptools import distutils
+LooseVersion = distutils.version.LooseVersion
+
+# ...
+
+del distutils
+
+# ...
+```
+to
+```
+import tensorboard
+# from setuptools import distutils
+# LooseVersion = distutils.version.LooseVersion
+from distutils.version import LooseVersion
+
+# ...
+
+# del distutils
+
+# ... 
+```
