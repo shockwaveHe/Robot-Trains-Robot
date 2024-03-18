@@ -2,7 +2,7 @@ import math
 
 import numpy as np
 
-from toddlerbot.robot_descriptions.robot_configs import ActuatorParameters, RobotConfig
+from toddlerbot.robot_descriptions.robot_configs import *
 
 canonical_name2link_name = {
     "body_link": "body_link",
@@ -62,64 +62,170 @@ def compute_leg_angles(target_foot_pos, target_foot_ori, side, offsets):
 base_config = RobotConfig(
     canonical_name2link_name=canonical_name2link_name,
     link_name2canonical_name=link_name2canonical_name,
-    act_params={
-        "left_hip_yaw": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+    motor_params={
+        "left_hip_yaw": MotorParameters(
+            brand="dynamixel",
+            id=7,
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
-        "left_hip_roll": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+        "left_hip_roll": MotorParameters(
+            brand="dynamixel",
+            id=8,
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
-        "left_hip_pitch": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+        "left_hip_pitch": MotorParameters(
+            brand="dynamixel",
+            id=9,
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
-        "left_knee": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+        "left_knee": MotorParameters(
+            brand="sunny_sky",
+            id=1,
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
-        "left_ank_pitch": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+        "left_ank_pitch": MotorParameters(
+            brand="mighty_zap",
+            id=1,
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
-        "left_ank_roll": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+        "left_ank_roll": MotorParameters(
+            brand="mighty_zap",
+            id=0,
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
-        # "left_ank_act1": ActuatorParameters(type="motor", damping=0.1, armature=1e-7, kp=10.0, kv=0.1),
-        # "left_ank_act2": ActuatorParameters(type="motor", damping=0.1, armature=1e-7, kp=10.0, kv=0.1),
-        "right_hip_yaw": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+        "right_hip_yaw": MotorParameters(
+            brand="dynamixel",
+            id=10,
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
-        "right_hip_roll": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+        "right_hip_roll": MotorParameters(
+            brand="dynamixel",
+            id=11,
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
-        "right_hip_pitch": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+        "right_hip_pitch": MotorParameters(
+            brand="dynamixel",
+            id=12,
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
-        "right_knee": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+        "right_knee": MotorParameters(
+            brand="sunny_sky",
+            id=2,
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
-        "right_ank_pitch": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+        "right_ank_pitch": MotorParameters(
+            brand="mighty_zap",
+            id=3,
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
-        "right_ank_roll": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+        "right_ank_roll": MotorParameters(
+            brand="mighty_zap",
+            id=2,
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
         # "right_ank_act1": ActuatorParameters(type="motor", damping=0.1, armature=1e-7, kp=10.0, kv=0.1),
         # "right_ank_act2": ActuatorParameters(type="motor", damping=0.1, armature=1e-7, kp=10.0, kv=0.1),
-        "left_sho_pitch": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+        "left_sho_pitch": MotorParameters(
+            brand="dynamixel",
+            id=0,
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
-        "left_sho_roll": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+        "left_sho_roll": MotorParameters(
+            brand="dynamixel",
+            id=1,
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
-        "left_elb": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+        "left_elb": MotorParameters(
+            brand="dynamixel",
+            id=2,
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
-        "right_sho_pitch": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+        "right_sho_pitch": MotorParameters(
+            brand="dynamixel",
+            id=3,
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
-        "right_sho_roll": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+        "right_sho_roll": MotorParameters(
+            brand="dynamixel",
+            id=4,
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
-        "right_elb": ActuatorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+        "right_elb": MotorParameters(
+            brand="dynamixel",
+            id=5,
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
     },
     constraint_pairs=[

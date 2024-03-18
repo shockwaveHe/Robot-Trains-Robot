@@ -121,7 +121,7 @@ class DynamixelController(BaseController):
         log(f"Control frequency: {control_freq}", header="Dynamixel", level="debug")
 
     # @profile
-    def read_state(self):
+    def get_motor_state(self):
         state_dict = {}
         pos_arr_raw, vel_arr, current_arr = self.client.read_pos_vel_cur()
         pos_arr = self.config.init_pos - pos_arr_raw

@@ -2,7 +2,7 @@ import math
 
 import numpy as np
 
-from toddlerbot.robot_descriptions.robot_configs import ActuatorParameters, RobotConfig
+from toddlerbot.robot_descriptions.robot_configs import MotorParameters, RobotConfig
 
 canonical_name2link_name = {
     "body_link": "base_link",
@@ -62,71 +62,71 @@ def compute_leg_angles(target_foot_pos, target_foot_ori, side, offsets):
 sustaina_op_config = RobotConfig(
     canonical_name2link_name=canonical_name2link_name,
     link_name2canonical_name=link_name2canonical_name,
-    act_params={
-        "left_waist_yaw_joint": ActuatorParameters(
+    motor_params={
+        "left_waist_yaw_joint": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
-        "left_waist_roll_joint": ActuatorParameters(
+        "left_waist_roll_joint": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
-        "left_waist_roll_mimic_joint": ActuatorParameters(
+        "left_waist_roll_mimic_joint": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
-        "left_waist_pitch_joint": ActuatorParameters(
+        "left_waist_pitch_joint": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
-        "left_knee_pitch_mimic_joint": ActuatorParameters(
+        "left_knee_pitch_mimic_joint": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
-        "left_waist_pitch_mimic_joint": ActuatorParameters(
+        "left_waist_pitch_mimic_joint": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
-        "left_knee_pitch_joint": ActuatorParameters(
+        "left_knee_pitch_joint": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
-        "left_ankle_pitch_mimic_joint": ActuatorParameters(
+        "left_ankle_pitch_mimic_joint": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
-        "left_shin_pitch_mimic_joint": ActuatorParameters(
+        "left_shin_pitch_mimic_joint": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
-        "left_ankle_pitch_joint": ActuatorParameters(
+        "left_ankle_pitch_joint": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
-        "left_ankle_roll_joint": ActuatorParameters(
+        "left_ankle_roll_joint": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
-        "right_waist_yaw_joint": ActuatorParameters(
+        "right_waist_yaw_joint": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
-        "right_waist_roll_joint": ActuatorParameters(
+        "right_waist_roll_joint": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
-        "right_waist_roll_mimic_joint": ActuatorParameters(
+        "right_waist_roll_mimic_joint": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
-        "right_waist_pitch_joint": ActuatorParameters(
+        "right_waist_pitch_joint": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
-        "right_knee_pitch_mimic_joint": ActuatorParameters(
+        "right_knee_pitch_mimic_joint": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
-        "right_waist_pitch_mimic_joint": ActuatorParameters(
+        "right_waist_pitch_mimic_joint": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
-        "right_knee_pitch_joint": ActuatorParameters(
+        "right_knee_pitch_joint": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
-        "right_ankle_pitch_mimic_joint": ActuatorParameters(
+        "right_ankle_pitch_mimic_joint": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
-        "right_shin_pitch_mimic_joint": ActuatorParameters(
+        "right_shin_pitch_mimic_joint": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
-        "right_ankle_pitch_joint": ActuatorParameters(
+        "right_ankle_pitch_joint": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
-        "right_ankle_roll_joint": ActuatorParameters(
+        "right_ankle_roll_joint": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=100.0, kv=10.0
         ),
     },

@@ -15,9 +15,19 @@ def plot_joint_tracking(
     time_seq_ref,
     joint_angle_dict,
     joint_angle_ref_dict,
-    joint2type,
-    # joint_range=(-np.pi / 2, np.pi / 2),
+    motor_params,
+    file_name="joint_angle_tracking",
+    colors_dict={
+        "dynamixel": "cyan",
+        "sunny_sky": "oldlace",
+        "mighty_zap": "whitesmoke",
+    },
 ):
+    all_angles = np.concatenate(
+        list(joint_angle_dict.values()) + list(joint_angle_ref_dict.values())
+    )
+    global_ymin, global_ymax = np.min(all_angles), np.max(all_angles)
+
     x_list = []
     y_list = []
     legend_labels = []
@@ -29,18 +39,16 @@ def plot_joint_tracking(
         legend_labels.append(name)
         legend_labels.append(name + "_ref")
 
-    fig, axs = plt.subplots(3, 3, figsize=(15, 10))
+    n_joints = len(time_seq_dict)
+    n_rows = int(np.ceil(n_joints / 3))
+    n_cols = 3
+
+    fig, axs = plt.subplots(n_rows, n_cols, figsize=(n_cols * 5, n_rows * 3))
     plt.subplots_adjust(hspace=0.4, wspace=0.4)
 
-    time_suffix = "tracking"
-    colors_dict = {
-        "dynamixel": "cyan",
-        "sunny_sky": "oldlace",
-        "mighty_zap": "whitesmoke",
-    }
     for i, ax in enumerate(axs.flat):
-        # ax.set_ylim(joint_range)
-        ax.set_facecolor(colors_dict[joint2type[legend_labels[2 * i]]])
+        ax.set_ylim(global_ymin, global_ymax)
+        ax.set_facecolor(colors_dict[motor_params[legend_labels[2 * i]].brand])
         plot_line_graph(
             y_list[2 * i : 2 * i + 2],
             x_list[2 * i : 2 * i + 2],
@@ -49,14 +57,14 @@ def plot_joint_tracking(
             y_label="Position (rad)",
             save_config=True if i == len(axs.flat) - 1 else False,
             save_path="results/plots" if i == len(axs.flat) - 1 else None,
-            time_suffix=time_suffix,
+            time_suffix="",
             ax=ax,
             legend_labels=legend_labels[2 * i : 2 * i + 2],
         )()
 
     time_str = time.strftime("%Y%m%d_%H%M%S")
-    file_name_before = f"{legend_labels[-2]}_{time_suffix}"
-    file_name_after = f"joint_angles_{time_suffix}_{time_str}"
+    file_name_before = f"{legend_labels[-2]}"
+    file_name_after = f"{file_name}_{time_str}"
     os.rename(
         os.path.join("results/plots", f"{file_name_before}.png"),
         os.path.join("results/plots", f"{file_name_after}.png"),

@@ -1,5 +1,6 @@
 import copy
 import math
+from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -7,6 +8,12 @@ from yourdfpy import URDF
 
 from toddlerbot.robot_descriptions.robot_configs import robot_configs
 from toddlerbot.utils.file_utils import find_description_path
+
+
+@dataclass
+class JointState:
+    time: float
+    pos: float
 
 
 class HumanoidRobot:
@@ -31,29 +38,45 @@ class HumanoidRobot:
         self.urdf = URDF.load(urdf_path)
 
         self.id = 0
-        self.joints_info = self.get_joints_info()
+        self.joints_info = self.get_joint_info()
 
-        self.joint2type = {}
-        for name in self.joints_info.keys():
-            if "hip" in name:
-                self.joint2type[name] = "dynamixel"
-            elif "knee" in name:
-                self.joint2type[name] = "sunny_sky"
-            elif "ank" in name:
-                self.joint2type[name] = "mighty_zap"
+        self.dynamixel_joint2id = {}
+        self.sunny_sky_joint2id = {}
+        self.mighty_zap_joint2id = {}
+        for name, motor_param in self.config.motor_params.items():
+            if motor_param.brand == "dynamixel":
+                self.dynamixel_joint2id[name] = motor_param.id
+            elif motor_param.brand == "sunny_sky":
+                self.sunny_sky_joint2id[name] = motor_param.id
+            elif motor_param.brand == "mighty_zap":
+                self.mighty_zap_joint2id[name] = motor_param.id
+            else:
+                raise ValueError(f"Motor brand '{motor_param.brand}' is not supported.")
 
-    def get_joints_info(self):
-        joints_info = {}
+    def get_joint_info(self):
+        joint_info_dict = {}
         for joint, angle in zip(self.urdf.actuated_joints, self.urdf.cfg):
-            joints_info[joint.name] = {
+            joint_info_dict[joint.name] = {
                 "init_angle": angle,
                 "type": joint.type,
                 "lowerLimit": joint.limit.lower,
                 "upperLimit": joint.limit.upper,
-                "active": joint.name in self.config.act_params.keys(),
+                "active": joint.name in self.config.motor_params.keys(),
             }
 
-        return joints_info
+        def get_brand(joint_name):
+            if joint_name in self.config.motor_params:
+                return self.config.motor_params[joint_name].brand
+            return "default"
+
+        sorted_joint_info = sorted(
+            joint_info_dict.items(), key=lambda item: (get_brand(item[0]), item[0])
+        )
+        sorted_joint_info_dict = {
+            joint_name: info for joint_name, info in sorted_joint_info
+        }
+
+        return sorted_joint_info_dict
 
     def initialize_joint_angles(self):
         joint_angles = {}

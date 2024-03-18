@@ -23,7 +23,7 @@ class BaseController(ABC):
         pass
 
     @abstractmethod
-    def read_state(self):
+    def get_motor_state(self):
         pass
 
     @abstractmethod

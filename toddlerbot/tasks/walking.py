@@ -62,7 +62,7 @@ class Walking:
 
         self.zmp_ref_record = []
         self.zmp_traj_record = []
-        self.com_traj_record = []
+        self.com_ref_record = []
 
         self.foot_steps = []
         self.com_traj = []
@@ -100,7 +100,7 @@ class Walking:
 
         self.zmp_ref_record.extend(zmp_ref)
         self.zmp_traj_record.extend(zmp_traj)
-        self.com_traj_record.extend(com_traj)
+        self.com_ref_record.extend(com_traj)
 
         return path, self.foot_steps, self.com_traj
 
@@ -347,24 +347,14 @@ def main():
 
         sim.set_joint_angles(robot, joint_angles)
 
-        state_dict = sim.read_state()
-        for name in joint_angles.keys():
-            if name in sim.dynamixel_joint2motor:
-                motor_state = state_dict["dynamixel"][sim.dynamixel_joint2motor[name]]
-            elif name in sim.sunny_sky_joint2motor:
-                motor_state = state_dict["sunny_sky"][sim.sunny_sky_joint2motor[name]]
-            elif name in sim.mighty_zap_joint2motor:
-                motor_state = state_dict["mighty_zap"][sim.mighty_zap_joint2motor[name]]
-            else:
-                motor_state = None
+        joint_state_dict = sim.get_joint_state(robot)
+        for name, joint_state in joint_state_dict.items():
+            if name not in time_seq_dict:
+                time_seq_dict[name] = []
+                joint_angle_dict[name] = []
 
-            if motor_state is not None:
-                if name not in time_seq_dict:
-                    time_seq_dict[name] = []
-                    joint_angle_dict[name] = []
-
-                time_seq_dict[name].append(motor_state.time - time_start)
-                joint_angle_dict[name].append(motor_state.pos)
+            time_seq_dict[name].append(joint_state.time - time_start)
+            joint_angle_dict[name].append(joint_state.pos)
 
         return sim_step_idx, path, foot_steps, com_traj, joint_angles
 
@@ -381,7 +371,8 @@ def main():
             time_seq_ref,
             joint_angle_dict,
             joint_angle_ref_dict,
-            robot.joint2type,
+            robot.config.motor_params,
+            file_name=f"{sim.name}_joint_angle_tracking",
         )
 
         fig, ax = plt.subplots(figsize=(10, 6))
@@ -398,27 +389,18 @@ def main():
             ax=ax,
         )()
 
-        zmp_ref_record_x = [record[0] for record in walking.zmp_ref_record]
-        zmp_ref_record_y = [record[1] for record in walking.zmp_ref_record]
-        zmp_traj_record_x = [record[0] for record in walking.zmp_traj_record]
-        zmp_traj_record_y = [record[1] for record in walking.zmp_traj_record]
-        com_ref_record_x = [record[0] for record in walking.com_traj_record]
-        com_ref_record_y = [record[1] for record in walking.com_traj_record]
-        com_traj_record_x = [record[0] for record in com_traj_record]
-        com_traj_record_y = [record[1] for record in com_traj_record]
-
         plot_line_graph(
             [
-                zmp_ref_record_y,
-                zmp_traj_record_y,
-                com_ref_record_y,
-                com_traj_record_y,
+                [record[1] for record in walking.zmp_ref_record],
+                [record[1] for record in walking.zmp_traj_record],
+                [record[1] for record in walking.com_ref_record],
+                [record[1] for record in com_traj_record],
             ],
             x=[
-                zmp_ref_record_x,
-                zmp_traj_record_x,
-                com_ref_record_x,
-                com_traj_record_x,
+                [record[0] for record in walking.zmp_ref_record],
+                [record[0] for record in walking.zmp_traj_record],
+                [record[0] for record in walking.com_ref_record],
+                [record[0] for record in com_traj_record],
             ],
             title="Footsteps Planning",
             x_label="X",

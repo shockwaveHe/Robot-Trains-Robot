@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
 from typing import Callable, Dict, List, Optional, Tuple
 
-from toddlerbot.sim.robot import HumanoidRobot
+from toddlerbot.sim.robot import *
 
 
 class BaseSim(ABC):
     @abstractmethod
-    def __init__(self, robot: Optional[HumanoidRobot] = None):
+    def __init__(self):
         pass
 
     @abstractmethod
@@ -16,6 +16,10 @@ class BaseSim(ABC):
     # @abstractmethod
     # def get_zmp(self, robot: HumanoidRobot):
     #     pass
+
+    @abstractmethod
+    def get_joint_state(self, robot: HumanoidRobot):
+        pass
 
     @abstractmethod
     def set_joint_angles(self, robot: HumanoidRobot, joint_angles: List[float]):

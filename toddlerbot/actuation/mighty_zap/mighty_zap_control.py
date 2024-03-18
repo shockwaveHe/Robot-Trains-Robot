@@ -60,7 +60,7 @@ class MightyZapController(BaseController):
         if vel is None:
             vel = self.config.vel
 
-        state = self._read_state_single(id)
+        state = self._get_motor_state_single(id)
         pos_start = state.pos
         delta_t = np.abs(pos - pos_start) / vel
 
@@ -104,7 +104,7 @@ class MightyZapController(BaseController):
                     vel is None and self.config.vel or vel,
                 )
 
-    def _read_state_single(self, id):
+    def _get_motor_state_single(self, id):
         with self.serial_lock:
             pos = -1
             while pos < 0:
@@ -113,11 +113,11 @@ class MightyZapController(BaseController):
         return MightyZapState(time=time.time(), pos=pos)
 
     # read position
-    def read_state(self):
+    def get_motor_state(self):
         with ThreadPoolExecutor(max_workers=len(self.motor_ids)) as executor:
             future_dict = {}
             for id in self.motor_ids:
-                future_dict[id] = executor.submit(self._read_state_single, id)
+                future_dict[id] = executor.submit(self._get_motor_state_single, id)
 
             state_dict = {}
             for id in self.motor_ids:
@@ -135,7 +135,7 @@ if __name__ == "__main__":
 
     controller.set_pos([3000, 3000])
     while True:
-        state = controller.read_state()
+        state = controller.get_motor_state()
         log(
             f"Actuator 1 Position: {state[0]}, Actuator 2 Position: {state[1]}",
             header="MightyZap",

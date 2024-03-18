@@ -9,7 +9,7 @@ from typing import Callable, List
 @dataclass
 class RobotConfig:
     com: List[float] = None
-    act_params: dict = None
+    motor_params: dict = None
     constraint_pairs: list = None
     canonical_name2link_name: dict = None
     link_name2canonical_name: dict = None
@@ -19,7 +19,9 @@ class RobotConfig:
 
 
 @dataclass
-class ActuatorParameters:
+class MotorParameters:
+    brand: str = ""
+    id: int = -1
     type: str = ""
     damping: float = 0.0
     armature: float = 0.0

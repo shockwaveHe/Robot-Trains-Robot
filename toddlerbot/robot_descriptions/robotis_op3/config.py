@@ -2,7 +2,7 @@ import math
 
 import numpy as np
 
-from toddlerbot.robot_descriptions.robot_configs import ActuatorParameters, RobotConfig
+from toddlerbot.robot_descriptions.robot_configs import *
 
 canonical_name2link_name = {
     "body_link": "body_link",
@@ -61,65 +61,65 @@ def compute_leg_angles(target_foot_pos, target_foot_ori, side, offsets):
 robotis_op3_config = RobotConfig(
     canonical_name2link_name=canonical_name2link_name,
     link_name2canonical_name=link_name2canonical_name,
-    act_params={
-        "l_hip_yaw": ActuatorParameters(
+    motor_params={
+        "l_hip_yaw": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
-        "l_hip_roll": ActuatorParameters(
+        "l_hip_roll": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
-        "l_hip_pitch": ActuatorParameters(
+        "l_hip_pitch": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
-        "l_knee": ActuatorParameters(
+        "l_knee": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
-        "l_ank_pitch": ActuatorParameters(
+        "l_ank_pitch": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
-        "l_ank_roll": ActuatorParameters(
+        "l_ank_roll": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
-        "r_hip_yaw": ActuatorParameters(
+        "r_hip_yaw": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
-        "r_hip_roll": ActuatorParameters(
+        "r_hip_roll": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
-        "r_hip_pitch": ActuatorParameters(
+        "r_hip_pitch": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
-        "r_knee": ActuatorParameters(
+        "r_knee": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
-        "r_ank_pitch": ActuatorParameters(
+        "r_ank_pitch": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
-        "r_ank_roll": ActuatorParameters(
+        "r_ank_roll": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
-        "l_sho_pitch": ActuatorParameters(
+        "l_sho_pitch": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
-        "l_sho_roll": ActuatorParameters(
+        "l_sho_roll": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
-        "l_el": ActuatorParameters(
+        "l_el": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
-        "r_sho_pitch": ActuatorParameters(
+        "r_sho_pitch": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
-        "r_sho_roll": ActuatorParameters(
+        "r_sho_roll": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
-        "r_el": ActuatorParameters(
+        "r_el": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
-        "head_pan": ActuatorParameters(
+        "head_pan": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
-        "head_tilt": ActuatorParameters(
+        "head_tilt": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
         ),
     },

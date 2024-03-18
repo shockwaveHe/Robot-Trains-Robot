@@ -144,18 +144,18 @@ class SunnySkyController(BaseController):
 
     def calibrate_motor(self, id):
         log(f"Calibrating motor with ID {id}...", header="SunnySky")
-        pos_curr = self._read_state_single(id).pos
+        pos_curr = self._get_motor_state_single(id).pos
         joint_range = self.config.joint_limits[1] - self.config.joint_limits[0]
 
         log(f"Setting lower limit for motor with ID {id}...", header="SunnySky")
         self._set_pos_single(id, pos_curr - joint_range, limit=False)
         time.sleep(0.1)
-        self.lower_limit = self._read_state_single(id).pos
+        self.lower_limit = self._get_motor_state_single(id).pos
 
         # log(f"Setting upper limit for motor with ID {id}...", header="SunnySky")
         # self._set_pos_single(id, pos_curr + joint_range, limit=False)
         # time.sleep(0.1)
-        # self.upper_limit = self._read_state_single(id).pos
+        # self.upper_limit = self._get_motor_state_single(id).pos
 
         log(f"Setting zero position for motor with ID {id}...", header="SunnySky")
         zero_pos = self.lower_limit + np.pi / 2
@@ -175,7 +175,7 @@ class SunnySkyController(BaseController):
         if vel is None:
             vel = self.config.vel
 
-        state = self._read_state_single(id)
+        state = self._get_motor_state_single(id)
         pos_start_driven = state.pos
         delta_t = np.abs(pos_driven - pos_start_driven) / vel
 
@@ -211,7 +211,7 @@ class SunnySkyController(BaseController):
             self.send_command(cmd)
 
             if not limit:
-                state = self._read_state_single(id)
+                state = self._get_motor_state_single(id)
                 if abs(state.current) > self.config.current_limit:
                     log(
                         f"Current limit reached: {state.current} A",
@@ -250,7 +250,7 @@ class SunnySkyController(BaseController):
                     i_ff[id] if i_ff is not None and id in i_ff else None,
                 )
 
-    def _read_state_single(self, id):
+    def _get_motor_state_single(self, id):
         self.client.reset_input_buffer()
 
         time_start = time.time()
@@ -278,11 +278,11 @@ class SunnySkyController(BaseController):
 
         return None
 
-    def read_state(self):
+    def get_motor_state(self):
         with ThreadPoolExecutor(max_workers=len(self.motor_ids)) as executor:
             future_dict = {}
             for id in self.motor_ids:
-                future_dict[id] = executor.submit(self._read_state_single, id)
+                future_dict[id] = executor.submit(self._get_motor_state_single, id)
 
             state_dict = {}
             for id in self.motor_ids:
@@ -306,9 +306,9 @@ if __name__ == "__main__":
     time_start = time.time()
     try:
         for pos_ref in pos_seq_ref:
-            state_dict = controller.set_pos([pos_ref])
-            time_seq += [state.time - time_start for state in state_dict[id]]
-            pos_seq += [state.pos for state in state_dict[id]]
+            robot_state_dict = controller.set_pos([pos_ref])
+            time_seq += [state.time - time_start for state in robot_state_dict[id]]
+            pos_seq += [state.pos for state in robot_state_dict[id]]
     finally:
         controller.close_motors()
         log("Process completed successfully.", header="SunnySky")

@@ -35,19 +35,19 @@ def add_torso_site(root):
     worldbody.insert(0, site_element)
 
 
-def update_joint_params(root, act_params):
-    if act_params is None:
+def update_joint_params(root, motor_params):
+    if motor_params is None:
         return
 
     # Iterate over all joints in the XML
     for joint in root.findall(".//joint"):
         joint_name = joint.get("name")
         # Check if the joint name is in the provided armature dictionary
-        if joint_name in act_params:
-            for field in fields(act_params[joint_name]):
+        if joint_name in motor_params:
+            for field in fields(motor_params[joint_name]):
                 if field.name in ["damping", "armature"]:
                     joint.set(
-                        field.name, str(getattr(act_params[joint_name], field.name))
+                        field.name, str(getattr(motor_params[joint_name], field.name))
                     )
 
 
@@ -142,7 +142,7 @@ def add_equality_constraints_for_leaves(root, body_pairs):
         )
 
 
-def add_actuators_to_mjcf(root, act_params):
+def add_actuators_to_mjcf(root, motor_params):
     # Create <actuator> element if it doesn't exist
     actuator = root.find("./actuator")
     if actuator is not None:
@@ -152,7 +152,7 @@ def add_actuators_to_mjcf(root, act_params):
 
     for joint in root.findall(".//joint"):
         joint_name = joint.get("name")
-        if joint_name in act_params:
+        if joint_name in motor_params:
             motor_name = f"{joint_name}_act"
             ctrlrange = joint.get("range", "-3.141592 3.141592")
             ET.SubElement(
@@ -160,8 +160,8 @@ def add_actuators_to_mjcf(root, act_params):
                 "position",
                 name=motor_name,
                 joint=joint_name,
-                kp=str(act_params[joint_name].kp),
-                kv=str(act_params[joint_name].kv),
+                kp=str(motor_params[joint_name].kp),
+                kv=str(motor_params[joint_name].kv),
                 ctrlrange=ctrlrange,
             )
 
@@ -229,7 +229,7 @@ def add_body_link(root, config, urdf_path):
         body_link.append(element)
 
 
-def update_actuator_types(root, act_params):
+def update_actuator_types(root, motor_params):
     # Create <actuator> element if it doesn't exist
     actuator = root.find("./actuator")
     if actuator is not None:
@@ -239,11 +239,11 @@ def update_actuator_types(root, act_params):
 
     for joint in root.findall(".//joint"):
         joint_name = joint.get("name")
-        if joint_name in act_params:
+        if joint_name in motor_params:
             motor_name = f"{joint_name}_act"
             ET.SubElement(
                 actuator,
-                act_params[joint_name].type,
+                motor_params[joint_name].type,
                 name=motor_name,
                 joint=joint_name,
             )
@@ -344,16 +344,16 @@ def process_mjcf_fixed_file(root, config):
     #     root, "body_link_collision.stl", "body_link_collision_simplified.stl"
     # )
     add_torso_site(root)
-    update_joint_params(root, config.act_params)
+    update_joint_params(root, config.motor_params)
     update_geom_classes(root, ["type", "contype", "conaffinity", "group", "density"])
     add_contact_exclusion_to_mjcf(root)
-    add_actuators_to_mjcf(root, config.act_params)
+    add_actuators_to_mjcf(root, config.motor_params)
     add_equality_constraints_for_leaves(root, config.constraint_pairs)
     add_default_settings(root)
 
 
 def process_mjcf_file(root, config, urdf_path):
-    update_actuator_types(root, config.act_params)
+    update_actuator_types(root, config.motor_params)
     add_body_link(root, config, urdf_path)
 
 

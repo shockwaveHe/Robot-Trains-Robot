@@ -18,7 +18,8 @@ class PyBulletSim(BaseSim):
         Set up the PyBullet simulation environment.
         Initializes the PyBullet environment in GUI mode and sets the gravity and timestep.
         """
-        super().__init__(robot)
+        super().__init__()
+        self.name = "pybullet"
 
         p.connect(p.GUI)  # or p.DIRECT for non-graphical version
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
@@ -89,8 +90,8 @@ class PyBulletSim(BaseSim):
                 self.name2idx[name],
                 p.POSITION_CONTROL,
                 angle,
-                # positionGain=robot.config.act_params[name].kp * 1e-4,
-                # velocityGain=robot.config.act_params[name].kv * 1e-1,
+                # positionGain=robot.config.motor_params[name].kp * 1e-4,
+                # velocityGain=robot.config.motor_params[name].kv * 1e-1,
             )
 
     def simulate(
@@ -113,6 +114,8 @@ class PyBulletSim(BaseSim):
                 p.stepSimulation()
                 if sleep_time > 0:
                     time.sleep(sleep_time)
+        except KeyboardInterrupt:
+            pass
         finally:
             self.close()
 

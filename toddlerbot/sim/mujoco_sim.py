@@ -14,7 +14,8 @@ from toddlerbot.utils.file_utils import find_description_path
 class MujoCoSim(BaseSim):
     def __init__(self, robot: Optional[HumanoidRobot] = None, fixed: bool = False):
         """Initialize the MuJoCo simulation environment."""
-        super().__init__(robot)
+        super().__init__()
+        self.name = "mujoco"
 
         self.model = None
         self.data = None
@@ -75,18 +76,21 @@ class MujoCoSim(BaseSim):
         torso_mat = self.data.site("torso").xmat.copy().reshape(3, 3)
         return torso_pos, torso_mat
 
-    def get_joint_angles_error(
-        self, robot: HumanoidRobot, joint_angles: Dict[str, float]
-    ):
-        joint_angles_error = {}
-        for name, angle in joint_angles.items():
-            joint_angles_error[name] = self.data.joint(name).qpos - angle
-        return joint_angles_error
+    def get_joint_state(self, robot: HumanoidRobot):
+        joint_state_dict = {}
+        time_curr = time.time()
+        for name, info in robot.joints_info.items():
+            if info["active"]:
+                joint_state_dict[name] = JointState(
+                    time=time_curr, pos=self.data.joint(name).qpos.item()
+                )
+
+        return joint_state_dict
 
     def set_joint_angles(self, robot: HumanoidRobot, joint_angles: Dict[str, float]):
         for name, angle in joint_angles.items():
-            kp = robot.config.act_params[name].kp
-            kv = robot.config.act_params[name].kv
+            kp = robot.config.motor_params[name].kp
+            kv = robot.config.motor_params[name].kv
             self.data.actuator(f"{name}_act").ctrl = (
                 -kp * (self.data.joint(name).qpos - angle)
                 - kv * self.data.joint(name).qvel
@@ -183,38 +187,41 @@ class MujoCoSim(BaseSim):
             )
             viewer.user_scn.ngeom = i + 1
 
-        while viewer.is_running():
-            step_start = time.time()
+        try:
+            while viewer.is_running():
+                step_start = time.time()
 
-            mujoco.mj_step(self.model, self.data)
+                mujoco.mj_step(self.model, self.data)
 
-            with viewer.lock():
-                if step_func is not None:
-                    if step_params is None:
-                        step_func()
-                    else:
-                        step_params = step_func(*step_params)
+                with viewer.lock():
+                    if step_func is not None:
+                        if step_params is None:
+                            step_func()
+                        else:
+                            step_params = step_func(*step_params)
 
-                        viewer.user_scn.ngeom = 0
-                        if "foot_steps" in vis_flags:
-                            vis_foot_steps()
-                        if "com_traj" in vis_flags:
-                            vis_com_traj()
-                        if "path" in vis_flags:
-                            vis_path()
-                        if "torso" in vis_flags:
-                            vis_torso()
+                            viewer.user_scn.ngeom = 0
+                            if "foot_steps" in vis_flags:
+                                vis_foot_steps()
+                            if "com_traj" in vis_flags:
+                                vis_com_traj()
+                            if "path" in vis_flags:
+                                vis_path()
+                            if "torso" in vis_flags:
+                                vis_torso()
 
-            viewer.sync()
+                viewer.sync()
 
-            time_until_next_step = sleep_time - (time.time() - step_start)
-            # time_until_next_step = self.model.opt.timestep - (
-            #     time.time() - step_start
-            # )
-            if time_until_next_step > 0:
-                time.sleep(time_until_next_step)
-
-        viewer.close()
+                time_until_next_step = sleep_time - (time.time() - step_start)
+                # time_until_next_step = self.model.opt.timestep - (
+                #     time.time() - step_start
+                # )
+                if time_until_next_step > 0:
+                    time.sleep(time_until_next_step)
+        except KeyboardInterrupt:
+            pass
+        finally:
+            viewer.close()
 
     def close(self):
         pass

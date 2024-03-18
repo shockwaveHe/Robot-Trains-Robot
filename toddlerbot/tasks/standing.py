@@ -48,7 +48,7 @@ def main():
     def step_func():
         # print(f"joint_angles: {round_floats(list(joint_angles.values()), 6)}")
         sim.set_joint_angles(robot, joint_angles)
-        sim.read_state()
+        sim.get_joint_state(robot)
 
     sim.simulate(step_func, sleep_time=args.sleep_time)
 
