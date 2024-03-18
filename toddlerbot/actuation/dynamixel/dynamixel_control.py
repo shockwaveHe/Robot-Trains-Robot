@@ -15,8 +15,11 @@ class DynamixelConfig:
     kD: List[float]
     current_limit: List[float]
     init_pos: List[float]
-    baudrate: int = 57600
+    vel: float = np.pi / 2
+    interp_method: str = "cubic"
+    baudrate: int = 3000000
     control_mode: int = 5
+    control_freq: int = 5000
 
 
 @dataclass
@@ -67,7 +70,7 @@ class DynamixelController(BaseController):
             102,
             2,
         )
-        self.client.write_desired_pos(self.motor_ids, np.array(self.config.init_pos))
+        self.set_pos(np.zeros(len(self.motor_ids)))
         time.sleep(0.1)
 
     def close_motors(self):
@@ -78,14 +81,50 @@ class DynamixelController(BaseController):
             open_client.port_handler.is_using = False
             open_client.disconnect()
 
+    # @profile
     # Receive pos and directly control the robot
-    def set_pos(self, pos):
-        self.client.write_desired_pos(self.motor_ids, np.array(pos))
+    def set_pos(self, pos, vel=None):
+        # pos_raw = self.config.init_pos - np.array(pos)
+        # self.client.write_desired_pos(self.motor_ids, pos_raw)
 
-    # read state
+        pos = np.array(pos)
+        if vel is None:
+            vel = self.config.vel
+
+        pos_start = self.config.init_pos - self.client.read_pos()
+        delta_t = max(np.abs(pos - pos_start) / vel)
+        time_start = time.time()
+        time_curr = 0
+        counter = 0
+        while time_curr <= delta_t:
+            time_curr = time.time() - time_start
+            pos_interp = interpolate(
+                pos_start,
+                pos,
+                delta_t,
+                time_curr,
+                interp_type=self.config.interp_method,
+            )
+            pos_interp_raw = self.config.init_pos - pos_interp
+
+            self.client.write_desired_pos(self.motor_ids, pos_interp_raw)
+
+            elapsed_time = time.time() - time_start - time_curr
+            sleep_time = 1.0 / self.config.control_freq - elapsed_time
+            if sleep_time > 0:
+                time.sleep(sleep_time)
+
+            counter += 1
+
+        time_end = time.time()
+        control_freq = counter / (time_end - time_start)
+        log(f"Control frequency: {control_freq}", header="Dynamixel", level="debug")
+
+    # @profile
     def read_state(self):
         state_dict = {}
-        pos_arr, vel_arr, current_arr = self.client.read_pos_vel_cur()
+        pos_arr_raw, vel_arr, current_arr = self.client.read_pos_vel_cur()
+        pos_arr = self.config.init_pos - pos_arr_raw
         for i, id in enumerate(self.motor_ids):
             state_dict[id] = DynamixelState(
                 time=time.time(),
@@ -110,27 +149,14 @@ if __name__ == "__main__":
         motor_ids=[7, 8, 9, 10, 11, 12],
     )
 
-    pos = np.radians([150, 165, 165, 210, 165, 195])
     i = 0
     while i < 30:
-        controller.set_pos(pos)
-        state = controller.read_state()
-        p_error = np.abs(state[0] - pos)
-
-        if p_error.mean() < 0.01:
-            break
-
+        controller.set_pos([np.pi / 12] * 6)
         i += 1
 
     i = 0
     while i < 30:
-        controller.set_pos(controller.config.init_pos)
-        state = controller.read_state()
-        p_error = np.abs(state[0] - controller.config.init_pos)
-
-        if p_error.mean() < 0.01:
-            break
-
+        controller.set_pos([0.0] * 6)
         i += 1
 
     controller.close_motors()

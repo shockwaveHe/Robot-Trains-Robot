@@ -34,6 +34,7 @@ class SunnySkyConfig:
     baudrate: int = 115200
     tx_data_prefix: str = ">tx_data:"
     tx_timeout: float = 1.0
+    control_freq: int = 5000
 
 
 @dataclass
@@ -147,18 +148,14 @@ class SunnySkyController(BaseController):
         joint_range = self.config.joint_limits[1] - self.config.joint_limits[0]
 
         log(f"Setting lower limit for motor with ID {id}...", header="SunnySky")
-        lower_limit_state_list = self._set_pos_single(
-            id, pos_curr - joint_range, limit=False
-        )
+        self._set_pos_single(id, pos_curr - joint_range, limit=False)
         time.sleep(0.1)
-        self.lower_limit = lower_limit_state_list[-1].pos
+        self.lower_limit = self._read_state_single(id).pos
 
         # log(f"Setting upper limit for motor with ID {id}...", header="SunnySky")
-        # upper_limit_state_list = self._set_pos_single(
-        #     id, pos_curr + joint_range, limit=False
-        # )
+        # self._set_pos_single(id, pos_curr + joint_range, limit=False)
         # time.sleep(0.1)
-        # self.upper_limit = upper_limit_state_list[-1].pos
+        # self.upper_limit = self._read_state_single(id).pos
 
         log(f"Setting zero position for motor with ID {id}...", header="SunnySky")
         zero_pos = self.lower_limit + np.pi / 2
@@ -178,13 +175,13 @@ class SunnySkyController(BaseController):
         if vel is None:
             vel = self.config.vel
 
-        time_start = time.time()
-        time_curr = 0
-
         state = self._read_state_single(id)
-        state_list = [state]
         pos_start_driven = state.pos
         delta_t = np.abs(pos_driven - pos_start_driven) / vel
+
+        time_start = time.time()
+        time_curr = 0
+        counter = 0
         while time_curr <= delta_t:
             time_curr = time.time() - time_start
             pos_interp_driven = interpolate(
@@ -213,18 +210,25 @@ class SunnySkyController(BaseController):
             )
             self.send_command(cmd)
 
-            state = self._read_state_single(id)
-            state_list.append(state)
+            if not limit:
+                state = self._read_state_single(id)
+                if abs(state.current) > self.config.current_limit:
+                    log(
+                        f"Current limit reached: {state.current} A",
+                        header="SunnySky",
+                        level="warning",
+                    )
 
-            if abs(state.current) > self.config.current_limit:
-                warning_str = f"Current limit reached: {state.current} A"
-                if limit:
-                    raise ValueError(warning_str)
-                else:
-                    log(warning_str, header="SunnySky", level="warning")
-                    return state_list
+            elapsed_time = time.time() - time_start - time_curr
+            sleep_time = 1.0 / self.config.control_freq - elapsed_time
+            if sleep_time > 0:
+                time.sleep(sleep_time)
 
-        return state_list
+            counter += 1
+
+        time_end = time.time()
+        control_freq = counter / (time_end - time_start)
+        log(f"Control frequency: {control_freq}", header="SunnySky", level="debug")
 
     def set_pos(
         self, pos, limit=True, schedule=True, vel=None, kP=None, kD=None, i_ff=None
@@ -233,9 +237,8 @@ class SunnySkyController(BaseController):
         Set the position of the motor
         """
         with ThreadPoolExecutor(max_workers=len(self.motor_ids)) as executor:
-            future_dict = {}
             for id, p in zip(self.motor_ids, pos):
-                future_dict[id] = executor.submit(
+                executor.submit(
                     self._set_pos_single,
                     id,
                     p,
@@ -246,12 +249,6 @@ class SunnySkyController(BaseController):
                     kD[id] if kD is not None and id in kD else None,
                     i_ff[id] if i_ff is not None and id in i_ff else None,
                 )
-
-            state_dict = {}
-            for id in self.motor_ids:
-                state_dict[id] = future_dict[id].result()
-
-            return state_dict
 
     def _read_state_single(self, id):
         self.client.reset_input_buffer()

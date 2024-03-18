@@ -27,9 +27,9 @@ class RealWorld(BaseSim):
         self.dynamixel_init_pos = np.radians([135, 180, 180, 225, 180, 180])
         self.dynamixel_config = DynamixelConfig(
             port="/dev/tty.usbserial-FT8ISUJY",
-            kP=[200, 400, 400, 200, 400, 400],
-            kI=[0, 0, 0, 0, 0, 0],
-            kD=[100, 100, 100, 100, 100, 100],
+            kP=[400, 1200, 1200, 400, 1200, 1200],
+            kI=[100, 100, 100, 100, 100, 100],
+            kD=[200, 400, 400, 200, 400, 400],
             current_limit=[350, 350, 350, 350, 350, 350],
             init_pos=self.dynamixel_init_pos,
         )
@@ -76,9 +76,7 @@ class RealWorld(BaseSim):
 
     def set_joint_angles(self, robot, joint_angles):
         # Directions are tuned to match the assembly of the robot.
-        dynamixel_pos = self.dynamixel_init_pos - np.array(
-            [joint_angles[k] for k in self.dynamixel_joint2motor.keys()]
-        )
+        dynamixel_pos = [joint_angles[k] for k in self.dynamixel_joint2motor.keys()]
         sunny_sky_pos = [joint_angles[k] for k in self.sunny_sky_joint2motor.keys()]
         ankle_pos = [joint_angles[k] for k in self.mighty_zap_joint2motor.keys()]
         mighty_zap_pos = self.ankle_ik(ankle_pos)
@@ -109,13 +107,14 @@ class RealWorld(BaseSim):
         if result.success:
             optimized_ankle_pos = result.x
             # log(
-            #     f"Optimized ankle position: {optimized_ankle_pos}",
+            #     f"Solved ankle position: {optimized_ankle_pos}",
             #     header="MightyZap",
             #     level="debug",
             # )
             return optimized_ankle_pos
         else:
-            raise ValueError(f"Optimization failed: {result.message}")
+            log(f"Solving ankle position failed", header="MightyZap", level="debug")
+            return self.ankle_pos_last
 
     def ankle_ik(self, ankle_pos):
         # Implemented based on page 3 of the following paper:
@@ -178,11 +177,6 @@ class RealWorld(BaseSim):
             dynamixel_state = future_dynamixel.result()
             sunny_sky_state = future_sunny_sky.result()
             mighty_zap_state = future_mighty_zap.result()
-
-            for i, id in enumerate(dynamixel_state.keys()):
-                dynamixel_state[id].pos = (
-                    self.dynamixel_init_pos[i] - dynamixel_state[id].pos
-                )
 
             ankle_pos = self.ankle_fk(
                 [mighty_zap_state[0].pos, mighty_zap_state[1].pos]

@@ -16,7 +16,8 @@ class MightyZapConfig:
     init_pos: List[float]
     vel: float = 1000
     interp_method: str = "cubic"
-    baudrate: int = 57600
+    baudrate: int = 115200
+    control_freq: int = 2000
 
 
 @dataclass
@@ -59,13 +60,13 @@ class MightyZapController(BaseController):
         if vel is None:
             vel = self.config.vel
 
-        time_start = time.time()
-        time_curr = 0
-
         state = self._read_state_single(id)
-        state_list = [state]
         pos_start = state.pos
         delta_t = np.abs(pos - pos_start) / vel
+
+        time_start = time.time()
+        time_curr = 0
+        counter = 0
         while time_curr <= delta_t:
             time_curr = time.time() - time_start
             pos_interp = interpolate(
@@ -78,31 +79,30 @@ class MightyZapController(BaseController):
             with self.serial_lock:
                 mighty_zap.GoalPosition(id, round(pos_interp))
 
-            state = self._read_state_single(id)
-            state_list.append(state)
+            elapsed_time = time.time() - time_start - time_curr
+            sleep_time = 1.0 / self.config.control_freq - elapsed_time
+            if sleep_time > 0:
+                time.sleep(sleep_time)
+
+            counter += 1
 
             # print(
             #     f"ID: {id}, Start: {pos_start}, Pos: {state.pos}, Ref: {pos_interp}, Time: {time_curr}"
             # )
 
-        return state_list
+        time_end = time.time()
+        control_freq = counter / (time_end - time_start)
+        log(f"Control frequency: {control_freq}", header="MightyZap", level="debug")
 
     def set_pos(self, pos, vel=None):
         with ThreadPoolExecutor(max_workers=len(self.motor_ids)) as executor:
-            future_dict = {}
             for id, p in zip(self.motor_ids, pos):
-                future_dict[id] = executor.submit(
+                executor.submit(
                     self._set_pos_single,
                     id,
                     p,
                     vel is None and self.config.vel or vel,
                 )
-
-            state_dict = {}
-            for id in self.motor_ids:
-                state_dict[id] = future_dict[id].result()
-
-            return state_dict
 
     def _read_state_single(self, id):
         with self.serial_lock:
