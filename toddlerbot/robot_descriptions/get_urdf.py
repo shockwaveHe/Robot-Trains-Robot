@@ -96,7 +96,10 @@ def run_onshape_to_robot(onshape_config):
         onshape_config.doc_id_list, onshape_config.assembly_list
     ):
         assembly_path = os.path.join(assembly_dir, assembly_name)
-        shutil.rmtree(assembly_path)
+
+        if os.path.exists(assembly_path):
+            shutil.rmtree(assembly_path)
+
         os.makedirs(assembly_path)
         json_file_path = os.path.join(assembly_path, "config.json")
         # Map the URDFConfig to the desired JSON structure

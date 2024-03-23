@@ -1,0 +1,96 @@
+<?xml version="1.0" ?><robot name="no_body">  
+  <link name="base_link"/>  
+  <joint name="base_link_to_base" type="fixed">    
+    <parent link="base_link"/>    
+    <child link="hip_link"/>    
+    <origin rpy="0.0 0 0" xyz="0 0 0"/>    
+  </joint>  
+  <link name="hip_link">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/hip_link_visual.stl"/>        
+      </geometry>      
+      <material name="hip_link_material">        
+        <color rgba="0.60265235106909242901 0.7475818661971369572 0.82292492068132760963 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/hip_link_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="-0.01440352333151279085 -0.00023164401215059715849 0.31153288519557342795" rpy="0 0 0"/>      
+      <mass value="0.1326329205818372603"/>      
+      <inertia ixx="0.00012163093315383989741" ixy="1.4038303149257438203e-07" ixz="1.0872278951925664343e-05" iyy="8.4970137932102799945e-05" iyz="3.874082128926956186e-07" izz="0.00015647103471607302027"/>      
+    </inertial>    
+  </link>  
+
+  <link name="left_3r+rh5_leg">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_3r+rh5_leg_visual.stl"/>        
+      </geometry>      
+      <material name="left_3r+rh5_leg_material">        
+        <color rgba="0.71685097624452887022 0.71448817534584807554 0.5483011418826583272 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_3r+rh5_leg_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="-0.0057906468089440749081 0.0012776571170115718409 -0.12295579325939948179" rpy="0 0 0"/>      
+      <mass value="0.33319901067697282881"/>      
+      <inertia ixx="0.0020691604091434279145" ixy="-2.4437022224231935539e-06" ixz="-0.00016812558591493690957" iyy="0.0020892238210789516525" iyz="-1.495993545030079513e-05" izz="0.00012542774124867957361"/>      
+    </inertial>    
+  </link>  
+
+  <joint name="left_hip_yaw" type="revolute">    
+    <origin xyz="-0.0063999999999997730579 0.033999999999999780398 0.28550000000000019806" rpy="1.2173498077223837207e-16 -0 1.3877787807345010561e-17"/>    
+    <parent link="hip_link"/>    
+    <child link="left_3r+rh5_leg"/>    
+    <axis xyz="0 0 1"/>    
+    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558"/>    
+    <joint_properties friction="0.0"/>    
+  </joint>  
+
+  <link name="right_3r+rh5_leg">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/right_3r+rh5_leg_visual.stl"/>        
+      </geometry>      
+      <material name="right_3r+rh5_leg_material">        
+        <color rgba="0.71685097468944281029 0.71448818009693493281 0.54830115453506900192 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/right_3r+rh5_leg_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="-0.0061476823281236964158 -0.0013669304897506507658 -0.12295579706830672695" rpy="0 0 0"/>      
+      <mass value="0.33319902094434905582"/>      
+      <inertia ixx="0.002069081754115090644" ixy="3.0230649835885973083e-06" ixz="-0.00015955132385966959581" iyy="0.0020878035954920112251" iyz="1.2453504691092991976e-05" izz="0.00012392884578271253968"/>      
+    </inertial>    
+  </link>  
+
+  <joint name="right_hip_yaw" type="revolute">    
+    <origin xyz="-0.0063999999999996715766 -0.034000000000000092648 0.28550000000000014255" rpy="1.2173498077030393722e-16 -4.683327753701002654e-30 2.5887568767631957634e-14"/>    
+    <parent link="hip_link"/>    
+    <child link="right_3r+rh5_leg"/>    
+    <axis xyz="0 0 1"/>    
+    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558"/>    
+    <joint_properties friction="0.0"/>    
+  </joint>  
+
+
+</robot>

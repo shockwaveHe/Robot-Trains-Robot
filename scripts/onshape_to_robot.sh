@@ -1,15 +1,23 @@
 #!/bin/bash
-REPO_NAME="toddlerbot"
-ROBOT_NAME="base"
-BODY_NAME="4R_body"
-ARM_NAME="OP3_arm"
+
+##### BASE #####
+# ROBOT_NAME="base"
+# BODY_NAME="4R_body"
+# ARM_NAME="OP3_arm"
+# LEG_NAME="3R+RH5_leg"
+# DOC_ID_LIST="d2a8be5ce536cd2e18740efa d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe 93bd073d2ef7800c8ba429de 93bd073d2ef7800c8ba429de"
+# ASSEMBLY_LIST="4R_body left_3R+RH5_leg right_3R+RH5_leg left_OP3_arm right_OP3_arm"
+
+##### BASE_LEGS #####
+ROBOT_NAME="base_legs"
+BODY_NAME="no_body"
 LEG_NAME="3R+RH5_leg"
+DOC_ID_LIST="dca63e30dcbfe66f561f5fd4 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe"
+ASSEMBLY_LIST="no_body left_3R+RH5_leg right_3R+RH5_leg"
+
+REPO_NAME="toddlerbot"
 URDF_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/$ROBOT_NAME.urdf
 MJCF_FIXED_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/${ROBOT_NAME}_fixed.xml
-
-# All the body parts to be exported in OnShape
-DOC_ID_LIST="d2a8be5ce536cd2e18740efa d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe 93bd073d2ef7800c8ba429de 93bd073d2ef7800c8ba429de"
-ASSEMBLY_LIST="4R_body left_3R+RH5_leg right_3R+RH5_leg left_OP3_arm right_OP3_arm"
 
 printf "Do you want to export urdf from onshape? (y/n)"
 read -r -p " > " run_onshape
@@ -25,8 +33,16 @@ printf "Do you want to process the urdf? (y/n)"
 read -r -p " > " run_process
 if [ "$run_process" == "y" ]; then
     printf "Processing...\n\n"
-    python $REPO_NAME/robot_descriptions/assemble_urdf.py --robot-name $ROBOT_NAME --body-name $BODY_NAME --arm-name $ARM_NAME --leg-name $LEG_NAME
-    
+    # Construct the command with mandatory arguments
+    cmd="python $REPO_NAME/robot_descriptions/assemble_urdf.py --robot-name $ROBOT_NAME --body-name $BODY_NAME"
+    if [ -n "$ARM_NAME" ]; then
+        cmd+=" --arm-name $ARM_NAME"
+    fi
+    if [ -n "$LEG_NAME" ]; then
+        cmd+=" --leg-name $LEG_NAME"
+    fi
+    eval $cmd
+
     printf "Visualizing the kinematic tree...\n\n"
     python $REPO_NAME/utils/vis_kine_tree.py \
         --path $URDF_PATH \

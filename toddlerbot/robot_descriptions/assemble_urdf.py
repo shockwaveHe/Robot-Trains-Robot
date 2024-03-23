@@ -169,13 +169,13 @@ def main():
     parser.add_argument(
         "--arm-name",
         type=str,
-        default="OP3_arm",
+        default="",
         help="The name of the arm.",
     )
     parser.add_argument(
         "--leg-name",
         type=str,
-        default="3R+RH5_leg",
+        default="",
         help="The name of the leg.",
     )
     args = parser.parse_args()
