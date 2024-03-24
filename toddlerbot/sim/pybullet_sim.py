@@ -83,6 +83,9 @@ class PyBulletSim(BaseSim):
         torso_pos, torso_ori = p.getBasePositionAndOrientation(robot.id)
         return torso_pos, quatxyzw2mat(torso_ori)
 
+    def get_joint_state(self, robot: HumanoidRobot):
+        pass
+
     def set_joint_angles(self, robot: HumanoidRobot, joint_angles: Dict[str, float]):
         for name, angle in joint_angles.items():
             p.setJointMotorControl2(
