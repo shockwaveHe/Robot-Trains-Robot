@@ -4,13 +4,7 @@ import numpy as np
 
 from toddlerbot.robot_descriptions.robot_configs import *
 
-canonical_name2link_name = {
-    "body_link": "body_link",
-    "left_foot_link": "l_ank_roll_link",
-    "right_foot_link": "r_ank_roll_link",
-}
-
-link_name2canonical_name = {v: k for k, v in canonical_name2link_name.items()}
+canonical_name2link_name = {"body_link": "body_link"}
 
 
 def compute_leg_angles(target_foot_pos, target_foot_ori, side, offsets):
@@ -60,7 +54,6 @@ def compute_leg_angles(target_foot_pos, target_foot_ori, side, offsets):
 
 robotis_op3_config = RobotConfig(
     canonical_name2link_name=canonical_name2link_name,
-    link_name2canonical_name=link_name2canonical_name,
     motor_params={
         "l_hip_yaw": MotorParameters(
             type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0

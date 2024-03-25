@@ -3,7 +3,6 @@
     "outputFormat": "urdf",
     "assemblyName": "right_OP3_arm",
     "robotName": "right_OP3_arm",
-    "addDummyBaseLink": false,
     "mergeSTLs": "all",
     "mergeSTLsCollisions": true,
     "simplifySTLs": "all",

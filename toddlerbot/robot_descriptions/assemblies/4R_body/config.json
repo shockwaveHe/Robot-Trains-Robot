@@ -3,7 +3,6 @@
     "outputFormat": "urdf",
     "assemblyName": "4R_body",
     "robotName": "4R_body",
-    "addDummyBaseLink": true,
     "mergeSTLs": "all",
     "mergeSTLsCollisions": true,
     "simplifySTLs": "all",

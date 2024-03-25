@@ -112,7 +112,7 @@ class RealWorld(BaseSim):
         # http://link.springer.com/10.1007/978-3-319-93188-3_49
         # Notations are from the paper.
 
-        offsets = robot.config.offsets
+        offsets = robot.offsets
         s1 = np.array(offsets["s1"])
         s2 = np.array([s1[0], -s1[1], s1[2]])
         f1E = np.array(offsets["f1E"])

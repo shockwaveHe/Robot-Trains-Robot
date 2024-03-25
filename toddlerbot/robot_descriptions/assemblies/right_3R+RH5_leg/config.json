@@ -3,7 +3,6 @@
     "outputFormat": "urdf",
     "assemblyName": "right_3R+RH5_leg",
     "robotName": "right_3R+RH5_leg",
-    "addDummyBaseLink": false,
     "mergeSTLs": "all",
     "mergeSTLsCollisions": true,
     "simplifySTLs": "all",

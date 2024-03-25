@@ -32,7 +32,7 @@ class Walking:
         self.config = config
         self.fs_steps = round(config.plan_t_step / config.control_dt)
         self.x_offset_com_to_foot = robot.config.com[0]
-        self.y_offset_com_to_foot = robot.config.offsets["y_offset_com_to_foot"]
+        self.y_offset_com_to_foot = robot.offsets["y_offset_com_to_foot"]
 
         plan_params = FootStepPlanParameters(
             max_stride=config.plan_max_stride,
@@ -382,7 +382,7 @@ def main():
             path,
             foot_steps_vis,
             robot.config.foot_size[:2],
-            robot.config.offsets["y_offset_com_to_foot"],
+            robot.offsets["y_offset_com_to_foot"],
             title="Footsteps Planning",
             save_path="results/plots",
             time_suffix="",

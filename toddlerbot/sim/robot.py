@@ -39,6 +39,7 @@ class HumanoidRobot:
 
         self.id = 0
         self.joints_info = self.get_joint_info()
+        self.offsets = self.compute_offsets()
 
         self.dynamixel_joint2id = {}
         self.sunny_sky_joint2id = {}
@@ -52,6 +53,54 @@ class HumanoidRobot:
                 self.mighty_zap_joint2id[name] = motor_param.id
             else:
                 raise ValueError(f"Motor brand '{motor_param.brand}' is not supported.")
+
+    def compute_offsets(self):
+        graph = self.urdf.scene.graph
+
+        offsets = {}
+        # from the hip roll joint to the hip pitch joint
+        offsets["z_offset_hip_roll_to_pitch"] = (
+            graph.get("hip_roll_link")[0][2, 3]
+            - graph.get("left_hip_pitch_link")[0][2, 3]
+        )
+        # from the hip pitch joint to the knee joint
+        offsets["z_offset_thigh"] = (
+            graph.get("left_hip_pitch_link")[0][2, 3]
+            - graph.get("left_calf_link")[0][2, 3]
+        )
+        # the knee joint offset
+        offsets["z_offset_knee"] = 0.0
+        # from the knee joint to the ankle roll joint
+        offsets["z_offset_shin"] = (
+            graph.get("left_calf_link")[0][2, 3] - graph.get("ank_roll_link")[0][2, 3]
+        )
+        # from the hip center to the foot
+        offsets["y_offset_com_to_foot"] = graph.get("ank_roll_link")[0][1, 3]
+
+        # Below are for the ankle IK
+        # Implemented based on page 3 of the following paper:
+        # http://link.springer.com/10.1007/978-3-319-93188-3_49
+        # Notations are from the paper.
+        ank_origin = np.array(
+            [
+                graph.get("ank_pitch_link")[0][0, 3],
+                *graph.get("ank_roll_link")[0][1:3, 3],
+            ]
+        )
+        offsets["s1"] = graph.get("ball_joint_ball")[0][:3, 3] - ank_origin
+        offsets["f1E"] = graph.get("ank_rr_link")[0][:3, 3] - ank_origin
+        offsets["nE"] = np.array([1, 0, 0])
+        offsets["r"] = np.linalg.norm(
+            graph.get("ank_rr_link")[0][:3, 3] - graph.get("12lf_rod_end")[0][:3, 3]
+        )
+        offsets["mighty_zap_len"] = 0.07521
+        # np.linalg.norm(
+        #     graph.get("ball_joint_ball")[0][:3, 3]
+        #     - graph.get("12lf_rod_end")[0][:3, 3]
+        # )
+        # - 0.01369  # This number is read from onshape
+
+        return offsets
 
     def get_joint_info(self):
         joint_info_dict = {}
@@ -144,7 +193,7 @@ class HumanoidRobot:
         """
         # Calculate leg angles
         angles_dict = self.config.compute_leg_angles(
-            target_foot_pos, target_foot_ori, side, self.config.offsets
+            target_foot_pos, target_foot_ori, side, self.offsets
         )
 
         # Update joint angles based on calculations
@@ -167,6 +216,9 @@ if __name__ == "__main__":
     from toddlerbot.utils.math_utils import round_floats
 
     robot = HumanoidRobot("base")
+
+    robot.compute_offsets()
+
     sim = PyBulletSim(robot)
 
     # Define target positions and orientations for left and right feet

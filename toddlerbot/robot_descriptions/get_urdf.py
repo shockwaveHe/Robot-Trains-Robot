@@ -108,7 +108,6 @@ def run_onshape_to_robot(onshape_config):
             "outputFormat": "urdf",
             "assemblyName": assembly_name,
             "robotName": assembly_name,
-            "addDummyBaseLink": "body" in assembly_name.lower(),
             "mergeSTLs": onshape_config.mergeSTLs,
             "mergeSTLsCollisions": onshape_config.mergeSTLsCollisions,
             "simplifySTLs": onshape_config.simplifySTLs,

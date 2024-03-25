@@ -12,7 +12,6 @@ class RobotConfig:
     motor_params: dict = None
     constraint_pairs: list = None
     canonical_name2link_name: dict = None
-    link_name2canonical_name: dict = None
     foot_size: list = None
     offsets: dict = None
     compute_leg_angles: Callable = None

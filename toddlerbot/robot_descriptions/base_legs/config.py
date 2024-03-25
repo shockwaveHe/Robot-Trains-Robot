@@ -4,7 +4,7 @@ import numpy as np
 
 from toddlerbot.robot_descriptions.robot_configs import *
 
-canonical_name2link_name = {"body_link": "body_link"}
+canonical_name2link_name = {"body_link": "base_link"}
 
 
 # UPDATE: the function to compute leg angles
@@ -54,7 +54,7 @@ def compute_leg_angles(target_foot_pos, target_foot_ori, side, offsets):
     return angles_dict
 
 
-base_config = RobotConfig(
+base_legs_config = RobotConfig(
     canonical_name2link_name=canonical_name2link_name,
     # UPDATE: the motor parameters for the robot
     motor_params={
