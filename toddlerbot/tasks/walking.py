@@ -362,7 +362,7 @@ def main():
         sim.simulate(
             step_func,
             (0, path, foot_steps, com_traj, joint_angles),
-            vis_flags=["foot_steps", "com_traj", "path", "torso"],
+            vis_flags=["foot_steps", "com_traj", "torso"],
             sleep_time=args.sleep_time,
         )
     finally:

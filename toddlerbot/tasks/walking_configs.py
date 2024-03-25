@@ -16,7 +16,7 @@ class WalkingConfig:
     control_cost_Q_val: float = 1.0
     control_cost_R_val: float = 1e-6
     target_pose_init: np.ndarray = field(
-        default_factory=lambda: np.array([0.1, 0.0, 0.785])
+        default_factory=lambda: np.array([0.2, 0.0, 0.785])
     )
     actuator_steps: int = 10
     foot_step_height: float = 0.04
