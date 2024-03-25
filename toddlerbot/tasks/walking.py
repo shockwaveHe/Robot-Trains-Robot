@@ -381,7 +381,7 @@ def main():
         draw_footsteps(
             path,
             foot_steps_vis,
-            robot.config.foot_size[:2],
+            robot.foot_size[:2],
             robot.offsets["y_offset_com_to_foot"],
             title="Footsteps Planning",
             save_path="results/plots",

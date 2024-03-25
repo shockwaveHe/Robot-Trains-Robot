@@ -7,12 +7,43 @@ import trimesh
 
 from toddlerbot.utils.file_utils import find_description_path
 
+collision_link_list = [
+    "body_link",
+    "neck_link",
+    "head_link",
+    "hip_roll_link",
+    "left_hip_pitch_link",
+    "left_calf_link",
+    "ank_roll_link",
+    "hip_roll_link_2",
+    "right_hip_pitch_link",
+    "right_calf_link",
+    "ank_roll_link_2",
+    "sho_roll_link",
+    "elb_link",
+    "sho_roll_link_2",
+    "elb_link_2",
+]
+collision_link_dict = {key: (1.0, 1.0, 1.0) for key in collision_link_list}
 
-def compute_bounding_box_mesh(urdf_path, mesh_filename):
-    robot_dir = os.path.dirname(urdf_path)
+
+def compute_bounding_box_mesh(robot_dir, mesh_filename, scale_factors):
     mesh = trimesh.load(os.path.join(robot_dir, mesh_filename))
     # Compute the oriented bounding box
     bounding_box = mesh.bounding_box_oriented
+    # Compute the centroid of the bounding box
+    centroid = bounding_box.centroid
+
+    bbox_mesh = trimesh.Trimesh(
+        vertices=bounding_box.vertices, faces=bounding_box.faces
+    )
+    # Translate the mesh to the origin
+    bbox_mesh.apply_translation(-centroid)
+    # Apply non-uniform scaling
+    bbox_mesh.apply_scale(scale_factors)
+    # Translate the mesh back to its original centroid
+    bbox_mesh.apply_translation(centroid)
+
     # Create the full path for the bounding box file
     collision_mesh_file_path = os.path.join(
         robot_dir,
@@ -20,9 +51,9 @@ def compute_bounding_box_mesh(urdf_path, mesh_filename):
         os.path.basename(mesh_filename).replace("visual", "collision"),
     )
     # Export the bounding box to a file
-    bounding_box.export(collision_mesh_file_path)
+    bbox_mesh.export(collision_mesh_file_path)
 
-    return os.path.relpath(collision_mesh_file_path, urdf_path)
+    return os.path.relpath(collision_mesh_file_path, robot_dir)
 
 
 def update_collisons(robot_name):
@@ -38,26 +69,6 @@ def update_collisons(robot_name):
     tree = ET.parse(urdf_path)
     root = tree.getroot()
 
-    link_collision_list = [
-        "body_link",
-        "neck_link",
-        "head_link",
-        "hip_roll_link",
-        "left_hip_pitch_link",
-        "left_calf_link",
-        "ank_roll_link",
-        "hip_roll_link_2",
-        "right_hip_pitch_link",
-        "right_calf_link",
-        "ank_roll_link_2",
-        "sho_pitch_link",
-        "sho_roll_link",
-        "elb_link",
-        "sho_pitch_link_2",
-        "sho_roll_link_2",
-        "elb_link_2",
-    ]
-
     for link in root.findall("link"):
         link_name = link.get("name")
         # Find the visual element and its mesh filename
@@ -68,10 +79,12 @@ def update_collisons(robot_name):
             mesh_filename = mesh.get("filename") if mesh is not None else None
 
             # Check if the link is in the list for updating collisions
-            if link_name in link_collision_list and mesh_filename is not None:
+            if link_name in collision_link_dict and mesh_filename is not None:
                 # Compute the bounding box and replace the collision mesh
                 collision_bbox_file = compute_bounding_box_mesh(
-                    urdf_path, mesh_filename
+                    os.path.dirname(urdf_path),
+                    mesh_filename,
+                    collision_link_dict[link_name],
                 )
                 collision = link.find("collision")
                 if collision is None:
@@ -91,11 +104,7 @@ def update_collisons(robot_name):
                     link.remove(collision)
 
     # Save the modified URDF
-    tree.write(
-        os.path.join(
-            os.path.dirname(urdf_path), "updated_" + os.path.basename(urdf_path)
-        )
-    )
+    tree.write(urdf_path)
 
 
 if __name__ == "__main__":

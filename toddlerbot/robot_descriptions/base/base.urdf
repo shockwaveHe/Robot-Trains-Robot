@@ -15,7 +15,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/4R_body/meshes/body_link_collision.stl" />
+        <mesh filename="collisions/body_link_collision.stl" />
       </geometry>
     </collision>
     <inertial>
@@ -38,7 +38,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/4R_body/meshes/neck_link_collision.stl" />
+        <mesh filename="collisions/neck_link_collision.stl" />
       </geometry>
     </collision>
     <inertial>
@@ -61,7 +61,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/4R_body/meshes/head_link_collision.stl" />
+        <mesh filename="collisions/head_link_collision.stl" />
       </geometry>
     </collision>
     <inertial>
@@ -136,12 +136,6 @@
         <color rgba="0.61568627450980395466 0.81176470588235294379 0.9294117647058824927 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/left_3R+RH5_leg/meshes/left_hip_yaw_link_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="1.0722510336680159674e-18 -3.2283346677807587375e-19 -0.0098390489054830127663" rpy="0 0 0" />
       <mass value="0.0090258837370979193293" />
@@ -162,7 +156,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/left_3R+RH5_leg/meshes/left_hip_roll_link_collision.stl" />
+        <mesh filename="collisions/left_hip_roll_link_collision.stl" />
       </geometry>
     </collision>
     <inertial>
@@ -185,7 +179,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/left_3R+RH5_leg/meshes/left_hip_pitch_link_collision.stl" />
+        <mesh filename="collisions/left_hip_pitch_link_collision.stl" />
       </geometry>
     </collision>
     <inertial>
@@ -208,7 +202,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/left_3R+RH5_leg/meshes/left_calf_link_collision.stl" />
+        <mesh filename="collisions/left_calf_link_collision.stl" />
       </geometry>
     </collision>
     <inertial>
@@ -228,12 +222,6 @@
         <color rgba="0.63189161126160264814 0.7266866879354088038 0.78356373393969258601 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/left_3R+RH5_leg/meshes/left_ank_pitch_link_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="4.0269685077374882913e-08 0.00059528282566739029041 -0.014599922383890481456" rpy="0 0 0" />
       <mass value="0.0042238381753791614387" />
@@ -254,7 +242,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/left_3R+RH5_leg/meshes/left_ank_roll_link_collision.stl" />
+        <mesh filename="collisions/left_ank_roll_link_collision.stl" />
       </geometry>
     </collision>
     <inertial>
@@ -274,12 +262,6 @@
         <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/left_3R+RH5_leg/meshes/left_ank_rr_link_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="3.4593503690053728679e-05 -0.0062999445222071577544 2.2843393600707675866e-19" rpy="0 0 0" />
       <mass value="0.00044289790445047673732" />
@@ -297,12 +279,6 @@
         <color rgba="0.92771758928836545177 0.61049283053223013518 0.21847658490585164515 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/left_3R+RH5_leg/meshes/left_12lf_rod_end_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="-4.4735207312314432896e-11 -0.00384221859382460635 6.4384187209444622633e-06" rpy="0 0 0" />
       <mass value="0.00085420491177815895123" />
@@ -338,12 +314,6 @@
         <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/left_3R+RH5_leg/meshes/left_ank_rr_link_2_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="3.459350369005370835e-05 -0.0062999445222072123982 -6.7104599679001474782e-18" rpy="0 0 0" />
       <mass value="0.00044289790445047673732" />
@@ -361,12 +331,6 @@
         <color rgba="0.92771758928836545177 0.61049283053223013518 0.21847658490585164515 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/left_3R+RH5_leg/meshes/left_12lf_rod_end_2_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="-4.4735189307638868103e-11 -0.0038422185938245824975 6.4384187209439294795e-06" rpy="0 0 0" />
       <mass value="0.00085420491177815895123" />
@@ -420,12 +384,6 @@
         <color rgba="0.61568627450980395466 0.81176470588235294379 0.9294117647058824927 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/left_3R+RH5_leg/meshes/left_ball_joint_container_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="-6.4666794741501348019e-18 2.7634224477689354266e-17 -0.0097125341669083414126" rpy="0 0 0" />
       <mass value="4.8037356425330562243e-05" />
@@ -443,12 +401,6 @@
         <color rgba="0.3291302810242056065 0.44310466418644928188 0.69204871161977121741 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/left_3R+RH5_leg/meshes/left_ball_joint_ball_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="-1.024304264232596922e-18 -0.0010308669810016205057 7.5361587101412525033e-18" rpy="0 0 0" />
       <mass value="4.4053796295264623832e-05" />
@@ -466,12 +418,6 @@
         <color rgba="0.62004392096503557763 0.58836684612040224263 0.49897069027350271497 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/left_3R+RH5_leg/meshes/left_12lf_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="0.004908420722696336079 -0.00013802440006551879069 -0.029947003575847935125" rpy="0 0 0" />
       <mass value="0.044782197690790462308" />
@@ -489,12 +435,6 @@
         <color rgba="0.80250260812861884396 0.89340612183512713163 0.94491811293548189088 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/left_3R+RH5_leg/meshes/left_12lf_rod_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="-6.3222084044054348599e-07 4.6933255325162329098e-07 -0.012893387334327627292" rpy="0 0 0" />
       <mass value="0.0025088292483592144512" />
@@ -548,12 +488,6 @@
         <color rgba="0.61568627450980395466 0.81176470588235294379 0.9294117647058824927 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/left_3R+RH5_leg/meshes/left_ball_joint_container_2_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="4.7221442975709347941e-19 -1.213511379395615796e-19 -0.0097125341669083431473" rpy="0 0 0" />
       <mass value="4.8037356425330562243e-05" />
@@ -571,12 +505,6 @@
         <color rgba="0.3291302810242056065 0.44310466418644928188 0.69204871161977121741 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/left_3R+RH5_leg/meshes/left_ball_joint_ball_2_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="9.9385112779056612218e-19 -0.0010308669810016705959 1.5569977136113586989e-18" rpy="0 0 0" />
       <mass value="4.4053796295264623832e-05" />
@@ -594,12 +522,6 @@
         <color rgba="0.62004392096503546661 0.58836684612040224263 0.49897069027350271497 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/left_3R+RH5_leg/meshes/left_12lf_2_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="0.0049084207226895663206 -0.00013802440006755126319 -0.029947003575846946333" rpy="0 0 0" />
       <mass value="0.044782197690790462308" />
@@ -617,12 +539,6 @@
         <color rgba="0.80250260812861884396 0.89340612183512713163 0.94491811293548189088 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/left_3R+RH5_leg/meshes/left_12lf_rod_2_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="-6.3222083681712097906e-07 4.6933255272327711983e-07 -0.012893387334328714963" rpy="0 0 0" />
       <mass value="0.0025088292483592144512" />
@@ -704,12 +620,6 @@
         <color rgba="0.61568627450980395466 0.81176470588235294379 0.9294117647058824927 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/right_3R+RH5_leg/meshes/right_hip_yaw_link_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="1.0722510336647112642e-18 -3.2283346675930388273e-19 -0.0098390489054829086829" rpy="0 0 0" />
       <mass value="0.0090258837370979193293" />
@@ -730,7 +640,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/right_3R+RH5_leg/meshes/right_hip_roll_link_collision.stl" />
+        <mesh filename="collisions/right_hip_roll_link_collision.stl" />
       </geometry>
     </collision>
     <inertial>
@@ -753,7 +663,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/right_3R+RH5_leg/meshes/right_hip_pitch_link_collision.stl" />
+        <mesh filename="collisions/right_hip_pitch_link_collision.stl" />
       </geometry>
     </collision>
     <inertial>
@@ -776,7 +686,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/right_3R+RH5_leg/meshes/right_calf_link_collision.stl" />
+        <mesh filename="collisions/right_calf_link_collision.stl" />
       </geometry>
     </collision>
     <inertial>
@@ -796,12 +706,6 @@
         <color rgba="0.63189161126160275916 0.7266866879354088038 0.78356373393969258601 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/right_3R+RH5_leg/meshes/right_ank_pitch_link_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="4.0269688365285932134e-08 0.00059528282566558552748 -0.014599922383890160532" rpy="0 0 0" />
       <mass value="0.0042238381753791614387" />
@@ -822,7 +726,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/right_3R+RH5_leg/meshes/right_ank_roll_link_collision.stl" />
+        <mesh filename="collisions/right_ank_roll_link_collision.stl" />
       </geometry>
     </collision>
     <inertial>
@@ -842,12 +746,6 @@
         <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/right_3R+RH5_leg/meshes/right_ank_rr_link_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="3.4593503690053721902e-05 -0.0062999445222072123982 2.2843393600707911792e-19" rpy="0 0 0" />
       <mass value="0.00044289790445047673732" />
@@ -865,12 +763,6 @@
         <color rgba="0.92771758928836545177 0.61049283053223013518 0.21847658490585164515 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/right_3R+RH5_leg/meshes/right_12lf_rod_end_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="-4.47351951498684709e-11 -0.0038422185938245742576 6.4384187209394588396e-06" rpy="0 0 0" />
       <mass value="0.00085420491177815895123" />
@@ -906,12 +798,6 @@
         <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/right_3R+RH5_leg/meshes/right_ank_rr_link_2_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="3.4593503690060701454e-05 -0.0062999445222072687767 2.2843393600716385884e-19" rpy="0 0 0" />
       <mass value="0.00044289790445047673732" />
@@ -929,12 +815,6 @@
         <color rgba="0.92771758928836545177 0.6104928305322302462 0.21847658490585164515 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/right_3R+RH5_leg/meshes/right_12lf_rod_end_2_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="-4.4735205116598910544e-11 -0.0038422185938245803291 6.4384187209450399397e-06" rpy="0 0 0" />
       <mass value="0.00085420491177815895123" />
@@ -988,12 +868,6 @@
         <color rgba="0.61568627450980395466 0.81176470588235294379 0.9294117647058824927 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/right_3R+RH5_leg/meshes/right_ball_joint_container_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="4.7221442975712073132e-19 -1.2135113793955999071e-19 -0.0097125341669083396778" rpy="0 0 0" />
       <mass value="4.8037356425330562243e-05" />
@@ -1011,12 +885,6 @@
         <color rgba="0.3291302810242056065 0.44310466418644928188 0.69204871161977121741 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/right_3R+RH5_leg/meshes/right_ball_joint_ball_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="-9.2723657815922728581e-19 -0.001030866981001647394 -9.5897189779356104259e-18" rpy="0 0 0" />
       <mass value="4.4053796295264623832e-05" />
@@ -1034,12 +902,6 @@
         <color rgba="0.62004392096503557763 0.58836684612040235365 0.49897069027350277048 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/right_3R+RH5_leg/meshes/right_12lf_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="0.0049084207226888108486 -0.00013802440006487488302 -0.029947003575832954053" rpy="0 0 0" />
       <mass value="0.044782197690790462308" />
@@ -1057,12 +919,6 @@
         <color rgba="0.80250260812861884396 0.89340612183512713163 0.94491811293548189088 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/right_3R+RH5_leg/meshes/right_12lf_rod_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="-6.322208404493695693e-07 4.693325515433133728e-07 -0.012893387334330659588" rpy="0 0 0" />
       <mass value="0.0025088292483592144512" />
@@ -1116,12 +972,6 @@
         <color rgba="0.61568627450980395466 0.81176470588235294379 0.9294117647058824927 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/right_3R+RH5_leg/meshes/right_ball_joint_container_2_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="7.411108333664368946e-18 -1.2135113793956324072e-19 -0.0097125341669083414126" rpy="0 0 0" />
       <mass value="4.8037356425330562243e-05" />
@@ -1139,12 +989,6 @@
         <color rgba="0.3291302810242056065 0.44310466418644928188 0.69204871161977121741 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/right_3R+RH5_leg/meshes/right_ball_joint_ball_2_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="-1.0444401871169769954e-17 -0.0010308669810016666928 -9.0457845496231557146e-18" rpy="0 0 0" />
       <mass value="4.4053796295264623832e-05" />
@@ -1162,12 +1006,6 @@
         <color rgba="0.62004392096503546661 0.5883668461204021316 0.49897069027350277048 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/right_3R+RH5_leg/meshes/right_12lf_2_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="0.0049084207226871160237 -0.00013802440006710194271 -0.029947003575831306066" rpy="0 0 0" />
       <mass value="0.044782197690790476186" />
@@ -1185,12 +1023,6 @@
         <color rgba="0.80250260812861884396 0.89340612183512713163 0.94491811293548189088 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/right_3R+RH5_leg/meshes/right_12lf_rod_2_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="-6.3222084132940662595e-07 4.6933255080423075126e-07 -0.012893387334332477578" rpy="0 0 0" />
       <mass value="0.0025088292483592144512" />
@@ -1272,12 +1104,6 @@
         <color rgba="0.61568627450980395466 0.81176470588235283277 0.92941176470588238168 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/left_OP3_arm/meshes/left_sho_pitch_link_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="-3.0491385309620660034e-09 0.0021980515983192187336 -0.008444103477871608282" rpy="0 0 0" />
       <mass value="0.0053168741776095261239" />
@@ -1298,7 +1124,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/left_OP3_arm/meshes/left_sho_roll_link_collision.stl" />
+        <mesh filename="collisions/left_sho_roll_link_collision.stl" />
       </geometry>
     </collision>
     <inertial>
@@ -1321,7 +1147,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/left_OP3_arm/meshes/left_elb_link_collision.stl" />
+        <mesh filename="collisions/left_elb_link_collision.stl" />
       </geometry>
     </collision>
     <inertial>
@@ -1360,12 +1186,6 @@
         <color rgba="0.61568627450980395466 0.81176470588235283277 0.92941176470588238168 1.0" />
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="../assemblies/right_OP3_arm/meshes/right_sho_pitch_link_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="-3.0491385338904537031e-09 0.0021980515983192261062 -0.0084441034778715822612" rpy="0 0 0" />
       <mass value="0.0053168741776095261239" />
@@ -1386,7 +1206,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/right_OP3_arm/meshes/right_sho_roll_link_collision.stl" />
+        <mesh filename="collisions/right_sho_roll_link_collision.stl" />
       </geometry>
     </collision>
     <inertial>
@@ -1409,7 +1229,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/right_OP3_arm/meshes/right_elb_link_collision.stl" />
+        <mesh filename="collisions/right_elb_link_collision.stl" />
       </geometry>
     </collision>
     <inertial>

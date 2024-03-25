@@ -21,7 +21,7 @@ class MujoCoSim(BaseSim):
         self.data = None
 
         if robot is not None:
-            self.foot_size = robot.config.foot_size
+            self.foot_size = robot.foot_size
 
             xml_path = find_description_path(robot.name, suffix="_scene.xml")
             self.model = mujoco.MjModel.from_xml_path(xml_path)

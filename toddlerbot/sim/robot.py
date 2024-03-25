@@ -40,6 +40,7 @@ class HumanoidRobot:
         self.id = 0
         self.joints_info = self.get_joint_info()
         self.offsets = self.compute_offsets()
+        self.foot_size = self.compute_foot_size()
 
         self.dynamixel_joint2id = {}
         self.sunny_sky_joint2id = {}
@@ -101,6 +102,16 @@ class HumanoidRobot:
         # - 0.01369  # This number is read from onshape
 
         return offsets
+
+    def compute_foot_size(self):
+        foot_bounds = self.urdf.scene.geometry.get(
+            "left_ank_roll_link_visual.stl"
+        ).bounds
+        foot_ori = self.urdf.scene.graph.get("ank_roll_link")[0][:3, :3]
+        foot_bounds_rotated = foot_bounds @ foot_ori.T
+        foot_size = np.abs(foot_bounds_rotated[1] - foot_bounds_rotated[0])
+        # 0.004 is the thickness of the foot pad
+        return np.array([foot_size[0], foot_size[1], 0.004])
 
     def get_joint_info(self):
         joint_info_dict = {}

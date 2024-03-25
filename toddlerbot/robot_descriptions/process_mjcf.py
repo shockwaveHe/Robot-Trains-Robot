@@ -107,19 +107,20 @@ def add_contact_exclusion_to_mjcf(root):
 
     contact = ET.SubElement(root, "contact")
 
-    # Collect all body names
-    body_names = [
-        body.get("name") for body in root.findall(".//body") if body.get("name")
-    ]
-
-    # Generate all unique pairs of body names
-    body_pairs = combinations(body_names, 2)
-
-    # Add an <exclude> element for each pair
-    for body1, body2 in body_pairs:
-        exclude = contact.find(f"./exclude[@body1='{body1}'][@body2='{body2}']")
-        if exclude is None:
-            ET.SubElement(contact, "exclude", body1=body1, body2=body2)
+    # Iterate through all bodies
+    for body in root.findall(".//body"):
+        parent_name = body.get("name")
+        # Ensure the parent has a 'collision' class geom as a direct child
+        if parent_name and body.find("./geom[@class='collision']") is not None:
+            # Iterate over direct children bodies of the current body
+            for child in body.findall(".//body"):
+                child_name = child.get("name")
+                # Ensure the child has a 'collision' class geom as a direct child
+                if child_name and child.find("./geom[@class='collision']") is not None:
+                    # Add exclusion since both parent and child meet the criteria
+                    ET.SubElement(
+                        contact, "exclude", body1=parent_name, body2=child_name
+                    )
 
 
 def add_equality_constraints_for_leaves(root, body_pairs):
@@ -340,9 +341,6 @@ def create_base_scene_xml(mjcf_path):
 
 
 def process_mjcf_fixed_file(root, config):
-    # replace_mesh_file(
-    #     root, "body_link_collision.stl", "body_link_collision_simplified.stl"
-    # )
     add_torso_site(root)
     update_joint_params(root, config.motor_params)
     update_geom_classes(root, ["type", "contype", "conaffinity", "group", "density"])
