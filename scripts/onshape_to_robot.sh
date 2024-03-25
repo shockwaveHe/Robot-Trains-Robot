@@ -1,19 +1,23 @@
 #!/bin/bash
 
 ##### BASE #####
-# ROBOT_NAME="base"
-# BODY_NAME="4R_body"
-# ARM_NAME="OP3_arm"
-# LEG_NAME="3R+RH5_leg"
-# DOC_ID_LIST="d2a8be5ce536cd2e18740efa d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe 93bd073d2ef7800c8ba429de 93bd073d2ef7800c8ba429de"
-# ASSEMBLY_LIST="4R_body left_3R+RH5_leg right_3R+RH5_leg left_OP3_arm right_OP3_arm"
+ROBOT_NAME="base"
+BODY_NAME="4R_body"
+ARM_NAME="OP3_arm"
+LEG_NAME="3R+RH5_leg"
+DOC_ID_LIST="d2a8be5ce536cd2e18740efa d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe 93bd073d2ef7800c8ba429de 93bd073d2ef7800c8ba429de"
+ASSEMBLY_LIST="4R_body left_3R+RH5_leg right_3R+RH5_leg left_OP3_arm right_OP3_arm"
+# DOC_ID_LIST="d2a8be5ce536cd2e18740efa"
+# ASSEMBLY_LIST="4R_body"
 
 ##### BASE_LEGS #####
-ROBOT_NAME="base_legs"
-BODY_NAME="no_body"
-LEG_NAME="3R+RH5_leg"
-DOC_ID_LIST="dca63e30dcbfe66f561f5fd4 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe"
-ASSEMBLY_LIST="no_body left_3R+RH5_leg right_3R+RH5_leg"
+# ROBOT_NAME="base_legs"
+# BODY_NAME="no_body"
+# LEG_NAME="3R+RH5_leg"
+# DOC_ID_LIST="dca63e30dcbfe66f561f5fd4 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe"
+# ASSEMBLY_LIST="no_body left_3R+RH5_leg right_3R+RH5_leg"
+# DOC_ID_LIST="dca63e30dcbfe66f561f5fd4"
+# ASSEMBLY_LIST="no_body"
 
 REPO_NAME="toddlerbot"
 URDF_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/$ROBOT_NAME.urdf
@@ -47,6 +51,14 @@ if [ "$run_process" == "y" ]; then
     python $REPO_NAME/utils/vis_kine_tree.py \
         --path $URDF_PATH \
         -o $REPO_NAME/robot_descriptions/$ROBOT_NAME/${ROBOT_NAME}_kine_tree.png
+
+    printf "Generating the collision files...\n\n"
+    python $REPO_NAME/robot_descriptions/update_collisions.py --robot-name $ROBOT_NAME
+
+    printf "Generating the configuration file...\n\n"
+    python $REPO_NAME/robot_descriptions/get_config.py --robot-name $ROBOT_NAME
+
+    printf "IMPORTANT: Double-check the auto-generated config file before proceeding!\n\n"
 else
     printf "Process skipped.\n\n"
 fi

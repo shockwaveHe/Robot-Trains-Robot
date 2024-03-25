@@ -7,6 +7,18 @@ git clone git@github.com:hshi74/toddlerbot.git
 git submodule update --init --recursive
 ```
 
+Recommended IDE:
+VSCode
+
+Recommended VSCode Extenstions:
+1. Black Formatter
+1. isort
+1. Python, Pylance, Python Debugger
+1. Serial Monitor
+1. URDF
+1. vscode-stl-viewer
+1. XML Tools
+
 ### Linux Systems
 ```
 conda create --name toddlerbot python=3.8
@@ -96,8 +108,6 @@ export ONSHAPE_API=https://cad.onshape.com
 export ONSHAPE_ACCESS_KEY=Your_Access_Key
 export ONSHAPE_SECRET_KEY=Your_Secret_Key
 ```
-
-Use VScode Extension XML Tools to format the auto-format the URDF files.
 
 ### Linux Systems
 ```

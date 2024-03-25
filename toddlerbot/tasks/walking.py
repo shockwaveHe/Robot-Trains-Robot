@@ -31,7 +31,7 @@ class Walking:
         self.robot = robot
         self.config = config
         self.fs_steps = round(config.plan_t_step / config.control_dt)
-        self.x_offset_com_to_foot = robot.config.com[0]
+        self.x_offset_com_to_foot = robot.com[0]
         self.y_offset_com_to_foot = robot.offsets["y_offset_com_to_foot"]
 
         plan_params = FootStepPlanParameters(
@@ -42,7 +42,7 @@ class Walking:
         self.fsp = FootStepPlanner(plan_params)
 
         control_params = ZMPPreviewControlParameters(
-            com_z=robot.config.com[2] - config.squat_height,
+            com_z=robot.com[2] - config.squat_height,
             dt=config.control_dt,
             t_preview=config.control_t_preview,
             Q_val=config.control_cost_Q_val,
@@ -54,7 +54,7 @@ class Walking:
 
         self.curr_pose = None
         self.com_curr = np.concatenate(
-            [np.array(robot.config.com)[None, :2], np.zeros((2, 2))], axis=0
+            [np.array(robot.com)[None, :2], np.zeros((2, 2))], axis=0
         )
         self.joint_angles = joint_angles
 
@@ -293,7 +293,7 @@ def main():
     target_pose = config.target_pose_init
 
     path, foot_steps, com_traj = walking.plan_and_control(
-        curr_pose, target_pose, np.array(robot.config.com)
+        curr_pose, target_pose, np.array(robot.com)
     )
     foot_steps_vis = copy.deepcopy(foot_steps)
 

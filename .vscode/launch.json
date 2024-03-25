@@ -5,6 +5,20 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "cwd": "${workspaceRoot}",
+            "executable": "toddlerbot/actuation/sunny_sky/knee_esc/Release/motorcontrol.elf",
+            "name": "Flush Knee ESC",
+            "request": "launch",
+            "type": "cortex-debug",
+            "servertype": "openocd",
+            "configFiles": [
+                "toddlerbot/actuation/sunny_sky/knee_esc/daplink.cfg"
+            ],
+            "searchDir": [],
+            "runToEntryPoint": "main",
+            "showDevDebugOutput": "none"
+        }
+        {
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",
@@ -52,7 +66,6 @@
                 "robotis_op3",
                 "--sim",
                 "mujoco",
-                // "--use-feedback",
                 // "--sleep-time",
                 // "0.001",
             ],
@@ -70,7 +83,23 @@
                 "base",
                 "--sim",
                 "mujoco",
-                // "--use-feedback",
+                // "--sleep-time",
+                // "0.001",
+            ],
+            "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
+        },
+        {
+            "name": "Python: walk_base_legs_mujoco",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/tasks/walking.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot-name",
+                "base_legs",
+                "--sim",
+                "mujoco",
                 // "--sleep-time",
                 // "0.001",
             ],
@@ -108,20 +137,7 @@
                 // "0.001",
             ]
         },
-        {
-            "cwd": "${workspaceRoot}",
-            "executable": "toddlerbot/actuation/sunny_sky/knee_esc/Release/motorcontrol.elf",
-            "name": "Flush Knee ESC",
-            "request": "launch",
-            "type": "cortex-debug",
-            "servertype": "openocd",
-            "configFiles": [
-                "toddlerbot/actuation/sunny_sky/knee_esc/daplink.cfg"
-            ],
-            "searchDir": [],
-            "runToEntryPoint": "main",
-            "showDevDebugOutput": "none"
-        }
+        
         
     ]
 }

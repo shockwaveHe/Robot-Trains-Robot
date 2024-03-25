@@ -206,7 +206,7 @@ class RealWorld(BaseSim):
 
     def get_torso_pose(self, robot: HumanoidRobot):
         # Placeholder
-        return np.array(robot.config.com), np.eye(3)
+        return np.array(robot.com), np.eye(3)
 
     def simulate(
         self,

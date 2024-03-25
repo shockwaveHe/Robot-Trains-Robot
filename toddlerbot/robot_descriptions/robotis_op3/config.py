@@ -56,64 +56,164 @@ robotis_op3_config = RobotConfig(
     canonical_name2link_name=canonical_name2link_name,
     motor_params={
         "l_hip_yaw": MotorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+            brand="dynamixel",
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
         "l_hip_roll": MotorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+            brand="dynamixel",
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
         "l_hip_pitch": MotorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+            brand="dynamixel",
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
         "l_knee": MotorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+            brand="dynamixel",
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
         "l_ank_pitch": MotorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+            brand="dynamixel",
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
         "l_ank_roll": MotorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+            brand="dynamixel",
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
         "r_hip_yaw": MotorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+            brand="dynamixel",
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
         "r_hip_roll": MotorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+            brand="dynamixel",
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
         "r_hip_pitch": MotorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+            brand="dynamixel",
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
         "r_knee": MotorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+            brand="dynamixel",
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
         "r_ank_pitch": MotorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+            brand="dynamixel",
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
         "r_ank_roll": MotorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+            brand="dynamixel",
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
         "l_sho_pitch": MotorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+            brand="dynamixel",
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
         "l_sho_roll": MotorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+            brand="dynamixel",
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
         "l_el": MotorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+            brand="dynamixel",
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
         "r_sho_pitch": MotorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+            brand="dynamixel",
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
         "r_sho_roll": MotorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+            brand="dynamixel",
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
         "r_el": MotorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+            brand="dynamixel",
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
         "head_pan": MotorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+            brand="dynamixel",
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
         "head_tilt": MotorParameters(
-            type="motor", damping=1.084, armature=0.045, kp=400.0, kv=40.0
+            brand="dynamixel",
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
         ),
     },
     com=[0, 0, 0.36],

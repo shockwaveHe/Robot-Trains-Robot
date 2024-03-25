@@ -230,7 +230,5 @@ base_config = RobotConfig(
         ("12lf_rod_end_3", "12lf_rod_3"),
         ("12lf_rod_end_4", "12lf_rod_4"),
     ],
-    # UPDATE: the center of mass for the robot
-    com=[-0.014, 0, 0.323],
     compute_leg_angles=compute_leg_angles,
 )

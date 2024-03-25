@@ -39,8 +39,20 @@ class HumanoidRobot:
 
         self.id = 0
         self.joints_info = self.get_joint_info()
-        self.offsets = self.compute_offsets()
-        self.foot_size = self.compute_foot_size()
+        if self.config.com is None:
+            self.com = self.urdf.scene.center_mass
+        else:
+            self.com = self.config.com
+
+        if self.config.foot_size is None:
+            self.foot_size = self.compute_foot_size()
+        else:
+            self.foot_size = self.config.foot_size
+
+        if self.config.offsets is None:
+            self.offsets = self.compute_offsets()
+        else:
+            self.offsets = self.config.offsets
 
         self.dynamixel_joint2id = {}
         self.sunny_sky_joint2id = {}

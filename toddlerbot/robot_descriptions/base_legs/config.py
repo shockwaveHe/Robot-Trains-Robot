@@ -4,7 +4,7 @@ import numpy as np
 
 from toddlerbot.robot_descriptions.robot_configs import *
 
-canonical_name2link_name = {"body_link": "base_link"}
+canonical_name2link_name = {"body_link": "body_link"}
 
 
 # UPDATE: the function to compute leg angles
@@ -168,60 +168,6 @@ base_legs_config = RobotConfig(
         ),
         # "right_ank_act1": ActuatorParameters(type="motor", damping=0.1, armature=1e-7, kp=10.0, kv=0.1),
         # "right_ank_act2": ActuatorParameters(type="motor", damping=0.1, armature=1e-7, kp=10.0, kv=0.1),
-        "left_sho_pitch": MotorParameters(
-            brand="dynamixel",
-            id=0,
-            type="motor",
-            damping=1.084,
-            armature=0.045,
-            kp=400.0,
-            kv=40.0,
-        ),
-        "left_sho_roll": MotorParameters(
-            brand="dynamixel",
-            id=1,
-            type="motor",
-            damping=1.084,
-            armature=0.045,
-            kp=400.0,
-            kv=40.0,
-        ),
-        "left_elb": MotorParameters(
-            brand="dynamixel",
-            id=2,
-            type="motor",
-            damping=1.084,
-            armature=0.045,
-            kp=400.0,
-            kv=40.0,
-        ),
-        "right_sho_pitch": MotorParameters(
-            brand="dynamixel",
-            id=3,
-            type="motor",
-            damping=1.084,
-            armature=0.045,
-            kp=400.0,
-            kv=40.0,
-        ),
-        "right_sho_roll": MotorParameters(
-            brand="dynamixel",
-            id=4,
-            type="motor",
-            damping=1.084,
-            armature=0.045,
-            kp=400.0,
-            kv=40.0,
-        ),
-        "right_elb": MotorParameters(
-            brand="dynamixel",
-            id=5,
-            type="motor",
-            damping=1.084,
-            armature=0.045,
-            kp=400.0,
-            kv=40.0,
-        ),
     },
     # UPDATE: the constraint pairs for the robot
     constraint_pairs=[
@@ -230,7 +176,5 @@ base_legs_config = RobotConfig(
         ("12lf_rod_end_3", "12lf_rod_3"),
         ("12lf_rod_end_4", "12lf_rod_4"),
     ],
-    # UPDATE: the center of mass for the robot
-    com=[-0.014, 0, 0.323],
     compute_leg_angles=compute_leg_angles,
 )

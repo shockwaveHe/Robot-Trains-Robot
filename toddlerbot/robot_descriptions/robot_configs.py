@@ -8,10 +8,10 @@ from typing import Callable, List
 
 @dataclass
 class RobotConfig:
-    com: List[float] = None
+    canonical_name2link_name: dict = None
     motor_params: dict = None
     constraint_pairs: list = None
-    canonical_name2link_name: dict = None
+    com: List[float] = None
     foot_size: list = None
     offsets: dict = None
     compute_leg_angles: Callable = None
