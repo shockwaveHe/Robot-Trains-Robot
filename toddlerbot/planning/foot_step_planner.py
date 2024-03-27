@@ -175,5 +175,5 @@ if __name__ == "__main__":
             y_label="Position Y",
             save_config=True,
             save_path="results/plots",
-            time_suffix=f"{i}",
+            file_suffix=f"{i}",
         )()

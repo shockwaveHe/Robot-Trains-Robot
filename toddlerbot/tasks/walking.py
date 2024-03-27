@@ -1,5 +1,6 @@
 import argparse
 import copy
+import pickle
 import random
 from typing import List, Optional, Tuple
 
@@ -49,6 +50,7 @@ class Walking:
             R_val=config.control_cost_R_val,
             x_offset_com_to_foot=self.x_offset_com_to_foot,
             y_disp_zmp=config.y_offset_zmp - self.y_offset_com_to_foot,
+            filter_dynamics=config.filter_dynamics,
         )
         self.pc = ZMPPreviewController(control_params)
 
@@ -60,12 +62,8 @@ class Walking:
 
         self.idx = 0
 
-        self.zmp_ref_record = []
-        self.zmp_traj_record_simple = []
-        self.com_ref_record = []
-
         self.foot_steps = []
-        self.com_traj = []
+        self.com_ref_traj = []
 
         self.left_up = self.right_up = 0.0
         # Assume the initial state is the canonical pose
@@ -77,34 +75,19 @@ class Walking:
         self,
         curr_pose: Optional[np.ndarray] = None,
         target_pose: Optional[np.ndarray] = None,
-        com_pos_curr: Optional[np.ndarray] = None,
-        use_feedback: bool = False,
-    ) -> List[FootStep]:
-        if self.curr_pose is not None and not use_feedback:
+    ):
+        if self.curr_pose is not None:
             curr_pose = self.curr_pose
 
         path, self.foot_steps = self.fsp.compute_steps(curr_pose, target_pose)
-
-        if use_feedback:
-            com_curr = np.concatenate(
-                [com_pos_curr[None, :2], np.zeros((2, 2))], axis=0
-            )
-        else:
-            com_curr = self.com_curr
-
-        # Update the com trajectory based on the foot steps.
-        zmp_ref = self.pc.compute_zmp_ref(self.foot_steps)
-        zmp_traj, com_traj, self.com_curr = self.pc.compute_com_traj(com_curr, zmp_ref)
-        self.com_traj = com_traj
-
-        self.zmp_ref_record.extend(zmp_ref)
-        self.zmp_traj_record_simple.extend(zmp_traj)
-        self.com_ref_record.extend(com_traj)
-
-        return path, self.foot_steps, self.com_traj
+        zmp_ref_traj = self.pc.compute_zmp_ref_traj(self.foot_steps)
+        zmp_simple_traj, self.com_ref_traj, self.com_curr = self.pc.compute_com_traj(
+            self.com_curr, zmp_ref_traj
+        )
+        return path, self.foot_steps, zmp_ref_traj, zmp_simple_traj, self.com_ref_traj
 
     def solve_joint_angles(self) -> Tuple[List[float], List[float], int]:
-        if len(self.com_traj) == 0:
+        if len(self.com_ref_traj) == 0:
             return "finished", self.joint_angles
 
         if abs(self.idx * self.config.control_dt - self.foot_steps[1].time) < 1e-6:
@@ -150,18 +133,18 @@ class Walking:
                     self.fs_steps / 2
                 )
 
-        com_pos = self.com_traj.pop(0)
-        self._compute_foot_offset(com_pos)
+        self._compute_foot_offset()
 
+        com_pos_ref = self.com_ref_traj.pop(0)
         self.joint_angles = self.robot.solve_ik(
-            *self._compute_foot_pos(com_pos),
+            *self._compute_foot_pos(com_pos_ref),
             self.joint_angles,
         )
         self.idx += 1
 
         return "walking", self.joint_angles
 
-    def _compute_foot_offset(self, com_pos):
+    def _compute_foot_offset(self):
         idx_curr = self.idx % self.fs_steps
         up_start_idx = round(self.fs_steps / 4)
         up_end_idx = round(self.fs_steps / 2)
@@ -197,7 +180,9 @@ class Walking:
                 self.theta_curr += self.theta_delta
 
     def _compute_foot_pos(self, com_pos):
-        self.theta_curr = 0.0
+        if not self.config.rotate_torso:
+            self.theta_curr = 0.0
+
         left_foot_theta = self.theta_curr - self.left_pos[2]
         right_foot_theta = self.theta_curr - self.right_pos[2]
         # print(
@@ -250,12 +235,6 @@ def main():
         help="The simulator to use.",
     )
     parser.add_argument(
-        "--use-feedback",
-        action="store_true",
-        default=False,
-        help="Whether to use feedback control or not.",
-    )
-    parser.add_argument(
         "--sleep-time",
         type=float,
         default=0.0,
@@ -291,17 +270,13 @@ def main():
     )
     target_pose = config.target_pose_init
 
-    path, foot_steps, com_traj = walking.plan_and_control(
-        curr_pose, target_pose, np.array(robot.com)
+    path, foot_steps, zmp_ref_traj, zmp_simple_traj, com_ref_traj = (
+        walking.plan_and_control(curr_pose, target_pose)
     )
     foot_steps_vis = copy.deepcopy(foot_steps)
 
-    # TODO: fix the small y_offset and let the body rotate with the hip
-    # TODO: add the feedback control and the next plan
-    # TODO: clean up the code
-
-    com_traj_record = []
-    zmp_traj_record_approx = []
+    com_traj = []
+    zmp_approx_traj = []
 
     time_start = time.time()
     time_seq_ref = []
@@ -310,7 +285,7 @@ def main():
     joint_angle_dict = {}
 
     # This function requires its parameters to be the same as its return values.
-    def step_func(sim_step_idx, path, foot_steps, com_traj, joint_angles):
+    def step_func(sim_step_idx, path, foot_steps, com_ref_traj, joint_angles):
         sim_step_idx += 1
 
         if sim_step_idx >= config.actuator_steps:
@@ -327,10 +302,10 @@ def main():
                 torso_pos[0] + np.cos(torso_theta) * walking.x_offset_com_to_foot,
                 torso_pos[1] + np.sin(torso_theta) * walking.x_offset_com_to_foot,
             ]
-            com_traj_record.append(com_pos)
+            com_traj.append(com_pos)
 
             zmp_pos = sim.get_zmp(robot)
-            zmp_traj_record_approx.append(zmp_pos)
+            zmp_approx_traj.append(zmp_pos)
 
             if status == "finished":
                 tracking_error = np.array(target_pose) - np.array(
@@ -359,23 +334,49 @@ def main():
             time_seq_dict[name].append(joint_state.time - time_start)
             joint_angle_dict[name].append(joint_state.pos)
 
-        return sim_step_idx, path, foot_steps, com_traj, joint_angles
+        return sim_step_idx, path, foot_steps, com_ref_traj, joint_angles
 
     try:
         sim.simulate(
             step_func,
-            (0, path, foot_steps, com_traj, joint_angles),
+            (0, path, foot_steps, com_ref_traj, joint_angles),
             vis_flags=["foot_steps", "com_traj", "torso"],
             sleep_time=args.sleep_time,
         )
     finally:
+        exp_name = f"walk_{robot.name}_{sim.name}"
+        time_str = time.strftime("%Y%m%d_%H%M%S")
+        exp_folder_path = f"results/{exp_name}_{time_str}"
+        os.makedirs(exp_folder_path, exist_ok=True)
+
+        zmp_com_traj_data = {
+            "zmp_ref_traj": zmp_ref_traj,
+            "zmp_simple_traj": zmp_simple_traj,
+            "zmp_approx_traj": zmp_approx_traj,
+            "com_ref_traj": com_ref_traj,
+            "com_traj": com_traj,
+        }
+
+        file_suffix = ""
+        if config.filter_dynamics:
+            file_suffix = "filter"
+
+        if len(file_suffix) > 0:
+            data_suffix = f"_{file_suffix}"
+
+        with open(
+            os.path.join(exp_folder_path, f"zmp_com_traj_data{data_suffix}.pkl"), "wb"
+        ) as f:
+            pickle.dump(zmp_com_traj_data, f)
+
         plot_joint_tracking(
             time_seq_dict,
             time_seq_ref,
             joint_angle_dict,
             joint_angle_ref_dict,
             robot.config.motor_params,
-            file_name=f"{sim.name}_joint_angle_tracking",
+            save_path=exp_folder_path,
+            file_suffix=file_suffix,
         )
 
         fig, ax = plt.subplots(figsize=(10, 6))
@@ -386,32 +387,21 @@ def main():
             foot_steps_vis,
             robot.foot_size[:2],
             robot.offsets["y_offset_com_to_foot"],
-            title="Footsteps Planning",
-            save_path="results/plots",
-            time_suffix="",
+            title=f"Footsteps Planning",
+            save_path=exp_folder_path,
+            file_suffix=file_suffix,
             ax=ax,
         )()
 
         plot_line_graph(
-            [
-                [record[1] for record in walking.zmp_ref_record],
-                [record[1] for record in walking.zmp_traj_record_simple],
-                [record[1] for record in zmp_traj_record_approx],
-                [record[1] for record in walking.com_ref_record],
-                [record[1] for record in com_traj_record],
-            ],
-            x=[
-                [record[0] for record in walking.zmp_ref_record],
-                [record[0] for record in walking.zmp_traj_record_simple],
-                [record[0] for record in zmp_traj_record_approx],
-                [record[0] for record in walking.com_ref_record],
-                [record[0] for record in com_traj_record],
-            ],
-            title="Footsteps Planning",
+            [[record[1] for record in x] for x in zmp_com_traj_data.values()],
+            x=[[record[0] for record in x] for x in zmp_com_traj_data.values()],
+            title=f"Footsteps Planning",
             x_label="X",
             y_label="Y",
             save_config=True,
-            save_path="results/plots",
+            save_path=exp_folder_path,
+            file_suffix=file_suffix,
             legend_labels=[
                 "ZMP Ref",
                 "ZMP Traj Simple",
@@ -426,7 +416,6 @@ def main():
             #     round(walking.fs_steps / 4),
             #     round(walking.fs_steps / 4),
             # ],
-            checkpoint_period=[0, 0, 0, 0, 0],
         )()
 
 

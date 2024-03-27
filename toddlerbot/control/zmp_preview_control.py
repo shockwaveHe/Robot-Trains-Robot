@@ -19,6 +19,7 @@ class ZMPPreviewControlParameters:
     R_val: float  # Weighting for control input cost
     x_offset_com_to_foot: float  # Offset of the center of mass from the foot
     y_disp_zmp: float  # Offset of the zero moment point from the center of mass
+    filter_dynamics: bool  # Flag to filter dynamics
 
 
 class ZMPPreviewController:
@@ -77,7 +78,7 @@ class ZMPPreviewController:
             )
             X_tilde = Ac_tilde.T @ X_tilde
 
-    def compute_zmp_ref(self, foot_steps: List[FootStep]) -> List:
+    def compute_zmp_ref_traj(self, foot_steps: List[FootStep]) -> List:
         # Prepare the timing and positions matrix for all foot steps in advance
         x_offset = self.params.x_offset_com_to_foot
         y_offset = self.params.y_disp_zmp
@@ -107,37 +108,37 @@ class ZMPPreviewController:
                     [x + np.cos(theta) * x_offset, y + np.sin(theta) * x_offset]
                 )
 
-        zmp_ref = []
+        zmp_ref_traj = []
         i = 0
         for t in np.arange(fs_times[0], fs_times[-1] + self.params.t_preview + dt, dt):
             if t >= fs_times[-1]:
-                zmp_ref.append(fs_positions[-1])
+                zmp_ref_traj.append(fs_positions[-1])
             else:
-                zmp_ref.append(fs_positions[i])
+                zmp_ref_traj.append(fs_positions[i])
                 if (t != fs_times[0]) and (abs(t - fs_times[i + 1]) < 1e-6):
                     i += 1
 
-        return zmp_ref
+        return zmp_ref_traj
 
     def compute_com_traj(
         self, com_curr: np.ndarray, zmp_ref: List
     ) -> Tuple[List, np.ndarray]:
-        com_traj = []
-        zmp_traj = []
+        com_ref_traj = []
+        zmp_simple_traj = []
         sum_error = np.zeros(2)
 
         for k in range(len(zmp_ref) - self.n_preview - 1):
             zmp_preview = zmp_ref[k : k + self.n_preview]
             # We calculate the ZMP assuming a cart-table model
             # Reference: Eq. 4.64 on p.138 in "Introduction to Humanoid Robotics" by Shuuji Kajita
-            zmp = (self.C_d @ com_curr).squeeze()
-            sum_error += zmp - zmp_ref[k]
+            zmp_simple = (self.C_d @ com_curr).squeeze()
+            sum_error += zmp_simple - zmp_ref[k]
 
             u = -self.Ks * sum_error - self.Kx @ com_curr - self.G @ zmp_preview
             com_curr = self.A_d @ com_curr + self.B_d @ u
 
             # Record the current COM position
-            zmp_traj.append(zmp)
-            com_traj.append(com_curr[0].copy())
+            zmp_simple_traj.append(zmp_simple)
+            com_ref_traj.append(com_curr[0].copy())
 
-        return zmp_traj, com_traj, com_curr
+        return zmp_simple_traj, com_ref_traj, com_curr

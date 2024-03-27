@@ -16,7 +16,9 @@ def plot_joint_tracking(
     joint_angle_dict,
     joint_angle_ref_dict,
     motor_params,
+    save_path,
     file_name="joint_angle_tracking",
+    file_suffix="",
     colors_dict={
         "dynamixel": "cyan",
         "sunny_sky": "oldlace",
@@ -26,7 +28,7 @@ def plot_joint_tracking(
     all_angles = np.concatenate(
         list(joint_angle_dict.values()) + list(joint_angle_ref_dict.values())
     )
-    global_ymin, global_ymax = np.min(all_angles), np.max(all_angles)
+    global_ymin, global_ymax = np.min(all_angles) - 0.1, np.max(all_angles) + 0.1
 
     x_list = []
     y_list = []
@@ -56,28 +58,12 @@ def plot_joint_tracking(
             x_label="Time (s)",
             y_label="Position (rad)",
             save_config=True if i == len(axs.flat) - 1 else False,
-            save_path="results/plots" if i == len(axs.flat) - 1 else None,
-            time_suffix="",
+            save_path=save_path if i == len(axs.flat) - 1 else None,
+            file_name=file_name if i == len(axs.flat) - 1 else None,
+            file_suffix=file_suffix,
             ax=ax,
             legend_labels=legend_labels[2 * i : 2 * i + 2],
         )()
-
-    time_str = time.strftime("%Y%m%d_%H%M%S")
-    file_name_before = f"{legend_labels[-2]}"
-    file_name_after = f"{file_name}_{time_str}"
-    os.rename(
-        os.path.join("results/plots", f"{file_name_before}.png"),
-        os.path.join("results/plots", f"{file_name_after}.png"),
-    )
-    os.rename(
-        os.path.join("results/plots", f"{file_name_before}_config.pkl"),
-        os.path.join("results/plots", f"{file_name_after}_config.pkl"),
-    )
-
-    log(
-        f"Renamed the files from {file_name_before} to {file_name_after}",
-        header="Visualization",
-    )
 
 
 def plot_line_graph(
@@ -92,7 +78,8 @@ def plot_line_graph(
     y_label=None,
     save_config=False,
     save_path=None,
-    time_suffix=None,
+    file_name=None,
+    file_suffix=None,
     ax=None,
     checkpoint_period=None,
 ):
@@ -163,7 +150,8 @@ def plot_line_graph(
         y_label=y_label,
         save_config=save_config,
         save_path=save_path,
-        time_suffix=time_suffix,
+        file_name=file_name,
+        file_suffix=file_suffix,
     )
 
     return vis_function

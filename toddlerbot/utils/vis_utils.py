@@ -22,7 +22,8 @@ def make_vis_function(
     y_label=None,
     save_config=False,
     save_path=None,
-    time_suffix=None,
+    file_name=None,
+    file_suffix=None,
     blocking=True,
 ):
     """
@@ -38,13 +39,18 @@ def make_vis_function(
 
     @functools.wraps(func)
     def wrapped_function(*args, **kwargs):
-        if time_suffix is None:
+        if file_suffix is None:
             suffix = time.strftime("%Y%m%d_%H%M%S")
         else:
-            suffix = time_suffix
+            suffix = file_suffix
 
         if len(suffix) > 0:
             suffix = f"_{suffix}"
+
+        if file_name is None:
+            name = f"{title.lower().replace(' ', '_')}{suffix}"
+        else:
+            name = f"{file_name}{suffix}"
 
         # Save configuration if requested
         if save_config and save_path:
@@ -53,7 +59,7 @@ def make_vis_function(
                 "parameters": kwargs,
             }
 
-            config_file_name = f"{title.lower().replace(' ', '_')}{suffix}_config.pkl"
+            config_file_name = f"{name}_config.pkl"
             config_path = os.path.join(save_path, config_file_name)
             with open(config_path, "wb") as file:
                 pickle.dump(config, file)
@@ -79,9 +85,7 @@ def make_vis_function(
             if not os.path.exists(save_path):
                 os.makedirs(save_path)
 
-            file_path = os.path.join(
-                save_path, f"{title.lower().replace(' ', '_')}{suffix}.png"
-            )
+            file_path = os.path.join(save_path, f"{name}.png")
             plt.savefig(file_path)
             log(f"Graph saved as: {file_path}", header="Visualization")
         else:

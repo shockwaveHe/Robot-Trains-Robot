@@ -122,7 +122,7 @@
             ]
         },
         {
-            "name": "Python: walking_base_real",
+            "name": "Python: walk_base_real",
             "type": "python",
             "request": "launch",
             "program": "toddlerbot/tasks/walking.py",

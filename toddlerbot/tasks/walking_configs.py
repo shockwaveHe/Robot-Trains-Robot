@@ -22,6 +22,8 @@ class WalkingConfig:
     foot_step_height: float = 0.04
     squat_height: float = 0.03
     y_offset_zmp: float = 0.06
+    filter_dynamics: bool = False
+    rotate_torso: bool = False
 
     @staticmethod
     def create_config(**kwargs):
@@ -47,7 +49,9 @@ walking_configs = {
         foot_step_height=0.06,
     ),
     "robotis_op3_mujoco": WalkingConfig.create_config(),
-    "base_mujoco": WalkingConfig.create_config(squat_height=0.01),
+    "base_mujoco": WalkingConfig.create_config(
+        squat_height=0.01, rotate_torso=True, filter_dynamics=True
+    ),
     "base_legs_mujoco": WalkingConfig.create_config(squat_height=0.01),
     "base_real": WalkingConfig.create_config(squat_height=0.01, actuator_steps=2),
 }

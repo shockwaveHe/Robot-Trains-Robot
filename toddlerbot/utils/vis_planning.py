@@ -47,7 +47,7 @@ def draw_footsteps(
     y_label=None,
     save_config=False,
     save_path=None,
-    time_suffix=None,
+    file_suffix=None,
     ax=None,
 ):
     if ax is None:
@@ -80,6 +80,6 @@ def draw_footsteps(
         y_label=y_label,
         save_config=save_config,
         save_path=save_path,
-        time_suffix=time_suffix,
+        file_suffix=file_suffix,
     )
     return vis_function

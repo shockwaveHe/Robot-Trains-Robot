@@ -321,6 +321,6 @@ if __name__ == "__main__":
             y_label="position (rad)",
             save_config=True,
             save_path="results/plots",
-            time_suffix=f"",
+            file_suffix=f"",
             legend_labels=["ref", "real"],
         )()
