@@ -17,7 +17,7 @@
             "searchDir": [],
             "runToEntryPoint": "main",
             "showDevDebugOutput": "none"
-        }
+        },
         {
             "name": "Python: Current File",
             "type": "python",
@@ -137,7 +137,5 @@
                 // "0.001",
             ]
         },
-        
-        
     ]
 }

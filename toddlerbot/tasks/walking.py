@@ -61,7 +61,7 @@ class Walking:
         self.idx = 0
 
         self.zmp_ref_record = []
-        self.zmp_traj_record = []
+        self.zmp_traj_record_simple = []
         self.com_ref_record = []
 
         self.foot_steps = []
@@ -93,13 +93,12 @@ class Walking:
             com_curr = self.com_curr
 
         # Update the com trajectory based on the foot steps.
-        zmp_ref, zmp_traj, com_traj, self.com_curr = self.pc.compute_com_traj(
-            com_curr, self.foot_steps
-        )
+        zmp_ref = self.pc.compute_zmp_ref(self.foot_steps)
+        zmp_traj, com_traj, self.com_curr = self.pc.compute_com_traj(com_curr, zmp_ref)
         self.com_traj = com_traj
 
         self.zmp_ref_record.extend(zmp_ref)
-        self.zmp_traj_record.extend(zmp_traj)
+        self.zmp_traj_record_simple.extend(zmp_traj)
         self.com_ref_record.extend(com_traj)
 
         return path, self.foot_steps, self.com_traj
@@ -302,6 +301,7 @@ def main():
     # TODO: clean up the code
 
     com_traj_record = []
+    zmp_traj_record_approx = []
 
     time_start = time.time()
     time_seq_ref = []
@@ -328,6 +328,9 @@ def main():
                 torso_pos[1] + np.sin(torso_theta) * walking.x_offset_com_to_foot,
             ]
             com_traj_record.append(com_pos)
+
+            zmp_pos = sim.get_zmp(robot)
+            zmp_traj_record_approx.append(zmp_pos)
 
             if status == "finished":
                 tracking_error = np.array(target_pose) - np.array(
@@ -392,13 +395,15 @@ def main():
         plot_line_graph(
             [
                 [record[1] for record in walking.zmp_ref_record],
-                [record[1] for record in walking.zmp_traj_record],
+                [record[1] for record in walking.zmp_traj_record_simple],
+                [record[1] for record in zmp_traj_record_approx],
                 [record[1] for record in walking.com_ref_record],
                 [record[1] for record in com_traj_record],
             ],
             x=[
                 [record[0] for record in walking.zmp_ref_record],
-                [record[0] for record in walking.zmp_traj_record],
+                [record[0] for record in walking.zmp_traj_record_simple],
+                [record[0] for record in zmp_traj_record_approx],
                 [record[0] for record in walking.com_ref_record],
                 [record[0] for record in com_traj_record],
             ],
@@ -407,8 +412,13 @@ def main():
             y_label="Y",
             save_config=True,
             save_path="results/plots",
-            time_suffix="",
-            legend_labels=["ZMP Ref", "ZMP Traj", "CoM Ref", "Com Traj"],
+            legend_labels=[
+                "ZMP Ref",
+                "ZMP Traj Simple",
+                "ZMP Traj Approx",
+                "CoM Ref",
+                "Com Traj",
+            ],
             ax=ax,
             # checkpoint_period=[
             #     0,
@@ -416,7 +426,7 @@ def main():
             #     round(walking.fs_steps / 4),
             #     round(walking.fs_steps / 4),
             # ],
-            checkpoint_period=[0, 0, 0, 0],
+            checkpoint_period=[0, 0, 0, 0, 0],
         )()
 
 

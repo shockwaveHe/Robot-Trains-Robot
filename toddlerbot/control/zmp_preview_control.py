@@ -33,8 +33,7 @@ class ZMPPreviewController:
         """
         Set up the preview control parameters and compute the gain.
         """
-
-        # The notations follow p.145-146 of "Introduction to Humanoid Robotics" by Shuuji Kajita
+        # The notations follow p.145-146 in "Introduction to Humanoid Robotics" by Shuuji Kajita
 
         # State-space matrices for preview control
         # dx/dt = Ax + Bu
@@ -78,10 +77,11 @@ class ZMPPreviewController:
             )
             X_tilde = Ac_tilde.T @ X_tilde
 
-    def compute_com_traj(
-        self, com_curr: np.ndarray, foot_steps: List[FootStep]
-    ) -> Tuple[List, np.ndarray]:
+    def compute_zmp_ref(self, foot_steps: List[FootStep]) -> List:
         # Prepare the timing and positions matrix for all foot steps in advance
+        x_offset = self.params.x_offset_com_to_foot
+        y_offset = self.params.y_disp_zmp
+
         dt = self.params.dt
         fs_times = np.array([fs.time for fs in foot_steps])
 
@@ -91,31 +91,20 @@ class ZMPPreviewController:
             if fs.support_leg == "left":
                 fs_positions.append(
                     [
-                        x
-                        + np.cos(theta) * self.params.x_offset_com_to_foot
-                        - np.sin(theta) * self.params.y_disp_zmp,
-                        y
-                        + np.sin(theta) * self.params.x_offset_com_to_foot
-                        + np.cos(theta) * self.params.y_disp_zmp,
+                        x + np.cos(theta) * x_offset - np.sin(theta) * y_offset,
+                        y + np.sin(theta) * x_offset + np.cos(theta) * y_offset,
                     ]
                 )
             elif fs.support_leg == "right":
                 fs_positions.append(
                     [
-                        x
-                        + np.cos(theta) * self.params.x_offset_com_to_foot
-                        + np.sin(theta) * self.params.y_disp_zmp,
-                        y
-                        + np.sin(theta) * self.params.x_offset_com_to_foot
-                        - np.cos(theta) * self.params.y_disp_zmp,
+                        x + np.cos(theta) * x_offset + np.sin(theta) * y_offset,
+                        y + np.sin(theta) * x_offset - np.cos(theta) * y_offset,
                     ]
                 )
             else:
                 fs_positions.append(
-                    [
-                        x + np.cos(theta) * self.params.x_offset_com_to_foot,
-                        y + np.sin(theta) * self.params.x_offset_com_to_foot,
-                    ]
+                    [x + np.cos(theta) * x_offset, y + np.sin(theta) * x_offset]
                 )
 
         zmp_ref = []
@@ -128,13 +117,19 @@ class ZMPPreviewController:
                 if (t != fs_times[0]) and (abs(t - fs_times[i + 1]) < 1e-6):
                     i += 1
 
-        n_sim = round((fs_times[-1] - fs_times[0]) / dt)
-        sum_error = np.zeros(2)
+        return zmp_ref
+
+    def compute_com_traj(
+        self, com_curr: np.ndarray, zmp_ref: List
+    ) -> Tuple[List, np.ndarray]:
         com_traj = []
         zmp_traj = []
-        for k in range(n_sim):
-            zmp_preview = zmp_ref[k : k + self.n_preview]
+        sum_error = np.zeros(2)
 
+        for k in range(len(zmp_ref) - self.n_preview - 1):
+            zmp_preview = zmp_ref[k : k + self.n_preview]
+            # We calculate the ZMP assuming a cart-table model
+            # Reference: Eq. 4.64 on p.138 in "Introduction to Humanoid Robotics" by Shuuji Kajita
             zmp = (self.C_d @ com_curr).squeeze()
             sum_error += zmp - zmp_ref[k]
 
@@ -145,4 +140,4 @@ class ZMPPreviewController:
             zmp_traj.append(zmp)
             com_traj.append(com_curr[0].copy())
 
-        return zmp_ref, zmp_traj, com_traj, com_curr
+        return zmp_traj, com_traj, com_curr

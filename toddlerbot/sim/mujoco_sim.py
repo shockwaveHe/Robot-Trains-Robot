@@ -87,6 +87,44 @@ class MujoCoSim(BaseSim):
 
         return joint_state_dict
 
+    def get_zmp(self, robot: HumanoidRobot):
+        """
+        Calculate the Zero Moment Point (ZMP) for the humanoid robot.
+        """
+        # Update kinematics for accurate body positions and velocities
+        mujoco.mj_kinematics(self.model, self.data)
+
+        pz = 0  # Assuming the ground is at z = 0
+
+        # This implmentation is based on Eq. 3.78 and 3.79 on p.97
+        # in "Introduction to Humanoid Robotics" by Shuuji Kajita
+        total_force = 0
+        px_numerator = 0
+        py_numerator = 0
+
+        # Iterate through all bodies to calculate their contribution to the ZMP
+        for i in range(self.model.nbody):
+            if self.model.body(i).name == "world":
+                continue
+
+            body_mass = self.model.body(i).mass
+            body_pos = self.data.body(i).xipos  # Position
+            body_acc = self.data.body(i).cacc[:3]  # Linear Acceleration
+            # Contributions to ZMP calculation
+            total_force += body_mass * (body_acc[2] + GRAVITY)
+            px_numerator += body_mass * (
+                (body_acc[2] + GRAVITY) * body_pos[0] - (body_pos[2] - pz) * body_acc[0]
+            )
+            py_numerator += body_mass * (
+                (body_acc[2] + GRAVITY) * body_pos[1] - (body_pos[2] - pz) * body_acc[1]
+            )
+
+        # Compute ZMP coordinates
+        px = px_numerator / total_force if total_force != 0 else 0
+        py = py_numerator / total_force if total_force != 0 else 0
+
+        return [px, py]
+
     def set_joint_angles(self, robot: HumanoidRobot, joint_angles: Dict[str, float]):
         for name, angle in joint_angles.items():
             kp = robot.config.motor_params[name].kp
