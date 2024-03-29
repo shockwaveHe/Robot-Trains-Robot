@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 
 import numpy as np
 
@@ -7,17 +7,14 @@ import numpy as np
 class WalkingConfig:
     """Data class to hold walking parameters."""
 
-    plan_max_stride: np.ndarray = field(
-        default_factory=lambda: np.array([0.05, 0.01, np.pi / 8])
-    )
+    plan_max_stride: list = field(default_factory=lambda: [0.05, 0.01, np.pi / 8])
     plan_t_step: float = 0.6
     control_dt: float = 0.01
     control_t_preview: float = 1.0
+    control_t_filter: float = 0.5
     control_cost_Q_val: float = 1.0
     control_cost_R_val: float = 1e-6
-    target_pose_init: np.ndarray = field(
-        default_factory=lambda: np.array([0.2, 0.0, 0.785])
-    )
+    target_pose_init: list = field(default_factory=lambda: [0.2, 0.0, 0.785])
     actuator_steps: int = 10
     foot_step_height: float = 0.04
     squat_height: float = 0.03
@@ -37,15 +34,15 @@ class WalkingConfig:
 # Creating configurations using the helper method
 walking_configs = {
     "sustaina_op_pybullet": WalkingConfig.create_config(
-        plan_max_stride=np.array([0.05, 0.03, 0.2]),
+        plan_max_stride=[0.05, 0.03, 0.2],
         plan_t_step=0.4,
-        target_pose_init=np.array([0.4, 0.0, 0.5]),
+        target_pose_init=[0.4, 0.0, 0.5],
         foot_step_height=0.06,
     ),
     "robotis_op3_pybullet": WalkingConfig.create_config(
-        plan_max_stride=np.array([0.05, 0.01, 0.2]),
+        plan_max_stride=[0.05, 0.01, 0.2],
         plan_t_step=0.4,
-        target_pose_init=np.array([0.4, 0.0, 0.5]),
+        target_pose_init=[0.4, 0.0, 0.5],
         foot_step_height=0.06,
     ),
     "robotis_op3_mujoco": WalkingConfig.create_config(),

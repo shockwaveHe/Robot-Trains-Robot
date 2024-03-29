@@ -2,6 +2,43 @@ import os
 import re
 import xml.dom.minidom
 import xml.etree.ElementTree as ET
+from typing import Optional
+
+
+def find_last_result_dir(result_dir: str, prefix: str = "") -> Optional[str]:
+    """
+    Find the latest (most recent) result directory within a given directory.
+
+    Args:
+    - result_dir: The path to the directory containing result subdirectories.
+    - prefix: The prefix of result directory names to consider.
+
+    Returns:
+    - The path to the latest result directory, or None if no matching directory is found.
+    """
+    # Get a list of all items in the result directory
+    try:
+        dir_contents = os.listdir(result_dir)
+    except FileNotFoundError:
+        print(f"The directory {result_dir} was not found.")
+        return None
+
+    # Filter out directories that start with the specified prefix
+    result_dirs = [
+        d
+        for d in dir_contents
+        if os.path.isdir(os.path.join(result_dir, d)) and d.startswith(prefix)
+    ]
+
+    # Sort the directories based on name, assuming the naming convention includes a sortable date and time
+    result_dirs.sort()
+
+    # Return the last directory in the sorted list, if any
+    if result_dirs:
+        return os.path.join(result_dir, result_dirs[-1])
+    else:
+        print(f"No directories starting with '{prefix}' were found in {result_dir}.")
+        return None
 
 
 def find_description_path(robot_name: str, suffix: str = ".urdf") -> str:

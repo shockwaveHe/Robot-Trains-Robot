@@ -1,5 +1,6 @@
 import argparse
 import copy
+import json
 import pickle
 import random
 from typing import List, Optional, Tuple
@@ -13,6 +14,7 @@ from toddlerbot.sim.pybullet_sim import PyBulletSim
 from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.sim.robot import HumanoidRobot
 from toddlerbot.tasks.walking_configs import *
+from toddlerbot.utils.file_utils import find_last_result_dir
 from toddlerbot.utils.math_utils import round_floats
 from toddlerbot.utils.vis_planning import *
 from toddlerbot.utils.vis_plot import *
@@ -24,10 +26,7 @@ class Walking:
     """Class to handle the walking motion of a humanoid robot."""
 
     def __init__(
-        self,
-        robot: HumanoidRobot,
-        config: WalkingConfig,
-        joint_angles: List[float],
+        self, robot: HumanoidRobot, config: WalkingConfig, joint_angles: List[float]
     ):
         self.robot = robot
         self.config = config
@@ -36,7 +35,7 @@ class Walking:
         self.y_offset_com_to_foot = robot.offsets["y_offset_com_to_foot"]
 
         plan_params = FootStepPlanParameters(
-            max_stride=config.plan_max_stride,
+            max_stride=np.array(config.plan_max_stride),
             t_step=config.plan_t_step,
             y_offset_com_to_foot=self.y_offset_com_to_foot,
         )
@@ -46,11 +45,11 @@ class Walking:
             com_z=robot.com[2] - config.squat_height,
             dt=config.control_dt,
             t_preview=config.control_t_preview,
+            t_filter=config.control_t_filter,
             Q_val=config.control_cost_Q_val,
             R_val=config.control_cost_R_val,
             x_offset_com_to_foot=self.x_offset_com_to_foot,
             y_disp_zmp=config.y_offset_zmp - self.y_offset_com_to_foot,
-            filter_dynamics=config.filter_dynamics,
         )
         self.pc = ZMPPreviewController(control_params)
 
@@ -75,16 +74,25 @@ class Walking:
         self,
         curr_pose: Optional[np.ndarray] = None,
         target_pose: Optional[np.ndarray] = None,
+        last_robot_state_traj_data: Optional[dict] = None,
     ):
         if self.curr_pose is not None:
             curr_pose = self.curr_pose
 
         path, self.foot_steps = self.fsp.compute_steps(curr_pose, target_pose)
         zmp_ref_traj = self.pc.compute_zmp_ref_traj(self.foot_steps)
-        zmp_simple_traj, self.com_ref_traj, self.com_curr = self.pc.compute_com_traj(
-            self.com_curr, zmp_ref_traj
-        )
-        return path, self.foot_steps, zmp_ref_traj, zmp_simple_traj, self.com_ref_traj
+        if last_robot_state_traj_data is None:
+            zmp_traj, self.com_ref_traj = self.pc.compute_com_traj(
+                self.com_curr, zmp_ref_traj
+            )
+        else:
+            zmp_traj, self.com_ref_traj = self.pc.filter_dynamics(
+                zmp_ref_traj, last_robot_state_traj_data
+            )
+
+        self.com_curr = self.com_ref_traj[-1][0].copy()
+
+        return path, self.foot_steps, zmp_ref_traj, zmp_traj, self.com_ref_traj.copy()
 
     def solve_joint_angles(self) -> Tuple[List[float], List[float], int]:
         if len(self.com_ref_traj) == 0:
@@ -242,17 +250,13 @@ def main():
     )
     args = parser.parse_args()
 
-    robot = HumanoidRobot(args.robot_name)
-    if args.sim == "pybullet":
-        sim = PyBulletSim(robot)
-    elif args.sim == "mujoco":
-        sim = MujoCoSim(robot)
-    elif args.sim == "real":
-        sim = RealWorld(robot)
-    else:
-        raise ValueError("Unknown simulator")
+    exp_name = f"walk_{args.robot_name}_{args.sim}"
+    time_str = time.strftime("%Y%m%d_%H%M%S")
+    exp_folder_path = f"results/{exp_name}_{time_str}"
 
     config = walking_configs[f"{args.robot_name}_{args.sim}"]
+
+    robot = HumanoidRobot(args.robot_name)
 
     joint_angles = robot.initialize_joint_angles()
     if robot.name == "robotis_op3":
@@ -262,16 +266,44 @@ def main():
         joint_angles["left_sho_roll"] = -np.pi / 2
         joint_angles["right_sho_roll"] = np.pi / 2
 
+    if args.sim == "pybullet":
+        sim = PyBulletSim(robot)
+    elif args.sim == "mujoco":
+        sim = MujoCoSim(robot)
+    elif args.sim == "real":
+        sim = RealWorld(robot)
+    else:
+        raise ValueError("Unknown simulator")
+
+    last_robot_state_traj_data = None
+    if config.filter_dynamics:
+        last_result_dir = find_last_result_dir("results", prefix=exp_name)
+        if last_result_dir is not None:
+            last_config_path = os.path.join(last_result_dir, "config.json")
+            last_robot_state_traj_file_path = os.path.join(
+                last_result_dir, "robot_state_traj_data.pkl"
+            )
+            if os.path.exists(last_config_path) and os.path.exists(
+                last_robot_state_traj_file_path
+            ):
+                with open(last_config_path, "r") as f:
+                    last_config = WalkingConfig(**json.load(f))
+                    if last_config.filter_dynamics:
+                        config = last_config  # Use the latest config to make sure the filter is valid
+                        exp_folder_path = last_result_dir
+                        with open(last_robot_state_traj_file_path, "rb") as f:
+                            last_robot_state_traj_data = pickle.load(f)
+
     walking = Walking(robot, config, joint_angles)
 
     torso_pos_init, torso_mat_init = sim.get_torso_pose(robot)
     curr_pose = np.concatenate(
         [torso_pos_init[:2], [np.arctan2(torso_mat_init[1, 0], torso_mat_init[0, 0])]]
     )
-    target_pose = config.target_pose_init
+    target_pose = np.array(config.target_pose_init)
 
-    path, foot_steps, zmp_ref_traj, zmp_simple_traj, com_ref_traj = (
-        walking.plan_and_control(curr_pose, target_pose)
+    path, foot_steps, zmp_ref_traj, zmp_traj, com_ref_traj = walking.plan_and_control(
+        curr_pose, target_pose, last_robot_state_traj_data
     )
     foot_steps_vis = copy.deepcopy(foot_steps)
 
@@ -286,7 +318,21 @@ def main():
 
     # This function requires its parameters to be the same as its return values.
     def step_func(sim_step_idx, path, foot_steps, com_ref_traj, joint_angles):
-        sim_step_idx += 1
+        time_ref = time.time() - time_start
+        time_seq_ref.append(time_ref)
+        for name, angle in joint_angles.items():
+            if name not in joint_angle_ref_dict:
+                joint_angle_ref_dict[name] = []
+            joint_angle_ref_dict[name].append(angle)
+
+        joint_state_dict = sim.get_joint_state(robot)
+        for name, joint_state in joint_state_dict.items():
+            if name not in time_seq_dict:
+                time_seq_dict[name] = []
+                joint_angle_dict[name] = []
+
+            time_seq_dict[name].append(joint_state.time - time_start)
+            joint_angle_dict[name].append(joint_state.pos)
 
         if sim_step_idx >= config.actuator_steps:
             sim_step_idx = 0
@@ -316,23 +362,8 @@ def main():
                     header="Walking",
                 )
 
-        time_ref = time.time() - time_start
-        time_seq_ref.append(time_ref)
-        for name, angle in joint_angles.items():
-            if name not in joint_angle_ref_dict:
-                joint_angle_ref_dict[name] = []
-            joint_angle_ref_dict[name].append(angle)
-
         sim.set_joint_angles(robot, joint_angles)
-
-        joint_state_dict = sim.get_joint_state(robot)
-        for name, joint_state in joint_state_dict.items():
-            if name not in time_seq_dict:
-                time_seq_dict[name] = []
-                joint_angle_dict[name] = []
-
-            time_seq_dict[name].append(joint_state.time - time_start)
-            joint_angle_dict[name].append(joint_state.pos)
+        sim_step_idx += 1
 
         return sim_step_idx, path, foot_steps, com_ref_traj, joint_angles
 
@@ -344,40 +375,40 @@ def main():
             sleep_time=args.sleep_time,
         )
     finally:
-        exp_name = f"walk_{robot.name}_{sim.name}"
-        time_str = time.strftime("%Y%m%d_%H%M%S")
-        exp_folder_path = f"results/{exp_name}_{time_str}"
         os.makedirs(exp_folder_path, exist_ok=True)
 
-        zmp_com_traj_data = {
+        with open(os.path.join(exp_folder_path, "config.json"), "w") as f:
+            json.dump(asdict(config), f, indent=4)
+
+        robot_state_traj_data = {
             "zmp_ref_traj": zmp_ref_traj,
-            "zmp_simple_traj": zmp_simple_traj,
+            "zmp_traj": zmp_traj,
             "zmp_approx_traj": zmp_approx_traj,
             "com_ref_traj": com_ref_traj,
             "com_traj": com_traj,
         }
 
         file_suffix = ""
-        if config.filter_dynamics:
+        if last_robot_state_traj_data is not None:
             file_suffix = "filter"
 
         if len(file_suffix) > 0:
-            data_suffix = f"_{file_suffix}"
+            robot_state_traj_file_name = f"robot_state_traj_data_{file_suffix}.pkl"
+        else:
+            robot_state_traj_file_name = "robot_state_traj_data.pkl"
 
-        with open(
-            os.path.join(exp_folder_path, f"zmp_com_traj_data{data_suffix}.pkl"), "wb"
-        ) as f:
-            pickle.dump(zmp_com_traj_data, f)
+        with open(os.path.join(exp_folder_path, robot_state_traj_file_name), "wb") as f:
+            pickle.dump(robot_state_traj_data, f)
 
-        plot_joint_tracking(
-            time_seq_dict,
-            time_seq_ref,
-            joint_angle_dict,
-            joint_angle_ref_dict,
-            robot.config.motor_params,
-            save_path=exp_folder_path,
-            file_suffix=file_suffix,
-        )
+        # plot_joint_tracking(
+        #     time_seq_dict,
+        #     time_seq_ref,
+        #     joint_angle_dict,
+        #     joint_angle_ref_dict,
+        #     robot.config.motor_params,
+        #     save_path=exp_folder_path,
+        #     file_suffix=file_suffix,
+        # )
 
         fig, ax = plt.subplots(figsize=(10, 6))
         ax.set_aspect("equal")
@@ -394,28 +425,16 @@ def main():
         )()
 
         plot_line_graph(
-            [[record[1] for record in x] for x in zmp_com_traj_data.values()],
-            x=[[record[0] for record in x] for x in zmp_com_traj_data.values()],
+            [[record[1] for record in x] for x in robot_state_traj_data.values()],
+            x=[[record[0] for record in x] for x in robot_state_traj_data.values()],
             title=f"Footsteps Planning",
             x_label="X",
             y_label="Y",
             save_config=True,
             save_path=exp_folder_path,
             file_suffix=file_suffix,
-            legend_labels=[
-                "ZMP Ref",
-                "ZMP Traj Simple",
-                "ZMP Traj Approx",
-                "CoM Ref",
-                "Com Traj",
-            ],
+            legend_labels=list(robot_state_traj_data.keys()),
             ax=ax,
-            # checkpoint_period=[
-            #     0,
-            #     0,
-            #     round(walking.fs_steps / 4),
-            #     round(walking.fs_steps / 4),
-            # ],
         )()
 
 

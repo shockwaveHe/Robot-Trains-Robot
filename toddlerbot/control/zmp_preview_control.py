@@ -15,11 +15,11 @@ class ZMPPreviewControlParameters:
     com_z: float  # Height of the center of mass
     dt: float  # Time step
     t_preview: float  # Control period
+    t_filter: float  # Filter time constant
     Q_val: float  # Weighting for state cost
     R_val: float  # Weighting for control input cost
     x_offset_com_to_foot: float  # Offset of the center of mass from the foot
     y_disp_zmp: float  # Offset of the zero moment point from the center of mass
-    filter_dynamics: bool  # Flag to filter dynamics
 
 
 class ZMPPreviewController:
@@ -36,33 +36,45 @@ class ZMPPreviewController:
         """
         # The notations follow p.145-146 in "Introduction to Humanoid Robotics" by Shuuji Kajita
 
-        # State-space matrices for preview control
-        # dx/dt = Ax + Bu
-        # y = Cx + Du
+        self.n_preview = round(self.params.t_preview / self.params.dt)
+        self.n_filter = round(self.params.t_filter / self.params.dt)
+
+        # State-space matrices
         A = np.array([[0, 1, 0], [0, 0, 1], [0, 0, 0]])
         B = np.array([[0], [0], [1]])
         C = np.array([[1, 0, -self.params.com_z / GRAVITY]])
         D = np.array([[0]])
-
-        self.n_preview = round(self.params.t_preview / self.params.dt)
-
-        # Create a state space system.
-        sys = control.ss(A, B, C, D)
-        # Convert a continuous time system to discrete time by sampling
-        sys_d = control.c2d(sys, self.params.dt)
-        # Return state space data objects for a system
-        # C doesn't change
-        self.A_d, self.B_d, self.C_d, _ = control.ssdata(sys_d)
-
-        # Define matrices for preview control
-        A_tilde = np.block([[1.0, self.C_d @ self.A_d], [np.zeros((3, 1)), self.A_d]])
-        B_tilde = np.block([[self.C_d @ self.B_d], [self.B_d]])
-        Q = np.zeros((4, 4))
-        Q[0, 0] = self.params.Q_val
+        Q = np.array([[self.params.Q_val]])
         R = np.array([[self.params.R_val]])
+
+        # Convert a continuous time system to discrete time by sampling
+        # Return state space data objects for a system
+        sys = control.ss(A, B, C, D)
+        sys_d = control.c2d(sys, self.params.dt)
+        A_d, B_d, C_d, _ = control.ssdata(sys_d)  # C doesn't change
+        self.A_d, self.B_d, self.C_d = A_d, B_d, C_d
+
+        R2 = np.array([[1]])
+        P, _, self.K = control.dare(A_d, B_d, C_d.T @ Q @ C_d, R2)
+
+        self.f = np.zeros((1, self.n_filter))
+        for i in range(self.n_filter):
+            self.f[0, i] = (
+                np.linalg.inv(R2 + B_d.T @ P @ B_d)
+                @ B_d.T
+                @ np.linalg.matrix_power((A_d - B_d @ self.K).T, i)
+                @ C_d.T
+                @ Q
+            )
+
+        # Define matrices for the improved preview control
+        A_tilde = np.block([[1.0, C_d @ A_d], [np.zeros((3, 1)), A_d]])
+        B_tilde = np.block([[C_d @ B_d], [B_d]])
+        Q_tilde = np.zeros((4, 4))
+        Q_tilde[0, 0] = self.params.Q_val
         # Solve the discrete-time algebraic Riccati equation
         # The gain matrix is chosen to minimize the cost function
-        P_tilde, _, K_tilde = control.dare(A_tilde, B_tilde, Q, R)
+        P_tilde, _, K_tilde = control.dare(A_tilde, B_tilde, Q_tilde, R)
 
         self.Ks = K_tilde[0, 0]
         self.Kx = K_tilde[0, 1:]
@@ -74,7 +86,7 @@ class ZMPPreviewController:
         self.G = np.zeros((1, self.n_preview))
         for i in range(self.n_preview):
             self.G[0, i] = (
-                np.linalg.inv(R + B_tilde.T @ P_tilde @ B_tilde) @ (B_tilde.T) @ X_tilde
+                np.linalg.inv(R + B_tilde.T @ P_tilde @ B_tilde) @ B_tilde.T @ X_tilde
             )
             X_tilde = Ac_tilde.T @ X_tilde
 
@@ -120,25 +132,41 @@ class ZMPPreviewController:
 
         return zmp_ref_traj
 
-    def compute_com_traj(
-        self, com_curr: np.ndarray, zmp_ref: List
-    ) -> Tuple[List, np.ndarray]:
+    def compute_com_traj(self, com_curr, zmp_ref_traj):
+        zmp_traj = []
         com_ref_traj = []
-        zmp_simple_traj = []
         sum_error = np.zeros(2)
-
-        for k in range(len(zmp_ref) - self.n_preview - 1):
-            zmp_preview = zmp_ref[k : k + self.n_preview]
+        for k in range(len(zmp_ref_traj) - self.n_preview - 1):
+            zmp_preview = zmp_ref_traj[k : k + self.n_preview]
             # We calculate the ZMP assuming a cart-table model
             # Reference: Eq. 4.64 on p.138 in "Introduction to Humanoid Robotics" by Shuuji Kajita
-            zmp_simple = (self.C_d @ com_curr).squeeze()
-            sum_error += zmp_simple - zmp_ref[k]
+            zmp = (self.C_d @ com_curr).squeeze()
+            sum_error += zmp - zmp_ref_traj[k]
 
             u = -self.Ks * sum_error - self.Kx @ com_curr - self.G @ zmp_preview
             com_curr = self.A_d @ com_curr + self.B_d @ u
 
             # Record the current COM position
-            zmp_simple_traj.append(zmp_simple)
+            zmp_traj.append(zmp)
             com_ref_traj.append(com_curr[0].copy())
 
-        return zmp_simple_traj, com_ref_traj, com_curr
+        return zmp_traj, com_ref_traj
+
+    def filter_dynamics(self, zmp_ref_traj, last_robot_state_traj_data):
+        zmp_traj = []
+        com_ref_traj = []
+        last_com_traj = np.array(last_robot_state_traj_data["com_traj"])
+        zmp_approx_traj = np.array(last_robot_state_traj_data["zmp_approx_traj"])
+        zmp_error_traj = zmp_approx_traj[: len(zmp_ref_traj)] - np.array(zmp_ref_traj)
+
+        com_delta = np.zeros((3, 2))
+        for k in range(len(zmp_ref_traj) - self.n_preview - 1):
+            zmp_error_preview = zmp_error_traj[k : k + self.n_filter]
+            # Reference: Eq. 4.64 on p.138 in "Introduction to Humanoid Robotics" by Shuuji Kajita
+            # The equation is simplified since com_delta starts with zero
+            u = -self.K @ com_delta + self.f @ zmp_error_preview
+            com_delta = self.A_d @ com_delta + self.B_d @ u
+            zmp_traj.append(zmp_approx_traj[k])
+            com_ref_traj.append(last_com_traj[k] - com_delta[0])
+
+        return zmp_traj, com_ref_traj

@@ -93,6 +93,8 @@ class MujoCoSim(BaseSim):
         """
         # Update kinematics for accurate body positions and velocities
         mujoco.mj_kinematics(self.model, self.data)
+        # Necessary for accurate body accelerations
+        mujoco.mj_rnePostConstraint(self.model, self.data)
 
         pz = 0  # Assuming the ground is at z = 0
 
@@ -102,28 +104,40 @@ class MujoCoSim(BaseSim):
         px_numerator = 0
         py_numerator = 0
 
+        type_body = mujoco.mjtObj.mjOBJ_BODY
+
         # Iterate through all bodies to calculate their contribution to the ZMP
         for i in range(self.model.nbody):
-            if self.model.body(i).name == "world":
+            body_name = self.model.body(i).name
+            if body_name == "world":
                 continue
 
             body_mass = self.model.body(i).mass
             body_pos = self.data.body(i).xipos  # Position
-            body_acc = self.data.body(i).cacc[:3]  # Linear Acceleration
+            # The translational component comes after the rotational component
+            body_acc = self.data.body(i).cacc[3:]  # Linear Acceleration
+            # body_acc = np.array([0, 0, GRAVITY])
+            # body_xacc = np.zeros(6)
+            # mujoco.mj_objectAcceleration(
+            #     self.model, self.data, type_body, i, body_xacc, 0
+            # )
+            # body_acc = body_xacc[3:]  # Linear Acceleration
             # Contributions to ZMP calculation
-            total_force += body_mass * (body_acc[2] + GRAVITY)
+            total_force += body_mass * body_acc[2]
+            # print(body_mass, body_acc)
             px_numerator += body_mass * (
-                (body_acc[2] + GRAVITY) * body_pos[0] - (body_pos[2] - pz) * body_acc[0]
+                body_acc[2] * body_pos[0] - (body_pos[2] - pz) * body_acc[0]
             )
             py_numerator += body_mass * (
-                (body_acc[2] + GRAVITY) * body_pos[1] - (body_pos[2] - pz) * body_acc[1]
+                body_acc[2] * body_pos[1] - (body_pos[2] - pz) * body_acc[1]
             )
+            # print("fuck")
 
         # Compute ZMP coordinates
         px = px_numerator / total_force if total_force != 0 else 0
         py = py_numerator / total_force if total_force != 0 else 0
 
-        return [px, py]
+        return [px.item(), py.item()]
 
     def set_joint_angles(self, robot: HumanoidRobot, joint_angles: Dict[str, float]):
         for name, angle in joint_angles.items():
