@@ -24,7 +24,7 @@ def get_config(robot_name):
     body_link_name = find_root_link_name(root)
 
     # Define the content of the Python script as a multi-line string
-    script_content = textwrap.dedent(
+    config_script_content = textwrap.dedent(
         f"""\
     import math
 
@@ -263,11 +263,11 @@ def get_config(robot_name):
     )
 
     # Define the file path
-    config_path = os.path.join(robot_dir, "config.py")
+    config_script_path = os.path.join(robot_dir, "config.py")
 
     # Write the content to the file
-    with open(config_path, "w") as file:
-        file.write(script_content)
+    with open(config_script_path, "w") as file:
+        file.write(config_script_content)
 
 
 if __name__ == "__main__":

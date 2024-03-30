@@ -56,7 +56,7 @@ if [ "$run_process" == "y" ]; then
     python $REPO_NAME/robot_descriptions/update_collisions.py --robot-name $ROBOT_NAME
 
     printf "Generating the configuration file...\n\n"
-    python $REPO_NAME/robot_descriptions/get_config.py --robot-name $ROBOT_NAME
+    python $REPO_NAME/robot_descriptions/write_config.py --robot-name $ROBOT_NAME
 
     printf "IMPORTANT: Double-check the auto-generated config file before proceeding!\n\n"
 else
