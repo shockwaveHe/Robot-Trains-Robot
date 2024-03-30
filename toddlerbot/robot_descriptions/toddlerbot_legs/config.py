@@ -54,7 +54,7 @@ def compute_leg_angles(target_foot_pos, target_foot_ori, side, offsets):
     return angles_dict
 
 
-base_config = RobotConfig(
+toddlerbot_legs_config = RobotConfig(
     canonical_name2link_name=canonical_name2link_name,
     # UPDATE: the motor parameters for the robot
     motor_params={

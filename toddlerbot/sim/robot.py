@@ -238,7 +238,7 @@ if __name__ == "__main__":
     from toddlerbot.sim.pybullet_sim import PyBulletSim
     from toddlerbot.utils.math_utils import round_floats
 
-    robot = HumanoidRobot("base")
+    robot = HumanoidRobot("toddlerbot")
 
     robot.compute_offsets()
 

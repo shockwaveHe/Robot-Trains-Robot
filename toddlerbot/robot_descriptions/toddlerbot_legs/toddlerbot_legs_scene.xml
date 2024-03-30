@@ -1,5 +1,5 @@
-<mujoco model="base_scene">
-    <include file="base.xml" />
+<mujoco model="toddlerbot_legs_scene">
+    <include file="toddlerbot_legs.xml" />
     <statistic center="0 0 0.2" extent="0.6" />
     <visual>
         <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0" />

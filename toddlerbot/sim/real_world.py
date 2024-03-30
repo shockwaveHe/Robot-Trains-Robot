@@ -240,7 +240,7 @@ class RealWorld(BaseSim):
 if __name__ == "__main__":
     from toddlerbot.utils.vis_plot import *
 
-    robot = HumanoidRobot("base")
+    robot = HumanoidRobot("toddlerbot")
     sim = RealWorld(robot)
 
     joint_angles = robot.initialize_joint_angles()

@@ -275,7 +275,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--robot-name",
         type=str,
-        default="base",
+        default="toddlerbot",
         help="The name of the robot. Need to match the name in robot_descriptions.",
     )
     args = parser.parse_args()

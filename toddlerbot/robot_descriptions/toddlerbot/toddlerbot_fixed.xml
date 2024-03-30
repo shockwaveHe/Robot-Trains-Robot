@@ -1,4 +1,4 @@
-<mujoco model="base">
+<mujoco model="toddlerbot">
   <compiler angle="radian" />
   <asset>
     <mesh name="body_link_visual" file="../assemblies/4R_body/meshes/body_link_visual.stl" />

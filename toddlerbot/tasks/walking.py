@@ -273,7 +273,7 @@ def main():
     if robot.name == "robotis_op3":
         joint_angles["l_sho_roll"] = np.pi / 2
         joint_angles["r_sho_roll"] = -np.pi / 2
-    elif robot.name == "base":
+    elif robot.name == "toddlerbot":
         joint_angles["left_sho_roll"] = -np.pi / 2
         joint_angles["right_sho_roll"] = np.pi / 2
 

@@ -72,7 +72,7 @@
             "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
         },
         {
-            "name": "Python: walk_base_mujoco",
+            "name": "Python: walk_toddlerbot_mujoco",
             "type": "python",
             "request": "launch",
             "program": "toddlerbot/tasks/walking.py",
@@ -80,7 +80,7 @@
             "justMyCode": true,
             "args": [
                 "--robot-name",
-                "base",
+                "toddlerbot",
                 "--sim",
                 "mujoco",
                 // "--sleep-time",
@@ -89,7 +89,7 @@
             "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
         },
         {
-            "name": "Python: walk_base_legs_mujoco",
+            "name": "Python: walk_toddlerbot_legs_mujoco",
             "type": "python",
             "request": "launch",
             "program": "toddlerbot/tasks/walking.py",
@@ -97,7 +97,7 @@
             "justMyCode": true,
             "args": [
                 "--robot-name",
-                "base_legs",
+                "toddlerbot_legs",
                 "--sim",
                 "mujoco",
                 // "--sleep-time",
@@ -106,7 +106,7 @@
             "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
         },
         {
-            "name": "Python: stand_base_real",
+            "name": "Python: stand_toddlerbot_real",
             "type": "python",
             "request": "launch",
             "program": "toddlerbot/tasks/standing.py",
@@ -114,7 +114,7 @@
             "justMyCode": true,
             "args": [
                 "--robot-name",
-                "base",
+                "toddlerbot",
                 "--sim",
                 "real",
                 // "--sleep-time",
@@ -122,7 +122,7 @@
             ]
         },
         {
-            "name": "Python: walk_base_real",
+            "name": "Python: walk_toddlerbot_real",
             "type": "python",
             "request": "launch",
             "program": "toddlerbot/tasks/walking.py",
@@ -130,7 +130,7 @@
             "justMyCode": true,
             "args": [
                 "--robot-name",
-                "base",
+                "toddlerbot",
                 "--sim",
                 "real",
                 // "--sleep-time",

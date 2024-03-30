@@ -1,7 +1,7 @@
 #!/bin/bash
 
-##### BASE #####
-ROBOT_NAME="base"
+##### toddlerbot #####
+ROBOT_NAME="toddlerbot"
 BODY_NAME="4R_body"
 ARM_NAME="OP3_arm"
 LEG_NAME="3R+RH5_leg"
@@ -10,8 +10,8 @@ ASSEMBLY_LIST="4R_body left_3R+RH5_leg right_3R+RH5_leg left_OP3_arm right_OP3_a
 # DOC_ID_LIST="d2a8be5ce536cd2e18740efa"
 # ASSEMBLY_LIST="4R_body"
 
-##### BASE_LEGS #####
-# ROBOT_NAME="base_legs"
+##### toddlerbot_LEGS #####
+# ROBOT_NAME="toddlerbot_legs"
 # BODY_NAME="no_body"
 # LEG_NAME="3R+RH5_leg"
 # DOC_ID_LIST="dca63e30dcbfe66f561f5fd4 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe"

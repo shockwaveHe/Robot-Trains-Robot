@@ -54,7 +54,7 @@ def compute_leg_angles(target_foot_pos, target_foot_ori, side, offsets):
     return angles_dict
 
 
-base_legs_config = RobotConfig(
+toddlerbot_config = RobotConfig(
     canonical_name2link_name=canonical_name2link_name,
     # UPDATE: the motor parameters for the robot
     motor_params={
@@ -168,6 +168,60 @@ base_legs_config = RobotConfig(
         ),
         # "right_ank_act1": ActuatorParameters(type="motor", damping=0.1, armature=1e-7, kp=10.0, kv=0.1),
         # "right_ank_act2": ActuatorParameters(type="motor", damping=0.1, armature=1e-7, kp=10.0, kv=0.1),
+        "left_sho_pitch": MotorParameters(
+            brand="dynamixel",
+            id=0,
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
+        ),
+        "left_sho_roll": MotorParameters(
+            brand="dynamixel",
+            id=1,
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
+        ),
+        "left_elb": MotorParameters(
+            brand="dynamixel",
+            id=2,
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
+        ),
+        "right_sho_pitch": MotorParameters(
+            brand="dynamixel",
+            id=3,
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
+        ),
+        "right_sho_roll": MotorParameters(
+            brand="dynamixel",
+            id=4,
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
+        ),
+        "right_elb": MotorParameters(
+            brand="dynamixel",
+            id=5,
+            type="motor",
+            damping=1.084,
+            armature=0.045,
+            kp=400.0,
+            kv=40.0,
+        ),
     },
     # UPDATE: the constraint pairs for the robot
     constraint_pairs=[
