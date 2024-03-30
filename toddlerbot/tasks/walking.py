@@ -153,6 +153,7 @@ class Walking:
         return "walking", self.joint_angles
 
     def _compute_foot_offset(self):
+        # Need to update here
         idx_curr = self.idx % self.fs_steps
         up_start_idx = round(self.fs_steps / 4)
         up_end_idx = round(self.fs_steps / 2)
@@ -199,8 +200,18 @@ class Walking:
         left_foot_ori = [0, 0, left_foot_theta]
         right_foot_ori = [0, 0, right_foot_theta]
 
-        left_offset = self.left_pos[:2] - com_pos
-        right_offset = self.right_pos[:2] - com_pos
+        com_x_offset = 0.0064
+        com_y_offset = 0.034
+
+        rotated_com_pos = np.array(
+            [
+                com_pos[0] + np.sin(self.theta_curr) * com_x_offset,
+                com_pos[1] + (1 - np.cos(self.theta_curr)) * com_y_offset,
+            ]
+        )
+
+        left_offset = self.left_pos[:2] - rotated_com_pos
+        right_offset = self.right_pos[:2] - rotated_com_pos
 
         left_foot_pos = [
             left_offset[0]
@@ -350,7 +361,7 @@ def main():
             ]
             com_traj.append(com_pos)
 
-            zmp_pos = sim.get_zmp(robot)
+            zmp_pos = sim.get_zmp(com_pos)
             zmp_approx_traj.append(zmp_pos)
 
             if status == "finished":

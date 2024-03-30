@@ -47,7 +47,9 @@ walking_configs = {
     ),
     "robotis_op3_mujoco": WalkingConfig.create_config(),
     "base_mujoco": WalkingConfig.create_config(
-        squat_height=0.01, rotate_torso=True, filter_dynamics=True
+        squat_height=0.01,
+        # rotate_torso=True,
+        # filter_dynamics=True
     ),
     "base_legs_mujoco": WalkingConfig.create_config(squat_height=0.01),
     "base_real": WalkingConfig.create_config(squat_height=0.01, actuator_steps=2),

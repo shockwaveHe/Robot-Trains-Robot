@@ -6,8 +6,8 @@ import numpy as np
 from toddlerbot.utils.vis_utils import *
 
 LINE_STYLES = ["-", "--", "-.", ":"]
-LINE_COLORS = ["b", "g", "r", "c", "m", "y", "k"]
-LINE_MARKERS = ["o", "s", "D", "v", "^", "<", ">"]
+LINE_COLORS = ["b", "g", "r", "c", "y", "k"]
+LINE_MARKERS = ["o", "s", "D", "v", "^", "<"]
 
 
 def plot_joint_tracking(

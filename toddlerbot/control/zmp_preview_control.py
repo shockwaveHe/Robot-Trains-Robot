@@ -54,7 +54,8 @@ class ZMPPreviewController:
         A_d, B_d, C_d, _ = control.ssdata(sys_d)  # C doesn't change
         self.A_d, self.B_d, self.C_d = A_d, B_d, C_d
 
-        R2 = np.array([[1]])
+        # TODO: Move the dynamics filter to a separate class
+        R2 = np.array([[1e-4]])
         P, _, self.K = control.dare(A_d, B_d, C_d.T @ Q @ C_d, R2)
 
         self.f = np.zeros((1, self.n_filter))

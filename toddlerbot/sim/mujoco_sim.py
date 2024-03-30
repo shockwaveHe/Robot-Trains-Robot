@@ -20,6 +20,10 @@ class MujoCoSim(BaseSim):
         self.model = None
         self.data = None
 
+        self.last_mom = None
+        self.last_angmom = None
+        self.last_t = None
+
         if robot is not None:
             self.foot_size = robot.foot_size
 
@@ -87,57 +91,62 @@ class MujoCoSim(BaseSim):
 
         return joint_state_dict
 
-    def get_zmp(self, robot: HumanoidRobot):
-        """
-        Calculate the Zero Moment Point (ZMP) for the humanoid robot.
-        """
-        # Update kinematics for accurate body positions and velocities
-        mujoco.mj_kinematics(self.model, self.data)
-        # Necessary for accurate body accelerations
-        mujoco.mj_rnePostConstraint(self.model, self.data)
+    def _compute_dmom(self):
+        if self.last_t is None:
+            self.last_mom = np.zeros(3)
+            self.last_angmom = np.zeros(3)
+            self.last_t = time.time()
+        else:
+            # Calculate current momentum and angular momentum
+            mom = np.zeros(3)
+            angmom = np.zeros(3)
+            for i in range(self.model.nbody):
+                body_name = self.model.body(i).name
+                if body_name == "world":
+                    continue
 
-        pz = 0  # Assuming the ground is at z = 0
+                body_mass = self.model.body(i).mass
+                body_inertia = self.model.body(i).inertia
+                body_pos = self.data.body(i).xipos  # Position
+                body_xmat = self.data.body(i).xmat.reshape(3, 3)  # Rotation matrix
+                # the translation component comes after the rotation component
+                body_vel = self.data.body(i).cvel[3:]  # Linear Velocity
+                body_ang_vel = self.data.body(i).cvel[:3]  # Angular velocity
 
-        # This implmentation is based on Eq. 3.78 and 3.79 on p.97
-        # in "Introduction to Humanoid Robotics" by Shuuji Kajita
-        total_force = 0
-        px_numerator = 0
-        py_numerator = 0
+                # Eq. 3.63-3.66 on p.94 in "Introduction to Humanoid Robotics" by Shuuji Kajita
+                P = body_mass * body_vel
+                L = (
+                    np.cross(body_pos, P)
+                    + body_xmat @ np.diag(body_inertia) @ body_xmat.T @ body_ang_vel
+                )
+                mom += P
+                angmom += L
 
-        type_body = mujoco.mjtObj.mjOBJ_BODY
+            time_curr = time.time()
+            dt = time_curr - self.last_t
 
-        # Iterate through all bodies to calculate their contribution to the ZMP
-        for i in range(self.model.nbody):
-            body_name = self.model.body(i).name
-            if body_name == "world":
-                continue
+            self.dP = (mom - self.last_mom) / dt
+            self.dL = (angmom - self.last_angmom) / dt
 
-            body_mass = self.model.body(i).mass
-            body_pos = self.data.body(i).xipos  # Position
-            # The translational component comes after the rotational component
-            body_acc = self.data.body(i).cacc[3:]  # Linear Acceleration
-            # body_acc = np.array([0, 0, GRAVITY])
-            # body_xacc = np.zeros(6)
-            # mujoco.mj_objectAcceleration(
-            #     self.model, self.data, type_body, i, body_xacc, 0
-            # )
-            # body_acc = body_xacc[3:]  # Linear Acceleration
-            # Contributions to ZMP calculation
-            total_force += body_mass * body_acc[2]
-            # print(body_mass, body_acc)
-            px_numerator += body_mass * (
-                body_acc[2] * body_pos[0] - (body_pos[2] - pz) * body_acc[0]
-            )
-            py_numerator += body_mass * (
-                body_acc[2] * body_pos[1] - (body_pos[2] - pz) * body_acc[1]
-            )
-            # print("fuck")
+            # Update last states
+            self.last_mom = mom
+            self.last_angmom = angmom
+            self.last_t = time_curr
 
-        # Compute ZMP coordinates
-        px = px_numerator / total_force if total_force != 0 else 0
-        py = py_numerator / total_force if total_force != 0 else 0
+    def get_zmp(self, com_pos, pz=0.0):
+        M = self.model.body(0).subtreemass
+        cx, cy = com_pos
+        # print(f"dP: {self.dP}, dL: {self.dL}")
+        # Eq. 3.73-3.74 on p.96 in "Introduction to Humanoid Robotics" by Shuuji Kajita
+        px_zmp = (M * GRAVITY * cx + pz * self.dP[0] - self.dL[1]) / (
+            M * GRAVITY + self.dP[2]
+        )
+        py_zmp = (M * GRAVITY * cy + pz * self.dP[1] + self.dL[0]) / (
+            M * GRAVITY + self.dP[2]
+        )
+        self.zmp = [px_zmp.item(), py_zmp.item()]
 
-        return [px.item(), py.item()]
+        return self.zmp
 
     def set_joint_angles(self, robot: HumanoidRobot, joint_angles: Dict[str, float]):
         for name, angle in joint_angles.items():
@@ -244,6 +253,8 @@ class MujoCoSim(BaseSim):
                 step_start = time.time()
 
                 mujoco.mj_step(self.model, self.data)
+
+                self._compute_dmom()
 
                 with viewer.lock():
                     if step_func is not None:
