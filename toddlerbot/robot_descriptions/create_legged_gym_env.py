@@ -1,9 +1,33 @@
 import argparse
 import os
 import textwrap
+import xml.etree.ElementTree as ET
+
+from toddlerbot.sim.robot import HumanoidRobot
+
+
+def process_urdf_isaac(robot):
+    robot_dir = os.path.join("toddlerbot", "robot_descriptions", robot.name)
+    source_urdf_path = os.path.join(robot_dir, f"{robot.name}.urdf")
+    issac_urdf_path = os.path.join(robot_dir, f"{robot.name}_isaac.urdf")
+    tree = ET.parse(source_urdf_path)
+    root = tree.getroot()
+
+    for joint in root.findall(".//joint"):
+        joint_name = joint.get("name")
+        joint_type = joint.get("type")
+        if joint_name not in robot.config.motor_params and joint_type != "fixed":
+            joint.set("type", "fixed")  # Set joint type to 'fixed'
+
+    tree.write(issac_urdf_path)
+
+    return issac_urdf_path
 
 
 def create_legged_gym_env(robot_name):
+    robot = HumanoidRobot(robot_name)
+    num_actions = len(robot.config.motor_params)
+
     legged_gym_root_dir = os.path.join("toddlerbot", "sim", "legged_gym")
     legged_gym_env_dir = os.path.join(legged_gym_root_dir, "legged_gym", "envs")
     if not os.path.exists(legged_gym_env_dir):
@@ -13,6 +37,9 @@ def create_legged_gym_env(robot_name):
 
     env_path = os.path.join(legged_gym_env_dir, f"{robot_name}")
     os.makedirs(env_path, exist_ok=True)
+
+    isaac_urdf_path = process_urdf_isaac(robot)
+    urdf_relpath = os.path.relpath(isaac_urdf_path, legged_gym_root_dir)
 
     robot_name_capitalized = robot_name.capitalize()
 
@@ -24,8 +51,8 @@ def create_legged_gym_env(robot_name):
     class {robot_name_capitalized}Cfg(LeggedRobotCfg):
         class env(LeggedRobotCfg.env):
             num_envs = 4096
-            num_observations = 169
-            num_actions = 12
+            num_observations = {num_actions * 3 + 3 * 4 + 187}
+            num_actions = {num_actions}
 
         class terrain(LeggedRobotCfg.terrain):
             mesh_type = "plane"
@@ -101,7 +128,7 @@ def create_legged_gym_env(robot_name):
             decimation = 4
             
         class asset(LeggedRobotCfg.asset):
-            file = "{{LEGGED_GYM_ROOT_DIR}}/resources/robots/{robot_name}/urdf/{robot_name}.urdf"
+            file = "{{LEGGED_GYM_ROOT_DIR}}/{urdf_relpath}"
             name = "{robot_name}"
             foot_name = "ank_roll_link"
             terminate_after_contacts_on = ["body_link"]
@@ -169,27 +196,35 @@ def create_legged_gym_env(robot_name):
     with open(script_path, "w") as file:
         file.write(script_content)
 
-    robot_dir = os.path.join("toddlerbot", "robot_descriptions", robot_name)
-    urdf_path = os.path.join(robot_dir, f"{robot_name}.urdf")
-
-    source_path = os.path.abspath(urdf_path)
-
-    # Formulate the destination path
-    dest_path = os.path.join(
-        legged_gym_root_dir,
-        f"resources",
-        "robots",
-        robot_name,
-        "urdf",
-        f"{robot_name}.urdf",
+    # Format the import and registration lines
+    cfg_class = f"{robot_name_capitalized}Cfg"
+    ppo_class = f"{robot_name_capitalized}CfgPPO"
+    import_lines = (
+        f"from .{robot_name}.{robot_name} import {robot_name_capitalized}\n"
+        f"from .{robot_name}.{robot_name}_config import {cfg_class}, {ppo_class}\n"
     )
 
-    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-    # Check if the symbolic link or file already exists, if so, remove it before creating a new link
-    if os.path.exists(dest_path) or os.path.islink(dest_path):
-        os.remove(dest_path)
+    registration_line = f'task_registry.register( "{robot_name}", {robot_name_capitalized}, {cfg_class}(), {ppo_class}() )\n'
 
-    os.symlink(source_path, dest_path)
+    register_script_path = os.path.join(legged_gym_env_dir, "__init__.py")
+    with open(register_script_path, "r") as file:
+        content = file.readlines()
+
+    content_str = "".join(content)
+
+    # Check if the robot is already registered or imported
+    if (f".{robot_name}.{robot_name}" in content_str) or (
+        f'task_registry.register("{robot_name}"' in content_str
+    ):
+        print(f"{robot_name} appears to be already registered.")
+    else:
+        last_import_index = max(
+            idx for idx, line in enumerate(content) if "import" in line
+        )
+        content.insert(last_import_index + 1, import_lines)
+        content.append(registration_line)
+        with open(register_script_path, "w") as file:
+            file.writelines(content)
 
 
 if __name__ == "__main__":
