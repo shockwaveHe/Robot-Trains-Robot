@@ -5,29 +5,10 @@ import xml.etree.ElementTree as ET
 
 from toddlerbot.sim.robot import HumanoidRobot
 
-
-def process_urdf_isaac(robot):
-    robot_dir = os.path.join("toddlerbot", "robot_descriptions", robot.name)
-    source_urdf_path = os.path.join(robot_dir, f"{robot.name}.urdf")
-    issac_urdf_path = os.path.join(robot_dir, f"{robot.name}_isaac.urdf")
-    tree = ET.parse(source_urdf_path)
-    root = tree.getroot()
-
-    for joint in root.findall(".//joint"):
-        joint_name = joint.get("name")
-        joint_type = joint.get("type")
-        if joint_name not in robot.config.motor_params and joint_type != "fixed":
-            joint.set("type", "fixed")  # Set joint type to 'fixed'
-
-    tree.write(issac_urdf_path)
-
-    return issac_urdf_path
+MAX_ITERATIONS = 1500
 
 
 def create_legged_gym_env(robot_name):
-    robot = HumanoidRobot(robot_name)
-    num_actions = len(robot.config.motor_params)
-
     legged_gym_root_dir = os.path.join("toddlerbot", "sim", "legged_gym")
     legged_gym_env_dir = os.path.join(legged_gym_root_dir, "legged_gym", "envs")
     if not os.path.exists(legged_gym_env_dir):
@@ -38,7 +19,30 @@ def create_legged_gym_env(robot_name):
     env_path = os.path.join(legged_gym_env_dir, f"{robot_name}")
     os.makedirs(env_path, exist_ok=True)
 
-    isaac_urdf_path = process_urdf_isaac(robot)
+    robot = HumanoidRobot(robot_name)
+    robot_dir = os.path.join("toddlerbot", "robot_descriptions", robot_name)
+    source_urdf_path = os.path.join(robot_dir, f"{robot_name}.urdf")
+    tree = ET.parse(source_urdf_path)
+    root = tree.getroot()
+
+    num_actions = len(robot.config.motor_params)
+    foot_name = robot.config.canonical_name2link_name["foot_link"]
+
+    terminate_after_contacts_on = []
+    for link in root.findall(".//link"):
+        link_name = link.get("name")
+        if not foot_name in link_name and link.find("collision") is not None:
+            terminate_after_contacts_on.append(link_name)
+
+    for joint in root.findall(".//joint"):
+        joint_name = joint.get("name")
+        joint_type = joint.get("type")
+        if joint_name not in robot.config.motor_params and joint_type != "fixed":
+            joint.set("type", "fixed")  # Set joint type to 'fixed'
+
+    isaac_urdf_path = os.path.join(robot_dir, f"{robot_name}_isaac.urdf")
+    tree.write(isaac_urdf_path)
+
     urdf_relpath = os.path.relpath(isaac_urdf_path, legged_gym_root_dir)
 
     robot_name_capitalized = robot_name.capitalize()
@@ -51,14 +55,15 @@ def create_legged_gym_env(robot_name):
     class {robot_name_capitalized}Cfg(LeggedRobotCfg):
         class env(LeggedRobotCfg.env):
             num_envs = 4096
-            num_observations = {num_actions * 3 + 3 * 4 + 187}
+            num_observations = {num_actions * 3 + 3 * 4}
             num_actions = {num_actions}
 
         class terrain(LeggedRobotCfg.terrain):
             mesh_type = "plane"
+            measure_heights = False
 
         class init_state(LeggedRobotCfg.init_state):
-            pos = [0.0, 0.0, 1.0]  # x,y,z [m]
+            pos = [0.0, 0.0, 0.0]  # x,y,z [m]
             default_joint_angles = {{  # = target angles [rad] when action = 0.0
                 "left_hip_yaw": 0.0,
                 "left_hip_roll": 0.0,
@@ -103,24 +108,24 @@ def create_legged_gym_env(robot_name):
                 "right_elb": 100.0,
             }}  # [N*m/rad]
             damping = {{ 
-                "left_hip_yaw": 10.0,
-                "left_hip_roll": 10.0,
-                "left_hip_pitch": 10.0,
-                "left_knee": 10.0,
-                "left_ank_pitch": 10.0,
-                "left_ank_roll": 10.0,
-                "right_hip_yaw": 10.0,
-                "right_hip_roll": 10.0,
-                "right_hip_pitch": 10.0,
-                "right_knee": 10.0,
-                "right_ank_pitch": 10.0,
-                "right_ank_roll": 10.0,
-                "left_sho_pitch": 10.0,
-                "left_sho_roll": 10.0,
-                "left_elb": 10.0,
-                "right_sho_pitch": 10.0,
-                "right_sho_roll": 10.0,
-                "right_elb": 10.0,
+                "left_hip_yaw": 4.0,
+                "left_hip_roll": 4.0,
+                "left_hip_pitch": 4.0,
+                "left_knee": 4.0,
+                "left_ank_pitch": 4.0,
+                "left_ank_roll": 4.0,
+                "right_hip_yaw": 4.0,
+                "right_hip_roll": 4.0,
+                "right_hip_pitch": 4.0,
+                "right_knee": 4.0,
+                "right_ank_pitch": 4.0,
+                "right_ank_roll": 4.0,
+                "left_sho_pitch": 4.0,
+                "left_sho_roll": 4.0,
+                "left_elb": 4.0,
+                "right_sho_pitch": 4.0,
+                "right_sho_roll": 4.0,
+                "right_elb": 4.0,
             }}  # [N*m*s/rad]
             # action scale: target angle = actionScale * action + defaultAngle
             action_scale = 0.5
@@ -130,8 +135,8 @@ def create_legged_gym_env(robot_name):
         class asset(LeggedRobotCfg.asset):
             file = "{{LEGGED_GYM_ROOT_DIR}}/{urdf_relpath}"
             name = "{robot_name}"
-            foot_name = "ank_roll_link"
-            terminate_after_contacts_on = ["body_link"]
+            foot_name = "{foot_name}"
+            terminate_after_contacts_on = {terminate_after_contacts_on}
             flip_visual_attachments = False
             self_collisions = 1  # 1 to disable, 0 to enable...bitwise filter
 
@@ -155,12 +160,17 @@ def create_legged_gym_env(robot_name):
                 ang_vel_xy = -0.0
                 feet_contact_forces = -0.0
 
+        class viewer:
+            pos = [-1, -0.5, 0.5]  # [m]
+            lookat = [0, 0, 0.3]  # [m]
+
 
     class {robot_name_capitalized}CfgPPO(LeggedRobotCfgPPO):
 
         class runner(LeggedRobotCfgPPO.runner):
             run_name = ""
             experiment_name = "walk_{robot_name}"
+            max_iterations = {MAX_ITERATIONS}
 
         class algorithm(LeggedRobotCfgPPO.algorithm):
             entropy_coef = 0.01

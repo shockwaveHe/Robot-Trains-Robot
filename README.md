@@ -72,6 +72,11 @@ from distutils.version import LooseVersion
 # ... 
 ```
 
+According to [this issue](https://github.com/tensorflow/tensorboard/issues/6808), run
+```
+pip install protobuf==4.25
+```
+
 ### MacOS (Apple Sillicon M1/M2)
 ```
 CONDA_SUBDIR=osx-arm64 conda create -n toddlerbot python=3.8
