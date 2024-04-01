@@ -77,7 +77,7 @@ def get_config(robot_name):
 
         angles_dict = {{
             "hip_yaw": hip_yaw,
-            "hip_roll": hip_roll if side == "left" else -hip_roll,
+            "hip_roll": hip_roll,
             "hip_pitch": -hip_pitch if side == "left" else hip_pitch,
             "knee": knee_pitch if side == "left" else -knee_pitch,
             "ank_pitch": ankle_pitch if side == "left" else -ankle_pitch,
