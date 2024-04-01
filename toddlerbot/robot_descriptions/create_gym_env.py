@@ -138,7 +138,7 @@ def create_legged_gym_env(robot_name):
             foot_name = "{foot_name}"
             terminate_after_contacts_on = {terminate_after_contacts_on}
             flip_visual_attachments = False
-            self_collisions = 1  # 1 to disable, 0 to enable...bitwise filter
+            self_collisions = 0  # 1 to disable, 0 to enable...bitwise filter
 
         class rewards(LeggedRobotCfg.rewards):
             soft_dof_pos_limit = 0.95
@@ -155,7 +155,6 @@ def create_legged_gym_env(robot_name):
                 lin_vel_z = -0.5
                 feet_air_time = 5.0
                 dof_pos_limits = -1.0
-                no_fly = 0.25
                 dof_vel = -0.0
                 ang_vel_xy = -0.0
                 feet_contact_forces = -0.0

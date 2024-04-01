@@ -7,24 +7,27 @@ import trimesh
 
 from toddlerbot.utils.file_utils import find_description_path
 
-collision_link_list = [
-    "body_link",
-    "neck_link",
-    "head_link",
-    "hip_roll_link",
-    "left_hip_pitch_link",
-    "left_calf_link",
-    "ank_roll_link",
-    "hip_roll_link_2",
-    "right_hip_pitch_link",
-    "right_calf_link",
-    "ank_roll_link_2",
-    "sho_roll_link",
-    "elb_link",
-    "sho_roll_link_2",
-    "elb_link_2",
-]
-collision_link_dict = {key: (1.0, 1.0, 1.0) for key in collision_link_list}
+default_scale_factor = (1.0, 1.0, 1.0)
+leg_scale_factor = (1.0, 0.5, 1.0)
+arm_scale_factor = (1.0, 0.5, 1.0)
+
+collision_link_dict = {
+    "body_link": default_scale_factor,
+    "neck_link": default_scale_factor,
+    "head_link": default_scale_factor,
+    "hip_roll_link": leg_scale_factor,
+    "left_hip_pitch_link": leg_scale_factor,
+    "left_calf_link": leg_scale_factor,
+    "ank_roll_link": default_scale_factor,
+    "hip_roll_link_2": leg_scale_factor,
+    "right_hip_pitch_link": leg_scale_factor,
+    "right_calf_link": leg_scale_factor,
+    "ank_roll_link_2": default_scale_factor,
+    "sho_roll_link": arm_scale_factor,
+    "elb_link": arm_scale_factor,
+    "sho_roll_link_2": arm_scale_factor,
+    "elb_link_2": arm_scale_factor,
+}
 
 
 def compute_bounding_box_mesh(robot_dir, mesh_filename, scale_factors):
