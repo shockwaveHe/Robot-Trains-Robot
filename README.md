@@ -114,6 +114,8 @@ export ONSHAPE_ACCESS_KEY=Your_Access_Key
 export ONSHAPE_SECRET_KEY=Your_Secret_Key
 ```
 
+Note: The headless mode won't work for mesh simplification with meshlabserver currently.
+
 ### Linux Systems
 ```
 sudo apt-get install meshlab

@@ -22,6 +22,7 @@ def get_config(robot_name):
     tree = ET.parse(urdf_path)
     root = tree.getroot()
     body_link_name = find_root_link_name(root)
+    foot_link_name = "ank_roll_link"
 
     # Define the content of the Python script as a multi-line string
     config_script_content = textwrap.dedent(
@@ -32,7 +33,10 @@ def get_config(robot_name):
 
     from toddlerbot.robot_descriptions.robot_configs import *
 
-    canonical_name2link_name = {{"body_link": "{body_link_name}"}}
+    canonical_name2link_name = {{
+        "body_link": "{body_link_name}",
+        "foot_link": "{foot_link_name}",
+    }}
 
 
     # UPDATE: the function to compute leg angles
@@ -259,7 +263,8 @@ def get_config(robot_name):
             ("12lf_rod_end_4", "12lf_rod_4"),
         ],
         compute_leg_angles=compute_leg_angles,
-    )"""
+    )
+    """
     )
 
     # Define the file path

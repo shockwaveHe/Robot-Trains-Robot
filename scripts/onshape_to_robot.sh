@@ -97,3 +97,13 @@ if [ "$run_mujoco" == "y" ]; then
 else
     printf "Simulation skipped.\n\n"
 fi
+
+printf "Do you want to create the isaac gym environment? (y/n)"
+read -r -p " > " run_gym
+
+if [ "$run_gym" == "y" ]; then
+    printf "Creating the gym environment...\n\n"
+    python $REPO_NAME/robot_descriptions/create_gym_env.py --robot-name $ROBOT_NAME
+else
+    printf "Gym environment creation skipped.\n\n"
+fi
