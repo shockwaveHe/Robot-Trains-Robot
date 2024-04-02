@@ -37,7 +37,7 @@ class ZMPPreviewController:
         # The notations follow p.145-146 in "Introduction to Humanoid Robotics" by Shuuji Kajita
 
         self.n_preview = round(self.params.t_preview / self.params.dt)
-        self.n_filter = round(self.params.t_filter / self.params.dt)
+        # self.n_filter = round(self.params.t_filter / self.params.dt)
 
         # State-space matrices
         A = np.array([[0, 1, 0], [0, 0, 1], [0, 0, 0]])
@@ -54,14 +54,12 @@ class ZMPPreviewController:
         A_d, B_d, C_d, _ = control.ssdata(sys_d)  # C doesn't change
         self.A_d, self.B_d, self.C_d = A_d, B_d, C_d
 
-        # TODO: Move the dynamics filter to a separate class
-        R2 = np.array([[1e-4]])
-        P, _, self.K = control.dare(A_d, B_d, C_d.T @ Q @ C_d, R2)
+        P, _, self.K = control.dare(A_d, B_d, C_d.T @ Q @ C_d, R)
 
-        self.f = np.zeros((1, self.n_filter))
-        for i in range(self.n_filter):
+        self.f = np.zeros((1, self.n_preview))
+        for i in range(self.n_preview):
             self.f[0, i] = (
-                np.linalg.inv(R2 + B_d.T @ P @ B_d)
+                np.linalg.inv(R + B_d.T @ P @ B_d)
                 @ B_d.T
                 @ np.linalg.matrix_power((A_d - B_d @ self.K).T, i)
                 @ C_d.T
@@ -150,24 +148,5 @@ class ZMPPreviewController:
             # Record the current COM position
             zmp_traj.append(zmp)
             com_ref_traj.append(com_curr[0].copy())
-
-        return zmp_traj, com_ref_traj
-
-    def filter_dynamics(self, zmp_ref_traj, last_robot_state_traj_data):
-        zmp_traj = []
-        com_ref_traj = []
-        last_com_traj = np.array(last_robot_state_traj_data["com_traj"])
-        zmp_approx_traj = np.array(last_robot_state_traj_data["zmp_approx_traj"])
-        zmp_error_traj = zmp_approx_traj[: len(zmp_ref_traj)] - np.array(zmp_ref_traj)
-
-        com_delta = np.zeros((3, 2))
-        for k in range(len(zmp_ref_traj) - self.n_preview - 1):
-            zmp_error_preview = zmp_error_traj[k : k + self.n_filter]
-            # Reference: Eq. 4.64 on p.138 in "Introduction to Humanoid Robotics" by Shuuji Kajita
-            # The equation is simplified since com_delta starts with zero
-            u = -self.K @ com_delta + self.f @ zmp_error_preview
-            com_delta = self.A_d @ com_delta + self.B_d @ u
-            zmp_traj.append(zmp_approx_traj[k])
-            com_ref_traj.append(last_com_traj[k] - com_delta[0])
 
         return zmp_traj, com_ref_traj

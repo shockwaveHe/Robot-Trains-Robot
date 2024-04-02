@@ -74,21 +74,15 @@ class Walking:
         self,
         curr_pose: Optional[np.ndarray] = None,
         target_pose: Optional[np.ndarray] = None,
-        last_robot_state_traj_data: Optional[dict] = None,
     ):
         if self.curr_pose is not None:
             curr_pose = self.curr_pose
 
         path, self.foot_steps = self.fsp.compute_steps(curr_pose, target_pose)
         zmp_ref_traj = self.pc.compute_zmp_ref_traj(self.foot_steps)
-        if last_robot_state_traj_data is None:
-            zmp_traj, self.com_ref_traj = self.pc.compute_com_traj(
-                self.com_curr, zmp_ref_traj
-            )
-        else:
-            zmp_traj, self.com_ref_traj = self.pc.filter_dynamics(
-                zmp_ref_traj, last_robot_state_traj_data
-            )
+        zmp_traj, self.com_ref_traj = self.pc.compute_com_traj(
+            self.com_curr, zmp_ref_traj
+        )
 
         self.com_curr = self.com_ref_traj[-1].copy()
 
@@ -282,25 +276,6 @@ def main():
     else:
         raise ValueError("Unknown simulator")
 
-    last_robot_state_traj_data = None
-    if config.filter_dynamics:
-        last_result_dir = find_last_result_dir("results", prefix=exp_name)
-        if last_result_dir is not None:
-            last_config_path = os.path.join(last_result_dir, "config.json")
-            last_robot_state_traj_file_path = os.path.join(
-                last_result_dir, "robot_state_traj_data.pkl"
-            )
-            if os.path.exists(last_config_path) and os.path.exists(
-                last_robot_state_traj_file_path
-            ):
-                with open(last_config_path, "r") as f:
-                    last_config = WalkingConfig(**json.load(f))
-                    if last_config.filter_dynamics:
-                        config = last_config  # Use the latest config to make sure the filter is valid
-                        exp_folder_path = last_result_dir
-                        with open(last_robot_state_traj_file_path, "rb") as f:
-                            last_robot_state_traj_data = pickle.load(f)
-
     walking = Walking(robot, config, joint_angles)
 
     torso_pos_init, torso_mat_init = sim.get_torso_pose(robot)
@@ -310,7 +285,7 @@ def main():
     target_pose = np.array(config.target_pose_init)
 
     path, foot_steps, zmp_ref_traj, zmp_traj, com_ref_traj = walking.plan_and_control(
-        curr_pose, target_pose, last_robot_state_traj_data
+        curr_pose, target_pose
     )
     foot_steps_copy = copy.deepcopy(foot_steps)
     com_ref_traj_copy = copy.deepcopy(com_ref_traj)
@@ -397,9 +372,6 @@ def main():
         }
 
         file_suffix = ""
-        if last_robot_state_traj_data is not None:
-            file_suffix = "filter"
-
         if len(file_suffix) > 0:
             robot_state_traj_file_name = f"robot_state_traj_data_{file_suffix}.pkl"
         else:

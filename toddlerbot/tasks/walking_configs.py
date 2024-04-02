@@ -49,7 +49,6 @@ walking_configs = {
     "toddlerbot_mujoco": WalkingConfig.create_config(
         squat_height=0.01,
         # rotate_torso=True,
-        # filter_dynamics=True
     ),
     "toddlerbot_legs_mujoco": WalkingConfig.create_config(squat_height=0.01),
     "toddlerbot_real": WalkingConfig.create_config(squat_height=0.01, actuator_steps=2),
