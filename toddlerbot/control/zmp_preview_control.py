@@ -150,3 +150,5 @@ class ZMPPreviewController:
             com_ref_traj.append(com_curr[0].copy())
 
         return zmp_traj, com_ref_traj
+
+    # TODO: Implement the foot step modification function
