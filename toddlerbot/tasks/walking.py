@@ -90,9 +90,9 @@ class Walking:
                 zmp_ref_traj, last_robot_state_traj_data
             )
 
-        self.com_curr = self.com_ref_traj[-1][0].copy()
+        self.com_curr = self.com_ref_traj[-1].copy()
 
-        return path, self.foot_steps, zmp_ref_traj, zmp_traj, self.com_ref_traj.copy()
+        return path, self.foot_steps, zmp_ref_traj, zmp_traj, self.com_ref_traj
 
     def solve_joint_angles(self) -> Tuple[List[float], List[float], int]:
         if len(self.com_ref_traj) == 0:
@@ -141,8 +141,6 @@ class Walking:
                     self.fs_steps / 2
                 )
 
-        self._compute_foot_offset()
-
         com_pos_ref = self.com_ref_traj.pop(0)
         self.joint_angles = self.robot.solve_ik(
             *self._compute_foot_pos(com_pos_ref),
@@ -152,7 +150,7 @@ class Walking:
 
         return "walking", self.joint_angles
 
-    def _compute_foot_offset(self):
+    def _compute_foot_pos(self, com_pos):
         # Need to update here
         idx_curr = self.idx % self.fs_steps
         up_start_idx = round(self.fs_steps / 4)
@@ -183,58 +181,56 @@ class Walking:
         elif idx_curr > up_start_idx:
             if support_leg == "right":
                 self.left_pos += self.left_pos_delta
-                self.theta_curr += self.theta_delta
+                if self.config.rotate_torso:
+                    self.theta_curr += self.theta_delta
             elif support_leg == "left":
                 self.right_pos += self.right_pos_delta
-                self.theta_curr += self.theta_delta
+                if self.config.rotate_torso:
+                    self.theta_curr += self.theta_delta
 
-    def _compute_foot_pos(self, com_pos):
-        if not self.config.rotate_torso:
-            self.theta_curr = 0.0
-
-        left_foot_theta = self.theta_curr - self.left_pos[2]
-        right_foot_theta = self.theta_curr - self.right_pos[2]
-        # print(
-        #     f"theta_curr: {self.theta_curr}, left_foot_theta: {left_foot_theta}, right_foot_theta: {right_foot_theta}"
-        # )
-        left_foot_ori = [0, 0, left_foot_theta]
-        right_foot_ori = [0, 0, right_foot_theta]
-
-        com_x_offset = 0.0064
-        com_y_offset = 0.034
-
-        rotated_com_pos = np.array(
-            [
-                com_pos[0] + np.sin(self.theta_curr) * com_x_offset,
-                com_pos[1] + (1 - np.cos(self.theta_curr)) * com_y_offset,
-            ]
-        )
-
-        left_offset = self.left_pos[:2] - rotated_com_pos
-        right_offset = self.right_pos[:2] - rotated_com_pos
-
-        left_foot_pos = [
-            left_offset[0]
-            + np.cos(self.theta_curr) * self.x_offset_com_to_foot
-            + np.sin(self.theta_curr) * self.y_offset_com_to_foot,
-            left_offset[1]
-            + np.sin(self.theta_curr) * self.x_offset_com_to_foot
-            - np.cos(self.theta_curr) * self.y_offset_com_to_foot,
-            self.config.squat_height + self.left_up,
+        left_hip_pos = [
+            com_pos[0] - self.x_offset_com_to_foot,
+            com_pos[1] + self.y_offset_com_to_foot,
+        ]
+        right_hip_pos = [
+            com_pos[0] - self.x_offset_com_to_foot,
+            com_pos[1] - self.y_offset_com_to_foot,
         ]
 
+        if support_leg == "left":
+            right_hip_pos[0] += self.y_offset_com_to_foot * 2 * np.sin(self.theta_curr)
+            right_hip_pos[1] += (
+                self.y_offset_com_to_foot * 2 * (1 - np.cos(self.theta_curr))
+            )
+        elif support_leg == "right":
+            left_hip_pos[0] += self.y_offset_com_to_foot * 2 * np.sin(self.theta_curr)
+            left_hip_pos[1] += (
+                self.y_offset_com_to_foot * 2 * (1 - np.cos(self.theta_curr))
+            )
+
+        # target end effector positions in the hip frame
+        left_offset_x = self.left_pos[0] - left_hip_pos[0]
+        left_offset_y = self.left_pos[1] - left_hip_pos[1]
+        right_offset_x = self.right_pos[0] - right_hip_pos[0]
+        right_offset_y = self.right_pos[1] - right_hip_pos[1]
+
+        left_foot_pos = [
+            left_offset_x * np.cos(self.left_pos[2])
+            + left_offset_y * np.sin(self.left_pos[2]),
+            -left_offset_x * np.sin(self.left_pos[2])
+            + left_offset_y * np.cos(self.left_pos[2]),
+            self.config.squat_height + self.left_up,
+        ]
         right_foot_pos = [
-            right_offset[0]
-            + np.cos(self.theta_curr) * self.x_offset_com_to_foot
-            - np.sin(self.theta_curr) * self.y_offset_com_to_foot,
-            right_offset[1]
-            + np.sin(self.theta_curr) * self.x_offset_com_to_foot
-            + np.cos(self.theta_curr) * self.y_offset_com_to_foot,
+            right_offset_x * np.cos(self.right_pos[2])
+            + right_offset_y * np.sin(self.right_pos[2]),
+            -right_offset_x * np.sin(self.right_pos[2])
+            + right_offset_y * np.cos(self.right_pos[2]),
             self.config.squat_height + self.right_up,
         ]
 
-        # if self.idx == 0:
-        #     print("stop")
+        left_foot_ori = [0, 0, self.theta_curr - self.left_pos[2]]
+        right_foot_ori = [0, 0, self.theta_curr - self.right_pos[2]]
 
         return left_foot_pos, left_foot_ori, right_foot_pos, right_foot_ori
 
@@ -316,7 +312,8 @@ def main():
     path, foot_steps, zmp_ref_traj, zmp_traj, com_ref_traj = walking.plan_and_control(
         curr_pose, target_pose, last_robot_state_traj_data
     )
-    foot_steps_vis = copy.deepcopy(foot_steps)
+    foot_steps_copy = copy.deepcopy(foot_steps)
+    com_ref_traj_copy = copy.deepcopy(com_ref_traj)
 
     com_traj = []
     zmp_approx_traj = []
@@ -395,7 +392,7 @@ def main():
             "zmp_ref_traj": zmp_ref_traj,
             "zmp_traj": zmp_traj,
             "zmp_approx_traj": zmp_approx_traj,
-            "com_ref_traj": com_ref_traj,
+            "com_ref_traj": com_ref_traj_copy,
             "com_traj": com_traj,
         }
 
@@ -426,7 +423,7 @@ def main():
 
         draw_footsteps(
             path,
-            foot_steps_vis,
+            foot_steps_copy,
             robot.foot_size[:2],
             robot.offsets["y_offset_com_to_foot"],
             title=f"Footsteps Planning",
