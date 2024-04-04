@@ -92,6 +92,10 @@ void loop()
             { // Check for special command pattern
                 memcpy(&motor_commands[index].packet_buffer, &received_bytes[1], 8);
             }
+            else if (strcmp((char *)&received_bytes[1], "get_state") == 0)
+            {
+                Serial.println(">tx_data:" + String(id) + "," + String(motor_states[index].p) + "," + String(motor_states[index].v) + "," + String(motor_states[index].t) + "," + String(motor_states[index].vb));
+            }
             else
             {
                 // Extract the command data directly into the motor_commands structure for the found index
@@ -110,7 +114,7 @@ void loop()
                 memcpy(&motor_commands[index].kd, &received_bytes[1 + 2 * sizeof(float) + sizeof(uint16_t)], sizeof(uint16_t));
                 memcpy(&motor_commands[index].i_ff, &received_bytes[1 + 2 * sizeof(float) + 2 * sizeof(uint16_t)], sizeof(float));
 
-                Serial.println(">rx_data:" + String(id) + "," + String(motor_commands[index].p_des) + "," + String(motor_commands[index].v_des) + "," + String(motor_commands[index].kp) + "," + String(motor_commands[index].kd) + "," + String(motor_commands[index].i_ff));
+                // Serial.println(">rx_data:" + String(id) + "," + String(motor_commands[index].p_des) + "," + String(motor_commands[index].v_des) + "," + String(motor_commands[index].kp) + "," + String(motor_commands[index].kd) + "," + String(motor_commands[index].i_ff));
             }
         }
         else
@@ -220,7 +224,6 @@ void sendPacket()
         if (is_empty)
         {
             encodePacket(cmd_packet, motor_commands[index]);
-            // printPacket(cmd_packet);
         }
         else
         {
@@ -312,8 +315,6 @@ void decodePacket(byte packet[8], MotorState &state)
     state.v = uint_to_float(v_raw, V_MIN, V_MAX, 12);
     state.t = int_to_float_overflow(signed_t_raw, I_MIN, I_MAX, 12); // Special treatment for current, it might go out of range and wrap around.
     state.vb = uint_to_float(vb_raw, VB_MIN, VB_MAX, 8);
-
-    Serial.println(">tx_data:" + String(id) + "," + String(state.p) + "," + String(state.v) + "," + String(state.t) + "," + String(state.vb));
 }
 
 // Convert uint [0,2^bits) to float [minv,maxv)

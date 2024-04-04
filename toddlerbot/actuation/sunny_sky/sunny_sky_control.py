@@ -32,7 +32,7 @@ class SunnySkyConfig:
     gear_ratio: float = 2.0
     baudrate: int = 115200
     tx_data_prefix: str = ">tx_data:"
-    tx_timeout: float = 0.01
+    tx_timeout: float = 0.1
     control_freq: int = 5000
 
 
@@ -119,7 +119,7 @@ class SunnySkyController(BaseController):
         """
         Puts motor with CAN ID "id" into torque-control mode. 2nd red LED will turn on
         """
-        b = bytes(bytearray([id])) + b"\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFC"
+        b = bytes([id]) + b"\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFC"
         self.write_to_serial_with_markers(b)
         time.sleep(0.1)
         # self.ser.flushInput()
@@ -128,7 +128,7 @@ class SunnySkyController(BaseController):
         """
         Removes motor with CAN ID "id" from torque-control mode. 2nd red LED will turn off
         """
-        b = bytes(bytearray([id])) + b"\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFD"
+        b = bytes([id]) + b"\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFD"
         self.write_to_serial_with_markers(b)
         time.sleep(0.1)
 
@@ -136,7 +136,7 @@ class SunnySkyController(BaseController):
         """
         Zero Position Sensor. Sets the mechanical position to zero.
         """
-        b = bytes(bytearray([id])) + b"\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFE"
+        b = bytes([id]) + b"\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFE"
         self.write_to_serial_with_markers(b)
         time.sleep(0.1)
 
@@ -168,7 +168,7 @@ class SunnySkyController(BaseController):
     ):
         # Create command with dynamic kd and fixed kp, i_ff
         if limit:
-            pos_driven = np.clip(pos, *self.joint_range_dict[id])
+            pos_driven = np.clip(pos, *sorted(self.joint_range_dict[id]))
         else:
             pos_driven = pos
 
@@ -214,7 +214,7 @@ class SunnySkyController(BaseController):
                 state = self._get_motor_state_single(id)
                 if abs(state.current) > self.config.current_limit:
                     log(
-                        f"Current limit reached: {state.current} A",
+                        f"Motor {id} current limit reached: {state.current} A",
                         header="SunnySky",
                         level="warning",
                     )
@@ -255,38 +255,31 @@ class SunnySkyController(BaseController):
         with self.serial_lock:
             self.client.reset_input_buffer()
 
-        time_start = time.time()
-        last_valid_line = None
+        command = bytes([id]) + f"get_state".encode()
+        self.write_to_serial_with_markers(command)
 
+        time_start = time.time()
         while (time.time() - time_start) < self.config.tx_timeout:
             with self.serial_lock:
                 line = self.client.readline()
                 if not line:
-                    continue  # Skip empty lines, in case of non-blocking read
+                    continue  # Skip empty lines
 
             decoded_line = line.decode().strip()
-
             if decoded_line.startswith(self.config.tx_data_prefix):
                 _, data_str = decoded_line.split(self.config.tx_data_prefix, 1)
                 try:
-                    id_recv = int(data_str.split(",")[0])
+                    id_recv, p, v, t, vb = map(float, data_str.split(","))
                     if id_recv == id:
-                        last_valid_line = decoded_line  # Keep the last relevant line
-                except:
-                    continue
-
-        # Process the last valid line received, if any
-        if last_valid_line:
-            _, data_str = last_valid_line.split(self.config.tx_data_prefix, 1)
-            id_recv, p, v, t, vb = map(float, data_str.split(","))
-            pos_driven = p / self.config.gear_ratio - self.init_pos[id]
-            return SunnySkyState(
-                time=time.time(),
-                pos=pos_driven,
-                vel=v,
-                current=t,
-                voltage=vb,
-            )
+                        return SunnySkyState(
+                            time=time.time(),
+                            pos=p / self.config.gear_ratio - self.init_pos[id],
+                            vel=v,
+                            current=t,
+                            voltage=vb,
+                        )
+                except ValueError:
+                    continue  # Skip lines with parsing errors
 
         return None
 
@@ -307,9 +300,6 @@ if __name__ == "__main__":
     from toddlerbot.utils.vis_plot import plot_line_graph
 
     joint_range_dict = {1: (0, np.pi / 2), 2: (0, -np.pi / 2)}
-    config = SunnySkyConfig(port="/dev/tty.usbmodem2101", vel=np.pi / 4)
-    controller = SunnySkyController(config, joint_range_dict=joint_range_dict)
-
     pos_seq_ref = [
         [0.0, 0.0],
         [np.pi / 2, -np.pi / 2],
@@ -317,6 +307,15 @@ if __name__ == "__main__":
         [np.pi / 4, -np.pi / 4],
         [0.0, 0.0],
     ]
+
+    # joint_range_dict = {2: (0, -np.pi / 2)}
+    # pos_seq_ref = [[0.0], [-np.pi / 2], [0.0], [-np.pi / 4], [0.0]]
+
+    # joint_range_dict = {1: (0, np.pi / 2)}
+    # pos_seq_ref = [[0.0], [np.pi / 2], [0.0], [np.pi / 4], [0.0]]
+
+    config = SunnySkyConfig(port="/dev/tty.usbmodem101", vel=np.pi / 4)
+    controller = SunnySkyController(config, joint_range_dict=joint_range_dict)
 
     time_seq = []
     pos_seq = []
