@@ -13,8 +13,7 @@ class RealWorld(BaseSim):
     def __init__(self, robot: Optional[HumanoidRobot] = None):
         super().__init__()
         self.name = "real_world"
-
-        self.ankle_pos_last = [0, 0]
+        self.negated_joint_names = ["right_hip_pitch", "left_ank_pitch"]
 
         self.dynamixel_init_pos = np.radians([245, 180, 180, 287, 180, 180])
         self.dynamixel_config = DynamixelConfig(
@@ -24,13 +23,23 @@ class RealWorld(BaseSim):
             kD=[200, 400, 400, 200, 400, 400],
             current_limit=[350, 350, 350, 350, 350, 350],
             init_pos=self.dynamixel_init_pos,
+            gear_ratio=np.array([19 / 21, 1, 1, 19 / 21, 1, 1]),
         )
 
-        self.sunny_sky_config = SunnySkyConfig(port="/dev/tty.usbmodem21201")
+        self.sunny_sky_config = SunnySkyConfig(port="/dev/tty.usbmodem101")
+        # Temorarily hard-coded joint range for SunnySky
+        joint_range_dict = {1: (0, np.pi / 2), 2: (0, -np.pi / 2)}
 
-        self.mighty_zap_init_pos = self.ankle_ik(robot, [0, 0])
+        self.ankle2mighty_zap = {"left": [0, 1], "right": [2, 3]}
+        self.last_mighty_zap_pos = {
+            id: 0 for id in np.concatenate(list(self.ankle2mighty_zap.values()))
+        }
+        mighty_zap_init_pos = []
+        for ids in self.ankle2mighty_zap.values():
+            mighty_zap_init_pos += self.ankle_ik(robot, [0] * len(ids))
+
         self.mighty_zap_config = MightyZapConfig(
-            port="/dev/tty.usbserial-0001", init_pos=self.mighty_zap_init_pos
+            port="/dev/tty.usbserial-0001", init_pos=mighty_zap_init_pos
         )
 
         with ThreadPoolExecutor(max_workers=3) as executor:
@@ -49,8 +58,7 @@ class RealWorld(BaseSim):
                     self,
                     "sunny_sky_controller",
                     SunnySkyController(
-                        self.sunny_sky_config,
-                        motor_ids=sorted(list(robot.sunny_sky_joint2id.values())),
+                        self.sunny_sky_config, joint_range_dict=joint_range_dict
                     ),
                 )
             )
@@ -65,12 +73,31 @@ class RealWorld(BaseSim):
                 )
             )
 
+    def _negate_joint_angles(self, joint_angles):
+        negated_joint_angles = {}
+        for name, angle in joint_angles.items():
+            if name in self.negated_joint_names:
+                negated_joint_angles[name] = -angle
+            else:
+                negated_joint_angles[name] = angle
+
+        return negated_joint_angles
+
     def set_joint_angles(self, robot, joint_angles):
         # Directions are tuned to match the assembly of the robot.
-        dynamixel_pos = [joint_angles[k] for k in robot.dynamixel_joint2id.keys()]
-        sunny_sky_pos = [joint_angles[k] for k in robot.sunny_sky_joint2id.keys()]
-        ankle_pos = [joint_angles[k] for k in robot.mighty_zap_joint2id.keys()]
-        mighty_zap_pos = self.ankle_ik(robot, ankle_pos)
+        negated_joint_angles = self._negate_joint_angles(joint_angles)
+
+        dynamixel_pos = [
+            negated_joint_angles[k] for k in robot.dynamixel_joint2id.keys()
+        ]
+        sunny_sky_pos = [
+            negated_joint_angles[k] for k in robot.sunny_sky_joint2id.keys()
+        ]
+        ankle_pos = [negated_joint_angles[k] for k in robot.mighty_zap_joint2id.keys()]
+
+        mighty_zap_pos = []
+        for ids in self.ankle2mighty_zap.values():
+            mighty_zap_pos += self.ankle_ik(robot, np.array(ankle_pos)[ids])
 
         log(f"{round_floats(dynamixel_pos, 4)}", header="Dynamixel", level="debug")
         log(f"{round_floats(sunny_sky_pos, 4)}", header="SunnySky", level="debug")
@@ -82,7 +109,7 @@ class RealWorld(BaseSim):
             executor.submit(self.sunny_sky_controller.set_pos, sunny_sky_pos)
             executor.submit(self.mighty_zap_controller.set_pos, mighty_zap_pos)
 
-    def ankle_fk(self, robot, mighty_zap_pos):
+    def ankle_fk(self, robot, mighty_zap_pos, last_mighty_zap_pos):
         def objective_function(ankle_pos, target_pos):
             pos = self.ankle_ik(robot, ankle_pos)
             error = np.array(pos) - np.array(target_pos)
@@ -90,7 +117,7 @@ class RealWorld(BaseSim):
 
         result = root(
             lambda x: objective_function(x, mighty_zap_pos),
-            self.ankle_pos_last,
+            last_mighty_zap_pos,
             method="hybr",
             options={"xtol": 1e-6},
         )
@@ -105,7 +132,7 @@ class RealWorld(BaseSim):
             return optimized_ankle_pos
         else:
             log(f"Solving ankle position failed", header="MightyZap", level="debug")
-            return self.ankle_pos_last
+            return last_mighty_zap_pos
 
     def ankle_ik(self, robot, ankle_pos):
         # Implemented based on page 3 of the following paper:
@@ -121,8 +148,8 @@ class RealWorld(BaseSim):
         r = offsets["r"]
         mighty_zap_len = offsets["mighty_zap_len"]
 
-        ankle_roll = -ankle_pos[0]
-        ankle_pitch = -ankle_pos[1]
+        ankle_pitch = ankle_pos[0]
+        ankle_roll = ankle_pos[1]
         R_roll = np.array(
             [
                 [1, 0, 0],
@@ -155,7 +182,7 @@ class RealWorld(BaseSim):
         d1 = (d1_raw - mighty_zap_len) * 1e5
         d2 = (d2_raw - mighty_zap_len) * 1e5
 
-        return np.array([d1, d2])
+        return [d1, d2]
 
     def get_joint_state(self, robot: HumanoidRobot):
         with ThreadPoolExecutor(max_workers=3) as executor:
@@ -175,29 +202,37 @@ class RealWorld(BaseSim):
             sunny_sky_state = future_sunny_sky.result()
             mighty_zap_state = future_mighty_zap.result()
 
-            ankle_pos = self.ankle_fk(
-                robot, [mighty_zap_state[0].pos, mighty_zap_state[1].pos]
-            )
-            for i in range(len(ankle_pos)):
-                mighty_zap_state[i].pos = ankle_pos[i]
-                self.ankle_pos_last[i] = ankle_pos[i]
+            for ids in self.ankle2mighty_zap.values():
+                ankle_pos = self.ankle_fk(
+                    robot,
+                    [mighty_zap_state[id].pos for id in ids],
+                    [self.last_mighty_zap_pos[id] for id in ids],
+                )
+
+                for i in range(len(ids)):
+                    mighty_zap_state[ids[i]].pos = ankle_pos[i]
+                    self.last_mighty_zap_pos[ids[i]] = ankle_pos[i]
 
             joint_state_dict = {}
-            for name, id in robot.dynamixel.joint2id.items():
-                joint_state_dict[name] = JointState(
-                    time=dynamixel_state[id].time,
-                    pos=dynamixel_state[id].pos,
-                )
-            for name, id in robot.sunny_sky_joint2id.items():
-                joint_state_dict[name] = JointState(
-                    time=sunny_sky_state[id].time,
-                    pos=sunny_sky_state[id].pos,
-                )
-            for name, id in robot.mighty_zap_joint2id.items():
-                joint_state_dict[name] = JointState(
-                    time=mighty_zap_state[id].time,
-                    pos=mighty_zap_state[id].pos,
-                )
+            for name in robot.joints_info.keys():
+                id = None
+                if name in robot.dynamixel_joint2id:
+                    id = robot.dynamixel_joint2id[name]
+                    time = dynamixel_state[id].time
+                    pos = dynamixel_state[id].pos
+                elif name in robot.sunny_sky_joint2id:
+                    id = robot.sunny_sky_joint2id[name]
+                    time = sunny_sky_state[id].time
+                    pos = sunny_sky_state[id].pos
+                elif name in robot.mighty_zap_joint2id:
+                    id = robot.mighty_zap_joint2id[name]
+                    time = mighty_zap_state[id].time
+                    pos = mighty_zap_state[id].pos
+
+                if id is not None:
+                    joint_state_dict[name] = JointState(
+                        time=time, pos=-pos if name in self.negated_joint_names else pos
+                    )
 
             return joint_state_dict
 
@@ -207,6 +242,9 @@ class RealWorld(BaseSim):
     def get_torso_pose(self, robot: HumanoidRobot):
         # Placeholder
         return np.array(robot.com), np.eye(3)
+
+    def get_zmp(self, robot: HumanoidRobot):
+        pass
 
     def simulate(
         self,
@@ -240,7 +278,7 @@ class RealWorld(BaseSim):
 if __name__ == "__main__":
     from toddlerbot.utils.vis_plot import *
 
-    robot = HumanoidRobot("toddlerbot")
+    robot = HumanoidRobot("toddlerbot_legs")
     sim = RealWorld(robot)
 
     joint_angles = robot.initialize_joint_angles()
@@ -273,11 +311,3 @@ if __name__ == "__main__":
         i += 1
 
     sim.close()
-
-    plot_joint_tracking(
-        time_seq_dict,
-        time_seq_ref,
-        joint_angle_dict,
-        joint_angle_ref_dict,
-        robot.config.motor_params,
-    )

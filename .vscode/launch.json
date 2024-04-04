@@ -150,5 +150,37 @@
                 // "0.001",
             ]
         },
+        {
+            "name": "Python: stand_toddlerbot_legs_real",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/tasks/standing.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot-name",
+                "toddlerbot_legs",
+                "--sim",
+                "real",
+                // "--sleep-time",
+                // "0.001",
+            ]
+        },
+        {
+            "name": "Python: walk_toddlerbot_legs_real",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/tasks/walking.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot-name",
+                "toddlerbot_legs",
+                "--sim",
+                "real",
+                // "--sleep-time",
+                // "0.001",
+            ]
+        },
     ]
 }

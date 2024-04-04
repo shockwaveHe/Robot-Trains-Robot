@@ -1,11 +1,12 @@
 import argparse
-import random
+import os
+import time
 
 from toddlerbot.sim.mujoco_sim import MujoCoSim
 from toddlerbot.sim.pybullet_sim import PyBulletSim
 from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.sim.robot import HumanoidRobot
-from toddlerbot.utils.math_utils import round_floats
+from toddlerbot.utils.vis_plot import *
 
 
 def main():
@@ -30,7 +31,10 @@ def main():
     )
     args = parser.parse_args()
 
-    random.seed(0)
+    exp_name = f"stand_{args.robot_name}_{args.sim}"
+    time_str = time.strftime("%Y%m%d_%H%M%S")
+    exp_folder_path = f"results/{time_str}_{exp_name}"
+
     # A 0.3725 offset moves the robot slightly up from the ground
     robot = HumanoidRobot(args.robot_name)
 
@@ -45,12 +49,44 @@ def main():
 
     joint_angles = robot.initialize_joint_angles()
 
-    def step_func():
-        # print(f"joint_angles: {round_floats(list(joint_angles.values()), 6)}")
-        sim.set_joint_angles(robot, joint_angles)
-        sim.get_joint_state(robot)
+    time_start = time.time()
+    time_seq_ref = []
+    time_seq_dict = {}
+    joint_angle_ref_dict = {}
+    joint_angle_dict = {}
 
-    sim.simulate(step_func, sleep_time=args.sleep_time)
+    def step_func():
+        time_ref = time.time() - time_start
+        time_seq_ref.append(time_ref)
+        for name, angle in joint_angles.items():
+            if name not in joint_angle_ref_dict:
+                joint_angle_ref_dict[name] = []
+            joint_angle_ref_dict[name].append(angle)
+
+        joint_state_dict = sim.get_joint_state(robot)
+        for name, joint_state in joint_state_dict.items():
+            if name not in time_seq_dict:
+                time_seq_dict[name] = []
+                joint_angle_dict[name] = []
+
+            time_seq_dict[name].append(joint_state.time - time_start)
+            joint_angle_dict[name].append(joint_state.pos)
+
+        sim.set_joint_angles(robot, joint_angles)
+
+    try:
+        sim.simulate(step_func, sleep_time=args.sleep_time)
+    finally:
+        os.makedirs(exp_folder_path, exist_ok=True)
+
+        plot_joint_tracking(
+            time_seq_dict,
+            time_seq_ref,
+            joint_angle_dict,
+            joint_angle_ref_dict,
+            robot.config.motor_params,
+            save_path=exp_folder_path,
+        )
 
 
 if __name__ == "__main__":

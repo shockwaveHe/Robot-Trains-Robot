@@ -251,13 +251,40 @@ class SunnySkyController(BaseController):
                     i_ff[id] if i_ff is not None and id in i_ff else None,
                 )
 
-    def _get_motor_state_single(self, id):
-        with self.serial_lock:
-            self.client.reset_input_buffer()
+    def _get_motor_state_single(self, id, max_retries=3):
+        retries = 0
+        while retries < max_retries:
+            try:
+                # Ensure the input buffer is clean
+                with self.serial_lock:
+                    self.client.reset_input_buffer()
 
-        command = bytes([id]) + f"get_state".encode()
-        self.write_to_serial_with_markers(command)
+                # Send the command
+                command = bytes([id]) + b"get_state"
+                self.write_to_serial_with_markers(command)
 
+                # Wait for response
+                valid_data = self._wait_for_response(id)
+                if valid_data:
+                    return valid_data  # Return on first successful data receipt
+
+            except Exception as e:
+                log(
+                    f"Error during motor state retrieval: {e}",
+                    header="SunnySky",
+                    level="error",
+                )
+
+            retries += 1
+
+        log(
+            f"Failed to retrieve motor state after maximum retries.",
+            header="SunnySky",
+            level="error",
+        )
+        return None
+
+    def _wait_for_response(self, id):
         time_start = time.time()
         while (time.time() - time_start) < self.config.tx_timeout:
             with self.serial_lock:
@@ -267,10 +294,10 @@ class SunnySkyController(BaseController):
 
             decoded_line = line.decode().strip()
             if decoded_line.startswith(self.config.tx_data_prefix):
-                _, data_str = decoded_line.split(self.config.tx_data_prefix, 1)
                 try:
+                    _, data_str = decoded_line.split(self.config.tx_data_prefix, 1)
                     id_recv, p, v, t, vb = map(float, data_str.split(","))
-                    if id_recv == id:
+                    if id_recv == id:  # ID matches requested
                         return SunnySkyState(
                             time=time.time(),
                             pos=p / self.config.gear_ratio - self.init_pos[id],
@@ -279,7 +306,11 @@ class SunnySkyController(BaseController):
                             voltage=vb,
                         )
                 except ValueError:
-                    continue  # Skip lines with parsing errors
+                    log(
+                        "Parsing error for received data.",
+                        header="SunnySky",
+                        level="warning",
+                    )
 
         return None
 
@@ -302,9 +333,9 @@ if __name__ == "__main__":
     joint_range_dict = {1: (0, np.pi / 2), 2: (0, -np.pi / 2)}
     pos_seq_ref = [
         [0.0, 0.0],
-        [np.pi / 2, -np.pi / 2],
+        [np.pi / 2, -np.pi / 4],
         [0.0, 0.0],
-        [np.pi / 4, -np.pi / 4],
+        [np.pi / 4, -np.pi / 2],
         [0.0, 0.0],
     ]
 

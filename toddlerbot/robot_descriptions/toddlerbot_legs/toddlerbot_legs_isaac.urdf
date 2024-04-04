@@ -204,7 +204,7 @@
     </inertial>
   </link>
 
-  <joint name="left_ank_R21" type="revolute">
+  <joint name="left_ank_R21" type="fixed">
     <origin xyz="-6.9388939039072283776e-18 -0.0099999999999999533706 0" rpy="-1.570796326794896558 -1.4285697747629988452 1.5707963267949092145" />
     <parent link="ank_rr_link" />
     <child link="12lf_rod_end" />
@@ -213,7 +213,7 @@
     <joint_properties friction="0.0" />
   </joint>
 
-  <joint name="left_ank_R11" type="revolute">
+  <joint name="left_ank_R11" type="fixed">
     <origin xyz="-0.0099999999999999967387 0.012500000000000011102 -0.033600000000000011802" rpy="-3.5821358734369027029e-16 -2.0703583441380111793e-15 -0.1011603127571137628" />
     <parent link="ank_roll_link" />
     <child link="ank_rr_link" />
@@ -256,7 +256,7 @@
     </inertial>
   </link>
 
-  <joint name="left_ank_R22" type="revolute">
+  <joint name="left_ank_R22" type="fixed">
     <origin xyz="6.9388939039072283776e-18 -0.010000000000000036637 6.9388939039072283776e-18" rpy="1.5707963267949194286 -1.4285463212677806943 -1.5707963267950313391" />
     <parent link="ank_rr_link_2" />
     <child link="12lf_rod_end_2" />
@@ -265,7 +265,7 @@
     <joint_properties friction="0.0" />
   </joint>
 
-  <joint name="left_ank_R12" type="revolute">
+  <joint name="left_ank_R12" type="fixed">
     <origin xyz="0.010000000000000003678 0.012499999999999955591 -0.033600000000000004863" rpy="3.1415926535897606975 1.5562027335348888578e-14 -3.0405529889788582842" />
     <parent link="ank_roll_link" />
     <child link="ank_rr_link_2" />
@@ -360,7 +360,7 @@
     </inertial>
   </link>
 
-  <joint name="left_ank_act1" type="prismatic">
+  <joint name="left_ank_act1" type="fixed">
     <origin xyz="2.2722093540906984632e-06 7.7021722333370234992e-16 -0.072660031604095037805" rpy="-3.1415926535896590011 8.173835939810196213e-14 -2.2021168238262767147" />
     <parent link="12lf" />
     <child link="12lf_rod" />
@@ -369,7 +369,7 @@
     <joint_properties friction="0.0" />
   </joint>
 
-  <joint name="left_ank_B31" type="revolute">
+  <joint name="left_ank_B31" type="fixed">
     <origin xyz="4.336808689942017736e-19 -0.0064387505004003808828 0" rpy="-1.5707963267948970021 0.1691344003409792629 1.2463746926904215167e-14" />
     <parent link="ball_joint_ball" />
     <child link="12lf" />
@@ -378,7 +378,7 @@
     <joint_properties friction="0.0" />
   </joint>
 
-  <joint name="left_ank_B21" type="revolute">
+  <joint name="left_ank_B21" type="fixed">
     <origin xyz="6.9388939039072283776e-18 -2.7755575615628913511e-17 -0.01150000000000000154" rpy="1.570796326794896558 -1.4285697747625525356 1.5707963267948994446" />
     <parent link="ball_joint_container" />
     <child link="ball_joint_ball" />
@@ -387,7 +387,7 @@
     <joint_properties friction="0.0" />
   </joint>
 
-  <joint name="left_ank_B11" type="revolute">
+  <joint name="left_ank_B11" type="fixed">
     <origin xyz="0.0080000000000000123096 -0.014999999999999985567 0.028299999999999790601" rpy="-1.5707963267948918951 1.4696360140379163273 1.570796326794891673" />
     <parent link="left_calf_link" />
     <child link="ball_joint_container" />
@@ -464,7 +464,7 @@
     </inertial>
   </link>
 
-  <joint name="left_ank_act2" type="prismatic">
+  <joint name="left_ank_act2" type="fixed">
     <origin xyz="2.2722093490027545082e-06 -7.7229889150487451843e-15 -0.07266003047881974819" rpy="-3.1415926535895000171 4.7493922909940523358e-14 -2.2021168238262776029" />
     <parent link="12lf_2" />
     <child link="12lf_rod_2" />
@@ -473,7 +473,7 @@
     <joint_properties friction="0.0" />
   </joint>
 
-  <joint name="left_ank_B32" type="revolute">
+  <joint name="left_ank_B32" type="fixed">
     <origin xyz="-2.4286128663675299322e-17 -0.0064387505004003808828 0" rpy="-1.570796326794896558 -0.17993145005786467805 5.6818279199863494045e-15" />
     <parent link="ball_joint_ball_2" />
     <child link="12lf_2" />
@@ -482,7 +482,7 @@
     <joint_properties friction="0.0" />
   </joint>
 
-  <joint name="left_ank_B22" type="revolute">
+  <joint name="left_ank_B22" type="fixed">
     <origin xyz="0 0 -0.01150000000000000154" rpy="1.5707963267949021091 -1.4285463212680715728 -1.5707963267948938935" />
     <parent link="ball_joint_container_2" />
     <child link="ball_joint_ball_2" />
@@ -491,7 +491,7 @@
     <joint_properties friction="0.0" />
   </joint>
 
-  <joint name="left_ank_B12" type="revolute">
+  <joint name="left_ank_B12" type="fixed">
     <origin xyz="0.0080000000000000001665 -0.014999999999999985567 -0.011500000000000003275" rpy="-1.5707963267949205388 -1.469756662182277962 1.5707963267949025532" />
     <parent link="left_calf_link" />
     <child link="ball_joint_container_2" />
@@ -688,7 +688,7 @@
     </inertial>
   </link>
 
-  <joint name="right_ank_R21" type="revolute">
+  <joint name="right_ank_R21" type="fixed">
     <origin xyz="0 -0.010000000000000008882 1.3877787807814456755e-17" rpy="-1.570796326794896558 -1.4285697747630956567 1.5707963267948958919" />
     <parent link="ank_rr_link_3" />
     <child link="12lf_rod_end_3" />
@@ -697,7 +697,7 @@
     <joint_properties friction="0.0" />
   </joint>
 
-  <joint name="right_ank_R11" type="revolute">
+  <joint name="right_ank_R11" type="fixed">
     <origin xyz="-0.0099999999999999984734 0.012500000000000011102 -0.033599999999999997924" rpy="-2.3897964054427488116e-14 -3.8273675914490832965e-16 -0.10116031275657462463" />
     <parent link="ank_roll_link_2" />
     <child link="ank_rr_link_3" />
@@ -740,7 +740,7 @@
     </inertial>
   </link>
 
-  <joint name="right_ank_R22" type="revolute">
+  <joint name="right_ank_R22" type="fixed">
     <origin xyz="-6.9388939039072283776e-18 -0.0099999999999999811262 1.3877787807814456755e-17" rpy="1.570796326794896558 -1.428546321268451269 -1.570796326794896558" />
     <parent link="ank_rr_link_4" />
     <child link="12lf_rod_end_4" />
@@ -749,7 +749,7 @@
     <joint_properties friction="0.0" />
   </joint>
 
-  <joint name="right_ank_R12" type="revolute">
+  <joint name="right_ank_R12" type="fixed">
     <origin xyz="0.010000000000000003678 0.012499999999999955591 -0.033600000000000004863" rpy="-3.1415926535897709115 -4.1620274661327994973e-15 -3.0405529889776490293" />
     <parent link="ank_roll_link_2" />
     <child link="ank_rr_link_4" />
@@ -844,7 +844,7 @@
     </inertial>
   </link>
 
-  <joint name="right_ank_act1" type="prismatic">
+  <joint name="right_ank_act1" type="fixed">
     <origin xyz="2.2722093427646888886e-06 1.7902346272080649214e-15 -0.072660031604104419189" rpy="-3.1415926535897806815 9.7899118131350707255e-15 -2.2021168238260933059" />
     <parent link="12lf_3" />
     <child link="12lf_rod_3" />
@@ -853,7 +853,7 @@
     <joint_properties friction="0.0" />
   </joint>
 
-  <joint name="right_ank_B31" type="revolute">
+  <joint name="right_ank_B31" type="fixed">
     <origin xyz="9.1072982488782372457e-18 -0.0064387505004003808828 0" rpy="-1.5707963267948961139 0.16913440034171131621 -1.7599215475487529123e-15" />
     <parent link="ball_joint_ball_3" />
     <child link="12lf_3" />
@@ -862,7 +862,7 @@
     <joint_properties friction="0.0" />
   </joint>
 
-  <joint name="right_ank_B21" type="revolute">
+  <joint name="right_ank_B21" type="fixed">
     <origin xyz="6.9388939039072283776e-18 0 -0.01150000000000000154" rpy="1.570796326794896558 -1.4285697747626475707 1.5707963267948843455" />
     <parent link="ball_joint_container_3" />
     <child link="ball_joint_ball_3" />
@@ -871,7 +871,7 @@
     <joint_properties friction="0.0" />
   </joint>
 
-  <joint name="right_ank_B11" type="revolute">
+  <joint name="right_ank_B11" type="fixed">
     <origin xyz="0.008000000000000003636 0.015000000000000013323 -0.011499999999999998071" rpy="1.570796326794896558 -1.469636014037899896 -1.5707963267948905628" />
     <parent link="right_calf_link" />
     <child link="ball_joint_container_3" />
@@ -948,7 +948,7 @@
     </inertial>
   </link>
 
-  <joint name="right_ank_act2" type="prismatic">
+  <joint name="right_ank_act2" type="fixed">
     <origin xyz="2.2722093383654301535e-06 -2.5118795932144166727e-15 -0.07266003047881591792" rpy="3.1415926535897926719 5.7157557368585280826e-16 -2.2021168238262842642" />
     <parent link="12lf_4" />
     <child link="12lf_rod_4" />
@@ -957,7 +957,7 @@
     <joint_properties friction="0.0" />
   </joint>
 
-  <joint name="right_ank_B32" type="revolute">
+  <joint name="right_ank_B32" type="fixed">
     <origin xyz="-8.6736173798840354721e-18 -0.0064387505004003531273 -1.3877787807814456755e-17" rpy="-1.5707963267948854558 -0.17993145005747521181 -6.9806032607149013267e-15" />
     <parent link="ball_joint_ball_4" />
     <child link="12lf_4" />
@@ -966,7 +966,7 @@
     <joint_properties friction="0.0" />
   </joint>
 
-  <joint name="right_ank_B22" type="revolute">
+  <joint name="right_ank_B22" type="fixed">
     <origin xyz="0 0 -0.011499999999999999806" rpy="1.57079632679489678 -1.4285463212679265776 1.5707963267948943376" />
     <parent link="ball_joint_container_4" />
     <child link="ball_joint_ball_4" />
@@ -975,7 +975,7 @@
     <joint_properties friction="0.0" />
   </joint>
 
-  <joint name="right_ank_B12" type="revolute">
+  <joint name="right_ank_B12" type="fixed">
     <origin xyz="0.0080000000000000365957 0.014999999999999985567 0.028300000000000158362" rpy="-1.570796326794896558 -1.469756662182680973 1.570796326794891451" />
     <parent link="right_calf_link" />
     <child link="ball_joint_container_4" />

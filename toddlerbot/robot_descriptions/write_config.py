@@ -44,7 +44,6 @@ def get_config(robot_name):
         # Decompose target position and orientation
         target_x, target_y, target_z = target_foot_pos
         ankle_roll, ankle_pitch, hip_yaw = target_foot_ori
-        hip_yaw = -hip_yaw
 
         target_z = (
             offsets["z_offset_thigh"]
@@ -53,17 +52,11 @@ def get_config(robot_name):
             - target_z
         )
 
-        transformed_x = target_x * math.cos(hip_yaw) + target_y * math.sin(hip_yaw)
-        transformed_y = -target_x * math.sin(hip_yaw) + target_y * math.cos(hip_yaw)
-        transformed_z = target_z
+        hip_roll = math.atan2(target_y, target_z + offsets["z_offset_hip_roll_to_pitch"])
 
-        hip_roll = math.atan2(
-            transformed_y, transformed_z + offsets["z_offset_hip_roll_to_pitch"]
-        )
-
-        leg_projected_yz_length = math.sqrt(transformed_y**2 + transformed_z**2)
-        leg_length = math.sqrt(transformed_x**2 + leg_projected_yz_length**2)
-        leg_pitch = math.atan2(transformed_x, leg_projected_yz_length)
+        leg_projected_yz_length = math.sqrt(target_y**2 + target_z**2)
+        leg_length = math.sqrt(target_x**2 + leg_projected_yz_length**2)
+        leg_pitch = math.atan2(target_x, leg_projected_yz_length)
         hip_disp_cos = (
             leg_length**2 + offsets["z_offset_thigh"] ** 2 - offsets["z_offset_shin"] ** 2
         ) / (2 * leg_length * offsets["z_offset_thigh"])
@@ -76,7 +69,7 @@ def get_config(robot_name):
         ankle_pitch += knee_pitch + hip_pitch
 
         angles_dict = {{
-            "hip_yaw": hip_yaw,
+            "hip_yaw": -hip_yaw,
             "hip_roll": hip_roll,
             "hip_pitch": -hip_pitch if side == "left" else hip_pitch,
             "knee": knee_pitch if side == "left" else -knee_pitch,

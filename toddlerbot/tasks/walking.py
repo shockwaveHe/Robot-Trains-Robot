@@ -253,7 +253,7 @@ def main():
 
     exp_name = f"walk_{args.robot_name}_{args.sim}"
     time_str = time.strftime("%Y%m%d_%H%M%S")
-    exp_folder_path = f"results/{exp_name}_{time_str}"
+    exp_folder_path = f"results/{time_str}_{exp_name}"
 
     config = walking_configs[f"{args.robot_name}_{args.sim}"]
 
@@ -291,7 +291,7 @@ def main():
     com_ref_traj_copy = copy.deepcopy(com_ref_traj)
 
     com_traj = []
-    zmp_approx_traj = []
+    # zmp_approx_traj = []
 
     time_start = time.time()
     time_seq_ref = []
@@ -333,8 +333,8 @@ def main():
             ]
             com_traj.append(com_pos)
 
-            zmp_pos = sim.get_zmp(com_pos)
-            zmp_approx_traj.append(zmp_pos)
+            # zmp_pos = sim.get_zmp(com_pos)
+            # zmp_approx_traj.append(zmp_pos)
 
             if status == "finished":
                 tracking_error = np.array(target_pose) - np.array(
@@ -366,7 +366,7 @@ def main():
         robot_state_traj_data = {
             "zmp_ref_traj": zmp_ref_traj,
             "zmp_traj": zmp_traj,
-            "zmp_approx_traj": zmp_approx_traj,
+            # "zmp_approx_traj": zmp_approx_traj,
             "com_ref_traj": com_ref_traj_copy,
             "com_traj": com_traj,
         }
@@ -380,15 +380,15 @@ def main():
         with open(os.path.join(exp_folder_path, robot_state_traj_file_name), "wb") as f:
             pickle.dump(robot_state_traj_data, f)
 
-        # plot_joint_tracking(
-        #     time_seq_dict,
-        #     time_seq_ref,
-        #     joint_angle_dict,
-        #     joint_angle_ref_dict,
-        #     robot.config.motor_params,
-        #     save_path=exp_folder_path,
-        #     file_suffix=file_suffix,
-        # )
+        plot_joint_tracking(
+            time_seq_dict,
+            time_seq_ref,
+            joint_angle_dict,
+            joint_angle_ref_dict,
+            robot.config.motor_params,
+            save_path=exp_folder_path,
+            file_suffix=file_suffix,
+        )
 
         fig, ax = plt.subplots(figsize=(10, 6))
         ax.set_aspect("equal")

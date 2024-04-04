@@ -13,9 +13,9 @@ class BaseSim(ABC):
     def get_link_pos(self, robot: HumanoidRobot, link_name: str):
         pass
 
-    # @abstractmethod
-    # def get_zmp(self, robot: HumanoidRobot):
-    #     pass
+    @abstractmethod
+    def get_zmp(self, robot: HumanoidRobot):
+        pass
 
     @abstractmethod
     def get_joint_state(self, robot: HumanoidRobot):
