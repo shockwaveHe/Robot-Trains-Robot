@@ -10,5 +10,14 @@
         "--profile",
         "black"
     ],
-    "C_Cpp.errorSquiggles": "disabled"
+    "C_Cpp.errorSquiggles": "disabled",
+    "files.associations": {
+        "istream": "cpp",
+        "__locale": "cpp",
+        "locale": "cpp",
+        "cstddef": "cpp",
+        "ostream": "cpp",
+        "complex": "cpp",
+        "chrono": "cpp"
+    }
 }

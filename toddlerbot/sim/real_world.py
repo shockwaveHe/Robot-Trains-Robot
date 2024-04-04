@@ -16,7 +16,7 @@ class RealWorld(BaseSim):
 
         self.ankle_pos_last = [0, 0]
 
-        self.dynamixel_init_pos = np.radians([135, 180, 180, 225, 180, 180])
+        self.dynamixel_init_pos = np.radians([245, 180, 180, 287, 180, 180])
         self.dynamixel_config = DynamixelConfig(
             port="/dev/tty.usbserial-FT8ISUJY",
             kP=[400, 1200, 1200, 400, 1200, 1200],

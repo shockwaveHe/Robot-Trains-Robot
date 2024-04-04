@@ -127,21 +127,22 @@ class MightyZapController(BaseController):
 
 
 if __name__ == "__main__":
-    init_pos = [1808, 1808]
+    motor_ids = [0, 1, 2, 3]
+    init_pos = [1808] * len(motor_ids)
     controller = MightyZapController(
         MightyZapConfig(port="/dev/tty.usbserial-0001", init_pos=init_pos),
-        motor_ids=[0, 1],
+        motor_ids=motor_ids,
     )
 
-    controller.set_pos([3000, 3000])
+    controller.set_pos([3000] * len(motor_ids))
     while True:
-        state = controller.get_motor_state()
-        log(
-            f"Actuator 1 Position: {state[0]}, Actuator 2 Position: {state[1]}",
-            header="MightyZap",
-        )
+        state_dict = controller.get_motor_state()
+        message = "Motor states:"
+        for id, state in state_dict.items():
+            message += f" {id}: {state.pos}"
 
-        if state[0].pos >= 2990 and state[1].pos >= 2990:
+        log(message, header="MightyZap")
+        if state_dict[0].pos >= 2990:
             break
 
     controller.set_pos(init_pos)

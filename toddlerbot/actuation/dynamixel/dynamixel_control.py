@@ -14,7 +14,8 @@ class DynamixelConfig:
     kI: List[float]
     kD: List[float]
     current_limit: List[float]
-    init_pos: List[float]
+    init_pos: np.ndarray
+    gear_ratio: np.ndarray
     vel: float = np.pi / 2
     interp_method: str = "cubic"
     baudrate: int = 3000000
@@ -84,30 +85,31 @@ class DynamixelController(BaseController):
     # @profile
     # Receive pos and directly control the robot
     def set_pos(self, pos, vel=None):
-        # pos_raw = self.config.init_pos - np.array(pos)
-        # self.client.write_desired_pos(self.motor_ids, pos_raw)
-
-        pos = np.array(pos)
+        pos_driven = np.array(pos)
         if vel is None:
             vel = self.config.vel
 
-        pos_start = self.config.init_pos - self.client.read_pos()
-        delta_t = max(np.abs(pos - pos_start) / vel)
+        pos_start_driven = (
+            self.config.init_pos - self.client.read_pos()
+        ) * self.config.gear_ratio
+        delta_t = max(np.abs(pos_driven - pos_start_driven) / vel)
         time_start = time.time()
         time_curr = 0
         counter = 0
         while time_curr <= delta_t:
             time_curr = time.time() - time_start
-            pos_interp = interpolate(
-                pos_start,
-                pos,
+            pos_interp_driven = interpolate(
+                pos_start_driven,
+                pos_driven,
                 delta_t,
                 time_curr,
                 interp_type=self.config.interp_method,
             )
-            pos_interp_raw = self.config.init_pos - pos_interp
+            pos_interp = (
+                self.config.init_pos - pos_interp_driven / self.config.gear_ratio
+            )
 
-            self.client.write_desired_pos(self.motor_ids, pos_interp_raw)
+            self.client.write_desired_pos(self.motor_ids, pos_interp)
 
             elapsed_time = time.time() - time_start - time_curr
             sleep_time = 1.0 / self.config.control_freq - elapsed_time
@@ -123,12 +125,12 @@ class DynamixelController(BaseController):
     # @profile
     def get_motor_state(self):
         state_dict = {}
-        pos_arr_raw, vel_arr, current_arr = self.client.read_pos_vel_cur()
-        pos_arr = self.config.init_pos - pos_arr_raw
+        pos_arr, vel_arr, current_arr = self.client.read_pos_vel_cur()
+        pos_arr_driven = (self.config.init_pos - pos_arr) / self.config.gear_ratio
         for i, id in enumerate(self.motor_ids):
             state_dict[id] = DynamixelState(
                 time=time.time(),
-                pos=pos_arr[i],
+                pos=pos_arr_driven[i],
                 vel=vel_arr[i],
                 current=current_arr[i],
             )
@@ -140,18 +142,22 @@ if __name__ == "__main__":
     controller = DynamixelController(
         DynamixelConfig(
             port="/dev/tty.usbserial-FT8ISUJY",
-            kP=[100, 200, 200, 100, 200, 200],
-            kI=[0, 0, 0, 0, 0, 0],
-            kD=[100, 100, 100, 100, 100, 100],
+            kP=[400, 1200, 1200, 400, 1200, 1200],
+            kI=[100, 100, 100, 100, 100, 100],
+            kD=[200, 400, 400, 200, 400, 400],
             current_limit=[350, 350, 350, 350, 350, 350],
-            init_pos=np.radians([135, 180, 180, 225, 180, 180]),
+            init_pos=np.radians([245, 180, 180, 287, 180, 180]),
+            gear_ratio=np.array([19 / 21, 1, 1, 19 / 21, 1, 1]),
         ),
         motor_ids=[7, 8, 9, 10, 11, 12],
     )
 
     i = 0
     while i < 30:
-        controller.set_pos([np.pi / 12] * 6)
+        controller.set_pos(
+            # [np.pi / 12] * 6
+            [0.0, np.pi / 12, np.pi / 12, np.pi / 2, np.pi / 12, np.pi / 12]
+        )
         i += 1
 
     i = 0
@@ -159,6 +165,7 @@ if __name__ == "__main__":
         controller.set_pos([0.0] * 6)
         i += 1
 
+    time.sleep(0.1)
     controller.close_motors()
 
     log("Process completed successfully.", header="Dynamixel")

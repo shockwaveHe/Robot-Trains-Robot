@@ -5,9 +5,9 @@
 #include <CANSAME5x.h>
 
 // Global variabls
-CANSAME5x CAN;                    // CAN object
-unsigned long previousMicros = 0; // Stores the last time the loop was executed
-unsigned long currentMicros;      // Stores the current time in microseconds
+CANSAME5x CAN;                     // CAN object
+unsigned long previous_micros = 0; // Stores the last time the loop was executed
+unsigned long current_micros;      // Stores the current time in microseconds
 int16_t last_t_raw = 2048;
 unsigned long BAUD_RATE = 115200; // Baud rate for serial communication
 
@@ -22,18 +22,30 @@ const float VB_MIN = 0;    // Min voltage [V]
 const float VB_MAX = 80;   // Max voltage [V]
 
 // Data received from the serial port
-const byte numBytes = 32;
-byte receivedBytes[numBytes]; // an array to store the received data
-boolean newData = false;
-char startMarker = '<';
-char endMarker = '>';
+const byte num_bytes = 32;
+byte received_bytes[num_bytes]; // an array to store the received data
+boolean new_data = false;
+char start_marker = '<';
+char end_marker = '>';
 
-// Target commands
-float p_des, v_des, i_ff;
-uint16_t kp, kd;
+// Define the CAN ids for the motors
+const int num_can_ids = 2;
+uint8_t can_ids[num_can_ids]; // Array to hold CAN IDs
 
-// State variables
-float p, v, t, vb; // Position, velocity, current, voltage
+struct MotorCommand
+{
+    float p_des, v_des, i_ff;
+    uint16_t kp, kd;
+    byte packet_buffer[8];
+};
+
+struct MotorState
+{
+    float p, v, t, vb;
+};
+
+MotorCommand motor_commands[num_can_ids];
+MotorState motor_states[num_can_ids];
 
 void setup()
 {
@@ -56,7 +68,12 @@ void setup()
             delay(10);
     }
 
-    currentMicros = micros(); // Start timer in microseconds
+    current_micros = micros(); // Start timer in microseconds
+
+    for (int i = 0; i < num_can_ids; i++)
+    {
+        can_ids[i] = i + 1; // Assuming CAN IDs start from 1
+    }
 }
 
 void loop()
@@ -64,40 +81,49 @@ void loop()
     recvWithStartEndMarkers();
 
     byte cmd_packet[8];
-    if (newData == true && receivedBytes[0] == 0xFF)
-    { // Check for special command pattern
-        memcpy(cmd_packet, receivedBytes, 8);
-    }
-    else
+    if (new_data == true)
     {
-        if (newData == true)
-        {
+        uint8_t id = received_bytes[0];
+        int index = findMotorIndex(id);
 
-            // Handle regular command packets
-            memcpy(&p_des, &receivedBytes[1], sizeof(p_des));
-            memcpy(&v_des, &receivedBytes[1 + sizeof(p_des)], sizeof(v_des));
-            memcpy(&kp, &receivedBytes[1 + sizeof(p_des) + sizeof(v_des)], sizeof(kp));
-            memcpy(&kd, &receivedBytes[1 + sizeof(p_des) + sizeof(v_des) + sizeof(kp)], sizeof(kd));
-            memcpy(&i_ff, &receivedBytes[1 + sizeof(p_des) + sizeof(v_des) + sizeof(kp) + sizeof(kd)], sizeof(i_ff));
+        if (index != -1)
+        { // Ensure the ID was found
+            if (received_bytes[1] == 0xFF)
+            { // Check for special command pattern
+                memcpy(&motor_commands[index].packet_buffer, &received_bytes[1], 8);
+            }
+            else
+            {
+                // Extract the command data directly into the motor_commands structure for the found index
+                // Check if the position command hits the hardware limit
+                if (motor_states[index].t < I_MIN || motor_states[index].t > I_MAX)
+                {
+                    motor_commands[index].p_des = motor_states[index].p;
+                }
+                else
+                {
+                    memcpy(&motor_commands[index].p_des, &received_bytes[1], sizeof(float));
+                }
 
-            Serial.println(">rx_data:" + String(p_des) + "," + String(v_des) + "," + String(kp) + "," + String(kd) + "," + String(i_ff));
+                memcpy(&motor_commands[index].v_des, &received_bytes[1 + sizeof(float)], sizeof(float));
+                memcpy(&motor_commands[index].kp, &received_bytes[1 + 2 * sizeof(float)], sizeof(uint16_t));
+                memcpy(&motor_commands[index].kd, &received_bytes[1 + 2 * sizeof(float) + sizeof(uint16_t)], sizeof(uint16_t));
+                memcpy(&motor_commands[index].i_ff, &received_bytes[1 + 2 * sizeof(float) + 2 * sizeof(uint16_t)], sizeof(float));
+
+                Serial.println(">rx_data:" + String(id) + "," + String(motor_commands[index].p_des) + "," + String(motor_commands[index].v_des) + "," + String(motor_commands[index].kp) + "," + String(motor_commands[index].kd) + "," + String(motor_commands[index].i_ff));
+            }
         }
-
-        // Check if the position command hits the hardware limit
-        if (t < I_MIN || t > I_MAX)
+        else
         {
-            p_des = p;
+            Serial.println("Error: Received CAN ID not recognized.");
         }
-        encodePacket(cmd_packet);
     }
 
-    newData = false;
+    new_data = false;
 
-    sendPacket(cmd_packet);
+    sendPacket();
 
-    byte state_packet[8];
-    readPacket(state_packet);
-    decodePacket(state_packet);
+    readPacket();
 
     // Loop statistics
     // float loopTime = (micros() - currentMicros) / 1000000.0;
@@ -111,82 +137,155 @@ void loop()
 //  Helper functions
 // ==================
 
+void printPacket(byte packet[8])
+{
+    String output = "Packet:";
+    for (int i = 0; i < 8; i++)
+    {
+        char hexStr[3];                         // Temporary string buffer for the hexadecimal representation of the byte
+        sprintf(hexStr, "%02X", packet[i]);     // Converts byte to a two-digit hexadecimal number
+        output += String(" ") + String(hexStr); // Append the hexadecimal string to the output String
+    }
+
+    Serial.println(output);
+}
+
+int findMotorIndex(uint8_t id)
+{
+    for (int i = 0; i < num_can_ids; ++i)
+    {
+        if (can_ids[i] == id)
+        {
+            return i;
+        }
+    }
+    return -1; // Return -1 if not found
+}
+
 void recvWithStartEndMarkers()
 {
-    static boolean recvInProgress = false;
+    static boolean recv_in_progress = false;
     static byte ndx = 0;
     byte rb;
 
-    while (Serial.available() > 0 && newData == false)
+    while (Serial.available() > 0 && new_data == false)
     {
         rb = Serial.read();
 
-        if (recvInProgress == true)
+        if (recv_in_progress == true)
         {
-            if (rb != endMarker)
+            if (rb != end_marker)
             {
-                receivedBytes[ndx] = rb;
+                received_bytes[ndx] = rb;
                 ndx++;
-                if (ndx >= numBytes)
+                if (ndx >= num_bytes)
                 {
-                    ndx = numBytes - 1;
+                    ndx = num_bytes - 1;
                 }
             }
             else
             {
-                receivedBytes[ndx] = '\0'; // terminate the string
-                recvInProgress = false;
+                received_bytes[ndx] = '\0'; // terminate the string
+                recv_in_progress = false;
                 ndx = 0;
-                newData = true;
+                new_data = true;
             }
         }
 
-        else if (rb == startMarker)
+        else if (rb == start_marker)
         {
-            recvInProgress = true;
+            recv_in_progress = true;
         }
     }
 }
 
-void sendPacket(byte packet[8])
+void sendPacket()
 {
-    CAN.beginPacket(1);
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < num_can_ids; i++)
     {
-        CAN.write(packet[i]);
+        CAN.beginPacket(can_ids[i]); // Use the canId parameter to specify the target CAN ID
+        int index = findMotorIndex(can_ids[i]);
+
+        bool is_empty = true;
+        for (int j = 0; j < 8; j++)
+        {
+            if (motor_commands[index].packet_buffer[j] != 0)
+            {
+                is_empty = false;
+                break;
+            }
+        }
+
+        byte cmd_packet[8];
+        if (is_empty)
+        {
+            encodePacket(cmd_packet, motor_commands[index]);
+            // printPacket(cmd_packet);
+        }
+        else
+        {
+            memcpy(&cmd_packet, &motor_commands[index].packet_buffer, 8);
+            memset(&motor_commands[index].packet_buffer, 0, 8);
+        }
+
+        for (int j = 0; j < 8; j++)
+        {
+            CAN.write(cmd_packet[j]);
+        }
+
+        CAN.endPacket();
     }
-    CAN.endPacket();
 }
 
-void readPacket(byte packet[8])
+void readPacket()
 {
-    int packetSize = CAN.parsePacket();
-    if (packetSize && packetSize == 7)
+    while (CAN.parsePacket())
     {
-        for (int i = 0; i < 7; i++)
+        int packet_size = CAN.available();
+        if (packet_size && packet_size == 7)
         {
-            packet[i] = CAN.read();
+            // Serial.println("Packet size: " + String(packet_size));
+            byte packet[8];
+            for (int i = 0; i < packet_size; i++)
+            {
+                packet[i] = CAN.read(); // Read the packet data
+            }
+
+            // Obtain CAN ID of the received packet
+            uint8_t id = packet[0];
+            int index = findMotorIndex(id);
+
+            if (index != -1)
+            { // Ensure the CAN ID is recognized
+                // Assuming a decodePacket function that updates the motor state
+                decodePacket(packet, motor_states[index]);
+            }
+            else
+            {
+                // Handle unrecognized CAN ID, if necessary
+                Serial.println("Received packet from unrecognized CAN ID.");
+            }
         }
     }
 }
 
 // Purpose: Given a command, modify the packet array
 // Note: id is 11 bits, packet can contain up to 8 bytes of data
-void encodePacket(byte packet[8])
+void encodePacket(byte packet[8], MotorCommand &command)
 {
-    uint16_t pos_cmd = float_to_uint(p_des, P_MIN, P_MAX, 16); // 16 bits 65535
-    uint16_t vel_cmd = float_to_uint(v_des, V_MIN, V_MAX, 12); // 12 bits 4095
-    uint16_t ffi_cmd = float_to_uint(i_ff, I_MIN, I_MAX, 12);  // 12 bits
+    uint16_t pos_cmd = float_to_uint(command.p_des, P_MIN, P_MAX, 16); // Convert position command
+    uint16_t vel_cmd = float_to_uint(command.v_des, V_MIN, V_MAX, 12); // Convert velocity command
+    uint16_t ffi_cmd = float_to_uint(command.i_ff, I_MIN, I_MAX, 12);  // Convert feed-forward current command
 
     // Packing the commands into the packet array
-    packet[0] = pos_cmd >> 8;                               // Position command high byte
-    packet[1] = pos_cmd & 0xFF;                             // Position command low byte
-    packet[2] = (vel_cmd >> 4) & 0xFF;                      // Velocity command high part
-    packet[3] = ((vel_cmd & 0xF) << 4) | ((kp >> 8) & 0xF); // Velocity low part + Kp high part
-    packet[4] = kp & 0xFF;                                  // Kp low byte
-    packet[5] = kd >> 4;                                    // Kd high part
-    packet[6] = ((kd & 0xF) << 4) | ((ffi_cmd >> 8) & 0xF); // Kd low part + Feed-forward current high part
-    packet[7] = ffi_cmd & 0xFF;                             // Feed-forward current low byte
+    packet[0] = pos_cmd >> 8;                                       // Position command high byte
+    packet[1] = pos_cmd & 0xFF;                                     // Position command low byte
+    packet[2] = (vel_cmd >> 4) & 0xFF;                              // Velocity command high part
+    packet[3] = ((vel_cmd & 0xF) << 4) | ((command.kp >> 8) & 0xF); // Velocity low part + Kp high part
+    packet[4] = command.kp & 0xFF;                                  // Kp low byte
+    packet[5] = command.kd >> 4;                                    // Kd high part
+    packet[6] = ((command.kd & 0xF) << 4) | ((ffi_cmd >> 8) & 0xF); // Kd low part + Feed-forward current high part
+    packet[7] = ffi_cmd & 0xFF;                                     // Feed-forward current low byte
 }
 
 /*
@@ -196,7 +295,7 @@ void encodePacket(byte packet[8])
  *          3. Set the zero_cmd flag if the position command is within tolerance of zero
  * Note: Position [16 bits], Velocity [12 bits], Torque/Current [12 bits], In Voltage [8 bits]
  */
-void decodePacket(byte packet[8])
+void decodePacket(byte packet[8], MotorState &state)
 {
     // Decoding the packet from bin
     uint8_t id = packet[0];
@@ -209,12 +308,12 @@ void decodePacket(byte packet[8])
     signed_t_raw += (abs(signed_t_raw - last_t_raw) > 4000) ? ((signed_t_raw < last_t_raw) ? 4096 : -4096) : 0;
     last_t_raw = signed_t_raw;
 
-    p = uint_to_float(p_raw, P_MIN, P_MAX, 16);
-    v = uint_to_float(v_raw, V_MIN, V_MAX, 12);
-    t = int_to_float_overflow(signed_t_raw, I_MIN, I_MAX, 12); // Special treatment for current, it might go out of range and wrap around.
-    vb = uint_to_float(vb_raw, VB_MIN, VB_MAX, 8);
+    state.p = uint_to_float(p_raw, P_MIN, P_MAX, 16);
+    state.v = uint_to_float(v_raw, V_MIN, V_MAX, 12);
+    state.t = int_to_float_overflow(signed_t_raw, I_MIN, I_MAX, 12); // Special treatment for current, it might go out of range and wrap around.
+    state.vb = uint_to_float(vb_raw, VB_MIN, VB_MAX, 8);
 
-    Serial.println(">tx_data:" + String(id) + "," + String(p) + "," + String(v) + "," + String(t) + "," + String(vb));
+    Serial.println(">tx_data:" + String(id) + "," + String(state.p) + "," + String(state.v) + "," + String(state.t) + "," + String(state.vb));
 }
 
 // Convert uint [0,2^bits) to float [minv,maxv)
