@@ -13,7 +13,12 @@ class RealWorld(BaseSim):
     def __init__(self, robot: Optional[HumanoidRobot] = None):
         super().__init__()
         self.name = "real_world"
-        self.negated_joint_names = ["right_hip_pitch", "left_ank_pitch"]
+        self.negated_joint_names = [
+            "left_hip_yaw",
+            "right_hip_yaw",
+            "right_hip_pitch",
+            "left_ank_pitch",
+        ]
 
         self.dynamixel_init_pos = np.radians([245, 180, 180, 287, 180, 180])
         self.dynamixel_config = DynamixelConfig(
@@ -26,7 +31,7 @@ class RealWorld(BaseSim):
             gear_ratio=np.array([19 / 21, 1, 1, 19 / 21, 1, 1]),
         )
 
-        self.sunny_sky_config = SunnySkyConfig(port="/dev/tty.usbmodem101")
+        self.sunny_sky_config = SunnySkyConfig(port="/dev/tty.usbmodem101", kP=10)
         # Temorarily hard-coded joint range for SunnySky
         joint_range_dict = {1: (0, np.pi / 2), 2: (0, -np.pi / 2)}
 
@@ -83,7 +88,7 @@ class RealWorld(BaseSim):
 
         return negated_joint_angles
 
-    def set_joint_angles(self, robot, joint_angles):
+    def set_joint_angles(self, robot, joint_angles, delta_t=0.01):
         # Directions are tuned to match the assembly of the robot.
         negated_joint_angles = self._negate_joint_angles(joint_angles)
 
@@ -105,9 +110,15 @@ class RealWorld(BaseSim):
 
         # Execute set_pos calls in parallel
         with ThreadPoolExecutor(max_workers=3) as executor:
-            executor.submit(self.dynamixel_controller.set_pos, dynamixel_pos)
-            executor.submit(self.sunny_sky_controller.set_pos, sunny_sky_pos)
-            executor.submit(self.mighty_zap_controller.set_pos, mighty_zap_pos)
+            executor.submit(
+                self.dynamixel_controller.set_pos, dynamixel_pos, delta_t=delta_t
+            )
+            executor.submit(
+                self.sunny_sky_controller.set_pos, sunny_sky_pos, delta_t=delta_t
+            )
+            executor.submit(
+                self.mighty_zap_controller.set_pos, mighty_zap_pos, delta_t=delta_t
+            )
 
     def ankle_fk(self, robot, mighty_zap_pos, last_mighty_zap_pos):
         def objective_function(ankle_pos, target_pos):

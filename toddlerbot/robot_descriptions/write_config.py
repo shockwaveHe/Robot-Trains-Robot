@@ -121,7 +121,7 @@ def get_config(robot_name):
             ),
             "left_ank_pitch": MotorParameters(
                 brand="mighty_zap",
-                id=1,
+                id=0,
                 type="motor",
                 damping=1.084,
                 armature=0.045,
@@ -130,7 +130,7 @@ def get_config(robot_name):
             ),
             "left_ank_roll": MotorParameters(
                 brand="mighty_zap",
-                id=0,
+                id=1,
                 type="motor",
                 damping=1.084,
                 armature=0.045,
@@ -175,7 +175,7 @@ def get_config(robot_name):
             ),
             "right_ank_pitch": MotorParameters(
                 brand="mighty_zap",
-                id=3,
+                id=2,
                 type="motor",
                 damping=1.084,
                 armature=0.045,
@@ -184,7 +184,7 @@ def get_config(robot_name):
             ),
             "right_ank_roll": MotorParameters(
                 brand="mighty_zap",
-                id=2,
+                id=3,
                 type="motor",
                 damping=1.084,
                 armature=0.045,

@@ -84,15 +84,17 @@ class DynamixelController(BaseController):
 
     # @profile
     # Receive pos and directly control the robot
-    def set_pos(self, pos, vel=None):
+    def set_pos(self, pos, delta_t=None, vel=None):
         pos_driven = np.array(pos)
-        if vel is None:
-            vel = self.config.vel
-
         pos_start_driven = (
             self.config.init_pos - self.client.read_pos()
         ) * self.config.gear_ratio
-        delta_t = max(np.abs(pos_driven - pos_start_driven) / vel)
+
+        if vel is None and delta_t is None:
+            delta_t = max(np.abs(pos_driven - pos_start_driven) / self.config.vel)
+        elif delta_t is None:
+            delta_t = max(np.abs(pos_driven - pos_start_driven) / vel)
+
         time_start = time.time()
         time_curr = 0
         counter = 0
@@ -126,7 +128,7 @@ class DynamixelController(BaseController):
     def get_motor_state(self):
         state_dict = {}
         pos_arr, vel_arr, current_arr = self.client.read_pos_vel_cur()
-        pos_arr_driven = (self.config.init_pos - pos_arr) / self.config.gear_ratio
+        pos_arr_driven = (self.config.init_pos - pos_arr) * self.config.gear_ratio
         for i, id in enumerate(self.motor_ids):
             state_dict[id] = DynamixelState(
                 time=time.time(),

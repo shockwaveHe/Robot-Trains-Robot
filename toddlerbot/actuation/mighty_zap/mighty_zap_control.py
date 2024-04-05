@@ -14,7 +14,7 @@ from toddlerbot.actuation.mighty_zap import mighty_zap
 class MightyZapConfig:
     port: str
     init_pos: List[float]
-    vel: float = 1000
+    vel: float = 4000
     interp_method: str = "cubic"
     baudrate: int = 115200
     control_freq: int = 2000
@@ -55,14 +55,16 @@ class MightyZapController(BaseController):
 
         mighty_zap.CloseMightyZap()
 
-    # Receive LEAP pos and directly control the robot
-    def _set_pos_single(self, id, pos, vel=None):
-        if vel is None:
-            vel = self.config.vel
+    # @profile
+    def set_pos(self, pos, delta_t=None, vel=None):
+        pos = np.array(pos)
+        state_dict = self.get_motor_state()
+        pos_start = np.array([state.pos for state in state_dict.values()])
 
-        state = self._get_motor_state_single(id)
-        pos_start = state.pos
-        delta_t = np.abs(pos - pos_start) / vel
+        if vel is None and delta_t is None:
+            delta_t = max(np.abs(pos - pos_start) / self.config.vel)
+        elif delta_t is None:
+            delta_t = max(np.abs(pos - pos_start) / vel)
 
         time_start = time.time()
         time_curr = 0
@@ -76,8 +78,9 @@ class MightyZapController(BaseController):
                 time_curr,
                 interp_type=self.config.interp_method,
             )
-            with self.serial_lock:
-                mighty_zap.GoalPosition(id, round(pos_interp))
+
+            for id, p in zip(self.motor_ids, pos_interp):
+                mighty_zap.GoalPosition(id, round(p))
 
             elapsed_time = time.time() - time_start - time_curr
             sleep_time = 1.0 / self.config.control_freq - elapsed_time
@@ -86,44 +89,21 @@ class MightyZapController(BaseController):
 
             counter += 1
 
-            # print(
-            #     f"ID: {id}, Start: {pos_start}, Pos: {state.pos}, Ref: {pos_interp}, Time: {time_curr}"
-            # )
-
         time_end = time.time()
         control_freq = counter / (time_end - time_start)
         log(f"Control frequency: {control_freq}", header="MightyZap", level="debug")
 
-    def set_pos(self, pos, vel=None):
-        with ThreadPoolExecutor(max_workers=len(self.motor_ids)) as executor:
-            for id, p in zip(self.motor_ids, pos):
-                executor.submit(
-                    self._set_pos_single,
-                    id,
-                    p,
-                    vel is None and self.config.vel or vel,
-                )
-
-    def _get_motor_state_single(self, id):
-        with self.serial_lock:
+    # @profile
+    def get_motor_state(self):
+        state_dict = {}
+        for id in self.motor_ids:
             pos = -1
             while pos < 0:
                 pos = mighty_zap.PresentPosition(id)
 
-        return MightyZapState(time=time.time(), pos=pos)
+            state_dict[id] = MightyZapState(time=time.time(), pos=pos)
 
-    # read position
-    def get_motor_state(self):
-        with ThreadPoolExecutor(max_workers=len(self.motor_ids)) as executor:
-            future_dict = {}
-            for id in self.motor_ids:
-                future_dict[id] = executor.submit(self._get_motor_state_single, id)
-
-            state_dict = {}
-            for id in self.motor_ids:
-                state_dict[id] = future_dict[id].result()
-
-            return state_dict
+        return state_dict
 
 
 if __name__ == "__main__":
@@ -141,7 +121,7 @@ if __name__ == "__main__":
         for id, state in state_dict.items():
             message += f" {id}: {state.pos}"
 
-        log(message, header="MightyZap")
+        log(message, header="MightyZap", level="debug")
         if state_dict[0].pos >= 2990:
             break
 

@@ -164,7 +164,16 @@ class SunnySkyController(BaseController):
         self.init_pos = {id: pos for id, pos in zip(self.motor_ids, zero_pos)}
 
     def _set_pos_single(
-        self, id, pos, limit=True, schedule=True, vel=None, kP=None, kD=None, i_ff=None
+        self,
+        id,
+        pos,
+        limit=True,
+        schedule=True,
+        delta_t=None,
+        vel=None,
+        kP=None,
+        kD=None,
+        i_ff=None,
     ):
         # Create command with dynamic kd and fixed kp, i_ff
         if limit:
@@ -172,12 +181,13 @@ class SunnySkyController(BaseController):
         else:
             pos_driven = pos
 
-        if vel is None:
-            vel = self.config.vel
-
         state = self._get_motor_state_single(id)
         pos_start_driven = state.pos
-        delta_t = np.abs(pos_driven - pos_start_driven) / vel
+
+        if vel is None and delta_t is None:
+            delta_t = np.abs(pos_driven - pos_start_driven) / self.config.vel
+        elif delta_t is None:
+            delta_t = np.abs(pos_driven - pos_start_driven) / vel
 
         time_start = time.time()
         time_curr = 0
@@ -232,7 +242,15 @@ class SunnySkyController(BaseController):
             log(f"Control frequency: {control_freq}", header="SunnySky", level="debug")
 
     def set_pos(
-        self, pos, limit=True, schedule=True, vel=None, kP=None, kD=None, i_ff=None
+        self,
+        pos,
+        limit=True,
+        schedule=True,
+        delta_t=None,
+        vel=None,
+        kP=None,
+        kD=None,
+        i_ff=None,
     ):
         """
         Set the position of the motor
@@ -245,13 +263,14 @@ class SunnySkyController(BaseController):
                     p,
                     limit,
                     schedule,
+                    delta_t,
                     vel[id] if vel is not None and id in vel else None,
                     kP[id] if kP is not None and id in kP else None,
                     kD[id] if kD is not None and id in kD else None,
                     i_ff[id] if i_ff is not None and id in i_ff else None,
                 )
 
-    def _get_motor_state_single(self, id, max_retries=3):
+    def _get_motor_state_single(self, id, max_retries=10):
         retries = 0
         while retries < max_retries:
             try:
