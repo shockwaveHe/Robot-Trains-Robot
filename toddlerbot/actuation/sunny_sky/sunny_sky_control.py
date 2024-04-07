@@ -8,9 +8,7 @@ https://os.mbed.com/users/benkatz/code/CanMaster/
 
 import struct
 import time
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
-from threading import Lock
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -25,25 +23,13 @@ class SunnySkyConfig:
     kP: int = 40
     kD: int = 50
     kD_schedule: Tuple = (0.1, 20)
-    # overshoot: float = 0.1
-    vel: float = np.pi / 2
-    interp_method: str = "cubic"
+    baudrate: int = 115200
     current_limit: float = 4.0
     gear_ratio: float = 2.0
-    baudrate: int = 115200
     tx_data_prefix: str = ">tx_data:"
-    tx_timeout: float = 0.1
-    control_freq: int = 5000
-
-
-@dataclass
-class SunnySkyCommand:
-    id: int
-    p_des: float
-    v_des: float
-    kP: int
-    kD: int
-    i_ff: float
+    tx_timeout: float = 1.0
+    interp_method: str = "cubic"
+    default_vel: float = np.pi / 2
 
 
 @dataclass
@@ -63,7 +49,6 @@ class SunnySkyController(BaseController):
         self.motor_ids = list(joint_range_dict.keys())
         self.init_pos = {id: 0.0 for id in self.motor_ids}
         self.joint_range_dict = joint_range_dict
-        self.serial_lock = Lock()
         self.client = self.connect_to_client()
 
         self.initialize_motors()
@@ -80,65 +65,56 @@ class SunnySkyController(BaseController):
 
     def initialize_motors(self):
         log("Initializing motors...", header="SunnySky")
-        for id in self.motor_ids:
-            self.enable_motor(id)
-
+        self.enable_motor(self.motor_ids)
         self.calibrate_motors()
 
-        time.sleep(0.1)
-
     def close_motors(self):
-        for id in self.motor_ids:
-            self.disable_motor(id)
+        self.disable_motor(self.motor_ids)
 
-    def write_to_serial_with_markers(self, data):
-        with self.serial_lock:
-            self.client.write(b"<" + data + b">")
-
-    def send_command(self, command: SunnySkyCommand):
+    def send_commands(self, byte_commands):
         """
-        send_command(desired position, desired velocity, position gain, velocity gain, feed-forward current)
-
-        Sends data over CAN, reads response, and populates rx_data with the response.
+        Sends a single command to a single motor.
         """
-        with self.serial_lock:
-            self.client.reset_output_buffer()
-
-        b = struct.pack(
-            "<B2f2Hf",
-            command.id,
-            command.p_des,
-            command.v_des,
-            command.kP,
-            command.kD,
-            command.i_ff,
+        num_motors = len(byte_commands)
+        # Prepare the message payload without start/end markers
+        message = bytes([num_motors]) + b"".join(byte_commands)
+        # Calculate the payload length
+        payload_length = len(message)
+        # Construct the final message with start marker, payload length, actual payload, and end marker
+        final_message = (
+            b"<" + payload_length.to_bytes(2, byteorder="little") + message + b">"
         )
-        self.write_to_serial_with_markers(b)
+
+        self.client.write(final_message)
 
     def enable_motor(self, id):
         """
         Puts motor with CAN ID "id" into torque-control mode. 2nd red LED will turn on
         """
-        b = bytes([id]) + b"\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFC"
-        self.write_to_serial_with_markers(b)
-        time.sleep(0.1)
-        # self.ser.flushInput()
+        if not isinstance(id, list):
+            id = [id]
+
+        byte_commands = []
+        for single_id in id:
+            b = bytes([single_id]) + b"\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFC"
+            byte_commands.append(b)
+
+        self.send_commands(byte_commands)
 
     def disable_motor(self, id):
         """
         Removes motor with CAN ID "id" from torque-control mode. 2nd red LED will turn off
         """
-        b = bytes([id]) + b"\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFD"
-        self.write_to_serial_with_markers(b)
-        time.sleep(0.1)
 
-    def zero_motor(self, id):
-        """
-        Zero Position Sensor. Sets the mechanical position to zero.
-        """
-        b = bytes([id]) + b"\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFE"
-        self.write_to_serial_with_markers(b)
-        time.sleep(0.1)
+        if not isinstance(id, list):
+            id = [id]
+
+        byte_commands = []
+        for single_id in id:
+            b = bytes([single_id]) + b"\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFD"
+            byte_commands.append(b)
+
+        self.send_commands(byte_commands)
 
     def calibrate_motors(self):
         log(f"Calibrating motors...", header="SunnySky")
@@ -163,187 +139,104 @@ class SunnySkyController(BaseController):
 
         self.init_pos = {id: pos for id, pos in zip(self.motor_ids, zero_pos)}
 
-    def _set_pos_single(
-        self,
-        id,
-        pos,
-        limit=True,
-        schedule=True,
-        delta_t=None,
-        vel=None,
-        kP=None,
-        kD=None,
-        i_ff=None,
-    ):
-        # Create command with dynamic kd and fixed kp, i_ff
-        if limit:
-            pos_driven = np.clip(pos, *sorted(self.joint_range_dict[id]))
-        else:
-            pos_driven = pos
-
-        state = self._get_motor_state_single(id)
-        pos_start_driven = state.pos
-
-        if vel is None and delta_t is None:
-            delta_t = np.abs(pos_driven - pos_start_driven) / self.config.vel
-        elif delta_t is None:
-            delta_t = np.abs(pos_driven - pos_start_driven) / vel
-
-        time_start = time.time()
-        time_curr = 0
-        counter = 0
-        while time_curr <= delta_t:
-            time_curr = time.time() - time_start
-            pos_interp_driven = interpolate(
-                pos_start_driven,
-                pos_driven,
-                delta_t,
-                time_curr,
-                interp_type=self.config.interp_method,
-            )
-            pos_interp = (
-                pos_interp_driven + self.init_pos[id]
-            ) * self.config.gear_ratio
-
-            if schedule and abs(state.pos - pos_driven) < self.config.kD_schedule[0]:
-                kD_curr = self.config.kD_schedule[1]
-            else:
-                kD_curr = self.config.kD if kD is None else kD
-
-            cmd = SunnySkyCommand(
-                id=id,
-                p_des=pos_interp,
-                v_des=0.0,
-                kP=self.config.kP if kP is None else kP,
-                kD=kD_curr,
-                i_ff=0.0 if i_ff is None else i_ff,
-            )
-            self.send_command(cmd)
-
-            if not limit:
-                state = self._get_motor_state_single(id)
-                if abs(state.current) > self.config.current_limit:
-                    log(
-                        f"Motor {id} current limit reached: {state.current} A",
-                        header="SunnySky",
-                        level="warning",
-                    )
-
-            elapsed_time = time.time() - time_start - time_curr
-            sleep_time = 1.0 / self.config.control_freq - elapsed_time
-            if sleep_time > 0:
-                time.sleep(sleep_time)
-
-            counter += 1
-
-        if limit:
-            time_end = time.time()
-            control_freq = counter / (time_end - time_start)
-            log(f"Control frequency: {control_freq}", header="SunnySky", level="debug")
-
+    # @profile
     def set_pos(
         self,
         pos,
+        interp=True,
         limit=True,
-        schedule=True,
         delta_t=None,
         vel=None,
         kP=None,
         kD=None,
         i_ff=None,
     ):
-        """
-        Set the position of the motor
-        """
-        with ThreadPoolExecutor(max_workers=len(self.motor_ids)) as executor:
+        def set_pos_helper(pos):
+            byte_commands = []
             for id, p in zip(self.motor_ids, pos):
-                executor.submit(
-                    self._set_pos_single,
+                if limit:
+                    p = np.clip(p, *sorted(self.joint_range_dict[id]))
+
+                p_drive = (p + self.init_pos[id]) * self.config.gear_ratio
+
+                b = struct.pack(
+                    "<B2f2Hf",
                     id,
-                    p,
-                    limit,
-                    schedule,
-                    delta_t,
-                    vel[id] if vel is not None and id in vel else None,
-                    kP[id] if kP is not None and id in kP else None,
-                    kD[id] if kD is not None and id in kD else None,
-                    i_ff[id] if i_ff is not None and id in i_ff else None,
+                    p_drive,
+                    0.0,
+                    self.config.kP if kP is None else kP,
+                    self.config.kD if kD is None else kD,
+                    0.0 if i_ff is None else i_ff,
                 )
+                byte_commands.append(b)
 
-    def _get_motor_state_single(self, id, max_retries=10):
-        retries = 0
-        while retries < max_retries:
-            try:
-                # Ensure the input buffer is clean
-                with self.serial_lock:
-                    self.client.reset_input_buffer()
+            self.send_commands(byte_commands)
 
-                # Send the command
-                command = bytes([id]) + b"get_state"
-                self.write_to_serial_with_markers(command)
+        if interp:
+            pos = np.array(pos)
+            state_dict = self.get_motor_state()
+            pos_start = np.array([state.pos for state in state_dict.values()])
 
-                # Wait for response
-                valid_data = self._wait_for_response(id)
-                if valid_data:
-                    return valid_data  # Return on first successful data receipt
+            if vel is None and delta_t is None:
+                delta_t = max(np.abs(pos - pos_start) / self.config.default_vel)
+            elif delta_t is None:
+                delta_t = max(np.abs(pos - pos_start) / vel)
 
-            except Exception as e:
-                log(
-                    f"Error during motor state retrieval: {e}",
-                    header="SunnySky",
-                    level="error",
-                )
+            interpolate_pos(
+                set_pos_helper,
+                pos_start,
+                pos,
+                delta_t,
+                self.config.interp_method,
+                "sunny_sky",
+            )
+        else:
+            set_pos_helper(pos)
 
-            retries += 1
+    # @profile
+    def get_motor_state(self):
+        self.client.reset_input_buffer()
 
-        log(
-            f"Failed to retrieve motor state after maximum retries.",
-            header="SunnySky",
-            level="error",
-        )
-        return None
+        byte_commands = []
+        for id in self.motor_ids:
+            b = bytes([id]) + b"get_state"
+            byte_commands.append(b)
 
-    def _wait_for_response(self, id):
+        self.send_commands(byte_commands)
+
+        state_dict = {}
         time_start = time.time()
         while (time.time() - time_start) < self.config.tx_timeout:
-            with self.serial_lock:
-                line = self.client.readline()
-                if not line:
-                    continue  # Skip empty lines
+            line = self.client.readline()
+            if not line:
+                continue  # Skip empty lines
 
             decoded_line = line.decode().strip()
+            # log(decoded_line, header="SunnySky", level="debug")
             if decoded_line.startswith(self.config.tx_data_prefix):
-                try:
-                    _, data_str = decoded_line.split(self.config.tx_data_prefix, 1)
-                    id_recv, p, v, t, vb = map(float, data_str.split(","))
-                    if id_recv == id:  # ID matches requested
-                        return SunnySkyState(
-                            time=time.time(),
-                            pos=p / self.config.gear_ratio - self.init_pos[id],
-                            vel=v,
-                            current=t,
-                            voltage=vb,
-                        )
-                except ValueError:
-                    log(
-                        "Parsing error for received data.",
-                        header="SunnySky",
-                        level="warning",
+                _, data_str = decoded_line.split(self.config.tx_data_prefix, 1)
+                for single_data_str in data_str.split(";"):
+                    if len(single_data_str) == 0:
+                        continue
+
+                    id, p, v, t, vb = map(float, single_data_str.split(","))
+
+                    state_dict[id] = SunnySkyState(
+                        time=time.time(),
+                        pos=p / self.config.gear_ratio - self.init_pos[id],
+                        vel=v,
+                        current=t,
+                        voltage=vb,
                     )
 
-        return None
+            if len(state_dict) == len(self.motor_ids):
+                return state_dict
 
-    def get_motor_state(self):
-        with ThreadPoolExecutor(max_workers=len(self.motor_ids)) as executor:
-            future_dict = {}
-            for id in self.motor_ids:
-                future_dict[id] = executor.submit(self._get_motor_state_single, id)
-
-            state_dict = {}
-            for id in self.motor_ids:
-                state_dict[id] = future_dict[id].result()
-
-            return state_dict
+        log(
+            f"Failed to retrieve Motor {id}'s state after {self.config.tx_timeout}s.",
+            header="SunnySky",
+            level="warning",
+        )
 
 
 if __name__ == "__main__":
@@ -364,7 +257,7 @@ if __name__ == "__main__":
     # joint_range_dict = {1: (0, np.pi / 2)}
     # pos_seq_ref = [[0.0], [np.pi / 2], [0.0], [np.pi / 4], [0.0]]
 
-    config = SunnySkyConfig(port="/dev/tty.usbmodem101", vel=np.pi / 4)
+    config = SunnySkyConfig(port="/dev/tty.usbmodem101")
     controller = SunnySkyController(config, joint_range_dict=joint_range_dict)
 
     time_seq = []

@@ -86,6 +86,9 @@ class PyBulletSim(BaseSim):
     def get_joint_state(self, robot: HumanoidRobot):
         pass
 
+    def get_zmp(self, robot: HumanoidRobot):
+        pass
+
     def set_joint_angles(self, robot: HumanoidRobot, joint_angles: Dict[str, float]):
         for name, angle in joint_angles.items():
             p.setJointMotorControl2(

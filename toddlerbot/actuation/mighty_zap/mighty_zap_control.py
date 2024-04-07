@@ -1,23 +1,21 @@
 import time
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from threading import Lock
 from typing import List
 
 import numpy as np
 
 from toddlerbot.actuation import *
-from toddlerbot.actuation.mighty_zap import mighty_zap
+from toddlerbot.actuation.mighty_zap.mighty_zap_client import MightyZapClient
 
 
 @dataclass
 class MightyZapConfig:
     port: str
     init_pos: List[float]
-    vel: float = 4000
-    interp_method: str = "cubic"
     baudrate: int = 115200
-    control_freq: int = 2000
+    default_vel: float = 4000
+    interp_method: str = "cubic"
+    interp_freq: int = 1000
 
 
 @dataclass
@@ -32,15 +30,15 @@ class MightyZapController(BaseController):
 
         self.config = config
         self.motor_ids = motor_ids
-        self.serial_lock = Lock()
 
         self.client = self.connect_to_client()
         self.initialize_motors()
 
     def connect_to_client(self):
         try:
-            mighty_zap.OpenMightyZap(self.config.port, self.config.baudrate)
+            client = MightyZapClient(self.config.port, self.config.baudrate)
             log(f"Connected to the port: {self.config.port}", header="MightyZap")
+            return client
         except Exception as e:
             raise ConnectionError("Could not connect to any MightyZap port.")
 
@@ -50,56 +48,50 @@ class MightyZapController(BaseController):
         time.sleep(0.1)
 
     def close_motors(self):
-        for id in self.motor_ids:
-            mighty_zap.ForceEnable(id, 0)
-
-        mighty_zap.CloseMightyZap()
+        self.client.force_enable(self.motor_ids, [0] * len(self.motor_ids))
+        self.client.close()
 
     # @profile
-    def set_pos(self, pos, delta_t=None, vel=None):
-        pos = np.array(pos)
-        state_dict = self.get_motor_state()
-        pos_start = np.array([state.pos for state in state_dict.values()])
+    def set_pos(self, pos, interp=True, vel=None, delta_t=None):
+        def set_pos_helper(pos):
+            rounded_pos = [round(p) for p in pos]
+            self.client.goal_position(self.motor_ids, rounded_pos)
+            # for id, p in zip(self.motor_ids, rounded_pos):
+            #     self.client.goal_position(id, p)``
 
-        if vel is None and delta_t is None:
-            delta_t = max(np.abs(pos - pos_start) / self.config.vel)
-        elif delta_t is None:
-            delta_t = max(np.abs(pos - pos_start) / vel)
+        if interp:
+            pos = np.array(pos)
+            state_dict = self.get_motor_state()
+            pos_start = np.array([state.pos for state in state_dict.values()])
 
-        time_start = time.time()
-        time_curr = 0
-        counter = 0
-        while time_curr <= delta_t:
-            time_curr = time.time() - time_start
-            pos_interp = interpolate(
+            if vel is None and delta_t is None:
+                delta_t = max(np.abs(pos - pos_start) / self.config.default_vel)
+            elif delta_t is None:
+                delta_t = max(np.abs(pos - pos_start) / vel)
+
+            interpolate_pos(
+                set_pos_helper,
                 pos_start,
                 pos,
                 delta_t,
-                time_curr,
-                interp_type=self.config.interp_method,
+                self.config.interp_method,
+                "mighty_zap",
+                sleep_time=1 / self.config.interp_freq,
             )
-
-            for id, p in zip(self.motor_ids, pos_interp):
-                mighty_zap.GoalPosition(id, round(p))
-
-            elapsed_time = time.time() - time_start - time_curr
-            sleep_time = 1.0 / self.config.control_freq - elapsed_time
-            if sleep_time > 0:
-                time.sleep(sleep_time)
-
-            counter += 1
-
-        time_end = time.time()
-        control_freq = counter / (time_end - time_start)
-        log(f"Control frequency: {control_freq}", header="MightyZap", level="debug")
+        else:
+            set_pos_helper(pos)
 
     # @profile
     def get_motor_state(self):
         state_dict = {}
         for id in self.motor_ids:
-            pos = -1
-            while pos < 0:
-                pos = mighty_zap.PresentPosition(id)
+            pos = self.client.present_position(id)
+            if pos < 0:
+                log(
+                    f"Read the MightyZap {id} Position failed.",
+                    header="MightyZap",
+                    level="warning",
+                )
 
             state_dict[id] = MightyZapState(time=time.time(), pos=pos)
 

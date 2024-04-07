@@ -16,19 +16,18 @@ class DynamixelConfig:
     current_limit: List[float]
     init_pos: np.ndarray
     gear_ratio: np.ndarray
-    vel: float = np.pi / 2
-    interp_method: str = "cubic"
     baudrate: int = 3000000
     control_mode: int = 5
-    control_freq: int = 5000
+    default_vel: float = np.pi / 2
+    interp_method: str = "cubic"
 
 
 @dataclass
 class DynamixelState:
     time: float
     pos: float
-    vel: float
-    current: float
+    # vel: float
+    # current: float
 
 
 class DynamixelController(BaseController):
@@ -84,57 +83,45 @@ class DynamixelController(BaseController):
 
     # @profile
     # Receive pos and directly control the robot
-    def set_pos(self, pos, delta_t=None, vel=None):
-        pos_driven = np.array(pos)
-        pos_start_driven = (
-            self.config.init_pos - self.client.read_pos()
-        ) * self.config.gear_ratio
+    def set_pos(self, pos, interp=True, vel=None, delta_t=None):
+        def set_pos_helper(pos):
+            pos = np.array(pos)
+            pos_drive = self.config.init_pos - pos / self.config.gear_ratio
+            self.client.write_desired_pos(self.motor_ids, pos_drive)
 
-        if vel is None and delta_t is None:
-            delta_t = max(np.abs(pos_driven - pos_start_driven) / self.config.vel)
-        elif delta_t is None:
-            delta_t = max(np.abs(pos_driven - pos_start_driven) / vel)
+        if interp:
+            pos = np.array(pos)
+            pos_start = np.array(
+                [state.pos for state in self.get_motor_state().values()]
+            )
+            if vel is None and delta_t is None:
+                delta_t = max(np.abs(pos - pos_start) / self.config.default_vel)
+            elif delta_t is None:
+                delta_t = max(np.abs(pos - pos_start) / vel)
 
-        time_start = time.time()
-        time_curr = 0
-        counter = 0
-        while time_curr <= delta_t:
-            time_curr = time.time() - time_start
-            pos_interp_driven = interpolate(
-                pos_start_driven,
-                pos_driven,
+            interpolate_pos(
+                set_pos_helper,
+                pos_start,
+                pos,
                 delta_t,
-                time_curr,
-                interp_type=self.config.interp_method,
+                self.config.interp_method,
+                "dynamixel",
             )
-            pos_interp = (
-                self.config.init_pos - pos_interp_driven / self.config.gear_ratio
-            )
-
-            self.client.write_desired_pos(self.motor_ids, pos_interp)
-
-            elapsed_time = time.time() - time_start - time_curr
-            sleep_time = 1.0 / self.config.control_freq - elapsed_time
-            if sleep_time > 0:
-                time.sleep(sleep_time)
-
-            counter += 1
-
-        time_end = time.time()
-        control_freq = counter / (time_end - time_start)
-        log(f"Control frequency: {control_freq}", header="Dynamixel", level="debug")
+        else:
+            set_pos_helper(pos)
 
     # @profile
     def get_motor_state(self):
         state_dict = {}
-        pos_arr, vel_arr, current_arr = self.client.read_pos_vel_cur()
+        pos_arr = self.client.read_pos()
+        # pos_arr, vel_arr, current_arr = self.client.read_pos_vel_cur()
         pos_arr_driven = (self.config.init_pos - pos_arr) * self.config.gear_ratio
         for i, id in enumerate(self.motor_ids):
             state_dict[id] = DynamixelState(
                 time=time.time(),
                 pos=pos_arr_driven[i],
-                vel=vel_arr[i],
-                current=current_arr[i],
+                # vel=vel_arr[i],
+                # current=current_arr[i],
             )
 
         return state_dict

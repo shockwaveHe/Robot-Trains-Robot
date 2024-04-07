@@ -22,8 +22,11 @@ const float VB_MIN = 0;    // Min voltage [V]
 const float VB_MAX = 80;   // Max voltage [V]
 
 // Data received from the serial port
-const byte num_bytes = 32;
-byte received_bytes[num_bytes]; // an array to store the received data
+static boolean recv_in_progress = false;
+static boolean length_received = false;
+static uint16_t ndx = 0;
+static uint16_t payload_length = 0;
+byte received_bytes[1024]; // an array to store the received data
 boolean new_data = false;
 char start_marker = '<';
 char end_marker = '>';
@@ -80,46 +83,71 @@ void loop()
 {
     recvWithStartEndMarkers();
 
-    byte cmd_packet[8];
     if (new_data == true)
     {
-        uint8_t id = received_bytes[0];
-        int index = findMotorIndex(id);
+        // Assuming the first byte is the number of commands
+        uint8_t num_motors = received_bytes[0];
+        int offset = 1; // Start reading commands after the num_motors byte
 
-        if (index != -1)
-        { // Ensure the ID was found
-            if (received_bytes[1] == 0xFF)
-            { // Check for special command pattern
-                memcpy(&motor_commands[index].packet_buffer, &received_bytes[1], 8);
-            }
-            else if (strcmp((char *)&received_bytes[1], "get_state") == 0)
+        for (int i = 0; i < num_motors; i++)
+        {
+            // Extract the motor ID
+            uint8_t id = received_bytes[offset];
+            int index = findMotorIndex(id);
+
+            if (index != -1)
             {
-                Serial.println(">tx_data:" + String(id) + "," + String(motor_states[index].p) + "," + String(motor_states[index].v) + "," + String(motor_states[index].t) + "," + String(motor_states[index].vb));
-            }
-            else
-            {
-                // Extract the command data directly into the motor_commands structure for the found index
-                // Check if the position command hits the hardware limit
-                if (motor_states[index].t < I_MIN || motor_states[index].t > I_MAX)
+                // Advance the offset to the start of the command data
+                offset += 1;
+
+                // Process the special command pattern or normal command data
+                if (received_bytes[offset] == 0xFF)
                 {
-                    motor_commands[index].p_des = motor_states[index].p;
+                    // Special command pattern
+                    memcpy(&motor_commands[index].packet_buffer, &received_bytes[offset], 8);
+                    offset += 8; // Move past this command to the next
+                }
+                else if (strncmp((const char *)&received_bytes[offset], "get_state", 9) == 0)
+                {
+                    if (i == 0)
+                    {
+                        Serial.print(">tx_data:");
+                    }
+                    Serial.print(String(id) + "," + String(motor_states[index].p) + "," + String(motor_states[index].v) + "," + String(motor_states[index].t) + "," + String(motor_states[index].vb) + ";");
+                    if (i == num_motors - 1)
+                    {
+                        Serial.println();
+                    }
+                    offset += 9; // Move past this command to the next
                 }
                 else
                 {
-                    memcpy(&motor_commands[index].p_des, &received_bytes[1], sizeof(float));
+                    // Assuming normal command structure: <B2f2Hf>
+                    if (motor_states[index].t < I_MIN || motor_states[index].t > I_MAX)
+                    {
+                        motor_commands[index].p_des = motor_states[index].p;
+                    }
+                    else
+                    {
+                        memcpy(&motor_commands[index].p_des, &received_bytes[offset], sizeof(float));
+                    }
+                    offset += sizeof(float); // Advance past p_des
+                    memcpy(&motor_commands[index].v_des, &received_bytes[offset], sizeof(float));
+                    offset += sizeof(float); // Advance past v_des
+                    memcpy(&motor_commands[index].kp, &received_bytes[offset], sizeof(uint16_t));
+                    offset += sizeof(uint16_t); // Advance past kp
+                    memcpy(&motor_commands[index].kd, &received_bytes[offset], sizeof(uint16_t));
+                    offset += sizeof(uint16_t); // Advance past kd
+                    memcpy(&motor_commands[index].i_ff, &received_bytes[offset], sizeof(float));
+                    offset += sizeof(float); // Advance past i_ff
                 }
-
-                memcpy(&motor_commands[index].v_des, &received_bytes[1 + sizeof(float)], sizeof(float));
-                memcpy(&motor_commands[index].kp, &received_bytes[1 + 2 * sizeof(float)], sizeof(uint16_t));
-                memcpy(&motor_commands[index].kd, &received_bytes[1 + 2 * sizeof(float) + sizeof(uint16_t)], sizeof(uint16_t));
-                memcpy(&motor_commands[index].i_ff, &received_bytes[1 + 2 * sizeof(float) + 2 * sizeof(uint16_t)], sizeof(float));
-
-                // Serial.println(">rx_data:" + String(id) + "," + String(motor_commands[index].p_des) + "," + String(motor_commands[index].v_des) + "," + String(motor_commands[index].kp) + "," + String(motor_commands[index].kd) + "," + String(motor_commands[index].i_ff));
             }
-        }
-        else
-        {
-            Serial.println("Error: Received CAN ID not recognized.");
+            else
+            {
+                Serial.println("Error: Received CAN ID " + String(id) + " not recognized.");
+                // Skip this command entirely (assuming fixed size for now)
+                offset += 8; // Adjust based on your command size
+            }
         }
     }
 
@@ -168,37 +196,41 @@ int findMotorIndex(uint8_t id)
 
 void recvWithStartEndMarkers()
 {
-    static boolean recv_in_progress = false;
-    static byte ndx = 0;
     byte rb;
 
-    while (Serial.available() > 0 && new_data == false)
+    while (Serial.available() > 0 && !new_data)
     {
         rb = Serial.read();
 
-        if (recv_in_progress == true)
+        if (!recv_in_progress)
         {
-            if (rb != end_marker)
+            if (rb == start_marker)
             {
-                received_bytes[ndx] = rb;
-                ndx++;
-                if (ndx >= num_bytes)
-                {
-                    ndx = num_bytes - 1;
-                }
-            }
-            else
-            {
-                received_bytes[ndx] = '\0'; // terminate the string
-                recv_in_progress = false;
-                ndx = 0;
-                new_data = true;
+                recv_in_progress = true;
             }
         }
-
-        else if (rb == start_marker)
+        else if (!length_received)
         {
-            recv_in_progress = true;
+            if (Serial.available() > 0)
+            { // Ensure 2 bytes for the length are available
+                // Read the payload length as little-endian
+                payload_length = rb | (Serial.read() << 8);
+                length_received = true;
+            }
+        }
+        else if (ndx < payload_length)
+        {
+            received_bytes[ndx] = rb;
+            ndx += 1;
+        }
+        else
+        {
+            // Complete message received
+            received_bytes[ndx] = '\0'; // terminate the string
+            recv_in_progress = false;
+            length_received = false;
+            ndx = 0;
+            new_data = true;
         }
     }
 }

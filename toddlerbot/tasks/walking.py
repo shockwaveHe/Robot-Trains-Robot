@@ -300,6 +300,7 @@ def main():
     joint_angle_dict = {}
 
     # This function requires its parameters to be the same as its return values.
+    # @profile
     def step_func(sim_step_idx, path, foot_steps, com_ref_traj, joint_angles):
         time_ref = time.time() - time_start
         time_seq_ref.append(time_ref)

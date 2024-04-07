@@ -1,13 +1,15 @@
 import copy
-import math
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
 import numpy as np
+from scipy.optimize import root
+from transforms3d.axangles import axangle2mat
 from yourdfpy import URDF
 
 from toddlerbot.robot_descriptions.robot_configs import robot_configs
 from toddlerbot.utils.file_utils import find_description_path
+from toddlerbot.utils.misc_utils import log
 
 
 @dataclass
@@ -157,6 +159,81 @@ class HumanoidRobot:
                 joint_angles[name] = info["init_angle"]
 
         return joint_angles
+
+    def ankle_fk(self, mighty_zap_pos, last_mighty_zap_pos):
+        def objective_function(ankle_pos, target_pos):
+            pos = self.ankle_ik(ankle_pos)
+            error = np.array(pos) - np.array(target_pos)
+            return error
+
+        result = root(
+            lambda x: objective_function(x, mighty_zap_pos),
+            last_mighty_zap_pos,
+            method="hybr",
+            options={"xtol": 1e-6},
+        )
+
+        if result.success:
+            optimized_ankle_pos = result.x
+            # log(
+            #     f"Solved ankle position: {optimized_ankle_pos}",
+            #     header="MightyZap",
+            #     level="debug",
+            # )
+            return optimized_ankle_pos
+        else:
+            log(f"Solving ankle position failed", header="MightyZap", level="debug")
+            return last_mighty_zap_pos
+
+    def ankle_ik(self, ankle_pos):
+        # Implemented based on page 3 of the following paper:
+        # http://link.springer.com/10.1007/978-3-319-93188-3_49
+        # Notations are from the paper.
+
+        offsets = self.offsets
+        s1 = np.array(offsets["s1"])
+        s2 = np.array([s1[0], -s1[1], s1[2]])
+        f1E = np.array(offsets["f1E"])
+        f2E = np.array([f1E[0], -f1E[1], f1E[2]])
+        nE = np.array(offsets["nE"])
+        r = offsets["r"]
+        mighty_zap_len = offsets["mighty_zap_len"]
+
+        ankle_pitch = ankle_pos[0]
+        ankle_roll = ankle_pos[1]
+        R_roll = np.array(
+            [
+                [1, 0, 0],
+                [0, np.cos(ankle_roll), -np.sin(ankle_roll)],
+                [0, np.sin(ankle_roll), np.cos(ankle_roll)],
+            ]
+        )
+        R_pitch = np.array(
+            [
+                [np.cos(ankle_pitch), 0, np.sin(ankle_pitch)],
+                [0, 1, 0],
+                [-np.sin(ankle_pitch), 0, np.cos(ankle_pitch)],
+            ]
+        )
+        R = np.dot(R_roll, R_pitch)
+        n_hat = np.dot(R, nE)
+        f1 = np.dot(R, f1E)
+        f2 = np.dot(R, f2E)
+        delta1 = s1 - f1
+        delta2 = s2 - f2
+
+        d1_raw = np.sqrt(
+            np.dot(n_hat, delta1) ** 2
+            + (np.linalg.norm(np.cross(n_hat, delta1)) - r) ** 2
+        )
+        d2_raw = np.sqrt(
+            np.dot(n_hat, delta2) ** 2
+            + (np.linalg.norm(np.cross(n_hat, delta2)) - r) ** 2
+        )
+        d1 = (d1_raw - mighty_zap_len) * 1e5
+        d2 = (d2_raw - mighty_zap_len) * 1e5
+
+        return [d1, d2]
 
     def solve_ik(
         self,

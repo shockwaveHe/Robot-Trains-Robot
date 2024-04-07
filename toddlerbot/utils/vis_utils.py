@@ -85,7 +85,7 @@ def make_vis_function(
             if not os.path.exists(save_path):
                 os.makedirs(save_path)
 
-            file_path = os.path.join(save_path, f"{name}.png")
+            file_path = os.path.join(save_path, f"{name}.svg")
             plt.savefig(file_path)
             log(f"Graph saved as: {file_path}", header="Visualization")
         else:
