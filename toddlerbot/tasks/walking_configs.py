@@ -54,7 +54,10 @@ walking_configs = {
         squat_height=0.01,
         target_pose_init=[0.1, 0.0, 0.0],
     ),
-    "toddlerbot_real": WalkingConfig.create_config(squat_height=0.01, actuator_steps=1),
+    "toddlerbot_real": WalkingConfig.create_config(
+        squat_height=0.01,
+        actuator_steps=1,
+    ),
     "toddlerbot_legs_real": WalkingConfig.create_config(
         squat_height=0.01,
         actuator_steps=1,

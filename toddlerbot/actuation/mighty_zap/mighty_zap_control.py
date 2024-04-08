@@ -30,6 +30,7 @@ class MightyZapController(BaseController):
 
         self.config = config
         self.motor_ids = motor_ids
+        self.last_pos = {id: 0.0 for id in self.motor_ids}
 
         self.client = self.connect_to_client()
         self.initialize_motors()
@@ -87,11 +88,14 @@ class MightyZapController(BaseController):
         for id in self.motor_ids:
             pos = self.client.present_position(id)
             if pos < 0:
+                pos = self.last_pos[id]
                 log(
-                    f"Read the MightyZap {id} Position failed.",
+                    f"Read the MightyZap {id} Position failed. Use the last position {self.last_pos[id]}.",
                     header="MightyZap",
                     level="warning",
                 )
+            else:
+                self.last_pos[id] = pos
 
             state_dict[id] = MightyZapState(time=time.time(), pos=pos)
 

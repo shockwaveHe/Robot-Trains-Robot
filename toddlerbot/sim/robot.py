@@ -69,6 +69,12 @@ class HumanoidRobot:
             else:
                 raise ValueError(f"Motor brand '{motor_param.brand}' is not supported.")
 
+        self.dynamixel_id2joint = {v: k for k, v in self.dynamixel_joint2id.items()}
+        self.sunny_sky_id2joint = {v: k for k, v in self.sunny_sky_joint2id.items()}
+        self.mighty_zap_id2joint = {v: k for k, v in self.mighty_zap_joint2id.items()}
+
+        self.ankle2mighty_zap = [[0, 1], [2, 3]]
+
     def compute_offsets(self):
         graph = self.urdf.scene.graph
 
@@ -175,14 +181,9 @@ class HumanoidRobot:
 
         if result.success:
             optimized_ankle_pos = result.x
-            # log(
-            #     f"Solved ankle position: {optimized_ankle_pos}",
-            #     header="MightyZap",
-            #     level="debug",
-            # )
             return optimized_ankle_pos
         else:
-            log(f"Solving ankle position failed", header="MightyZap", level="debug")
+            log(f"Solving ankle position failed", header="MightyZap", level="warning")
             return last_mighty_zap_pos
 
     def ankle_ik(self, ankle_pos):

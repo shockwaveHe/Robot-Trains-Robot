@@ -63,34 +63,21 @@ class MightyZapClient:
             self.serial.write(self.TxBuffer[: self.TxBuffer_index])
 
     # @profile
-    def receive_packet(self, size, tx_timeout=1.0):
+    def receive_packet(self, size):
         if not self.serial.is_open:
             return -1
 
-        read_buffer = bytearray()
         expected_header = b"\xff\xff\xff"
-        start_time = time.time()
-
-        while (time.time() - start_time) < tx_timeout:
-            # Calculate remaining timeout to avoid exceeding the total timeout period
-            remaining_time = tx_timeout - (time.time() - start_time)
-            self.serial.timeout = remaining_time
-
-            # Attempt to read the remaining bytes needed to reach the desired size
-            read_buffer += self.serial.read(size - len(read_buffer))
-
-            # Check if the buffer contains the expected header and has reached the necessary size
-            if len(read_buffer) >= size and expected_header in read_buffer[:3]:
-                # Assuming the header is at the start for now, further logic could adjust for different positions
-                self.RxBuffer[:size] = read_buffer[:size]
-                return 1
-
-            # If the buffer exceeds the expected size without finding a header, clear it and restart
-            if len(read_buffer) > size:
-                read_buffer = bytearray()
-
-        # If the function exits the loop without returning success, it's due to a timeout or other failure
-        return -1
+        # Attempt to read the remaining bytes needed to reach the desired size
+        read_buffer = self.serial.read(size)
+        # Check if the buffer contains the expected header and has reached the necessary size
+        if len(read_buffer) >= size and expected_header in read_buffer[:3]:
+            # Assuming the header is at the start for now, further logic could adjust for different positions
+            self.RxBuffer[:size] = read_buffer[:size]
+            return 1
+        else:
+            # If the function exits the loop without returning success, it's due to a timeout or other failure
+            return -1
 
     def send_command(self, id, instruction, parameters):
         """

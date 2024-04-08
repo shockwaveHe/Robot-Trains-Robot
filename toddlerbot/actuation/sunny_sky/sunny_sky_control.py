@@ -220,7 +220,7 @@ class SunnySkyController(BaseController):
                         continue
 
                     id, p, v, t, vb = map(float, single_data_str.split(","))
-
+                    id = int(id)
                     state_dict[id] = SunnySkyState(
                         time=time.time(),
                         pos=p / self.config.gear_ratio - self.init_pos[id],
