@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 from toddlerbot.utils.math_utils import *
-from toddlerbot.utils.misc_utils import log
+from toddlerbot.utils.misc_utils import *
 
 
 class BaseController(ABC):

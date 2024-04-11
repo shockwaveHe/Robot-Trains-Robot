@@ -2,7 +2,7 @@ import argparse
 import os
 import time
 
-from toddlerbot.sim.mujoco_sim import MujoCoSim
+from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.pybullet_sim import PyBulletSim
 from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.sim.robot import HumanoidRobot
@@ -41,7 +41,7 @@ def main():
     if args.sim == "pybullet":
         sim = PyBulletSim(robot)
     elif args.sim == "mujoco":
-        sim = MujoCoSim(robot)
+        sim = MuJoCoSim(robot)
     elif args.sim == "real":
         sim = RealWorld(robot)
     else:

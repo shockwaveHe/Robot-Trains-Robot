@@ -182,5 +182,17 @@
                 // "0.001",
             ]
         },
+        {
+            "name": "Python: sysID_toddlerbot_legs_data_collection",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/sysID/collect_data.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot-name",
+                "toddlerbot_legs",
+            ]
+        },
     ]
 }

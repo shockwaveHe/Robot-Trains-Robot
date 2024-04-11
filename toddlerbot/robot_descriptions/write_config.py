@@ -17,6 +17,12 @@ def find_root_link_name(root):
 
 
 def get_config(robot_name):
+    # Define the file path
+    config_script_path = os.path.join(robot_dir, "config.py")
+
+    if os.path.exists(config_script_path):
+        return
+
     robot_dir = os.path.join("toddlerbot", "robot_descriptions", robot_name)
     urdf_path = os.path.join(robot_dir, f"{robot_name}.urdf")
     tree = ET.parse(urdf_path)
@@ -259,9 +265,6 @@ def get_config(robot_name):
     )
     """
     )
-
-    # Define the file path
-    config_script_path = os.path.join(robot_dir, "config.py")
 
     # Write the content to the file
     with open(config_script_path, "w") as file:

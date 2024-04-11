@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from typing import Callable, Dict, List, Optional, Tuple
 
 from toddlerbot.sim.robot import *
+from toddlerbot.utils.math_utils import *
+from toddlerbot.utils.misc_utils import *
 
 
 class BaseSim(ABC):

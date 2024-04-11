@@ -106,8 +106,7 @@ class RealWorld(BaseSim):
         joint_angles,
         interp=True,
         interp_method="cubic",
-        interp_t=0.01,
-        control_freq=100,
+        control_dt=0.01,
     ):
         # Directions are tuned to match the assembly of the robot.
         joint_angles = self._negate_joint_angles(joint_angles)
@@ -156,11 +155,10 @@ class RealWorld(BaseSim):
                 set_pos_helper,
                 pos_start,
                 pos,
-                interp_t,
+                control_dt,
                 interp_method,
                 self.name,
-                # TODO: Investigate the effect of this parameter
-                sleep_time=1 / control_freq,
+                sleep_time=control_dt,
             )
         else:
             set_pos_helper(pos)

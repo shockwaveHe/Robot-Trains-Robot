@@ -149,13 +149,13 @@ class SunnySkyController(BaseController):
 
         log(f"Testing lower limit for motors...", header="SunnySky")
         self.set_pos(pos_curr - joint_range, limit=False)
-        time.sleep(0.1)
+        sleep(0.1)
 
         state_dict = self.get_motor_state()
         zero_pos = np.array([state.pos for state in state_dict.values()])
         log(f"Setting zero position {list(zero_pos)} for motors...", header="SunnySky")
         self.set_pos(zero_pos, limit=False)
-        time.sleep(0.1)
+        sleep(0.1)
 
         self.init_pos = {id: pos for id, pos in zip(self.motor_ids, zero_pos)}
 

@@ -1,4 +1,6 @@
 import logging
+import platform
+import time
 
 from colorama import Fore, Style, init
 
@@ -35,3 +37,23 @@ def log(message, header=None, level="info"):
         my_logger.warning(Fore.YELLOW + "[Warning] " + header_msg + message)
     else:
         my_logger.info(Fore.WHITE + "[Info] " + header_msg + message)
+
+
+def sleep(duration):
+    """
+    Sleep for a specified amount of time.
+
+    Parameters:
+    - time: The amount of time to sleep (in seconds).
+    """
+    if platform.system() == "Darwin":  # Darwin is the system name for macOS
+        adjusted_duration = duration / 1.25
+        # log(
+        #     f"Sleeping for {adjusted_duration} seconds (adjusted for macOS).",
+        #     header="Sleep",
+        #     level="debug",
+        # )
+        time.sleep(adjusted_duration)
+    else:
+        # log(f"Sleeping for {duration} seconds.", header="Sleep", level="debug")
+        time.sleep(duration)

@@ -9,12 +9,10 @@ from transforms3d.quaternions import mat2quat, quat2mat
 from toddlerbot.sim import *
 from toddlerbot.utils.constants import GRAVITY
 from toddlerbot.utils.file_utils import find_description_path
-from toddlerbot.utils.math_utils import *
-from toddlerbot.utils.misc_utils import log
 
 
-class MujoCoSim(BaseSim):
-    def __init__(self, robot: Optional[HumanoidRobot] = None, fixed: bool = False):
+class MuJoCoSim(BaseSim):
+    def __init__(self, robot, xml_path=None, fixed: bool = False):
         """Initialize the MuJoCo simulation environment."""
         super().__init__()
         self.name = "mujoco"
@@ -26,14 +24,15 @@ class MujoCoSim(BaseSim):
         self.last_angmom = None
         self.last_t = None
 
-        if robot is not None:
-            self.foot_size = robot.foot_size
+        self.foot_size = robot.foot_size
 
+        if xml_path is None:
             xml_path = find_description_path(robot.name, suffix="_scene.xml")
-            self.model = mujoco.MjModel.from_xml_path(xml_path)
-            self.data = mujoco.MjData(self.model)
-            if not fixed:
-                self.put_robot_on_ground(robot)
+
+        self.model = mujoco.MjModel.from_xml_path(xml_path)
+        self.data = mujoco.MjData(self.model)
+        if not fixed:
+            self.put_robot_on_ground(robot)
 
     def put_robot_on_ground(self, robot: HumanoidRobot, z_offset: float = 0.02):
         """
@@ -154,8 +153,9 @@ class MujoCoSim(BaseSim):
         self,
         robot,
         joint_angles,
-        control_dt,
+        interp=True,
         interp_method="cubic",
+        control_dt=0.01,
     ):
         joint_order = list(joint_angles.keys())
         pos = np.array(list(joint_angles.values()))
@@ -174,27 +174,30 @@ class MujoCoSim(BaseSim):
 
             # log(f"Force: {force_dict}", header=self.name, level="debug")
 
-        pos_start = np.array(
-            [state.pos for state in self.get_joint_state(robot).values()]
-        )
-        max_step_size = 0.5
-        if np.max(np.abs(pos - pos_start)) > max_step_size:
-            interpolate_pos(
-                set_pos_helper,
-                pos_start,
-                pos,
-                control_dt,
-                interp_method,
-                self.name,
-                sleep_time=control_dt,
+        if interp:
+            pos_start = np.array(
+                [state.pos for state in self.get_joint_state(robot).values()]
             )
+            max_step_size = 0.5
+            if np.max(np.abs(pos - pos_start)) > max_step_size:
+                interpolate_pos(
+                    set_pos_helper,
+                    pos_start,
+                    pos,
+                    control_dt,
+                    interp_method,
+                    self.name,
+                    sleep_time=control_dt,
+                )
+            else:
+                time_start = time.time()
+                set_pos_helper(pos)
+                time_elapsed = time.time() - time_start
+                time_until_next_step = control_dt - time_elapsed
+                if time_until_next_step > 0:
+                    sleep(time_until_next_step)
         else:
-            time_start = time.time()
             set_pos_helper(pos)
-            time_elapsed = time.time() - time_start
-            time_until_next_step = control_dt - time_elapsed
-            if time_until_next_step > 0:
-                time.sleep(time_until_next_step)
 
     def simulate(
         self,
@@ -319,7 +322,7 @@ class MujoCoSim(BaseSim):
                 #     time.time() - step_start
                 # )
                 if time_until_next_step > 0:
-                    time.sleep(time_until_next_step)
+                    sleep(time_until_next_step)
         except KeyboardInterrupt:
             pass
         finally:
@@ -331,5 +334,5 @@ class MujoCoSim(BaseSim):
 
 if __name__ == "__main__":
     robot = HumanoidRobot("robotis_op3")
-    sim = MujoCoSim()
+    sim = MuJoCoSim()
     sim.simulate()

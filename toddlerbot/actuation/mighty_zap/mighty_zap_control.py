@@ -48,7 +48,7 @@ class MightyZapController(BaseController):
     def initialize_motors(self):
         log("Initializing motors...", header="MightyZap")
         self.set_pos(self.config.init_pos)
-        time.sleep(0.1)
+        sleep(0.1)
 
     def close_motors(self):
         self.client.force_enable(self.motor_ids, [0] * len(self.motor_ids))
@@ -126,7 +126,7 @@ if __name__ == "__main__":
             break
 
     controller.set_pos(init_pos)
-    time.sleep(1)
+    sleep(1)
 
     controller.close_motors()
 

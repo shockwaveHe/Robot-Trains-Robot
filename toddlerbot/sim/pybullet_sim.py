@@ -119,7 +119,7 @@ class PyBulletSim(BaseSim):
                         step_params = step_func(*step_params)
                 p.stepSimulation()
                 if sleep_time > 0:
-                    time.sleep(sleep_time)
+                    sleep(sleep_time)
         except KeyboardInterrupt:
             pass
         finally:

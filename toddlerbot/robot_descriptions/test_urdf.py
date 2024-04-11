@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 import pybullet as p
 
-from toddlerbot.sim.mujoco_sim import MujoCoSim
+from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.pybullet_sim import PyBulletSim
 from toddlerbot.sim.robot import HumanoidRobot
 from toddlerbot.utils.math_utils import round_floats
@@ -44,7 +44,7 @@ def main():
                 print(f"{name} has limits ({low}, {high})")
                 controls[name] = p.addUserDebugParameter(name, low, high, 0)
     elif args.sim == "mujoco":
-        sim = MujoCoSim(robot)
+        sim = MuJoCoSim(robot)
     else:
         raise ValueError("Unknown simulator")
 

@@ -73,7 +73,7 @@ class DynamixelController(BaseController):
             2,
         )
         self.set_pos(np.zeros(len(self.motor_ids)))
-        time.sleep(0.1)
+        sleep(0.1)
 
     def close_motors(self):
         open_clients = list(DynamixelClient.OPEN_CLIENTS)
@@ -159,7 +159,7 @@ if __name__ == "__main__":
         controller.set_pos([0.0] * 6)
         i += 1
 
-    time.sleep(0.1)
+    sleep(0.1)
     controller.close_motors()
 
     log("Process completed successfully.", header="Dynamixel")

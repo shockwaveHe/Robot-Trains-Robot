@@ -76,7 +76,7 @@ def main():
                     )
 
             listener.key = ""
-            time.sleep(1 / frequency)
+            sleep(1 / frequency)
     except KeyboardInterrupt:
         print("Interrupted by user, exiting...")
 

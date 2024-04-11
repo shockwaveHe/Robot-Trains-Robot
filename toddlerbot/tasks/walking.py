@@ -9,7 +9,7 @@ import numpy as np
 
 from toddlerbot.control.zmp_preview_control import *
 from toddlerbot.planning.foot_step_planner import *
-from toddlerbot.sim.mujoco_sim import MujoCoSim
+from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.pybullet_sim import PyBulletSim
 from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.sim.robot import HumanoidRobot
@@ -285,7 +285,7 @@ def main():
     if args.sim == "pybullet":
         sim = PyBulletSim(robot)
     elif args.sim == "mujoco":
-        sim = MujoCoSim(robot)
+        sim = MuJoCoSim(robot)
     elif args.sim == "real":
         sim = RealWorld(robot)
     else:
@@ -311,7 +311,7 @@ def main():
     time_seq_dict = {}
     joint_angle_ref_dict = {}
     joint_angle_dict = {}
-    actuate_horizon = 5
+    actuate_horizon = 0
 
     # This function requires its parameters to be the same as its return values.
     # @profile
@@ -334,10 +334,10 @@ def main():
             joint_angles["right_hip_roll"] -= walking.right_hip_roll_comp_curr
             # joint_angles["left_ank_roll"] += walking.right_hip_roll_comp * 0.5
 
-        time_1 = time.time()
+        # time_1 = time.time()
         sim.set_joint_angles(robot, joint_angles, control_dt=config.control_dt)
-        time_2 = time.time()
-        log(f"Actuation time: {time_2 - time_1}", header="Walking")
+        # time_2 = time.time()
+        # log(f"Actuation time: {time_2 - time_1}", header="Walking")
 
         if sim.name != "real_world":  # or True:
             joint_state_dict = sim.get_joint_state(robot)
