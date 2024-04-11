@@ -45,6 +45,7 @@ def load_robot_configs(
                 configs[robot_name] = robot_config
             except (ImportError, AttributeError):
                 print(f"Warning: Could not load config for {robot_name}")
+
     return configs
 
 

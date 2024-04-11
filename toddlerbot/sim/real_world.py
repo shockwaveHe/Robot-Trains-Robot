@@ -7,16 +7,14 @@ from toddlerbot.actuation.mighty_zap.mighty_zap_control import *
 from toddlerbot.actuation.sunny_sky.sunny_sky_control import *
 from toddlerbot.sim import *
 
-my_logger = logging.getLogger("my_logger")
-my_logger.setLevel(logging.WARNING)
+# my_logger = logging.getLogger("my_logger")
+# my_logger.setLevel(logging.WARNING)
 
 
 class RealWorld(BaseSim):
     def __init__(self, robot: Optional[HumanoidRobot] = None):
         super().__init__()
         self.name = "real_world"
-        self.interp_method = "cubic"
-        self.interp_t = 0.01
         self.negated_joint_names = [
             "left_hip_yaw",
             "right_hip_yaw",
@@ -27,17 +25,15 @@ class RealWorld(BaseSim):
         self.dynamixel_init_pos = np.radians([245, 180, 180, 287, 180, 180])
         self.dynamixel_config = DynamixelConfig(
             port="/dev/tty.usbserial-FT8ISUJY",
-            kP=[800, 800, 800, 800, 800, 800],
+            kP=[800, 2400, 800, 800, 2400, 800],
             kI=[100, 100, 100, 100, 100, 100],
             kD=[400, 400, 400, 400, 400, 400],
-            current_limit=[350, 350, 350, 350, 350, 350],
+            current_limit=[700, 700, 700, 700, 700, 700],
             init_pos=self.dynamixel_init_pos,
             gear_ratio=np.array([19 / 21, 1, 1, 19 / 21, 1, 1]),
         )
 
-        self.sunny_sky_config = SunnySkyConfig(
-            port="/dev/tty.usbmodem101", kP=40, kD=50
-        )
+        self.sunny_sky_config = SunnySkyConfig(port=find_feather_port(), kP=40, kD=50)
         # Temorarily hard-coded joint range for SunnySky
         joint_range_dict = {1: (0, np.pi / 2), 2: (0, -np.pi / 2)}
 
@@ -104,7 +100,15 @@ class RealWorld(BaseSim):
         return negated_joint_angles
 
     # @profile
-    def set_joint_angles(self, robot, joint_angles, interp=True):
+    def set_joint_angles(
+        self,
+        robot,
+        joint_angles,
+        interp=True,
+        interp_method="cubic",
+        interp_t=0.01,
+        control_freq=100,
+    ):
         # Directions are tuned to match the assembly of the robot.
         joint_angles = self._negate_joint_angles(joint_angles)
         for ids in robot.ankle2mighty_zap:
@@ -147,15 +151,16 @@ class RealWorld(BaseSim):
             pos_start = np.array(
                 [state.pos for state in self.get_joint_state(robot).values()]
             )
+
             interpolate_pos(
                 set_pos_helper,
                 pos_start,
                 pos,
-                self.interp_t,
-                self.interp_method,
+                interp_t,
+                interp_method,
                 self.name,
                 # TODO: Investigate the effect of this parameter
-                sleep_time=self.interp_t / 10,
+                sleep_time=1 / control_freq,
             )
         else:
             set_pos_helper(pos)
@@ -220,8 +225,7 @@ class RealWorld(BaseSim):
         pass
 
     def get_torso_pose(self, robot: HumanoidRobot):
-        # Placeholder
-        return np.array(robot.com), np.eye(3)
+        return np.array([0, 0, robot.com[-1]]), np.eye(3)
 
     def get_zmp(self, robot: HumanoidRobot):
         pass
@@ -265,12 +269,10 @@ if __name__ == "__main__":
 
     joint_angles = robot.initialize_joint_angles()
 
-    i = 0
-    while i < 10:
-        sim.set_joint_angles(robot, joint_angles)
-        joint_state_dict = sim.get_joint_state(robot)
-        log(f"Joint states: {joint_state_dict}", header="RealWorld", level="debug")
-
-        i += 1
-
-    sim.close()
+    try:
+        while True:
+            sim.set_joint_angles(robot, joint_angles)
+            joint_state_dict = sim.get_joint_state(robot)
+            log(f"Joint states: {joint_state_dict}", header="RealWorld", level="debug")
+    finally:
+        sim.close()

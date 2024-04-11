@@ -17,7 +17,7 @@ class MightyZapClient:
     MIGHTYZAP_SYNC_WRITE = 0x73
     BROADCAST_ID = 0xFE
 
-    def __init__(self, portname, baudrate=57600, timeout=0.1):
+    def __init__(self, portname, baudrate=57600, timeout=0.01):
         self.TxBuffer = [0] * self.PROTOCOL_TX_BUF_SIZE
         self.TxBuffer_index = 0
         self.RxBuffer = [0] * self.PROTOCOL_RX_BUF_SIZE

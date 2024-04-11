@@ -5,7 +5,7 @@ import pybullet as p
 import pybullet_data
 
 from toddlerbot.sim import *
-from toddlerbot.utils.constants import GRAVITY, TIMESTEP
+from toddlerbot.utils.constants import GRAVITY
 from toddlerbot.utils.file_utils import find_description_path
 from toddlerbot.utils.math_utils import quatxyzw2mat
 
@@ -24,7 +24,7 @@ class PyBulletSim(BaseSim):
         p.connect(p.GUI)  # or p.DIRECT for non-graphical version
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         p.setGravity(0, 0, -GRAVITY)
-        p.setTimeStep(TIMESTEP)
+        p.setTimeStep(0.001)
         p.loadURDF("plane.urdf")
 
         if robot is not None:

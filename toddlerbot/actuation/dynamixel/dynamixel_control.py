@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from threading import Lock
 from typing import List
 
 import numpy as np
@@ -36,6 +37,7 @@ class DynamixelController(BaseController):
 
         self.config = config
         self.motor_ids = motor_ids
+        self.lock = Lock()
 
         self.client = self.connect_to_client()
         self.initialize_motors()
@@ -87,6 +89,7 @@ class DynamixelController(BaseController):
         def set_pos_helper(pos):
             pos = np.array(pos)
             pos_drive = self.config.init_pos - pos / self.config.gear_ratio
+            # with self.lock:
             self.client.write_desired_pos(self.motor_ids, pos_drive)
 
         if interp:
@@ -113,8 +116,10 @@ class DynamixelController(BaseController):
     # @profile
     def get_motor_state(self):
         state_dict = {}
+        # with self.lock:
         pos_arr = self.client.read_pos()
         # pos_arr, vel_arr, current_arr = self.client.read_pos_vel_cur()
+        # log(f"Current: {current_arr}", header="Dynamixel", level="debug")
         pos_arr_driven = (self.config.init_pos - pos_arr) * self.config.gear_ratio
         for i, id in enumerate(self.motor_ids):
             state_dict[id] = DynamixelState(

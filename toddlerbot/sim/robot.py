@@ -114,12 +114,9 @@ class HumanoidRobot:
         offsets["r"] = np.linalg.norm(
             graph.get("ank_rr_link")[0][:3, 3] - graph.get("12lf_rod_end")[0][:3, 3]
         )
-        offsets["mighty_zap_len"] = 0.07521
-        # np.linalg.norm(
-        #     graph.get("ball_joint_ball")[0][:3, 3]
-        #     - graph.get("12lf_rod_end")[0][:3, 3]
-        # )
-        # - 0.01369  # This number is read from onshape
+
+        # Measured in the real robot (m)
+        offsets["mighty_zap_len"] = 0.078
 
         return offsets
 
@@ -231,8 +228,9 @@ class HumanoidRobot:
             np.dot(n_hat, delta2) ** 2
             + (np.linalg.norm(np.cross(n_hat, delta2)) - r) ** 2
         )
-        d1 = (d1_raw - mighty_zap_len) * 1e5
-        d2 = (d2_raw - mighty_zap_len) * 1e5
+        # 1.365 for 12Lf
+        d1 = (d1_raw - mighty_zap_len) * 1.365 * 1e5
+        d2 = (d2_raw - mighty_zap_len) * 1.365 * 1e5
 
         return [d1, d2]
 

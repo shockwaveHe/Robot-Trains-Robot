@@ -7,8 +7,10 @@ from transforms3d.euler import euler2mat
 from transforms3d.quaternions import mat2quat, quat2mat
 
 from toddlerbot.sim import *
-from toddlerbot.utils.constants import GRAVITY, TIMESTEP
+from toddlerbot.utils.constants import GRAVITY
 from toddlerbot.utils.file_utils import find_description_path
+from toddlerbot.utils.math_utils import *
+from toddlerbot.utils.misc_utils import log
 
 
 class MujoCoSim(BaseSim):
@@ -148,14 +150,51 @@ class MujoCoSim(BaseSim):
 
         return self.zmp
 
-    def set_joint_angles(self, robot: HumanoidRobot, joint_angles: Dict[str, float]):
-        for name, angle in joint_angles.items():
-            kp = robot.config.motor_params[name].kp
-            kv = robot.config.motor_params[name].kv
-            self.data.actuator(f"{name}_act").ctrl = (
-                -kp * (self.data.joint(name).qpos - angle)
-                - kv * self.data.joint(name).qvel
+    def set_joint_angles(
+        self,
+        robot,
+        joint_angles,
+        control_dt,
+        interp_method="cubic",
+    ):
+        joint_order = list(joint_angles.keys())
+        pos = np.array(list(joint_angles.values()))
+
+        def set_pos_helper(pos):
+            force_dict = {}
+            for name, p in zip(joint_order, pos):
+                kp = robot.config.motor_params[name].kp
+                kv = robot.config.motor_params[name].kv
+                force = (
+                    kp * (p - self.data.joint(name).qpos)
+                    - kv * self.data.joint(name).qvel
+                )
+                force_dict[name] = force.item()
+                self.data.actuator(f"{name}_act").ctrl = force
+
+            # log(f"Force: {force_dict}", header=self.name, level="debug")
+
+        pos_start = np.array(
+            [state.pos for state in self.get_joint_state(robot).values()]
+        )
+        max_step_size = 0.5
+        if np.max(np.abs(pos - pos_start)) > max_step_size:
+            interpolate_pos(
+                set_pos_helper,
+                pos_start,
+                pos,
+                control_dt,
+                interp_method,
+                self.name,
+                sleep_time=control_dt,
             )
+        else:
+            time_start = time.time()
+            set_pos_helper(pos)
+            time_elapsed = time.time() - time_start
+            time_until_next_step = control_dt - time_elapsed
+            if time_until_next_step > 0:
+                time.sleep(time_until_next_step)
 
     def simulate(
         self,
@@ -166,7 +205,7 @@ class MujoCoSim(BaseSim):
     ):
         viewer = mujoco.viewer.launch_passive(self.model, self.data)
         if step_params is not None:
-            sim_step_idx, path, foot_steps, com_traj, joint_angles = step_params
+            sim_step_idx, path, foot_steps, com_traj = step_params
 
         def vis_foot_steps():
             i = viewer.user_scn.ngeom

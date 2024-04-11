@@ -9,10 +9,12 @@ https://os.mbed.com/users/benkatz/code/CanMaster/
 import struct
 import time
 from dataclasses import dataclass, field
+from threading import Lock
 from typing import Dict, List, Tuple
 
 import numpy as np
 import serial
+import serial.tools.list_ports as list_ports
 
 from toddlerbot.actuation import *
 
@@ -41,6 +43,22 @@ class SunnySkyState:
     voltage: float
 
 
+def find_feather_port():
+    ports = list(list_ports.comports())
+    for port, desc, hwid in ports:
+        # Adjust the condition below according to your board's unique identifier or pattern
+        if "usbmodem" in port and "Feather" in desc:
+            port = port.replace("cu", "tty")
+            log(
+                f"Found Feather board: {port} - {desc} - {hwid}",
+                header="RealWorld",
+                level="debug",
+            )
+            return port
+
+    raise ConnectionError("Could not find the Feather board.")
+
+
 class SunnySkyController(BaseController):
     def __init__(self, config, joint_range_dict):
         super().__init__(config)
@@ -49,14 +67,15 @@ class SunnySkyController(BaseController):
         self.motor_ids = list(joint_range_dict.keys())
         self.init_pos = {id: 0.0 for id in self.motor_ids}
         self.joint_range_dict = joint_range_dict
-        self.client = self.connect_to_client()
+        self.lock = Lock()
 
+        self.client = self.connect_to_client()
         self.initialize_motors()
 
     def connect_to_client(self):
         try:
             client = serial.Serial(
-                self.config.port, baudrate=self.config.baudrate, timeout=0.05
+                self.config.port, baudrate=self.config.baudrate, timeout=0.01
             )
             log(f"Connected to the port: {self.config.port}", header="SunnySky")
             return client
@@ -85,6 +104,7 @@ class SunnySkyController(BaseController):
             b"<" + payload_length.to_bytes(2, byteorder="little") + message + b">"
         )
 
+        # with self.lock:
         self.client.write(final_message)
 
     def enable_motor(self, id):
@@ -195,6 +215,7 @@ class SunnySkyController(BaseController):
 
     # @profile
     def get_motor_state(self):
+        # with self.lock:
         self.client.reset_input_buffer()
 
         byte_commands = []
@@ -207,12 +228,14 @@ class SunnySkyController(BaseController):
         state_dict = {}
         time_start = time.time()
         while (time.time() - time_start) < self.config.tx_timeout:
+            # with self.lock:
             line = self.client.readline()
+
             if not line:
                 continue  # Skip empty lines
 
             decoded_line = line.decode().strip()
-            # log(decoded_line, header="SunnySky", level="debug")
+            log(decoded_line, header="SunnySky", level="debug")
             if decoded_line.startswith(self.config.tx_data_prefix):
                 _, data_str = decoded_line.split(self.config.tx_data_prefix, 1)
                 for single_data_str in data_str.split(";"):
@@ -248,7 +271,7 @@ if __name__ == "__main__":
         [np.pi / 2, -np.pi / 4],
         [0.0, 0.0],
         [np.pi / 4, -np.pi / 2],
-        [0.0, 0.0],
+        [0.64, -0.64],
     ]
 
     # joint_range_dict = {2: (0, -np.pi / 2)}
@@ -257,22 +280,28 @@ if __name__ == "__main__":
     # joint_range_dict = {1: (0, np.pi / 2)}
     # pos_seq_ref = [[0.0], [np.pi / 2], [0.0], [np.pi / 4], [0.0]]
 
-    config = SunnySkyConfig(port="/dev/tty.usbmodem101")
+    config = SunnySkyConfig(port=find_feather_port(), kP=40, kD=50)
     controller = SunnySkyController(config, joint_range_dict=joint_range_dict)
 
     time_seq = []
     pos_seq = []
     time_start = time.time()
-    for pos_ref in pos_seq_ref:
-        controller.set_pos(pos_ref)
-        state_dict = controller.get_motor_state()
+    try:
+        i = 0
+        while True:
+            if i < len(pos_seq_ref):
+                pos_ref = pos_seq_ref[i]
+                i += 1
 
-        message = "Motor states:"
-        for id, state in state_dict.items():
-            message += f" {id}: {state.pos:.4f} at {state.time - time_start:.4f}s"
+            controller.set_pos(pos_ref)
+            state_dict = controller.get_motor_state()
 
-        log(message, header="SunnySky", level="debug")
+            message = "Motor states:"
+            for id, state in state_dict.items():
+                message += f" {id}: {state.pos:.4f} at {state.time - time_start:.4f}s"
 
-    controller.close_motors()
+            log(message, header="SunnySky", level="debug")
 
-    log("Process completed successfully.", header="SunnySky")
+    finally:
+        controller.close_motors()
+        log("Process completed successfully.", header="SunnySky")

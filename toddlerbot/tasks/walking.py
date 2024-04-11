@@ -54,7 +54,7 @@ class Walking:
         self.pc = ZMPPreviewController(control_params)
 
         self.curr_pose = None
-        self.com_curr = np.concatenate(
+        self.com_init = np.concatenate(
             [np.array(robot.com)[None, :2], np.zeros((2, 2))], axis=0
         )
         self.joint_angles = joint_angles
@@ -70,7 +70,10 @@ class Walking:
         self.left_pos = np.array([0.0, self.y_offset_com_to_foot, 0.0])
         self.right_pos = np.array([0.0, -self.y_offset_com_to_foot, 0.0])
 
-    def plan_and_control(
+        self.left_hip_roll_comp = self.right_hip_roll_comp = config.hip_roll_comp
+        self.left_hip_roll_comp_curr = self.right_hip_roll_comp_curr = 0.0
+
+    def plan(
         self,
         curr_pose: Optional[np.ndarray] = None,
         target_pose: Optional[np.ndarray] = None,
@@ -81,17 +84,27 @@ class Walking:
         path, self.foot_steps = self.fsp.compute_steps(curr_pose, target_pose)
         zmp_ref_traj = self.pc.compute_zmp_ref_traj(self.foot_steps)
         zmp_traj, self.com_ref_traj = self.pc.compute_com_traj(
-            self.com_curr, zmp_ref_traj
+            self.com_init, zmp_ref_traj
         )
 
-        self.com_curr = self.com_ref_traj[-1].copy()
+        foot_steps_copy = copy.deepcopy(self.foot_steps)
+        com_ref_traj_copy = copy.deepcopy(self.com_ref_traj)
 
-        return path, self.foot_steps, zmp_ref_traj, zmp_traj, self.com_ref_traj
+        joint_angles_traj = [self.joint_angles]
+        while len(self.com_ref_traj) > 0:
+            joint_angles = self.solve_joint_angles()
+            joint_angles_traj.append(joint_angles)
+
+        return (
+            path,
+            foot_steps_copy,
+            zmp_ref_traj,
+            zmp_traj,
+            com_ref_traj_copy,
+            joint_angles_traj,
+        )
 
     def solve_joint_angles(self) -> Tuple[List[float], List[float], int]:
-        if len(self.com_ref_traj) == 0:
-            return "finished", self.joint_angles
-
         if abs(self.idx * self.config.control_dt - self.foot_steps[1].time) < 1e-6:
             self.foot_steps.pop(0)
 
@@ -137,12 +150,11 @@ class Walking:
 
         com_pos_ref = self.com_ref_traj.pop(0)
         self.joint_angles = self.robot.solve_ik(
-            *self._compute_foot_pos(com_pos_ref),
-            self.joint_angles,
+            *self._compute_foot_pos(com_pos_ref), self.joint_angles
         )
         self.idx += 1
 
-        return "walking", self.joint_angles
+        return self.joint_angles
 
     def _compute_foot_pos(self, com_pos):
         # Need to update here
@@ -166,6 +178,7 @@ class Walking:
             elif support_leg == "left":
                 self.right_up = max(self.right_up - up_delta, 0.0)
 
+        self.left_hip_roll_comp_curr = self.right_hip_roll_comp_curr = 0.0
         # Move foot in the axes of x, y, theta
         if idx_curr > up_start_idx + up_period * 2:
             if support_leg == "right":
@@ -174,10 +187,12 @@ class Walking:
                 self.right_pos = self.right_pos_target.copy()
         elif idx_curr > up_start_idx:
             if support_leg == "right":
+                self.right_hip_roll_comp_curr = self.right_hip_roll_comp
                 self.left_pos += self.left_pos_delta
                 if self.config.rotate_torso:
                     self.theta_curr += self.theta_delta
             elif support_leg == "left":
+                self.left_hip_roll_comp_curr = self.left_hip_roll_comp
                 self.right_pos += self.right_pos_delta
                 if self.config.rotate_torso:
                     self.theta_curr += self.theta_delta
@@ -284,44 +299,55 @@ def main():
     )
     target_pose = np.array(config.target_pose_init)
 
-    path, foot_steps, zmp_ref_traj, zmp_traj, com_ref_traj = walking.plan_and_control(
-        curr_pose, target_pose
+    path, foot_steps, zmp_ref_traj, zmp_traj, com_ref_traj, joint_angles_traj = (
+        walking.plan(curr_pose, target_pose)
     )
-    foot_steps_copy = copy.deepcopy(foot_steps)
-    com_ref_traj_copy = copy.deepcopy(com_ref_traj)
 
     com_traj = []
-    # zmp_approx_traj = []
+    zmp_approx_traj = []
 
     time_start = time.time()
     time_seq_ref = []
     time_seq_dict = {}
     joint_angle_ref_dict = {}
     joint_angle_dict = {}
+    actuate_horizon = 5
 
     # This function requires its parameters to be the same as its return values.
     # @profile
-    def step_func(sim_step_idx, path, foot_steps, com_ref_traj, joint_angles):
+    def step_func(step_idx, path, foot_steps, com_ref_traj):
+        joint_angles_ref = joint_angles_traj[min(step_idx, len(joint_angles_traj) - 1)]
         time_ref = time.time() - time_start
         time_seq_ref.append(time_ref)
-        for name, angle in joint_angles.items():
+        for name, angle in joint_angles_ref.items():
             if name not in joint_angle_ref_dict:
                 joint_angle_ref_dict[name] = []
             joint_angle_ref_dict[name].append(angle)
 
-        joint_state_dict = sim.get_joint_state(robot)
-        for name, joint_state in joint_state_dict.items():
-            if name not in time_seq_dict:
-                time_seq_dict[name] = []
-                joint_angle_dict[name] = []
+        joint_angles = joint_angles_traj[
+            min(step_idx + actuate_horizon, len(joint_angles_traj) - 1)
+        ]
 
-            time_seq_dict[name].append(joint_state.time - time_start)
-            joint_angle_dict[name].append(joint_state.pos)
+        if sim.name == "real_world":
+            joint_angles["left_hip_roll"] += walking.left_hip_roll_comp_curr
+            # joint_angles["right_ank_roll"] -= walking.left_hip_roll_comp * 0.5
+            joint_angles["right_hip_roll"] -= walking.right_hip_roll_comp_curr
+            # joint_angles["left_ank_roll"] += walking.right_hip_roll_comp * 0.5
 
-        if sim_step_idx >= config.actuator_steps:
-            sim_step_idx = 0
-            status, joint_angles = walking.solve_joint_angles()
-            # print(f"joint_angles: {round_floats(list(joint_angles.values()), 6)}")
+        time_1 = time.time()
+        sim.set_joint_angles(robot, joint_angles, control_dt=config.control_dt)
+        time_2 = time.time()
+        log(f"Actuation time: {time_2 - time_1}", header="Walking")
+
+        if sim.name != "real_world":  # or True:
+            joint_state_dict = sim.get_joint_state(robot)
+            for name, joint_state in joint_state_dict.items():
+                if name not in time_seq_dict:
+                    time_seq_dict[name] = []
+                    joint_angle_dict[name] = []
+
+                time_seq_dict[name].append(joint_state.time - time_start)
+                joint_angle_dict[name].append(joint_state.pos)
 
             torso_pos, torso_mat = sim.get_torso_pose(robot)
             torso_mat_delta = torso_mat @ torso_mat_init.T
@@ -333,11 +359,10 @@ def main():
                 torso_pos[1] + np.sin(torso_theta) * walking.x_offset_com_to_foot,
             ]
             com_traj.append(com_pos)
-
             # zmp_pos = sim.get_zmp(com_pos)
             # zmp_approx_traj.append(zmp_pos)
 
-            if status == "finished":
+            if step_idx >= len(joint_angles_traj):
                 tracking_error = np.array(target_pose) - np.array(
                     [*torso_pos[:2], torso_theta]
                 )
@@ -346,19 +371,41 @@ def main():
                     header="Walking",
                 )
 
-        sim.set_joint_angles(robot, joint_angles)
-        sim_step_idx += 1
+        step_idx += 1
 
-        return sim_step_idx, path, foot_steps, com_ref_traj, joint_angles
+        return step_idx, path, foot_steps, com_ref_traj
 
     try:
         sim.simulate(
             step_func,
-            (0, path, foot_steps, com_ref_traj, joint_angles),
+            (0, path, foot_steps, com_ref_traj),
             vis_flags=["foot_steps", "com_traj", "torso"],
             sleep_time=args.sleep_time,
         )
     finally:
+        # Check if the ankle positions are linear actuator lengths
+        if sim.name == "real_world" and len(joint_angle_dict) > 0:
+            for ids in robot.ankle2mighty_zap:
+                mighty_zap_pos_arr = np.array(
+                    [joint_angle_dict[robot.mighty_zap_id2joint[id]] for id in ids]
+                ).T
+                last_ankle_pos = [0] * len(ids)
+                ankle_pos_list = []
+                for mighty_zap_pos in mighty_zap_pos_arr:
+                    ankle_pos = robot.ankle_fk(mighty_zap_pos, last_ankle_pos)
+                    ankle_pos_list.append(ankle_pos)
+                    last_ankle_pos = ankle_pos
+
+                ankle_pos_arr = np.array(ankle_pos_list).T
+                for i in range(len(ids)):
+                    id = ids[i]
+                    joint_angle_dict[robot.mighty_zap_id2joint[id]] = list(
+                        ankle_pos_arr[i]
+                    )
+
+            for name in sim.negated_joint_names:
+                joint_angle_dict[name] = [-angle for angle in joint_angle_dict[name]]
+
         os.makedirs(exp_folder_path, exist_ok=True)
 
         with open(os.path.join(exp_folder_path, "config.json"), "w") as f:
@@ -368,7 +415,7 @@ def main():
             "zmp_ref_traj": zmp_ref_traj,
             "zmp_traj": zmp_traj,
             # "zmp_approx_traj": zmp_approx_traj,
-            "com_ref_traj": com_ref_traj_copy,
+            "com_ref_traj": com_ref_traj,
             "com_traj": com_traj,
         }
 
@@ -396,7 +443,7 @@ def main():
 
         draw_footsteps(
             path,
-            foot_steps_copy,
+            foot_steps,
             robot.foot_size[:2],
             robot.offsets["y_offset_com_to_foot"],
             title=f"Footsteps Planning",

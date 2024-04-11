@@ -1,5 +1,6 @@
 import time
 from dataclasses import dataclass
+from threading import Lock
 from typing import List
 
 import numpy as np
@@ -31,6 +32,7 @@ class MightyZapController(BaseController):
         self.config = config
         self.motor_ids = motor_ids
         self.last_pos = {id: 0.0 for id in self.motor_ids}
+        self.lock = Lock()
 
         self.client = self.connect_to_client()
         self.initialize_motors()
@@ -56,6 +58,7 @@ class MightyZapController(BaseController):
     def set_pos(self, pos, interp=True, vel=None, delta_t=None):
         def set_pos_helper(pos):
             rounded_pos = [round(p) for p in pos]
+            # log(f"Goal: {rounded_pos}", header="MightyZap", level="debug")
             self.client.goal_position(self.motor_ids, rounded_pos)
             # for id, p in zip(self.motor_ids, rounded_pos):
             #     self.client.goal_position(id, p)``
@@ -87,6 +90,7 @@ class MightyZapController(BaseController):
         state_dict = {}
         for id in self.motor_ids:
             pos = self.client.present_position(id)
+            # log(f"ID: {id}, Present: {pos}", header="MightyZap", level="debug")
             if pos < 0:
                 pos = self.last_pos[id]
                 log(
@@ -110,7 +114,7 @@ if __name__ == "__main__":
         motor_ids=motor_ids,
     )
 
-    controller.set_pos([3000] * len(motor_ids))
+    controller.set_pos([4000] * len(motor_ids))
     while True:
         state_dict = controller.get_motor_state()
         message = "Motor states:"
@@ -118,7 +122,7 @@ if __name__ == "__main__":
             message += f" {id}: {state.pos}"
 
         log(message, header="MightyZap", level="debug")
-        if state_dict[0].pos >= 2990:
+        if state_dict[0].pos >= 3990:
             break
 
     controller.set_pos(init_pos)
