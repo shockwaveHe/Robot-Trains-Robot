@@ -154,7 +154,7 @@ class SunnySkyController(BaseController):
         state_dict = self.get_motor_state()
         zero_pos = np.array([state.pos for state in state_dict.values()])
         log(f"Setting zero position {list(zero_pos)} for motors...", header="SunnySky")
-        self.set_pos(zero_pos, limit=False)
+        self.set_pos(zero_pos)
         sleep(0.1)
 
         self.init_pos = {id: pos for id, pos in zip(self.motor_ids, zero_pos)}

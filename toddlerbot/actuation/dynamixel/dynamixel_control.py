@@ -11,6 +11,8 @@ from toddlerbot.actuation.dynamixel.dynamixel_client import *
 @dataclass
 class DynamixelConfig:
     port: str
+    kFF2: List[float]
+    kFF1: List[float]
     kP: List[float]
     kI: List[float]
     kD: List[float]
@@ -63,15 +65,12 @@ class DynamixelController(BaseController):
             1,
         )
         self.client.set_torque_enabled(self.motor_ids, True)
+        self.client.sync_write(self.motor_ids, self.config.kFF2, 88, 2)
+        self.client.sync_write(self.motor_ids, self.config.kFF1, 90, 2)
         self.client.sync_write(self.motor_ids, self.config.kP, 84, 2)
         self.client.sync_write(self.motor_ids, self.config.kI, 82, 2)
         self.client.sync_write(self.motor_ids, self.config.kD, 80, 2)
-        self.client.sync_write(
-            self.motor_ids,
-            self.config.current_limit,
-            102,
-            2,
-        )
+        self.client.sync_write(self.motor_ids, self.config.current_limit, 102, 2)
         self.set_pos(np.zeros(len(self.motor_ids)))
         sleep(0.1)
 
@@ -119,7 +118,8 @@ class DynamixelController(BaseController):
         # with self.lock:
         pos_arr = self.client.read_pos()
         # pos_arr, vel_arr, current_arr = self.client.read_pos_vel_cur()
-        # log(f"Current: {current_arr}", header="Dynamixel", level="debug")
+        # if current_arr.max() > 700:
+        #     log(f"Current: {current_arr.max()}", header="Dynamixel", level="debug")
         pos_arr_driven = (self.config.init_pos - pos_arr) * self.config.gear_ratio
         for i, id in enumerate(self.motor_ids):
             state_dict[id] = DynamixelState(
@@ -136,6 +136,8 @@ if __name__ == "__main__":
     controller = DynamixelController(
         DynamixelConfig(
             port="/dev/tty.usbserial-FT8ISUJY",
+            kFF2=[0, 0, 0, 0, 0, 0],
+            kFF1=[0, 0, 0, 0, 0, 0],
             kP=[400, 1200, 1200, 400, 1200, 1200],
             kI=[100, 100, 100, 100, 100, 100],
             kD=[200, 400, 400, 200, 400, 400],

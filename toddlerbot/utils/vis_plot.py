@@ -15,15 +15,12 @@ def plot_joint_tracking(
     time_seq_ref,
     joint_angle_dict,
     joint_angle_ref_dict,
-    motor_params,
     save_path,
     file_name="joint_angle_tracking",
     file_suffix="",
-    colors_dict={
-        "dynamixel": "cyan",
-        "sunny_sky": "oldlace",
-        "mighty_zap": "whitesmoke",
-    },
+    title_list=None,
+    motor_params=None,
+    colors_dict=None,
 ):
     all_angles = np.concatenate(
         list(joint_angle_dict.values()) + list(joint_angle_ref_dict.values())
@@ -35,31 +32,40 @@ def plot_joint_tracking(
     legend_labels = []
     for name in time_seq_dict.keys():
         x_list.append(time_seq_dict[name])
-        x_list.append(time_seq_ref)
+        if isinstance(time_seq_ref, list):
+            x_list.append(time_seq_ref)
+        else:
+            x_list.append(time_seq_ref[name])
         y_list.append(joint_angle_dict[name])
         y_list.append(joint_angle_ref_dict[name])
         legend_labels.append(name)
         legend_labels.append(name + "_ref")
 
-    n_joints = len(time_seq_dict)
-    n_rows = int(np.ceil(n_joints / 3))
+    n_plots = len(time_seq_dict)
+    n_rows = int(np.ceil(n_plots / 3))
     n_cols = 3
 
     fig, axs = plt.subplots(n_rows, n_cols, figsize=(n_cols * 5, n_rows * 3))
     plt.subplots_adjust(hspace=0.4, wspace=0.4)
 
     for i, ax in enumerate(axs.flat):
+        if i >= n_plots:
+            ax.set_visible(False)
+            continue
+
         ax.set_ylim(global_ymin, global_ymax)
-        ax.set_facecolor(colors_dict[motor_params[legend_labels[2 * i]].brand])
+        if motor_params is not None and colors_dict is not None:
+            ax.set_facecolor(colors_dict[motor_params[legend_labels[2 * i]].brand])
+
         plot_line_graph(
             y_list[2 * i : 2 * i + 2],
             x_list[2 * i : 2 * i + 2],
-            title=f"{legend_labels[2*i]}",
+            title=f"{legend_labels[2*i]}" if title_list is None else title_list[i],
             x_label="Time (s)",
             y_label="Position (rad)",
-            save_config=True if i == len(axs.flat) - 1 else False,
-            save_path=save_path if i == len(axs.flat) - 1 else None,
-            file_name=file_name if i == len(axs.flat) - 1 else None,
+            save_config=True if i == n_plots - 1 else False,
+            save_path=save_path if i == n_plots - 1 else None,
+            file_name=file_name if i == n_plots - 1 else None,
             file_suffix=file_suffix,
             ax=ax,
             legend_labels=legend_labels[2 * i : 2 * i + 2],

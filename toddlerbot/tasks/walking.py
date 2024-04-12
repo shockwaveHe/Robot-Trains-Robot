@@ -70,7 +70,8 @@ class Walking:
         self.left_pos = np.array([0.0, self.y_offset_com_to_foot, 0.0])
         self.right_pos = np.array([0.0, -self.y_offset_com_to_foot, 0.0])
 
-        self.left_hip_roll_comp = self.right_hip_roll_comp = config.hip_roll_comp
+        self.left_hip_roll_comp = config.hip_roll_comp
+        self.right_hip_roll_comp = config.hip_roll_comp
         self.left_hip_roll_comp_curr = self.right_hip_roll_comp_curr = 0.0
 
     def plan(
@@ -433,9 +434,14 @@ def main():
             time_seq_ref,
             joint_angle_dict,
             joint_angle_ref_dict,
-            robot.config.motor_params,
             save_path=exp_folder_path,
             file_suffix=file_suffix,
+            motor_params=robot.motor_params,
+            colors_dict={
+                "dynamixel": "cyan",
+                "sunny_sky": "oldlace",
+                "mighty_zap": "whitesmoke",
+            },
         )
 
         fig, ax = plt.subplots(figsize=(10, 6))

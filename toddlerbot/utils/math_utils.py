@@ -24,6 +24,8 @@ def round_floats(obj, precision):
         return type(obj)(round_floats(x, precision) for x in obj)
     elif isinstance(obj, np.ndarray):
         return np.round(obj, decimals=precision)
+    elif isinstance(obj, dict):
+        return {k: round_floats(v, precision) for k, v in obj.items()}
     elif is_dataclass(obj):
         return type(obj)(
             **{

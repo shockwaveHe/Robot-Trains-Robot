@@ -12,7 +12,9 @@ from toddlerbot.utils.file_utils import find_description_path
 
 
 class MuJoCoSim(BaseSim):
-    def __init__(self, robot, xml_path=None, fixed: bool = False):
+    def __init__(
+        self, robot, xml_str=None, assets=None, xml_path=None, fixed: bool = False
+    ):
         """Initialize the MuJoCo simulation environment."""
         super().__init__()
         self.name = "mujoco"
@@ -26,10 +28,14 @@ class MuJoCoSim(BaseSim):
 
         self.foot_size = robot.foot_size
 
-        if xml_path is None:
+        if xml_str is not None and assets is not None:
+            self.model = mujoco.MjModel.from_xml_string(xml_str, assets)
+        elif xml_path is not None:
+            self.model = mujoco.MjModel.from_xml_path(xml_path)
+        else:
             xml_path = find_description_path(robot.name, suffix="_scene.xml")
+            self.model = mujoco.MjModel.from_xml_path(xml_path)
 
-        self.model = mujoco.MjModel.from_xml_path(xml_path)
         self.data = mujoco.MjData(self.model)
         if not fixed:
             self.put_robot_on_ground(robot)

@@ -186,13 +186,16 @@
             "name": "Python: sysID_toddlerbot_legs_data_collection",
             "type": "python",
             "request": "launch",
-            "program": "toddlerbot/sysID/collect_data.py",
+            "program": "toddlerbot/tasks/sysID.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
                 "--robot-name",
                 "toddlerbot_legs",
-            ]
+                "--joint-name",
+                "left_hip_yaw",
+            ],
+            "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
         },
     ]
 }

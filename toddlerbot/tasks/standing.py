@@ -84,8 +84,13 @@ def main():
             time_seq_ref,
             joint_angle_dict,
             joint_angle_ref_dict,
-            robot.config.motor_params,
             save_path=exp_folder_path,
+            motor_params=robot.motor_params,
+            colors_dict={
+                "dynamixel": "cyan",
+                "sunny_sky": "oldlace",
+                "mighty_zap": "whitesmoke",
+            },
         )
 
 
