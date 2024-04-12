@@ -16,8 +16,8 @@ from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.sim.robot import HumanoidRobot
 from toddlerbot.utils.file_utils import find_description_path
 from toddlerbot.utils.math_utils import round_floats
-from toddlerbot.utils.misc_utils import *
-from toddlerbot.utils.vis_plot import *
+from toddlerbot.utils.misc_utils import log, sleep
+from toddlerbot.utils.vis_plot import plot_joint_tracking
 
 
 def update_xml(robot, tree, params_dict):
@@ -132,18 +132,6 @@ def optimize_parameters(
 def generate_random_sinusoidal_config(
     duration, frequency_range, amplitude_range, rate_range
 ):
-    """
-    Generates random configurations for a sinusoidal signal while keeping the duration fixed.
-
-    Args:
-    duration (float): Duration of the signal in seconds.
-    frequency_range (tuple): Min and max values for frequency.
-    amplitude_range (tuple): Min and max values for amplitude.
-    sampling_rate_range (tuple): Min and max values for sampling rate.
-
-    Returns:
-    dict: Configuration dictionary with frequency, amplitude, and sampling rate.
-    """
     frequency = np.random.uniform(*frequency_range)
     amplitude = np.random.uniform(*amplitude_range)
     sampling_rate = np.random.uniform(*rate_range)
@@ -178,7 +166,7 @@ def actuate(sim, robot, joint_name, signal_pos, sampling_rate, viewer=None):
     """
     # Convert signal time to sleep time between updates
     sleep_time = 1 / sampling_rate
-    initial_joint_angles = robot.initialize_joint_angles()
+    _, initial_joint_angles = robot.initialize_joint_angles()
 
     joint_data_dict = {"pos": [], "time": []}
     time_start = time.time()
@@ -319,7 +307,8 @@ def evaluate(
         title_list.append(json.dumps(signal_config_rounded))
         # Actuate the joint and collect data
         log(
-            f"Actuating {joint_name} in {sim.name} with {round_floats(signal_config, 3)}...",
+            f"Actuating {joint_name} in {sim.name} "
+            + f"with {round_floats(signal_config, 3)}...",
             header="SysID",
             level="debug",
         )

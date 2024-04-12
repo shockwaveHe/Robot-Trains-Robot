@@ -6,7 +6,7 @@ from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.pybullet_sim import PyBulletSim
 from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.sim.robot import HumanoidRobot
-from toddlerbot.utils.vis_plot import *
+from toddlerbot.utils.vis_plot import plot_joint_tracking
 
 
 def main():
@@ -47,7 +47,7 @@ def main():
     else:
         raise ValueError("Unknown simulator")
 
-    joint_angles = robot.initialize_joint_angles()
+    _, initial_joint_angles = robot.initialize_joint_angles()
 
     time_start = time.time()
     time_seq_ref = []
@@ -58,7 +58,7 @@ def main():
     def step_func():
         time_ref = time.time() - time_start
         time_seq_ref.append(time_ref)
-        for name, angle in joint_angles.items():
+        for name, angle in initial_joint_angles.items():
             if name not in joint_angle_ref_dict:
                 joint_angle_ref_dict[name] = []
             joint_angle_ref_dict[name].append(angle)
@@ -72,10 +72,10 @@ def main():
             time_seq_dict[name].append(joint_state.time - time_start)
             joint_angle_dict[name].append(joint_state.pos)
 
-        sim.set_joint_angles(robot, joint_angles)
+        sim.set_joint_angles(robot, initial_joint_angles)
 
     try:
-        sim.simulate(step_func, sleep_time=args.sleep_time)
+        sim.simulate_worker(step_func, sleep_time=args.sleep_time)
     finally:
         os.makedirs(exp_folder_path, exist_ok=True)
 

@@ -1,12 +1,10 @@
 import argparse
 
-import numpy as np
 import pybullet as p
 
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.pybullet_sim import PyBulletSim
 from toddlerbot.sim.robot import HumanoidRobot
-from toddlerbot.utils.math_utils import round_floats
 
 
 def main():
@@ -39,7 +37,7 @@ def main():
         for idx in range(p.getNumJoints(robot.id)):
             name = p.getJointInfo(robot.id, idx)[1].decode("UTF-8")
             qIndex = p.getJointInfo(robot.id, idx)[3]
-            if not "passive" in name and qIndex > -1:
+            if "passive" not in name and qIndex > -1:
                 low, high = p.getJointInfo(robot.id, idx)[8:10]
                 print(f"{name} has limits ({low}, {high})")
                 controls[name] = p.addUserDebugParameter(name, low, high, 0)
@@ -62,7 +60,7 @@ def main():
 
         return (sim_step_idx,)
 
-    sim.simulate(step_func, (sim_step_idx,), sleep_time=args.sleep_time)
+    sim.simulate_worker(step_func, (sim_step_idx,), sleep_time=args.sleep_time)
 
 
 if __name__ == "__main__":

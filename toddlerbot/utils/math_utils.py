@@ -4,7 +4,7 @@ from dataclasses import is_dataclass
 import numpy as np
 from transforms3d.quaternions import mat2quat, quat2mat
 
-from toddlerbot.utils.misc_utils import *
+from toddlerbot.utils.misc_utils import log, sleep
 
 
 def round_floats(obj, precision):
@@ -108,3 +108,32 @@ def interpolate_pos(
         header="".join(x.title() for x in actuator_type.split("_")),
         level="debug",
     )
+
+
+def resample_trajectory(trajectory, desired_interval=0.01, interp_type="linear"):
+    resampled_trajectory = []
+    for i in range(len(trajectory) - 1):
+        t0, joint_angles_0 = trajectory[i]
+        t1, joint_angles_1 = trajectory[i + 1]
+        delta_t = t1 - t0
+
+        # Add an epislon to the desired interval to avoid floating point errors
+        if delta_t > desired_interval + 1e-6:
+            # More points needed, interpolate
+            num_steps = int(delta_t / desired_interval)
+            for j in range(num_steps):
+                t = j * desired_interval
+                interpolated_joint_angles = {}
+                for joint_name, p_start in joint_angles_0.items():
+                    p_end = joint_angles_1[joint_name]
+                    interpolated_joint_angles[joint_name] = interpolate(
+                        p_start, p_end, delta_t, t, interp_type
+                    )
+                resampled_trajectory.append((t0 + t, interpolated_joint_angles))
+        else:
+            # Interval is fine, keep the original point
+            resampled_trajectory.append((t0, joint_angles_0))
+
+    resampled_trajectory.append(trajectory[-1])
+
+    return resampled_trajectory

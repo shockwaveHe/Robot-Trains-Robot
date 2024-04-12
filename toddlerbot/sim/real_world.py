@@ -1,18 +1,34 @@
 import queue
+import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from threading import Thread
 
-from toddlerbot.actuation.dynamixel.dynamixel_control import *
-from toddlerbot.actuation.mighty_zap.mighty_zap_control import *
-from toddlerbot.actuation.sunny_sky.sunny_sky_control import *
-from toddlerbot.sim import *
+import numpy as np
+
+from toddlerbot.actuation.dynamixel.dynamixel_control import (
+    DynamixelConfig,
+    DynamixelController,
+)
+from toddlerbot.actuation.mighty_zap.mighty_zap_control import (
+    MightyZapConfig,
+    MightyZapController,
+)
+from toddlerbot.actuation.sunny_sky.sunny_sky_control import (
+    SunnySkyConfig,
+    SunnySkyController,
+    find_feather_port,
+)
+from toddlerbot.sim import BaseSim
+from toddlerbot.sim.robot import HumanoidRobot, JointState
+from toddlerbot.utils.math_utils import interpolate_pos, round_floats
+from toddlerbot.utils.misc_utils import log, sleep
 
 # my_logger = logging.getLogger("my_logger")
 # my_logger.setLevel(logging.WARNING)
 
 
 class RealWorld(BaseSim):
-    def __init__(self, robot: Optional[HumanoidRobot] = None):
+    def __init__(self, robot=None):
         super().__init__()
         self.name = "real_world"
         self.negated_joint_names = [
@@ -222,7 +238,7 @@ class RealWorld(BaseSim):
 
     # @profile
     def get_joint_state(
-        self, robot: HumanoidRobot, motor_list=["dynamixel", "sunny_sky", "mighty_zap"]
+        self, robot, motor_list=["dynamixel", "sunny_sky", "mighty_zap"]
     ):
         if "dynamixel" in motor_list:
             future_dynamixel = Future()
@@ -275,21 +291,28 @@ class RealWorld(BaseSim):
 
     def simulate(
         self,
-        step_func: Optional[Callable] = None,
-        step_params: Optional[Tuple] = None,
-        vis_flags: Optional[List] = [],
+        step_func=None,
+        step_params=None,
+        vis_flags=[],
         sleep_time: float = 0.0,
     ):
         try:
             while True:
+                step_start = time.time()
+
                 if step_func is not None:
                     if step_params is None:
                         step_func()
                     else:
                         step_params = step_func(*step_params)
 
+                time_until_next_step = sleep_time - (time.time() - step_start)
+                if time_until_next_step > 0:
+                    sleep(time_until_next_step)
+
         except KeyboardInterrupt:
             pass
+
         finally:
             self.close()
 
@@ -305,16 +328,14 @@ class RealWorld(BaseSim):
 
 
 if __name__ == "__main__":
-    from toddlerbot.utils.vis_plot import *
-
     robot = HumanoidRobot("toddlerbot_legs")
     sim = RealWorld(robot)
 
-    joint_angles = robot.initialize_joint_angles()
+    _, initial_joint_angles = robot.initialize_joint_angles()
 
     try:
         while True:
-            sim.set_joint_angles(robot, joint_angles)
+            sim.set_joint_angles(robot, initial_joint_angles)
             joint_state_dict = sim.get_joint_state(robot)
             log(f"Joint states: {joint_state_dict}", header="RealWorld", level="debug")
     finally:

@@ -1,8 +1,5 @@
 from abc import ABC, abstractmethod
 
-from toddlerbot.utils.math_utils import *
-from toddlerbot.utils.misc_utils import *
-
 
 class BaseController(ABC):
     @abstractmethod
@@ -28,7 +25,3 @@ class BaseController(ABC):
     @abstractmethod
     def close_motors(self):
         pass
-
-    # @abstractmethod
-    # def set_vel(self, vel):
-    #     pass

@@ -30,7 +30,7 @@
             "name": "Python: walk_op",
             "type": "python",
             "request": "launch",
-            "program": "toddlerbot/tasks/walking.py",
+            "program": "toddlerbot/tasks/run_walking.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -44,7 +44,7 @@
             "name": "Python: walk_op3",
             "type": "python",
             "request": "launch",
-            "program": "toddlerbot/tasks/walking.py",
+            "program": "toddlerbot/tasks/run_walking.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -58,7 +58,7 @@
             "name": "Python: walk_op3_mujoco",
             "type": "python",
             "request": "launch",
-            "program": "toddlerbot/tasks/walking.py",
+            "program": "toddlerbot/tasks/run_walking.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -75,7 +75,7 @@
             "name": "Python: walk_toddlerbot_mujoco",
             "type": "python",
             "request": "launch",
-            "program": "toddlerbot/tasks/walking.py",
+            "program": "toddlerbot/tasks/run_walking.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -92,7 +92,7 @@
             "name": "Python: walk_toddlerbot_legs_mujoco",
             "type": "python",
             "request": "launch",
-            "program": "toddlerbot/tasks/walking.py",
+            "program": "toddlerbot/tasks/run_walking.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -122,7 +122,7 @@
             "name": "Python: stand_toddlerbot_real",
             "type": "python",
             "request": "launch",
-            "program": "toddlerbot/tasks/standing.py",
+            "program": "toddlerbot/tasks/run_standing.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -138,7 +138,7 @@
             "name": "Python: walk_toddlerbot_real",
             "type": "python",
             "request": "launch",
-            "program": "toddlerbot/tasks/walking.py",
+            "program": "toddlerbot/tasks/run_walking.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -154,7 +154,7 @@
             "name": "Python: stand_toddlerbot_legs_real",
             "type": "python",
             "request": "launch",
-            "program": "toddlerbot/tasks/standing.py",
+            "program": "toddlerbot/tasks/run_standing.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -170,7 +170,7 @@
             "name": "Python: walk_toddlerbot_legs_real",
             "type": "python",
             "request": "launch",
-            "program": "toddlerbot/tasks/walking.py",
+            "program": "toddlerbot/tasks/run_walking.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -183,10 +183,10 @@
             ]
         },
         {
-            "name": "Python: sysID_toddlerbot_legs_data_collection",
+            "name": "Python: sysID_toddlerbot_legs",
             "type": "python",
             "request": "launch",
-            "program": "toddlerbot/tasks/sysID.py",
+            "program": "toddlerbot/tasks/run_sysID.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [

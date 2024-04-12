@@ -1,9 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Callable, Dict, List, Optional, Tuple
-
-from toddlerbot.sim.robot import *
-from toddlerbot.utils.math_utils import *
-from toddlerbot.utils.misc_utils import *
 
 
 class BaseSim(ABC):
@@ -12,27 +7,9 @@ class BaseSim(ABC):
         pass
 
     @abstractmethod
-    def get_link_pos(self, robot: HumanoidRobot, link_name: str):
+    def get_joint_state(self):
         pass
 
     @abstractmethod
-    def get_zmp(self, robot: HumanoidRobot):
-        pass
-
-    @abstractmethod
-    def get_joint_state(self, robot: HumanoidRobot):
-        pass
-
-    @abstractmethod
-    def set_joint_angles(self, robot: HumanoidRobot, joint_angles: List[float]):
-        pass
-
-    @abstractmethod
-    def simulate(
-        self,
-        step_func: Optional[Callable] = None,
-        step_params: Optional[Tuple] = None,
-        vis_flags: Optional[List] = [],
-        sleep_time: float = 0.0,
-    ):
+    def set_joint_angles(self, joint_angles: dict):
         pass

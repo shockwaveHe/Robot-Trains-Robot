@@ -5,8 +5,10 @@ from typing import List
 
 import numpy as np
 
-from toddlerbot.actuation import *
+from toddlerbot.actuation import BaseController
 from toddlerbot.actuation.mighty_zap.mighty_zap_client import MightyZapClient
+from toddlerbot.utils.math_utils import interpolate_pos
+from toddlerbot.utils.misc_utils import log, sleep
 
 
 @dataclass
@@ -42,7 +44,7 @@ class MightyZapController(BaseController):
             client = MightyZapClient(self.config.port, self.config.baudrate)
             log(f"Connected to the port: {self.config.port}", header="MightyZap")
             return client
-        except Exception as e:
+        except Exception:
             raise ConnectionError("Could not connect to any MightyZap port.")
 
     def initialize_motors(self):
@@ -94,7 +96,8 @@ class MightyZapController(BaseController):
             if pos < 0:
                 pos = self.last_pos[id]
                 log(
-                    f"Read the MightyZap {id} Position failed. Use the last position {self.last_pos[id]}.",
+                    f"Read the MightyZap {id} Position failed."
+                    + f"Use the last position {self.last_pos[id]}.",
                     header="MightyZap",
                     level="warning",
                 )

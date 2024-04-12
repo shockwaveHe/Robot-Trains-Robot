@@ -2,7 +2,7 @@ import logging
 import platform
 import time
 
-from colorama import Fore, Style, init
+from colorama import Fore, init
 
 # Initialize colorama to auto-reset color codes after each print statement
 init(autoreset=True)
@@ -46,14 +46,17 @@ def sleep(duration):
     Parameters:
     - time: The amount of time to sleep (in seconds).
     """
-    if platform.system() == "Darwin":  # Darwin is the system name for macOS
-        adjusted_duration = duration / 1.25
-        # log(
-        #     f"Sleeping for {adjusted_duration} seconds (adjusted for macOS).",
-        #     header="Sleep",
-        #     level="debug",
-        # )
-        time.sleep(adjusted_duration)
-    else:
-        # log(f"Sleeping for {duration} seconds.", header="Sleep", level="debug")
-        time.sleep(duration)
+    try:
+        if platform.system() == "Darwin":  # Darwin is the system name for macOS
+            adjusted_duration = duration / 1.25
+            # log(
+            #     f"Sleeping for {adjusted_duration} seconds (adjusted for macOS).",
+            #     header="Sleep",
+            #     level="debug",
+            # )
+            time.sleep(adjusted_duration)
+        else:
+            # log(f"Sleeping for {duration} seconds.", header="Sleep", level="debug")
+            time.sleep(duration)
+    except KeyboardInterrupt:
+        log("Sleep interrupted.", header="Sleep")

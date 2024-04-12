@@ -4,11 +4,11 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 from scipy.optimize import root
-from transforms3d.axangles import axangle2mat
 from yourdfpy import URDF
 
 from toddlerbot.robot_descriptions.robot_configs import robot_configs
 from toddlerbot.utils.file_utils import find_description_path
+from toddlerbot.utils.math_utils import round_floats
 from toddlerbot.utils.misc_utils import log
 
 
@@ -161,7 +161,15 @@ class HumanoidRobot:
             if info["active"]:
                 joint_angles[name] = info["init_angle"]
 
-        return joint_angles
+        initial_joint_angles = copy.deepcopy(joint_angles)
+        if self.name == "robotis_op3":
+            initial_joint_angles["l_sho_roll"] = np.pi / 2
+            initial_joint_angles["r_sho_roll"] = -np.pi / 2
+        elif self.name == "toddlerbot":
+            initial_joint_angles["left_sho_roll"] = -np.pi / 2
+            initial_joint_angles["right_sho_roll"] = np.pi / 2
+
+        return joint_angles, initial_joint_angles
 
     def ankle_fk(self, mighty_zap_pos, last_mighty_zap_pos):
         def objective_function(ankle_pos, target_pos):
@@ -180,7 +188,7 @@ class HumanoidRobot:
             optimized_ankle_pos = result.x
             return optimized_ankle_pos
         else:
-            log(f"Solving ankle position failed", header="MightyZap", level="warning")
+            log("Solving ankle position failed", header="MightyZap", level="warning")
             return last_mighty_zap_pos
 
     def ankle_ik(self, ankle_pos):
@@ -242,22 +250,6 @@ class HumanoidRobot:
         target_right_foot_ori: List[float],
         joint_angles_curr: List[float],
     ) -> List[float]:
-        """
-        Solves inverse kinematics for the given foot positions and orientations.
-
-        Args:
-            target_left_foot_pos (List[float]): Target position for the left foot (x, y, z).
-            target_left_foot_ori (List[float]): Target orientation for the left foot (quaternion).
-            target_right_foot_pos (List[float]): Target position for the right foot (x, y, z).
-            target_right_foot_ori (List[float]): Target orientation for the right foot (quaternion).
-            current_angles (List[float], optional): Current joint angles. Defaults to None.
-
-        Returns:
-            List[float]: New joint angles to achieve the desired foot positions and orientations.
-
-        Raises:
-            ValueError: If the robot has not been loaded yet.
-        """
         if self.id is None or self.joints_info is None:
             raise ValueError("Robot has not been loaded yet.")
 
@@ -278,18 +270,6 @@ class HumanoidRobot:
         side: str,
         joint_angles: Dict[str, float],
     ) -> List[float]:
-        """
-        Calculates the leg angles based on the target foot position and orientation.
-
-        Args:
-            target_foot_pos (Tuple[float, float, float]): Target position for the foot (x, y, z).
-            target_foot_ori (Tuple[float, float, float]): Target orientation for the foot (roll, pitch, yaw).
-            side (str): The side of the leg ('left' or 'right').
-            joint_angles (List[float]): Current list of joint angles.
-
-        Returns:
-            List[float]: Updated list of joint angles after calculation.
-        """
         # Calculate leg angles
         angles_dict = self.config.compute_leg_angles(
             target_foot_pos, target_foot_ori, side, self.offsets
@@ -309,10 +289,7 @@ class HumanoidRobot:
 
 # Example usage
 if __name__ == "__main__":
-    import numpy as np
-
     from toddlerbot.sim.pybullet_sim import PyBulletSim
-    from toddlerbot.utils.math_utils import round_floats
 
     robot = HumanoidRobot("toddlerbot")
 
