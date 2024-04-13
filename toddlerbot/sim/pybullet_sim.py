@@ -7,7 +7,7 @@ from toddlerbot.sim.robot import HumanoidRobot
 from toddlerbot.utils.constants import GRAVITY
 from toddlerbot.utils.file_utils import find_description_path
 from toddlerbot.utils.math_utils import quatxyzw2mat
-from toddlerbot.utils.misc_utils import sleep
+from toddlerbot.utils.misc_utils import precise_sleep
 
 
 class PyBulletSim(BaseSim):
@@ -120,7 +120,7 @@ class PyBulletSim(BaseSim):
                         step_params = step_func(*step_params)
                 p.stepSimulation()
                 if sleep_time > 0:
-                    sleep(sleep_time)
+                    precise_sleep(sleep_time)
         except KeyboardInterrupt:
             pass
         finally:

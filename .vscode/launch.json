@@ -194,6 +194,8 @@
                 "toddlerbot_legs",
                 "--joint-name",
                 "left_hip_yaw",
+                "--exp-folder-path",
+                "results/20240413_104126_sysID_toddlerbot_legs"
             ],
             "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
         },

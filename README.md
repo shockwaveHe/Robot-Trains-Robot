@@ -4,6 +4,7 @@
 
 ```
 git clone git@github.com:hshi74/toddlerbot.git
+cd toddlerbot
 git submodule update --init --recursive
 ```
 

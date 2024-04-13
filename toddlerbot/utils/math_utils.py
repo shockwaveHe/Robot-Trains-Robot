@@ -4,7 +4,7 @@ from dataclasses import is_dataclass
 import numpy as np
 from transforms3d.quaternions import mat2quat, quat2mat
 
-from toddlerbot.utils.misc_utils import log, sleep
+from toddlerbot.utils.misc_utils import log, precise_sleep
 
 
 def round_floats(obj, precision):
@@ -97,7 +97,7 @@ def interpolate_pos(
         time_elapsed = time.time() - time_start - time_curr
         time_until_next_step = sleep_time - time_elapsed
         if time_until_next_step > 0:
-            sleep(time_until_next_step)
+            precise_sleep(time_until_next_step)
 
         counter += 1
 

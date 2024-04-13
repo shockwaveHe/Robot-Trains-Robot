@@ -8,7 +8,7 @@ import numpy as np
 from toddlerbot.actuation import BaseController
 from toddlerbot.actuation.mighty_zap.mighty_zap_client import MightyZapClient
 from toddlerbot.utils.math_utils import interpolate_pos
-from toddlerbot.utils.misc_utils import log, sleep
+from toddlerbot.utils.misc_utils import log, precise_sleep
 
 
 @dataclass
@@ -50,7 +50,7 @@ class MightyZapController(BaseController):
     def initialize_motors(self):
         log("Initializing motors...", header="MightyZap")
         self.set_pos(self.config.init_pos)
-        sleep(0.1)
+        precise_sleep(0.1)
 
     def close_motors(self):
         self.client.force_enable(self.motor_ids, [0] * len(self.motor_ids))
@@ -129,7 +129,7 @@ if __name__ == "__main__":
             break
 
     controller.set_pos(init_pos)
-    sleep(1)
+    precise_sleep(1)
 
     controller.close_motors()
 

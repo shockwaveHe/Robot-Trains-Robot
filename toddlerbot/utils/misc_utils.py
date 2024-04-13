@@ -1,5 +1,4 @@
 import logging
-import platform
 import time
 
 from colorama import Fore, init
@@ -39,7 +38,7 @@ def log(message, header=None, level="info"):
         my_logger.info(Fore.WHITE + "[Info] " + header_msg + message)
 
 
-def sleep(duration):
+def precise_sleep(duration):
     """
     Sleep for a specified amount of time.
 
@@ -47,16 +46,16 @@ def sleep(duration):
     - time: The amount of time to sleep (in seconds).
     """
     try:
-        if platform.system() == "Darwin":  # Darwin is the system name for macOS
-            adjusted_duration = duration / 1.25
-            # log(
-            #     f"Sleeping for {adjusted_duration} seconds (adjusted for macOS).",
-            #     header="Sleep",
-            #     level="debug",
-            # )
-            time.sleep(adjusted_duration)
-        else:
-            # log(f"Sleeping for {duration} seconds.", header="Sleep", level="debug")
-            time.sleep(duration)
+        # Convert to seconds and subtract a little
+        target = time.perf_counter_ns() + duration * 1e9
+
+        # Leave 0.05s for active wait
+        while time.perf_counter_ns() < target - 1e6:
+            time.sleep(0)
+
+        # Active waiting for the last 1ms
+        while time.perf_counter_ns() < target:
+            pass
+
     except KeyboardInterrupt:
         raise KeyboardInterrupt("Sleep interrupted by user.")

@@ -18,7 +18,7 @@ import serial.tools.list_ports as list_ports
 
 from toddlerbot.actuation import BaseController
 from toddlerbot.utils.math_utils import interpolate_pos
-from toddlerbot.utils.misc_utils import log, sleep
+from toddlerbot.utils.misc_utils import log, precise_sleep
 
 
 @dataclass
@@ -151,13 +151,13 @@ class SunnySkyController(BaseController):
 
         log("Testing lower limit for motors...", header="SunnySky")
         self.set_pos(pos_curr - joint_range, limit=False)
-        sleep(0.1)
+        precise_sleep(0.1)
 
         state_dict = self.get_motor_state()
         zero_pos = np.array([state.pos for state in state_dict.values()])
         log(f"Setting zero position {list(zero_pos)} for motors...", header="SunnySky")
         self.set_pos(zero_pos)
-        sleep(0.1)
+        precise_sleep(0.1)
 
         self.init_pos = {id: pos for id, pos in zip(self.motor_ids, zero_pos)}
 

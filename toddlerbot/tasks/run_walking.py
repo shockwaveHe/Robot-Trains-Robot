@@ -15,7 +15,7 @@ from toddlerbot.sim.robot import HumanoidRobot
 from toddlerbot.tasks.walking import Walking
 from toddlerbot.tasks.walking_configs import walking_configs
 from toddlerbot.utils.math_utils import round_floats
-from toddlerbot.utils.misc_utils import log, sleep
+from toddlerbot.utils.misc_utils import log, precise_sleep
 from toddlerbot.utils.vis_planning import draw_footsteps
 from toddlerbot.utils.vis_plot import plot_joint_tracking, plot_line_graph
 
@@ -149,7 +149,7 @@ def main():
 
             time_until_next_step = config.control_dt - (time.time() - step_start)
             if time_until_next_step > 0:
-                sleep(time_until_next_step)
+                precise_sleep(time_until_next_step)
 
     except KeyboardInterrupt:
         log("KeyboardInterrupt recieved. Closing...", header="Walking")

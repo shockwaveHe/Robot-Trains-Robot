@@ -11,7 +11,6 @@ from toddlerbot.sim import BaseSim
 from toddlerbot.sim.robot import HumanoidRobot, JointState
 from toddlerbot.utils.constants import GRAVITY
 from toddlerbot.utils.file_utils import find_description_path
-from toddlerbot.utils.misc_utils import sleep
 
 
 class MuJoCoSim(BaseSim):
@@ -37,11 +36,11 @@ class MuJoCoSim(BaseSim):
         if not fixed:
             self.put_robot_on_ground()
 
-        self.foot_size = robot.foot_size
-        self.last_t = None
-
         self.queue = queue.Queue()
         self.stop_event = threading.Event()
+
+        self.foot_size = robot.foot_size
+        self.t_last = self.data.time
 
     def put_robot_on_ground(self, z_offset: float = 0.02):
         lowest_z = float("inf")
@@ -121,10 +120,10 @@ class MuJoCoSim(BaseSim):
                 self.data.actuator(f"{name}_act").ctrl = angle
 
     def _compute_dmom(self):
-        if self.last_t is None:
+        if self.t_last == 0:
             self.last_mom = np.zeros(3)
             self.last_angmom = np.zeros(3)
-            self.last_t = time.time()
+            self.t_last = self.data.time
         else:
             # Calculate current momentum and angular momentum
             mom = np.zeros(3)
@@ -151,8 +150,8 @@ class MuJoCoSim(BaseSim):
                 mom += P
                 angmom += L
 
-            time_curr = time.time()
-            dt = time_curr - self.last_t
+            t_curr = self.data.time
+            dt = t_curr - self.t_last
 
             self.dP = (mom - self.last_mom) / dt
             self.dL = (angmom - self.last_angmom) / dt
@@ -160,7 +159,7 @@ class MuJoCoSim(BaseSim):
             # Update last states
             self.last_mom = mom
             self.last_angmom = angmom
-            self.last_t = time_curr
+            self.t_last = t_curr
 
     def vis_foot_steps(self, viewer, foot_steps):
         i = viewer.user_scn.ngeom
@@ -240,7 +239,7 @@ class MuJoCoSim(BaseSim):
         )
         viewer.user_scn.ngeom = i + 1
 
-    def simulate_worker(self, headless, callback, vis_data, sleep_time):
+    def simulate_worker(self, headless, callback, vis_data):
         if not headless:
             viewer = mujoco.viewer.launch_passive(self.model, self.data)
 
@@ -248,8 +247,6 @@ class MuJoCoSim(BaseSim):
             mujoco.set_mjcb_control(self.control_callback)
 
         while not self.stop_event.is_set():
-            step_start = time.time()
-
             if callback:
                 mujoco.mj_step(self.model, self.data)
             else:
@@ -272,18 +269,12 @@ class MuJoCoSim(BaseSim):
 
                 viewer.sync()
 
-            time_until_next_step = sleep_time - (time.time() - step_start)
-            if time_until_next_step > 0:
-                sleep(time_until_next_step)
-
         if not headless:
             viewer.close()
 
-    def simulate(
-        self, headless=False, callback=True, vis_data=None, sleep_time: float = 0.0
-    ):
+    def simulate(self, headless=False, callback=True, vis_data=None):
         self.sim_thread = threading.Thread(
-            target=self.simulate_worker, args=(headless, callback, vis_data, sleep_time)
+            target=self.simulate_worker, args=(headless, callback, vis_data)
         )
         self.sim_thread.start()
 

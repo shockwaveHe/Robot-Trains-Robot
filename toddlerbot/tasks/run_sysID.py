@@ -15,7 +15,7 @@ from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.sim.robot import HumanoidRobot
 from toddlerbot.utils.file_utils import find_description_path
 from toddlerbot.utils.math_utils import round_floats
-from toddlerbot.utils.misc_utils import log, sleep
+from toddlerbot.utils.misc_utils import log, precise_sleep
 from toddlerbot.utils.vis_plot import plot_joint_tracking
 
 
@@ -148,7 +148,7 @@ def generate_sinusoidal_signal(signal_config):
     return t, signal
 
 
-def actuate(sim, robot, joint_name, signal_pos, sleep_time, rest_time=2):
+def actuate(sim, robot, joint_name, signal_pos, sleep_time, prep_time=2):
     """
     Actuates a single joint with the given signal and collects the response.
     """
@@ -156,6 +156,9 @@ def actuate(sim, robot, joint_name, signal_pos, sleep_time, rest_time=2):
     _, initial_joint_angles = robot.initialize_joint_angles()
 
     joint_traj_dict = {"pos": [], "time": []}
+
+    sim.set_joint_angles(initial_joint_angles)
+    precise_sleep(prep_time)
 
     time_start = time.time()
     for angle in signal_pos:
@@ -181,12 +184,7 @@ def actuate(sim, robot, joint_name, signal_pos, sleep_time, rest_time=2):
 
         time_until_next_step = sleep_time - (time.time() - step_start)
         if time_until_next_step > 0:
-            sleep(time_until_next_step)
-
-    time_end = time.time()
-    while time.time() - time_end < 2:
-        sim.set_joint_angles(initial_joint_angles)
-        sleep(sleep_time)
+            precise_sleep(time_until_next_step)
 
     return joint_traj_dict
 
@@ -268,9 +266,10 @@ def evaluate(
     new_xml_path,
     joint_data_dict,
     exp_folder_path,
+    headless=False,
 ):
     sim = MuJoCoSim(robot, xml_path=new_xml_path, fixed=True)
-    sim.simulate()
+    sim.simulate(headless=headless)
 
     signal_config_list = []
     observed_response = []
@@ -355,6 +354,12 @@ def main():
         default="",
         help="The path to the experiment folder.",
     )
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        default=False,
+        help="Run the simulation in headless mode.",
+    )
     args = parser.parse_args()
 
     if len(args.exp_folder_path) > 0:
@@ -428,11 +433,16 @@ def main():
         #     "p_gain": 14.9,
         # }
 
-        # update_xml(tree, args.joint_name, opt_params)
+        update_xml(tree, args.joint_name, opt_params)
         tree.write(new_xml_path)
 
     sim_data_dict = evaluate(
-        robot, args.joint_name, new_xml_path, real_world_data_dict, exp_folder_path
+        robot,
+        args.joint_name,
+        new_xml_path,
+        real_world_data_dict,
+        exp_folder_path,
+        headless=args.headless,
     )
     sim_data_file_name = f"{args.joint_name}_sim_data.pkl"
     sim_data_file_path = os.path.join(exp_folder_path, sim_data_file_name)

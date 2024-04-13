@@ -8,7 +8,7 @@ import numpy as np
 from toddlerbot.actuation import BaseController
 from toddlerbot.actuation.dynamixel.dynamixel_client import DynamixelClient
 from toddlerbot.utils.math_utils import interpolate_pos
-from toddlerbot.utils.misc_utils import log, sleep
+from toddlerbot.utils.misc_utils import log, precise_sleep
 
 
 @dataclass
@@ -75,7 +75,7 @@ class DynamixelController(BaseController):
         self.client.sync_write(self.motor_ids, self.config.kD, 80, 2)
         self.client.sync_write(self.motor_ids, self.config.current_limit, 102, 2)
         self.set_pos(np.zeros(len(self.motor_ids)))
-        sleep(0.1)
+        precise_sleep(0.1)
 
     def close_motors(self):
         open_clients = list(DynamixelClient.OPEN_CLIENTS)
@@ -164,7 +164,7 @@ if __name__ == "__main__":
         controller.set_pos([0.0] * 6)
         i += 1
 
-    sleep(0.1)
+    precise_sleep(0.1)
     controller.close_motors()
 
     log("Process completed successfully.", header="Dynamixel")

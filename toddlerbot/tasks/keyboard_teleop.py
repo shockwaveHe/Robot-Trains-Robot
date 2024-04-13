@@ -1,9 +1,11 @@
-import time
-
 import numpy as np
 from pynput import keyboard
 
-from toddlerbot.actuation.dynamixel.dynamixel_control import *
+from toddlerbot.actuation.dynamixel.dynamixel_control import (
+    DynamixelConfig,
+    DynamixelController,
+)
+from toddlerbot.utils.misc_utils import precise_sleep
 
 
 class KeyboardListener:
@@ -76,7 +78,8 @@ def main():
                     )
 
             listener.key = ""
-            sleep(1 / frequency)
+            precise_sleep(1 / frequency)
+
     except KeyboardInterrupt:
         print("Interrupted by user, exiting...")
 
