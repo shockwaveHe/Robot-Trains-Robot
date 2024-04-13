@@ -7,7 +7,6 @@ import shutil
 import time
 from xml.etree.ElementTree import ElementTree, tostring
 
-import mujoco
 import numpy as np
 import optuna
 
@@ -20,44 +19,26 @@ from toddlerbot.utils.misc_utils import log, sleep
 from toddlerbot.utils.vis_plot import plot_joint_tracking
 
 
-def update_xml(robot, tree, params_dict):
+def update_xml(tree, joint_name, params_dict):
     """
     Update the MuJoCo XML file with new actuator parameters and return it as a string.
     """
     # Load the XML file
     root = tree.getroot()
-    motor_params = robot.config.motor_params
 
     # Iterate over all joints in the XML
-    for joint in root.findall(".//joint"):
-        joint_name = joint.get("name")
-        # Check if the joint name is in the provided motor parameters dictionary
-        if joint_name in motor_params:
-            for param_name, param_value in params_dict.items():
-                if param_name in ["damping", "armature"]:
-                    joint.set(param_name, str(param_value))
+    joint = root.find(f".//joint[@name='{joint_name}']")
+    for param_name, param_value in params_dict.items():
+        if param_name in ["damping", "armature", "frictionloss"]:
+            joint.set(param_name, str(param_value))
 
     # Ensure <actuator> element exists
     actuator = root.find("./actuator")
-    if actuator is None:
-        actuator = ElementTree.SubElement(root, "actuator")
-
-    # Update or create new actuators for the joints
-    for joint_name in motor_params:
-        motor_name = f"{joint_name}_act"
-        motor = actuator.find(f".//position[@name='{motor_name}']")
-        if motor is None:
-            motor = ElementTree.SubElement(actuator, "position", name=motor_name)
-        motor.set("kp", str(params_dict["p_gain"]))
-
-    # Update the default joint settings
-    default = root.find("default")
-    if default is None:
-        default = ElementTree.SubElement(root, "default")
-    default_joint = default.find(".//joint")
-    if default_joint is None:
-        default_joint = ElementTree.SubElement(default, "joint")
-    default_joint.set("frictionloss", str(params_dict["friction"]))
+    motor_name = f"{joint_name}_act"
+    motor = actuator.find(f".//position[@name='{motor_name}']")
+    if motor is None:
+        motor = ElementTree.SubElement(actuator, "position", name=motor_name)
+    motor.set("kp", str(params_dict["p_gain"]))
 
     # Convert the updated XML tree back to a string
     xml_string = tostring(root, encoding="unicode")
@@ -88,32 +69,39 @@ def optimize_parameters(
 
     def objective(trial: optuna.Trial):
         # Calculate the model response using the current set of parameters
-        damping = trial.suggest_float("damping", *damping_range)
-        armature = trial.suggest_float("armature", *armature_range)
-        friction = trial.suggest_float("friction", *friction_range)
-        p_gain = trial.suggest_float("p_gain", *p_gain_range)
+        damping = trial.suggest_float(
+            "damping", *damping_range[:2], step=damping_range[2]
+        )
+        armature = trial.suggest_float(
+            "armature", *armature_range[:2], step=armature_range[2]
+        )
+        frictionloss = trial.suggest_float(
+            "frictionloss", *friction_range[:2], step=friction_range[2]
+        )
+        p_gain = trial.suggest_float("p_gain", *p_gain_range[:2], step=p_gain_range[2])
 
         params_dict = {
             "damping": damping,
             "armature": armature,
-            "friction": friction,
+            "frictionloss": frictionloss,
             "p_gain": p_gain,
         }
 
-        xml_str = update_xml(robot, copy.deepcopy(tree), params_dict)
+        xml_str = update_xml(copy.deepcopy(tree), joint_name, params_dict)
         sim = MuJoCoSim(robot, xml_str=xml_str, assets=assets_dict, fixed=True)
+        sim.simulate(headless=True, callback=False)
 
         model_response = []
         for signal_config in signal_config_list:
             signal_time, signal_pos = generate_sinusoidal_signal(signal_config)
             joint_traj = actuate(
-                sim, robot, joint_name, signal_pos, signal_config["sampling_rate"]
+                sim, robot, joint_name, signal_pos, 1 / signal_config["sampling_rate"]
             )
             model_response.extend(joint_traj["pos"])
 
-        error = np.sqrt(
-            np.mean((np.array(observed_response) - np.array(model_response)) ** 2)
-        )
+        sim.close()
+
+        error = np.sqrt(np.mean((observed_response - np.array(model_response)) ** 2))
         return error
 
     if sampler == "TPE":
@@ -160,51 +148,47 @@ def generate_sinusoidal_signal(signal_config):
     return t, signal
 
 
-def actuate(sim, robot, joint_name, signal_pos, sampling_rate, viewer=None):
+def actuate(sim, robot, joint_name, signal_pos, sleep_time, rest_time=2):
     """
     Actuates a single joint with the given signal and collects the response.
     """
     # Convert signal time to sleep time between updates
-    sleep_time = 1 / sampling_rate
     _, initial_joint_angles = robot.initialize_joint_angles()
 
-    joint_data_dict = {"pos": [], "time": []}
+    joint_traj_dict = {"pos": [], "time": []}
+
     time_start = time.time()
     for angle in signal_pos:
-        # Update the joint angle
-        time_curr = time.time() - time_start
+        step_start = time.time()
+
         joint_angles = initial_joint_angles.copy()
         joint_angles[joint_name] = angle
 
-        sim.set_joint_angles(robot, joint_angles, interp=False)
+        sim.set_joint_angles(joint_angles)
 
-        if sim.name == "mujoco":
-            mujoco.mj_step(sim.model, sim.data)
-            if viewer is not None:
-                viewer.sync()
+        joint_state_dict = sim.get_joint_state()
 
-        joint_state_dict = sim.get_joint_state(robot)
-
-        joint_data_dict["time"].append(joint_state_dict[joint_name].time - time_start)
+        joint_traj_dict["time"].append(joint_state_dict[joint_name].time - time_start)
 
         pos = joint_state_dict[joint_name].pos
-        if sim.name == "real_world" and joint_name in sim.negated_joint_names:
+        if (
+            hasattr(sim, "negated_joint_names")
+            and joint_name in sim.negated_joint_names
+        ):
             pos *= -1
-        joint_data_dict["pos"].append(pos)
 
-        time_elapsed = time.time() - time_start - time_curr
-        time_unil_next_step = sleep_time - time_elapsed
-        if time_unil_next_step > 0:
-            sleep(time_unil_next_step)
+        joint_traj_dict["pos"].append(pos)
 
-    # Reset the joint to its initial position
-    sim.set_joint_angles(robot, initial_joint_angles, interp=False)
-    if sim.name == "mujoco":
-        mujoco.mj_step(sim.model, sim.data)
-        if viewer is not None:
-            viewer.sync()
+        time_until_next_step = sleep_time - (time.time() - step_start)
+        if time_until_next_step > 0:
+            sleep(time_until_next_step)
 
-    return joint_data_dict
+    time_end = time.time()
+    while time.time() - time_end < 2:
+        sim.set_joint_angles(initial_joint_angles)
+        sleep(sleep_time)
+
+    return joint_traj_dict
 
 
 def collect_data(
@@ -214,11 +198,14 @@ def collect_data(
     n_trials=10,
     duration=3,
     frequency_range=(0.5, 2),
-    amplitude_range=(np.pi / 8, np.pi / 2),
     rate_range=(10, 100),
+    amplitude_min=np.pi / 8,
 ):
     real_world = RealWorld(robot)
-    sleep(1)
+    amplitude_max = min(
+        abs(robot.joints_info[joint_name]["lower_limit"]),
+        abs(robot.joints_info[joint_name]["upper_limit"]),
+    )
 
     time_seq_ref_dict = {}
     time_seq_dict = {}
@@ -229,7 +216,7 @@ def collect_data(
     title_list = []
     for trial in range(n_trials):
         signal_config = generate_random_sinusoidal_config(
-            duration, frequency_range, amplitude_range, rate_range
+            duration, frequency_range, (amplitude_min, amplitude_max), rate_range
         )
         signal_time, signal_pos = generate_sinusoidal_signal(signal_config)
         signal_config_rounded = round_floats(signal_config, 3)
@@ -243,7 +230,11 @@ def collect_data(
             level="debug",
         )
         joint_traj = actuate(
-            real_world, robot, joint_name, signal_pos, signal_config["sampling_rate"]
+            real_world,
+            robot,
+            joint_name,
+            signal_pos,
+            1 / signal_config["sampling_rate"],
         )
 
         joint_data_dict[trial] = {
@@ -256,7 +247,7 @@ def collect_data(
         joint_angle_ref_dict[f"trial_{trial}"] = list(signal_pos)
         joint_angle_dict[f"trial_{trial}"] = joint_traj["pos"]
 
-        sleep(1)
+    real_world.close()
 
     plot_joint_tracking(
         time_seq_dict,
@@ -267,8 +258,6 @@ def collect_data(
         file_name=f"{joint_name}_real_world_tracking",
         title_list=title_list,
     )
-
-    real_world.close()
 
     return joint_data_dict
 
@@ -281,13 +270,15 @@ def evaluate(
     exp_folder_path,
 ):
     sim = MuJoCoSim(robot, xml_path=new_xml_path, fixed=True)
-    viewer = mujoco.viewer.launch_passive(sim.model, sim.data)
+    sim.simulate()
 
     signal_config_list = []
     observed_response = []
     for data in joint_data_dict.values():
         signal_config_list.append(data["signal_config"])
         observed_response.append(data["joint_traj"]["pos"])
+
+    observed_response = np.concatenate(observed_response)
 
     time_seq_ref_dict = {}
     time_seq_dict = {}
@@ -297,8 +288,8 @@ def evaluate(
     joint_data_dict = {}
     title_list = []
 
-    trial = 0
-    while viewer.is_running() and trial < len(signal_config_list):
+    model_response = []
+    for trial, signal_config in enumerate(signal_config_list):
         signal_config = signal_config_list[trial]
         signal_time, signal_pos = generate_sinusoidal_signal(signal_config)
 
@@ -313,13 +304,9 @@ def evaluate(
             level="debug",
         )
         joint_traj = actuate(
-            sim,
-            robot,
-            joint_name,
-            signal_pos,
-            signal_config["sampling_rate"],
-            viewer=viewer,
+            sim, robot, joint_name, signal_pos, 1 / signal_config["sampling_rate"]
         )
+        model_response.extend(joint_traj["pos"])
 
         joint_data_dict[f"trial_{trial}"] = {
             "signal_config": signal_config,
@@ -331,11 +318,10 @@ def evaluate(
         joint_angle_ref_dict[f"trial_{trial}"] = list(signal_pos)
         joint_angle_dict[f"trial_{trial}"] = joint_traj["pos"]
 
-        trial += 1
+    sim.close()
 
-        sleep(1)
-
-    viewer.close()
+    error = np.sqrt(np.mean((observed_response - np.array(model_response)) ** 2))
+    log(f"Root mean squared error: {error}", header="SysID", level="info")
 
     plot_joint_tracking(
         time_seq_dict,
@@ -368,7 +354,7 @@ def main():
     exp_name = f"sysID_{args.robot_name}"
     time_str = time.strftime("%Y%m%d_%H%M%S")
     exp_folder_path = f"results/{time_str}_{exp_name}"
-    exp_folder_path = "results/20240411_204940_sysID_toddlerbot_legs"
+    # exp_folder_path = "results/20240412_181545_sysID_toddlerbot_legs"
 
     os.makedirs(exp_folder_path, exist_ok=True)
 
@@ -414,35 +400,37 @@ def main():
                 with open(mesh_file_path, "rb") as f:
                     assets_dict[mesh_file] = f.read()
 
-        # opt_params = optimize_parameters(
-        #     robot,
-        #     args.joint_name,
-        #     tree,
-        #     assets_dict,
-        #     real_world_data_dict,
-        #     sampler="CMA",
-        #     n_trials=2000,
-        # )
-        opt_params = {
-            "damping": 1.651,
-            "armature": 0.009,
-            "friction": 0.612,
-            "p_gain": 106.10,
-        }
+        opt_params = optimize_parameters(
+            robot,
+            args.joint_name,
+            tree,
+            assets_dict,
+            real_world_data_dict,
+            sampler="CMA",
+            n_trials=1000,
+        )
+
         with open(opt_params_file_path, "w") as f:
             json.dump(opt_params, f, indent=4)
 
-        update_xml(robot, tree, opt_params)
+        # opt_params = {
+        #     "damping": 0.859,
+        #     "armature": 0.041,
+        #     "frictionloss": 0.402,
+        #     "p_gain": 14.9,
+        # }
+
+        # update_xml(tree, args.joint_name, opt_params)
         tree.write(new_xml_path)
 
+    sim_data_dict = evaluate(
+        robot, args.joint_name, new_xml_path, real_world_data_dict, exp_folder_path
+    )
     sim_data_file_name = f"{args.joint_name}_sim_data.pkl"
     sim_data_file_path = os.path.join(exp_folder_path, sim_data_file_name)
-    if not os.path.exists(sim_data_file_path):
-        sim_data_dict = evaluate(
-            robot, args.joint_name, new_xml_path, real_world_data_dict, exp_folder_path
-        )
-        with open(sim_data_file_path, "wb") as f:
-            pickle.dump(sim_data_dict, f)
+
+    with open(sim_data_file_path, "wb") as f:
+        pickle.dump(sim_data_dict, f)
 
 
 if __name__ == "__main__":

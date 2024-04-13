@@ -259,6 +259,20 @@
     <exclude body1="right_hip_pitch_link" body2="ank_roll_link_2" />
     <exclude body1="right_calf_link" body2="ank_roll_link_2" />
   </contact>
+  <actuator>
+    <position name="left_hip_yaw_act" joint="left_hip_yaw" kp="21.1" kv="0.0" ctrlrange="-0.785398 0.785398" />
+    <position name="left_hip_roll_act" joint="left_hip_roll" kp="21.1" kv="0.0" ctrlrange="-0.785398 1.5708" />
+    <position name="left_hip_pitch_act" joint="left_hip_pitch" kp="21.1" kv="0.0" ctrlrange="-1.5708 1.5708" />
+    <position name="left_knee_act" joint="left_knee" kp="21.1" kv="0.0" ctrlrange="0 1.5708" />
+    <position name="left_ank_pitch_act" joint="left_ank_pitch" kp="21.1" kv="0.0" ctrlrange="-0.785398 0.785398" />
+    <position name="left_ank_roll_act" joint="left_ank_roll" kp="21.1" kv="0.0" ctrlrange="-0.785398 0.785398" />
+    <position name="right_hip_yaw_act" joint="right_hip_yaw" kp="21.1" kv="0.0" ctrlrange="-0.785398 0.785398" />
+    <position name="right_hip_roll_act" joint="right_hip_roll" kp="21.1" kv="0.0" ctrlrange="-1.5708 0.785398" />
+    <position name="right_hip_pitch_act" joint="right_hip_pitch" kp="21.1" kv="0.0" ctrlrange="-1.5708 1.5708" />
+    <position name="right_knee_act" joint="right_knee" kp="21.1" kv="0.0" ctrlrange="-1.5708 0" />
+    <position name="right_ank_pitch_act" joint="right_ank_pitch" kp="21.1" kv="0.0" ctrlrange="-0.785398 0.785398" />
+    <position name="right_ank_roll_act" joint="right_ank_roll" kp="21.1" kv="0.0" ctrlrange="-0.785398 0.785398" />
+  </actuator>
   <equality>
     <weld body1="12lf_rod_end" body2="12lf_rod" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.0001 1" />
     <weld body1="12lf_rod_end_2" body2="12lf_rod_2" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.0001 1" />
@@ -276,18 +290,4 @@
       <geom group="3" />
     </default>
   </default>
-  <actuator>
-    <motor name="left_hip_yaw_act" joint="left_hip_yaw" />
-    <motor name="left_hip_roll_act" joint="left_hip_roll" />
-    <motor name="left_hip_pitch_act" joint="left_hip_pitch" />
-    <motor name="left_knee_act" joint="left_knee" />
-    <motor name="left_ank_pitch_act" joint="left_ank_pitch" />
-    <motor name="left_ank_roll_act" joint="left_ank_roll" />
-    <motor name="right_hip_yaw_act" joint="right_hip_yaw" />
-    <motor name="right_hip_roll_act" joint="right_hip_roll" />
-    <motor name="right_hip_pitch_act" joint="right_hip_pitch" />
-    <motor name="right_knee_act" joint="right_knee" />
-    <motor name="right_ank_pitch_act" joint="right_ank_pitch" />
-    <motor name="right_ank_roll_act" joint="right_ank_roll" />
-  </actuator>
 </mujoco>

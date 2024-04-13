@@ -3,13 +3,10 @@ import os
 import shutil
 import xml.etree.ElementTree as ET
 from dataclasses import fields
-from itertools import combinations
 
-import numpy as np
 from transforms3d.euler import euler2quat
 
 from toddlerbot.sim.robot import HumanoidRobot
-from toddlerbot.utils.file_utils import *
 
 
 def replace_mesh_file(root, old_file, new_file):
@@ -351,7 +348,7 @@ def process_mjcf_fixed_file(root, config):
 
 
 def process_mjcf_file(root, config, urdf_path):
-    update_actuator_types(root, config.motor_params)
+    # update_actuator_types(root, config.motor_params)
     add_body_link(root, config, urdf_path)
 
 

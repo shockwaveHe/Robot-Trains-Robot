@@ -151,7 +151,11 @@ def main():
             if time_until_next_step > 0:
                 sleep(time_until_next_step)
 
-    finally:
+    except KeyboardInterrupt:
+        log("KeyboardInterrupt recieved. Closing...", header="Walking")
+
+        sim.close()
+
         # Check if the ankle positions are linear actuator lengths
         if sim.name == "real_world" and len(joint_angle_dict) > 0:
             for ids in robot.ankle2mighty_zap:
@@ -175,6 +179,7 @@ def main():
             for name in sim.negated_joint_names:
                 joint_angle_dict[name] = [-angle for angle in joint_angle_dict[name]]
 
+        log("Saving config and data...", header="Walking")
         os.makedirs(exp_folder_path, exist_ok=True)
 
         with open(os.path.join(exp_folder_path, "config.json"), "w") as f:
@@ -197,6 +202,7 @@ def main():
         with open(os.path.join(exp_folder_path, robot_state_traj_file_name), "wb") as f:
             pickle.dump(robot_state_traj_data, f)
 
+        log("Visualizing...", header="Walking")
         plot_joint_tracking(
             time_seq_dict,
             time_seq_ref,

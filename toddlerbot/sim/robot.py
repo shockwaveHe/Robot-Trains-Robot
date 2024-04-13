@@ -136,8 +136,8 @@ class HumanoidRobot:
             joint_info_dict[joint.name] = {
                 "init_angle": angle,
                 "type": joint.type,
-                "lowerLimit": joint.limit.lower,
-                "upperLimit": joint.limit.upper,
+                "lower_limit": joint.limit.lower,
+                "upper_limit": joint.limit.upper,
                 "active": joint.name in self.config.motor_params.keys(),
             }
 

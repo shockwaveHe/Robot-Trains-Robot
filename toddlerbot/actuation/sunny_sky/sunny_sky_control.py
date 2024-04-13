@@ -8,15 +8,17 @@ https://os.mbed.com/users/benkatz/code/CanMaster/
 
 import struct
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from threading import Lock
-from typing import Dict, List, Tuple
+from typing import Tuple
 
 import numpy as np
 import serial
 import serial.tools.list_ports as list_ports
 
-from toddlerbot.actuation import *
+from toddlerbot.actuation import BaseController
+from toddlerbot.utils.math_utils import interpolate_pos
+from toddlerbot.utils.misc_utils import log, sleep
 
 
 @dataclass
@@ -79,7 +81,7 @@ class SunnySkyController(BaseController):
             )
             log(f"Connected to the port: {self.config.port}", header="SunnySky")
             return client
-        except Exception as e:
+        except Exception:
             raise ConnectionError("Could not connect to any SunnySky port.")
 
     def initialize_motors(self):
@@ -116,7 +118,7 @@ class SunnySkyController(BaseController):
 
         byte_commands = []
         for single_id in id:
-            b = bytes([single_id]) + b"\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFC"
+            b = bytes([single_id]) + b"\xff\xff\xff\xff\xff\xff\xff\xfc"
             byte_commands.append(b)
 
         self.send_commands(byte_commands)
@@ -131,13 +133,13 @@ class SunnySkyController(BaseController):
 
         byte_commands = []
         for single_id in id:
-            b = bytes([single_id]) + b"\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFD"
+            b = bytes([single_id]) + b"\xff\xff\xff\xff\xff\xff\xff\xfd"
             byte_commands.append(b)
 
         self.send_commands(byte_commands)
 
     def calibrate_motors(self):
-        log(f"Calibrating motors...", header="SunnySky")
+        log("Calibrating motors...", header="SunnySky")
         state_dict = self.get_motor_state()
         pos_curr = np.array([state.pos for state in state_dict.values()])
         joint_range = np.array(
@@ -147,7 +149,7 @@ class SunnySkyController(BaseController):
             ]
         )
 
-        log(f"Testing lower limit for motors...", header="SunnySky")
+        log("Testing lower limit for motors...", header="SunnySky")
         self.set_pos(pos_curr - joint_range, limit=False)
         sleep(0.1)
 
@@ -263,8 +265,6 @@ class SunnySkyController(BaseController):
 
 
 if __name__ == "__main__":
-    from toddlerbot.utils.vis_plot import plot_line_graph
-
     joint_range_dict = {1: (0, np.pi / 2), 2: (0, -np.pi / 2)}
     pos_seq_ref = [
         [0.0, 0.0],

@@ -1,5 +1,4 @@
 import os
-import re
 import xml.dom.minidom
 import xml.etree.ElementTree as ET
 from typing import Optional

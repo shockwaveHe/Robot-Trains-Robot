@@ -59,4 +59,4 @@ def sleep(duration):
             # log(f"Sleeping for {duration} seconds.", header="Sleep", level="debug")
             time.sleep(duration)
     except KeyboardInterrupt:
-        log("Sleep interrupted.", header="Sleep")
+        raise KeyboardInterrupt("Sleep interrupted by user.")

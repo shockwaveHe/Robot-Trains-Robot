@@ -111,24 +111,14 @@ class MuJoCoSim(BaseSim):
 
         return self.zmp
 
-    def _set_joint_angles(self):
-        while not self.queue.empty():
-            joint_angles = self.queue.get()
-            force_dict = {}
-            for name, angle in joint_angles.items():
-                kp = self.robot.config.motor_params[name].kp
-                kv = self.robot.config.motor_params[name].kv
-                force = (
-                    kp * (angle - self.data.joint(name).qpos)
-                    - kv * self.data.joint(name).qvel
-                )
-                force_dict[name] = force.item()
-                self.data.actuator(f"{name}_act").ctrl = force
-
-            # log(f"Force: {force_dict}", header=self.name, level="debug")
-
     def set_joint_angles(self, joint_angles):
         self.queue.put((joint_angles))
+
+    def control_callback(self, model, data):
+        while not self.queue.empty():
+            joint_angles = self.queue.get()
+            for name, angle in joint_angles.items():
+                self.data.actuator(f"{name}_act").ctrl = angle
 
     def _compute_dmom(self):
         if self.last_t is None:
@@ -250,19 +240,24 @@ class MuJoCoSim(BaseSim):
         )
         viewer.user_scn.ngeom = i + 1
 
-    def simulate_worker(self, vis_data, sleep_time):
-        viewer = mujoco.viewer.launch_passive(self.model, self.data)
+    def simulate_worker(self, headless, callback, vis_data, sleep_time):
+        if not headless:
+            viewer = mujoco.viewer.launch_passive(self.model, self.data)
 
-        try:
-            while viewer.is_running():
-                step_start = time.time()
+        if callback:
+            mujoco.set_mjcb_control(self.control_callback)
 
-                self._set_joint_angles()
+        while not self.stop_event.is_set():
+            step_start = time.time()
 
+            if callback:
                 mujoco.mj_step(self.model, self.data)
+            else:
+                mujoco.mj_step1(self.model, self.data)
+                self.control_callback(self.model, self.data)
+                mujoco.mj_step2(self.model, self.data)
 
-                # self._compute_dmom()
-
+            if not headless:
                 with viewer.lock():
                     if vis_data is not None:
                         viewer.user_scn.ngeom = 0
@@ -277,27 +272,25 @@ class MuJoCoSim(BaseSim):
 
                 viewer.sync()
 
-                time_until_next_step = sleep_time - (time.time() - step_start)
-                if time_until_next_step > 0:
-                    sleep(time_until_next_step)
+            time_until_next_step = sleep_time - (time.time() - step_start)
+            if time_until_next_step > 0:
+                sleep(time_until_next_step)
 
-        except KeyboardInterrupt:
-            pass
-
-        finally:
+        if not headless:
             viewer.close()
-            self.close()
 
-    def simulate(self, vis_data=None, sleep_time: float = 0.0):
+    def simulate(
+        self, headless=False, callback=True, vis_data=None, sleep_time: float = 0.0
+    ):
         self.sim_thread = threading.Thread(
-            target=self.simulate_worker, args=(vis_data, sleep_time)
+            target=self.simulate_worker, args=(headless, callback, vis_data, sleep_time)
         )
         self.sim_thread.start()
 
     def close(self):
-        self.stop_event.set()
         if threading.current_thread() is not self.sim_thread:
             # Wait for the thread to finish if it's not the current thread
+            self.stop_event.set()
             self.sim_thread.join()
 
 

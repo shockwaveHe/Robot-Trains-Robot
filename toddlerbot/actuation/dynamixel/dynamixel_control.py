@@ -1,11 +1,14 @@
+import time
 from dataclasses import dataclass
 from threading import Lock
 from typing import List
 
 import numpy as np
 
-from toddlerbot.actuation import *
-from toddlerbot.actuation.dynamixel.dynamixel_client import *
+from toddlerbot.actuation import BaseController
+from toddlerbot.actuation.dynamixel.dynamixel_client import DynamixelClient
+from toddlerbot.utils.math_utils import interpolate_pos
+from toddlerbot.utils.misc_utils import log, sleep
 
 
 @dataclass
@@ -53,7 +56,7 @@ class DynamixelController(BaseController):
 
             log(f"Connected to the port: {self.config.port}", header="Dynamixel")
             return client
-        except Exception as e:
+        except Exception:
             raise ConnectionError("Could not connect to the Dynamixel port.")
 
     def initialize_motors(self):
@@ -78,7 +81,7 @@ class DynamixelController(BaseController):
         open_clients = list(DynamixelClient.OPEN_CLIENTS)
         for open_client in open_clients:
             if open_client.port_handler.is_using:
-                logging.warning("Forcing client to close.")
+                log("Forcing client to close.", header="Dynamixel")
             open_client.port_handler.is_using = False
             open_client.disconnect()
 
