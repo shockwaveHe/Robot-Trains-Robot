@@ -1,5 +1,6 @@
 ### Project ###
 results/
+scripts/run_on_remote.sh
 
 ### Python ###
 

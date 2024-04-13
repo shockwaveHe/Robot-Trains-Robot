@@ -349,12 +349,20 @@ def main():
         type=str,
         help="The name of the joint to perform SysID on.",
     )
+    parser.add_argument(
+        "--exp-folder-path",
+        type=str,
+        default="",
+        help="The path to the experiment folder.",
+    )
     args = parser.parse_args()
 
-    exp_name = f"sysID_{args.robot_name}"
-    time_str = time.strftime("%Y%m%d_%H%M%S")
-    exp_folder_path = f"results/{time_str}_{exp_name}"
-    # exp_folder_path = "results/20240412_181545_sysID_toddlerbot_legs"
+    if len(args.exp_folder_path) > 0:
+        exp_folder_path = args.exp_folder_path
+    else:
+        exp_name = f"sysID_{args.robot_name}"
+        time_str = time.strftime("%Y%m%d_%H%M%S")
+        exp_folder_path = f"results/{time_str}_{exp_name}"
 
     os.makedirs(exp_folder_path, exist_ok=True)
 
