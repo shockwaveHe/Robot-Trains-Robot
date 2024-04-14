@@ -19,25 +19,28 @@ from toddlerbot.utils.misc_utils import log, precise_sleep
 from toddlerbot.utils.vis_plot import plot_joint_tracking
 
 
-def update_xml(tree, joint_names, params_dict):
+def update_xml(tree, params_dict):
     """
     Update the MuJoCo XML file with new actuator parameters and return it as a string.
     """
     # Load the XML file
     root = tree.getroot()
 
-    if not isinstance(joint_names, list):
-        joint_names = [joint_names]
+    for joint_name, params in params_dict.items():
+        if "left" in joint_name:
+            joint_name_symmetric = joint_name.replace("left", "right")
+        elif "right" in joint_name:
+            joint_name_symmetric = joint_name.replace("right", "left")
 
-    for joint_name in joint_names:
-        # Find the joint by name
-        joint = root.find(f".//joint[@name='{joint_name}']")
-        if joint is not None:
-            # Update the joint with new parameters
-            for param_name, param_value in params_dict.items():
-                joint.set(param_name, str(param_value))
-        else:
-            print(f"Joint '{joint_name}' not found in the XML tree.")
+        for name in [joint_name, joint_name_symmetric]:
+            # Find the joint by name
+            joint = root.find(f".//joint[@name='{name}']")
+            if joint is not None:
+                # Update the joint with new parameters
+                for param_name, param_value in params.items():
+                    joint.set(param_name, str(param_value))
+            else:
+                print(f"Joint '{name}' not found in the XML tree.")
 
     # Convert the updated XML tree back to a string
     xml_string = tostring(root, encoding="unicode")
@@ -55,7 +58,7 @@ def optimize_parameters(
     armature_range=(1e-3, 0.1, 1e-3),
     friction_range=(0, 1, 1e-3),
     sampler="TPE",
-    n_trials=500,
+    n_iters=500,
 ):
     signal_config_list = []
     observed_response = []
@@ -78,12 +81,14 @@ def optimize_parameters(
         )
 
         params_dict = {
-            "damping": damping,
-            "armature": armature,
-            "frictionloss": frictionloss,
+            joint_name: {
+                "damping": damping,
+                "armature": armature,
+                "frictionloss": frictionloss,
+            }
         }
 
-        xml_str = update_xml(copy.deepcopy(tree), joint_name, params_dict)
+        xml_str = update_xml(copy.deepcopy(tree), params_dict)
         sim = MuJoCoSim(robot, xml_str=xml_str, assets=assets_dict, fixed=True)
         sim.simulate(headless=True, callback=False)
 
@@ -108,7 +113,7 @@ def optimize_parameters(
         raise ValueError("Invalid sampler")
 
     study = optuna.create_study(storage="sqlite:///db.sqlite3", sampler=sampler)
-    study.optimize(objective, n_trials=n_trials, n_jobs=-1, show_progress_bar=True)
+    study.optimize(objective, n_trials=n_iters, n_jobs=-1, show_progress_bar=True)
 
     return study.best_params
 
@@ -144,7 +149,7 @@ def generate_sinusoidal_signal(signal_config):
     return t, signal
 
 
-def actuate(sim, robot, joint_name, signal_pos, sleep_time, prep_time=2):
+def actuate(sim, robot, joint_name, signal_pos, sleep_time, prep_time=1):
     """
     Actuates a single joint with the given signal and collects the response.
     """
@@ -181,6 +186,13 @@ def actuate(sim, robot, joint_name, signal_pos, sleep_time, prep_time=2):
         time_until_next_step = sleep_time - (time.time() - step_start)
         if time_until_next_step > 0:
             precise_sleep(time_until_next_step)
+
+    # time_end = time.time()
+    # log(
+    #     f"Actuation duration: {time_end - time_start} s",
+    #     header="SysID",
+    #     level="debug",
+    # )
 
     return joint_traj_dict
 
@@ -329,13 +341,26 @@ def main():
     parser.add_argument(
         "--robot-name",
         type=str,
-        default="sustaina_op",
+        default="toddlerbot",
         help="The name of the robot. Need to match the name in robot_descriptions.",
     )
     parser.add_argument(
-        "--joint-name",
+        "--joint-names",
         type=str,
-        help="The name of the joint to perform SysID on.",
+        nargs="+",  # Indicates that one or more values are expected
+        help="The names of the joints to perform SysID on.",
+    )
+    parser.add_argument(
+        "n_trials",
+        type=int,
+        default=5,
+        help="The number of trials to collect data for.",
+    )
+    parser.add_argument(
+        "n_iters",
+        type=int,
+        default=1000,
+        help="The number of iterations to optimize the parameters.",
     )
     parser.add_argument(
         "--exp-folder-path",
@@ -354,30 +379,37 @@ def main():
 
     os.makedirs(exp_folder_path, exist_ok=True)
 
+    args_dict = vars(args)
+
+    # Save to JSON file
+    with open(os.path.join(exp_folder_path, "args.json"), "w") as json_file:
+        json.dump(args_dict, json_file, indent=4)
+
     robot = HumanoidRobot(args.robot_name)
 
-    # Save the collected data
-    real_world_data_file_name = f"{args.joint_name}_real_world_data.pkl"
-    real_world_data_file_path = os.path.join(exp_folder_path, real_world_data_file_name)
+    ###### Collect data in the real world ######
+    real_world_data_file_path = os.path.join(exp_folder_path, "real_world_data.pkl")
     if os.path.exists(real_world_data_file_path):
         with open(real_world_data_file_path, "rb") as f:
             real_world_data_dict = pickle.load(f)
     else:
-        real_world_data_dict = collect_data(
-            robot, args.joint_name, exp_folder_path, n_trials=10
-        )
+        real_world_data_dict = {}
+        for joint_name in args.joint_names:
+            real_world_data_dict[joint_name] = collect_data(
+                robot, joint_name, exp_folder_path, n_trials=args.n_trials
+            )
         with open(real_world_data_file_path, "wb") as f:
             pickle.dump(real_world_data_dict, f)
 
+    ###### Optimize the hyperparameters ######
     fixed_xml_path = find_description_path(args.robot_name, suffix="_fixed.xml")
     new_xml_path = os.path.join(
         os.path.dirname(fixed_xml_path), f"{args.robot_name}_sysID.xml"
     )
-    opt_params_file_name = f"{args.joint_name}_opt_params.json"
-    opt_params_file_path = os.path.join(exp_folder_path, opt_params_file_name)
+    opt_params_file_path = os.path.join(exp_folder_path, "opt_params.json")
     if os.path.exists(opt_params_file_path):
         with open(opt_params_file_path, "r") as f:
-            opt_params = json.load(f)
+            opt_params_dict = json.load(f)
     else:
         shutil.copy2(fixed_xml_path, new_xml_path)
 
@@ -396,35 +428,39 @@ def main():
                 with open(mesh_file_path, "rb") as f:
                     assets_dict[mesh_file] = f.read()
 
-        # opt_params = optimize_parameters(
-        #     robot,
-        #     args.joint_name,
-        #     tree,
-        #     assets_dict,
-        #     real_world_data_dict,
-        #     sampler="CMA",
-        #     n_trials=1000,
-        # )
+        opt_params_dict = {}
+        for joint_name in args.joint_names:
+            opt_params_dict[joint_name] = optimize_parameters(
+                robot,
+                joint_name,
+                tree,
+                assets_dict,
+                real_world_data_dict,
+                sampler="CMA",
+                n_iters=args.n_iters,
+            )
 
-        # with open(opt_params_file_path, "w") as f:
-        #     json.dump(opt_params, f, indent=4)
+        with open(opt_params_file_path, "w") as f:
+            json.dump(opt_params_dict, f, indent=4)
 
-        opt_params = {"damping": 0.309, "armature": 0.005, "frictionloss": 0.033}
-        if "left" in args.joint_name:
-            joint_name_symmetric = args.joint_name.replace("left", "right")
-        elif "right" in args.joint_name:
-            joint_name_symmetric = args.joint_name.replace("right", "left")
+        # opt_params_dict = {"damping": 0.309, "armature": 0.005, "frictionloss": 0.033}
 
-        update_xml(tree, [args.joint_name, joint_name_symmetric], opt_params)
+        update_xml(tree, opt_params_dict)
 
         tree.write(new_xml_path)
 
-    sim_data_dict = evaluate(
-        robot, args.joint_name, new_xml_path, real_world_data_dict, exp_folder_path
-    )
-    sim_data_file_name = f"{args.joint_name}_sim_data.pkl"
-    sim_data_file_path = os.path.join(exp_folder_path, sim_data_file_name)
+    ###### Evaluate the optimized parameters in the simulation ######
+    sim_data_dict = {}
+    for joint_name in args.joint_names:
+        sim_data_dict[joint_name] = evaluate(
+            robot,
+            joint_name,
+            new_xml_path,
+            real_world_data_dict[joint_name],
+            exp_folder_path,
+        )
 
+    sim_data_file_path = os.path.join(exp_folder_path, "sim_data.pkl")
     with open(sim_data_file_path, "wb") as f:
         pickle.dump(sim_data_dict, f)
 
