@@ -41,12 +41,13 @@ class RealWorld(BaseSim):
         ]
 
         self.dynamixel_init_pos = np.radians([245, 180, 180, 287, 180, 180])
+        # TODO: Replace the hard-coded gains
         self.dynamixel_config = DynamixelConfig(
             port="/dev/tty.usbserial-FT8ISUJY",
             kFF2=[0, 0, 0, 0, 0, 0],
             kFF1=[0, 0, 0, 0, 0, 0],
             kP=[400, 2400, 800, 400, 2400, 800],
-            kI=[100, 100, 100, 100, 100, 100],
+            kI=[0, 0, 0, 0, 0, 0],
             kD=[400, 800, 400, 400, 800, 400],
             current_limit=[700, 700, 700, 700, 700, 700],
             init_pos=self.dynamixel_init_pos,

@@ -68,11 +68,11 @@ class DynamixelController(BaseController):
             1,
         )
         self.client.set_torque_enabled(self.motor_ids, True)
+        self.client.sync_write(self.motor_ids, self.config.kD, 80, 2)
+        self.client.sync_write(self.motor_ids, self.config.kI, 82, 2)
+        self.client.sync_write(self.motor_ids, self.config.kP, 84, 2)
         self.client.sync_write(self.motor_ids, self.config.kFF2, 88, 2)
         self.client.sync_write(self.motor_ids, self.config.kFF1, 90, 2)
-        self.client.sync_write(self.motor_ids, self.config.kP, 84, 2)
-        self.client.sync_write(self.motor_ids, self.config.kI, 82, 2)
-        self.client.sync_write(self.motor_ids, self.config.kD, 80, 2)
         self.client.sync_write(self.motor_ids, self.config.current_limit, 102, 2)
         self.set_pos(np.zeros(len(self.motor_ids)))
         precise_sleep(0.1)
@@ -142,7 +142,7 @@ if __name__ == "__main__":
             kFF2=[0, 0, 0, 0, 0, 0],
             kFF1=[0, 0, 0, 0, 0, 0],
             kP=[400, 1200, 1200, 400, 1200, 1200],
-            kI=[100, 100, 100, 100, 100, 100],
+            kI=[0, 0, 0, 0, 0, 0],
             kD=[200, 400, 400, 200, 400, 400],
             current_limit=[350, 350, 350, 350, 350, 350],
             init_pos=np.radians([245, 180, 180, 287, 180, 180]),

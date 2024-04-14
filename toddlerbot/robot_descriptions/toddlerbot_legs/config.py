@@ -1,8 +1,6 @@
 import math
 
-import numpy as np
-
-from toddlerbot.robot_descriptions.robot_configs import *
+from toddlerbot.robot_descriptions.robot_configs import MotorParameters, RobotConfig
 
 canonical_name2link_name = {
     "body_link": "body_link",
@@ -60,8 +58,8 @@ toddlerbot_legs_config = RobotConfig(
             type="motor",
             damping=1.084,
             armature=0.045,
-            kp=21.1,
-            kv=0.0,
+            kp=3.125,
+            kv=25,
         ),
         "left_hip_roll": MotorParameters(
             brand="dynamixel",
@@ -69,8 +67,8 @@ toddlerbot_legs_config = RobotConfig(
             type="motor",
             damping=1.084,
             armature=0.045,
-            kp=21.1,
-            kv=0.0,
+            kp=18.75,
+            kv=50,
         ),
         "left_hip_pitch": MotorParameters(
             brand="dynamixel",
@@ -78,8 +76,8 @@ toddlerbot_legs_config = RobotConfig(
             type="motor",
             damping=1.084,
             armature=0.045,
-            kp=21.1,
-            kv=0.0,
+            kp=6.25,
+            kv=25,
         ),
         "left_knee": MotorParameters(
             brand="sunny_sky",
@@ -114,8 +112,8 @@ toddlerbot_legs_config = RobotConfig(
             type="motor",
             damping=1.084,
             armature=0.045,
-            kp=21.1,
-            kv=0.0,
+            kp=3.125,
+            kv=25,
         ),
         "right_hip_roll": MotorParameters(
             brand="dynamixel",
@@ -123,8 +121,8 @@ toddlerbot_legs_config = RobotConfig(
             type="motor",
             damping=1.084,
             armature=0.045,
-            kp=21.1,
-            kv=0.0,
+            kp=18.75,
+            kv=50,
         ),
         "right_hip_pitch": MotorParameters(
             brand="dynamixel",
@@ -132,8 +130,8 @@ toddlerbot_legs_config = RobotConfig(
             type="motor",
             damping=1.084,
             armature=0.045,
-            kp=21.1,
-            kv=0.0,
+            kp=6.25,
+            kv=25,
         ),
         "right_knee": MotorParameters(
             brand="sunny_sky",

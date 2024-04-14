@@ -29,16 +29,7 @@ def update_xml(tree, joint_name, params_dict):
     # Iterate over all joints in the XML
     joint = root.find(f".//joint[@name='{joint_name}']")
     for param_name, param_value in params_dict.items():
-        if param_name in ["damping", "armature", "frictionloss"]:
-            joint.set(param_name, str(param_value))
-
-    # Ensure <actuator> element exists
-    actuator = root.find("./actuator")
-    motor_name = f"{joint_name}_act"
-    motor = actuator.find(f".//position[@name='{motor_name}']")
-    if motor is None:
-        motor = ElementTree.SubElement(actuator, "position", name=motor_name)
-    motor.set("kp", str(params_dict["p_gain"]))
+        joint.set(param_name, str(param_value))
 
     # Convert the updated XML tree back to a string
     xml_string = tostring(root, encoding="unicode")
@@ -55,7 +46,6 @@ def optimize_parameters(
     damping_range=(1e-3, 2, 1e-3),
     armature_range=(1e-3, 0.1, 1e-3),
     friction_range=(0, 1, 1e-3),
-    p_gain_range=(1, 1000, 0.1),
     sampler="TPE",
     n_trials=500,
 ):
@@ -78,13 +68,11 @@ def optimize_parameters(
         frictionloss = trial.suggest_float(
             "frictionloss", *friction_range[:2], step=friction_range[2]
         )
-        p_gain = trial.suggest_float("p_gain", *p_gain_range[:2], step=p_gain_range[2])
 
         params_dict = {
             "damping": damping,
             "armature": armature,
             "frictionloss": frictionloss,
-            "p_gain": p_gain,
         }
 
         xml_str = update_xml(copy.deepcopy(tree), joint_name, params_dict)
@@ -430,7 +418,6 @@ def main():
         #     "damping": 0.859,
         #     "armature": 0.041,
         #     "frictionloss": 0.402,
-        #     "p_gain": 14.9,
         # }
 
         update_xml(tree, args.joint_name, opt_params)
