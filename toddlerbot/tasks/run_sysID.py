@@ -254,7 +254,7 @@ def optimize_parameters(
         raise ValueError("Invalid sampler")
 
     study = optuna.create_study(storage="sqlite:///db.sqlite3", sampler=sampler)
-    study.optimize(objective, n_trials=n_iters, n_jobs=1, show_progress_bar=True)
+    study.optimize(objective, n_trials=n_iters, n_jobs=-1, show_progress_bar=True)
 
     return study.best_params
 
