@@ -31,6 +31,7 @@ class MuJoCoSim(BaseSim):
             xml_path = find_description_path(robot.name, suffix="_scene.xml")
             self.model = mujoco.MjModel.from_xml_path(xml_path)
 
+        self.model.opt.timestep = 0.001
         self.data = mujoco.MjData(self.model)
 
         if not fixed:
