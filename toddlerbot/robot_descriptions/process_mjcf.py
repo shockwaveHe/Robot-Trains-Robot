@@ -96,6 +96,21 @@ def add_default_settings(root):
     ET.SubElement(collision_default, "geom", {"group": "3"})
 
 
+def exclude_all_contacts(root):
+    contact = root.find("contact")
+    if contact is not None:
+        root.remove(contact)
+
+    contact = ET.SubElement(root, "contact")
+
+    for body1 in root.findall(".//body"):
+        body1_name = body1.get("name")
+        for body2 in root.findall(".//body"):
+            body2_name = body2.get("name")
+            if body1_name != body2_name:
+                ET.SubElement(contact, "exclude", body1=body1_name, body2=body2_name)
+
+
 def add_contact_exclusion_to_mjcf(root):
     # Ensure there is a <contact> element
     contact = root.find("contact")
@@ -341,7 +356,7 @@ def process_mjcf_fixed_file(root, config):
     add_torso_site(root)
     update_joint_params(root, config.motor_params)
     update_geom_classes(root, ["type", "contype", "conaffinity", "group", "density"])
-    add_contact_exclusion_to_mjcf(root)
+    exclude_all_contacts(root)
     add_actuators_to_mjcf(root, config.motor_params)
     add_equality_constraints_for_leaves(root, config.constraint_pairs)
     add_default_settings(root)
@@ -350,6 +365,7 @@ def process_mjcf_fixed_file(root, config):
 def process_mjcf_file(root, config, urdf_path):
     # update_actuator_types(root, config.motor_params)
     add_body_link(root, config, urdf_path)
+    add_contact_exclusion_to_mjcf(root)
 
 
 def process_mjcf_files(robot_name):

@@ -245,20 +245,6 @@
       </body>
     </body>
   </worldbody>
-  <contact>
-    <exclude body1="hip_roll_link" body2="left_hip_pitch_link" />
-    <exclude body1="hip_roll_link" body2="left_calf_link" />
-    <exclude body1="hip_roll_link" body2="ank_roll_link" />
-    <exclude body1="left_hip_pitch_link" body2="left_calf_link" />
-    <exclude body1="left_hip_pitch_link" body2="ank_roll_link" />
-    <exclude body1="left_calf_link" body2="ank_roll_link" />
-    <exclude body1="hip_roll_link_2" body2="right_hip_pitch_link" />
-    <exclude body1="hip_roll_link_2" body2="right_calf_link" />
-    <exclude body1="hip_roll_link_2" body2="ank_roll_link_2" />
-    <exclude body1="right_hip_pitch_link" body2="right_calf_link" />
-    <exclude body1="right_hip_pitch_link" body2="ank_roll_link_2" />
-    <exclude body1="right_calf_link" body2="ank_roll_link_2" />
-  </contact>
   <actuator>
     <position name="left_hip_yaw_act" joint="left_hip_yaw" kp="3.125" kv="0.0" ctrlrange="-0.785398 0.785398" />
     <position name="left_hip_roll_act" joint="left_hip_roll" kp="18.75" kv="0.0" ctrlrange="-0.785398 1.5708" />
@@ -290,4 +276,26 @@
       <geom group="3" />
     </default>
   </default>
+  <contact>
+    <exclude body1="body_link" body2="hip_roll_link" />
+    <exclude body1="body_link" body2="left_hip_pitch_link" />
+    <exclude body1="body_link" body2="left_calf_link" />
+    <exclude body1="body_link" body2="ank_roll_link" />
+    <exclude body1="body_link" body2="hip_roll_link_2" />
+    <exclude body1="body_link" body2="right_hip_pitch_link" />
+    <exclude body1="body_link" body2="right_calf_link" />
+    <exclude body1="body_link" body2="ank_roll_link_2" />
+    <exclude body1="hip_roll_link" body2="left_hip_pitch_link" />
+    <exclude body1="hip_roll_link" body2="left_calf_link" />
+    <exclude body1="hip_roll_link" body2="ank_roll_link" />
+    <exclude body1="left_hip_pitch_link" body2="left_calf_link" />
+    <exclude body1="left_hip_pitch_link" body2="ank_roll_link" />
+    <exclude body1="left_calf_link" body2="ank_roll_link" />
+    <exclude body1="hip_roll_link_2" body2="right_hip_pitch_link" />
+    <exclude body1="hip_roll_link_2" body2="right_calf_link" />
+    <exclude body1="hip_roll_link_2" body2="ank_roll_link_2" />
+    <exclude body1="right_hip_pitch_link" body2="right_calf_link" />
+    <exclude body1="right_hip_pitch_link" body2="ank_roll_link_2" />
+    <exclude body1="right_calf_link" body2="ank_roll_link_2" />
+  </contact>
 </mujoco>

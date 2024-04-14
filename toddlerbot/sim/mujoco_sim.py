@@ -11,6 +11,7 @@ from toddlerbot.sim import BaseSim
 from toddlerbot.sim.robot import HumanoidRobot, JointState
 from toddlerbot.utils.constants import GRAVITY
 from toddlerbot.utils.file_utils import find_description_path
+from toddlerbot.utils.misc_utils import precise_sleep
 
 
 class MuJoCoSim(BaseSim):
@@ -248,6 +249,7 @@ class MuJoCoSim(BaseSim):
             mujoco.set_mjcb_control(self.control_callback)
 
         while not self.stop_event.is_set():
+            step_start = time.time()
             if callback:
                 mujoco.mj_step(self.model, self.data)
             else:
@@ -269,6 +271,10 @@ class MuJoCoSim(BaseSim):
                             self.vis_torso(viewer)
 
                 viewer.sync()
+
+            time_until_next_step = self.model.opt.timestep - (time.time() - step_start)
+            if time_until_next_step > 0:
+                precise_sleep(time_until_next_step)
 
         if not headless:
             viewer.close()

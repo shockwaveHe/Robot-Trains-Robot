@@ -3,7 +3,6 @@ import copy
 import json
 import os
 import pickle
-import shutil
 import time
 from xml.etree.ElementTree import ElementTree, tostring
 
@@ -17,105 +16,6 @@ from toddlerbot.utils.file_utils import find_description_path
 from toddlerbot.utils.math_utils import round_floats
 from toddlerbot.utils.misc_utils import log, precise_sleep
 from toddlerbot.utils.vis_plot import plot_joint_tracking
-
-
-def update_xml(tree, params_dict):
-    """
-    Update the MuJoCo XML file with new actuator parameters and return it as a string.
-    """
-    # Load the XML file
-    root = tree.getroot()
-
-    for joint_name, params in params_dict.items():
-        if "left" in joint_name:
-            joint_name_symmetric = joint_name.replace("left", "right")
-        elif "right" in joint_name:
-            joint_name_symmetric = joint_name.replace("right", "left")
-
-        for name in [joint_name, joint_name_symmetric]:
-            # Find the joint by name
-            joint = root.find(f".//joint[@name='{name}']")
-            if joint is not None:
-                # Update the joint with new parameters
-                for param_name, param_value in params.items():
-                    joint.set(param_name, str(param_value))
-            else:
-                print(f"Joint '{name}' not found in the XML tree.")
-
-    # Convert the updated XML tree back to a string
-    xml_string = tostring(root, encoding="unicode")
-
-    return xml_string
-
-
-def optimize_parameters(
-    robot,
-    joint_name,
-    tree,
-    assets_dict,
-    joint_data_dict,
-    damping_range=(1e-3, 2, 1e-3),
-    armature_range=(1e-3, 0.1, 1e-3),
-    friction_range=(0, 1, 1e-3),
-    sampler="TPE",
-    n_iters=500,
-):
-    signal_config_list = []
-    observed_response = []
-    for data in joint_data_dict.values():
-        signal_config_list.append(data["signal_config"])
-        observed_response.append(data["joint_traj"]["pos"])
-
-    observed_response = np.concatenate(observed_response)
-
-    def objective(trial: optuna.Trial):
-        # Calculate the model response using the current set of parameters
-        damping = trial.suggest_float(
-            "damping", *damping_range[:2], step=damping_range[2]
-        )
-        armature = trial.suggest_float(
-            "armature", *armature_range[:2], step=armature_range[2]
-        )
-        frictionloss = trial.suggest_float(
-            "frictionloss", *friction_range[:2], step=friction_range[2]
-        )
-
-        params_dict = {
-            joint_name: {
-                "damping": damping,
-                "armature": armature,
-                "frictionloss": frictionloss,
-            }
-        }
-
-        xml_str = update_xml(copy.deepcopy(tree), params_dict)
-        sim = MuJoCoSim(robot, xml_str=xml_str, assets=assets_dict, fixed=True)
-        sim.simulate(headless=True, callback=False)
-
-        model_response = []
-        for signal_config in signal_config_list:
-            signal_time, signal_pos = generate_sinusoidal_signal(signal_config)
-            joint_traj = actuate(
-                sim, robot, joint_name, signal_pos, 1 / signal_config["sampling_rate"]
-            )
-            model_response.extend(joint_traj["pos"])
-
-        sim.close()
-
-        error = np.sqrt(np.mean((observed_response - np.array(model_response)) ** 2))
-        return error
-
-    if sampler == "TPE":
-        sampler = optuna.samplers.TPESampler()
-    elif sampler == "CMA":
-        sampler = optuna.samplers.CmaEsSampler()
-    else:
-        raise ValueError("Invalid sampler")
-
-    study = optuna.create_study(storage="sqlite:///db.sqlite3", sampler=sampler)
-    study.optimize(objective, n_trials=n_iters, n_jobs=-1, show_progress_bar=True)
-
-    return study.best_params
 
 
 def generate_random_sinusoidal_config(
@@ -268,17 +168,107 @@ def collect_data(
     return joint_data_dict
 
 
-def evaluate(robot, joint_name, new_xml_path, joint_data_dict, exp_folder_path):
+def update_xml(tree, params_dict):
+    """
+    Update the MuJoCo XML file with new actuator parameters and return it as a string.
+    """
+    # Load the XML file
+    root = tree.getroot()
+
+    for joint_name, params in params_dict.items():
+        if "left" in joint_name:
+            joint_name_symmetric = joint_name.replace("left", "right")
+        elif "right" in joint_name:
+            joint_name_symmetric = joint_name.replace("right", "left")
+
+        for name in [joint_name, joint_name_symmetric]:
+            # Find the joint by name
+            joint = root.find(f".//joint[@name='{name}']")
+            if joint is not None:
+                # Update the joint with new parameters
+                for param_name, param_value in params.items():
+                    joint.set(param_name, str(param_value))
+            else:
+                print(f"Joint '{name}' not found in the XML tree.")
+
+    # Convert the updated XML tree back to a string
+    xml_string = tostring(root, encoding="unicode")
+
+    return xml_string
+
+
+def optimize_parameters(
+    robot,
+    joint_name,
+    tree,
+    assets_dict,
+    signal_config_list,
+    observed_response,
+    damping_range=(1e-3, 2, 1e-3),
+    armature_range=(1e-3, 0.1, 1e-3),
+    friction_range=(0, 1, 1e-3),
+    sampler="TPE",
+    n_iters=500,
+):
+    def objective(trial: optuna.Trial):
+        # Calculate the model response using the current set of parameters
+        damping = trial.suggest_float(
+            "damping", *damping_range[:2], step=damping_range[2]
+        )
+        armature = trial.suggest_float(
+            "armature", *armature_range[:2], step=armature_range[2]
+        )
+        frictionloss = trial.suggest_float(
+            "frictionloss", *friction_range[:2], step=friction_range[2]
+        )
+        params_dict = {
+            joint_name: {
+                "damping": damping,
+                "armature": armature,
+                "frictionloss": frictionloss,
+            }
+        }
+        xml_str = update_xml(copy.deepcopy(tree), params_dict)
+        sim = MuJoCoSim(robot, xml_str=xml_str, assets=assets_dict, fixed=True)
+        sim.simulate(headless=True, callback=False)
+
+        model_response = []
+        for signal_config in signal_config_list:
+            _, signal_pos = generate_sinusoidal_signal(signal_config)
+            joint_traj = actuate(
+                sim, robot, joint_name, signal_pos, 1 / signal_config["sampling_rate"]
+            )
+            model_response.extend(joint_traj["pos"])
+
+        sim.close()
+
+        error = np.sqrt(np.mean((observed_response - np.array(model_response)) ** 2))
+
+        return error
+
+    if sampler == "TPE":
+        sampler = optuna.samplers.TPESampler()
+    elif sampler == "CMA":
+        sampler = optuna.samplers.CmaEsSampler()
+    else:
+        raise ValueError("Invalid sampler")
+
+    study = optuna.create_study(storage="sqlite:///db.sqlite3", sampler=sampler)
+    study.optimize(objective, n_trials=n_iters, n_jobs=1, show_progress_bar=True)
+
+    return study.best_params
+
+
+def evaluate(
+    robot,
+    joint_name,
+    new_xml_path,
+    signal_config_list,
+    observed_response,
+    exp_folder_path,
+):
     sim = MuJoCoSim(robot, xml_path=new_xml_path, fixed=True)
     sim.simulate(headless=True, callback=False)
-
-    signal_config_list = []
-    observed_response = []
-    for data in joint_data_dict.values():
-        signal_config_list.append(data["signal_config"])
-        observed_response.append(data["joint_traj"]["pos"])
-
-    observed_response = np.concatenate(observed_response)
 
     time_seq_ref_dict = {}
     time_seq_dict = {}
@@ -351,13 +341,13 @@ def main():
         help="The names of the joints to perform SysID on.",
     )
     parser.add_argument(
-        "n_trials",
+        "--n-trials",
         type=int,
         default=5,
         help="The number of trials to collect data for.",
     )
     parser.add_argument(
-        "n_iters",
+        "--n-iters",
         type=int,
         default=1000,
         help="The number of iterations to optimize the parameters.",
@@ -411,10 +401,8 @@ def main():
         with open(opt_params_file_path, "r") as f:
             opt_params_dict = json.load(f)
     else:
-        shutil.copy2(fixed_xml_path, new_xml_path)
-
         tree = ElementTree()
-        tree.parse(new_xml_path)
+        tree.parse(fixed_xml_path)
         root = tree.getroot()
 
         assets_dict = {}
@@ -430,12 +418,21 @@ def main():
 
         opt_params_dict = {}
         for joint_name in args.joint_names:
+            signal_config_list = []
+            observed_response = []
+            for data in real_world_data_dict[joint_name].values():
+                signal_config_list.append(data["signal_config"])
+                observed_response.append(data["joint_traj"]["pos"])
+
+            observed_response = np.concatenate(observed_response)
+
             opt_params_dict[joint_name] = optimize_parameters(
                 robot,
                 joint_name,
                 tree,
                 assets_dict,
-                real_world_data_dict,
+                signal_config_list,
+                observed_response,
                 sampler="CMA",
                 n_iters=args.n_iters,
             )
@@ -452,11 +449,20 @@ def main():
     ###### Evaluate the optimized parameters in the simulation ######
     sim_data_dict = {}
     for joint_name in args.joint_names:
+        signal_config_list = []
+        observed_response = []
+        for data in real_world_data_dict[joint_name].values():
+            signal_config_list.append(data["signal_config"])
+            observed_response.append(data["joint_traj"]["pos"])
+
+        observed_response = np.concatenate(observed_response)
+
         sim_data_dict[joint_name] = evaluate(
             robot,
             joint_name,
             new_xml_path,
-            real_world_data_dict[joint_name],
+            signal_config_list,
+            observed_response,
             exp_folder_path,
         )
 
