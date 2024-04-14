@@ -19,17 +19,25 @@ from toddlerbot.utils.misc_utils import log, precise_sleep
 from toddlerbot.utils.vis_plot import plot_joint_tracking
 
 
-def update_xml(tree, joint_name, params_dict):
+def update_xml(tree, joint_names, params_dict):
     """
     Update the MuJoCo XML file with new actuator parameters and return it as a string.
     """
     # Load the XML file
     root = tree.getroot()
 
-    # Iterate over all joints in the XML
-    joint = root.find(f".//joint[@name='{joint_name}']")
-    for param_name, param_value in params_dict.items():
-        joint.set(param_name, str(param_value))
+    if not isinstance(joint_names, list):
+        joint_names = [joint_names]
+
+    for joint_name in joint_names:
+        # Find the joint by name
+        joint = root.find(f".//joint[@name='{joint_name}']")
+        if joint is not None:
+            # Update the joint with new parameters
+            for param_name, param_value in params_dict.items():
+                joint.set(param_name, str(param_value))
+        else:
+            print(f"Joint '{joint_name}' not found in the XML tree.")
 
     # Convert the updated XML tree back to a string
     xml_string = tostring(root, encoding="unicode")
@@ -248,16 +256,9 @@ def collect_data(
     return joint_data_dict
 
 
-def evaluate(
-    robot,
-    joint_name,
-    new_xml_path,
-    joint_data_dict,
-    exp_folder_path,
-    headless=False,
-):
+def evaluate(robot, joint_name, new_xml_path, joint_data_dict, exp_folder_path):
     sim = MuJoCoSim(robot, xml_path=new_xml_path, fixed=True)
-    sim.simulate(headless=headless)
+    sim.simulate(headless=True, callback=False)
 
     signal_config_list = []
     observed_response = []
@@ -342,12 +343,6 @@ def main():
         default="",
         help="The path to the experiment folder.",
     )
-    parser.add_argument(
-        "--headless",
-        action="store_true",
-        default=False,
-        help="Run the simulation in headless mode.",
-    )
     args = parser.parse_args()
 
     if len(args.exp_folder_path) > 0:
@@ -401,35 +396,31 @@ def main():
                 with open(mesh_file_path, "rb") as f:
                     assets_dict[mesh_file] = f.read()
 
-        opt_params = optimize_parameters(
-            robot,
-            args.joint_name,
-            tree,
-            assets_dict,
-            real_world_data_dict,
-            sampler="CMA",
-            n_trials=1000,
-        )
+        # opt_params = optimize_parameters(
+        #     robot,
+        #     args.joint_name,
+        #     tree,
+        #     assets_dict,
+        #     real_world_data_dict,
+        #     sampler="CMA",
+        #     n_trials=1000,
+        # )
 
-        with open(opt_params_file_path, "w") as f:
-            json.dump(opt_params, f, indent=4)
+        # with open(opt_params_file_path, "w") as f:
+        #     json.dump(opt_params, f, indent=4)
 
-        # opt_params = {
-        #     "damping": 0.859,
-        #     "armature": 0.041,
-        #     "frictionloss": 0.402,
-        # }
+        opt_params = {"damping": 0.309, "armature": 0.005, "frictionloss": 0.033}
+        if "left" in args.joint_name:
+            joint_name_symmetric = args.joint_name.replace("left", "right")
+        elif "right" in args.joint_name:
+            joint_name_symmetric = args.joint_name.replace("right", "left")
 
-        update_xml(tree, args.joint_name, opt_params)
+        update_xml(tree, [args.joint_name, joint_name_symmetric], opt_params)
+
         tree.write(new_xml_path)
 
     sim_data_dict = evaluate(
-        robot,
-        args.joint_name,
-        new_xml_path,
-        real_world_data_dict,
-        exp_folder_path,
-        headless=args.headless,
+        robot, args.joint_name, new_xml_path, real_world_data_dict, exp_folder_path
     )
     sim_data_file_name = f"{args.joint_name}_sim_data.pkl"
     sim_data_file_path = os.path.join(exp_folder_path, sim_data_file_name)

@@ -54,7 +54,7 @@
     <geom rgba="0.602652 0.747582 0.822925 1" mesh="body_link_collision" class="collision" />
     <body name="hip_yaw_link" pos="-0.0064 0.034 0.2855" quat="1 0 0 0">
       <inertial pos="0 0 -0.00983905" quat="0 0.707107 0 0.707107" mass="0.00902588" diaginertia="3.87214e-06 3.84085e-06 1.32305e-06" />
-      <joint name="left_hip_yaw" pos="0 0 0" axis="0 0 1" range="-0.785398 0.785398" damping="1.084" armature="0.045" />
+      <joint name="left_hip_yaw" pos="0 0 0" axis="0 0 1" range="-0.785398 0.785398" damping="0.309" armature="0.005" frictionloss="0.033" />
       <geom rgba="0.615686 0.811765 0.929412 1" mesh="left_hip_yaw_link_visual" class="visual" />
       <body name="hip_roll_link" pos="0.019 0 -0.026" quat="0 0.707107 0 0.707107">
         <inertial pos="-0.0120002 -0.000495888 -0.018504" quat="0.654458 0.267712 0.652088 0.27349" mass="0.0980124" diaginertia="2.78674e-05 2.68492e-05 2.02212e-05" />
@@ -148,7 +148,7 @@
     </body>
     <body name="hip_yaw_link_2" pos="-0.0064 -0.034 0.2855" quat="1 0 0 0">
       <inertial pos="0 0 -0.00983905" quat="0 0.707107 0 0.707107" mass="0.00902588" diaginertia="3.87214e-06 3.84085e-06 1.32305e-06" />
-      <joint name="right_hip_yaw" pos="0 0 0" axis="0 0 1" range="-0.785398 0.785398" damping="1.084" armature="0.045" />
+      <joint name="right_hip_yaw" pos="0 0 0" axis="0 0 1" range="-0.785398 0.785398" damping="0.309" armature="0.005" frictionloss="0.033" />
       <geom rgba="0.615686 0.811765 0.929412 1" mesh="right_hip_yaw_link_visual" class="visual" />
       <body name="hip_roll_link_2" pos="0.019 0 -0.026" quat="0.707107 0 0.707107 0">
         <inertial pos="0.0120002 -0.000495888 -0.019496" quat="0.27349 0.652088 0.267712 0.654458" mass="0.0980124" diaginertia="2.78674e-05 2.68492e-05 2.02212e-05" />

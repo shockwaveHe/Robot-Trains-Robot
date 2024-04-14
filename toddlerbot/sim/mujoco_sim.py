@@ -255,8 +255,8 @@ class MuJoCoSim(BaseSim):
                 mujoco.mj_step2(self.model, self.data)
 
             if not headless:
-                with viewer.lock():
-                    if vis_data is not None:
+                if vis_data is not None:
+                    with viewer.lock():
                         viewer.user_scn.ngeom = 0
                         if "foot_steps" in vis_data:
                             self.vis_foot_steps(viewer, vis_data["foot_steps"])
