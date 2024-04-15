@@ -234,7 +234,7 @@ def optimize_parameters(
     observed_response,
     damping_range=(0, 2, 1e-3),
     armature_range=(0, 0.1, 1e-4),
-    friction_range=(0, 1, 1e-3),
+    friction_range=(0, 0.2, 1e-4),
     sampler="TPE",
     n_iters=500,
 ):
