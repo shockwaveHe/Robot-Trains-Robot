@@ -453,16 +453,20 @@ def main():
 
             observed_response = np.concatenate(observed_response)
 
-            opt_params_dict[joint_name] = optimize_parameters(
-                robot,
-                joint_name,
-                tree,
-                assets_dict,
-                signal_config_list,
-                observed_response,
-                sampler="CMA",
-                n_iters=args.n_iters,
-            )
+            try:
+                opt_params_dict[joint_name] = optimize_parameters(
+                    robot,
+                    joint_name,
+                    tree,
+                    assets_dict,
+                    signal_config_list,
+                    observed_response,
+                    sampler="CMA",
+                    n_iters=args.n_iters,
+                )
+            except Exception as e:
+                log(f"Error: {e}", header="SysID", level="error")
+                continue
 
         with open(opt_params_file_path, "w") as f:
             json.dump(opt_params_dict, f, indent=4)
