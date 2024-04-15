@@ -3,15 +3,132 @@ import threading
 import time
 
 import mujoco
+import mujoco.rollout
 import mujoco.viewer
 import numpy as np
 from transforms3d.euler import euler2mat
 
 from toddlerbot.sim import BaseSim
-from toddlerbot.sim.robot import HumanoidRobot, JointState
-from toddlerbot.utils.constants import GRAVITY
+from toddlerbot.sim.robot import JointState
+from toddlerbot.utils.constants import GRAVITY, MUJOCO_TIMESTEP
 from toddlerbot.utils.file_utils import find_description_path
 from toddlerbot.utils.misc_utils import precise_sleep
+
+
+class Visualizer:
+    def __init__(self, robot, viewer):
+        self.viewer = viewer
+        self.foot_size = robot.foot_size
+
+    def visualize(self, model, data, vis_data):
+        if vis_data is not None:
+            with self.viewer.lock():
+                self.viewer.user_scn.ngeom = 0
+                if "foot_steps" in vis_data:
+                    self.vis_foot_steps(vis_data["foot_steps"])
+                if "com_ref_traj" in vis_data:
+                    self.vis_com_ref_traj(vis_data["com_ref_traj"])
+                if "path" in vis_data:
+                    self.vis_path(vis_data["path"])
+                if "torso" in vis_data:
+                    self.vis_torso(data)
+
+        self.viewer.sync()
+
+    def vis_foot_steps(self, foot_steps):
+        i = self.viewer.user_scn.ngeom
+        for foot_step in foot_steps:
+            if foot_step.support_leg == "both":
+                continue
+
+            mujoco.mjv_initGeom(
+                self.viewer.user_scn.geoms[i],
+                type=mujoco.mjtGeom.mjGEOM_LINEBOX,
+                size=[
+                    self.foot_size[0] / 2,
+                    self.foot_size[1] / 2,
+                    self.foot_size[2] / 2,
+                ],
+                pos=np.array(
+                    [
+                        foot_step.position[0],
+                        foot_step.position[1],
+                        self.foot_size[2] / 2,
+                    ]
+                ),
+                mat=euler2mat(0, 0, foot_step.position[2]).flatten(),
+                rgba=(
+                    [0, 0, 1, 1] if foot_step.support_leg == "left" else [0, 1, 0, 1]
+                ),
+            )
+            i += 1
+        self.viewer.user_scn.ngeom = i
+
+    def vis_com_ref_traj(self, com_ref_traj):
+        i = self.viewer.user_scn.ngeom
+        for com_pos in com_ref_traj:
+            mujoco.mjv_initGeom(
+                self.viewer.user_scn.geoms[i],
+                type=mujoco.mjtGeom.mjGEOM_SPHERE,
+                size=np.array([0.001, 0.001, 0.001]),
+                pos=np.array([com_pos[0], com_pos[1], 0.005]),
+                mat=np.eye(3).flatten(),
+                rgba=[1, 0, 0, 1],
+            )
+            i += 1
+        self.viewer.user_scn.ngeom = i
+
+    def vis_path(self, path):
+        i = self.viewer.user_scn.ngeom
+        for j in range(len(path) - 1):
+            mujoco.mjv_initGeom(
+                self.viewer.user_scn.geoms[i],
+                type=mujoco.mjtGeom.mjGEOM_LINE,
+                size=np.array([1, 1, 1]),
+                pos=np.array([0, 0, 0]),
+                mat=np.eye(3).flatten(),
+                rgba=[0, 0, 0, 1],
+            )
+            mujoco.mjv_connector(
+                self.viewer.user_scn.geoms[i],
+                mujoco.mjtGeom.mjGEOM_LINE,
+                100,
+                np.array([*path[j], 0.0]),
+                np.array([*path[j + 1], 0.0]),
+            )
+            i += 1
+        self.viewer.user_scn.ngeom = i
+
+    def vis_torso(self, data):
+        i = self.viewer.user_scn.ngeom
+        torso_pos = data.site("torso").xpos
+        torso_mat = data.site("torso").xmat
+        mujoco.mjv_initGeom(
+            self.viewer.user_scn.geoms[i],
+            type=mujoco.mjtGeom.mjGEOM_ARROW,
+            size=np.array([0.005, 0.005, 0.15]),
+            pos=torso_pos,
+            mat=torso_mat,
+            rgba=[1, 0, 0, 1],
+        )
+        self.viewer.user_scn.ngeom = i + 1
+
+    def close(self):
+        self.viewer.close()
+
+
+class Controller:
+    def __init__(self):
+        self.command_queue = queue.Queue()
+
+    def add_command(self, joint_angles):
+        self.command_queue.put(joint_angles)
+
+    def process_commands(self, model, data):
+        while not self.command_queue.empty():
+            joint_angles = self.command_queue.get()
+            for name, angle in joint_angles.items():
+                data.actuator(f"{name}_act").ctrl = angle
 
 
 class MuJoCoSim(BaseSim):
@@ -32,17 +149,16 @@ class MuJoCoSim(BaseSim):
             xml_path = find_description_path(robot.name, suffix="_scene.xml")
             self.model = mujoco.MjModel.from_xml_path(xml_path)
 
-        self.model.opt.timestep = 0.001
+        self.model.opt.timestep = MUJOCO_TIMESTEP
         self.data = mujoco.MjData(self.model)
+
+        self.controller = Controller()
 
         if not fixed:
             self.put_robot_on_ground()
 
-        self.queue = queue.Queue()
+        self.thread = None
         self.stop_event = threading.Event()
-
-        self.foot_size = robot.foot_size
-        self.t_last = self.data.time
 
     def put_robot_on_ground(self, z_offset: float = 0.02):
         lowest_z = float("inf")
@@ -70,59 +186,8 @@ class MuJoCoSim(BaseSim):
                 + f" Change the z value of {body_link_name} as {desired_z}"
             )
 
-    def get_link_pos(self, link_name: str):
-        mujoco.mj_kinematics(self.model, self.data)
-        link_pos = self.data.body(link_name).xpos
-        return np.array(link_pos)
-
-    def get_link_quat(self, link_name: str):
-        mujoco.mj_kinematics(self.model, self.data)
-        link_quat = self.data.body(link_name).xquat
-        return np.array(link_quat)
-
-    def get_torso_pose(self):
-        mujoco.mj_kinematics(self.model, self.data)
-        torso_pos = self.data.site("torso").xpos.copy()
-        torso_mat = self.data.site("torso").xmat.copy().reshape(3, 3)
-        return torso_pos, torso_mat
-
-    def get_joint_state(self):
-        joint_state_dict = {}
-        time_curr = time.time()
-        for name, info in self.robot.joints_info.items():
-            if info["active"]:
-                joint_state_dict[name] = JointState(
-                    time=time_curr, pos=self.data.joint(name).qpos.item()
-                )
-
-        return joint_state_dict
-
-    def get_zmp(self, com_pos, pz=0.0):
-        M = self.model.body(0).subtreemass
-        cx, cy = com_pos
-        # print(f"dP: {self.dP}, dL: {self.dL}")
-        # Eq. 3.73-3.74 on p.96 in "Introduction to Humanoid Robotics" by Shuuji Kajita
-        px_zmp = (M * GRAVITY * cx + pz * self.dP[0] - self.dL[1]) / (
-            M * GRAVITY + self.dP[2]
-        )
-        py_zmp = (M * GRAVITY * cy + pz * self.dP[1] + self.dL[0]) / (
-            M * GRAVITY + self.dP[2]
-        )
-        self.zmp = [px_zmp.item(), py_zmp.item()]
-
-        return self.zmp
-
-    def set_joint_angles(self, joint_angles):
-        self.queue.put((joint_angles))
-
-    def control_callback(self, model, data):
-        while not self.queue.empty():
-            joint_angles = self.queue.get()
-            for name, angle in joint_angles.items():
-                self.data.actuator(f"{name}_act").ctrl = angle
-
-    def _compute_dmom(self):
-        if self.t_last == 0:
+    def compute_dmom(self):
+        if not hasattr(self, "t_last"):
             self.last_mom = np.zeros(3)
             self.last_angmom = np.zeros(3)
             self.t_last = self.data.time
@@ -163,90 +228,64 @@ class MuJoCoSim(BaseSim):
             self.last_angmom = angmom
             self.t_last = t_curr
 
-    def vis_foot_steps(self, viewer, foot_steps):
-        i = viewer.user_scn.ngeom
-        for foot_step in foot_steps:
-            if foot_step.support_leg == "both":
-                continue
+    def get_link_pos(self, link_name: str):
+        mujoco.mj_kinematics(self.model, self.data)
+        link_pos = self.data.body(link_name).xpos
+        return np.array(link_pos)
 
-            mujoco.mjv_initGeom(
-                viewer.user_scn.geoms[i],
-                type=mujoco.mjtGeom.mjGEOM_LINEBOX,
-                size=[
-                    self.foot_size[0] / 2,
-                    self.foot_size[1] / 2,
-                    self.foot_size[2] / 2,
-                ],
-                pos=np.array(
-                    [
-                        foot_step.position[0],
-                        foot_step.position[1],
-                        self.foot_size[2] / 2,
-                    ]
-                ),
-                mat=euler2mat(0, 0, foot_step.position[2]).flatten(),
-                rgba=(
-                    [0, 0, 1, 1] if foot_step.support_leg == "left" else [0, 1, 0, 1]
-                ),
-            )
-            i += 1
-        viewer.user_scn.ngeom = i
+    def get_link_quat(self, link_name: str):
+        mujoco.mj_kinematics(self.model, self.data)
+        link_quat = self.data.body(link_name).xquat
+        return np.array(link_quat)
 
-    def vis_com_ref_traj(self, viewer, com_ref_traj):
-        i = viewer.user_scn.ngeom
-        for com_pos in com_ref_traj:
-            mujoco.mjv_initGeom(
-                viewer.user_scn.geoms[i],
-                type=mujoco.mjtGeom.mjGEOM_SPHERE,
-                size=np.array([0.001, 0.001, 0.001]),
-                pos=np.array([com_pos[0], com_pos[1], 0.005]),
-                mat=np.eye(3).flatten(),
-                rgba=[1, 0, 0, 1],
-            )
-            i += 1
-        viewer.user_scn.ngeom = i
+    def get_torso_pose(self):
+        mujoco.mj_kinematics(self.model, self.data)
+        torso_pos = self.data.site("torso").xpos.copy()
+        torso_mat = self.data.site("torso").xmat.copy().reshape(3, 3)
+        return torso_pos, torso_mat
 
-    def vis_path(self, viewer, path):
-        i = viewer.user_scn.ngeom
-        for j in range(len(path) - 1):
-            mujoco.mjv_initGeom(
-                viewer.user_scn.geoms[i],
-                type=mujoco.mjtGeom.mjGEOM_LINE,
-                size=np.array([1, 1, 1]),
-                pos=np.array([0, 0, 0]),
-                mat=np.eye(3).flatten(),
-                rgba=[0, 0, 0, 1],
-            )
-            mujoco.mjv_connector(
-                viewer.user_scn.geoms[i],
-                mujoco.mjtGeom.mjGEOM_LINE,
-                100,
-                np.array([*path[j], 0.0]),
-                np.array([*path[j + 1], 0.0]),
-            )
-            i += 1
-        viewer.user_scn.ngeom = i
+    def get_joint_state(self):
+        joint_state_dict = {}
+        time_curr = time.time()
+        for name, info in self.robot.joints_info.items():
+            if info["active"]:
+                joint_state_dict[name] = JointState(
+                    time=time_curr, pos=self.data.joint(name).qpos.item()
+                )
 
-    def vis_torso(self, viewer):
-        i = viewer.user_scn.ngeom
-        torso_pos = self.data.site("torso").xpos
-        torso_mat = self.data.site("torso").xmat
-        mujoco.mjv_initGeom(
-            viewer.user_scn.geoms[i],
-            type=mujoco.mjtGeom.mjGEOM_ARROW,
-            size=np.array([0.005, 0.005, 0.15]),
-            pos=torso_pos,
-            mat=torso_mat,
-            rgba=[1, 0, 0, 1],
+        return joint_state_dict
+
+    def get_zmp(self, com_pos, pz=0.0):
+        M = self.model.body(0).subtreemass
+        cx, cy = com_pos
+        # print(f"dP: {self.dP}, dL: {self.dL}")
+        # Eq. 3.73-3.74 on p.96 in "Introduction to Humanoid Robotics" by Shuuji Kajita
+        px_zmp = (M * GRAVITY * cx + pz * self.dP[0] - self.dL[1]) / (
+            M * GRAVITY + self.dP[2]
         )
-        viewer.user_scn.ngeom = i + 1
+        py_zmp = (M * GRAVITY * cy + pz * self.dP[1] + self.dL[0]) / (
+            M * GRAVITY + self.dP[2]
+        )
+        zmp = [px_zmp.item(), py_zmp.item()]
+        return zmp
 
-    def simulate_worker(self, headless, callback, vis_data):
-        if not headless:
-            viewer = mujoco.viewer.launch_passive(self.model, self.data)
+    def set_joint_angles(self, joint_angles):
+        self.controller.add_command(joint_angles)
 
+    def simulate(self, headless=False, callback=True, vis_data=None):
+        self.thread = threading.Thread(
+            target=self.run_simulation, args=(headless, callback, vis_data)
+        )
+        self.thread.start()
+
+    def run_simulation(self, headless, callback, vis_data):
         if callback:
-            mujoco.set_mjcb_control(self.control_callback)
+            mujoco.set_mjcb_control(self.controller.process_commands)
+
+        if not headless:
+            visualizer = Visualizer(
+                self.robot, mujoco.viewer.launch_passive(self.model, self.data)
+            )
 
         while not self.stop_event.is_set():
             step_start = time.time()
@@ -254,45 +293,56 @@ class MuJoCoSim(BaseSim):
                 mujoco.mj_step(self.model, self.data)
             else:
                 mujoco.mj_step1(self.model, self.data)
-                self.control_callback(self.model, self.data)
+                self.controller.process_commands(self.model, self.data)
                 mujoco.mj_step2(self.model, self.data)
 
             if not headless:
-                if vis_data is not None:
-                    with viewer.lock():
-                        viewer.user_scn.ngeom = 0
-                        if "foot_steps" in vis_data:
-                            self.vis_foot_steps(viewer, vis_data["foot_steps"])
-                        if "com_ref_traj" in vis_data:
-                            self.vis_com_ref_traj(viewer, vis_data["com_ref_traj"])
-                        if "path" in vis_data:
-                            self.vis_path(viewer, vis_data["path"])
-                        if "torso" in vis_data:
-                            self.vis_torso(viewer)
-
-                viewer.sync()
+                visualizer.visualize(self.model, self.data, vis_data)
 
             time_until_next_step = self.model.opt.timestep - (time.time() - step_start)
             if time_until_next_step > 0:
                 precise_sleep(time_until_next_step)
 
-        if not headless:
-            viewer.close()
+            # log(f"Step {self.counter}", header="MuJoCo", level="debug")
+            # self.counter += 1
+            # step_end = time.time()
+            # log(f"Step Time: {step_end - step_start}", header="MuJoCo", level="debug")
 
-    def simulate(self, headless=False, callback=True, vis_data=None):
-        self.sim_thread = threading.Thread(
-            target=self.simulate_worker, args=(headless, callback, vis_data)
+        if not headless:
+            visualizer.close()
+
+    def rollout(self, joint_control_traj):
+        n_state = mujoco.mj_stateSize(self.model, mujoco.mjtState.mjSTATE_FULLPHYSICS)
+        initial_state = np.empty(n_state)
+        mujoco.mj_getState(
+            self.model, self.data, initial_state, mujoco.mjtState.mjSTATE_FULLPHYSICS
         )
-        self.sim_thread.start()
+
+        control = np.zeros((len(joint_control_traj), self.model.nu))
+        for i, joint_angles in enumerate(joint_control_traj):
+            for name, angle in joint_angles.items():
+                control[i, self.model.actuator(f"{name}_act").id] = angle
+
+        state_traj, _ = mujoco.rollout.rollout(
+            self.model, self.data, initial_state, control
+        )
+        state_traj = state_traj.squeeze()
+
+        joint_state_traj = []
+        # mjSTATE_TIME ｜ mjSTATE_QPOS | mjSTATE_QVEL | mjSTATE_ACT
+        for state in state_traj:
+            joint_state = {}
+            for name, info in self.robot.joints_info.items():
+                if info["active"]:
+                    joint_state[name] = JointState(
+                        time=state[0], pos=state[1 + self.model.joint(name).id]
+                    )
+            joint_state_traj.append(joint_state)
+
+        return joint_state_traj
 
     def close(self):
-        if threading.current_thread() is not self.sim_thread:
+        if self.thread is not None and threading.current_thread() is not self.thread:
             # Wait for the thread to finish if it's not the current thread
             self.stop_event.set()
-            self.sim_thread.join()
-
-
-if __name__ == "__main__":
-    robot = HumanoidRobot("robotis_op3")
-    sim = MuJoCoSim()
-    sim.simulate_worker()
+            self.thread.join()

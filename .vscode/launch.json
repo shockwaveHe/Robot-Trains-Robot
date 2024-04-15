@@ -197,7 +197,7 @@
                 "left_hip_roll",
                 "left_hip_pitch",
                 "--exp-folder-path",
-                "results/20240413_213824_sysID_toddlerbot_legs"
+                "results/20240414_125418_sysID_toddlerbot_legs"
             ],
             "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
         },

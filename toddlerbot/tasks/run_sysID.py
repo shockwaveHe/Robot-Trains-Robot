@@ -12,6 +12,7 @@ import optuna
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.sim.robot import HumanoidRobot
+from toddlerbot.utils.constants import MUJOCO_TIMESTEP
 from toddlerbot.utils.file_utils import find_description_path
 from toddlerbot.utils.math_utils import round_floats
 from toddlerbot.utils.misc_utils import log, precise_sleep
@@ -19,17 +20,16 @@ from toddlerbot.utils.vis_plot import plot_joint_tracking
 
 
 def generate_random_sinusoidal_config(
-    duration, frequency_range, amplitude_range, rate_range
+    duration, control_dt, frequency_range, amplitude_range
 ):
     frequency = np.random.uniform(*frequency_range)
     amplitude = np.random.uniform(*amplitude_range)
-    sampling_rate = np.random.uniform(*rate_range)
 
     return {
         "frequency": frequency,
         "amplitude": amplitude,
         "duration": duration,
-        "sampling_rate": sampling_rate,
+        "control_dt": control_dt,
     }
 
 
@@ -40,7 +40,7 @@ def generate_sinusoidal_signal(signal_config):
     t = np.linspace(
         0,
         signal_config["duration"],
-        int(signal_config["duration"] * signal_config["sampling_rate"]),
+        int(signal_config["duration"] / signal_config["control_dt"]),
         endpoint=False,
     )
     signal = signal_config["amplitude"] * np.sin(
@@ -49,52 +49,86 @@ def generate_sinusoidal_signal(signal_config):
     return t, signal
 
 
-def actuate(sim, robot, joint_name, signal_pos, sleep_time, prep_time=1):
+# @profile
+def actuate(sim, robot, joint_name, signal_pos, control_dt, prep_time=1):
     """
     Actuates a single joint with the given signal and collects the response.
     """
     # Convert signal time to sleep time between updates
+    joint_data_dict = {"pos": [], "time": []}
     _, initial_joint_angles = robot.initialize_joint_angles()
 
-    joint_traj_dict = {"pos": [], "time": []}
+    if sim.name == "real_world":
+        sim.set_joint_angles(initial_joint_angles)
+        precise_sleep(prep_time)
 
-    sim.set_joint_angles(initial_joint_angles)
-    precise_sleep(prep_time)
+        time_start = time.time()
+        for angle in signal_pos:
+            step_start = time.time()
 
-    time_start = time.time()
-    for angle in signal_pos:
-        step_start = time.time()
+            joint_angles = initial_joint_angles.copy()
+            joint_angles[joint_name] = angle
 
-        joint_angles = initial_joint_angles.copy()
-        joint_angles[joint_name] = angle
+            # log(f"Setting joint {joint_name} to {angle}...", header="SysID", level="debug")
+            sim.set_joint_angles(joint_angles)
 
-        sim.set_joint_angles(joint_angles)
+            joint_state_dict = sim.get_joint_state()
 
-        joint_state_dict = sim.get_joint_state()
+            joint_data_dict["time"].append(
+                joint_state_dict[joint_name].time - time_start
+            )
 
-        joint_traj_dict["time"].append(joint_state_dict[joint_name].time - time_start)
+            pos = joint_state_dict[joint_name].pos
+            if (
+                hasattr(sim, "negated_joint_names")
+                and joint_name in sim.negated_joint_names
+            ):
+                pos *= -1
 
-        pos = joint_state_dict[joint_name].pos
-        if (
-            hasattr(sim, "negated_joint_names")
-            and joint_name in sim.negated_joint_names
-        ):
-            pos *= -1
+            joint_data_dict["pos"].append(pos)
 
-        joint_traj_dict["pos"].append(pos)
+            time_until_next_step = control_dt - (time.time() - step_start)
+            if time_until_next_step > 0:
+                # log(
+                #     f"Sleeping for {time_until_next_step} s...",
+                #     header="SysID",
+                #     level="debug",
+                # )
+                precise_sleep(time_until_next_step)
 
-        time_until_next_step = sleep_time - (time.time() - step_start)
-        if time_until_next_step > 0:
-            precise_sleep(time_until_next_step)
+        # time_end = time.time()
+        # log(
+        #     f"Actuation duration: {time_end - time_start} s",
+        #     header="SysID",
+        #     level="debug",
+        # )
 
-    # time_end = time.time()
-    # log(
-    #     f"Actuation duration: {time_end - time_start} s",
-    #     header="SysID",
-    #     level="debug",
-    # )
+    elif sim.name == "mujoco":
+        prep_steps = int(prep_time / MUJOCO_TIMESTEP)
+        control_steps = int(control_dt / MUJOCO_TIMESTEP)
 
-    return joint_traj_dict
+        joint_control_traj = []
+        for _ in range(prep_steps):
+            joint_control_traj.append(initial_joint_angles)
+
+        for angle in signal_pos:
+            joint_angles = initial_joint_angles.copy()
+            joint_angles[joint_name] = angle
+            for _ in range(control_steps):
+                joint_control_traj.append(joint_angles)
+
+        joint_state_traj = sim.rollout(joint_control_traj)
+
+        joint_data_dict = {"pos": [], "time": []}
+        time_start = joint_state_traj[prep_steps][joint_name].time
+        for i in range(prep_steps, len(joint_state_traj), control_steps):
+            joint_state_dict = joint_state_traj[i]
+            joint_data_dict["time"].append(
+                joint_state_dict[joint_name].time - time_start
+            )
+            joint_data_dict["pos"].append(joint_state_dict[joint_name].pos)
+
+    return joint_data_dict
 
 
 def collect_data(
@@ -103,8 +137,8 @@ def collect_data(
     exp_folder_path,
     n_trials=10,
     duration=3,
+    control_dt=0.04,
     frequency_range=(0.5, 2),
-    rate_range=(10, 100),
     amplitude_min=np.pi / 8,
 ):
     real_world = RealWorld(robot)
@@ -118,11 +152,11 @@ def collect_data(
     joint_angle_ref_dict = {}
     joint_angle_dict = {}
 
-    joint_data_dict = {}
+    real_world_data_dict = {}
     title_list = []
     for trial in range(n_trials):
         signal_config = generate_random_sinusoidal_config(
-            duration, frequency_range, (amplitude_min, amplitude_max), rate_range
+            duration, control_dt, frequency_range, (amplitude_min, amplitude_max)
         )
         signal_time, signal_pos = generate_sinusoidal_signal(signal_config)
         signal_config_rounded = round_floats(signal_config, 3)
@@ -135,23 +169,17 @@ def collect_data(
             header="SysID",
             level="debug",
         )
-        joint_traj = actuate(
-            real_world,
-            robot,
-            joint_name,
-            signal_pos,
-            1 / signal_config["sampling_rate"],
-        )
+        joint_data_dict = actuate(real_world, robot, joint_name, signal_pos, control_dt)
 
-        joint_data_dict[trial] = {
+        real_world_data_dict[trial] = {
             "signal_config": signal_config,
-            "joint_traj": joint_traj,
+            "joint_data": joint_data_dict,
         }
 
         time_seq_ref_dict[f"trial_{trial}"] = list(signal_time)
-        time_seq_dict[f"trial_{trial}"] = joint_traj["time"]
+        time_seq_dict[f"trial_{trial}"] = joint_data_dict["time"]
         joint_angle_ref_dict[f"trial_{trial}"] = list(signal_pos)
-        joint_angle_dict[f"trial_{trial}"] = joint_traj["pos"]
+        joint_angle_dict[f"trial_{trial}"] = joint_data_dict["pos"]
 
     real_world.close()
 
@@ -165,7 +193,7 @@ def collect_data(
         title_list=title_list,
     )
 
-    return joint_data_dict
+    return real_world_data_dict
 
 
 def update_xml(tree, params_dict):
@@ -204,8 +232,8 @@ def optimize_parameters(
     assets_dict,
     signal_config_list,
     observed_response,
-    damping_range=(1e-3, 2, 1e-3),
-    armature_range=(1e-3, 0.1, 1e-3),
+    damping_range=(0, 2, 1e-3),
+    armature_range=(0, 0.1, 1e-4),
     friction_range=(0, 1, 1e-3),
     sampler="TPE",
     n_iters=500,
@@ -230,15 +258,14 @@ def optimize_parameters(
         }
         xml_str = update_xml(copy.deepcopy(tree), params_dict)
         sim = MuJoCoSim(robot, xml_str=xml_str, assets=assets_dict, fixed=True)
-        sim.simulate(headless=True, callback=False)
 
         model_response = []
         for signal_config in signal_config_list:
             _, signal_pos = generate_sinusoidal_signal(signal_config)
-            joint_traj = actuate(
-                sim, robot, joint_name, signal_pos, 1 / signal_config["sampling_rate"]
+            joint_data_dict = actuate(
+                sim, robot, joint_name, signal_pos, signal_config["control_dt"]
             )
-            model_response.extend(joint_traj["pos"])
+            model_response.extend(joint_data_dict["pos"])
 
         sim.close()
 
@@ -259,6 +286,7 @@ def optimize_parameters(
     return study.best_params
 
 
+# @profile
 def evaluate(
     robot,
     joint_name,
@@ -268,14 +296,13 @@ def evaluate(
     exp_folder_path,
 ):
     sim = MuJoCoSim(robot, xml_path=new_xml_path, fixed=True)
-    sim.simulate(headless=True, callback=False)
 
     time_seq_ref_dict = {}
     time_seq_dict = {}
     joint_angle_ref_dict = {}
     joint_angle_dict = {}
 
-    joint_data_dict = {}
+    sim_data_dict = {}
     title_list = []
 
     model_response = []
@@ -293,20 +320,20 @@ def evaluate(
             header="SysID",
             level="debug",
         )
-        joint_traj = actuate(
-            sim, robot, joint_name, signal_pos, 1 / signal_config["sampling_rate"]
+        joint_data_dict = actuate(
+            sim, robot, joint_name, signal_pos, signal_config["control_dt"]
         )
-        model_response.extend(joint_traj["pos"])
+        model_response.extend(joint_data_dict["pos"])
 
-        joint_data_dict[f"trial_{trial}"] = {
+        sim_data_dict[f"trial_{trial}"] = {
             "signal_config": signal_config,
-            "joint_traj": joint_traj,
+            "joint_data": joint_data_dict,
         }
 
         time_seq_ref_dict[f"trial_{trial}"] = list(signal_time)
-        time_seq_dict[f"trial_{trial}"] = joint_traj["time"]
+        time_seq_dict[f"trial_{trial}"] = joint_data_dict["time"]
         joint_angle_ref_dict[f"trial_{trial}"] = list(signal_pos)
-        joint_angle_dict[f"trial_{trial}"] = joint_traj["pos"]
+        joint_angle_dict[f"trial_{trial}"] = joint_data_dict["pos"]
 
     sim.close()
 
@@ -323,7 +350,7 @@ def evaluate(
         title_list=title_list,
     )
 
-    return joint_data_dict
+    return sim_data_dict
 
 
 def main():
@@ -440,10 +467,25 @@ def main():
         with open(opt_params_file_path, "w") as f:
             json.dump(opt_params_dict, f, indent=4)
 
-        # opt_params_dict = {"damping": 0.309, "armature": 0.005, "frictionloss": 0.033}
+        # opt_params_dict = {
+        #     "left_hip_yaw": {
+        #         "damping": 0.043,
+        #         "armature": 0.001,
+        #         "frictionloss": 0.213,
+        #     },
+        #     "left_hip_roll": {
+        #         "damping": 0.357,
+        #         "armature": 0.006,
+        #         "frictionloss": 0.073,
+        #     },
+        #     "left_hip_pitch": {
+        #         "damping": 0.327,
+        #         "armature": 0.005,
+        #         "frictionloss": 0.037,
+        #     },
+        # }
 
         update_xml(tree, opt_params_dict)
-
         tree.write(new_xml_path)
 
     ###### Evaluate the optimized parameters in the simulation ######
