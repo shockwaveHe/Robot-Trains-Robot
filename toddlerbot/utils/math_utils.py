@@ -93,6 +93,7 @@ def interpolate_pos(
             pos_start, pos, delta_t, time_curr, interp_type=interp_type
         )
         set_pos(pos_interp)
+        # log(f"Setting position: {pos_interp}", header=actuator_type, level="debug")
 
         time_elapsed = time.time() - time_start - time_curr
         time_until_next_step = sleep_time - time_elapsed
@@ -101,13 +102,13 @@ def interpolate_pos(
 
         counter += 1
 
-    time_end = time.time()
-    control_freq = counter / (time_end - time_start)
-    log(
-        f"Control frequency: {control_freq}",
-        header="".join(x.title() for x in actuator_type.split("_")),
-        level="debug",
-    )
+    # time_end = time.time()
+    # interp_freq = counter / (time_end - time_start)
+    # log(
+    #     f"Interpolation frequency: {interp_freq}",
+    #     header="".join(x.title() for x in actuator_type.split("_")),
+    #     level="debug",
+    # )
 
 
 def resample_trajectory(trajectory, desired_interval=0.01, interp_type="linear"):

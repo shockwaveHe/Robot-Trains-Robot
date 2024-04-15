@@ -156,7 +156,7 @@ class SunnySkyController(BaseController):
         state_dict = self.get_motor_state()
         zero_pos = np.array([state.pos for state in state_dict.values()])
         log(f"Setting zero position {list(zero_pos)} for motors...", header="SunnySky")
-        self.set_pos(zero_pos)
+        self.set_pos(zero_pos, limit=False)
         precise_sleep(0.1)
 
         self.init_pos = {id: pos for id, pos in zip(self.motor_ids, zero_pos)}
@@ -266,7 +266,7 @@ class SunnySkyController(BaseController):
 
 if __name__ == "__main__":
     joint_range_dict = {1: (0, np.pi / 2), 2: (0, -np.pi / 2)}
-    pos_seq_ref = [
+    pos_ref_seq = [
         [0.0, 0.0],
         [np.pi / 2, -np.pi / 4],
         [0.0, 0.0],
@@ -274,11 +274,11 @@ if __name__ == "__main__":
         [0.64, -0.64],
     ]
 
-    # joint_range_dict = {2: (0, -np.pi / 2)}
-    # pos_seq_ref = [[0.0], [-np.pi / 2], [0.0], [-np.pi / 4], [0.0]]
-
     # joint_range_dict = {1: (0, np.pi / 2)}
-    # pos_seq_ref = [[0.0], [np.pi / 2], [0.0], [np.pi / 4], [0.0]]
+    # pos_ref_seq = [[0.0], [np.pi / 2], [0.0], [np.pi / 4], [0.0]]
+
+    # joint_range_dict = {2: (0, -np.pi / 2)}
+    # pos_ref_seq = [[0.0], [-np.pi / 2], [0.0], [-np.pi / 4], [0.0]]
 
     config = SunnySkyConfig(port=find_feather_port(), kP=40, kD=50)
     controller = SunnySkyController(config, joint_range_dict=joint_range_dict)
@@ -286,22 +286,20 @@ if __name__ == "__main__":
     time_seq = []
     pos_seq = []
     time_start = time.time()
+    for pos_ref in pos_ref_seq:
+        controller.set_pos(pos_ref)
+        state_dict = controller.get_motor_state()
+
+        message = "Motor states:"
+        for id, state in state_dict.items():
+            message += f" {id}: {state.pos:.4f} at {state.time - time_start:.4f}s"
+
+        log(message, header="SunnySky", level="debug")
+
     try:
-        i = 0
         while True:
-            if i < len(pos_seq_ref):
-                pos_ref = pos_seq_ref[i]
-                i += 1
+            time.sleep(1)
+    except KeyboardInterrupt:
+        pass
 
-            controller.set_pos(pos_ref)
-            state_dict = controller.get_motor_state()
-
-            message = "Motor states:"
-            for id, state in state_dict.items():
-                message += f" {id}: {state.pos:.4f} at {state.time - time_start:.4f}s"
-
-            log(message, header="SunnySky", level="debug")
-
-    finally:
-        controller.close_motors()
-        log("Process completed successfully.", header="SunnySky")
+    controller.close_motors()
