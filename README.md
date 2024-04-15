@@ -205,13 +205,21 @@ Run Flush Knee ESC from the "Run and Debug" panel.
 ## Actuation
 - MightyZap: Update the firmware if you cannot search the motor.
 
-## Notes for myself
+## TODO
 
 ### Export the environment
 Will remove this later.
 ```
 pigar generate
 ```
+
+### ESC interface redesign
+1. Separate TX, RX
+2. Add a new can bus connector
+3. Use connector that is easier to work with
+4. Smaller footprint
+
+### No belt
 
 ### Good coding practices
 1. Use dataclass and argparse if possible
