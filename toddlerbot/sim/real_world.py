@@ -54,7 +54,7 @@ class RealWorld(BaseSim):
             gear_ratio=np.array([19 / 21, 1, 1, 19 / 21, 1, 1]),
         )
 
-        self.sunny_sky_config = SunnySkyConfig(port=find_feather_port(), kP=10, kD=10)
+        self.sunny_sky_config = SunnySkyConfig(port=find_feather_port(), kP=40, kD=50)
         # Temorarily hard-coded joint range for SunnySky
         joint_range_dict = {1: (0, np.pi / 2), 2: (0, -np.pi / 2)}
 

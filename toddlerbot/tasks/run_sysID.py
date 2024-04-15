@@ -20,7 +20,7 @@ from toddlerbot.utils.vis_plot import plot_joint_tracking
 
 
 def generate_random_sinusoidal_config(
-    duration, control_dt, frequency_range, amplitude_range
+    duration, control_dt, mean, frequency_range, amplitude_range
 ):
     frequency = np.random.uniform(*frequency_range)
     amplitude = np.random.uniform(*amplitude_range)
@@ -30,6 +30,7 @@ def generate_random_sinusoidal_config(
         "amplitude": amplitude,
         "duration": duration,
         "control_dt": control_dt,
+        "mean": mean,
     }
 
 
@@ -43,7 +44,7 @@ def generate_sinusoidal_signal(signal_config):
         int(signal_config["duration"] / signal_config["control_dt"]),
         endpoint=False,
     )
-    signal = signal_config["amplitude"] * np.sin(
+    signal = signal_config["mean"] + signal_config["amplitude"] * np.sin(
         2 * np.pi * signal_config["frequency"] * t
     )
     return t, signal
@@ -57,6 +58,7 @@ def actuate(sim, robot, joint_name, signal_pos, control_dt, prep_time=1):
     # Convert signal time to sleep time between updates
     joint_data_dict = {"pos": [], "time": []}
     _, initial_joint_angles = robot.initialize_joint_angles()
+    initial_joint_angles[joint_name] = signal_pos[0]
 
     if sim.name == "real_world":
         sim.set_joint_angles(initial_joint_angles)
@@ -142,10 +144,10 @@ def collect_data(
     amplitude_min=np.pi / 8,
 ):
     real_world = RealWorld(robot)
-    amplitude_max = min(
-        abs(robot.joints_info[joint_name]["lower_limit"]),
-        abs(robot.joints_info[joint_name]["upper_limit"]),
-    )
+    lower_limit = robot.joints_info[joint_name]["lower_limit"]
+    upper_limit = robot.joints_info[joint_name]["upper_limit"]
+    mean = (lower_limit + upper_limit) / 2
+    amplitude_max = upper_limit - mean
 
     time_seq_ref_dict = {}
     time_seq_dict = {}
@@ -156,7 +158,7 @@ def collect_data(
     title_list = []
     for trial in range(n_trials):
         signal_config = generate_random_sinusoidal_config(
-            duration, control_dt, frequency_range, (amplitude_min, amplitude_max)
+            duration, control_dt, mean, frequency_range, (amplitude_min, amplitude_max)
         )
         signal_time, signal_pos = generate_sinusoidal_signal(signal_config)
         signal_config_rounded = round_floats(signal_config, 3)
@@ -449,7 +451,7 @@ def main():
             observed_response = []
             for data in real_world_data_dict[joint_name].values():
                 signal_config_list.append(data["signal_config"])
-                observed_response.append(data["joint_traj"]["pos"])
+                observed_response.append(data["joint_data"]["pos"])
 
             observed_response = np.concatenate(observed_response)
 
@@ -499,7 +501,7 @@ def main():
         observed_response = []
         for data in real_world_data_dict[joint_name].values():
             signal_config_list.append(data["signal_config"])
-            observed_response.append(data["joint_traj"]["pos"])
+            observed_response.append(data["joint_data"]["pos"])
 
         observed_response = np.concatenate(observed_response)
 
