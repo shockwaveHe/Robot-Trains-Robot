@@ -175,10 +175,7 @@
                 "--robot-name",
                 "toddlerbot_legs",
                 "--joint-names",
-                "left_ank_roll",
-                "left_ank_pitch",
-                // "--exp-folder-path",
-                // "results/20240414_125418_sysID_toddlerbot_legs"
+                "all",
             ],
             "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
         },

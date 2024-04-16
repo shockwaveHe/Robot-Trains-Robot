@@ -61,6 +61,9 @@ def actuate(sim, robot, joint_name, signal_pos, control_dt, prep_time=1):
     _, initial_joint_angles = robot.initialize_joint_angles()
     initial_joint_angles[joint_name] = signal_pos[0]
 
+    if joint_name == "left_ank_roll":
+        initial_joint_angles["left_ank_pitch"] = np.pi / 6
+
     is_ankle = joint_name in robot.mighty_zap_joint2id
 
     if sim.name == "real_world":
@@ -162,15 +165,21 @@ def collect_data(
     robot,
     joint_name,
     exp_folder_path,
-    n_trials=10,
+    n_trials,
     duration=3,
     control_dt=0.05,
     frequency_range=(0.5, 2),
-    amplitude_min=np.pi / 8,
+    amplitude_min=np.pi / 12,
 ):
     real_world = RealWorld(robot)
     lower_limit = robot.joints_info[joint_name]["lower_limit"]
     upper_limit = robot.joints_info[joint_name]["upper_limit"]
+
+    # TODO: rotate yaw a little bit when moving hip pitch and knee
+    if joint_name == "left_ank_pitch":
+        lower_limit = 0.0
+        upper_limit = np.pi / 6
+
     mean = (lower_limit + upper_limit) / 2
     amplitude_max = upper_limit - mean
 
@@ -399,7 +408,7 @@ def main():
     parser.add_argument(
         "--n-trials",
         type=int,
-        default=5,
+        default=15,
         help="The number of trials to collect data for.",
     )
     parser.add_argument(
@@ -415,6 +424,16 @@ def main():
         help="The path to the experiment folder.",
     )
     args = parser.parse_args()
+
+    if "all" in args.joint_names:
+        args.joint_names = [
+            "left_hip_yaw",
+            "left_hip_roll",
+            "left_hip_pitch",
+            "left_knee",
+            "left_ank_roll",
+            "left_ank_pitch",
+        ]
 
     if len(args.exp_folder_path) > 0:
         exp_folder_path = args.exp_folder_path
@@ -444,8 +463,9 @@ def main():
             real_world_data_dict[joint_name] = collect_data(
                 robot, joint_name, exp_folder_path, n_trials=args.n_trials
             )
-        with open(real_world_data_file_path, "wb") as f:
-            pickle.dump(real_world_data_dict, f)
+            # Save the data in intermediate steps
+            with open(real_world_data_file_path, "wb") as f:
+                pickle.dump(real_world_data_dict, f)
 
     ###### Optimize the hyperparameters ######
     fixed_xml_path = find_description_path(args.robot_name, suffix="_fixed.xml")
