@@ -116,7 +116,7 @@ class HumanoidRobot:
         )
 
         # Measured in the real robot (m)
-        offsets["mighty_zap_len"] = 0.072
+        offsets["mighty_zap_len"] = 0.086
 
         return offsets
 
@@ -171,7 +171,7 @@ class HumanoidRobot:
 
         return joint_angles, initial_joint_angles
 
-    def ankle_fk(self, mighty_zap_pos, last_mighty_zap_pos):
+    def ankle_fk(self, mighty_zap_pos, last_ankle_pos, lower_limits, upper_limits):
         def objective_function(ankle_pos, target_pos):
             pos = self.ankle_ik(ankle_pos)
             error = np.array(pos) - np.array(target_pos)
@@ -179,17 +179,18 @@ class HumanoidRobot:
 
         result = root(
             lambda x: objective_function(x, mighty_zap_pos),
-            last_mighty_zap_pos,
+            last_ankle_pos,
             method="hybr",
             options={"xtol": 1e-6},
         )
 
         if result.success:
             optimized_ankle_pos = result.x
-            return optimized_ankle_pos
+            # TODO: Update the limits
+            return np.clip(optimized_ankle_pos, lower_limits, upper_limits)
         else:
             log("Solving ankle position failed", header="MightyZap", level="warning")
-            return last_mighty_zap_pos
+            return last_ankle_pos
 
     def ankle_ik(self, ankle_pos):
         # Implemented based on page 3 of the following paper:

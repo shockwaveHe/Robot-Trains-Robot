@@ -46,7 +46,7 @@ class RealWorld(BaseSim):
             port="/dev/tty.usbserial-FT8ISUJY",
             kFF2=[0, 0, 0, 0, 0, 0],
             kFF1=[0, 0, 0, 0, 0, 0],
-            kP=[400, 2400, 800, 400, 2400, 800],
+            kP=[400, 3200, 1600, 400, 3200, 1600],
             kI=[0, 0, 0, 0, 0, 0],
             kD=[400, 800, 400, 400, 800, 400],
             current_limit=[700, 700, 700, 700, 700, 700],
@@ -249,9 +249,19 @@ class RealWorld(BaseSim):
         for side, mighty_zap_pos_arr in mighty_zap_pos_dict.items():
             ids = self.robot.ankle2mighty_zap[side]
             last_ankle_pos = [0] * len(ids)
+            joint_names = [self.robot.mighty_zap_id2joint[id] for id in ids]
             ankle_pos_list = []
+
+            lower_limits = []
+            upper_limits = []
+            for joint_name in joint_names:
+                lower_limits.append(self.robot.joints_info[joint_name]["lower_limit"])
+                upper_limits.append(self.robot.joints_info[joint_name]["upper_limit"])
+
             for mighty_zap_pos in mighty_zap_pos_arr:
-                ankle_pos = self.robot.ankle_fk(mighty_zap_pos, last_ankle_pos)
+                ankle_pos = self.robot.ankle_fk(
+                    mighty_zap_pos, last_ankle_pos, lower_limits, upper_limits
+                )
                 ankle_pos_list.append(ankle_pos)
                 last_ankle_pos = ankle_pos
 

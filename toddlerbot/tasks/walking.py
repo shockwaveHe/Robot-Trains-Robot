@@ -62,10 +62,6 @@ class Walking:
         self.left_pos = np.array([0.0, self.y_offset_com_to_foot, 0.0])
         self.right_pos = np.array([0.0, -self.y_offset_com_to_foot, 0.0])
 
-        self.left_hip_roll_comp = config.hip_roll_comp
-        self.right_hip_roll_comp = config.hip_roll_comp
-        self.left_hip_roll_comp_curr = self.right_hip_roll_comp_curr = 0.0
-
     def plan(self, curr_pose=None, target_pose=None):
         if self.curr_pose is not None:
             curr_pose = self.curr_pose
@@ -177,7 +173,6 @@ class Walking:
             elif support_leg == "left":
                 self.right_up = max(self.right_up - up_delta, 0.0)
 
-        self.left_hip_roll_comp_curr = self.right_hip_roll_comp_curr = 0.0
         # Move foot in the axes of x, y, theta
         if idx_curr > up_start_idx + up_period * 2:
             if support_leg == "right":
@@ -186,12 +181,10 @@ class Walking:
                 self.right_pos = self.right_pos_target.copy()
         elif idx_curr > up_start_idx:
             if support_leg == "right":
-                self.right_hip_roll_comp_curr = self.right_hip_roll_comp
                 self.left_pos += self.left_pos_delta
                 if self.config.rotate_torso:
                     self.theta_curr += self.theta_delta
             elif support_leg == "left":
-                self.left_hip_roll_comp_curr = self.left_hip_roll_comp
                 self.right_pos += self.right_pos_delta
                 if self.config.rotate_torso:
                     self.theta_curr += self.theta_delta

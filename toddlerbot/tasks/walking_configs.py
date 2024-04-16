@@ -14,14 +14,13 @@ class WalkingConfig:
     control_t_filter: float = 0.5
     control_cost_Q_val: float = 1.0
     control_cost_R_val: float = 1e-6
-    interp_t: float = 0.01
     target_pose_init: list = field(default_factory=lambda: [0.2, 0.0, 0.785])
     foot_step_height: float = 0.04
     squat_height: float = 0.03
     y_offset_zmp: float = 0.06
     filter_dynamics: bool = False
     rotate_torso: bool = False
-    hip_roll_comp: float = 0.0
+    speed_factor: float = 1.0
 
     @staticmethod
     def create_config(**kwargs):
@@ -56,15 +55,15 @@ walking_configs = {
         plan_max_stride=[0.02, 0.03, 0.2],
         plan_t_step=1.0,
         y_offset_zmp=0.04,
-        interp_t=0.01,
         target_pose_init=[0.1, 0.0, 0.0],
     ),
     "toddlerbot_real": WalkingConfig.create_config(squat_height=0.01),
     "toddlerbot_legs_real": WalkingConfig.create_config(
         squat_height=0.01,
         plan_max_stride=[0.02, 0.03, 0.2],
-        plan_t_step=1.0,
-        y_offset_zmp=0.04,
+        plan_t_step=0.6,
+        y_offset_zmp=0.065,
         target_pose_init=[0.1, 0.0, 0.0],
+        speed_factor=0.2,
     ),
 }

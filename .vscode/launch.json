@@ -36,8 +36,6 @@
             "args": [
                 "--robot-name",
                 "sustaina_op",
-                "--sleep-time",
-                "0.001",
             ]
         },
         {
@@ -50,8 +48,6 @@
             "args": [
                 "--robot-name",
                 "robotis_op3",
-                "--sleep-time",
-                "0.001",
             ]
         },
         {
@@ -66,8 +62,6 @@
                 "robotis_op3",
                 "--sim",
                 "mujoco",
-                // "--sleep-time",
-                // "0.001",
             ],
             "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
         },
@@ -83,8 +77,6 @@
                 "toddlerbot",
                 "--sim",
                 "mujoco",
-                // "--sleep-time",
-                // "0.001",
             ],
             "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
         },
@@ -100,8 +92,6 @@
                 "toddlerbot_legs",
                 "--sim",
                 "mujoco",
-                // "--sleep-time",
-                // "0.001",
             ],
             "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
         },
@@ -130,8 +120,6 @@
                 "toddlerbot",
                 "--sim",
                 "real",
-                // "--sleep-time",
-                // "0.001",
             ]
         },
         {
@@ -146,8 +134,6 @@
                 "toddlerbot",
                 "--sim",
                 "real",
-                // "--sleep-time",
-                // "0.001",
             ]
         },
         {
@@ -162,8 +148,6 @@
                 "toddlerbot_legs",
                 "--sim",
                 "real",
-                // "--sleep-time",
-                // "0.001",
             ]
         },
         {
@@ -178,8 +162,6 @@
                 "toddlerbot_legs",
                 "--sim",
                 "real",
-                // "--sleep-time",
-                // "0.001",
             ]
         },
         {
@@ -193,11 +175,10 @@
                 "--robot-name",
                 "toddlerbot_legs",
                 "--joint-names",
-                "left_hip_yaw",
-                "left_hip_roll",
-                "left_hip_pitch",
-                "--exp-folder-path",
-                "results/20240414_125418_sysID_toddlerbot_legs"
+                "left_ank_roll",
+                "left_ank_pitch",
+                // "--exp-folder-path",
+                // "results/20240414_125418_sysID_toddlerbot_legs"
             ],
             "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
         },

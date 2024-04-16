@@ -86,7 +86,7 @@ def main():
             "com_ref_traj": com_ref_traj,
             "torso": None,
         }
-        sim.simulate(vis_data=vis_data, sleep_time=args.sleep_time)
+        sim.simulate(callback=True, vis_data=vis_data)
 
     time_start = time.time()
     try:
@@ -107,47 +107,45 @@ def main():
                 min(step_idx + actuate_horizon, len(joint_angles_traj) - 1)
             ]
 
-            if sim.name == "real_world":
-                joint_angles["left_hip_roll"] += walking.left_hip_roll_comp_curr
-                joint_angles["right_hip_roll"] -= walking.right_hip_roll_comp_curr
-
             sim.set_joint_angles(joint_angles)
 
-            if sim.name != "real_world":  # or True:
-                joint_state_dict = sim.get_joint_state()
-                for name, joint_state in joint_state_dict.items():
-                    if name not in time_seq_dict:
-                        time_seq_dict[name] = []
-                        joint_angle_dict[name] = []
+            joint_state_dict = sim.get_joint_state()
+            for name, joint_state in joint_state_dict.items():
+                if name not in time_seq_dict:
+                    time_seq_dict[name] = []
+                    joint_angle_dict[name] = []
 
-                    time_seq_dict[name].append(joint_state.time - time_start)
-                    joint_angle_dict[name].append(joint_state.pos)
+                # Assume the state fetching is instantaneous
+                time_seq_dict[name].append(step_idx * config.control_dt)
+                joint_angle_dict[name].append(joint_state.pos)
 
-                torso_pos, torso_mat = sim.get_torso_pose()
-                torso_mat_delta = torso_mat @ torso_mat_init.T
-                torso_theta = np.arctan2(torso_mat_delta[1, 0], torso_mat_delta[0, 0])
-                # print(f"torso_pos: {torso_pos}, torso_theta: {torso_theta}")
+            torso_pos, torso_mat = sim.get_torso_pose()
+            torso_mat_delta = torso_mat @ torso_mat_init.T
+            torso_theta = np.arctan2(torso_mat_delta[1, 0], torso_mat_delta[0, 0])
+            # print(f"torso_pos: {torso_pos}, torso_theta: {torso_theta}")
 
-                com_pos = [
-                    torso_pos[0] + np.cos(torso_theta) * walking.x_offset_com_to_foot,
-                    torso_pos[1] + np.sin(torso_theta) * walking.x_offset_com_to_foot,
-                ]
-                com_traj.append(com_pos)
-                # zmp_pos = sim.get_zmp(com_pos)
-                # zmp_approx_traj.append(zmp_pos)
+            com_pos = [
+                torso_pos[0] + np.cos(torso_theta) * walking.x_offset_com_to_foot,
+                torso_pos[1] + np.sin(torso_theta) * walking.x_offset_com_to_foot,
+            ]
+            com_traj.append(com_pos)
+            # zmp_pos = sim.get_zmp(com_pos)
+            # zmp_approx_traj.append(zmp_pos)
 
-                if step_idx >= len(joint_angles_traj):
-                    tracking_error = np.array(target_pose) - np.array(
-                        [*torso_pos[:2], torso_theta]
-                    )
-                    log(
-                        f"Tracking error: {round_floats(tracking_error, 6)}",
-                        header="Walking",
-                    )
+            if step_idx >= len(joint_angles_traj):
+                tracking_error = np.array(target_pose) - np.array(
+                    [*torso_pos[:2], torso_theta]
+                )
+                log(
+                    f"Tracking error: {round_floats(tracking_error, 6)}",
+                    header="Walking",
+                )
 
             step_idx += 1
 
-            time_until_next_step = config.control_dt - (time.time() - step_start)
+            time_until_next_step = 1 / config.speed_factor * config.control_dt - (
+                time.time() - step_start
+            )
             if time_until_next_step > 0:
                 precise_sleep(time_until_next_step)
 
@@ -160,8 +158,8 @@ def main():
         if sim.name == "real_world" and len(joint_angle_dict) > 0:
             mighty_zap_pos_dict = {}
             # Check if the ankle positions are linear actuator lengths
-            for ids in robot.ankle2mighty_zap:
-                mighty_zap_pos_dict[ids] = np.array(
+            for side, ids in robot.ankle2mighty_zap.items():
+                mighty_zap_pos_dict[side] = np.array(
                     [joint_angle_dict[robot.mighty_zap_id2joint[id]] for id in ids]
                 ).T
 
