@@ -8,6 +8,7 @@ from xml.etree.ElementTree import ElementTree, tostring
 
 import numpy as np
 import optuna
+from optuna.storages import JournalFileStorage, JournalStorage
 
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.real_world import RealWorld
@@ -270,6 +271,7 @@ def optimize_parameters(
     assets_dict,
     signal_config_list,
     observed_response,
+    exp_folder_path,
     damping_range=(0, 2, 1e-3),
     armature_range=(0, 0.1, 1e-4),
     friction_range=(0, 0.2, 1e-4),
@@ -318,10 +320,27 @@ def optimize_parameters(
     else:
         raise ValueError("Invalid sampler")
 
-    study = optuna.create_study(storage="sqlite:///db.sqlite3", sampler=sampler)
+    time_str = time.strftime("%Y%m%d_%H%M%S")
+    storage = JournalStorage(
+        JournalFileStorage(
+            os.path.join(exp_folder_path, f"{joint_name}_optuna_journal.log")
+        )
+    )
+
+    study = optuna.create_study(
+        study_name=f"{robot.name}_{joint_name}_{time_str}",
+        storage=storage,
+        sampler=sampler,
+    )
     study.optimize(objective, n_trials=n_iters, n_jobs=-1, show_progress_bar=True)
 
-    return study.best_params
+    log(
+        f"Best parameters: {study.best_params}; best value: {study.best_value}",
+        header="SysID",
+        level="info",
+    )
+
+    return study.best_params, study.best_value
 
 
 # @profile
@@ -473,6 +492,7 @@ def main():
         os.path.dirname(fixed_xml_path), f"{args.robot_name}_sysID.xml"
     )
     opt_params_file_path = os.path.join(exp_folder_path, "opt_params.json")
+    opt_values_file_path = os.path.join(exp_folder_path, "opt_values.json")
     if os.path.exists(opt_params_file_path):
         with open(opt_params_file_path, "r") as f:
             opt_params_dict = json.load(f)
@@ -493,6 +513,7 @@ def main():
                     assets_dict[mesh_file] = f.read()
 
         opt_params_dict = {}
+        opt_values_dict = {}
         for joint_name in args.joint_names:
             signal_config_list = []
             observed_response = []
@@ -503,15 +524,18 @@ def main():
             observed_response = np.concatenate(observed_response)
 
             try:
-                opt_params_dict[joint_name] = optimize_parameters(
-                    robot,
-                    joint_name,
-                    tree,
-                    assets_dict,
-                    signal_config_list,
-                    observed_response,
-                    sampler="CMA",
-                    n_iters=args.n_iters,
+                opt_params_dict[joint_name], opt_values_dict[joint_name] = (
+                    optimize_parameters(
+                        robot,
+                        joint_name,
+                        tree,
+                        assets_dict,
+                        signal_config_list,
+                        observed_response,
+                        exp_folder_path,
+                        sampler="CMA",
+                        n_iters=args.n_iters,
+                    )
                 )
             except Exception as e:
                 log(f"Error: {e}", header="SysID", level="error")
@@ -519,6 +543,9 @@ def main():
 
         with open(opt_params_file_path, "w") as f:
             json.dump(opt_params_dict, f, indent=4)
+
+        with open(opt_values_file_path, "w") as f:
+            json.dump(opt_values_dict, f, indent=4)
 
         # opt_params_dict = {
         #     "left_hip_yaw": {
@@ -539,6 +566,7 @@ def main():
         # }
 
         update_xml(tree, opt_params_dict)
+
         tree.write(new_xml_path)
 
     ###### Evaluate the optimized parameters in the simulation ######

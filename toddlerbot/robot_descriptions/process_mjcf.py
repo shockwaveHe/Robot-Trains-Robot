@@ -74,7 +74,7 @@ def add_default_settings(root):
     default = ET.SubElement(root, "default")
 
     # Set <joint> settings
-    ET.SubElement(default, "joint", {"frictionloss": "0.03"})
+    # ET.SubElement(default, "joint", {"frictionloss": "0.03"})
 
     # Set <position> settings
     ET.SubElement(default, "position", {"forcelimited": "false"})

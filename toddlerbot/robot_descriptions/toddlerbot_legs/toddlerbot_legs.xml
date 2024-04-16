@@ -247,17 +247,17 @@
   </worldbody>
   <actuator>
     <position name="left_hip_yaw_act" joint="left_hip_yaw" kp="3.125" kv="0.0" ctrlrange="-0.785398 0.785398" />
-    <position name="left_hip_roll_act" joint="left_hip_roll" kp="18.75" kv="0.0" ctrlrange="-0.785398 1.5708" />
-    <position name="left_hip_pitch_act" joint="left_hip_pitch" kp="6.25" kv="0.0" ctrlrange="-1.5708 1.5708" />
-    <position name="left_knee_act" joint="left_knee" kp="21.1" kv="0.0" ctrlrange="0 1.5708" />
-    <position name="left_ank_pitch_act" joint="left_ank_pitch" kp="21.1" kv="0.0" ctrlrange="-0.523599 0.523599" />
-    <position name="left_ank_roll_act" joint="left_ank_roll" kp="21.1" kv="0.0" ctrlrange="-0.785398 0.785398" />
+    <position name="left_hip_roll_act" joint="left_hip_roll" kp="26.0" kv="0.0" ctrlrange="-0.785398 1.5708" />
+    <position name="left_hip_pitch_act" joint="left_hip_pitch" kp="13.0" kv="0.0" ctrlrange="-1.5708 1.5708" />
+    <position name="left_knee_act" joint="left_knee" kp="40.0" kv="0.0" ctrlrange="0 1.5708" />
+    <position name="left_ank_pitch_act" joint="left_ank_pitch" kp="1.0" kv="0.0" ctrlrange="-0.523599 0.523599" />
+    <position name="left_ank_roll_act" joint="left_ank_roll" kp="1.0" kv="0.0" ctrlrange="-0.785398 0.785398" />
     <position name="right_hip_yaw_act" joint="right_hip_yaw" kp="3.125" kv="0.0" ctrlrange="-0.785398 0.785398" />
-    <position name="right_hip_roll_act" joint="right_hip_roll" kp="18.75" kv="0.0" ctrlrange="-1.5708 0.785398" />
-    <position name="right_hip_pitch_act" joint="right_hip_pitch" kp="6.25" kv="0.0" ctrlrange="-1.5708 1.5708" />
-    <position name="right_knee_act" joint="right_knee" kp="21.1" kv="0.0" ctrlrange="-1.5708 0" />
-    <position name="right_ank_pitch_act" joint="right_ank_pitch" kp="21.1" kv="0.0" ctrlrange="-0.523599 0.523599" />
-    <position name="right_ank_roll_act" joint="right_ank_roll" kp="21.1" kv="0.0" ctrlrange="-0.785398 0.785398" />
+    <position name="right_hip_roll_act" joint="right_hip_roll" kp="26.0" kv="0.0" ctrlrange="-1.5708 0.785398" />
+    <position name="right_hip_pitch_act" joint="right_hip_pitch" kp="13.0" kv="0.0" ctrlrange="-1.5708 1.5708" />
+    <position name="right_knee_act" joint="right_knee" kp="40.0" kv="0.0" ctrlrange="-1.5708 0" />
+    <position name="right_ank_pitch_act" joint="right_ank_pitch" kp="1.0" kv="0.0" ctrlrange="-0.523599 0.523599" />
+    <position name="right_ank_roll_act" joint="right_ank_roll" kp="1.0" kv="0.0" ctrlrange="-0.785398 0.785398" />
   </actuator>
   <equality>
     <weld body1="12lf_rod_end" body2="12lf_rod" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.0001 1" />
@@ -266,7 +266,6 @@
     <weld body1="12lf_rod_end_4" body2="12lf_rod_4" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.0001 1" />
   </equality>
   <default>
-    <joint frictionloss="0.03" />
     <position forcelimited="false" />
     <geom type="mesh" solref=".004 1" />
     <default class="visual">

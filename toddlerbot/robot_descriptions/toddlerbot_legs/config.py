@@ -67,7 +67,7 @@ toddlerbot_legs_config = RobotConfig(
             type="motor",
             damping=1.084,
             armature=0.045,
-            kp=18.75,
+            kp=26.0,
             kv=0.0,
         ),
         "left_hip_pitch": MotorParameters(
@@ -76,7 +76,7 @@ toddlerbot_legs_config = RobotConfig(
             type="motor",
             damping=1.084,
             armature=0.045,
-            kp=6.25,
+            kp=13.0,
             kv=0.0,
         ),
         "left_knee": MotorParameters(
@@ -85,7 +85,7 @@ toddlerbot_legs_config = RobotConfig(
             type="motor",
             damping=1.084,
             armature=0.045,
-            kp=21.1,
+            kp=40.0,
             kv=0.0,
         ),
         "left_ank_pitch": MotorParameters(
@@ -94,7 +94,7 @@ toddlerbot_legs_config = RobotConfig(
             type="motor",
             damping=1.084,
             armature=0.045,
-            kp=21.1,
+            kp=1.0,
             kv=0.0,
         ),
         "left_ank_roll": MotorParameters(
@@ -103,7 +103,7 @@ toddlerbot_legs_config = RobotConfig(
             type="motor",
             damping=1.084,
             armature=0.045,
-            kp=21.1,
+            kp=1.0,
             kv=0.0,
         ),
         "right_hip_yaw": MotorParameters(
@@ -121,7 +121,7 @@ toddlerbot_legs_config = RobotConfig(
             type="motor",
             damping=1.084,
             armature=0.045,
-            kp=18.75,
+            kp=26.0,
             kv=0.0,
         ),
         "right_hip_pitch": MotorParameters(
@@ -130,7 +130,7 @@ toddlerbot_legs_config = RobotConfig(
             type="motor",
             damping=1.084,
             armature=0.045,
-            kp=6.25,
+            kp=13.0,
             kv=0.0,
         ),
         "right_knee": MotorParameters(
@@ -139,7 +139,7 @@ toddlerbot_legs_config = RobotConfig(
             type="motor",
             damping=1.084,
             armature=0.045,
-            kp=21.1,
+            kp=40.0,
             kv=0.0,
         ),
         "right_ank_pitch": MotorParameters(
@@ -148,7 +148,7 @@ toddlerbot_legs_config = RobotConfig(
             type="motor",
             damping=1.084,
             armature=0.045,
-            kp=21.1,
+            kp=1.0,
             kv=0.0,
         ),
         "right_ank_roll": MotorParameters(
@@ -157,7 +157,7 @@ toddlerbot_legs_config = RobotConfig(
             type="motor",
             damping=1.084,
             armature=0.045,
-            kp=21.1,
+            kp=1.0,
             kv=0.0,
         ),
         # "right_ank_act1": ActuatorParameters(type="motor", damping=0.1, armature=1e-7, kp=10.0, kv=0.1),
