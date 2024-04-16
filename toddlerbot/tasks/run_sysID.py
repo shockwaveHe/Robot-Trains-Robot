@@ -57,8 +57,11 @@ def actuate(sim, robot, joint_name, signal_pos, control_dt, prep_time=1):
     """
     # Convert signal time to sleep time between updates
     joint_data_dict = {"pos": [], "time": []}
+
     _, initial_joint_angles = robot.initialize_joint_angles()
     initial_joint_angles[joint_name] = signal_pos[0]
+
+    is_ankle = joint_name in robot.mighty_zap_joint2id
 
     if sim.name == "real_world":
         sim.set_joint_angles(initial_joint_angles)
@@ -74,20 +77,29 @@ def actuate(sim, robot, joint_name, signal_pos, control_dt, prep_time=1):
             # log(f"Setting joint {joint_name} to {angle}...", header="SysID", level="debug")
             sim.set_joint_angles(joint_angles)
 
-            joint_state_dict = sim.get_joint_state()
+            joint_state_dict = sim.get_joint_state(
+                motor_list=[robot.config.motor_params[joint_name].brand]
+            )
 
             joint_data_dict["time"].append(
                 joint_state_dict[joint_name].time - time_start
             )
 
-            pos = joint_state_dict[joint_name].pos
-            if (
-                hasattr(sim, "negated_joint_names")
-                and joint_name in sim.negated_joint_names
-            ):
-                pos *= -1
+            if is_ankle:
+                ankle_id = robot.mighty_zap_joint2id[joint_name]
+                for side, ids in robot.ankle2mighty_zap.items():
+                    if ankle_id not in ids:
+                        continue
 
-            joint_data_dict["pos"].append(pos)
+                    ankle_side = side
+                    ankle_pos_list = [
+                        joint_state_dict[robot.mighty_zap_id2joint[id]].pos
+                        for id in ids
+                    ]
+                    joint_data_dict["pos"].append(ankle_pos_list)
+
+            else:
+                joint_data_dict["pos"].append(joint_state_dict[joint_name].pos)
 
             time_until_next_step = control_dt - (time.time() - step_start)
             if time_until_next_step > 0:
@@ -104,6 +116,17 @@ def actuate(sim, robot, joint_name, signal_pos, control_dt, prep_time=1):
         #     header="SysID",
         #     level="debug",
         # )
+
+        if is_ankle:
+            mighty_zap_pos_dict = {ankle_side: np.array(joint_data_dict["pos"])}
+            ankle_pos_dict = sim.postprocess_ankle_pos(mighty_zap_pos_dict)
+            joint_data_dict["pos"] = ankle_pos_dict[joint_name]
+
+        if (
+            hasattr(sim, "negated_joint_names")
+            and joint_name in sim.negated_joint_names
+        ):
+            joint_data_dict["pos"] = [-pos for pos in joint_data_dict["pos"]]
 
     elif sim.name == "mujoco":
         prep_steps = int(prep_time / MUJOCO_TIMESTEP)
@@ -163,6 +186,8 @@ def collect_data(
         signal_time, signal_pos = generate_sinusoidal_signal(signal_config)
         signal_config_rounded = round_floats(signal_config, 3)
         del signal_config_rounded["duration"]
+        del signal_config_rounded["control_dt"]
+        del signal_config_rounded["mean"]
         title_list.append(json.dumps(signal_config_rounded))
 
         # Actuate the joint and collect data

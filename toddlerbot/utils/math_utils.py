@@ -4,7 +4,7 @@ from dataclasses import is_dataclass
 import numpy as np
 from transforms3d.quaternions import mat2quat, quat2mat
 
-from toddlerbot.utils.misc_utils import log, precise_sleep
+from toddlerbot.utils.misc_utils import precise_sleep
 
 
 def round_floats(obj, precision):

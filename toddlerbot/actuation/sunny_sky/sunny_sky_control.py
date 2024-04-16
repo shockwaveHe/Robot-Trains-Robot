@@ -28,6 +28,7 @@ class SunnySkyConfig:
     kD: int = 50
     kD_schedule: Tuple = (0.1, 20)
     baudrate: int = 115200
+    timeout: float = 0.1
     current_limit: float = 4.0
     gear_ratio: float = 2.0
     tx_data_prefix: str = ">tx_data:"
@@ -77,7 +78,9 @@ class SunnySkyController(BaseController):
     def connect_to_client(self):
         try:
             client = serial.Serial(
-                self.config.port, baudrate=self.config.baudrate, timeout=0.01
+                self.config.port,
+                baudrate=self.config.baudrate,
+                timeout=self.config.timeout,
             )
             log(f"Connected to the port: {self.config.port}", header="SunnySky")
             return client
@@ -283,8 +286,6 @@ if __name__ == "__main__":
     config = SunnySkyConfig(port=find_feather_port(), kP=40, kD=50)
     controller = SunnySkyController(config, joint_range_dict=joint_range_dict)
 
-    time_seq = []
-    pos_seq = []
     time_start = time.time()
     for pos_ref in pos_ref_seq:
         controller.set_pos(pos_ref)

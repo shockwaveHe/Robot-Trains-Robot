@@ -156,25 +156,19 @@ def main():
 
         sim.close()
 
-        # Check if the ankle positions are linear actuator lengths
+        # TODO: Debug this
         if sim.name == "real_world" and len(joint_angle_dict) > 0:
+            mighty_zap_pos_dict = {}
+            # Check if the ankle positions are linear actuator lengths
             for ids in robot.ankle2mighty_zap:
-                mighty_zap_pos_arr = np.array(
+                mighty_zap_pos_dict[ids] = np.array(
                     [joint_angle_dict[robot.mighty_zap_id2joint[id]] for id in ids]
                 ).T
-                last_ankle_pos = [0] * len(ids)
-                ankle_pos_list = []
-                for mighty_zap_pos in mighty_zap_pos_arr:
-                    ankle_pos = robot.ankle_fk(mighty_zap_pos, last_ankle_pos)
-                    ankle_pos_list.append(ankle_pos)
-                    last_ankle_pos = ankle_pos
 
-                ankle_pos_arr = np.array(ankle_pos_list).T
-                for i in range(len(ids)):
-                    id = ids[i]
-                    joint_angle_dict[robot.mighty_zap_id2joint[id]] = list(
-                        ankle_pos_arr[i]
-                    )
+            ankle_pos_dict = sim.postprocess_ankle_pos(mighty_zap_pos_dict)
+
+            for name in ankle_pos_dict:
+                joint_angle_dict[name] = ankle_pos_dict[name]
 
             for name in sim.negated_joint_names:
                 joint_angle_dict[name] = [-angle for angle in joint_angle_dict[name]]

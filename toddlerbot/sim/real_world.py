@@ -59,7 +59,7 @@ class RealWorld(BaseSim):
         joint_range_dict = {1: (0, np.pi / 2), 2: (0, -np.pi / 2)}
 
         mighty_zap_init_pos = []
-        for ids in robot.ankle2mighty_zap:
+        for side, ids in robot.ankle2mighty_zap.items():
             mighty_zap_init_pos += robot.ankle_ik([0] * len(ids))
 
         self.mighty_zap_config = MightyZapConfig(
@@ -146,7 +146,7 @@ class RealWorld(BaseSim):
                 level="debug",
             )
         if "mighty_zap" in motor_list:
-            for ids in self.robot.ankle2mighty_zap:
+            for side, ids in self.robot.ankle2mighty_zap.items():
                 ankle_pos = [
                     joint_angles[self.robot.mighty_zap_id2joint[id]] for id in ids
                 ]
@@ -243,6 +243,26 @@ class RealWorld(BaseSim):
                 )
 
         return joint_state_dict
+
+    def postprocess_ankle_pos(self, mighty_zap_pos_dict):
+        ankle_pos_dict = {}
+        for side, mighty_zap_pos_arr in mighty_zap_pos_dict.items():
+            ids = self.robot.ankle2mighty_zap[side]
+            last_ankle_pos = [0] * len(ids)
+            ankle_pos_list = []
+            for mighty_zap_pos in mighty_zap_pos_arr:
+                ankle_pos = self.robot.ankle_fk(mighty_zap_pos, last_ankle_pos)
+                ankle_pos_list.append(ankle_pos)
+                last_ankle_pos = ankle_pos
+
+            ankle_pos_arr = np.array(ankle_pos_list).T
+
+            for i in range(len(ids)):
+                ankle_pos_dict[self.robot.mighty_zap_id2joint[ids[i]]] = list(
+                    ankle_pos_arr[i]
+                )
+
+        return ankle_pos_dict
 
     def get_link_pos(self, link_name: str):
         pass

@@ -16,9 +16,12 @@ class MightyZapConfig:
     port: str
     init_pos: List[float]
     baudrate: int = 115200
-    default_vel: float = 4000
+    timeout: float = 0.1
+    default_vel: float = 8000
     interp_method: str = "cubic"
-    interp_freq: int = 1000
+    # Recommendable delay time is 5msec for data write, 10msec for data read.
+    # Therefore, the maximum frequency is 200Hz.
+    interp_freq: int = 100
 
 
 @dataclass
@@ -41,7 +44,9 @@ class MightyZapController(BaseController):
 
     def connect_to_client(self):
         try:
-            client = MightyZapClient(self.config.port, self.config.baudrate)
+            client = MightyZapClient(
+                self.config.port, self.config.baudrate, self.config.timeout
+            )
             log(f"Connected to the port: {self.config.port}", header="MightyZap")
             return client
         except Exception:
@@ -96,7 +101,7 @@ class MightyZapController(BaseController):
             if pos < 0:
                 pos = self.last_pos[id]
                 log(
-                    f"Read the MightyZap {id} Position failed."
+                    f"Read the MightyZap {id} Position failed. "
                     + f"Use the last position {self.last_pos[id]}.",
                     header="MightyZap",
                     level="warning",
@@ -111,25 +116,45 @@ class MightyZapController(BaseController):
 
 if __name__ == "__main__":
     motor_ids = [0, 1, 2, 3]
-    init_pos = [1808] * len(motor_ids)
+    init_pos = [1488] * len(motor_ids)
     controller = MightyZapController(
         MightyZapConfig(port="/dev/tty.usbserial-0001", init_pos=init_pos),
         motor_ids=motor_ids,
     )
 
-    controller.set_pos([4000] * len(motor_ids))
-    while True:
-        state_dict = controller.get_motor_state()
+    pos_ref_seq = [
+        [4000, 4000, 4000, 4000],
+        [4000, 2000, 4000, 2000],
+        [2000, 4000, 2000, 4000],
+        [2000, 2000, 2000, 2000],
+    ]
+
+    time_start = time.time()
+    for pos_ref in pos_ref_seq:
+        controller.set_pos(pos_ref)
+
+        while True:
+            state_dict = controller.get_motor_state()
+            pos = [state.pos for state in state_dict.values()]
+
+            if np.allclose(pos, pos_ref, atol=10):
+                break
+
+            precise_sleep(0.02)
+
         message = "Motor states:"
         for id, state in state_dict.items():
-            message += f" {id}: {state.pos}"
+            message += f" {id}: {state.pos:.1f};"
+
+        message += f" Time: {state.time - time_start:.4f}s"
 
         log(message, header="MightyZap", level="debug")
-        if state_dict[0].pos >= 3990:
-            break
 
-    controller.set_pos(init_pos)
-    precise_sleep(1)
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        pass
 
     controller.close_motors()
 

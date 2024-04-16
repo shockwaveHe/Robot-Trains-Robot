@@ -73,7 +73,7 @@ class HumanoidRobot:
         self.sunny_sky_id2joint = {v: k for k, v in self.sunny_sky_joint2id.items()}
         self.mighty_zap_id2joint = {v: k for k, v in self.mighty_zap_joint2id.items()}
 
-        self.ankle2mighty_zap = [[0, 1], [2, 3]]
+        self.ankle2mighty_zap = {"left": [0, 1], "right": [2, 3]}
 
     def compute_offsets(self):
         graph = self.urdf.scene.graph
