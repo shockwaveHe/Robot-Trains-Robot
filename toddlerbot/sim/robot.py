@@ -116,7 +116,7 @@ class HumanoidRobot:
         )
 
         # Measured in the real robot (m)
-        offsets["mighty_zap_len"] = 0.078
+        offsets["mighty_zap_len"] = 0.072
 
         return offsets
 

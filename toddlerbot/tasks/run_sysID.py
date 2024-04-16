@@ -68,7 +68,7 @@ def actuate(sim, robot, joint_name, signal_pos, control_dt, prep_time=1):
         precise_sleep(prep_time)
 
         time_start = time.time()
-        for angle in signal_pos:
+        for idx, angle in enumerate(signal_pos):
             step_start = time.time()
 
             joint_angles = initial_joint_angles.copy()
@@ -81,9 +81,11 @@ def actuate(sim, robot, joint_name, signal_pos, control_dt, prep_time=1):
                 motor_list=[robot.config.motor_params[joint_name].brand]
             )
 
-            joint_data_dict["time"].append(
-                joint_state_dict[joint_name].time - time_start
-            )
+            # Assume no control latency
+            joint_data_dict["time"].append(idx * control_dt)
+            # joint_data_dict["time"].append(
+            #     joint_state_dict[joint_name].time - time_start
+            # )
 
             if is_ankle:
                 ankle_id = robot.mighty_zap_joint2id[joint_name]
@@ -162,7 +164,7 @@ def collect_data(
     exp_folder_path,
     n_trials=10,
     duration=3,
-    control_dt=0.04,
+    control_dt=0.05,
     frequency_range=(0.5, 2),
     amplitude_min=np.pi / 8,
 ):

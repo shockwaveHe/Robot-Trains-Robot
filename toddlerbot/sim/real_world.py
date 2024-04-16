@@ -40,7 +40,7 @@ class RealWorld(BaseSim):
             "left_ank_pitch",
         ]
 
-        self.dynamixel_init_pos = np.radians([245, 180, 180, 287, 180, 180])
+        self.dynamixel_init_pos = np.radians([245, 180, 180, 322, 180, 180])
         # TODO: Replace the hard-coded gains
         self.dynamixel_config = DynamixelConfig(
             port="/dev/tty.usbserial-FT8ISUJY",
