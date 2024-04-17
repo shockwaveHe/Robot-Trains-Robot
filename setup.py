@@ -14,6 +14,7 @@ requirements.extend(
         "pyglet==1.5.28",
         "cmaes==0.10.0",
         "optuna-dashboard==0.15.1",
+        "psycopg2-binary==2.9.9",
     ]
 )
 

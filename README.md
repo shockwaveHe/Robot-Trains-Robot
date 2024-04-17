@@ -28,6 +28,22 @@ pip install -e .
 ```
 Install pygraphviz according to [these instructions](https://pygraphviz.github.io/documentation/stable/install.html).
 
+#### Setting up Optuna
+```
+sudo apt install libpq-dev postgresql
+sudo systemctl start postgresql
+sudo -u postgres psql
+```
+Enter the following commands in the PostgreSQL prompt:
+```
+CREATE DATABASE optuna_db;
+CREATE USER optuna_user WITH ENCRYPTED PASSWORD 'password';
+GRANT ALL PRIVILEGES ON DATABASE optuna_db TO optuna_user;
+
+```
+Exit the PostgreSQL prompt.
+
+
 #### Install legged_gym
 Follow [these instructions](https://github.com/leggedrobotics/legged_gym).
 
