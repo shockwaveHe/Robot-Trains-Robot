@@ -106,12 +106,24 @@ def main():
 
     ###### Collect data in the real world ######
     real_world_data_file_path = os.path.join(exp_folder_path, "real_world_data.pkl")
+
+    real_world_data_dict = {}
+    is_collected = False
     if os.path.exists(real_world_data_file_path):
+        is_collected = True
         with open(real_world_data_file_path, "rb") as f:
             real_world_data_dict = pickle.load(f)
-    else:
-        real_world_data_dict = {}
+
         for joint_name in args.joint_names:
+            if joint_name not in real_world_data_dict:
+                is_collected = False
+                break
+
+    if not is_collected:
+        for joint_name in args.joint_names:
+            if joint_name in real_world_data_dict:
+                continue
+
             real_world_data_dict[joint_name] = collect_data(
                 robot, joint_name, exp_folder_path, n_trials=args.n_trials
             )
