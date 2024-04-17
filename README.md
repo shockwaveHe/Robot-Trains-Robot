@@ -29,11 +29,20 @@ pip install -e .
 Install pygraphviz according to [these instructions](https://pygraphviz.github.io/documentation/stable/install.html).
 
 #### Setting up Optuna
+Linux:
 ```
 sudo apt install libpq-dev postgresql
 sudo systemctl start postgresql
 sudo -u postgres psql
 ```
+
+MacOS:
+```
+brew install postgresql
+brew services start postgresql
+psql postgres
+```
+
 Enter the following commands in the PostgreSQL prompt:
 ```
 CREATE DATABASE optuna_db;
