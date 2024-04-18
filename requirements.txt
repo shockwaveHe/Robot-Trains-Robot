@@ -4,6 +4,7 @@ colorama==0.4.6
 control==0.9.4
 dynamixel-sdk==3.7.31
 matplotlib==3.7.4
+mediapy==1.2.0
 mujoco==3.1.4
 networkx==3.1
 numpy==1.24.4

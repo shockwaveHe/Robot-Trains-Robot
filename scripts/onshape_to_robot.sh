@@ -33,7 +33,6 @@ else
     printf "Export skipped.\n\n"
 fi
 
-# TODO: Create config and env only when the script doesn't exist
 
 printf "Do you want to process the urdf? (y/n)"
 read -r -p " > " run_process

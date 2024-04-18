@@ -286,7 +286,16 @@ def create_base_scene_xml(mjcf_path):
         },
     )
     ET.SubElement(visual, "rgba", attrib={"haze": "0.15 0.25 0.35 1"})
-    ET.SubElement(visual, "global", attrib={"azimuth": "160", "elevation": "-20"})
+    ET.SubElement(
+        visual,
+        "global",
+        attrib={
+            "azimuth": "160",
+            "elevation": "-20",
+            "offwidth": "1280",
+            "offheight": "720",
+        },
+    )
 
     # Asset settings
     asset = ET.SubElement(mujoco, "asset")

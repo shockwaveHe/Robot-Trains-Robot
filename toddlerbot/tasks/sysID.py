@@ -56,11 +56,14 @@ def actuate(sim, robot, joint_name, signal_pos, control_dt, prep_time=1):
     _, initial_joint_angles = robot.initialize_joint_angles()
     initial_joint_angles[joint_name] = signal_pos[0]
 
-    if joint_name == "left_ank_roll":
-        initial_joint_angles["left_ank_pitch"] = np.pi / 6
+    if joint_name == "left_hip_roll":
+        initial_joint_angles["right_hip_roll"] = -np.pi / 4
 
     if joint_name == "left_hip_pitch" or joint_name == "left_knee":
         initial_joint_angles["left_hip_yaw"] = -np.pi / 4
+
+    if joint_name == "left_ank_roll":
+        initial_joint_angles["left_ank_pitch"] = np.pi / 6
 
     is_ankle = joint_name in robot.mighty_zap_joint2id
 
@@ -173,7 +176,6 @@ def collect_data(
     lower_limit = robot.joints_info[joint_name]["lower_limit"]
     upper_limit = robot.joints_info[joint_name]["upper_limit"]
 
-    # TODO: rotate yaw a little bit when moving hip pitch and knee
     if joint_name == "left_ank_pitch":
         lower_limit = 0.0
         upper_limit = np.pi / 6

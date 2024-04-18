@@ -86,7 +86,7 @@ def main():
             "com_ref_traj": com_ref_traj,
             "torso": None,
         }
-        sim.simulate(callback=True, vis_data=vis_data)
+        sim.run_simulation(interactive=False, vis_data=vis_data)
 
     # time_start = time.time()
     try:
@@ -154,7 +154,6 @@ def main():
 
         sim.close()
 
-        # TODO: Debug this
         if sim.name == "real_world" and len(joint_angle_dict) > 0:
             mighty_zap_pos_dict = {}
             # Check if the ankle positions are linear actuator lengths
@@ -176,6 +175,12 @@ def main():
 
         with open(os.path.join(exp_folder_path, "config.json"), "w") as f:
             json.dump(asdict(config), f, indent=4)
+
+        if hasattr(sim.visualizer, "write_video"):
+            video_path = os.path.join(exp_folder_path, "mujoco.mp4")
+            sim.visualizer.write_video(video_path)
+        else:
+            print("Current visualizer does not support video writing.")
 
         robot_state_traj_data = {
             "zmp_ref_traj": zmp_ref_traj,

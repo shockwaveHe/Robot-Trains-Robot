@@ -2,6 +2,7 @@ import queue
 import threading
 import time
 
+import mediapy as media
 import mujoco
 import mujoco.rollout
 import mujoco.viewer
@@ -15,9 +16,9 @@ from toddlerbot.utils.file_utils import find_description_path
 from toddlerbot.utils.misc_utils import precise_sleep
 
 
-class Visualizer:
-    def __init__(self, robot, viewer):
-        self.viewer = viewer
+class MuJoCoViewer:
+    def __init__(self, robot, model, data):
+        self.viewer = mujoco.viewer.launch_passive(model, data)
         self.foot_size = robot.foot_size
 
     def visualize(self, model, data, vis_data):
@@ -117,7 +118,28 @@ class Visualizer:
         self.viewer.close()
 
 
-class Controller:
+class MuJoCoRenderer:
+    def __init__(self, robot, model, data, height=720, width=1280, frame_rate=24):
+        self.renderer = mujoco.Renderer(model, height=height, width=width)
+        self.frame_rate = frame_rate
+        self.frames = []
+
+    def visualize(self, model, data, vis_data):
+        if len(self.frames) < data.time * self.frame_rate:
+            self.renderer.update_scene(data)
+            self.frames.append(self.renderer.render())
+
+    def show_video(self):
+        media.show_video(self.frames, fps=self.frame_rate)
+
+    def write_video(self, video_path):
+        media.write_video(video_path, self.frames, fps=self.frame_rate)
+
+    def close(self):
+        pass
+
+
+class MuJoCoController:
     def __init__(self):
         self.command_queue = queue.Queue()
 
@@ -152,7 +174,7 @@ class MuJoCoSim(BaseSim):
         self.model.opt.timestep = MUJOCO_TIMESTEP
         self.data = mujoco.MjData(self.model)
 
-        self.controller = Controller()
+        self.controller = MuJoCoController()
 
         if not fixed:
             self.put_robot_on_ground()
@@ -272,32 +294,28 @@ class MuJoCoSim(BaseSim):
     def set_joint_angles(self, joint_angles):
         self.controller.add_command(joint_angles)
 
-    def simulate(self, headless=False, callback=True, vis_data=None):
+    def run_simulation(self, headless=False, interactive=False, vis_data=None):
         self.thread = threading.Thread(
-            target=self.run_simulation, args=(headless, callback, vis_data)
+            target=self.simulate, args=(headless, interactive, vis_data)
         )
         self.thread.start()
 
-    def run_simulation(self, headless, callback, vis_data):
-        if callback:
-            mujoco.set_mjcb_control(self.controller.process_commands)
+    def simulate(self, headless, interactive, vis_data):
+        mujoco.set_mjcb_control(self.controller.process_commands)
 
         if not headless:
-            visualizer = Visualizer(
-                self.robot, mujoco.viewer.launch_passive(self.model, self.data)
-            )
+            if interactive:
+                self.visualizer = MuJoCoViewer(self.robot, self.model, self.data)
+            else:
+                self.visualizer = MuJoCoRenderer(self.robot, self.model, self.data)
 
+        # self.counter = 0
         while not self.stop_event.is_set():
             step_start = time.time()
-            if callback:
-                mujoco.mj_step(self.model, self.data)
-            else:
-                mujoco.mj_step1(self.model, self.data)
-                self.controller.process_commands(self.model, self.data)
-                mujoco.mj_step2(self.model, self.data)
+            mujoco.mj_step(self.model, self.data)
 
             if not headless:
-                visualizer.visualize(self.model, self.data, vis_data)
+                self.visualizer.visualize(self.model, self.data, vis_data)
 
             time_until_next_step = self.model.opt.timestep - (time.time() - step_start)
             if time_until_next_step > 0:
@@ -308,8 +326,7 @@ class MuJoCoSim(BaseSim):
             # step_end = time.time()
             # log(f"Step Time: {step_end - step_start}", header="MuJoCo", level="debug")
 
-        if not headless:
-            visualizer.close()
+        self.visualizer.close()
 
     def rollout(self, joint_control_traj):
         n_state = mujoco.mj_stateSize(self.model, mujoco.mjtState.mjSTATE_FULLPHYSICS)

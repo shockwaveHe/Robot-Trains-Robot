@@ -137,9 +137,7 @@ def main():
         os.path.dirname(fixed_xml_path), f"{args.robot_name}_fixed_sysID.xml"
     )
     xml_path = find_description_path(args.robot_name, suffix=".xml")
-    new_xml_path = os.path.join(
-        os.path.dirname(xml_path), f"{args.robot_name}_sysID.xml"
-    )
+
     fixed_tree = ET.parse(fixed_xml_path)
     opt_params_file_path = os.path.join(exp_folder_path, "opt_params.json")
     opt_values_file_path = os.path.join(exp_folder_path, "opt_values.json")
@@ -192,7 +190,7 @@ def main():
 
     tree = ET.parse(xml_path)
     update_xml(tree, opt_params_dict)
-    tree.write(new_xml_path)
+    tree.write(xml_path)
 
     ###### Evaluate the optimized parameters in the simulation ######
     sim_data_dict = {}
