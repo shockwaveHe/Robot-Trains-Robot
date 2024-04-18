@@ -3,8 +3,8 @@ import json
 import os
 import pickle
 import time
+import xml.etree.ElementTree as ET
 from multiprocessing import Pool
-from xml.etree.ElementTree import ElementTree
 
 import numpy as np
 
@@ -133,13 +133,14 @@ def main():
 
     ###### Optimize the hyperparameters ######
     fixed_xml_path = find_description_path(args.robot_name, suffix="_fixed.xml")
-    new_xml_path = os.path.join(
-        os.path.dirname(fixed_xml_path), f"{args.robot_name}_sysID.xml"
+    new_fixed_xml_path = os.path.join(
+        os.path.dirname(fixed_xml_path), f"{args.robot_name}_fixed_sysID.xml"
     )
-    tree = ElementTree()
-    tree.parse(fixed_xml_path)
-    root = tree.getroot()
-
+    xml_path = find_description_path(args.robot_name, suffix=".xml")
+    new_xml_path = os.path.join(
+        os.path.dirname(xml_path), f"{args.robot_name}_sysID.xml"
+    )
+    fixed_tree = ET.parse(fixed_xml_path)
     opt_params_file_path = os.path.join(exp_folder_path, "opt_params.json")
     opt_values_file_path = os.path.join(exp_folder_path, "opt_values.json")
 
@@ -162,7 +163,7 @@ def main():
     if not is_optimized:
         assets_dict = {}
         # Find mesh file references
-        for mesh in root.findall(".//mesh"):
+        for mesh in fixed_tree.getroot().findall(".//mesh"):
             mesh_file = mesh.get("file")
             if mesh_file and mesh_file not in assets_dict:
                 mesh_file_path = os.path.join(
@@ -174,7 +175,7 @@ def main():
         opt_params_dict, opt_values_dict = multiprocessing_optimization(
             robot,
             args.joint_names,
-            tree,
+            fixed_tree,
             assets_dict,
             real_world_data_dict,
             n_iters=args.n_iters,
@@ -186,6 +187,10 @@ def main():
         with open(opt_values_file_path, "w") as f:
             json.dump(opt_values_dict, f, indent=4)
 
+    update_xml(fixed_tree, opt_params_dict)
+    fixed_tree.write(new_fixed_xml_path)
+
+    tree = ET.parse(xml_path)
     update_xml(tree, opt_params_dict)
     tree.write(new_xml_path)
 
@@ -203,7 +208,7 @@ def main():
         sim_data_dict[joint_name] = evaluate(
             robot,
             joint_name,
-            new_xml_path,
+            new_fixed_xml_path,
             signal_config_list,
             observed_response,
             exp_folder_path,
