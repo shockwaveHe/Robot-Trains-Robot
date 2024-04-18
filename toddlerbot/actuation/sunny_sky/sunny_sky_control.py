@@ -278,10 +278,10 @@ if __name__ == "__main__":
     ]
 
     # joint_range_dict = {1: (0, np.pi / 2)}
-    # pos_ref_seq = [[0.0], [np.pi / 2], [0.0], [np.pi / 4], [0.0]]
+    # pos_ref_seq = [[0.0], [np.pi / 2], [0.0], [np.pi / 4], [0.64]]
 
     # joint_range_dict = {2: (0, -np.pi / 2)}
-    # pos_ref_seq = [[0.0], [-np.pi / 2], [0.0], [-np.pi / 4], [0.0]]
+    # pos_ref_seq = [[0.0], [-np.pi / 2], [0.0], [-np.pi / 4], [-0.64]]
 
     config = SunnySkyConfig(port=find_feather_port(), kP=40, kD=50)
     controller = SunnySkyController(config, joint_range_dict=joint_range_dict)

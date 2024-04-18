@@ -48,7 +48,7 @@ class RealWorld(BaseSim):
             kFF1=[0, 0, 0, 0, 0, 0],
             kP=[400, 3200, 1600, 400, 3200, 1600],
             kI=[0, 0, 0, 0, 0, 0],
-            kD=[400, 800, 400, 400, 800, 400],
+            kD=[400, 3200, 1600, 400, 3200, 1600],
             current_limit=[700, 700, 700, 700, 700, 700],
             init_pos=self.dynamixel_init_pos,
             gear_ratio=np.array([19 / 21, 1, 1, 19 / 21, 1, 1]),

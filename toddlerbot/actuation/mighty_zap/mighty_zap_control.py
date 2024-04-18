@@ -122,11 +122,13 @@ if __name__ == "__main__":
         motor_ids=motor_ids,
     )
 
+    pos_max = 2000
+    pos_min = 1000
     pos_ref_seq = [
-        [4000, 4000, 4000, 4000],
-        [4000, 2000, 4000, 2000],
-        [2000, 4000, 2000, 4000],
-        [2000, 2000, 2000, 2000],
+        [pos_max, pos_max, pos_max, pos_max],
+        [pos_max, pos_min, pos_max, pos_min],
+        [pos_min, pos_max, pos_min, pos_max],
+        [pos_min, pos_min, pos_min, pos_min],
     ]
 
     time_start = time.time()

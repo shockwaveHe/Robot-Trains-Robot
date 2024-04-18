@@ -88,7 +88,7 @@ def main():
         }
         sim.simulate(callback=True, vis_data=vis_data)
 
-    time_start = time.time()
+    # time_start = time.time()
     try:
         step_idx = 0
         while True:

@@ -46,10 +46,10 @@ class Walking:
         self.com_init = np.concatenate(
             [np.array(robot.com)[None, :2], np.zeros((2, 2))], axis=0
         )
-        zero_joint_angles, initial_joint_angles = robot.initialize_joint_angles()
-        self.joint_angles = initial_joint_angles
+        zero_joint_angles, self.initial_joint_angles = robot.initialize_joint_angles()
+        self.joint_angles = self.initial_joint_angles
         # (time, joint_angles)
-        self.joint_angles_traj = [(0.0, zero_joint_angles), (0.5, initial_joint_angles)]
+        self.joint_angles_traj = [(0.0, zero_joint_angles)]
 
         self.idx = 0
 
@@ -75,6 +75,7 @@ class Walking:
         foot_steps_copy = copy.deepcopy(self.foot_steps)
         com_ref_traj_copy = copy.deepcopy(self.com_ref_traj)
 
+        self.joint_angles_traj.append((0.5, self.initial_joint_angles))
         while len(self.com_ref_traj) > 0:
             if self.idx == 0:
                 t = 1.0
@@ -83,6 +84,8 @@ class Walking:
 
             joint_angles = self.solve_joint_angles()
             self.joint_angles_traj.append((t, joint_angles))
+
+        self.joint_angles_traj.append((t + 0.5, self.initial_joint_angles))
 
         joint_angles_traj = resample_trajectory(
             self.joint_angles_traj,

@@ -228,9 +228,17 @@ Connect the ESC board to the computer.
 Run Flush Knee ESC from the "Run and Debug" panel.
 
 ## Actuation
-- MightyZap: Update the firmware if you cannot search the motor.
+### MightyZap linear actuators
 
-## TODO
+Update the firmware if you cannot search the motor.
+
+### Sunny Sky Brushless motors
+
+1. Check the cables first
+1. Unscrew the panel support and calibrate the motor. Make sure the pole pairs are 12.
+1. Run `toddlerbot/actuation/sunny_sky/sunny_sky_control.py` as a unit test
+
+## Features to add
 
 ### Export the environment
 Will remove this later.
