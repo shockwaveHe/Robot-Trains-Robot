@@ -136,6 +136,10 @@ def main():
     new_xml_path = os.path.join(
         os.path.dirname(fixed_xml_path), f"{args.robot_name}_sysID.xml"
     )
+    tree = ElementTree()
+    tree.parse(fixed_xml_path)
+    root = tree.getroot()
+
     opt_params_file_path = os.path.join(exp_folder_path, "opt_params.json")
     opt_values_file_path = os.path.join(exp_folder_path, "opt_values.json")
 
@@ -156,10 +160,6 @@ def main():
                 break
 
     if not is_optimized:
-        tree = ElementTree()
-        tree.parse(fixed_xml_path)
-        root = tree.getroot()
-
         assets_dict = {}
         # Find mesh file references
         for mesh in root.findall(".//mesh"):
@@ -186,9 +186,8 @@ def main():
         with open(opt_values_file_path, "w") as f:
             json.dump(opt_values_dict, f, indent=4)
 
-        update_xml(tree, opt_params_dict)
-
-        tree.write(new_xml_path)
+    update_xml(tree, opt_params_dict)
+    tree.write(new_xml_path)
 
     ###### Evaluate the optimized parameters in the simulation ######
     sim_data_dict = {}

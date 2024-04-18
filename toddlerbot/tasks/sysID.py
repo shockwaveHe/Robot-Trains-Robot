@@ -269,9 +269,9 @@ def optimize_parameters(
     real_world_data_dict,
     n_iters=500,
     sampler="TPE",
-    damping_range=(0, 2, 1e-3),
+    damping_range=(0, 5, 1e-3),
     armature_range=(0, 0.1, 1e-4),
-    friction_range=(0, 0.2, 1e-4),
+    friction_range=(0, 1.0, 1e-4),
 ):
     signal_config_list = []
     observed_response = []
