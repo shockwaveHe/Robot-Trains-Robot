@@ -61,6 +61,8 @@ def actuate(sim, robot, joint_name, signal_pos, control_dt, prep_time=1):
 
     if joint_name == "left_hip_pitch" or joint_name == "left_knee":
         initial_joint_angles["left_hip_yaw"] = -np.pi / 4
+        initial_joint_angles["right_hip_yaw"] = -np.pi / 4
+        initial_joint_angles["right_hip_roll"] = -np.pi / 8
 
     if joint_name == "left_ank_roll":
         initial_joint_angles["left_ank_pitch"] = np.pi / 6

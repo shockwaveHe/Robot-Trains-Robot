@@ -6,7 +6,7 @@
     "configurations": [
         {
             "cwd": "${workspaceRoot}",
-            "executable": "toddlerbot/actuation/sunny_sky/knee_esc/Release/motorcontrol.elf",
+            "executable": "toddlerbot/actuation/sunny_sky/knee_esc/motorcontrol.elf",
             "name": "Flush Knee ESC",
             "request": "launch",
             "type": "cortex-debug",

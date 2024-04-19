@@ -176,7 +176,7 @@ def main():
         with open(os.path.join(exp_folder_path, "config.json"), "w") as f:
             json.dump(asdict(config), f, indent=4)
 
-        if hasattr(sim.visualizer, "write_video"):
+        if hasattr(sim, "visualizer") and hasattr(sim.visualizer, "write_video"):
             video_path = os.path.join(exp_folder_path, "mujoco.mp4")
             sim.visualizer.write_video(video_path)
         else:

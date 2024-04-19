@@ -18,6 +18,7 @@ const float V_MIN = -65;   // Min velocity [rad/s]
 const float V_MAX = 65;    // Max velocity [rad/s]
 const float I_MIN = -8;    // Min current [A]
 const float I_MAX = 8;     // Max current [A]
+const float I_TOL = 0.1;   // Current tolerance [A]
 const float VB_MIN = 0;    // Min voltage [V]
 const float VB_MAX = 80;   // Max voltage [V]
 
@@ -123,7 +124,7 @@ void loop()
                 else
                 {
                     // Assuming normal command structure: <B2f2Hf>
-                    if (motor_states[index].t < I_MIN || motor_states[index].t > I_MAX)
+                    if (motor_states[index].t < I_MIN + I_TOL || motor_states[index].t > I_MAX - I_TOL)
                     {
                         motor_commands[index].p_des = motor_states[index].p;
                     }

@@ -207,6 +207,12 @@ Install these VSCode extensions:
 1. Cortex-Debug
 1. Makefile Tools
 
+```
+cd toddlerbot/actuation/sunny_sky/knee_esc
+cmake .
+make
+```
+
 Add the following configuration to launch.json:
 ```
 {
@@ -226,6 +232,9 @@ Add the following configuration to launch.json:
 ```
 Connect the ESC board to the computer.
 Run Flush Knee ESC from the "Run and Debug" panel.
+
+Restart the power and reconnect the ESC board.
+Press `E` and then `Esc` to check if the menu shows up.
 
 ## Actuation
 ### MightyZap linear actuators
@@ -264,3 +273,12 @@ pigar generate
 1. Write inline document if possible
 1. Use shell scripts
 1. Consider writing unit tests
+
+
+### Debug tips
+1. Magnet could be rubbing with the encoder, causing large current and jittering motion
+1. If you find it hard plugging in the male connector to the female connector, check the pins in the female connector. Pins could be bent (especially SMALL ones), causing no connection
+1. Cables could break (especially CAN bus), check with multimeter if connection is unstable
+1. Build before flash the ESC control code
+1. Don't drag the cables when removing the connector. Use the plastic tips on both sides
+1. Tape the DC power supply voltage and current buttons to avoid accidentally changing the settings
