@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Polygon
 
-from toddlerbot.utils.vis_utils import *
+from toddlerbot.visualization.vis_utils import make_vis_function
 
 
 def draw_foot(ax, center, size, angle, side):

@@ -11,7 +11,7 @@ from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.utils.constants import MUJOCO_TIMESTEP
 from toddlerbot.utils.math_utils import round_floats
 from toddlerbot.utils.misc_utils import log, precise_sleep
-from toddlerbot.utils.vis_plot import plot_joint_tracking
+from toddlerbot.visualization.vis_plot import plot_joint_tracking
 
 
 def generate_random_sinusoidal_config(

@@ -4,6 +4,8 @@ from typing import List
 import numpy as np
 from scipy.interpolate import CubicHermiteSpline
 
+from toddlerbot.visualization.vis_planning import draw_footsteps
+
 
 @dataclass
 class FootStepPlanParameters:
@@ -141,8 +143,6 @@ if __name__ == "__main__":
     import random
 
     random.seed(0)
-
-    from toddlerbot.utils.vis_planning import *
 
     planner_params = FootStepPlanParameters(
         max_stride=np.array(([0.05, 0.05, np.pi / 8])),

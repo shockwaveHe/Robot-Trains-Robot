@@ -3,7 +3,10 @@ import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 
-from toddlerbot.utils.vis_utils import load_and_run_visualization, make_vis_function
+from toddlerbot.visualization.vis_utils import (
+    load_and_run_visualization,
+    make_vis_function,
+)
 
 LINE_STYLES = ["-", "--", "-.", ":"]
 LINE_COLORS = ["b", "g", "r", "c", "y", "k"]

@@ -16,8 +16,8 @@ from toddlerbot.tasks.walking import Walking
 from toddlerbot.tasks.walking_configs import walking_configs
 from toddlerbot.utils.math_utils import round_floats
 from toddlerbot.utils.misc_utils import log, precise_sleep
-from toddlerbot.utils.vis_planning import draw_footsteps
-from toddlerbot.utils.vis_plot import plot_joint_tracking, plot_line_graph
+from toddlerbot.visualization.vis_planning import draw_footsteps
+from toddlerbot.visualization.vis_plot import plot_joint_tracking, plot_line_graph
 
 
 def main():

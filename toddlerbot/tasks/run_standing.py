@@ -6,7 +6,7 @@ from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.pybullet_sim import PyBulletSim
 from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.sim.robot import HumanoidRobot
-from toddlerbot.utils.vis_plot import plot_joint_tracking
+from toddlerbot.visualization.vis_plot import plot_joint_tracking
 
 
 def main():
