@@ -177,6 +177,24 @@ import shutil
 if shutil.which('meshlabserver') is None:
 ```
 
+## Visualization with Blender
+
+1. Install Blender from the [official website](https://www.blender.org/download/). I use the version 4.1.1. 
+1. [Optional] Install 
+1. Add Blender to your PATH:
+
+        # MacOS
+        export PATH="/Applications/Blender.app/Contents/MacOS:$PATH"
+        # Linux
+        export PATH="$PATH:/path/to/blender"
+
+1. Run the following command to open the visualization:
+
+        blender toddlerbot/visualization/vis_mujoco.blend
+
+1. To visualize a different robot, change the variable `robot_name` and set `reimport = True`.
+1. To visualize a different rollout, change the variable `exp_folder_path` and run the script.
+
 ## Working with Arduino and ESC boards
 
 ### Install Arduino in VSCode on MacOS

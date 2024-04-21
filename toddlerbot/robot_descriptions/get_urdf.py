@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import List
 
-from toddlerbot.utils.file_utils import *
+from toddlerbot.utils.file_utils import prettify
 
 
 @dataclass
@@ -58,9 +58,9 @@ def process_urdf_and_stl_files(assembly_path):
 
     # Move referenced STL files to 'meshes' directory
     for stl in referenced_stls:
-        if "left" in robot_name and not "left" in stl:
+        if "left" in robot_name and "left" not in stl:
             new_stl = "left_" + stl
-        elif "right" in robot_name and not "right" in stl:
+        elif "right" in robot_name and "right" not in stl:
             new_stl = "right_" + stl
         else:
             new_stl = stl

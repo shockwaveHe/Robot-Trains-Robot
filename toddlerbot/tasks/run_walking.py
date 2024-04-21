@@ -86,7 +86,7 @@ def main():
             "com_ref_traj": com_ref_traj,
             "torso": None,
         }
-        sim.run_simulation(interactive=False, vis_data=vis_data)
+        sim.run_simulation(headless=True, vis_data=vis_data)
 
     # time_start = time.time()
     try:
@@ -176,9 +176,8 @@ def main():
         with open(os.path.join(exp_folder_path, "config.json"), "w") as f:
             json.dump(asdict(config), f, indent=4)
 
-        if hasattr(sim, "visualizer") and hasattr(sim.visualizer, "write_video"):
-            video_path = os.path.join(exp_folder_path, "mujoco.mp4")
-            sim.visualizer.write_video(video_path)
+        if hasattr(sim, "visualizer") and hasattr(sim.visualizer, "save_recording"):
+            sim.visualizer.save_recording(exp_folder_path)
         else:
             print("Current visualizer does not support video writing.")
 
