@@ -3,8 +3,6 @@ import os
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 
-from toddlerbot.utils.file_utils import *
-
 
 @dataclass
 class URDFConfig:

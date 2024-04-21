@@ -1,3 +1,5 @@
+import os
+import pickle
 import queue
 import threading
 import time
@@ -122,18 +124,35 @@ class MuJoCoRenderer:
     def __init__(self, robot, model, data, height=720, width=1280, frame_rate=24):
         self.renderer = mujoco.Renderer(model, height=height, width=width)
         self.frame_rate = frame_rate
-        self.frames = []
+        self.anim_data = {}
+        self.video_frames = []
 
     def visualize(self, model, data, vis_data):
-        if len(self.frames) < data.time * self.frame_rate:
+        if len(self.video_frames) < data.time * self.frame_rate:
+            self.anim_pose_callback(model, data)
+
             self.renderer.update_scene(data)
-            self.frames.append(self.renderer.render())
+            self.video_frames.append(self.renderer.render())
 
-    def show_video(self):
-        media.show_video(self.frames, fps=self.frame_rate)
+    def save_recording(self, exp_folder_path):
+        anim_data_path = os.path.join(exp_folder_path, "anim_data.pkl")
+        with open(anim_data_path, "wb") as f:
+            pickle.dump(self.anim_data, f)
 
-    def write_video(self, video_path):
-        media.write_video(video_path, self.frames, fps=self.frame_rate)
+        video_path = os.path.join(exp_folder_path, "mujoco.mp4")
+        media.write_video(video_path, self.video_frames, fps=self.frame_rate)
+
+    def anim_pose_callback(self, model, data):
+        for i in range(model.nbody):
+            body_name = model.body(i).name
+            pos = data.body(i).xpos.copy()
+            quat = data.body(i).xquat.copy()
+
+            data_tuple = (data.time, pos, quat)
+            if body_name in self.anim_data:
+                self.anim_data[body_name].append(data_tuple)
+            else:
+                self.anim_data[body_name] = [data_tuple]
 
     def close(self):
         pass
@@ -294,28 +313,24 @@ class MuJoCoSim(BaseSim):
     def set_joint_angles(self, joint_angles):
         self.controller.add_command(joint_angles)
 
-    def run_simulation(self, headless=False, interactive=False, vis_data=None):
-        self.thread = threading.Thread(
-            target=self.simulate, args=(headless, interactive, vis_data)
-        )
+    def run_simulation(self, headless=True, vis_data=None):
+        self.thread = threading.Thread(target=self.simulate, args=(headless, vis_data))
         self.thread.start()
 
-    def simulate(self, headless, interactive, vis_data):
+    def simulate(self, headless, vis_data):
         mujoco.set_mjcb_control(self.controller.process_commands)
 
-        if not headless:
-            if interactive:
-                self.visualizer = MuJoCoViewer(self.robot, self.model, self.data)
-            else:
-                self.visualizer = MuJoCoRenderer(self.robot, self.model, self.data)
+        if headless:
+            self.visualizer = MuJoCoRenderer(self.robot, self.model, self.data)
+        else:
+            self.visualizer = MuJoCoViewer(self.robot, self.model, self.data)
 
         # self.counter = 0
         while not self.stop_event.is_set():
             step_start = time.time()
             mujoco.mj_step(self.model, self.data)
 
-            if not headless:
-                self.visualizer.visualize(self.model, self.data, vis_data)
+            self.visualizer.visualize(self.model, self.data, vis_data)
 
             time_until_next_step = self.model.opt.timestep - (time.time() - step_start)
             if time_until_next_step > 0:
