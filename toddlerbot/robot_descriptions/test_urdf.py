@@ -51,8 +51,8 @@ def main():
     # This function requires its parameters to be the same as its return values.
     def step_func(sim_step_idx):
         if args.sim == "pybullet":
-            joint_angles = robot.initialize_joint_angles()
-            sim.set_joint_angles(robot, joint_angles)
+            _, joint_angles = robot.initialize_joint_angles()
+            sim.set_joint_angles(joint_angles)
         else:
             raise ValueError("Only pybullet is supported for now.")
 
@@ -60,7 +60,7 @@ def main():
 
         return (sim_step_idx,)
 
-    sim.simulate_worker(step_func, (sim_step_idx,), sleep_time=args.sleep_time)
+    sim.simulate(step_func, (sim_step_idx,), sleep_time=args.sleep_time)
 
 
 if __name__ == "__main__":

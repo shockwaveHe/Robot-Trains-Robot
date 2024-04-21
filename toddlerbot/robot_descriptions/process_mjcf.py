@@ -39,10 +39,9 @@ def update_joint_params(root, motor_params):
     # Iterate over all joints in the XML
     for joint in root.findall(".//joint"):
         joint_name = joint.get("name")
-        # Check if the joint name is in the provided armature dictionary
         if joint_name in motor_params:
             for field in fields(motor_params[joint_name]):
-                if field.name in ["damping", "armature"]:
+                if field.name in ["damping", "armature", "fricionloss"]:
                     joint.set(
                         field.name, str(getattr(motor_params[joint_name], field.name))
                     )

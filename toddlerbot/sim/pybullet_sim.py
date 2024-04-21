@@ -29,7 +29,7 @@ class PyBulletSim(BaseSim):
 
         urdf_path = find_description_path(robot.name)
         robot.id = p.loadURDF(urdf_path, useFixedBase=fixed)
-        self.name2idx = self.get_name2idx(robot)
+        self.name2idx = self.get_name2idx()
         if not fixed:
             self.put_robot_on_ground()
 

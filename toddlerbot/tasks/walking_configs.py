@@ -50,21 +50,21 @@ walking_configs = {
         squat_height=0.01,
         # rotate_torso=True,
     ),
+    "toddlerbot_real": WalkingConfig.create_config(squat_height=0.01),
     "toddlerbot_legs_mujoco": WalkingConfig.create_config(
         squat_height=0.01,
-        plan_max_stride=[0.02, 0.03, 0.2],
-        plan_t_step=1.0,
+        plan_max_stride=[0.08, 0.03, 0.2],
+        plan_t_step=0.6,
         y_offset_zmp=0.05,
-        target_pose_init=[0.1, 0.0, 0.0],
-        speed_factor=0.5,
+        target_pose_init=[0.3, 0.0, 0.0],
+        speed_factor=0.3,
     ),
-    "toddlerbot_real": WalkingConfig.create_config(squat_height=0.01),
     "toddlerbot_legs_real": WalkingConfig.create_config(
         squat_height=0.01,
-        plan_max_stride=[0.02, 0.03, 0.2],  # TODO: Let's shoot for 0.15
-        plan_t_step=1.0,
+        plan_max_stride=[0.08, 0.03, 0.2],  # TODO: Let's shoot for 0.15
+        plan_t_step=0.6,
         y_offset_zmp=0.05,
-        target_pose_init=[0.1, 0.0, 0.0],
-        speed_factor=0.5,
+        target_pose_init=[0.3, 0.0, 0.0],
+        speed_factor=0.3,
     ),
 }

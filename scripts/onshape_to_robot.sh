@@ -49,7 +49,7 @@ if [ "$run_process" == "y" ]; then
     eval $cmd
 
     printf "Visualizing the kinematic tree...\n\n"
-    python $REPO_NAME/utils/vis_kine_tree.py \
+    python $REPO_NAME/visualization/vis_kine_tree.py \
         --path $URDF_PATH \
         -o $REPO_NAME/robot_descriptions/$ROBOT_NAME/${ROBOT_NAME}_kine_tree.png
 

@@ -24,6 +24,7 @@ class MotorParameters:
     type: str = ""
     damping: float = 0.0
     armature: float = 0.0
+    frictionloss: float = 0.0
     kp: float = 0.0
     kv: float = 0.0
 
