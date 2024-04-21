@@ -12,13 +12,25 @@ Recommended IDE:
 VSCode
 
 Recommended VSCode Extenstions:
-1. Black Formatter
-1. isort
-1. Python, Pylance, Python Debugger
+1. Python, Python Debugger
 1. Serial Monitor
 1. URDF
 1. vscode-stl-viewer
 1. XML Tools
+1. Ruff
+
+
+### Jetson-orin
+- Add yourself to the correct user group [doc](https://github.com/NVIDIA/jetson-gpio)
+- Be sure to modify the address of rules: e.g
+```bash
+sudo cp miniforge3/envs/microservo/lib/python3.9/site-packages/Jetson/GPIO/99-gpio.rules /etc/udev/rules.d/
+```
+
+- also add yourself to i2c group.
+```bash
+sudo usermod -aG i2c <your_username>
+```
 
 ### Linux Systems
 ```
@@ -264,6 +276,9 @@ Update the firmware if you cannot search the motor.
 1. Check the cables first
 1. Unscrew the panel support and calibrate the motor. Make sure the pole pairs are 12.
 1. Run `toddlerbot/actuation/sunny_sky/sunny_sky_control.py` as a unit test
+
+### Micro Servos
+
 
 ## Features to add
 
