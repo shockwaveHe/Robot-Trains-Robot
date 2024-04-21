@@ -282,3 +282,36 @@ pigar generate
 1. Build before flash the ESC control code
 1. Don't drag the cables when removing the connector. Use the plastic tips on both sides
 1. Tape the DC power supply voltage and current buttons to avoid accidentally changing the settings
+
+### Flashing Jetson Linux and applying RT kernel
+Important: Make sure your system will not sleep in the process below, or the steps might fail due to disconnection.
+
+1. Boot your jetson, go through the basic setup process and proceed to desktop. Then power off
+1. Download and install SDK manager from [Nvidia website](https://developer.nvidia.com/sdk-manager)
+1. Open SDK Manager, log in, and connect the Jetson Orin through the USB-C jack. Power it on.
+1. You will see this page, set the preferences as in the picture, please select JetPack5.1.3 since we want the Ubuntu 20.04 base OS:
+![JetPack5.1.3](./pictures/sdk_manager.png)
+2. Next step, select all components, and continue
+1. Wait for it to download and build...
+3. When prompted to flash, since the jetson comes with system preloaded on SSD, we can select automatic setup (For manual setup, check later section of this tutorial).
+1. Set the flash as shown in the screenshot, notice the destination is NVME, not SD Card.
+![NVME](./pictures/flashsettings.png)
+1. Wait for it to flash, the process could take about 15 min...
+1. When prompted to install the components, set up as needed, make sure the jetson is at the desktop. (Tips, if unable to install through USB, try network, just find out the ip of jetson and type it in.)
+1. Wait for it to install the components to jetson... This is another 45 min. You might need several round of retry to install everything. No need to flash again when retrying, only need to install the components agan.
+
+#### Apply Real Time Kernel Patch
+Now everything is ready, let's apply the real-time kernel patch according to this part in the [doc](https://docs.nvidia.com/jetson/archives/r35.5.0/DeveloperGuide/SD/Kernel/KernelCustomization.html#to-build-the-real-time-kernel).
+
+
+
+### Flash (if you have non nvidia Jetson[or any carrier that has HDMI output])
+1. We will be following this [guide](https://wiki.seeedstudio.com/reComputer_J4012_Flash_Jetpack/), It's pretty straight forward.
+
+1. And then install the components same way as above in SDK manager, make sure to uncheck the flash option. (Since we alreadey flashed)
+
+and then we will apply the RT kernel.
+
+
+### Jetson Tips
+- We recommand using jtop to monitor the performance of the system
