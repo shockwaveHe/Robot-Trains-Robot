@@ -1,12 +1,6 @@
 [submodule "toddlerbot/actuation/sunny_sky/knee_esc"]
 	path = toddlerbot/actuation/sunny_sky/knee_esc
 	url = git@github.com:weizhuowang/knee_esc.git
-[submodule "toddlerbot/sim/legged_gym"]
-	path = toddlerbot/sim/legged_gym
-	url = git@github.com:hshi74/legged_gym.git
-[submodule "toddlerbot/sim/rsl_rl"]
-	path = toddlerbot/sim/rsl_rl
-	url = git@github.com:hshi74/rsl_rl.git
 [submodule "toddlerbot/sim/humanoid_gym"]
 	path = toddlerbot/sim/humanoid_gym
 	url = git@github.com:hshi74/humanoid-gym.git
