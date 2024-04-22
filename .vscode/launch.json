@@ -175,8 +175,7 @@
             "justMyCode": true,
             "args": [
                 "--task",
-                "humanoid_ppo", // "toddlerbot_legs",
-                // "--headless",
+                "toddlerbot_legs",
             ],
         },
         {
@@ -188,8 +187,7 @@
             "justMyCode": true,
             "args": [
                 "--task",
-                "humanoid_ppo", // "toddlerbot_legs",
-                // "--headless",
+                "toddlerbot_legs",
             ],
         },
     ]
