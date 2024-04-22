@@ -7,3 +7,6 @@
 [submodule "toddlerbot/sim/rsl_rl"]
 	path = toddlerbot/sim/rsl_rl
 	url = git@github.com:hshi74/rsl_rl.git
+[submodule "toddlerbot/sim/humanoid_gym"]
+	path = toddlerbot/sim/humanoid_gym
+	url = git@github.com:hshi74/humanoid-gym.git

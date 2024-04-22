@@ -4,6 +4,7 @@ from toddlerbot.robot_descriptions.robot_configs import MotorParameters, RobotCo
 
 canonical_name2link_name = {
     "body_link": "body_link",
+    "knee_link": "calf_link",
     "foot_link": "ank_roll_link",
 }
 

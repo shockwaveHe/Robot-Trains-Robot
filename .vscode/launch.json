@@ -96,19 +96,6 @@
             "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
         },
         {
-            "name": "Python: walk_toddlerbot_isaac_train",
-            "type": "python",
-            "request": "launch",
-            "program": "toddlerbot/sim/legged_gym/legged_gym/scripts/train.py",
-            "console": "integratedTerminal",
-            "justMyCode": true,
-            "args": [
-                "--task",
-                "toddlerbot",
-                "--headless",
-            ],
-        },
-        {
             "name": "Python: stand_toddlerbot_real",
             "type": "python",
             "request": "launch",
@@ -178,6 +165,32 @@
                 "all",
             ],
             "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
+        },
+        {
+            "name": "Python: walk_toddlerbot_isaac_train",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/sim/humanoid_gym/humanoid/scripts/train.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--task",
+                "humanoid_ppo", // "toddlerbot_legs",
+                // "--headless",
+            ],
+        },
+        {
+            "name": "Python: walk_toddlerbot_isaac_play",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/sim/humanoid_gym/humanoid/scripts/play.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--task",
+                "humanoid_ppo", // "toddlerbot_legs",
+                // "--headless",
+            ],
         },
     ]
 }
