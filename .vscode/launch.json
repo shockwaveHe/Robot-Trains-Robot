@@ -190,5 +190,17 @@
                 "toddlerbot_legs",
             ],
         },
+        {
+            "name": "Python: walk_toddlerbot_isaac_sim2sim",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/sim/humanoid_gym/humanoid/scripts/sim2sim.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--load_model",
+                "toddlerbot/sim/humanoid_gym/logs/walk_toddlerbot_legs_isaac/exported/policies/policy_1.pt",
+            ],
+        },
     ]
 }
