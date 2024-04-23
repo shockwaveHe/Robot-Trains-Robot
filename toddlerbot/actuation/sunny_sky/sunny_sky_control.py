@@ -241,6 +241,7 @@ class SunnySkyController(BaseController):
 
             decoded_line = line.decode().strip()
             log(decoded_line, header="SunnySky", level="debug")
+
             if decoded_line.startswith(self.config.tx_data_prefix):
                 _, data_str = decoded_line.split(self.config.tx_data_prefix, 1)
                 for single_data_str in data_str.split(";"):

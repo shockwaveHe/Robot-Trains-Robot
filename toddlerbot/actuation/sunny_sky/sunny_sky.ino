@@ -23,12 +23,12 @@ const float VB_MIN = 0;    // Min voltage [V]
 const float VB_MAX = 80;   // Max voltage [V]
 
 // Data received from the serial port
-static boolean recv_in_progress = false;
-static boolean length_received = false;
+static bool recv_in_progress = false;
+static bool length_received = false;
 static uint16_t ndx = 0;
 static uint16_t payload_length = 0;
 byte received_bytes[1024]; // an array to store the received data
-boolean new_data = false;
+bool new_data = false;
 char start_marker = '<';
 char end_marker = '>';
 
@@ -51,6 +51,75 @@ struct MotorState
 MotorCommand motor_commands[num_can_ids];
 MotorState motor_states[num_can_ids];
 
+void resetCAN()
+{
+    Serial.println("Attempting to reset CAN controller...");
+    CAN.end();
+    delay(100);
+    CAN.begin(1000000);
+    if (!CAN.begin(1000000))
+    {
+        Serial.println("Error: CAN reset failed!");
+        while (1)
+            delay(10); // Halt the system on persistent failure
+    }
+    Serial.println("CAN reset successful.");
+}
+
+void setupCAN()
+{
+    pinMode(PIN_CAN_STANDBY, OUTPUT);
+    digitalWrite(PIN_CAN_STANDBY, LOW); // Disable STANDBY mode
+    pinMode(PIN_CAN_BOOSTEN, OUTPUT);
+    digitalWrite(PIN_CAN_BOOSTEN, HIGH); // Enable BOOST mode
+
+    Serial.println("Initializing CAN interface...");
+    if (!CAN.begin(1000000))
+    {
+        Serial.println("Error: Starting CAN failed!");
+        resetCAN(); // Attempt to reset the CAN bus
+    }
+    else
+    {
+        Serial.println("CAN interface started successfully.");
+    }
+}
+
+void testCAN()
+{
+    // Send a test packet
+    CAN.beginPacket(0x001);
+    CAN.write('H'); // Simple test message
+    CAN.write('i');
+    if (CAN.endPacket())
+    {
+        Serial.println("Test packet sent successfully.");
+    }
+    else
+    {
+        Serial.println("Failed to send test packet.");
+    }
+
+    // // Try to receive a packet
+    // if (CAN.parsePacket() > 0)
+    // {
+    //     if (CAN.available())
+    //     {
+    //         Serial.println("Received packet successfully.");
+    //         while (CAN.available())
+    //         {
+    //             char c = (char)CAN.read();
+    //             Serial.print(c);
+    //         }
+    //         Serial.println();
+    //     }
+    // }
+    // else
+    // {
+    //     Serial.println("No packet received. Check connections.");
+    // }
+}
+
 void setup()
 {
     // Start Serial
@@ -58,19 +127,9 @@ void setup()
     while (!Serial)
         delay(10);
 
-    // Prepare CAN pins
-    pinMode(PIN_CAN_STANDBY, OUTPUT);
-    digitalWrite(PIN_CAN_STANDBY, false); // turn off STANDBY
-    pinMode(PIN_CAN_BOOSTEN, OUTPUT);
-    digitalWrite(PIN_CAN_BOOSTEN, true); // turn on booster
+    setupCAN();
 
-    // Start the CAN bus at 1Mbps
-    if (!CAN.begin(1000000))
-    {
-        Serial.println("Starting CAN failed!");
-        while (1)
-            delay(10);
-    }
+    testCAN();
 
     current_micros = micros(); // Start timer in microseconds
 
@@ -210,30 +269,44 @@ void recvWithStartEndMarkers()
             if (rb == start_marker)
             {
                 recv_in_progress = true;
+                ndx = 0;
             }
         }
         else if (!length_received)
         {
+            // Ensure 2 bytes for the length are available
             if (Serial.available() > 0)
-            { // Ensure 2 bytes for the length are available
+            {
                 // Read the payload length as little-endian
                 payload_length = rb | (Serial.read() << 8);
+                if (payload_length > sizeof(received_bytes))
+                {
+                    Serial.println("Error: Payload length exceeds buffer size.");
+                    recv_in_progress = false;
+                    continue;
+                }
                 length_received = true;
             }
         }
         else if (ndx < payload_length)
         {
-            received_bytes[ndx] = rb;
-            ndx += 1;
+            // Protect against buffer overflow
+            if (ndx < sizeof(received_bytes))
+            {
+                received_bytes[ndx++] = rb;
+            }
         }
         else
         {
+            if (rb == end_marker)
+            {
+                received_bytes[ndx] = '\0'; // Terminate the string
+                new_data = true;
+            }
             // Complete message received
-            received_bytes[ndx] = '\0'; // terminate the string
             recv_in_progress = false;
             length_received = false;
             ndx = 0;
-            new_data = true;
         }
     }
 }
@@ -242,8 +315,11 @@ void sendPacket()
 {
     for (int i = 0; i < num_can_ids; i++)
     {
-        CAN.beginPacket(can_ids[i]); // Use the canId parameter to specify the target CAN ID
         int index = findMotorIndex(can_ids[i]);
+        if (index == -1)
+            continue; // Skip if motor index is not found
+
+        CAN.beginPacket(can_ids[i]);
 
         bool is_empty = true;
         for (int j = 0; j < 8; j++)
@@ -262,16 +338,26 @@ void sendPacket()
         }
         else
         {
-            memcpy(&cmd_packet, &motor_commands[index].packet_buffer, 8);
-            memset(&motor_commands[index].packet_buffer, 0, 8);
+            memcpy(&cmd_packet, &motor_commands[index].packet_buffer, sizeof(cmd_packet));
+            memset(&motor_commands[index].packet_buffer, 0, sizeof(cmd_packet));
         }
 
-        for (int j = 0; j < 8; j++)
+        bool success = true;
+        for (int j = 0; j < sizeof(cmd_packet); j++)
         {
-            CAN.write(cmd_packet[j]);
+            if (!CAN.write(cmd_packet[j]))
+            {
+                success = false;
+                break;
+            }
         }
 
         CAN.endPacket();
+
+        if (!success)
+        {
+            Serial.println("Error: Failed to send packet for CAN ID " + String(can_ids[i]));
+        }
     }
 }
 
@@ -279,30 +365,38 @@ void readPacket()
 {
     while (CAN.parsePacket())
     {
-        int packet_size = CAN.available();
-        if (packet_size && packet_size == 7)
+        if (CAN.packetExtended() || CAN.packetRtr())
         {
-            // Serial.println("Packet size: " + String(packet_size));
-            byte packet[8];
-            for (int i = 0; i < packet_size; i++)
-            {
-                packet[i] = CAN.read(); // Read the packet data
-            }
+            // Handle extended and remote transmission request packets if needed
+            Serial.println("Non-standard packet received. Ignored.");
+            continue;
+        }
 
-            // Obtain CAN ID of the received packet
-            uint8_t id = packet[0];
-            int index = findMotorIndex(id);
+        int packet_size = CAN.available();
+        if (packet_size != 7)
+        {
+            Serial.println("Error: Incorrect packet size: " + String(packet_size));
+            continue;
+        }
 
-            if (index != -1)
-            { // Ensure the CAN ID is recognized
-                // Assuming a decodePacket function that updates the motor state
-                decodePacket(packet, motor_states[index]);
-            }
-            else
-            {
-                // Handle unrecognized CAN ID, if necessary
-                Serial.println("Received packet from unrecognized CAN ID.");
-            }
+        // Serial.println("Packet size: " + String(packet_size));
+        byte packet[8];
+        for (int i = 0; i < packet_size; i++)
+        {
+            packet[i] = CAN.read(); // Read the packet data
+        }
+
+        // Obtain CAN ID of the received packet
+        uint8_t id = packet[0];
+        int index = findMotorIndex(id);
+
+        if (index == -1)
+        {
+            Serial.println("Error: Received packet from unrecognized CAN ID: " + String(id));
+        }
+        else
+        {
+            decodePacket(packet, motor_states[index]);
         }
     }
 }
