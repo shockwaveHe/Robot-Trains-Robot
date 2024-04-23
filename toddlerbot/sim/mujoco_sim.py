@@ -10,6 +10,7 @@ import mujoco.rollout
 import mujoco.viewer
 import numpy as np
 from transforms3d.euler import euler2mat
+from transforms3d.quaternions import quat2mat
 
 from toddlerbot.sim import BaseSim
 from toddlerbot.sim.robot import JointState
@@ -295,6 +296,17 @@ class MuJoCoSim(BaseSim):
                 )
 
         return joint_state_dict
+
+    def get_observation(self):
+        """Extracts an observation from the mujoco data structure"""
+        q = self.data.qpos.copy()
+        dq = self.data.qvel.copy()
+        quat = self.data.sensor("orientation").data.copy()
+        r = quat2mat(quat)
+        v = dq[:3] @ r.T
+        omega = self.data.sensor("angular_velocity").copy()
+        gvec = np.array([0.0, 0.0, -1.0]) @ r.T
+        return (q, dq, quat, v, omega, gvec)
 
     def get_zmp(self, com_pos, pz=0.0):
         M = self.model.body(0).subtreemass

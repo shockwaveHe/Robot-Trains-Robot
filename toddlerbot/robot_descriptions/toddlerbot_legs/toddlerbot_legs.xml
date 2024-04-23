@@ -297,4 +297,12 @@
     <exclude body1="right_hip_pitch_link" body2="ank_roll_link_2" />
     <exclude body1="right_calf_link" body2="ank_roll_link_2" />
   </contact>
+  <sensor>
+    <framequat name='orientation' objtype='site' noise='0.001' objname='imu'/>
+    <framepos name='position' objtype='site' noise='0.001' objname='imu'/>
+    <gyro name='angular_velocity' site='imu' noise='0.005' cutoff='34.9'/>
+    <velocimeter name='linear_velocity' site='imu' noise='0.001' cutoff='30'/>
+    <accelerometer name='linear_acceleration' site='imu' noise='0.005' cutoff='157'/>
+    <magnetometer name='magnetometer' site='imu'/>
+  </sensor>
 </mujoco>
