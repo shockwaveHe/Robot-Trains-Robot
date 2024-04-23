@@ -30,8 +30,8 @@
     <parent link="body_link" />
     <child link="hip_yaw_link" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
+    <dynamics damping="0.077" />
   </joint>
 
   <joint name="right_hip_yaw" type="revolute">
@@ -39,8 +39,8 @@
     <parent link="body_link" />
     <child link="hip_yaw_link_2" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
+    <dynamics damping="0.077" />
   </joint>
 
 
@@ -209,8 +209,7 @@
     <parent link="ank_rr_link" />
     <child link="12lf_rod_end" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
   </joint>
 
   <joint name="left_ank_R11" type="fixed">
@@ -218,8 +217,7 @@
     <parent link="ank_roll_link" />
     <child link="ank_rr_link" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
   </joint>
 
   <link name="ank_rr_link_2">
@@ -261,8 +259,7 @@
     <parent link="ank_rr_link_2" />
     <child link="12lf_rod_end_2" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
   </joint>
 
   <joint name="left_ank_R12" type="fixed">
@@ -270,8 +267,7 @@
     <parent link="ank_roll_link" />
     <child link="ank_rr_link_2" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
   </joint>
 
   <joint name="left_ank_roll" type="revolute">
@@ -279,8 +275,8 @@
     <parent link="ank_pitch_link" />
     <child link="ank_roll_link" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
+    <dynamics damping="0.583" />
   </joint>
 
   <joint name="left_ank_pitch" type="revolute">
@@ -288,8 +284,8 @@
     <parent link="left_calf_link" />
     <child link="ank_pitch_link" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-0.785398163397448279" upper="0.95993108859688125456" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-0.785398163397448279" upper="0.95993108859688125456" />
+    <dynamics damping="0.523" />
   </joint>
 
   <link name="ball_joint_container">
@@ -365,8 +361,7 @@
     <parent link="12lf" />
     <child link="12lf_rod" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="0" upper="0.040000000000000000833" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="0" upper="0.040000000000000000833" />
   </joint>
 
   <joint name="left_ank_B31" type="fixed">
@@ -374,8 +369,7 @@
     <parent link="ball_joint_ball" />
     <child link="12lf" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
   </joint>
 
   <joint name="left_ank_B21" type="fixed">
@@ -383,8 +377,7 @@
     <parent link="ball_joint_container" />
     <child link="ball_joint_ball" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
   </joint>
 
   <joint name="left_ank_B11" type="fixed">
@@ -392,8 +385,7 @@
     <parent link="left_calf_link" />
     <child link="ball_joint_container" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
   </joint>
 
   <link name="ball_joint_container_2">
@@ -469,8 +461,7 @@
     <parent link="12lf_2" />
     <child link="12lf_rod_2" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="0" upper="0.040000000000000000833" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="0" upper="0.040000000000000000833" />
   </joint>
 
   <joint name="left_ank_B32" type="fixed">
@@ -478,8 +469,7 @@
     <parent link="ball_joint_ball_2" />
     <child link="12lf_2" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
   </joint>
 
   <joint name="left_ank_B22" type="fixed">
@@ -487,8 +477,7 @@
     <parent link="ball_joint_container_2" />
     <child link="ball_joint_ball_2" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
   </joint>
 
   <joint name="left_ank_B12" type="fixed">
@@ -496,8 +485,7 @@
     <parent link="left_calf_link" />
     <child link="ball_joint_container_2" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
   </joint>
 
   <joint name="left_knee" type="revolute">
@@ -505,8 +493,8 @@
     <parent link="left_hip_pitch_link" />
     <child link="left_calf_link" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="0" upper="1.570796326794896558" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="0" upper="1.570796326794896558" />
+    <dynamics damping="1.142" />
   </joint>
 
   <joint name="left_hip_pitch" type="revolute">
@@ -514,8 +502,8 @@
     <parent link="hip_roll_link" />
     <child link="left_hip_pitch_link" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
+    <dynamics damping="1.286" />
   </joint>
 
   <joint name="left_hip_roll" type="revolute">
@@ -523,8 +511,8 @@
     <parent link="hip_yaw_link" />
     <child link="hip_roll_link" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-0.785398163397448279" upper="1.570796326794896558" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-0.785398163397448279" upper="1.570796326794896558" />
+    <dynamics damping="3.122" />
   </joint>
 
 
@@ -693,8 +681,7 @@
     <parent link="ank_rr_link_3" />
     <child link="12lf_rod_end_3" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
   </joint>
 
   <joint name="right_ank_R11" type="fixed">
@@ -702,8 +689,7 @@
     <parent link="ank_roll_link_2" />
     <child link="ank_rr_link_3" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
   </joint>
 
   <link name="ank_rr_link_4">
@@ -745,8 +731,7 @@
     <parent link="ank_rr_link_4" />
     <child link="12lf_rod_end_4" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
   </joint>
 
   <joint name="right_ank_R12" type="fixed">
@@ -754,8 +739,7 @@
     <parent link="ank_roll_link_2" />
     <child link="ank_rr_link_4" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
   </joint>
 
   <joint name="right_ank_roll" type="revolute">
@@ -763,8 +747,8 @@
     <parent link="ank_pitch_link_2" />
     <child link="ank_roll_link_2" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
+    <dynamics damping="0.583" />
   </joint>
 
   <joint name="right_ank_pitch" type="revolute">
@@ -772,8 +756,8 @@
     <parent link="right_calf_link" />
     <child link="ank_pitch_link_2" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-0.785398163397448279" upper="0.95993108859688125456" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-0.785398163397448279" upper="0.95993108859688125456" />
+    <dynamics damping="0.523" />
   </joint>
 
   <link name="ball_joint_container_3">
@@ -849,8 +833,7 @@
     <parent link="12lf_3" />
     <child link="12lf_rod_3" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="0" upper="0.040000000000000000833" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="0" upper="0.040000000000000000833" />
   </joint>
 
   <joint name="right_ank_B31" type="fixed">
@@ -858,8 +841,7 @@
     <parent link="ball_joint_ball_3" />
     <child link="12lf_3" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
   </joint>
 
   <joint name="right_ank_B21" type="fixed">
@@ -867,8 +849,7 @@
     <parent link="ball_joint_container_3" />
     <child link="ball_joint_ball_3" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
   </joint>
 
   <joint name="right_ank_B11" type="fixed">
@@ -876,8 +857,7 @@
     <parent link="right_calf_link" />
     <child link="ball_joint_container_3" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
   </joint>
 
   <link name="ball_joint_container_4">
@@ -953,8 +933,7 @@
     <parent link="12lf_4" />
     <child link="12lf_rod_4" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="0" upper="0.040000000000000000833" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="0" upper="0.040000000000000000833" />
   </joint>
 
   <joint name="right_ank_B32" type="fixed">
@@ -962,8 +941,7 @@
     <parent link="ball_joint_ball_4" />
     <child link="12lf_4" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
   </joint>
 
   <joint name="right_ank_B22" type="fixed">
@@ -971,8 +949,7 @@
     <parent link="ball_joint_container_4" />
     <child link="ball_joint_ball_4" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
   </joint>
 
   <joint name="right_ank_B12" type="fixed">
@@ -980,8 +957,7 @@
     <parent link="right_calf_link" />
     <child link="ball_joint_container_4" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
   </joint>
 
   <joint name="right_knee" type="revolute">
@@ -989,8 +965,8 @@
     <parent link="right_hip_pitch_link" />
     <child link="right_calf_link" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="0" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-1.570796326794896558" upper="0" />
+    <dynamics damping="1.142" />
   </joint>
 
   <joint name="right_hip_pitch" type="revolute">
@@ -998,8 +974,8 @@
     <parent link="hip_roll_link_2" />
     <child link="right_hip_pitch_link" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
+    <dynamics damping="1.286" />
   </joint>
 
   <joint name="right_hip_roll" type="revolute">
@@ -1007,8 +983,8 @@
     <parent link="hip_yaw_link_2" />
     <child link="hip_roll_link_2" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="0.785398163397448279" />
-    <joint_properties friction="0.0" />
+    <limit effort="10" velocity="20" lower="-1.570796326794896558" upper="0.785398163397448279" />
+    <dynamics damping="3.122" />
   </joint>
 
 

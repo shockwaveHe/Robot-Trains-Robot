@@ -22,6 +22,7 @@ class MotorParameters:
     brand: str = ""
     id: int = -1
     type: str = ""
+    default_angle: float = 0.0
     damping: float = 0.0
     armature: float = 0.0
     frictionloss: float = 0.0
