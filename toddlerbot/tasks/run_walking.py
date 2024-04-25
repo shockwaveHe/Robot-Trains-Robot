@@ -20,7 +20,7 @@ from toddlerbot.visualization.vis_planning import draw_footsteps
 from toddlerbot.visualization.vis_plot import plot_joint_tracking, plot_line_graph
 
 
-@profile(enable=True)
+@profile()
 def main():
     parser = argparse.ArgumentParser(description="Run the walking simulation.")
     parser.add_argument(
@@ -90,7 +90,7 @@ def main():
         sim.run_simulation(headless=True, vis_data=vis_data)
 
     time_start = time.time()
-    duration = 5
+    duration = 60
     try:
         step_idx = 0
         while time.time() - time_start < duration:

@@ -70,11 +70,8 @@ def precise_sleep(duration):
 global_profiler = LineProfiler()
 
 
-def profile(enable=True):
+def profile():
     def decorator(func):
-        if not enable:
-            return func
-
         # Register function to the global profiler
         global_profiler.add_function(func)
 

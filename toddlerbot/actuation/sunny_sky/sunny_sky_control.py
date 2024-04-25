@@ -13,9 +13,9 @@ from threading import Lock
 
 import numpy as np
 import serial
-import serial.tools.list_ports as list_ports
 
 from toddlerbot.actuation import BaseController
+from toddlerbot.utils.file_utils import find_port
 from toddlerbot.utils.math_utils import interpolate_pos
 from toddlerbot.utils.misc_utils import log, precise_sleep
 
@@ -44,22 +44,6 @@ class SunnySkyState:
     vel: float
     current: float
     voltage: float
-
-
-def find_feather_port():
-    ports = list(list_ports.comports())
-    for port, desc, hwid in ports:
-        # Adjust the condition below according to your board's unique identifier or pattern
-        if "usbmodem" in port and "Feather" in desc:
-            port = port.replace("cu", "tty")
-            log(
-                f"Found Feather board: {port} - {desc} - {hwid}",
-                header="RealWorld",
-                level="debug",
-            )
-            return port
-
-    raise ConnectionError("Could not find the Feather board.")
 
 
 class SunnySkyController(BaseController):
@@ -298,7 +282,7 @@ if __name__ == "__main__":
     # joint_range_dict = {2: (0, -np.pi / 2)}
     # pos_ref_seq = [[0.0], [-np.pi / 2], [0.0], [-np.pi / 4], [-0.64]]
 
-    config = SunnySkyConfig(port=find_feather_port())
+    config = SunnySkyConfig(port=find_port("Feather"))
     controller = SunnySkyController(config, joint_range_dict=joint_range_dict)
 
     time_start = time.time()

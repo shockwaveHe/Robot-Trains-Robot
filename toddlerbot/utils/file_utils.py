@@ -3,6 +3,26 @@ import xml.dom.minidom
 import xml.etree.ElementTree as ET
 from typing import Optional
 
+import serial.tools.list_ports as list_ports
+
+from toddlerbot.utils.misc_utils import log
+
+
+def find_port(target):
+    ports = list(list_ports.comports())
+    for port, desc, hwid in ports:
+        # Adjust the condition below according to your board's unique identifier or pattern
+        if target in desc:
+            port = port.replace("cu", "tty")
+            log(
+                f"Found {target} board: {port} - {desc} - {hwid}",
+                header="FileUtils",
+                level="debug",
+            )
+            return port
+
+    raise ConnectionError(f"Could not find the {target} board.")
+
 
 def find_last_result_dir(result_dir: str, prefix: str = "") -> Optional[str]:
     """

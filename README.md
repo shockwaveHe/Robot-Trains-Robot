@@ -27,10 +27,12 @@ Recommended VSCode Extenstions:
 sudo cp miniforge3/envs/microservo/lib/python3.9/site-packages/Jetson/GPIO/99-gpio.rules /etc/udev/rules.d/
 ```
 
-- also add yourself to i2c group.
+- also add yourself to i2c and dialout group.
 ```bash
-sudo usermod -aG i2c <your_username>
+sudo usermod -aG i2c $USER
+sudo usermod -aG dialout $USER
 ```
+The usb-c port on Jetson is only for flashing, which means it's not fully functional.
 
 ### Linux Systems
 ```
@@ -267,6 +269,12 @@ Restart the power and reconnect the ESC board.
 Press `E` and then `Esc` to check if the menu shows up.
 
 ## Actuation
+
+### Dynamixel
+Set `LATENCY_TIMER = 1` in `/path_to_env/toddlerbot/lib/python3.8/site-packages/dynamixel_sdk/port_handler.py`.
+
+This is according to the doc [here](https://emanual.robotis.com/docs/en/software/dynamixel/dynamixel_sdk/faq/#how-to-change-an-usb-latency-in-dynamixel-sdk). 
+
 ### MightyZap linear actuators
 
 Update the firmware if you cannot search the motor.

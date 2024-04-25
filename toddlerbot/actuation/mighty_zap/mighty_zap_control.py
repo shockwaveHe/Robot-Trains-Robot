@@ -93,7 +93,7 @@ class MightyZapController(BaseController):
         else:
             set_pos_helper(pos)
 
-    @profile(enable=False)
+    # @profile()
     def get_motor_state(self):
         state_dict = {}
         for id in self.motor_ids:

@@ -1,3 +1,4 @@
+import logging
 from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
@@ -13,15 +14,15 @@ from toddlerbot.actuation.mighty_zap.mighty_zap_control import (
 from toddlerbot.actuation.sunny_sky.sunny_sky_control import (
     SunnySkyConfig,
     SunnySkyController,
-    find_feather_port,
 )
 from toddlerbot.sim import BaseSim
 from toddlerbot.sim.robot import HumanoidRobot, JointState
+from toddlerbot.utils.file_utils import find_port
 from toddlerbot.utils.math_utils import round_floats
 from toddlerbot.utils.misc_utils import log, profile
 
-# my_logger = logging.getLogger("my_logger")
-# my_logger.setLevel(logging.WARNING)
+my_logger = logging.getLogger("my_logger")
+my_logger.setLevel(logging.INFO)
 
 
 class RealWorld(BaseSim):
@@ -40,7 +41,7 @@ class RealWorld(BaseSim):
         self.dynamixel_init_pos = np.radians([245, 180, 180, 322, 180, 180])
         # TODO: Replace the hard-coded gains
         self.dynamixel_config = DynamixelConfig(
-            port="/dev/tty.usbserial-FT8ISUJY",
+            port=find_port("Serial"),
             kFF2=[0, 0, 0, 0, 0, 0],
             kFF1=[0, 0, 0, 0, 0, 0],
             kP=[400, 3200, 1600, 400, 3200, 1600],
@@ -51,7 +52,7 @@ class RealWorld(BaseSim):
             gear_ratio=np.array([19 / 21, 1, 1, 19 / 21, 1, 1]),
         )
 
-        self.sunny_sky_config = SunnySkyConfig(port=find_feather_port())
+        self.sunny_sky_config = SunnySkyConfig(port=find_port("Feather"))
         # Temorarily hard-coded joint range for SunnySky
         joint_range_dict = {1: (0, np.pi / 2), 2: (0, -np.pi / 2)}
 
@@ -60,7 +61,7 @@ class RealWorld(BaseSim):
             mighty_zap_init_pos += robot.ankle_ik([0] * len(ids))
 
         self.mighty_zap_config = MightyZapConfig(
-            port="/dev/tty.usbserial-0001", init_pos=mighty_zap_init_pos
+            port=find_port("CP2102"), init_pos=mighty_zap_init_pos
         )
 
         with ThreadPoolExecutor(max_workers=3) as executor:
@@ -95,7 +96,7 @@ class RealWorld(BaseSim):
 
         return negated_joint_angles
 
-    @profile(enable=True)
+    @profile()
     def set_joint_angles(
         self, joint_angles, motor_list=["dynamixel", "sunny_sky", "mighty_zap"]
     ):
@@ -153,37 +154,37 @@ class RealWorld(BaseSim):
                     self.mighty_zap_controller.set_pos, mighty_zap_pos, interp=False
                 )
 
-    @profile(enable=True)
+    @profile()
     def get_joint_state(self, motor_list=["dynamixel", "sunny_sky", "mighty_zap"]):
         dynamixel_state = sunny_sky_state = mighty_zap_state = None
-        # with ThreadPoolExecutor(max_workers=3) as executor:
-        #     if "dynamixel" in motor_list:
-        #         future_dynamixel = executor.submit(
-        #             self.dynamixel_controller.get_motor_state
-        #         )
-        #     if "mighty_zap" in motor_list:
-        #         future_mighty_zap = executor.submit(
-        #             self.mighty_zap_controller.get_motor_state
-        #         )
-        #     if "sunny_sky" in motor_list:
-        #         future_sunny_sky = executor.submit(
-        #             self.sunny_sky_controller.get_motor_state
-        #         )
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            if "dynamixel" in motor_list:
+                future_dynamixel = executor.submit(
+                    self.dynamixel_controller.get_motor_state
+                )
+            if "mighty_zap" in motor_list:
+                future_mighty_zap = executor.submit(
+                    self.mighty_zap_controller.get_motor_state
+                )
+            if "sunny_sky" in motor_list:
+                future_sunny_sky = executor.submit(
+                    self.sunny_sky_controller.get_motor_state
+                )
 
-        #     if "dynamixel" in motor_list:
-        #         dynamixel_state = future_dynamixel.result()
-        #     if "mighty_zap" in motor_list:
-        #         # Note: MightyZap positions are the lengthsmof linear actuators
-        #         mighty_zap_state = future_mighty_zap.result()
-        #     if "sunny_sky" in motor_list:
-        #         sunny_sky_state = future_sunny_sky.result()
+            if "dynamixel" in motor_list:
+                dynamixel_state = future_dynamixel.result()
+            if "mighty_zap" in motor_list:
+                # Note: MightyZap positions are the lengthsmof linear actuators
+                mighty_zap_state = future_mighty_zap.result()
+            if "sunny_sky" in motor_list:
+                sunny_sky_state = future_sunny_sky.result()
 
-        if "dynamixel" in motor_list:
-            dynamixel_state = self.dynamixel_controller.get_motor_state()
-        if "sunny_sky" in motor_list:
-            sunny_sky_state = self.sunny_sky_controller.get_motor_state()
-        if "mighty_zap" in motor_list:
-            mighty_zap_state = self.mighty_zap_controller.get_motor_state()
+        # if "dynamixel" in motor_list:
+        #     dynamixel_state = self.dynamixel_controller.get_motor_state()
+        # if "sunny_sky" in motor_list:
+        #     sunny_sky_state = self.sunny_sky_controller.get_motor_state()
+        # if "mighty_zap" in motor_list:
+        #     mighty_zap_state = self.mighty_zap_controller.get_motor_state()
 
         joint_state_dict = {}
         for name in self.robot.joints_info.keys():
