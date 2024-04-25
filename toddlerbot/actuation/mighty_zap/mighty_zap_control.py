@@ -8,7 +8,7 @@ import numpy as np
 from toddlerbot.actuation import BaseController
 from toddlerbot.actuation.mighty_zap.mighty_zap_client import MightyZapClient
 from toddlerbot.utils.math_utils import interpolate_pos
-from toddlerbot.utils.misc_utils import log, precise_sleep
+from toddlerbot.utils.misc_utils import log, precise_sleep, profile
 
 
 @dataclass
@@ -54,6 +54,8 @@ class MightyZapController(BaseController):
 
     def initialize_motors(self):
         log("Initializing motors...", header="MightyZap")
+        self.client.set_return_delay_time(self.motor_ids, [0] * len(self.motor_ids))
+
         self.set_pos(self.config.init_pos)
         precise_sleep(0.1)
 
@@ -61,7 +63,6 @@ class MightyZapController(BaseController):
         self.client.force_enable(self.motor_ids, [0] * len(self.motor_ids))
         self.client.close()
 
-    # @profile
     def set_pos(self, pos, interp=True, vel=None, delta_t=None):
         def set_pos_helper(pos):
             rounded_pos = [round(p) for p in pos]
@@ -92,7 +93,7 @@ class MightyZapController(BaseController):
         else:
             set_pos_helper(pos)
 
-    # @profile
+    @profile(enable=False)
     def get_motor_state(self):
         state_dict = {}
         for id in self.motor_ids:

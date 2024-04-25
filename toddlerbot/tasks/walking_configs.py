@@ -57,7 +57,7 @@ walking_configs = {
         plan_t_step=0.6,
         y_offset_zmp=0.05,
         target_pose_init=[0.3, 0.0, 0.0],
-        speed_factor=0.3,
+        speed_factor=0.2,
     ),
     "toddlerbot_legs_real": WalkingConfig.create_config(
         squat_height=0.01,
@@ -65,6 +65,6 @@ walking_configs = {
         plan_t_step=0.6,
         y_offset_zmp=0.05,
         target_pose_init=[0.3, 0.0, 0.0],
-        speed_factor=0.3,
+        speed_factor=0.2,
     ),
 }

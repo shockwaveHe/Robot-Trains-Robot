@@ -60,7 +60,6 @@ class MightyZapClient:
         if self.serial.is_open:
             self.serial.write(self.TxBuffer[: self.TxBuffer_index])
 
-    # @profile
     def receive_packet(self, size):
         if not self.serial.is_open:
             return -1
@@ -143,11 +142,9 @@ class MightyZapClient:
             # Send command for a single motor
             self.send_command(id, self.MIGHTYZAP_WRITE_DATA, parameters)
 
-    # @profile
     def goal_position(self, id, position):
         self.write_data(id, 0x86, position)
 
-    # @profile
     def present_position(self, id):
         self.read_data(id, 0x8C, 2)
         if self.receive_packet(9) == 1:
@@ -198,3 +195,6 @@ class MightyZapClient:
         if self.receive_packet(7) == 1:
             return self.RxBuffer[5]
         return -1
+
+    def set_return_delay_time(self, id, time):
+        self.write_data(id, 0x5, time)

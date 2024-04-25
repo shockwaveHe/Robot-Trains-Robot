@@ -99,25 +99,6 @@ void testCAN()
     {
         Serial.println("Failed to send test packet.");
     }
-
-    // // Try to receive a packet
-    // if (CAN.parsePacket() > 0)
-    // {
-    //     if (CAN.available())
-    //     {
-    //         Serial.println("Received packet successfully.");
-    //         while (CAN.available())
-    //         {
-    //             char c = (char)CAN.read();
-    //             Serial.print(c);
-    //         }
-    //         Serial.println();
-    //     }
-    // }
-    // else
-    // {
-    //     Serial.println("No packet received. Check connections.");
-    // }
 }
 
 void setup()
@@ -183,14 +164,7 @@ void loop()
                 else
                 {
                     // Assuming normal command structure: <B2f2Hf>
-                    if (motor_states[index].t < I_MIN + I_TOL || motor_states[index].t > I_MAX - I_TOL)
-                    {
-                        motor_commands[index].p_des = motor_states[index].p;
-                    }
-                    else
-                    {
-                        memcpy(&motor_commands[index].p_des, &received_bytes[offset], sizeof(float));
-                    }
+                    memcpy(&motor_commands[index].p_des, &received_bytes[offset], sizeof(float));
                     offset += sizeof(float); // Advance past p_des
                     memcpy(&motor_commands[index].v_des, &received_bytes[offset], sizeof(float));
                     offset += sizeof(float); // Advance past v_des

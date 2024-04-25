@@ -45,7 +45,6 @@ def generate_sinusoidal_signal(signal_config):
     return t, signal
 
 
-# @profile
 def actuate(sim, robot, joint_name, signal_pos, control_dt, prep_time=1):
     """
     Actuates a single joint with the given signal and collects the response.
@@ -346,7 +345,6 @@ def optimize_parameters(
     return study.best_params, study.best_value
 
 
-# @profile
 def evaluate(
     robot,
     joint_name,

@@ -1,7 +1,4 @@
-import queue
-import time
-from concurrent.futures import Future, ThreadPoolExecutor
-from threading import Thread
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 
@@ -21,7 +18,7 @@ from toddlerbot.actuation.sunny_sky.sunny_sky_control import (
 from toddlerbot.sim import BaseSim
 from toddlerbot.sim.robot import HumanoidRobot, JointState
 from toddlerbot.utils.math_utils import round_floats
-from toddlerbot.utils.misc_utils import log
+from toddlerbot.utils.misc_utils import log, profile
 
 # my_logger = logging.getLogger("my_logger")
 # my_logger.setLevel(logging.WARNING)
@@ -54,7 +51,7 @@ class RealWorld(BaseSim):
             gear_ratio=np.array([19 / 21, 1, 1, 19 / 21, 1, 1]),
         )
 
-        self.sunny_sky_config = SunnySkyConfig(port=find_feather_port(), kP=40, kD=50)
+        self.sunny_sky_config = SunnySkyConfig(port=find_feather_port())
         # Temorarily hard-coded joint range for SunnySky
         joint_range_dict = {1: (0, np.pi / 2), 2: (0, -np.pi / 2)}
 
@@ -88,28 +85,6 @@ class RealWorld(BaseSim):
             self.sunny_sky_controller = future_sunny_sky.result()
             self.mighty_zap_controller = future_mighty_zap.result()
 
-        self.queues = {
-            "dynamixel": queue.Queue(),
-            "sunny_sky": queue.Queue(),
-            "mighty_zap": queue.Queue(),
-        }
-
-        self.threads = {
-            "dynamixel": Thread(target=self.command_worker, args=("dynamixel",)),
-            "sunny_sky": Thread(target=self.command_worker, args=("sunny_sky",)),
-            "mighty_zap": Thread(target=self.command_worker, args=("mighty_zap",)),
-        }
-
-        self.time_start = time.time()
-
-        for name, thread in self.threads.items():
-            log(
-                "The command thread is initializing...",
-                header="RealWorld",
-                level="debug",
-            )
-            thread.start()
-
     def _negate_joint_angles(self, joint_angles):
         negated_joint_angles = {}
         for name, angle in joint_angles.items():
@@ -120,7 +95,7 @@ class RealWorld(BaseSim):
 
         return negated_joint_angles
 
-    # @profile
+    @profile(enable=True)
     def set_joint_angles(
         self, joint_angles, motor_list=["dynamixel", "sunny_sky", "mighty_zap"]
     ):
@@ -178,48 +153,37 @@ class RealWorld(BaseSim):
                     self.mighty_zap_controller.set_pos, mighty_zap_pos, interp=False
                 )
 
-    def command_worker(self, actuator_type):
-        while True:
-            command = self.queues[actuator_type].get()
-            if command is None:  # Use None as a signal to stop the thread
-                break
-
-            # Unpack the command
-            command_type = command[0]
-            # Here, based on command_type, call the appropriate method
-            # For simplicity, assuming a 'set_pos' command type
-            if command_type == "get_state":
-                controller = getattr(self, f"{actuator_type}_controller")
-                state = controller.get_motor_state()
-                command[-1].set_result(state)
-            else:
-                log(
-                    f"Unknown command type {command_type} for {actuator_type}",
-                    level="error",
-                )
-
-            self.queues[actuator_type].task_done()
-
-    # @profile
+    @profile(enable=True)
     def get_joint_state(self, motor_list=["dynamixel", "sunny_sky", "mighty_zap"]):
-        if "dynamixel" in motor_list:
-            future_dynamixel = Future()
-            self.queues["dynamixel"].put(("get_state", None, future_dynamixel))
-        if "sunny_sky" in motor_list:
-            future_sunny_sky = Future()
-            self.queues["sunny_sky"].put(("get_state", None, future_sunny_sky))
-        if "mighty_zap" in motor_list:
-            future_mighty_zap = Future()
-            self.queues["mighty_zap"].put(("get_state", None, future_mighty_zap))
-
         dynamixel_state = sunny_sky_state = mighty_zap_state = None
+        # with ThreadPoolExecutor(max_workers=3) as executor:
+        #     if "dynamixel" in motor_list:
+        #         future_dynamixel = executor.submit(
+        #             self.dynamixel_controller.get_motor_state
+        #         )
+        #     if "mighty_zap" in motor_list:
+        #         future_mighty_zap = executor.submit(
+        #             self.mighty_zap_controller.get_motor_state
+        #         )
+        #     if "sunny_sky" in motor_list:
+        #         future_sunny_sky = executor.submit(
+        #             self.sunny_sky_controller.get_motor_state
+        #         )
+
+        #     if "dynamixel" in motor_list:
+        #         dynamixel_state = future_dynamixel.result()
+        #     if "mighty_zap" in motor_list:
+        #         # Note: MightyZap positions are the lengthsmof linear actuators
+        #         mighty_zap_state = future_mighty_zap.result()
+        #     if "sunny_sky" in motor_list:
+        #         sunny_sky_state = future_sunny_sky.result()
+
         if "dynamixel" in motor_list:
-            dynamixel_state = future_dynamixel.result()
+            dynamixel_state = self.dynamixel_controller.get_motor_state()
         if "sunny_sky" in motor_list:
-            sunny_sky_state = future_sunny_sky.result()
+            sunny_sky_state = self.sunny_sky_controller.get_motor_state()
         if "mighty_zap" in motor_list:
-            # Note: MightyZap positions are the lengthsmof linear actuators
-            mighty_zap_state = future_mighty_zap.result()
+            mighty_zap_state = self.mighty_zap_controller.get_motor_state()
 
         joint_state_dict = {}
         for name in self.robot.joints_info.keys():
@@ -284,11 +248,6 @@ class RealWorld(BaseSim):
         pass
 
     def close(self):
-        # Signal threads to stop
-        for name in self.queues.keys():
-            self.queues[name].put(None)
-            self.threads[name].join()
-
         self.dynamixel_controller.close_motors()
         self.sunny_sky_controller.close_motors()
         self.mighty_zap_controller.close_motors()

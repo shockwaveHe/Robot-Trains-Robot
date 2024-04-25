@@ -15,11 +15,12 @@ from toddlerbot.sim.robot import HumanoidRobot
 from toddlerbot.tasks.walking import Walking
 from toddlerbot.tasks.walking_configs import walking_configs
 from toddlerbot.utils.math_utils import round_floats
-from toddlerbot.utils.misc_utils import log, precise_sleep
+from toddlerbot.utils.misc_utils import dump_profiling_data, log, precise_sleep, profile
 from toddlerbot.visualization.vis_planning import draw_footsteps
 from toddlerbot.visualization.vis_plot import plot_joint_tracking, plot_line_graph
 
 
+@profile(enable=True)
 def main():
     parser = argparse.ArgumentParser(description="Run the walking simulation.")
     parser.add_argument(
@@ -88,10 +89,11 @@ def main():
         }
         sim.run_simulation(headless=True, vis_data=vis_data)
 
-    # time_start = time.time()
+    time_start = time.time()
+    duration = 5
     try:
         step_idx = 0
-        while True:
+        while time.time() - time_start < duration:
             step_start = time.time()
 
             time_ref, joint_angles_ref = joint_angles_traj[
@@ -152,6 +154,7 @@ def main():
     except KeyboardInterrupt:
         log("KeyboardInterrupt recieved. Closing...", header="Walking")
 
+    finally:
         sim.close()
 
         if sim.name == "real_world" and len(joint_angle_dict) > 0:
@@ -172,6 +175,9 @@ def main():
 
         log("Saving config and data...", header="Walking")
         os.makedirs(exp_folder_path, exist_ok=True)
+
+        prof_path = os.path.join(exp_folder_path, "profile_output.lprof")
+        dump_profiling_data(prof_path)
 
         with open(os.path.join(exp_folder_path, "config.json"), "w") as f:
             json.dump(asdict(config), f, indent=4)

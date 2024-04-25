@@ -10,7 +10,6 @@ import struct
 import time
 from dataclasses import dataclass
 from threading import Lock
-from typing import Tuple
 
 import numpy as np
 import serial
@@ -26,15 +25,16 @@ class SunnySkyConfig:
     port: str
     kP: int = 40
     kD: int = 50
-    kD_schedule: Tuple = (0.1, 20)
     baudrate: int = 115200
     timeout: float = 0.1
-    current_limit: float = 4.0
     gear_ratio: float = 2.0
     tx_data_prefix: str = ">tx_data:"
     tx_timeout: float = 1.0
     interp_method: str = "cubic"
     default_vel: float = np.pi / 2
+    soft_limit: float = 0.02
+    soft_kP: int = 4
+    soft_kD: int = 5
 
 
 @dataclass
@@ -164,7 +164,6 @@ class SunnySkyController(BaseController):
 
         self.init_pos = {id: pos for id, pos in zip(self.motor_ids, zero_pos)}
 
-    # @profile
     def set_pos(
         self,
         pos,
@@ -179,8 +178,21 @@ class SunnySkyController(BaseController):
         def set_pos_helper(pos):
             byte_commands = []
             for id, p in zip(self.motor_ids, pos):
+                kP_local = kP
+                kD_local = kD
                 if limit:
-                    p = np.clip(p, *sorted(self.joint_range_dict[id]))
+                    lower_limit, upper_limit = sorted(self.joint_range_dict[id])
+                    p = np.clip(p, lower_limit, upper_limit)
+
+                    if (
+                        p - lower_limit < self.config.soft_limit
+                        or upper_limit - p < self.config.soft_limit
+                    ):
+                        if kP_local is None:
+                            kP_local = self.config.soft_kP
+
+                        if kD_local is None:
+                            kD_local = self.config.soft_kD
 
                 p_drive = (p + self.init_pos[id]) * self.config.gear_ratio
 
@@ -189,8 +201,8 @@ class SunnySkyController(BaseController):
                     id,
                     p_drive,
                     0.0,
-                    self.config.kP if kP is None else kP,
-                    self.config.kD if kD is None else kD,
+                    self.config.kP if kP_local is None else kP_local,
+                    self.config.kD if kD_local is None else kD_local,
                     0.0 if i_ff is None else i_ff,
                 )
                 byte_commands.append(b)
@@ -218,7 +230,6 @@ class SunnySkyController(BaseController):
         else:
             set_pos_helper(pos)
 
-    # @profile
     def get_motor_state(self):
         # with self.lock:
         self.client.reset_input_buffer()
@@ -240,7 +251,10 @@ class SunnySkyController(BaseController):
                 continue  # Skip empty lines
 
             decoded_line = line.decode().strip()
-            log(decoded_line, header="SunnySky", level="debug")
+            if "error" in decoded_line.lower():
+                log(decoded_line, header="SunnySky", level="warning")
+            else:
+                log(decoded_line, header="SunnySky", level="debug")
 
             if decoded_line.startswith(self.config.tx_data_prefix):
                 _, data_str = decoded_line.split(self.config.tx_data_prefix, 1)
@@ -284,7 +298,7 @@ if __name__ == "__main__":
     # joint_range_dict = {2: (0, -np.pi / 2)}
     # pos_ref_seq = [[0.0], [-np.pi / 2], [0.0], [-np.pi / 4], [-0.64]]
 
-    config = SunnySkyConfig(port=find_feather_port(), kP=40, kD=50)
+    config = SunnySkyConfig(port=find_feather_port())
     controller = SunnySkyController(config, joint_range_dict=joint_range_dict)
 
     time_start = time.time()

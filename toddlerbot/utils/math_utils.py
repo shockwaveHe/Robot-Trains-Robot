@@ -80,7 +80,6 @@ def interpolate(p_start, p_end, delta_t, t, interp_type="linear"):
         raise ValueError("Unsupported interpolation type: {}".format(interp_type))
 
 
-# @profile
 def interpolate_pos(
     set_pos, pos_start, pos, delta_t, interp_type, actuator_type, sleep_time=0.0
 ):

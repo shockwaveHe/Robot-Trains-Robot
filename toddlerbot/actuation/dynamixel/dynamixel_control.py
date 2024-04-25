@@ -61,6 +61,7 @@ class DynamixelController(BaseController):
 
     def initialize_motors(self):
         log("Initializing motors...", header="Dynamixel")
+        self.client.sync_write(self.motor_ids, np.zeros(len(self.motor_ids)), 9, 1)
         self.client.sync_write(
             self.motor_ids,
             np.ones(len(self.motor_ids)) * self.config.control_mode,
@@ -85,7 +86,6 @@ class DynamixelController(BaseController):
             open_client.port_handler.is_using = False
             open_client.disconnect()
 
-    # @profile
     # Receive pos and directly control the robot
     def set_pos(self, pos, interp=True, vel=None, delta_t=None):
         def set_pos_helper(pos):
@@ -115,7 +115,6 @@ class DynamixelController(BaseController):
         else:
             set_pos_helper(pos)
 
-    # @profile
     def get_motor_state(self):
         state_dict = {}
         # with self.lock:
