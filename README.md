@@ -348,3 +348,6 @@ and then we will apply the RT kernel.
 
 ### Jetson Tips
 - We recommand using jtop to monitor the performance of the system
+
+### Realsense setup
+1. We will refer to [this guide](https://github.com/IntelRealSense/librealsense/blob/master/doc/installation_jetson.md) to install the librealsense on jetson.
