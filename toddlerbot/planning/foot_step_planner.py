@@ -4,7 +4,7 @@ from typing import List
 import numpy as np
 from scipy.interpolate import CubicHermiteSpline
 
-from toddlerbot.visualization.vis_planning import draw_footsteps
+from toddlerbot.visualization.vis_plot import plot_footsteps
 
 
 @dataclass
@@ -164,7 +164,7 @@ if __name__ == "__main__":
             target_pose=target_pose,
         )
 
-        draw_footsteps(
+        plot_footsteps(
             path,
             foot_steps,
             [0.1, 0.05],

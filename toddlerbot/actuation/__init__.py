@@ -1,4 +1,12 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+
+
+@dataclass
+class JointState:
+    time: float
+    pos: float
+    vel: float = 0.0
 
 
 class BaseController(ABC):

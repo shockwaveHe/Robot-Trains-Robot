@@ -1,21 +1,15 @@
 import copy
-from dataclasses import dataclass
+import os
+import pickle
 from typing import Dict, List, Tuple
 
 import numpy as np
-from scipy.optimize import root
+from scipy.interpolate import LinearNDInterpolator
 from yourdfpy import URDF
 
 from toddlerbot.robot_descriptions.robot_configs import robot_configs
-from toddlerbot.utils.file_utils import find_description_path
-from toddlerbot.utils.math_utils import round_floats
+from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.misc_utils import log
-
-
-@dataclass
-class JointState:
-    time: float
-    pos: float
 
 
 class HumanoidRobot:
@@ -34,27 +28,11 @@ class HumanoidRobot:
         if robot_name not in robot_configs:
             raise ValueError(f"Robot '{robot_name}' is not supported.")
 
+        self.id = 0
         self.name = robot_name
         self.config = robot_configs[robot_name]
-        urdf_path = find_description_path(robot_name)
-        self.urdf = URDF.load(urdf_path)
 
-        self.id = 0
-        self.joints_info = self.get_joint_info()
-        if self.config.com is None:
-            self.com = self.urdf.scene.center_mass
-        else:
-            self.com = self.config.com
-
-        if self.config.foot_size is None:
-            self.foot_size = self.compute_foot_size()
-        else:
-            self.foot_size = self.config.foot_size
-
-        if self.config.offsets is None:
-            self.offsets = self.compute_offsets()
-        else:
-            self.offsets = self.config.offsets
+        self.load_robot_data()
 
         self.dynamixel_joint2id = {}
         self.sunny_sky_joint2id = {}
@@ -75,8 +53,60 @@ class HumanoidRobot:
 
         self.ankle2mighty_zap = {"left": [0, 1], "right": [2, 3]}
 
-    def compute_offsets(self):
-        graph = self.urdf.scene.graph
+    def load_robot_data(self):
+        cache_file_path = os.path.join(
+            "toddlerbot", "robot_descriptions", self.name, f"{self.name}_data.pkl"
+        )
+
+        if os.path.exists(cache_file_path):
+            with open(cache_file_path, "rb") as f:
+                robot_data = pickle.load(f)
+                log("Loaded cached data.", header="Robot")
+
+            self.joints_info = robot_data["joints_info"]
+            self.com = robot_data["com"]
+            self.foot_size = robot_data["foot_size"]
+            self.offsets = robot_data["offsets"]
+            points, values = robot_data["ankle_fk_lookup_table"]
+
+        else:
+            urdf_path = find_robot_file_path(self.name)
+            urdf = URDF.load(urdf_path)
+            self.joints_info = self.get_joint_info(urdf)
+
+            if self.config.com is None:
+                self.com = urdf.scene.center_mass
+            else:
+                self.com = self.config.com
+
+            if self.config.foot_size is None:
+                self.foot_size = self.compute_foot_size(urdf)
+            else:
+                self.foot_size = self.config.foot_size
+
+            if self.config.offsets is None:
+                self.offsets = self.compute_offsets(urdf)
+            else:
+                self.offsets = self.config.offsets
+
+            points, values = self.precompute_ankle_fk_lookup()
+
+            with open(cache_file_path, "wb") as f:
+                robot_data = {
+                    "joints_info": self.joints_info,
+                    "com": self.com,
+                    "foot_size": self.foot_size,
+                    "offsets": self.offsets,
+                    "ankle_fk_lookup_table": (points, values),
+                }
+                pickle.dump(robot_data, f)
+
+                log("Computed and cached new data.", header="Robot")
+
+        self.ankle_fk_lookup_table = LinearNDInterpolator(points, values)
+
+    def compute_offsets(self, urdf):
+        graph = urdf.scene.graph
 
         offsets = {}
         # from the hip roll joint to the hip pitch joint
@@ -115,24 +145,23 @@ class HumanoidRobot:
             graph.get("ank_rr_link")[0][:3, 3] - graph.get("12lf_rod_end")[0][:3, 3]
         )
 
-        # Measured in the real robot (m)
+        # Hard Code: Measured on the real robot (m)
         offsets["mighty_zap_len"] = 0.076
 
         return offsets
 
-    def compute_foot_size(self):
-        foot_bounds = self.urdf.scene.geometry.get(
-            "left_ank_roll_link_visual.stl"
-        ).bounds
-        foot_ori = self.urdf.scene.graph.get("ank_roll_link")[0][:3, :3]
+    def compute_foot_size(self, urdf):
+        foot_bounds = urdf.scene.geometry.get("left_ank_roll_link_visual.stl").bounds
+        foot_ori = urdf.scene.graph.get("ank_roll_link")[0][:3, :3]
         foot_bounds_rotated = foot_bounds @ foot_ori.T
         foot_size = np.abs(foot_bounds_rotated[1] - foot_bounds_rotated[0])
+
         # 0.004 is the thickness of the foot pad
         return np.array([foot_size[0], foot_size[1], 0.004])
 
-    def get_joint_info(self):
+    def get_joint_info(self, urdf):
         joint_info_dict = {}
-        for joint, angle in zip(self.urdf.actuated_joints, self.urdf.cfg):
+        for joint, angle in zip(urdf.actuated_joints, urdf.cfg):
             joint_info_dict[joint.name] = {
                 "init_angle": angle,
                 "type": joint.type,
@@ -155,42 +184,46 @@ class HumanoidRobot:
 
         return sorted_joint_info_dict
 
-    def initialize_joint_angles(self):
-        joint_angles = {}
-        for name, info in self.joints_info.items():
-            if info["active"]:
-                joint_angles[name] = info["init_angle"]
+    # @profile()
+    def precompute_ankle_fk_lookup(self, step_deg=0.5):
+        step_rad = np.deg2rad(step_deg)
+        pitch_limits = [
+            self.joints_info["left_ank_pitch"]["lower_limit"],
+            self.joints_info["left_ank_pitch"]["upper_limit"],
+        ]
+        roll_limits = [
+            self.joints_info["left_ank_roll"]["lower_limit"],
+            self.joints_info["left_ank_roll"]["upper_limit"],
+        ]
 
-        initial_joint_angles = copy.deepcopy(joint_angles)
-        if self.name == "robotis_op3":
-            initial_joint_angles["l_sho_roll"] = np.pi / 2
-            initial_joint_angles["r_sho_roll"] = -np.pi / 2
-        elif self.name == "toddlerbot":
-            initial_joint_angles["left_sho_roll"] = -np.pi / 2
-            initial_joint_angles["right_sho_roll"] = np.pi / 2
+        pitch_range = np.arange(pitch_limits[0], pitch_limits[1] + step_rad, step_rad)
+        roll_range = np.arange(roll_limits[0], roll_limits[1] + step_rad, step_rad)
+        pitch_grid, roll_grid = np.meshgrid(pitch_range, roll_range, indexing="ij")
 
-        return joint_angles, initial_joint_angles
+        d1_values = np.zeros_like(pitch_grid)
+        d2_values = np.zeros_like(roll_grid)
+        for i in range(len(pitch_range)):
+            for j in range(len(roll_range)):
+                d1, d2 = self.ankle_ik([pitch_range[i], roll_range[j]])
+                d1_values[i, j] = d1
+                d2_values[i, j] = d2
 
-    def ankle_fk(self, mighty_zap_pos, last_ankle_pos, lower_limits, upper_limits):
-        def objective_function(ankle_pos, target_pos):
-            pos = self.ankle_ik(ankle_pos)
-            error = np.array(pos) - np.array(target_pos)
-            return error
-
-        result = root(
-            lambda x: objective_function(x, mighty_zap_pos),
-            last_ankle_pos,
-            method="hybr",
-            options={"xtol": 1e-6},
+        valid_mask = (
+            (d1_values >= 0)
+            & (d1_values <= 4095)
+            & (d2_values >= 0)
+            & (d2_values <= 4095)
         )
 
-        if result.success:
-            optimized_ankle_pos = result.x
-            # TODO: Update the limits
-            return np.clip(optimized_ankle_pos, lower_limits, upper_limits)
-        else:
-            log("Solving ankle position failed", header="MightyZap", level="warning")
-            return last_ankle_pos
+        # Filter out valid data points
+        points = np.column_stack((d1_values[valid_mask], d2_values[valid_mask]))
+        values = np.column_stack((pitch_grid[valid_mask], roll_grid[valid_mask]))
+
+        return points, values
+
+    def ankle_fk(self, mighty_zap_pos):
+        ankle_pos = self.ankle_fk_lookup_table(mighty_zap_pos)
+        return list(ankle_pos.squeeze())
 
     def ankle_ik(self, ankle_pos):
         # Implemented based on page 3 of the following paper:
@@ -243,6 +276,22 @@ class HumanoidRobot:
 
         return [d1, d2]
 
+    def initialize_joint_angles(self):
+        joint_angles = {}
+        for name, info in self.joints_info.items():
+            if info["active"]:
+                joint_angles[name] = info["init_angle"]
+
+        initial_joint_angles = copy.deepcopy(joint_angles)
+        if self.name == "robotis_op3":
+            initial_joint_angles["l_sho_roll"] = np.pi / 2
+            initial_joint_angles["r_sho_roll"] = -np.pi / 2
+        elif self.name == "toddlerbot":
+            initial_joint_angles["left_sho_roll"] = -np.pi / 2
+            initial_joint_angles["right_sho_roll"] = np.pi / 2
+
+        return joint_angles, initial_joint_angles
+
     def solve_ik(
         self,
         target_left_foot_pos: List[float],
@@ -286,28 +335,3 @@ class HumanoidRobot:
                 raise ValueError(f"Joint '{name}' not found in joint angles.")
 
         return joint_angles
-
-
-# Example usage
-if __name__ == "__main__":
-    from toddlerbot.sim.pybullet_sim import PyBulletSim
-
-    robot = HumanoidRobot("toddlerbot")
-
-    robot.compute_offsets()
-
-    sim = PyBulletSim(robot)
-
-    # Define target positions and orientations for left and right feet
-    target_left_foot_pos = [0.2, 0.1, -0.2]
-    target_right_foot_pos = [0.2, -0.1, -0.2]
-
-    joint_angles = robot.solve_ik(
-        target_left_foot_pos,
-        [0, 0, 0],
-        target_right_foot_pos,
-        [0, 0, 0],
-    )
-
-    rounded_joint_angles = round_floats(joint_angles, 3)
-    print(f"Joint angles: {rounded_joint_angles}")

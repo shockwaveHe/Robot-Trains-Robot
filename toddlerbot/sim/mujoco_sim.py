@@ -12,10 +12,10 @@ import numpy as np
 from transforms3d.euler import euler2mat
 from transforms3d.quaternions import quat2mat
 
+from toddlerbot.actuation import JointState
 from toddlerbot.sim import BaseSim
-from toddlerbot.sim.robot import JointState
 from toddlerbot.utils.constants import GRAVITY, MUJOCO_TIMESTEP
-from toddlerbot.utils.file_utils import find_description_path
+from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.misc_utils import precise_sleep
 
 
@@ -188,7 +188,7 @@ class MuJoCoSim(BaseSim):
         elif xml_path is not None:
             self.model = mujoco.MjModel.from_xml_path(xml_path)
         else:
-            xml_path = find_description_path(robot.name, suffix="_scene.xml")
+            xml_path = find_robot_file_path(robot.name, suffix="_scene.xml")
             self.model = mujoco.MjModel.from_xml_path(xml_path)
 
         self.model.opt.timestep = MUJOCO_TIMESTEP

@@ -5,8 +5,9 @@ from typing import List
 
 import numpy as np
 
-from toddlerbot.actuation import BaseController
+from toddlerbot.actuation import BaseController, JointState
 from toddlerbot.actuation.dynamixel.dynamixel_client import DynamixelClient
+from toddlerbot.utils.file_utils import find_ports
 from toddlerbot.utils.math_utils import interpolate_pos
 from toddlerbot.utils.misc_utils import log, precise_sleep
 
@@ -28,14 +29,6 @@ class DynamixelConfig:
     interp_method: str = "cubic"
 
 
-@dataclass
-class DynamixelState:
-    time: float
-    pos: float
-    # vel: float
-    # current: float
-
-
 class DynamixelController(BaseController):
     def __init__(self, config, motor_ids):
         super().__init__(config)
@@ -44,18 +37,17 @@ class DynamixelController(BaseController):
         self.motor_ids = motor_ids
         self.lock = Lock()
 
-        self.client = self.connect_to_client()
+        self.connect_to_client()
         self.initialize_motors()
 
     def connect_to_client(self):
         try:
-            client = DynamixelClient(
+            self.client = DynamixelClient(
                 self.motor_ids, self.config.port, self.config.baudrate
             )
-            client.connect()
-
+            self.client.connect()
             log(f"Connected to the port: {self.config.port}", header="Dynamixel")
-            return client
+
         except Exception:
             raise ConnectionError("Could not connect to the Dynamixel port.")
 
@@ -116,20 +108,18 @@ class DynamixelController(BaseController):
             set_pos_helper(pos)
 
     def get_motor_state(self):
+        # log(f"Start... {time.time()}", header="Dynamixel", level="warning")
+
         state_dict = {}
-        # with self.lock:
         pos_arr = self.client.read_pos()
-        # pos_arr, vel_arr, current_arr = self.client.read_pos_vel_cur()
-        # if current_arr.max() > 700:
-        #     log(f"Current: {current_arr.max()}", header="Dynamixel", level="debug")
+        vel_arr = self.client.read_vel()
         pos_arr_driven = (self.config.init_pos - pos_arr) * self.config.gear_ratio
         for i, id in enumerate(self.motor_ids):
-            state_dict[id] = DynamixelState(
-                time=time.time(),
-                pos=pos_arr_driven[i],
-                # vel=vel_arr[i],
-                # current=current_arr[i],
+            state_dict[id] = JointState(
+                time=time.time(), pos=pos_arr_driven[i], vel=vel_arr[i]
             )
+
+        # log(f"End... {time.time()}", header="Dynamixel", level="warning")
 
         return state_dict
 
@@ -137,7 +127,7 @@ class DynamixelController(BaseController):
 if __name__ == "__main__":
     controller = DynamixelController(
         DynamixelConfig(
-            port="/dev/tty.usbserial-FT8ISUJY",
+            port=find_ports("Serial"),
             kFF2=[0, 0, 0, 0, 0, 0],
             kFF1=[0, 0, 0, 0, 0, 0],
             kP=[400, 1200, 1200, 400, 1200, 1200],

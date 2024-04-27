@@ -2,6 +2,7 @@ import argparse
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.patches import Polygon
 
 from toddlerbot.visualization.vis_utils import (
     load_and_run_visualization,
@@ -11,6 +12,115 @@ from toddlerbot.visualization.vis_utils import (
 LINE_STYLES = ["-", "--", "-.", ":"]
 LINE_COLORS = ["b", "g", "r", "c", "y", "k"]
 LINE_MARKERS = ["o", "s", "D", "v", "^", "<"]
+
+
+def plot_ankle_mapping(self, ankle_ik):
+    pitch_range = np.linspace(-np.pi / 2, np.pi / 2, 180)
+    roll_range = np.linspace(-np.pi / 2, np.pi / 2, 180)
+    pitch_grid, roll_grid = np.meshgrid(pitch_range, roll_range)
+    d1_values = np.zeros_like(pitch_grid)
+    d2_values = np.zeros_like(roll_grid)
+
+    for i in range(pitch_grid.shape[0]):
+        for j in range(pitch_grid.shape[1]):
+            d1, d2 = ankle_ik((pitch_grid[i, j], roll_grid[i, j]))
+            d1_values[i, j] = d1
+            d2_values[i, j] = d2
+
+    valid_mask_d1 = (d1_values >= 0) & (d1_values <= 4095)
+    valid_mask_d2 = (d2_values >= 0) & (d2_values <= 4095)
+    valid_both = valid_mask_d1 & valid_mask_d2
+
+    fig, ax = plt.subplots(figsize=(10, 7))
+    ax.contour(
+        pitch_grid, roll_grid, valid_both, levels=[0.5], colors="red", linewidths=2
+    )
+
+    ax.set_title("Ankle Position Validity Mapping")
+    ax.set_xlabel("Ankle Pitch (radians)")
+    ax.set_ylabel("Ankle Roll (radians)")
+
+    plt.show()
+
+
+def plot_foot(ax, center, size, angle, side):
+    length, width = size
+    # Calculate the corner points
+    dx = np.cos(angle) * length / 2
+    dy = np.sin(angle) * length / 2
+    corners = np.array(
+        [
+            [
+                center[0] - dx - width * np.sin(angle) / 2,
+                center[1] - dy + width * np.cos(angle) / 2,
+            ],
+            [
+                center[0] + dx - width * np.sin(angle) / 2,
+                center[1] + dy + width * np.cos(angle) / 2,
+            ],
+            [
+                center[0] + dx + width * np.sin(angle) / 2,
+                center[1] + dy - width * np.cos(angle) / 2,
+            ],
+            [
+                center[0] - dx + width * np.sin(angle) / 2,
+                center[1] - dy - width * np.cos(angle) / 2,
+            ],
+        ]
+    )
+    polygon = Polygon(
+        corners, closed=True, edgecolor="b" if side == "left" else "g", fill=False
+    )
+    ax.add_patch(polygon)
+
+
+def plot_footsteps(
+    path,
+    foot_steps,
+    foot_size,
+    y_offset_com_to_foot,
+    fig_size=(10, 6),
+    title=None,
+    x_label=None,
+    y_label=None,
+    save_config=False,
+    save_path=None,
+    file_suffix=None,
+    ax=None,
+):
+    if ax is None:
+        fig, ax = plt.subplots(figsize=fig_size)
+        ax.set_aspect("equal")
+
+    def plot():
+        ax.plot(path[:, 0], path[:, 1], "r-", label="Cubic Hermite Path")
+
+        # Draw each footstep
+        for step in foot_steps:
+            if step.support_leg == "both":
+                dx = -y_offset_com_to_foot * np.sin(step.position[2])
+                dy = y_offset_com_to_foot * np.cos(step.position[2])
+
+                left_foot_pos = [step.position[0] + dx, step.position[1] + dy]
+                plot_foot(ax, left_foot_pos, foot_size, step.position[2], "left")
+                right_foot_pos = [step.position[0] - dx, step.position[1] - dy]
+                plot_foot(ax, right_foot_pos, foot_size, step.position[2], "right")
+            else:
+                plot_foot(
+                    ax, step.position[:2], foot_size, step.position[2], step.support_leg
+                )
+
+    vis_function = make_vis_function(
+        plot,
+        ax=ax,
+        title=title,
+        x_label=x_label,
+        y_label=y_label,
+        save_config=save_config,
+        save_path=save_path,
+        file_suffix=file_suffix,
+    )
+    return vis_function
 
 
 def plot_joint_tracking(

@@ -16,8 +16,11 @@ from toddlerbot.tasks.walking import Walking
 from toddlerbot.tasks.walking_configs import walking_configs
 from toddlerbot.utils.math_utils import round_floats
 from toddlerbot.utils.misc_utils import dump_profiling_data, log, precise_sleep, profile
-from toddlerbot.visualization.vis_planning import draw_footsteps
-from toddlerbot.visualization.vis_plot import plot_joint_tracking, plot_line_graph
+from toddlerbot.visualization.vis_plot import (
+    plot_footsteps,
+    plot_joint_tracking,
+    plot_line_graph,
+)
 
 
 @profile()
@@ -157,22 +160,6 @@ def main():
     finally:
         sim.close()
 
-        if sim.name == "real_world" and len(joint_angle_dict) > 0:
-            mighty_zap_pos_dict = {}
-            # Check if the ankle positions are linear actuator lengths
-            for side, ids in robot.ankle2mighty_zap.items():
-                mighty_zap_pos_dict[side] = np.array(
-                    [joint_angle_dict[robot.mighty_zap_id2joint[id]] for id in ids]
-                ).T
-
-            ankle_pos_dict = sim.postprocess_ankle_pos(mighty_zap_pos_dict)
-
-            for name in ankle_pos_dict:
-                joint_angle_dict[name] = ankle_pos_dict[name]
-
-            for name in sim.negated_joint_names:
-                joint_angle_dict[name] = [-angle for angle in joint_angle_dict[name]]
-
         log("Saving config and data...", header="Walking")
         os.makedirs(exp_folder_path, exist_ok=True)
 
@@ -223,7 +210,7 @@ def main():
         fig, ax = plt.subplots(figsize=(10, 6))
         ax.set_aspect("equal")
 
-        draw_footsteps(
+        plot_footsteps(
             path,
             foot_steps,
             robot.foot_size[:2],

@@ -1,14 +1,14 @@
 import time
 from dataclasses import dataclass
-from threading import Lock
 from typing import List
 
 import numpy as np
 
-from toddlerbot.actuation import BaseController
+from toddlerbot.actuation import BaseController, JointState
 from toddlerbot.actuation.mighty_zap.mighty_zap_client import MightyZapClient
+from toddlerbot.utils.file_utils import find_ports
 from toddlerbot.utils.math_utils import interpolate_pos
-from toddlerbot.utils.misc_utils import log, precise_sleep, profile
+from toddlerbot.utils.misc_utils import log, precise_sleep
 
 
 @dataclass
@@ -24,52 +24,54 @@ class MightyZapConfig:
     interp_freq: int = 100
 
 
-@dataclass
-class MightyZapState:
-    time: float
-    pos: float
-
-
 class MightyZapController(BaseController):
     def __init__(self, config, motor_ids):
         super().__init__(config)
 
         self.config = config
         self.motor_ids = motor_ids
-        self.last_pos = {id: 0.0 for id in self.motor_ids}
-        self.lock = Lock()
 
-        self.client = self.connect_to_client()
+        self.connect_to_client()
         self.initialize_motors()
 
     def connect_to_client(self):
         try:
-            client = MightyZapClient(
-                self.config.port, self.config.baudrate, self.config.timeout
-            )
-            log(f"Connected to the port: {self.config.port}", header="MightyZap")
-            return client
+            if not isinstance(self.config.port, list):
+                self.config.port = [self.config.port]
+
+            self.clients = []
+            for port in self.config.port:
+                client = MightyZapClient(
+                    port, self.config.baudrate, self.config.timeout
+                )
+                self.clients.append(client)
+                log(f"Connected to the port: {port}", header="MightyZap")
+
+            # self.executor = ThreadPoolExecutor(max_workers=len(self.clients))
+
         except Exception:
             raise ConnectionError("Could not connect to any MightyZap port.")
 
     def initialize_motors(self):
         log("Initializing motors...", header="MightyZap")
-        self.client.set_return_delay_time(self.motor_ids, [0] * len(self.motor_ids))
+        for motor_id, client in zip(self.motor_ids, self.clients):
+            client.set_return_delay_time(motor_id, 0)
 
         self.set_pos(self.config.init_pos)
         precise_sleep(0.1)
 
     def close_motors(self):
-        self.client.force_enable(self.motor_ids, [0] * len(self.motor_ids))
-        self.client.close()
+        for motor_id, client in zip(self.motor_ids, self.clients):
+            client.force_enable(motor_id, 0)
+            client.close()
 
     def set_pos(self, pos, interp=True, vel=None, delta_t=None):
         def set_pos_helper(pos):
             rounded_pos = [round(p) for p in pos]
             # log(f"Goal: {rounded_pos}", header="MightyZap", level="debug")
-            self.client.goal_position(self.motor_ids, rounded_pos)
-            # for id, p in zip(self.motor_ids, rounded_pos):
-            #     self.client.goal_position(id, p)``
+
+            for motor_id, p, client in zip(self.motor_ids, rounded_pos, self.clients):
+                client.goal_position(motor_id, p)
 
         if interp:
             pos = np.array(pos)
@@ -95,41 +97,40 @@ class MightyZapController(BaseController):
 
     # @profile()
     def get_motor_state(self):
-        state_dict = {}
-        for id in self.motor_ids:
-            pos = self.client.present_position(id)
-            # log(f"ID: {id}, Present: {pos}", header="MightyZap", level="debug")
-            if pos < 0:
-                pos = self.last_pos[id]
-                log(
-                    f"Read the MightyZap {id} Position failed. "
-                    + f"Use the last position {self.last_pos[id]}.",
-                    header="MightyZap",
-                    level="warning",
-                )
-            else:
-                self.last_pos[id] = pos
+        # log(f"Start... {time.time()}", header="MightyZap", level="warning")
 
-            state_dict[id] = MightyZapState(time=time.time(), pos=pos)
+        state_dict = {}
+        for motor_id, client in zip(self.motor_ids, self.clients):
+            state_dict[motor_id] = JointState(
+                time=time.time(), pos=client.present_position(motor_id)
+            )
+
+        state_dict[0] = JointState(time=time.time(), pos=2000)
+        state_dict[1] = JointState(time=time.time(), pos=2000)
+        state_dict[2] = JointState(time=time.time(), pos=2000)
+
+        # log(f"End... {time.time()}", header="MightyZap", level="warning")
 
         return state_dict
 
 
 if __name__ == "__main__":
+    pos_min = 1000
+    pos_mid = 2000
+    pos_max = 3000
+
     motor_ids = [0, 1, 2, 3]
-    init_pos = [1488] * len(motor_ids)
+    init_pos = [pos_mid] * len(motor_ids)
     controller = MightyZapController(
-        MightyZapConfig(port="/dev/tty.usbserial-0001", init_pos=init_pos),
+        MightyZapConfig(port=find_ports("CP2102"), init_pos=init_pos),
         motor_ids=motor_ids,
     )
 
-    pos_max = 2000
-    pos_min = 1000
     pos_ref_seq = [
-        [pos_max, pos_max, pos_max, pos_max],
-        [pos_max, pos_min, pos_max, pos_min],
-        [pos_min, pos_max, pos_min, pos_max],
-        [pos_min, pos_min, pos_min, pos_min],
+        [pos_max] * len(motor_ids),
+        [pos_min] * len(motor_ids),
+        [pos_max] * len(motor_ids),
+        [pos_mid] * len(motor_ids),
     ]
 
     time_start = time.time()

@@ -15,7 +15,7 @@ from toddlerbot.tasks.sysID import (
     optimize_parameters,
     update_xml,
 )
-from toddlerbot.utils.file_utils import find_description_path
+from toddlerbot.utils.file_utils import find_robot_file_path
 
 
 def multiprocessing_optimization(
@@ -132,11 +132,11 @@ def main():
                 pickle.dump(real_world_data_dict, f)
 
     ###### Optimize the hyperparameters ######
-    fixed_xml_path = find_description_path(args.robot_name, suffix="_fixed.xml")
+    fixed_xml_path = find_robot_file_path(args.robot_name, suffix="_fixed.xml")
     new_fixed_xml_path = os.path.join(
         os.path.dirname(fixed_xml_path), f"{args.robot_name}_fixed_sysID.xml"
     )
-    xml_path = find_description_path(args.robot_name, suffix=".xml")
+    xml_path = find_robot_file_path(args.robot_name, suffix=".xml")
 
     fixed_tree = ET.parse(fixed_xml_path)
     opt_params_file_path = os.path.join(exp_folder_path, "opt_params.json")

@@ -14,8 +14,8 @@ from threading import Lock
 import numpy as np
 import serial
 
-from toddlerbot.actuation import BaseController
-from toddlerbot.utils.file_utils import find_port
+from toddlerbot.actuation import BaseController, JointState
+from toddlerbot.utils.file_utils import find_ports
 from toddlerbot.utils.math_utils import interpolate_pos
 from toddlerbot.utils.misc_utils import log, precise_sleep
 
@@ -37,15 +37,6 @@ class SunnySkyConfig:
     soft_kD: int = 5
 
 
-@dataclass
-class SunnySkyState:
-    time: float
-    pos: float
-    vel: float
-    current: float
-    voltage: float
-
-
 class SunnySkyController(BaseController):
     def __init__(self, config, joint_range_dict):
         super().__init__(config)
@@ -56,18 +47,18 @@ class SunnySkyController(BaseController):
         self.joint_range_dict = joint_range_dict
         self.lock = Lock()
 
-        self.client = self.connect_to_client()
+        self.connect_to_client()
         self.initialize_motors()
 
     def connect_to_client(self):
         try:
-            client = serial.Serial(
+            self.client = serial.Serial(
                 self.config.port,
                 baudrate=self.config.baudrate,
                 timeout=self.config.timeout,
             )
             log(f"Connected to the port: {self.config.port}", header="SunnySky")
-            return client
+
         except Exception:
             raise ConnectionError("Could not connect to any SunnySky port.")
 
@@ -215,7 +206,8 @@ class SunnySkyController(BaseController):
             set_pos_helper(pos)
 
     def get_motor_state(self):
-        # with self.lock:
+        # log(f"Start... {time.time()}", header="SunnySky", level="warning")
+
         self.client.reset_input_buffer()
 
         byte_commands = []
@@ -248,15 +240,14 @@ class SunnySkyController(BaseController):
 
                     id, p, v, t, vb = map(float, single_data_str.split(","))
                     id = int(id)
-                    state_dict[id] = SunnySkyState(
+                    state_dict[id] = JointState(
                         time=time.time(),
                         pos=p / self.config.gear_ratio - self.init_pos[id],
                         vel=v,
-                        current=t,
-                        voltage=vb,
                     )
 
             if len(state_dict) == len(self.motor_ids):
+                # log(f"End... {time.time()}", header="SunnySky", level="warning")
                 return state_dict
 
         log(
@@ -282,7 +273,7 @@ if __name__ == "__main__":
     # joint_range_dict = {2: (0, -np.pi / 2)}
     # pos_ref_seq = [[0.0], [-np.pi / 2], [0.0], [-np.pi / 4], [-0.64]]
 
-    config = SunnySkyConfig(port=find_port("Feather"))
+    config = SunnySkyConfig(port=find_ports("Feather"))
     controller = SunnySkyController(config, joint_range_dict=joint_range_dict)
 
     time_start = time.time()
