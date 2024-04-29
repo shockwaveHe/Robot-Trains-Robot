@@ -49,7 +49,6 @@ class EMAXController(BaseController):
     def close_motors(self):
         pass
 
-    # @profile
     # Receive pos and directly control the robot
     def set_pos(self, pos, interp=True, vel=None, delta_t=None):
         for id in self.motor_ids:
@@ -82,7 +81,6 @@ class EMAXController(BaseController):
         # else:
         #     set_pos_helper(pos)
 
-    # @profile
     def get_motor_state(self):
         pass
         # state_dict = {}

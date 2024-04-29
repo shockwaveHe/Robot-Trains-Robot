@@ -5,7 +5,7 @@ import xml.etree.ElementTree as ET
 
 import trimesh
 
-from toddlerbot.utils.file_utils import find_description_path
+from toddlerbot.utils.file_utils import find_robot_file_path
 
 default_scale_factor = (1.0, 1.0, 1.0)
 leg_scale_factor = (1.0, 0.5, 1.0)
@@ -60,7 +60,7 @@ def compute_bounding_box_mesh(robot_dir, mesh_filename, scale_factors):
 
 
 def update_collisons(robot_name):
-    urdf_path = find_description_path(robot_name)
+    urdf_path = find_robot_file_path(robot_name)
 
     # Ensure the collision directory exists
     collision_dir = os.path.join(os.path.dirname(urdf_path), "collisions")

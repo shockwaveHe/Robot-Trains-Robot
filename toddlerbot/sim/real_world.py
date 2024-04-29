@@ -1,7 +1,5 @@
-import queue
 import time
-from concurrent.futures import Future, ThreadPoolExecutor
-from threading import Thread
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import numpy as np
 
@@ -16,22 +14,20 @@ from toddlerbot.actuation.mighty_zap.mighty_zap_control import (
 from toddlerbot.actuation.sunny_sky.sunny_sky_control import (
     SunnySkyConfig,
     SunnySkyController,
-    find_feather_port,
 )
 from toddlerbot.sim import BaseSim
-from toddlerbot.sim.robot import HumanoidRobot, JointState
+from toddlerbot.sim.robot import HumanoidRobot
+from toddlerbot.utils.file_utils import find_ports
 from toddlerbot.utils.math_utils import round_floats
-from toddlerbot.utils.misc_utils import log
-
-# my_logger = logging.getLogger("my_logger")
-# my_logger.setLevel(logging.WARNING)
+from toddlerbot.utils.misc_utils import log, profile
 
 
 class RealWorld(BaseSim):
-    def __init__(self, robot):
+    def __init__(self, robot, debug=False):
         super().__init__()
         self.name = "real_world"
         self.robot = robot
+        self.debug = debug
 
         self.negated_joint_names = [
             "left_hip_yaw",
@@ -40,75 +36,62 @@ class RealWorld(BaseSim):
             "left_ank_pitch",
         ]
 
-        self.dynamixel_init_pos = np.radians([245, 180, 180, 322, 180, 180])
+        self._initialize_motors()
+
+    def _initialize_motors(self):
+        dynamixel_port = find_ports("USB <-> Serial Converter")
+        sunny_sky_port = find_ports("Feather")
+        mighty_zap_port = find_ports("USB Quad_Serial")
+
+        n_ports = 1 + 1 + len(mighty_zap_port)
+
+        dynamixel_ids = sorted(list(self.robot.dynamixel_joint2id.values()))
+        dynamixel_init_pos = np.radians([245, 180, 180, 322, 180, 180])
         # TODO: Replace the hard-coded gains
-        self.dynamixel_config = DynamixelConfig(
-            port="/dev/tty.usbserial-FT8ISUJY",
+        dynamixel_config = DynamixelConfig(
+            port=dynamixel_port,
             kFF2=[0, 0, 0, 0, 0, 0],
             kFF1=[0, 0, 0, 0, 0, 0],
-            kP=[400, 3200, 1600, 400, 3200, 1600],
+            kP=[400, 1600, 1600, 400, 1600, 1600],
             kI=[0, 0, 0, 0, 0, 0],
-            kD=[400, 3200, 1600, 400, 3200, 1600],
+            kD=[400, 1600, 1600, 400, 1600, 1600],
             current_limit=[700, 700, 700, 700, 700, 700],
-            init_pos=self.dynamixel_init_pos,
+            init_pos=dynamixel_init_pos,
             gear_ratio=np.array([19 / 21, 1, 1, 19 / 21, 1, 1]),
         )
 
-        self.sunny_sky_config = SunnySkyConfig(port=find_feather_port(), kP=40, kD=50)
+        sunny_sky_config = SunnySkyConfig(port=sunny_sky_port)
         # Temorarily hard-coded joint range for SunnySky
         joint_range_dict = {1: (0, np.pi / 2), 2: (0, -np.pi / 2)}
 
-        mighty_zap_init_pos = []
-        for side, ids in robot.ankle2mighty_zap.items():
-            mighty_zap_init_pos += robot.ankle_ik([0] * len(ids))
+        self.mighty_zap_ids = sorted(list(self.robot.mighty_zap_joint2id.values()))
+        self.mighty_zap_init_pos = [0] * len(self.mighty_zap_ids)
+        self.last_mighty_zap_state = None
 
-        self.mighty_zap_config = MightyZapConfig(
-            port="/dev/tty.usbserial-0001", init_pos=mighty_zap_init_pos
+        mighty_zap_config = MightyZapConfig(
+            port=mighty_zap_port, init_pos=self.mighty_zap_init_pos
         )
 
-        with ThreadPoolExecutor(max_workers=3) as executor:
-            future_dynamixel = executor.submit(
-                DynamixelController,
-                self.dynamixel_config,
-                motor_ids=sorted(list(robot.dynamixel_joint2id.values())),
-            )
-            future_sunny_sky = executor.submit(
-                SunnySkyController,
-                self.sunny_sky_config,
-                joint_range_dict=joint_range_dict,
-            )
-            future_mighty_zap = executor.submit(
-                MightyZapController,
-                self.mighty_zap_config,
-                motor_ids=sorted(list(robot.mighty_zap_joint2id.values())),
-            )
+        self.executor = ThreadPoolExecutor(max_workers=n_ports)
 
-            # Assign the results of futures to the attributes
-            self.dynamixel_controller = future_dynamixel.result()
-            self.sunny_sky_controller = future_sunny_sky.result()
-            self.mighty_zap_controller = future_mighty_zap.result()
+        future_dynamixel = self.executor.submit(
+            DynamixelController, dynamixel_config, motor_ids=dynamixel_ids
+        )
+        future_sunny_sky = self.executor.submit(
+            SunnySkyController,
+            sunny_sky_config,
+            joint_range_dict=joint_range_dict,
+        )
+        future_mighty_zap = self.executor.submit(
+            MightyZapController,
+            mighty_zap_config,
+            motor_ids=self.mighty_zap_ids,
+        )
 
-        self.queues = {
-            "dynamixel": queue.Queue(),
-            "sunny_sky": queue.Queue(),
-            "mighty_zap": queue.Queue(),
-        }
-
-        self.threads = {
-            "dynamixel": Thread(target=self.command_worker, args=("dynamixel",)),
-            "sunny_sky": Thread(target=self.command_worker, args=("sunny_sky",)),
-            "mighty_zap": Thread(target=self.command_worker, args=("mighty_zap",)),
-        }
-
-        self.time_start = time.time()
-
-        for name, thread in self.threads.items():
-            log(
-                "The command thread is initializing...",
-                header="RealWorld",
-                level="debug",
-            )
-            thread.start()
+        # Assign the results of futures to the attributes
+        self.dynamixel_controller = future_dynamixel.result()
+        self.sunny_sky_controller = future_sunny_sky.result()
+        self.mighty_zap_controller = future_mighty_zap.result()
 
     def _negate_joint_angles(self, joint_angles):
         negated_joint_angles = {}
@@ -120,159 +103,147 @@ class RealWorld(BaseSim):
 
         return negated_joint_angles
 
-    # @profile
-    def set_joint_angles(
-        self, joint_angles, motor_list=["dynamixel", "sunny_sky", "mighty_zap"]
-    ):
+    @profile()
+    def set_joint_angles(self, joint_angles):
         # Directions are tuned to match the assembly of the robot.
         joint_angles = self._negate_joint_angles(joint_angles)
 
-        if "dynamixel" in motor_list:
-            dynamixel_pos = [
-                joint_angles[k] for k in self.robot.dynamixel_joint2id.keys()
+        dynamixel_pos = [joint_angles[k] for k in self.robot.dynamixel_joint2id.keys()]
+        sunny_sky_pos = [joint_angles[k] for k in self.robot.sunny_sky_joint2id.keys()]
+        mighty_zap_pos = []
+        for side, motor_ids in self.robot.ankle2mighty_zap.items():
+            ankle_pos = [
+                joint_angles[self.robot.mighty_zap_id2joint[id]] for id in motor_ids
             ]
-            log(
-                f"{round_floats(dynamixel_pos, 4)}",
-                header="Dynamixel",
-                level="debug",
-            )
-        if "sunny_sky" in motor_list:
-            sunny_sky_pos = [
-                joint_angles[k] for k in self.robot.sunny_sky_joint2id.keys()
-            ]
-            log(
-                f"{round_floats(sunny_sky_pos, 4)}",
-                header="SunnySky",
-                level="debug",
-            )
-        if "mighty_zap" in motor_list:
-            for side, ids in self.robot.ankle2mighty_zap.items():
-                ankle_pos = [
-                    joint_angles[self.robot.mighty_zap_id2joint[id]] for id in ids
-                ]
-                mighty_zap_pos = self.robot.ankle_ik(ankle_pos)
-                joint_angles[self.robot.mighty_zap_id2joint[ids[0]]] = mighty_zap_pos[0]
-                joint_angles[self.robot.mighty_zap_id2joint[ids[1]]] = mighty_zap_pos[1]
+            mighty_zap_pos += self.robot.ankle_ik(ankle_pos)
 
-            mighty_zap_pos = [
-                joint_angles[k] for k in self.robot.mighty_zap_joint2id.keys()
-            ]
-            log(
-                f"{round_floats(mighty_zap_pos, 1)}",
-                header="MightyZap",
-                level="debug",
-            )
+        if self.debug:
+            log(f"{round_floats(dynamixel_pos, 4)}", header="Dynamixel", level="debug")
+            log(f"{round_floats(sunny_sky_pos, 4)}", header="SunnySky", level="debug")
+            log(f"{round_floats(mighty_zap_pos, 1)}", header="MightyZap", level="debug")
 
         # Execute set_pos calls in parallel
-        with ThreadPoolExecutor(max_workers=3) as executor:
-            if "dynamixel" in motor_list:
-                executor.submit(
-                    self.dynamixel_controller.set_pos, dynamixel_pos, interp=False
-                )
-            if "sunny_sky" in motor_list:
-                executor.submit(
-                    self.sunny_sky_controller.set_pos, sunny_sky_pos, interp=False
-                )
-            if "mighty_zap" in motor_list:
-                executor.submit(
-                    self.mighty_zap_controller.set_pos, mighty_zap_pos, interp=False
-                )
+        self.executor.submit(
+            self.dynamixel_controller.set_pos, dynamixel_pos, interp=False
+        )
+        self.executor.submit(
+            self.sunny_sky_controller.set_pos, sunny_sky_pos, interp=False
+        )
+        for mighty_zap_id, pos in zip(self.mighty_zap_ids, mighty_zap_pos):
+            self.executor.submit(
+                self.mighty_zap_controller.set_pos_single, pos, mighty_zap_id
+            )
 
-    def command_worker(self, actuator_type):
-        while True:
-            command = self.queues[actuator_type].get()
-            if command is None:  # Use None as a signal to stop the thread
-                break
-
-            # Unpack the command
-            command_type = command[0]
-            # Here, based on command_type, call the appropriate method
-            # For simplicity, assuming a 'set_pos' command type
-            if command_type == "get_state":
-                controller = getattr(self, f"{actuator_type}_controller")
-                state = controller.get_motor_state()
-                command[-1].set_result(state)
-            else:
-                log(
-                    f"Unknown command type {command_type} for {actuator_type}",
-                    level="error",
-                )
-
-            self.queues[actuator_type].task_done()
-
-    # @profile
-    def get_joint_state(self, motor_list=["dynamixel", "sunny_sky", "mighty_zap"]):
-        if "dynamixel" in motor_list:
-            future_dynamixel = Future()
-            self.queues["dynamixel"].put(("get_state", None, future_dynamixel))
-        if "sunny_sky" in motor_list:
-            future_sunny_sky = Future()
-            self.queues["sunny_sky"].put(("get_state", None, future_sunny_sky))
-        if "mighty_zap" in motor_list:
-            future_mighty_zap = Future()
-            self.queues["mighty_zap"].put(("get_state", None, future_mighty_zap))
-
+    @profile()
+    def get_joint_state(self):
         dynamixel_state = sunny_sky_state = mighty_zap_state = None
-        if "dynamixel" in motor_list:
-            dynamixel_state = future_dynamixel.result()
-        if "sunny_sky" in motor_list:
-            sunny_sky_state = future_sunny_sky.result()
-        if "mighty_zap" in motor_list:
-            # Note: MightyZap positions are the lengthsmof linear actuators
-            mighty_zap_state = future_mighty_zap.result()
+
+        # tasks = {}
+        # for mighty_zap_id in self.mighty_zap_ids:
+        #     task = self.mighty_zap_controller.get_motor_state_single_async(
+        #         mighty_zap_id
+        #     )
+        #     tasks[f"mighty_zap_{mighty_zap_id}"] = task
+        # tasks["dynamixel"] = self.dynamixel_controller.get_motor_state_async()
+        # tasks["sunny_sky"] = self.sunny_sky_controller.get_motor_state_async()
+
+        # results = await asyncio.gather(*tasks.values(), return_exceptions=True)
+        # tasks_keys = list(tasks.keys())
+
+        # # Collect results
+        # results = {
+        #     tasks_keys[i]: result
+        #     for i, result in enumerate(results)
+        #     if not isinstance(result, Exception)
+        # }
+
+        futures = {}
+        for mighty_zap_id in self.mighty_zap_ids:
+            futures[f"mighty_zap_{mighty_zap_id}"] = self.executor.submit(
+                self.mighty_zap_controller.get_motor_state_single, mighty_zap_id
+            )
+        futures["dynamixel"] = self.executor.submit(
+            self.dynamixel_controller.get_motor_state
+        )
+        futures["sunny_sky"] = self.executor.submit(
+            self.sunny_sky_controller.get_motor_state
+        )
+
+        results = {}
+        start_times = {key: time.time() for key in futures.keys()}
+        for future in as_completed(futures.values()):
+            for key, f in futures.items():
+                if f is future:
+                    end_time = time.time()
+                    results[key] = future.result()
+                    print(f"Time taken for {key}: {end_time - start_times[key]}")
+                    break
+
+        # Note: MightyZap positions are the lengthsmof linear actuators
+        mighty_zap_state = {}
+        for motor_name, result in results.items():
+            if motor_name.startswith("mighty_zap"):
+                motor_id = int(motor_name.split("_")[2])
+                mighty_zap_state[motor_id] = result
+
+        sunny_sky_state = results["sunny_sky"]
+        dynamixel_state = results["dynamixel"]
+
+        for side, motor_ids in self.robot.ankle2mighty_zap.items():
+            mighty_zap_pos = []
+            for motor_id in motor_ids:
+                if mighty_zap_state[motor_id].pos > 0:
+                    mighty_zap_pos.append(mighty_zap_state[motor_id].pos)
+                else:
+                    log(
+                        "The MightyZap position is negative",
+                        header="RealWorld",
+                        level="warning",
+                    )
+                    mighty_zap_pos.append(
+                        self.mighty_zap_init_pos[self.mighty_zap_ids.index(motor_id)]
+                        if self.last_mighty_zap_state is None
+                        else self.last_mighty_zap_state[motor_id].pos
+                    )
+
+            ankle_pos = self.robot.ankle_fk(mighty_zap_pos)
+            for i, motor_id in enumerate(motor_ids):
+                mighty_zap_state[motor_id].pos = ankle_pos[i]
+                if self.last_mighty_zap_state is not None:
+                    mighty_zap_state[motor_id].vel = (
+                        ankle_pos[i] - self.last_mighty_zap_state[motor_id].pos
+                    ) / (
+                        mighty_zap_state[motor_id].time
+                        - self.last_mighty_zap_state[motor_id].time
+                    )
+                self.last_mighty_zap_state = mighty_zap_state
 
         joint_state_dict = {}
         for name in self.robot.joints_info.keys():
             id = None
             if name in self.robot.dynamixel_joint2id and dynamixel_state is not None:
                 id = self.robot.dynamixel_joint2id[name]
-                joint_state_dict[name] = JointState(
-                    time=dynamixel_state[id].time, pos=dynamixel_state[id].pos
-                )
+                joint_state_dict[name] = dynamixel_state[id]
             elif name in self.robot.sunny_sky_joint2id and sunny_sky_state is not None:
                 id = self.robot.sunny_sky_joint2id[name]
-                joint_state_dict[name] = JointState(
-                    time=sunny_sky_state[id].time, pos=sunny_sky_state[id].pos
-                )
+                joint_state_dict[name] = sunny_sky_state[id]
             elif (
                 name in self.robot.mighty_zap_joint2id and mighty_zap_state is not None
             ):
                 id = self.robot.mighty_zap_joint2id[name]
-                joint_state_dict[name] = JointState(
-                    time=mighty_zap_state[id].time, pos=mighty_zap_state[id].pos
-                )
+                joint_state_dict[name] = mighty_zap_state[id]
+
+        for joint_name in joint_state_dict.keys():
+            if joint_name in self.negated_joint_names:
+                joint_state_dict[joint_name].pos *= -1
+                joint_state_dict[joint_name].vel *= -1
 
         return joint_state_dict
 
-    def postprocess_ankle_pos(self, mighty_zap_pos_dict):
-        ankle_pos_dict = {}
-        for side, mighty_zap_pos_arr in mighty_zap_pos_dict.items():
-            ids = self.robot.ankle2mighty_zap[side]
-            last_ankle_pos = [0] * len(ids)
-            joint_names = [self.robot.mighty_zap_id2joint[id] for id in ids]
-            ankle_pos_list = []
-
-            lower_limits = []
-            upper_limits = []
-            for joint_name in joint_names:
-                lower_limits.append(self.robot.joints_info[joint_name]["lower_limit"])
-                upper_limits.append(self.robot.joints_info[joint_name]["upper_limit"])
-
-            for mighty_zap_pos in mighty_zap_pos_arr:
-                ankle_pos = self.robot.ankle_fk(
-                    mighty_zap_pos, last_ankle_pos, lower_limits, upper_limits
-                )
-                ankle_pos_list.append(ankle_pos)
-                last_ankle_pos = ankle_pos
-
-            ankle_pos_arr = np.array(ankle_pos_list).T
-
-            for i in range(len(ids)):
-                ankle_pos_dict[self.robot.mighty_zap_id2joint[ids[i]]] = list(
-                    ankle_pos_arr[i]
-                )
-
-        return ankle_pos_dict
+    def get_observation(self, joint_ordering):
+        joint_state_dict = self.get_joint_state()
+        q = np.array([joint_state_dict[j].pos for j in joint_ordering])
+        dq = np.array([joint_state_dict[j].vel for j in joint_ordering])
 
     def get_link_pos(self, link_name: str):
         pass
@@ -284,14 +255,11 @@ class RealWorld(BaseSim):
         pass
 
     def close(self):
-        # Signal threads to stop
-        for name in self.queues.keys():
-            self.queues[name].put(None)
-            self.threads[name].join()
+        self.executor.submit(self.dynamixel_controller.close_motors)
+        self.executor.submit(self.sunny_sky_controller.close_motors)
+        self.executor.submit(self.mighty_zap_controller.close_motors)
 
-        self.dynamixel_controller.close_motors()
-        self.sunny_sky_controller.close_motors()
-        self.mighty_zap_controller.close_motors()
+        self.executor.shutdown(wait=True)
 
 
 if __name__ == "__main__":

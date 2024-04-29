@@ -5,7 +5,7 @@ import pybullet_data
 from toddlerbot.sim import BaseSim
 from toddlerbot.sim.robot import HumanoidRobot
 from toddlerbot.utils.constants import GRAVITY
-from toddlerbot.utils.file_utils import find_description_path
+from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.math_utils import quatxyzw2mat
 from toddlerbot.utils.misc_utils import precise_sleep
 
@@ -27,7 +27,7 @@ class PyBulletSim(BaseSim):
         p.setTimeStep(0.001)
         p.loadURDF("plane.urdf")
 
-        urdf_path = find_description_path(robot.name)
+        urdf_path = find_robot_file_path(robot.name)
         robot.id = p.loadURDF(urdf_path, useFixedBase=fixed)
         self.name2idx = self.get_name2idx()
         if not fixed:

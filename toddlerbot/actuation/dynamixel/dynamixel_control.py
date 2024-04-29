@@ -1,3 +1,4 @@
+import subprocess
 import time
 from dataclasses import dataclass
 from threading import Lock
@@ -5,8 +6,9 @@ from typing import List
 
 import numpy as np
 
-from toddlerbot.actuation import BaseController
+from toddlerbot.actuation import BaseController, JointState
 from toddlerbot.actuation.dynamixel.dynamixel_client import DynamixelClient
+from toddlerbot.utils.file_utils import find_ports
 from toddlerbot.utils.math_utils import interpolate_pos
 from toddlerbot.utils.misc_utils import log, precise_sleep
 
@@ -28,14 +30,6 @@ class DynamixelConfig:
     interp_method: str = "cubic"
 
 
-@dataclass
-class DynamixelState:
-    time: float
-    pos: float
-    # vel: float
-    # current: float
-
-
 class DynamixelController(BaseController):
     def __init__(self, config, motor_ids):
         super().__init__(config)
@@ -44,23 +38,37 @@ class DynamixelController(BaseController):
         self.motor_ids = motor_ids
         self.lock = Lock()
 
-        self.client = self.connect_to_client()
+        self.connect_to_client()
         self.initialize_motors()
 
-    def connect_to_client(self):
+    def connect_to_client(self, latency_value=1):
         try:
-            client = DynamixelClient(
+            # Construct the command to set the latency timer
+            command = f"echo {latency_value} | sudo tee /sys/bus/usb-serial/devices/{self.config.port.split('/')[-1]}/latency_timer"
+            # Run the command
+            result = subprocess.run(
+                command, shell=True, text=True, check=True, stdout=subprocess.PIPE
+            )
+            log(f"Latency Timer set: {result.stdout.strip()}", header="Dynamixel")
+        except subprocess.CalledProcessError as e:
+            log(f"Failed to set latency timer: {e}", header="Dynamixel", level="error")
+
+        precise_sleep(0.1)
+
+        try:
+            self.client = DynamixelClient(
                 self.motor_ids, self.config.port, self.config.baudrate
             )
-            client.connect()
-
+            self.client.connect()
             log(f"Connected to the port: {self.config.port}", header="Dynamixel")
-            return client
+
         except Exception:
             raise ConnectionError("Could not connect to the Dynamixel port.")
 
     def initialize_motors(self):
         log("Initializing motors...", header="Dynamixel")
+        # Set the return delay time to 5*2=10us
+        self.client.sync_write(self.motor_ids, np.ones(len(self.motor_ids)) * 5, 9, 1)
         self.client.sync_write(
             self.motor_ids,
             np.ones(len(self.motor_ids)) * self.config.control_mode,
@@ -74,6 +82,8 @@ class DynamixelController(BaseController):
         self.client.sync_write(self.motor_ids, self.config.kFF2, 88, 2)
         self.client.sync_write(self.motor_ids, self.config.kFF1, 90, 2)
         self.client.sync_write(self.motor_ids, self.config.current_limit, 102, 2)
+
+        precise_sleep(0.1)
         self.set_pos(np.zeros(len(self.motor_ids)))
         precise_sleep(0.1)
 
@@ -85,7 +95,6 @@ class DynamixelController(BaseController):
             open_client.port_handler.is_using = False
             open_client.disconnect()
 
-    # @profile
     # Receive pos and directly control the robot
     def set_pos(self, pos, interp=True, vel=None, delta_t=None):
         def set_pos_helper(pos):
@@ -115,22 +124,19 @@ class DynamixelController(BaseController):
         else:
             set_pos_helper(pos)
 
-    # @profile
     def get_motor_state(self):
+        # log(f"Start... {time.time()}", header="Dynamixel", level="warning")
+
         state_dict = {}
-        # with self.lock:
         pos_arr = self.client.read_pos()
-        # pos_arr, vel_arr, current_arr = self.client.read_pos_vel_cur()
-        # if current_arr.max() > 700:
-        #     log(f"Current: {current_arr.max()}", header="Dynamixel", level="debug")
+        vel_arr = self.client.read_vel()
         pos_arr_driven = (self.config.init_pos - pos_arr) * self.config.gear_ratio
         for i, id in enumerate(self.motor_ids):
-            state_dict[id] = DynamixelState(
-                time=time.time(),
-                pos=pos_arr_driven[i],
-                # vel=vel_arr[i],
-                # current=current_arr[i],
+            state_dict[id] = JointState(
+                time=time.time(), pos=pos_arr_driven[i], vel=vel_arr[i]
             )
+
+        # log(f"End... {time.time()}", header="Dynamixel", level="warning")
 
         return state_dict
 
@@ -138,7 +144,7 @@ class DynamixelController(BaseController):
 if __name__ == "__main__":
     controller = DynamixelController(
         DynamixelConfig(
-            port="/dev/tty.usbserial-FT8ISUJY",
+            port=find_ports("USB <-> Serial Converter"),
             kFF2=[0, 0, 0, 0, 0, 0],
             kFF1=[0, 0, 0, 0, 0, 0],
             kP=[400, 1200, 1200, 400, 1200, 1200],

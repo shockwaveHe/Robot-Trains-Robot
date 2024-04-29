@@ -45,7 +45,6 @@ def generate_sinusoidal_signal(signal_config):
     return t, signal
 
 
-# @profile
 def actuate(sim, robot, joint_name, signal_pos, control_dt, prep_time=1):
     """
     Actuates a single joint with the given signal and collects the response.
@@ -66,8 +65,6 @@ def actuate(sim, robot, joint_name, signal_pos, control_dt, prep_time=1):
 
     if joint_name == "left_ank_roll":
         initial_joint_angles["left_ank_pitch"] = np.pi / 6
-
-    is_ankle = joint_name in robot.mighty_zap_joint2id
 
     if sim.name == "real_world":
         sim.set_joint_angles(initial_joint_angles)
@@ -93,21 +90,7 @@ def actuate(sim, robot, joint_name, signal_pos, control_dt, prep_time=1):
             #     joint_state_dict[joint_name].time - time_start
             # )
 
-            if is_ankle:
-                ankle_id = robot.mighty_zap_joint2id[joint_name]
-                for side, ids in robot.ankle2mighty_zap.items():
-                    if ankle_id not in ids:
-                        continue
-
-                    ankle_side = side
-                    ankle_pos_list = [
-                        joint_state_dict[robot.mighty_zap_id2joint[id]].pos
-                        for id in ids
-                    ]
-                    joint_data_dict["pos"].append(ankle_pos_list)
-
-            else:
-                joint_data_dict["pos"].append(joint_state_dict[joint_name].pos)
+            joint_data_dict["pos"].append(joint_state_dict[joint_name].pos)
 
             time_until_next_step = control_dt - (time.time() - step_start)
             if time_until_next_step > 0:
@@ -124,11 +107,6 @@ def actuate(sim, robot, joint_name, signal_pos, control_dt, prep_time=1):
         #     header="SysID",
         #     level="debug",
         # )
-
-        if is_ankle:
-            mighty_zap_pos_dict = {ankle_side: np.array(joint_data_dict["pos"])}
-            ankle_pos_dict = sim.postprocess_ankle_pos(mighty_zap_pos_dict)
-            joint_data_dict["pos"] = ankle_pos_dict[joint_name]
 
         if (
             hasattr(sim, "negated_joint_names")
@@ -346,7 +324,6 @@ def optimize_parameters(
     return study.best_params, study.best_value
 
 
-# @profile
 def evaluate(
     robot,
     joint_name,

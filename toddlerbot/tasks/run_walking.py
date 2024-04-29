@@ -8,18 +8,20 @@ from dataclasses import asdict
 import matplotlib.pyplot as plt
 import numpy as np
 
-from toddlerbot.sim.mujoco_sim import MuJoCoSim
-from toddlerbot.sim.pybullet_sim import PyBulletSim
 from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.sim.robot import HumanoidRobot
 from toddlerbot.tasks.walking import Walking
 from toddlerbot.tasks.walking_configs import walking_configs
 from toddlerbot.utils.math_utils import round_floats
-from toddlerbot.utils.misc_utils import log, precise_sleep
-from toddlerbot.visualization.vis_planning import draw_footsteps
-from toddlerbot.visualization.vis_plot import plot_joint_tracking, plot_line_graph
+from toddlerbot.utils.misc_utils import dump_profiling_data, log, precise_sleep, profile
+from toddlerbot.visualization.vis_plot import (
+    plot_footsteps,
+    plot_joint_tracking,
+    plot_line_graph,
+)
 
 
+@profile()
 def main():
     parser = argparse.ArgumentParser(description="Run the walking simulation.")
     parser.add_argument(
@@ -53,8 +55,12 @@ def main():
     walking = Walking(robot, config)
 
     if args.sim == "pybullet":
+        from toddlerbot.sim.pybullet_sim import PyBulletSim
+
         sim = PyBulletSim(robot)
     elif args.sim == "mujoco":
+        from toddlerbot.sim.mujoco_sim import MuJoCoSim
+
         sim = MuJoCoSim(robot)
     elif args.sim == "real":
         sim = RealWorld(robot)
@@ -88,10 +94,11 @@ def main():
         }
         sim.run_simulation(headless=True, vis_data=vis_data)
 
-    # time_start = time.time()
+    time_start = time.time()
+    duration_max = 60
     try:
         step_idx = 0
-        while True:
+        while time.time() - time_start < duration_max:
             step_start = time.time()
 
             time_ref, joint_angles_ref = joint_angles_traj[
@@ -152,23 +159,8 @@ def main():
     except KeyboardInterrupt:
         log("KeyboardInterrupt recieved. Closing...", header="Walking")
 
+    finally:
         sim.close()
-
-        if sim.name == "real_world" and len(joint_angle_dict) > 0:
-            mighty_zap_pos_dict = {}
-            # Check if the ankle positions are linear actuator lengths
-            for side, ids in robot.ankle2mighty_zap.items():
-                mighty_zap_pos_dict[side] = np.array(
-                    [joint_angle_dict[robot.mighty_zap_id2joint[id]] for id in ids]
-                ).T
-
-            ankle_pos_dict = sim.postprocess_ankle_pos(mighty_zap_pos_dict)
-
-            for name in ankle_pos_dict:
-                joint_angle_dict[name] = ankle_pos_dict[name]
-
-            for name in sim.negated_joint_names:
-                joint_angle_dict[name] = [-angle for angle in joint_angle_dict[name]]
 
         log("Saving config and data...", header="Walking")
         os.makedirs(exp_folder_path, exist_ok=True)
@@ -176,10 +168,17 @@ def main():
         with open(os.path.join(exp_folder_path, "config.json"), "w") as f:
             json.dump(asdict(config), f, indent=4)
 
+        prof_path = os.path.join(exp_folder_path, "profile_output.lprof")
+        dump_profiling_data(prof_path)
+
         if hasattr(sim, "visualizer") and hasattr(sim.visualizer, "save_recording"):
             sim.visualizer.save_recording(exp_folder_path)
         else:
-            print("Current visualizer does not support video writing.")
+            log(
+                "Current visualizer does not support video writing.",
+                header="Walking",
+                level="warning",
+            )
 
         robot_state_traj_data = {
             "zmp_ref_traj": zmp_ref_traj,
@@ -217,7 +216,7 @@ def main():
         fig, ax = plt.subplots(figsize=(10, 6))
         ax.set_aspect("equal")
 
-        draw_footsteps(
+        plot_footsteps(
             path,
             foot_steps,
             robot.foot_size[:2],

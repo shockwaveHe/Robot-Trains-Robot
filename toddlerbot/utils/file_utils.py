@@ -3,6 +3,32 @@ import xml.dom.minidom
 import xml.etree.ElementTree as ET
 from typing import Optional
 
+import serial.tools.list_ports as list_ports
+
+from toddlerbot.utils.misc_utils import log
+
+
+def find_ports(target):
+    ports = list(list_ports.comports())
+    target_ports = []
+    for port, desc, hwid in ports:
+        # Adjust the condition below according to your board's unique identifier or pattern
+        if target in desc:
+            port = port.replace("cu", "tty")
+            log(
+                f"Found {target} board: {port} - {desc} - {hwid}",
+                header="FileUtils",
+                level="debug",
+            )
+            target_ports.append(port)
+
+    if len(target_ports) == 0:
+        raise ConnectionError(f"Could not find the {target} board.")
+    elif len(target_ports) == 1:
+        return target_ports[0]
+    else:
+        return sorted(target_ports)
+
 
 def find_last_result_dir(result_dir: str, prefix: str = "") -> Optional[str]:
     """
@@ -40,7 +66,7 @@ def find_last_result_dir(result_dir: str, prefix: str = "") -> Optional[str]:
         return None
 
 
-def find_description_path(robot_name: str, suffix: str = ".urdf") -> str:
+def find_robot_file_path(robot_name: str, suffix: str = ".urdf") -> str:
     """
     Dynamically finds the URDF file path for a given robot name.
 
@@ -62,16 +88,16 @@ def find_description_path(robot_name: str, suffix: str = ".urdf") -> str:
     """
     robot_dir = os.path.join("toddlerbot", "robot_descriptions", robot_name)
     if os.path.exists(robot_dir):
-        description_path = os.path.join(robot_dir, robot_name + suffix)
-        if os.path.exists(description_path):
-            return description_path
+        file_path = os.path.join(robot_dir, robot_name + suffix)
+        if os.path.exists(file_path):
+            return file_path
     else:
         assembly_dir = os.path.join("toddlerbot", "robot_descriptions", "assemblies")
-        description_path = os.path.join(assembly_dir, robot_name + suffix)
-        if os.path.exists(description_path):
-            return description_path
+        file_path = os.path.join(assembly_dir, robot_name + suffix)
+        if os.path.exists(file_path):
+            return file_path
 
-    raise FileNotFoundError(f"No URDF file found for robot '{robot_name}'.")
+    raise FileNotFoundError(f"No {suffix} file found for robot '{robot_name}'.")
 
 
 def is_xml_pretty_printed(file_path):

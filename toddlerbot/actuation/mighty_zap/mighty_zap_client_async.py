@@ -1,4 +1,9 @@
-import serial
+import asyncio
+
+import serial_asyncio
+import uvloop
+
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
 class MightyZapClient:
@@ -22,7 +27,17 @@ class MightyZapClient:
         self.rx_buffer_size = 0
         self.actuator_ID = 0
         self.checksum = 0
-        self.serial = serial.Serial(port=portname, baudrate=baudrate, timeout=timeout)
+        self.portname = portname
+        self.baudrate = baudrate
+        self.timeout = timeout
+        self.serial = None
+
+        asyncio.run(self.async_init())
+
+    async def async_init(self):
+        self.serial = await serial_asyncio.open_serial_connection(
+            url=self.portname, baudrate=self.baudrate
+        )
 
     def set_protocol_header(self):
         self.tx_buffer_index = 0
@@ -53,33 +68,24 @@ class MightyZapClient:
     def set_id(self, id):
         self.actuator_ID = id
 
-    def close(self):
-        self.serial.close()
+    async def close(self):
+        if self.serial:
+            await self.serial.close()
 
-    def send_packet(self):
-        if self.serial.is_open:
-            self.serial.write(self.tx_buffer[: self.tx_buffer_index])
+    async def send_packet(self):
+        await self.serial[1].write(bytes(self.tx_buffer[: self.tx_buffer_index]))
 
-    def receive_packet(self, size):
-        if not self.serial.is_open:
-            return -1
-
+    async def receive_packet(self, size):
+        reader = self.serial[0]
+        read_buffer = await reader.readexactly(size)
         expected_header = b"\xff\xff\xff"
-        # Attempt to read the remaining bytes needed to reach the desired size
-        read_buffer = self.serial.read(size)
-        # Check if the buffer contains the expected header and has reached the necessary size
         if len(read_buffer) >= size and expected_header in read_buffer[:3]:
-            # Assuming the header is at the start for now, further logic could adjust for different positions
             self.rx_buffer[:size] = read_buffer[:size]
             return 1
         else:
-            # If the function exits the loop without returning success, it's due to a timeout or other failure
             return -1
 
-    def send_command(self, id, instruction, parameters):
-        """
-        General method to prepare and send a command to the actuator.
-        """
+    async def send_command(self, id, instruction, parameters):
         self.set_id(id)
         self.set_protocol_header()
         self.set_protocol_instruction(instruction)
@@ -90,25 +96,25 @@ class MightyZapClient:
                 for byte in param:
                     self.add_protocol_parameter(byte)
         self.set_protocol_length_checksum()
-        self.send_packet()
+        await self.send_packet()
 
-    def action(self, id):
-        self.send_command(id, self.MIGHTYZAP_ACTION, [])
+    async def action(self, id):
+        await self.send_command(id, self.MIGHTYZAP_ACTION, [])
 
-    def reset_write(self, id, option):
-        self.send_command(id, self.MIGHTYZAP_RESET, [option])
+    async def reset_write(self, id, option):
+        await self.send_command(id, self.MIGHTYZAP_RESET, [option])
 
-    def restart(self, id):
-        self.send_command(id, self.MIGHTYZAP_RESTART, [])
+    async def restart(self, id):
+        await self.send_command(id, self.MIGHTYZAP_RESTART, [])
 
-    def factory_reset_write(self, id, option):
-        self.send_command(id, self.MIGHTYZAP_FACTORY_RESET, [option])
+    async def factory_reset_write(self, id, option):
+        await self.send_command(id, self.MIGHTYZAP_FACTORY_RESET, [option])
 
-    def ping(self, id):
-        self.send_command(id, self.MIGHTYZAP_PING, [])
+    async def ping(self, id):
+        await self.send_command(id, self.MIGHTYZAP_PING, [])
 
-    def read_data(self, id, addr, size):
-        self.send_command(id, self.MIGHTYZAP_READ_DATA, [addr, size])
+    async def read_data(self, id, addr, size):
+        await self.send_command(id, self.MIGHTYZAP_READ_DATA, [addr, size])
 
     def parse_value(self, value):
         if 0 <= value <= 0xFF:  # Value fits in 1 byte
@@ -122,7 +128,7 @@ class MightyZapClient:
 
         return single_data, size
 
-    def write_data(self, id, addr, value):
+    async def write_data(self, id, addr, value):
         if isinstance(id, list) and isinstance(value, list):
             # Ensure id and value lists are of the same length
             assert len(id) == len(value)
@@ -134,66 +140,23 @@ class MightyZapClient:
                 data.extend([single_id] + single_data)
 
             parameters = [addr, size] + data
-            self.send_command(self.BROADCAST_ID, self.MIGHTYZAP_SYNC_WRITE, parameters)
+            await self.send_command(
+                self.BROADCAST_ID, self.MIGHTYZAP_SYNC_WRITE, parameters
+            )
         else:
             single_data, _ = self.parse_value(value)
             parameters = [addr] + single_data
             # Send command for a single motor
-            self.send_command(id, self.MIGHTYZAP_WRITE_DATA, parameters)
+            await self.send_command(id, self.MIGHTYZAP_WRITE_DATA, parameters)
 
-    def goal_position(self, id, position):
-        self.write_data(id, 0x86, position)
+    async def goal_position(self, id, position):
+        await self.write_data(id, 0x86, position)
 
-    def present_position(self, id):
-        self.read_data(id, 0x8C, 2)
-        if self.receive_packet(9) == 1:
+    async def present_position(self, id):
+        await self.read_data(id, 0x8C, 2)
+        if await self.receive_packet(9) == 1:
             return (self.rx_buffer[7] << 8) | self.rx_buffer[6]
         return -1
 
-    def goal_speed(self, id, speed):
-        self.write_data(id, 0x15, speed)
-
-    def goal_current(self, id, curr):
-        self.write_data(id, 0x34, curr)
-
-    def acceleration(self, id, acc):
-        self.write_data(id, 0x21, acc)
-
-    def deceleration(self, id, dec):
-        self.write_data(id, 0x22, dec)
-
-    def short_stroke_limit(self, id, limit):
-        self.write_data(id, 0x06, limit)
-
-    def long_stroke_limit(self, id, limit):
-        self.write_data(id, 0x08, limit)
-
-    def force_enable(self, id, enable):
-        self.write_data(id, 0x80, enable)
-
-    def set_shutdown_enable(self, id, flag):
-        self.write_data(id, 0x12, flag)
-
-    def get_shutdown_enable(self, id):
-        self.read_data(id, 0x12, 1)
-        if self.receive_packet(8) == 1:
-            return self.rx_buffer[6]
-        return -1
-
-    def set_error_indicator_enable(self, id, flag):
-        self.write_data(id, 0x11, flag)
-
-    def get_error_indicator_enable(self, id):
-        self.read_data(id, 0x11, 1)
-        if self.receive_packet(8) == 1:
-            return self.rx_buffer[6]
-        return -1
-
-    def read_error(self, id):
-        self.ping(id)
-        if self.receive_packet(7) == 1:
-            return self.rx_buffer[5]
-        return -1
-
-    def set_return_delay_time(self, id, time):
-        self.write_data(id, 0x5, time)
+    async def set_return_delay_time(self, id, time):
+        await self.write_data(id, 0x5, time)

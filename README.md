@@ -27,9 +27,68 @@ Recommended VSCode Extenstions:
 sudo cp miniforge3/envs/microservo/lib/python3.9/site-packages/Jetson/GPIO/99-gpio.rules /etc/udev/rules.d/
 ```
 
-- also add yourself to i2c group.
+- also add yourself to i2c and dialout group.
 ```bash
-sudo usermod -aG i2c <your_username>
+sudo usermod -aG i2c $USER
+sudo usermod -aG dialout $USER
+```
+The usb-c port on Jetson is only for flashing, which means it's not fully functional.
+
+Set up NoMachine from [this page](https://downloads.nomachine.com/download/?id=118&distro=ARM) for remote desktop access.
+
+Edit sudoers safely:
+```
+sudo visudo
+```
+Add a line for specific commands:
+```
+youruser ALL=(ALL) NOPASSWD: /bin/echo, /usr/bin/tee
+```
+This allows the user `youruser` to run echo and tee without a password. Ensure you replace youruser with the actual user that the script runs under.
+
+#### Build the Real-Time (RT) Kernel
+Check your JetsonLinux version:
+```
+head -n 1 /etc/nv_tegra_release
+```
+Go to [Jetson Linux Archive](https://developer.nvidia.com/embedded/jetson-linux-archive), select the version `35.5.0`, and download "Driver Package (BSP) Sources" from the download page.
+
+Extract the .tbz2 file:
+```
+tar -xjf public_sources.tbz2
+```
+
+Extract the kernel source file:
+```
+cd Linux_for_Tegra/source/public
+tar –xjf kernel_src.tbz2
+```
+This extracts the kernel source to the kernel/ subdirectory.
+
+Before you build the kernel you must install the Jetson Linux build utilities. Enter the command:
+```
+sudo apt install build-essential bc libssl-dev
+```
+
+Apply RT patches to the kernel:
+```
+cd kernel
+./kernel-5.10/scripts/rt-patch.sh apply-patches
+```
+
+Enter the following command. The build will take some time:
+```
+cd ..
+mkdir kernel_out
+./nvbuild.sh -o $PWD/kernel_out
+```
+Where `kernel_out` is the directory where the compiled kernel is to be written.
+
+Replace Linux_for_Tegra/rootfs/usr/lib/modules/$(uname -r)/kernel/drivers/gpu/nvgpu/nvgpu.ko with a copy of this file:
+```
+sudo cp kernel_out/drivers/gpu/nvgpu/nvgpu.ko /usr/lib/modules/$(uname -r)/kernel/drivers/gpu/nvgpu/nvgpu.ko
+sudo cp -r kernel_out/arch/arm64/boot/dts/nvidia/* /Linux_for_Tegra/kernel/dtb/
+sudo cp kernel_out/arch/arm64/boot/Image /Linux_for_Tegra/kernel/Image
 ```
 
 ### Linux Systems
@@ -267,6 +326,21 @@ Restart the power and reconnect the ESC board.
 Press `E` and then `Esc` to check if the menu shows up.
 
 ## Actuation
+
+According to the doc [here](https://emanual.robotis.com/docs/en/software/dynamixel/dynamixel_sdk/faq/#how-to-change-an-usb-latency-in-dynamixel-sdk),
+Set `LATENCY_TIMER = 1` in `/path_to_env/toddlerbot/lib/python3.8/site-packages/dynamixel_sdk/port_handler.py`.
+
+Verify that the latency timer is 1ms.
+```
+cat /sys/bus/usb-serial/devices/ttyUSB0/latency_timer
+```
+If not, change the latency timer to 1ms
+```
+echo 1 | sudo tee /sys/bus/usb-serial/devices/ttyUSB0/latency_timer
+```
+Replace ttyUSB0 with the port connected to the Dynamixel motors.
+
+
 ### MightyZap linear actuators
 
 Update the firmware if you cannot search the motor.
@@ -348,3 +422,6 @@ and then we will apply the RT kernel.
 
 ### Jetson Tips
 - We recommand using jtop to monitor the performance of the system
+
+### Realsense setup
+1. We will refer to [this guide](https://github.com/IntelRealSense/librealsense/blob/master/doc/installation_jetson.md) to install the librealsense on jetson.
