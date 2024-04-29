@@ -8,8 +8,6 @@ from dataclasses import asdict
 import matplotlib.pyplot as plt
 import numpy as np
 
-from toddlerbot.sim.mujoco_sim import MuJoCoSim
-from toddlerbot.sim.pybullet_sim import PyBulletSim
 from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.sim.robot import HumanoidRobot
 from toddlerbot.tasks.walking import Walking
@@ -57,8 +55,12 @@ def main():
     walking = Walking(robot, config)
 
     if args.sim == "pybullet":
+        from toddlerbot.sim.pybullet_sim import PyBulletSim
+
         sim = PyBulletSim(robot)
     elif args.sim == "mujoco":
+        from toddlerbot.sim.mujoco_sim import MuJoCoSim
+
         sim = MuJoCoSim(robot)
     elif args.sim == "real":
         sim = RealWorld(robot)

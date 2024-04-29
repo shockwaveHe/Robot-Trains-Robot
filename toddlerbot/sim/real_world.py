@@ -1,3 +1,4 @@
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import numpy as np
@@ -137,6 +138,25 @@ class RealWorld(BaseSim):
     def get_joint_state(self):
         dynamixel_state = sunny_sky_state = mighty_zap_state = None
 
+        # tasks = {}
+        # for mighty_zap_id in self.mighty_zap_ids:
+        #     task = self.mighty_zap_controller.get_motor_state_single_async(
+        #         mighty_zap_id
+        #     )
+        #     tasks[f"mighty_zap_{mighty_zap_id}"] = task
+        # tasks["dynamixel"] = self.dynamixel_controller.get_motor_state_async()
+        # tasks["sunny_sky"] = self.sunny_sky_controller.get_motor_state_async()
+
+        # results = await asyncio.gather(*tasks.values(), return_exceptions=True)
+        # tasks_keys = list(tasks.keys())
+
+        # # Collect results
+        # results = {
+        #     tasks_keys[i]: result
+        #     for i, result in enumerate(results)
+        #     if not isinstance(result, Exception)
+        # }
+
         futures = {}
         for mighty_zap_id in self.mighty_zap_ids:
             futures[f"mighty_zap_{mighty_zap_id}"] = self.executor.submit(
@@ -150,10 +170,13 @@ class RealWorld(BaseSim):
         )
 
         results = {}
+        start_times = {key: time.time() for key in futures.keys()}
         for future in as_completed(futures.values()):
-            for key, value in futures.items():
-                if value == future:
+            for key, f in futures.items():
+                if f is future:
+                    end_time = time.time()
                     results[key] = future.result()
+                    print(f"Time taken for {key}: {end_time - start_times[key]}")
                     break
 
         # Note: MightyZap positions are the lengthsmof linear actuators

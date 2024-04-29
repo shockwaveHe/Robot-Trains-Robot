@@ -223,7 +223,20 @@ class HumanoidRobot:
 
     def ankle_fk(self, mighty_zap_pos):
         ankle_pos = self.ankle_fk_lookup_table(mighty_zap_pos)
-        return list(ankle_pos.squeeze())
+        # Ensure the output is squeezed to a 1D array and handle NaN cases.
+        ankle_pos = np.array(ankle_pos).squeeze()
+
+        # Check if any part of ankle_pos is NaN, and replace it with 0.
+        if np.any(np.isnan(ankle_pos)):
+            # You can log or print a warning here if needed
+            log(
+                "NaN encountered in ankle_fk calculations, returning 0.",
+                header="Robot",
+                level="warning",
+            )
+            return [0] * len(ankle_pos)
+
+        return list(ankle_pos)
 
     def ankle_ik(self, ankle_pos):
         # Extracting offset values and converting to NumPy arrays

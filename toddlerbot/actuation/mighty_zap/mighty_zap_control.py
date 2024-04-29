@@ -1,14 +1,22 @@
+import asyncio
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import List
 
 import numpy as np
+import uvloop
 
 from toddlerbot.actuation import BaseController, JointState
 from toddlerbot.actuation.mighty_zap.mighty_zap_client import MightyZapClient
+
+# from toddlerbot.actuation.mighty_zap.mighty_zap_client_async import MightyZapClient
 from toddlerbot.utils.file_utils import find_ports
 from toddlerbot.utils.math_utils import interpolate_pos
 from toddlerbot.utils.misc_utils import log, precise_sleep
+
+# Install uvloop globally
+# asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
 @dataclass
@@ -102,17 +110,29 @@ class MightyZapController(BaseController):
     # @profile()
     def get_motor_state_single(self, motor_id):
         # log(f"Start... {time.time()}", header="MightyZap", level="warning")
-        joint_state = JointState(
-            time=time.time(), pos=self.clients[motor_id].present_position(motor_id)
-        )
+        pos = self.clients[motor_id].present_position(motor_id)
         # log(f"End... {time.time()}", header="MightyZap", level="warning")
-        return joint_state
+        return JointState(time=time.time(), pos=pos)
+
+    async def async_get_motor_state_single(self, motor_id):
+        pos = await self.clients[motor_id].present_position(motor_id)
+        return JointState(time=time.time(), pos=pos)
 
     def get_motor_state(self):
         state_dict = {}
         for motor_id in self.motor_ids:
             state_dict[motor_id] = self.get_motor_state_single(motor_id)
 
+        return state_dict
+
+    async def async_get_motor_state(self):
+        tasks = [
+            self.async_get_motor_state_single(motor_id) for motor_id in self.motor_ids
+        ]
+        results = await asyncio.gather(*tasks)
+        state_dict = {
+            motor_id: result for motor_id, result in zip(self.motor_ids, results)
+        }
         return state_dict
 
 
@@ -135,28 +155,77 @@ if __name__ == "__main__":
         [pos_mid] * len(motor_ids),
     ]
 
-    time_start = time.time()
-    for pos_ref in pos_ref_seq:
-        controller.set_pos(pos_ref)
-        precise_sleep(0.02)
+    async def async_run():
+        for pos_ref in pos_ref_seq:
+            controller.set_pos(pos_ref)
+            await asyncio.sleep(0.02)
 
-        while True:
-            state_dict = controller.get_motor_state()
-            pos = [state.pos for state in state_dict.values()]
+            while True:
+                time_start = time.time()
+                state_dict = await controller.async_get_motor_state()
+                time_elapsed = time.time() - time_start
+                log(f"Time elapsed: {time_elapsed}", header="MightyZap", level="debug")
+                pos = [state.pos for state in state_dict.values()]
 
-            if np.allclose(pos, pos_ref, atol=10):
-                break
+                if np.allclose(pos, pos_ref, atol=10):
+                    break
+
+                await asyncio.sleep(0.02)
+
+            message = "Motor states:"
+            for id, state in state_dict.items():
+                message += f" {id}: {state.pos:.1f};"
+
+            log(message, header="MightyZap", level="debug")
+
+        controller.close_motors()
+
+        log("Process completed successfully.", header="MightyZap")
+
+    def run():
+        executor = ThreadPoolExecutor(max_workers=len(motor_ids))
+
+        for pos_ref in pos_ref_seq:
+            for motor_id, pos in zip(motor_ids, pos_ref):
+                executor.submit(controller.set_pos_single, pos, motor_id)
 
             precise_sleep(0.02)
 
-        message = "Motor states:"
-        for id, state in state_dict.items():
-            message += f" {id}: {state.pos:.1f};"
+            while True:
+                time_start = time.time()
+                # state_dict = controller.get_motor_state()
+                futures = {}
+                for motor_id in motor_ids:
+                    futures[motor_id] = executor.submit(
+                        controller.get_motor_state_single, motor_id
+                    )
 
-        message += f" Time: {state.time - time_start:.4f}s"
+                state_dict = {}
+                for motor_id, future in futures.items():
+                    state_dict[motor_id] = future.result()
 
-        log(message, header="MightyZap", level="debug")
+                time_elapsed = time.time() - time_start
+                log(f"Time elapsed: {time_elapsed}", header="MightyZap", level="debug")
+                pos = [state.pos for state in state_dict.values()]
 
-    controller.close_motors()
+                if np.allclose(pos, pos_ref, atol=10):
+                    break
 
-    log("Process completed successfully.", header="MightyZap")
+                precise_sleep(0.02)
+
+            message = "Motor states:"
+            for id, state in state_dict.items():
+                message += f" {id}: {state.pos:.1f};"
+
+            log(message, header="MightyZap", level="debug")
+
+        controller.close_motors()
+
+        log("Process completed successfully.", header="MightyZap")
+
+    run()
+    # loop = asyncio.get_event_loop()
+    # try:
+    #     loop.run_until_complete(async_run())
+    # finally:
+    #     loop.close()

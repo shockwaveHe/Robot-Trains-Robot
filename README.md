@@ -34,6 +34,18 @@ sudo usermod -aG dialout $USER
 ```
 The usb-c port on Jetson is only for flashing, which means it's not fully functional.
 
+Set up NoMachine from [this page](https://downloads.nomachine.com/download/?id=118&distro=ARM) for remote desktop access.
+
+Edit sudoers safely:
+```
+sudo visudo
+```
+Add a line for specific commands:
+```
+youruser ALL=(ALL) NOPASSWD: /bin/echo, /usr/bin/tee
+```
+This allows the user `youruser` to run echo and tee without a password. Ensure you replace youruser with the actual user that the script runs under.
+
 ### Linux Systems
 ```
 conda create --name toddlerbot python=3.8

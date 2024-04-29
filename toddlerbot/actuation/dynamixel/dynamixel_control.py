@@ -1,3 +1,4 @@
+import subprocess
 import time
 from dataclasses import dataclass
 from threading import Lock
@@ -40,7 +41,20 @@ class DynamixelController(BaseController):
         self.connect_to_client()
         self.initialize_motors()
 
-    def connect_to_client(self):
+    def connect_to_client(self, latency_value=1):
+        try:
+            # Construct the command to set the latency timer
+            command = f"echo {latency_value} | sudo tee /sys/bus/usb-serial/devices/{self.config.port.split('/')[-1]}/latency_timer"
+            # Run the command
+            result = subprocess.run(
+                command, shell=True, text=True, check=True, stdout=subprocess.PIPE
+            )
+            log(f"Latency Timer set: {result.stdout.strip()}", header="Dynamixel")
+        except subprocess.CalledProcessError as e:
+            log(f"Failed to set latency timer: {e}", header="Dynamixel", level="error")
+
+        precise_sleep(0.1)
+
         try:
             self.client = DynamixelClient(
                 self.motor_ids, self.config.port, self.config.baudrate

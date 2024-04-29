@@ -229,8 +229,8 @@ class SunnySkyController(BaseController):
             decoded_line = line.decode().strip()
             if "error" in decoded_line.lower():
                 log(decoded_line, header="SunnySky", level="warning")
-            else:
-                log(decoded_line, header="SunnySky", level="debug")
+            # else:
+            #     log(decoded_line, header="SunnySky", level="debug")
 
             if decoded_line.startswith(self.config.tx_data_prefix):
                 _, data_str = decoded_line.split(self.config.tx_data_prefix, 1)
