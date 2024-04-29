@@ -65,11 +65,11 @@ class RealWorld(BaseSim):
         joint_range_dict = {1: (0, np.pi / 2), 2: (0, -np.pi / 2)}
 
         self.mighty_zap_ids = sorted(list(self.robot.mighty_zap_joint2id.values()))
-        mighty_zap_init_pos = [0] * len(self.mighty_zap_ids)
+        self.mighty_zap_init_pos = [0] * len(self.mighty_zap_ids)
         self.last_mighty_zap_state = None
 
         mighty_zap_config = MightyZapConfig(
-            port=mighty_zap_port, init_pos=mighty_zap_init_pos
+            port=mighty_zap_port, init_pos=self.mighty_zap_init_pos
         )
 
         self.executor = ThreadPoolExecutor(max_workers=n_ports)
@@ -201,7 +201,7 @@ class RealWorld(BaseSim):
                         level="warning",
                     )
                     mighty_zap_pos.append(
-                        0.0
+                        self.mighty_zap_init_pos[self.mighty_zap_ids.index(motor_id)]
                         if self.last_mighty_zap_state is None
                         else self.last_mighty_zap_state[motor_id].pos
                     )

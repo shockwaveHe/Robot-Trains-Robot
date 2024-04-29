@@ -46,6 +46,51 @@ youruser ALL=(ALL) NOPASSWD: /bin/echo, /usr/bin/tee
 ```
 This allows the user `youruser` to run echo and tee without a password. Ensure you replace youruser with the actual user that the script runs under.
 
+#### Build the Real-Time (RT) Kernel
+Check your JetsonLinux version:
+```
+head -n 1 /etc/nv_tegra_release
+```
+Go to [Jetson Linux Archive](https://developer.nvidia.com/embedded/jetson-linux-archive), select the version `35.5.0`, and download "Driver Package (BSP) Sources" from the download page.
+
+Extract the .tbz2 file:
+```
+tar -xjf public_sources.tbz2
+```
+
+Extract the kernel source file:
+```
+cd Linux_for_Tegra/source/public
+tar –xjf kernel_src.tbz2
+```
+This extracts the kernel source to the kernel/ subdirectory.
+
+Before you build the kernel you must install the Jetson Linux build utilities. Enter the command:
+```
+sudo apt install build-essential bc libssl-dev
+```
+
+Apply RT patches to the kernel:
+```
+cd kernel
+./kernel-5.10/scripts/rt-patch.sh apply-patches
+```
+
+Enter the following command. The build will take some time:
+```
+cd ..
+mkdir kernel_out
+./nvbuild.sh -o $PWD/kernel_out
+```
+Where `kernel_out` is the directory where the compiled kernel is to be written.
+
+Replace Linux_for_Tegra/rootfs/usr/lib/modules/$(uname -r)/kernel/drivers/gpu/nvgpu/nvgpu.ko with a copy of this file:
+```
+sudo cp kernel_out/drivers/gpu/nvgpu/nvgpu.ko /usr/lib/modules/$(uname -r)/kernel/drivers/gpu/nvgpu/nvgpu.ko
+sudo cp -r kernel_out/arch/arm64/boot/dts/nvidia/* /Linux_for_Tegra/kernel/dtb/
+sudo cp kernel_out/arch/arm64/boot/Image /Linux_for_Tegra/kernel/Image
+```
+
 ### Linux Systems
 ```
 conda create --name toddlerbot python=3.8
