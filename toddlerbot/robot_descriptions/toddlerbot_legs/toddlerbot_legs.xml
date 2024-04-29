@@ -53,6 +53,7 @@
       <inertial pos="-0.014404 -0.000232 0.311533" quat="1.000000 0.000000 0.000000 0.000000" mass="0.13263292" diaginertia="1.21631e-04 8.49701e-05 1.56471e-04" />
       <freejoint />
       <site name="torso" fromto="0.01 0 0.4 -0.01 0 0.4" type="cylinder" size="0.005 0.005 1" group="3" />
+      <site name='imu' size='0.01' pos='0.0 0 0.0'/>
       <geom rgba="0.602652 0.747582 0.822925 1" mesh="body_link_visual" class="visual" />
       <geom rgba="0.602652 0.747582 0.822925 1" mesh="body_link_collision" class="collision" />
       <body name="hip_yaw_link" pos="-0.0064 0.034 0.2855" quat="1 0 0 0">
@@ -272,7 +273,7 @@
       <geom contype="0" conaffinity="0" group="2" density="0" />
     </default>
     <default class="collision">
-      <geom group="3" />
+      <geom group="3" condim='4' contype="1" conaffinity="15" solref='0.001 2' friction='0.9 0.2 0.2'/>
     </default>
   </default>
   <contact>

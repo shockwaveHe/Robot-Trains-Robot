@@ -4,11 +4,13 @@ adafruit-circuitpython-servokit==1.3.17
 colorama==0.4.6
 control==0.9.4
 dynamixel-sdk==3.7.31
+Jinja2==3.1.3
 matplotlib==3.7.4
 mediapy==1.2.0
 mujoco==3.1.4
 networkx==3.1
 numpy==1.24.4
+opencv-python==4.9.0.80
 optuna==3.6.1
 pybullet==3.2.6
 pynput==1.7.6
@@ -17,6 +19,11 @@ PyYAML==6.0.1
 scipy==1.10.1
 seaborn==0.11.2
 setuptools==69.1.1
+torch==1.13.1+cu116
+torchvision==0.14.1+cu116
+torchaudio==0.13.1+cu116
+tqdm==4.66.2
 transforms3d==0.4.1
 trimesh==3.21.7
+wandb==0.16.6
 yourdfpy==0.0.56

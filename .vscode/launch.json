@@ -200,7 +200,7 @@
             "args": [
                 "--robot-name",
                 "toddlerbot_legs",
-                "--load_model",
+                "--load-model",
                 "toddlerbot/sim/humanoid_gym/logs/walk_toddlerbot_legs_isaac/exported/policies/policy_1.pt",
             ],
         },

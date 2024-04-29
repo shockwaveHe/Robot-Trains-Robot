@@ -169,8 +169,12 @@ class MuJoCoController:
     def process_commands(self, model, data):
         while not self.command_queue.empty():
             joint_angles = self.command_queue.get()
-            for name, angle in joint_angles.items():
-                data.actuator(f"{name}_act").ctrl = angle
+            if isinstance(joint_angles, dict):
+                for name, angle in joint_angles.items():
+                    data.actuator(f"{name}_act").ctrl = angle
+            else:
+                for i, angle in enumerate(joint_angles):
+                    data.actuator(i).ctrl = angle
 
 
 class MuJoCoSim(BaseSim):
@@ -304,7 +308,7 @@ class MuJoCoSim(BaseSim):
         quat = self.data.sensor("orientation").data.copy()
         r = quat2mat(quat)
         v = dq[:3] @ r.T
-        omega = self.data.sensor("angular_velocity").copy()
+        omega = self.data.sensor("angular_velocity").data.copy()
         gvec = np.array([0.0, 0.0, -1.0]) @ r.T
         return (q, dq, quat, v, omega, gvec)
 

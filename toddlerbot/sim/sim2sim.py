@@ -27,19 +27,20 @@
 #
 # Copyright (c) 2024 Beijing RobotEra TECHNOLOGY CO.,LTD. All rights reserved.
 
-
 import argparse
 import math
+import os
+import time
 from collections import deque
 
 import numpy as np
-import torch
 from humanoid.envs import ToddlerbotLegsCfg
 from tqdm import tqdm
 from transforms3d.euler import quat2euler
 
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.robot import HumanoidRobot
+from toddlerbot.utils.misc_utils import precise_sleep
 
 
 class cmd:
@@ -48,7 +49,7 @@ class cmd:
     dyaw = 0.0
 
 
-def run_mujoco(robot, policy, cfg):
+def run_mujoco(robot, policy, cfg, sim_duration=30.0):
     """
     Run the Mujoco simulation using the provided policy and configuration.
 
@@ -69,58 +70,86 @@ def run_mujoco(robot, policy, cfg):
     for _ in range(cfg.env.frame_stack):
         hist_obs.append(np.zeros([1, cfg.env.num_single_obs]))
 
-    count_lowlevel = 0
+    step_idx = 0
+    time_start = time.time()
+    progress_bar = tqdm(
+        total=round(sim_duration / (cfg.control.decimation * cfg.sim.dt)),
+        desc="Running simulation",
+    )
 
-    for _ in tqdm(
-        range(int(cfg.sim_config.sim_duration / cfg.sim.dt)),
-        desc="Simulating...",
-    ):
+    while time.time() - time_start < sim_duration:
+        step_start = time.time()
+
         # Obtain an observation
         q, dq, quat, v, omega, gvec = sim.get_observation()
         q = q[-cfg.env.num_actions :]
         dq = dq[-cfg.env.num_actions :]
 
-        # 1000hz -> 100hz
-        if count_lowlevel % cfg.control.decimation == 0:
-            obs = np.zeros([1, cfg.env.num_single_obs])
-            eu_ang = quat2euler(quat)
-            eu_ang[eu_ang > math.pi] -= 2 * math.pi
+        obs = np.zeros([1, cfg.env.num_single_obs])
+        eu_ang = np.array(quat2euler(quat))
+        eu_ang[eu_ang > math.pi] -= 2 * math.pi
 
-            obs[0, 0] = math.sin(2 * math.pi * count_lowlevel * cfg.sim.dt / 0.64)
-            obs[0, 1] = math.cos(2 * math.pi * count_lowlevel * cfg.sim.dt / 0.64)
-            obs[0, 2] = cmd.vx * cfg.normalization.obs_scales.lin_vel
-            obs[0, 3] = cmd.vy * cfg.normalization.obs_scales.lin_vel
-            obs[0, 4] = cmd.dyaw * cfg.normalization.obs_scales.ang_vel
-            obs[0, 5:17] = q * cfg.normalization.obs_scales.dof_pos
-            obs[0, 17:29] = dq * cfg.normalization.obs_scales.dof_vel
-            obs[0, 29:41] = action
-            obs[0, 41:44] = omega
-            obs[0, 44:47] = eu_ang
+        obs[0, 0] = math.sin(
+            2 * math.pi * step_idx * cfg.sim.dt / cfg.rewards.cycle_time
+        )
+        obs[0, 1] = math.cos(
+            2 * math.pi * step_idx * cfg.sim.dt / cfg.rewards.cycle_time
+        )
+        obs[0, 2] = cmd.vx * cfg.normalization.obs_scales.lin_vel
+        obs[0, 3] = cmd.vy * cfg.normalization.obs_scales.lin_vel
+        obs[0, 4] = cmd.dyaw * cfg.normalization.obs_scales.ang_vel
+        obs[0, 5:17] = q * cfg.normalization.obs_scales.dof_pos
+        obs[0, 17:29] = dq * cfg.normalization.obs_scales.dof_vel
+        obs[0, 29:41] = action
+        obs[0, 41:44] = omega
+        obs[0, 44:47] = eu_ang
 
-            obs = np.clip(
-                obs,
-                -cfg.normalization.clip_observations,
-                cfg.normalization.clip_observations,
-            )
+        obs = np.clip(
+            obs,
+            -cfg.normalization.clip_observations,
+            cfg.normalization.clip_observations,
+        )
 
-            hist_obs.append(obs)
-            hist_obs.popleft()
+        hist_obs.append(obs)
+        hist_obs.popleft()
 
-            policy_input = np.zeros([1, cfg.env.num_observations])
-            for i in range(cfg.env.frame_stack):
-                policy_input[
-                    0, i * cfg.env.num_single_obs : (i + 1) * cfg.env.num_single_obs
-                ] = hist_obs[i][0, :]
-            action[:] = policy(torch.tensor(policy_input))[0].detach().numpy()
-            action = np.clip(
-                action, -cfg.normalization.clip_actions, cfg.normalization.clip_actions
-            )
+        policy_input = np.zeros([1, cfg.env.num_observations])
+        for i in range(cfg.env.frame_stack):
+            policy_input[
+                0, i * cfg.env.num_single_obs : (i + 1) * cfg.env.num_single_obs
+            ] = hist_obs[i][0, :]
 
-            target_q = action * cfg.control.action_scale
+        policy_output = policy(torch.tensor(policy_input, dtype=torch.float32))
+        action[:] = policy_output[0].detach().numpy()
+        action = np.clip(
+            action, -cfg.normalization.clip_actions, cfg.normalization.clip_actions
+        )
+
+        target_q = action * cfg.control.action_scale
 
         sim.set_joint_angles(target_q)
 
-        count_lowlevel += 1
+        step_idx += 1
+        progress_bar.update(1)
+
+        time_until_next_step = cfg.sim.dt * cfg.control.decimation - (
+            time.time() - step_start
+        )
+        if time_until_next_step > 0:
+            precise_sleep(time_until_next_step)
+
+    sim.close()
+
+    exp_name = f"sim2sim_{robot.name}"
+    time_str = time.strftime("%Y%m%d_%H%M%S")
+    exp_folder_path = f"results/{time_str}_{exp_name}"
+
+    os.makedirs(exp_folder_path, exist_ok=True)
+
+    if hasattr(sim, "visualizer") and hasattr(sim.visualizer, "save_recording"):
+        sim.visualizer.save_recording(exp_folder_path)
+    else:
+        print("Current visualizer does not support video writing.")
 
 
 if __name__ == "__main__":
@@ -132,11 +161,16 @@ if __name__ == "__main__":
     parser.add_argument(
         "--load-model", type=str, required=True, help="Run to load from."
     )
-    parser.add_argument("--terrain", action="store_true", help="terrain or plane")
+    parser.add_argument(
+        "--terrain", action="store_true", default=False, help="terrain or plane"
+    )
 
     args = parser.parse_args()
 
     robot = HumanoidRobot(args.robot_name)
+
+    import torch
+
     policy = torch.jit.load(args.load_model)
 
     run_mujoco(robot, policy, ToddlerbotLegsCfg())
