@@ -270,10 +270,19 @@ Press `E` and then `Esc` to check if the menu shows up.
 
 ## Actuation
 
-### Dynamixel
+According to the doc [here](https://emanual.robotis.com/docs/en/software/dynamixel/dynamixel_sdk/faq/#how-to-change-an-usb-latency-in-dynamixel-sdk),
 Set `LATENCY_TIMER = 1` in `/path_to_env/toddlerbot/lib/python3.8/site-packages/dynamixel_sdk/port_handler.py`.
 
-This is according to the doc [here](https://emanual.robotis.com/docs/en/software/dynamixel/dynamixel_sdk/faq/#how-to-change-an-usb-latency-in-dynamixel-sdk). 
+Verify that the latency timer is 1ms.
+```
+cat /sys/bus/usb-serial/devices/ttyUSB0/latency_timer
+```
+If not, change the latency timer to 1ms
+```
+echo 1 | sudo tee /sys/bus/usb-serial/devices/ttyUSB0/latency_timer
+```
+Replace ttyUSB0 with the port connected to the Dynamixel motors.
+
 
 ### MightyZap linear actuators
 

@@ -27,7 +27,7 @@ def find_ports(target):
     elif len(target_ports) == 1:
         return target_ports[0]
     else:
-        return target_ports
+        return sorted(target_ports)
 
 
 def find_last_result_dir(result_dir: str, prefix: str = "") -> Optional[str]:

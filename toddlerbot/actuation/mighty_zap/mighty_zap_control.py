@@ -39,12 +39,12 @@ class MightyZapController(BaseController):
             if not isinstance(self.config.port, list):
                 self.config.port = [self.config.port]
 
-            self.clients = []
-            for port in self.config.port:
+            self.clients = {}
+            for motor_id, port in zip(self.motor_ids, self.config.port):
                 client = MightyZapClient(
                     port, self.config.baudrate, self.config.timeout
                 )
-                self.clients.append(client)
+                self.clients[motor_id] = client
                 log(f"Connected to the port: {port}", header="MightyZap")
 
             # self.executor = ThreadPoolExecutor(max_workers=len(self.clients))
@@ -54,24 +54,28 @@ class MightyZapController(BaseController):
 
     def initialize_motors(self):
         log("Initializing motors...", header="MightyZap")
-        for motor_id, client in zip(self.motor_ids, self.clients):
+        for motor_id, client in self.clients.items():
             client.set_return_delay_time(motor_id, 0)
+            precise_sleep(0.1)
 
         self.set_pos(self.config.init_pos)
         precise_sleep(0.1)
 
     def close_motors(self):
-        for motor_id, client in zip(self.motor_ids, self.clients):
+        for motor_id, client in self.clients.items():
             client.force_enable(motor_id, 0)
+
+        # Need to be serparte from the previous for loop
+        for client in self.clients.values():
             client.close()
 
-    def set_pos(self, pos, interp=True, vel=None, delta_t=None):
-        def set_pos_helper(pos):
-            rounded_pos = [round(p) for p in pos]
-            # log(f"Goal: {rounded_pos}", header="MightyZap", level="debug")
+    def set_pos_single(self, pos, motor_id):
+        self.clients[motor_id].goal_position(motor_id, round(pos))
 
-            for motor_id, p, client in zip(self.motor_ids, rounded_pos, self.clients):
-                client.goal_position(motor_id, p)
+    def set_pos(self, pos, interp=False, vel=None, delta_t=None):
+        def set_pos_helper(pos):
+            for motor_id, pos in zip(self.motor_ids, pos):
+                self.set_pos_single(pos, motor_id)
 
         if interp:
             pos = np.array(pos)
@@ -96,20 +100,18 @@ class MightyZapController(BaseController):
             set_pos_helper(pos)
 
     # @profile()
-    def get_motor_state(self):
+    def get_motor_state_single(self, motor_id):
         # log(f"Start... {time.time()}", header="MightyZap", level="warning")
-
-        state_dict = {}
-        for motor_id, client in zip(self.motor_ids, self.clients):
-            state_dict[motor_id] = JointState(
-                time=time.time(), pos=client.present_position(motor_id)
-            )
-
-        state_dict[0] = JointState(time=time.time(), pos=2000)
-        state_dict[1] = JointState(time=time.time(), pos=2000)
-        state_dict[2] = JointState(time=time.time(), pos=2000)
-
+        joint_state = JointState(
+            time=time.time(), pos=self.clients[motor_id].present_position(motor_id)
+        )
         # log(f"End... {time.time()}", header="MightyZap", level="warning")
+        return joint_state
+
+    def get_motor_state(self):
+        state_dict = {}
+        for motor_id in self.motor_ids:
+            state_dict[motor_id] = self.get_motor_state_single(motor_id)
 
         return state_dict
 
@@ -122,7 +124,7 @@ if __name__ == "__main__":
     motor_ids = [0, 1, 2, 3]
     init_pos = [pos_mid] * len(motor_ids)
     controller = MightyZapController(
-        MightyZapConfig(port=find_ports("CP2102"), init_pos=init_pos),
+        MightyZapConfig(port=find_ports("USB Quad_Serial"), init_pos=init_pos),
         motor_ids=motor_ids,
     )
 
@@ -136,6 +138,7 @@ if __name__ == "__main__":
     time_start = time.time()
     for pos_ref in pos_ref_seq:
         controller.set_pos(pos_ref)
+        precise_sleep(0.02)
 
         while True:
             state_dict = controller.get_motor_state()
@@ -153,12 +156,6 @@ if __name__ == "__main__":
         message += f" Time: {state.time - time_start:.4f}s"
 
         log(message, header="MightyZap", level="debug")
-
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        pass
 
     controller.close_motors()
 

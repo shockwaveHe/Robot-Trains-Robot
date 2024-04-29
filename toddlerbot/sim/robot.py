@@ -210,9 +210,9 @@ class HumanoidRobot:
 
         valid_mask = (
             (d1_values >= 0)
-            & (d1_values <= 4095)
+            & (d1_values <= 4096)
             & (d2_values >= 0)
-            & (d2_values <= 4095)
+            & (d2_values <= 4096)
         )
 
         # Filter out valid data points
@@ -226,10 +226,7 @@ class HumanoidRobot:
         return list(ankle_pos.squeeze())
 
     def ankle_ik(self, ankle_pos):
-        # Implemented based on page 3 of the following paper:
-        # http://link.springer.com/10.1007/978-3-319-93188-3_49
-        # Notations are from the paper.
-
+        # Extracting offset values and converting to NumPy arrays
         offsets = self.offsets
         s1 = np.array(offsets["s1"])
         s2 = np.array([s1[0], -s1[1], s1[2]])
@@ -239,29 +236,36 @@ class HumanoidRobot:
         r = offsets["r"]
         mighty_zap_len = offsets["mighty_zap_len"]
 
-        ankle_pitch = ankle_pos[0]
-        ankle_roll = ankle_pos[1]
+        # Extract ankle pitch and roll from the input
+        ankle_pitch, ankle_roll = ankle_pos
+
+        # Precompute cosine and sine for roll and pitch to use in rotation matrices
+        cos_roll, sin_roll = np.cos(ankle_roll), np.sin(ankle_roll)
+        cos_pitch, sin_pitch = np.cos(ankle_pitch), np.sin(ankle_pitch)
+
+        # Roll rotation matrix
         R_roll = np.array(
-            [
-                [1, 0, 0],
-                [0, np.cos(ankle_roll), -np.sin(ankle_roll)],
-                [0, np.sin(ankle_roll), np.cos(ankle_roll)],
-            ]
+            [[1, 0, 0], [0, cos_roll, -sin_roll], [0, sin_roll, cos_roll]]
         )
+
+        # Pitch rotation matrix
         R_pitch = np.array(
-            [
-                [np.cos(ankle_pitch), 0, np.sin(ankle_pitch)],
-                [0, 1, 0],
-                [-np.sin(ankle_pitch), 0, np.cos(ankle_pitch)],
-            ]
+            [[cos_pitch, 0, sin_pitch], [0, 1, 0], [-sin_pitch, 0, cos_pitch]]
         )
-        R = np.dot(R_roll, R_pitch)
-        n_hat = np.dot(R, nE)
-        f1 = np.dot(R, f1E)
-        f2 = np.dot(R, f2E)
+
+        # Combined rotation matrix
+        R = R_roll @ R_pitch
+
+        # Rotated vectors
+        n_hat = R @ nE
+        f1 = R @ f1E
+        f2 = R @ f2E
+
+        # Delta calculations
         delta1 = s1 - f1
         delta2 = s2 - f2
 
+        # Distance calculations
         d1_raw = np.sqrt(
             np.dot(n_hat, delta1) ** 2
             + (np.linalg.norm(np.cross(n_hat, delta1)) - r) ** 2
@@ -270,9 +274,11 @@ class HumanoidRobot:
             np.dot(n_hat, delta2) ** 2
             + (np.linalg.norm(np.cross(n_hat, delta2)) - r) ** 2
         )
-        # 1.365 for 12Lf
-        d1 = (d1_raw - mighty_zap_len) * 1.365 * 1e5
-        d2 = (d2_raw - mighty_zap_len) * 1.365 * 1e5
+
+        # Final distance adjustments
+        scale_factor = 1.365 * 1e5
+        d1 = (d1_raw - mighty_zap_len) * scale_factor
+        d2 = (d2_raw - mighty_zap_len) * scale_factor
 
         return [d1, d2]
 

@@ -87,6 +87,7 @@ def profile():
                     result = func(*args, **kwargs)
             finally:
                 global_profiler.disable_by_count()  # Disable profiling
+
             return result
 
         return wrapper

@@ -93,10 +93,10 @@ def main():
         sim.run_simulation(headless=True, vis_data=vis_data)
 
     time_start = time.time()
-    duration = 60
+    duration_max = 60
     try:
         step_idx = 0
-        while time.time() - time_start < duration:
+        while time.time() - time_start < duration_max:
             step_start = time.time()
 
             time_ref, joint_angles_ref = joint_angles_traj[
@@ -163,16 +163,20 @@ def main():
         log("Saving config and data...", header="Walking")
         os.makedirs(exp_folder_path, exist_ok=True)
 
-        prof_path = os.path.join(exp_folder_path, "profile_output.lprof")
-        dump_profiling_data(prof_path)
-
         with open(os.path.join(exp_folder_path, "config.json"), "w") as f:
             json.dump(asdict(config), f, indent=4)
+
+        prof_path = os.path.join(exp_folder_path, "profile_output.lprof")
+        dump_profiling_data(prof_path)
 
         if hasattr(sim, "visualizer") and hasattr(sim.visualizer, "save_recording"):
             sim.visualizer.save_recording(exp_folder_path)
         else:
-            print("Current visualizer does not support video writing.")
+            log(
+                "Current visualizer does not support video writing.",
+                header="Walking",
+                level="warning",
+            )
 
         robot_state_traj_data = {
             "zmp_ref_traj": zmp_ref_traj,

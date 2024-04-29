@@ -53,7 +53,8 @@ class DynamixelController(BaseController):
 
     def initialize_motors(self):
         log("Initializing motors...", header="Dynamixel")
-        self.client.sync_write(self.motor_ids, np.zeros(len(self.motor_ids)), 9, 1)
+        # Set the return delay time to 5*2=10us
+        self.client.sync_write(self.motor_ids, np.ones(len(self.motor_ids)) * 5, 9, 1)
         self.client.sync_write(
             self.motor_ids,
             np.ones(len(self.motor_ids)) * self.config.control_mode,
@@ -67,6 +68,8 @@ class DynamixelController(BaseController):
         self.client.sync_write(self.motor_ids, self.config.kFF2, 88, 2)
         self.client.sync_write(self.motor_ids, self.config.kFF1, 90, 2)
         self.client.sync_write(self.motor_ids, self.config.current_limit, 102, 2)
+
+        precise_sleep(0.1)
         self.set_pos(np.zeros(len(self.motor_ids)))
         precise_sleep(0.1)
 
@@ -127,7 +130,7 @@ class DynamixelController(BaseController):
 if __name__ == "__main__":
     controller = DynamixelController(
         DynamixelConfig(
-            port=find_ports("Serial"),
+            port=find_ports("USB <-> Serial Converter"),
             kFF2=[0, 0, 0, 0, 0, 0],
             kFF1=[0, 0, 0, 0, 0, 0],
             kP=[400, 1200, 1200, 400, 1200, 1200],
