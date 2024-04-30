@@ -170,13 +170,13 @@ class RealWorld(BaseSim):
         )
 
         results = {}
-        start_times = {key: time.time() for key in futures.keys()}
+        # start_times = {key: time.time() for key in futures.keys()}
         for future in as_completed(futures.values()):
             for key, f in futures.items():
                 if f is future:
-                    end_time = time.time()
+                    # end_time = time.time()
                     results[key] = future.result()
-                    print(f"Time taken for {key}: {end_time - start_times[key]}")
+                    # log(f"Time taken for {key}: {end_time - start_times[key]}", header="RealWorld", level="debug")
                     break
 
         # Note: MightyZap positions are the lengthsmof linear actuators
@@ -216,7 +216,8 @@ class RealWorld(BaseSim):
                         mighty_zap_state[motor_id].time
                         - self.last_mighty_zap_state[motor_id].time
                     )
-                self.last_mighty_zap_state = mighty_zap_state
+
+        self.last_mighty_zap_state = mighty_zap_state
 
         joint_state_dict = {}
         for name in self.robot.joints_info.keys():

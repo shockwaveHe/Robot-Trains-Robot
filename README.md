@@ -46,59 +46,19 @@ youruser ALL=(ALL) NOPASSWD: /bin/echo, /usr/bin/tee
 ```
 This allows the user `youruser` to run echo and tee without a password. Ensure you replace youruser with the actual user that the script runs under.
 
-#### Build the Real-Time (RT) Kernel
-<!-- Check your JetsonLinux version:
-```
-head -n 1 /etc/nv_tegra_release
-``` -->
-On the host system (a ubuntu 20.04 machine, not Jetson!),
-Go to [Jetson Linux Archive](https://developer.nvidia.com/embedded/jetson-linux-archive), select the version `35.5.0`, and download "Driver Package (BSP) Sources" from the download page.
-
-Extract the .tbz2 file:
-```
-tar -xjf public_sources.tbz2
-```
-
-Extract the kernel source file:
-```
-cd Linux_for_Tegra/source/public
-tar –xjf kernel_src.tbz2
-```
-This extracts the kernel source to the kernel/ subdirectory.
-
-Before you build the kernel you must install the Jetson Linux build utilities. Enter the command:
-```
-sudo apt install build-essential bc libssl-dev
-```
-
-Apply RT patches to the kernel:
-```
-cd kernel
-./kernel-5.10/scripts/rt-patch.sh apply-patches
-```
-
-Enter the following command. The build will take some time:
-```
-cd ..
-mkdir kernel_out
-./nvbuild.sh -o $PWD/kernel_out
-```
-Where `kernel_out` is the directory where the compiled kernel is to be written.
-
-Replace Linux_for_Tegra/rootfs/usr/lib/modules/$(uname -r)/kernel/drivers/gpu/nvgpu/nvgpu.ko with a copy of this file:
-```
-sudo cp -r kernel_out/arch/arm64/boot/dts/nvidia/* ../../kernel/dtb/
-sudo cp kernel_out/arch/arm64/boot/Image ../../kernel/Image
-```
+Install miniforge: Download `Linux aarch64 (arm64)` from [their website](https://github.com/conda-forge/miniforge). Do NOT run the install script with sudo. Answer `yes` to all the options.
 
 ### Linux Systems
+Install pygraphviz according to [these instructions](https://pygraphviz.github.io/documentation/stable/install.html):
+```
+sudo apt-get install graphviz graphviz-dev
+```
+
 ```
 conda create --name toddlerbot python=3.8
 conda activate toddlerbot
 pip install -e .
 ```
-Install pygraphviz according to [these instructions](https://pygraphviz.github.io/documentation/stable/install.html).
-
 #### Setting up Optuna
 Linux:
 ```
@@ -127,7 +87,7 @@ Exit the PostgreSQL prompt.
 #### Install legged_gym
 Follow [these instructions](https://github.com/leggedrobotics/legged_gym).
 
-It's OK to install IssacGym Preview Release 4.
+Install IssacGym Preview Release 4 from [this website](https://developer.nvidia.com/isaac-gym).
 
 Change line 135 in `isaacgym/python/isaacgym/torch_utils.py` from 
 ```
@@ -268,18 +228,28 @@ if shutil.which('meshlabserver') is None:
 
 ## Working with Arduino and ESC boards
 
-### Install Arduino in VSCode on MacOS
+### Install Arduino in VSCode
+
+MacOS
 ```
 brew install arduino-cli
 ```
+
+Linux
+Download the binary [from this website](https://arduino.github.io/arduino-cli/0.35/installation/#latest-release). Put `arduino-cli` in `/usr/bin`.
+
 Install the Arduino VSCode extension.
 
 Open VSCode settings:
 1. Set Arduino Command Path: arduino-cli
-1. Set Arduino Path: /opt/homebrew/bin
+1. Set Arduino Path: /opt/homebrew/bin (MacOS) or /usr/bin (Linux)
 1. Set Use Arduino Cli: yes
 
-Follow this [tutorial](https://learn.adafruit.com/adafruit-feather-m4-can-express/arduino-ide-setup).
+Use the VSCode Adafruit Board Manager to install `Adafruit SAMD Boards`.
+
+Use the VSCode Adafruit Library Manager to install `Adafruit CAN`.
+
+Follow this [tutorial](https://learn.adafruit.com/adafruit-feather-m4-can-express/arduino-ide-setup) if you have other issues.
 
 ```
 screen /dev/tty.usbxxxxx 115200
@@ -329,17 +299,6 @@ Press `E` and then `Esc` to check if the menu shows up.
 
 According to the doc [here](https://emanual.robotis.com/docs/en/software/dynamixel/dynamixel_sdk/faq/#how-to-change-an-usb-latency-in-dynamixel-sdk),
 Set `LATENCY_TIMER = 1` in `/path_to_env/toddlerbot/lib/python3.8/site-packages/dynamixel_sdk/port_handler.py`.
-
-Verify that the latency timer is 1ms.
-```
-cat /sys/bus/usb-serial/devices/ttyUSB0/latency_timer
-```
-If not, change the latency timer to 1ms
-```
-echo 1 | sudo tee /sys/bus/usb-serial/devices/ttyUSB0/latency_timer
-```
-Replace ttyUSB0 with the port connected to the Dynamixel motors.
-
 
 ### MightyZap linear actuators
 

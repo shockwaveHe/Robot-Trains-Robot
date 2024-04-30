@@ -5,8 +5,8 @@ from dataclasses import dataclass
 from typing import List
 
 import numpy as np
-import uvloop
 
+# import uvloop
 from toddlerbot.actuation import BaseController, JointState
 from toddlerbot.actuation.mighty_zap.mighty_zap_client import MightyZapClient
 
