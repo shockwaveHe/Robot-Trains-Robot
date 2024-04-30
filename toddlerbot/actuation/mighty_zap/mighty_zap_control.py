@@ -13,7 +13,7 @@ from toddlerbot.actuation.mighty_zap.mighty_zap_client import MightyZapClient
 # from toddlerbot.actuation.mighty_zap.mighty_zap_client_async import MightyZapClient
 from toddlerbot.utils.file_utils import find_ports
 from toddlerbot.utils.math_utils import interpolate_pos
-from toddlerbot.utils.misc_utils import log, precise_sleep
+from toddlerbot.utils.misc_utils import log, precise_sleep, profile
 
 # Install uvloop globally
 # asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -107,7 +107,7 @@ class MightyZapController(BaseController):
         else:
             set_pos_helper(pos)
 
-    # @profile()
+    @profile()
     def get_motor_state_single(self, motor_id):
         # log(f"Start... {time.time()}", header="MightyZap", level="warning")
         pos = self.clients[motor_id].present_position(motor_id)

@@ -15,9 +15,9 @@ import numpy as np
 import serial
 
 from toddlerbot.actuation import BaseController, JointState
-from toddlerbot.utils.file_utils import find_ports
+from toddlerbot.utils.file_utils import ReadLine, find_ports
 from toddlerbot.utils.math_utils import interpolate_pos
-from toddlerbot.utils.misc_utils import log, precise_sleep
+from toddlerbot.utils.misc_utils import log, precise_sleep, profile
 
 
 @dataclass
@@ -57,6 +57,7 @@ class SunnySkyController(BaseController):
                 baudrate=self.config.baudrate,
                 timeout=self.config.timeout,
             )
+            self.reader = ReadLine(self.client)
             log(f"Connected to the port: {self.config.port}", header="SunnySky")
 
         except Exception:
@@ -70,6 +71,7 @@ class SunnySkyController(BaseController):
     def close_motors(self):
         self.disable_motor(self.motor_ids)
 
+    @profile()
     def send_commands(self, byte_commands):
         """
         Sends a single command to a single motor.
@@ -205,6 +207,7 @@ class SunnySkyController(BaseController):
         else:
             set_pos_helper(pos)
 
+    @profile()
     def get_motor_state(self):
         # log(f"Start... {time.time()}", header="SunnySky", level="warning")
 
@@ -221,7 +224,7 @@ class SunnySkyController(BaseController):
         time_start = time.time()
         while (time.time() - time_start) < self.config.tx_timeout:
             # with self.lock:
-            line = self.client.readline()
+            line = self.reader.readline()
 
             if not line:
                 continue  # Skip empty lines

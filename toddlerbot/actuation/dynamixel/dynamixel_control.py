@@ -10,7 +10,7 @@ from toddlerbot.actuation import BaseController, JointState
 from toddlerbot.actuation.dynamixel.dynamixel_client import DynamixelClient
 from toddlerbot.utils.file_utils import find_ports
 from toddlerbot.utils.math_utils import interpolate_pos
-from toddlerbot.utils.misc_utils import log, precise_sleep
+from toddlerbot.utils.misc_utils import log, precise_sleep, profile
 
 
 @dataclass
@@ -124,12 +124,12 @@ class DynamixelController(BaseController):
         else:
             set_pos_helper(pos)
 
+    @profile()
     def get_motor_state(self):
         # log(f"Start... {time.time()}", header="Dynamixel", level="warning")
 
         state_dict = {}
-        pos_arr = self.client.read_pos()
-        vel_arr = self.client.read_vel()
+        pos_arr, vel_arr = self.client.read_pos_vel()
         pos_arr_driven = (self.config.init_pos - pos_arr) * self.config.gear_ratio
         for i, id in enumerate(self.motor_ids):
             state_dict[id] = JointState(
