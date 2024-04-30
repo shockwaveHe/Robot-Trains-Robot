@@ -107,7 +107,7 @@ class MightyZapController(BaseController):
         else:
             set_pos_helper(pos)
 
-    @profile()
+    # @profile()
     def get_motor_state_single(self, motor_id):
         # log(f"Start... {time.time()}", header="MightyZap", level="warning")
         pos = self.clients[motor_id].present_position(motor_id)

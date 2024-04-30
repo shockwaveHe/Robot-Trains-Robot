@@ -21,7 +21,7 @@ from toddlerbot.visualization.vis_plot import (
 )
 
 
-@profile()
+# @profile()
 def main():
     parser = argparse.ArgumentParser(description="Run the walking simulation.")
     parser.add_argument(

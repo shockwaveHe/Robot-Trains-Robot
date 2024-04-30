@@ -2,6 +2,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import numpy as np
+from transforms3d.quaternions import quat2mat
 
 from toddlerbot.actuation.dynamixel.dynamixel_control import (
     DynamixelConfig,
@@ -103,7 +104,7 @@ class RealWorld(BaseSim):
 
         return negated_joint_angles
 
-    @profile()
+    # @profile()
     def set_joint_angles(self, joint_angles):
         # Directions are tuned to match the assembly of the robot.
         joint_angles = self._negate_joint_angles(joint_angles)
@@ -134,7 +135,7 @@ class RealWorld(BaseSim):
                 self.mighty_zap_controller.set_pos_single, pos, mighty_zap_id
             )
 
-    @profile()
+    # @profile()
     def get_joint_state(self):
         dynamixel_state = sunny_sky_state = mighty_zap_state = None
 
@@ -235,6 +236,12 @@ class RealWorld(BaseSim):
         joint_state_dict = self.get_joint_state()
         q = np.array([joint_state_dict[j].pos for j in joint_ordering])
         dq = np.array([joint_state_dict[j].vel for j in joint_ordering])
+        quat = np.array([0, 0, 0, 1])  # IMU
+        r = quat2mat(quat)
+        v = dq[:3] @ r.T
+        omega = 0.0  # IMU
+        gvec = np.array([0.0, 0.0, -1.0]) @ r.T
+        return (q, dq, quat, v, omega, gvec)
 
     def get_link_pos(self, link_name: str):
         pass

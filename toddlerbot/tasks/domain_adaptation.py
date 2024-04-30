@@ -27,6 +27,7 @@
 #
 # Copyright (c) 2024 Beijing RobotEra TECHNOLOGY CO.,LTD. All rights reserved.
 
+
 import argparse
 import math
 import os
@@ -34,13 +35,13 @@ import time
 from collections import deque
 
 import numpy as np
-from humanoid.envs import ToddlerbotLegsCfg
+import torch
 from tqdm import tqdm
 from transforms3d.euler import quat2euler
 
-from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.robot import HumanoidRobot
-from toddlerbot.utils.misc_utils import precise_sleep
+from toddlerbot.utils.math_utils import resample_trajectory
+from toddlerbot.utils.misc_utils import log, precise_sleep, profile
 
 
 class cmd:
@@ -49,7 +50,55 @@ class cmd:
     dyaw = 0.0
 
 
-def run_mujoco(robot, policy, cfg, sim_duration=30.0):
+class ToddlerbotLegsCfg:
+    class env:
+        frame_stack = 15
+        num_single_obs = 47
+        num_observations = int(frame_stack * num_single_obs)
+        num_actions = 12
+
+    class init_state:
+        default_joint_angles = {  # = target angles [rad] when action = 0.0
+            "left_hip_yaw": 0.0,
+            "left_hip_roll": 0.0,
+            "left_hip_pitch": 0.325,
+            "left_knee": 0.65,
+            "left_ank_pitch": 0.325,
+            "left_ank_roll": 0.0,
+            "right_hip_yaw": 0.0,
+            "right_hip_roll": 0.0,
+            "right_hip_pitch": -0.325,
+            "right_knee": -0.65,
+            "right_ank_pitch": -0.325,
+            "right_ank_roll": 0.0,
+        }
+
+    class control:
+        # action scale: target angle = actionScale * action + defaultAngle
+        action_scale = 0.25
+        # decimation: Number of control action updates @ sim DT per policy DT
+        decimation = 10  # 100hz
+
+    class sim:
+        dt = 0.001  # 1000 Hz
+
+    class normalization:
+        class obs_scales:
+            lin_vel = 2.0
+            ang_vel = 1.0
+            dof_pos = 1.0
+            dof_vel = 0.05
+            quat = 1.0
+
+        clip_observations = 18.0
+        clip_actions = 18.0
+
+    class rewards:
+        cycle_time = 0.64
+
+
+# @profile()
+def main(sim, robot, policy, cfg, sim_duration=3.0):
     """
     Run the Mujoco simulation using the provided policy and configuration.
 
@@ -60,9 +109,32 @@ def run_mujoco(robot, policy, cfg, sim_duration=30.0):
     Returns:
         None
     """
-    sim = MuJoCoSim(robot)
-    sim.run_simulation(headless=True)
+    control_dt = cfg.sim.dt * cfg.control.decimation
+    zero_joint_angles, _ = robot.initialize_joint_angles()
 
+    joint_angles_traj = []
+    joint_angles_traj.append((0.0, zero_joint_angles))
+    joint_angles_traj.append((0.5, cfg.init_state.default_joint_angles))
+    joint_angles_traj = resample_trajectory(
+        joint_angles_traj,
+        desired_interval=control_dt,
+        interp_type="cubic",
+    )
+    step_idx = 0
+    time_start = time.time()
+    while time.time() - time_start < 0.5:
+        step_start = time.time()
+        _, joint_angles = joint_angles_traj[min(step_idx, len(joint_angles_traj) - 1)]
+
+        sim.set_joint_angles(joint_angles)
+
+        step_idx += 1
+
+        time_until_next_step = control_dt - (time.time() - step_start)
+        if time_until_next_step > 0:
+            precise_sleep(time_until_next_step)
+
+    joint_ordering = list(cfg.init_state.default_joint_angles.keys())
     target_q = np.zeros((cfg.env.num_actions))
     action = np.zeros((cfg.env.num_actions))
 
@@ -71,17 +143,16 @@ def run_mujoco(robot, policy, cfg, sim_duration=30.0):
         hist_obs.append(np.zeros([1, cfg.env.num_single_obs]))
 
     step_idx = 0
-    time_start = time.time()
     progress_bar = tqdm(
         total=round(sim_duration / (cfg.control.decimation * cfg.sim.dt)),
-        desc="Running simulation",
+        desc=f"Running {sim.name}",
     )
 
-    while time.time() - time_start < sim_duration:
+    while step_idx < sim_duration / control_dt:
         step_start = time.time()
 
         # Obtain an observation
-        q, dq, quat, v, omega, gvec = sim.get_observation()
+        q, dq, quat, v, omega, gvec = sim.get_observation(joint_ordering)
         q = q[-cfg.env.num_actions :]
         dq = dq[-cfg.env.num_actions :]
 
@@ -127,14 +198,17 @@ def run_mujoco(robot, policy, cfg, sim_duration=30.0):
 
         target_q = action * cfg.control.action_scale
 
-        sim.set_joint_angles(target_q)
+        joint_angles = {
+            joint_name: target_angle
+            for joint_name, target_angle in zip(joint_ordering, target_q)
+        }
+        print(joint_angles)
+        sim.set_joint_angles(joint_angles)
 
         step_idx += 1
         progress_bar.update(1)
 
-        time_until_next_step = cfg.sim.dt * cfg.control.decimation - (
-            time.time() - step_start
-        )
+        time_until_next_step = control_dt - (time.time() - step_start)
         if time_until_next_step > 0:
             precise_sleep(time_until_next_step)
 
@@ -149,7 +223,11 @@ def run_mujoco(robot, policy, cfg, sim_duration=30.0):
     if hasattr(sim, "visualizer") and hasattr(sim.visualizer, "save_recording"):
         sim.visualizer.save_recording(exp_folder_path)
     else:
-        print("Current visualizer does not support video writing.")
+        log(
+            "Current visualizer does not support video writing.",
+            header="Domain",
+            level="warn",
+        )
 
 
 if __name__ == "__main__":
@@ -159,18 +237,34 @@ if __name__ == "__main__":
         "--robot-name", type=str, required=True, help="Name of the robot."
     )
     parser.add_argument(
-        "--load-model", type=str, required=True, help="Run to load from."
+        "--sim",
+        type=str,
+        default="pybullet",
+        help="The simulator to use.",
     )
     parser.add_argument(
-        "--terrain", action="store_true", default=False, help="terrain or plane"
+        "--load-model", type=str, required=True, help="Run to load from."
     )
+    parser.add_argument("--terrain", action="store_true", help="terrain or plane")
 
     args = parser.parse_args()
 
     robot = HumanoidRobot(args.robot_name)
-
-    import torch
-
     policy = torch.jit.load(args.load_model)
 
-    run_mujoco(robot, policy, ToddlerbotLegsCfg())
+    if args.sim == "pybullet":
+        from toddlerbot.sim.pybullet_sim import PyBulletSim
+
+        sim = PyBulletSim(robot)
+    elif args.sim == "mujoco":
+        from toddlerbot.sim.mujoco_sim import MuJoCoSim
+
+        sim = MuJoCoSim(robot)
+    elif args.sim == "real":
+        from toddlerbot.sim.real_world import RealWorld
+
+        sim = RealWorld(robot)
+    else:
+        raise ValueError("Unknown simulator")
+
+    main(sim, robot, policy, ToddlerbotLegsCfg())

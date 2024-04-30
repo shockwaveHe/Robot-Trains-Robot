@@ -71,7 +71,7 @@ class SunnySkyController(BaseController):
     def close_motors(self):
         self.disable_motor(self.motor_ids)
 
-    @profile()
+    # @profile()
     def send_commands(self, byte_commands):
         """
         Sends a single command to a single motor.
@@ -207,7 +207,7 @@ class SunnySkyController(BaseController):
         else:
             set_pos_helper(pos)
 
-    @profile()
+    # @profile()
     def get_motor_state(self):
         # log(f"Start... {time.time()}", header="SunnySky", level="warning")
 

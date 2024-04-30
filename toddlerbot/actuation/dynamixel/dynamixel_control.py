@@ -124,7 +124,7 @@ class DynamixelController(BaseController):
         else:
             set_pos_helper(pos)
 
-    @profile()
+    # @profile()
     def get_motor_state(self):
         # log(f"Start... {time.time()}", header="Dynamixel", level="warning")
 
