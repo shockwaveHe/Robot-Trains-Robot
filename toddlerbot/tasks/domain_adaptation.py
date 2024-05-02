@@ -41,7 +41,13 @@ from transforms3d.euler import quat2euler
 
 from toddlerbot.sim.robot import HumanoidRobot
 from toddlerbot.utils.math_utils import resample_trajectory, round_floats
-from toddlerbot.utils.misc_utils import log, precise_sleep, profile, snake2camel
+from toddlerbot.utils.misc_utils import (
+    dump_profiling_data,
+    log,
+    precise_sleep,
+    profile,
+    snake2camel,
+)
 
 
 class cmd:
@@ -97,8 +103,8 @@ class ToddlerbotLegsCfg:
         cycle_time = 0.64
 
 
-# @profile()
-def main(sim, robot, policy, cfg, sim_duration=60.0):
+@profile()
+def main(sim, robot, policy, cfg, sim_duration=60.0, debug=False):
     """
     Run the Mujoco simulation using the provided policy and configuration.
 
@@ -109,6 +115,7 @@ def main(sim, robot, policy, cfg, sim_duration=60.0):
     Returns:
         None
     """
+    device = next(policy.parameters()).device
     name = f"sim2{sim.name}"
     if hasattr(sim, "run_simulation"):
         sim.run_simulation(headless=True)
@@ -134,8 +141,6 @@ def main(sim, robot, policy, cfg, sim_duration=60.0):
 
         sim.set_joint_angles(joint_angles)
 
-        sim.get_joint_state()
-
         step_idx += 1
 
         time_until_next_step = control_dt - (time.time() - step_start)
@@ -157,90 +162,108 @@ def main(sim, robot, policy, cfg, sim_duration=60.0):
         desc=f"Running {sim.name}",
     )
 
-    while step_idx < sim_duration / control_dt:
-        step_start = time.time()
+    try:
+        while step_idx < sim_duration / control_dt:
+            step_start = time.time()
 
-        # Obtain an observation
-        q_obs, dq, quat, omega = sim.get_observation(joint_ordering)
-        q = q_obs - default_q
-        log(f"q: {round_floats(q, 3)}", header=snake2camel(name), level="debug")
-        log(f"dq: {round_floats(dq, 3)}", header=snake2camel(name), level="debug")
-        log(f"quat: {quat}", header=snake2camel(name), level="debug")
-        log(f"omega: {omega}", header=snake2camel(name), level="debug")
+            # Obtain an observation
+            q_obs, dq, quat, omega = sim.get_observation(joint_ordering)
+            q = q_obs - default_q
+            if debug:
+                log(f"q: {round_floats(q, 3)}", header=snake2camel(name), level="debug")
+                log(
+                    f"dq: {round_floats(dq, 3)}",
+                    header=snake2camel(name),
+                    level="debug",
+                )
+                log(f"quat: {quat}", header=snake2camel(name), level="debug")
+                log(f"omega: {omega}", header=snake2camel(name), level="debug")
 
-        obs = np.zeros([1, cfg.env.num_single_obs])
-        eu_ang = np.array(quat2euler(quat))
-        eu_ang[eu_ang > math.pi] -= 2 * math.pi
+            obs = np.zeros([1, cfg.env.num_single_obs])
+            eu_ang = np.array(quat2euler(quat))
+            eu_ang[eu_ang > math.pi] -= 2 * math.pi
 
-        obs[0, 0] = math.sin(
-            2 * math.pi * step_idx * cfg.sim.dt / cfg.rewards.cycle_time
-        )
-        obs[0, 1] = math.cos(
-            2 * math.pi * step_idx * cfg.sim.dt / cfg.rewards.cycle_time
-        )
-        obs[0, 2] = cmd.vx * cfg.normalization.obs_scales.lin_vel
-        obs[0, 3] = cmd.vy * cfg.normalization.obs_scales.lin_vel
-        obs[0, 4] = cmd.dyaw * cfg.normalization.obs_scales.ang_vel
-        obs[0, 5:17] = q * cfg.normalization.obs_scales.dof_pos
-        obs[0, 17:29] = dq * cfg.normalization.obs_scales.dof_vel
-        obs[0, 29:41] = action
-        obs[0, 41:44] = omega
-        obs[0, 44:47] = eu_ang
+            obs[0, 0] = math.sin(
+                2 * math.pi * step_idx * cfg.sim.dt / cfg.rewards.cycle_time
+            )
+            obs[0, 1] = math.cos(
+                2 * math.pi * step_idx * cfg.sim.dt / cfg.rewards.cycle_time
+            )
+            obs[0, 2] = cmd.vx * cfg.normalization.obs_scales.lin_vel
+            obs[0, 3] = cmd.vy * cfg.normalization.obs_scales.lin_vel
+            obs[0, 4] = cmd.dyaw * cfg.normalization.obs_scales.ang_vel
+            obs[0, 5:17] = q * cfg.normalization.obs_scales.dof_pos
+            obs[0, 17:29] = dq * cfg.normalization.obs_scales.dof_vel
+            obs[0, 29:41] = action
+            obs[0, 41:44] = omega
+            obs[0, 44:47] = eu_ang
 
-        obs = np.clip(
-            obs,
-            -cfg.normalization.clip_observations,
-            cfg.normalization.clip_observations,
-        )
+            obs = np.clip(
+                obs,
+                -cfg.normalization.clip_observations,
+                cfg.normalization.clip_observations,
+            )
 
-        hist_obs.append(obs)
-        hist_obs.popleft()
+            hist_obs.append(obs)
+            hist_obs.popleft()
 
-        policy_input = np.zeros([1, cfg.env.num_observations])
-        for i in range(cfg.env.frame_stack):
-            policy_input[
-                0, i * cfg.env.num_single_obs : (i + 1) * cfg.env.num_single_obs
-            ] = hist_obs[i][0, :]
+            policy_input = np.zeros([1, cfg.env.num_observations])
+            for i in range(cfg.env.frame_stack):
+                policy_input[
+                    0, i * cfg.env.num_single_obs : (i + 1) * cfg.env.num_single_obs
+                ] = hist_obs[i][0, :]
 
-        policy_output = policy(torch.tensor(policy_input, dtype=torch.float32))
-        action[:] = policy_output[0].detach().numpy()
-        action = np.clip(
-            action, -cfg.normalization.clip_actions, cfg.normalization.clip_actions
-        )
+            policy_input_tensor = torch.tensor(
+                policy_input, dtype=torch.float32, device=device
+            )
+            policy_output = policy(policy_input_tensor)
+            action[:] = policy_output[0].detach().cpu().numpy()
+            action = np.clip(
+                action, -cfg.normalization.clip_actions, cfg.normalization.clip_actions
+            )
 
-        action_scaled = action * cfg.control.action_scale
-        target_q = action_scaled + default_q
+            action_scaled = action * cfg.control.action_scale
+            target_q = action_scaled + default_q
 
-        joint_angles = {
-            joint_name: target_angle
-            for joint_name, target_angle in zip(joint_ordering, target_q)
-        }
-        log(str(joint_angles), header=snake2camel(name), level="debug")
-        sim.set_joint_angles(joint_angles)
+            joint_angles = {
+                joint_name: target_angle
+                for joint_name, target_angle in zip(joint_ordering, target_q)
+            }
+            sim.set_joint_angles(joint_angles)
 
-        step_idx += 1
-        progress_bar.update(1)
+            if debug:
+                log(str(joint_angles), header=snake2camel(name), level="debug")
 
-        time_until_next_step = control_dt - (time.time() - step_start)
-        if time_until_next_step > 0:
-            precise_sleep(time_until_next_step)
+            step_idx += 1
+            progress_bar.update(1)
 
-    sim.close()
+            time_until_next_step = control_dt - (time.time() - step_start)
+            if time_until_next_step > 0:
+                precise_sleep(time_until_next_step)
 
-    exp_name = f"sim2{sim.name}_{robot.name}"
-    time_str = time.strftime("%Y%m%d_%H%M%S")
-    exp_folder_path = f"results/{time_str}_{exp_name}"
+    except KeyboardInterrupt:
+        log("KeyboardInterrupt recieved. Closing...", header=snake2camel(name))
 
-    os.makedirs(exp_folder_path, exist_ok=True)
+    finally:
+        sim.close()
 
-    if hasattr(sim, "visualizer") and hasattr(sim.visualizer, "save_recording"):
-        sim.visualizer.save_recording(exp_folder_path)
-    else:
-        log(
-            "Current visualizer does not support video writing.",
-            header=snake2camel(name),
-            level="warning",
-        )
+        exp_name = f"sim2{sim.name}_{robot.name}"
+        time_str = time.strftime("%Y%m%d_%H%M%S")
+        exp_folder_path = f"results/{time_str}_{exp_name}"
+
+        os.makedirs(exp_folder_path, exist_ok=True)
+
+        prof_path = os.path.join(exp_folder_path, "profile_output.lprof")
+        dump_profiling_data(prof_path)
+
+        if hasattr(sim, "visualizer") and hasattr(sim.visualizer, "save_recording"):
+            sim.visualizer.save_recording(exp_folder_path)
+        else:
+            log(
+                "Current visualizer does not support video writing.",
+                header=snake2camel(name),
+                level="warning",
+            )
 
 
 if __name__ == "__main__":
@@ -258,12 +281,20 @@ if __name__ == "__main__":
     parser.add_argument(
         "--load-model", type=str, required=True, help="Run to load from."
     )
+    parser.add_argument(
+        "--use-cpu",
+        action="store_true",
+        default=False,
+        help="Use CPU or CUDA to run the policy.",
+    )
     parser.add_argument("--terrain", action="store_true", help="terrain or plane")
 
     args = parser.parse_args()
 
     robot = HumanoidRobot(args.robot_name)
     policy = torch.jit.load(args.load_model)
+    if not args.use_cpu:
+        policy = policy.cuda()
 
     if args.sim == "pybullet":
         from toddlerbot.sim.pybullet_sim import PyBulletSim
