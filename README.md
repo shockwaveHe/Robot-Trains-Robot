@@ -24,7 +24,13 @@ Recommended VSCode Extenstions:
 - Add yourself to the correct user group [doc](https://github.com/NVIDIA/jetson-gpio)
 - Be sure to modify the address of rules: e.g
 ```bash
-sudo cp miniforge3/envs/microservo/lib/python3.9/site-packages/Jetson/GPIO/99-gpio.rules /etc/udev/rules.d/
+sudo groupadd -f -r gpio
+sudo usermod -a -G gpio $USER
+sudo chown root.gpio /dev/gpiochip0
+sudo chmod 660 /dev/gpiochip0
+
+sudo cp ~/miniforge3/envs/toddlerbot/lib/python3.8/site-packages/Jetson/GPIO/99-gpio.rules /etc/udev/rules.d/
+sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
 
 - also add yourself to i2c and dialout group.

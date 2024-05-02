@@ -2,6 +2,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import numpy as np
+from transforms3d.euler import euler2quat
 from transforms3d.quaternions import quat2mat
 
 from toddlerbot.actuation.dynamixel.dynamixel_control import (
@@ -16,6 +17,7 @@ from toddlerbot.actuation.sunny_sky.sunny_sky_control import (
     SunnySkyConfig,
     SunnySkyController,
 )
+from toddlerbot.sensing.IMU import IMU
 from toddlerbot.sim import BaseSim
 from toddlerbot.sim.robot import HumanoidRobot
 from toddlerbot.utils.file_utils import find_ports
@@ -38,6 +40,7 @@ class RealWorld(BaseSim):
         ]
 
         self._initialize_motors()
+        self._initialize_sensors()
 
     def _initialize_motors(self):
         dynamixel_port = find_ports("USB <-> Serial Converter")
@@ -103,6 +106,9 @@ class RealWorld(BaseSim):
                 negated_joint_angles[name] = angle
 
         return negated_joint_angles
+
+    def _initialize_sensors(self):
+        self.imu = IMU(default_pose=euler2quat(-np.pi / 2, 0, 0))
 
     # @profile()
     def set_joint_angles(self, joint_angles):
@@ -230,18 +236,18 @@ class RealWorld(BaseSim):
                 joint_state_dict[joint_name].pos *= -1
                 joint_state_dict[joint_name].vel *= -1
 
+        log(f"Joint states: {joint_state_dict}", header="RealWorld", level="debug")
+
         return joint_state_dict
 
     def get_observation(self, joint_ordering):
         joint_state_dict = self.get_joint_state()
         q = np.array([joint_state_dict[j].pos for j in joint_ordering])
-        dq = np.array([joint_state_dict[j].vel for j in joint_ordering])
-        quat = np.array([0, 0, 0, 1])  # IMU
-        r = quat2mat(quat)
-        v = dq[:3] @ r.T
-        omega = 0.0  # IMU
-        gvec = np.array([0.0, 0.0, -1.0]) @ r.T
-        return (q, dq, quat, v, omega, gvec)
+        dq = np.zeros_like(q)
+        # dq = np.array([joint_state_dict[j].vel for j in joint_ordering])
+        quat = self.imu.get_quaternion()
+        omega = self.imu.get_angular_velocity()
+        return (q, dq, quat, omega)
 
     def get_link_pos(self, link_name: str):
         pass

@@ -40,7 +40,7 @@ from tqdm import tqdm
 from transforms3d.euler import quat2euler
 
 from toddlerbot.sim.robot import HumanoidRobot
-from toddlerbot.utils.math_utils import resample_trajectory
+from toddlerbot.utils.math_utils import resample_trajectory, round_floats
 from toddlerbot.utils.misc_utils import log, precise_sleep, profile
 
 
@@ -98,7 +98,7 @@ class ToddlerbotLegsCfg:
 
 
 # @profile()
-def main(sim, robot, policy, cfg, sim_duration=3.0):
+def main(sim, robot, policy, cfg, sim_duration=30.0):
     """
     Run the Mujoco simulation using the provided policy and configuration.
 
@@ -135,6 +135,7 @@ def main(sim, robot, policy, cfg, sim_duration=3.0):
             precise_sleep(time_until_next_step)
 
     joint_ordering = list(cfg.init_state.default_joint_angles.keys())
+    default_q = np.array(list(cfg.init_state.default_joint_angles.values()))
     target_q = np.zeros((cfg.env.num_actions))
     action = np.zeros((cfg.env.num_actions))
 
@@ -152,9 +153,12 @@ def main(sim, robot, policy, cfg, sim_duration=3.0):
         step_start = time.time()
 
         # Obtain an observation
-        q, dq, quat, v, omega, gvec = sim.get_observation(joint_ordering)
-        q = q[-cfg.env.num_actions :]
-        dq = dq[-cfg.env.num_actions :]
+        q_obs, dq, quat, omega = sim.get_observation(joint_ordering)
+        q = q_obs - default_q
+        log(f"q: {round_floats(q, 3)}", header="Sim2Real", level="debug")
+        log(f"dq: {round_floats(dq, 3)}", header="Sim2Real", level="debug")
+        log(f"quat: {quat}", header="Sim2Real", level="debug")
+        log(f"omega: {omega}", header="Sim2Real", level="debug")
 
         obs = np.zeros([1, cfg.env.num_single_obs])
         eu_ang = np.array(quat2euler(quat))
@@ -196,13 +200,14 @@ def main(sim, robot, policy, cfg, sim_duration=3.0):
             action, -cfg.normalization.clip_actions, cfg.normalization.clip_actions
         )
 
-        target_q = action * cfg.control.action_scale
+        action_scaled = action * cfg.control.action_scale
+        target_q = action_scaled + default_q
 
         joint_angles = {
             joint_name: target_angle
             for joint_name, target_angle in zip(joint_ordering, target_q)
         }
-        print(joint_angles)
+        log(str(joint_angles), header="Sim2Real", level="debug")
         sim.set_joint_angles(joint_angles)
 
         step_idx += 1

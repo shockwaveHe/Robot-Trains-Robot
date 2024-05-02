@@ -43,9 +43,31 @@ struct MotorCommand
     byte packet_buffer[8];
 };
 
+const int buffer_size = 20;
 struct MotorState
 {
     float p, v, t, vb;
+    float velocity_buffer[buffer_size];
+    uint8_t buffer_index = 0;
+    bool buffer_full = false;
+
+    float calculateMovingAverage(float new_velocity)
+    {
+        velocity_buffer[buffer_index++] = new_velocity;
+        if (buffer_index >= buffer_size)
+        {
+            buffer_index = 0;
+            buffer_full = true;
+        }
+
+        float sum = 0.0;
+        int count = buffer_full ? buffer_size : buffer_index;
+        for (int i = 0; i < count; i++)
+        {
+            sum += velocity_buffer[i];
+        }
+        return sum / count;
+    }
 };
 
 MotorCommand motor_commands[num_can_ids];
@@ -109,20 +131,31 @@ void setup()
         delay(10);
 
     setupCAN();
-
     testCAN();
 
     current_micros = micros(); // Start timer in microseconds
 
     for (int i = 0; i < num_can_ids; i++)
     {
-        can_ids[i] = i + 1; // Assuming CAN IDs start from 1
+        // Assuming CAN IDs start from 1
+        can_ids[i] = i + 1;
+        // Initialize buffer
+        memset(motor_states[i].velocity_buffer, 0, sizeof(motor_states[i].velocity_buffer));
     }
 }
 
 void loop()
 {
     recvWithStartEndMarkers();
+
+    // Serial.print(">tx_data:");
+    // for (int i = 0; i < num_can_ids; i++)
+    // {
+    //     uint8_t id = can_ids[i];
+    //     int index = findMotorIndex(id);
+    //     Serial.print(String(id) + "," + String(motor_states[index].p) + "," + String(motor_states[index].v) + "," + String(motor_states[index].t) + "," + String(motor_states[index].vb) + ";");
+    // }
+    // Serial.println();
 
     if (new_data == true)
     {
@@ -194,11 +227,10 @@ void loop()
     readPacket();
 
     // Loop statistics
-    // float loopTime = (micros() - currentMicros) / 1000000.0;
-    // currentMicros = micros(); // Get the current time in microseconds
-    // Serial.print(">LoopFrequency[kHz]:");
-    // Serial.println(1.0 / loopTime / 1000.0);
-    // delay(100);
+    // float loopTime = (micros() - current_micros) / 1000000.0;
+    // current_micros = micros(); // Get the current time in microseconds
+    // Serial.print(">LoopFrequency[Hz]:");
+    // Serial.println(1.0 / loopTime);
 }
 
 // ==================
@@ -403,20 +435,21 @@ void encodePacket(byte packet[8], MotorCommand &command)
  */
 void decodePacket(byte packet[8], MotorState &state)
 {
-    // Decoding the packet from bin
     uint8_t id = packet[0];
     uint16_t p_raw = (packet[1] << 8) | packet[2];
     uint16_t v_raw = (packet[3] << 4) | (packet[4] >> 4);
     uint16_t t_raw = ((packet[4] & 0x0F) << 8) | packet[5];
     uint8_t vb_raw = packet[6];
 
-    int16_t signed_t_raw = (int16_t)t_raw; // Cast to signed 16-bit integer needed for arithmetic
+    int16_t signed_t_raw = (int16_t)t_raw;
     signed_t_raw += (abs(signed_t_raw - last_t_raw) > 4000) ? ((signed_t_raw < last_t_raw) ? 4096 : -4096) : 0;
     last_t_raw = signed_t_raw;
 
     state.p = uint_to_float(p_raw, P_MIN, P_MAX, 16);
-    state.v = uint_to_float(v_raw, V_MIN, V_MAX, 12);
-    state.t = int_to_float_overflow(signed_t_raw, I_MIN, I_MAX, 12); // Special treatment for current, it might go out of range and wrap around.
+    float raw_velocity = uint_to_float(v_raw, V_MIN, V_MAX, 12);
+    state.v = state.calculateMovingAverage(raw_velocity);
+    // Special case for current since it might go out of bounds
+    state.t = int_to_float_overflow(signed_t_raw, I_MIN, I_MAX, 12);
     state.vb = uint_to_float(vb_raw, VB_MIN, VB_MAX, 8);
 }
 
