@@ -16,6 +16,7 @@ class WalkingConfig:
     control_cost_R_val: float = 1e-6
     target_pose_init: list = field(default_factory=lambda: [0.2, 0.0, 0.785])
     foot_step_height: float = 0.04
+    squat_time: float = 1.0
     squat_height: float = 0.03
     y_offset_zmp: float = 0.06
     filter_dynamics: bool = False

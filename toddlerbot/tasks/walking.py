@@ -78,7 +78,7 @@ class Walking:
         self.joint_angles_traj.append((0.5, self.initial_joint_angles))
         while len(self.com_ref_traj) > 0:
             if self.idx == 0:
-                t = 1.0
+                t = self.config.squat_time + 0.5
             else:
                 t = self.joint_angles_traj[-1][0] + self.config.control_dt
 

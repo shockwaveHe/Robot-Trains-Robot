@@ -10,7 +10,7 @@
 # DOC_ID_LIST="d2a8be5ce536cd2e18740efa"
 # ASSEMBLY_LIST="4R_body"
 
-##### toddlerbot_LEGS #####
+##### toddlerbot_legs #####
 ROBOT_NAME="toddlerbot_legs"
 BODY_NAME="no_body"
 LEG_NAME="3R+RH5_leg"

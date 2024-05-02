@@ -377,6 +377,12 @@ def process_mjcf_file(root, config, urdf_path):
 
 
 def process_mjcf_files(robot_name):
+    cache_file_path = os.path.join(
+        "toddlerbot", "robot_descriptions", robot_name, f"{robot_name}_data.pkl"
+    )
+    if os.path.exists(cache_file_path):
+        os.remove(cache_file_path)
+
     robot = HumanoidRobot(robot_name)
 
     robot_dir = os.path.join("toddlerbot", "robot_descriptions", robot_name)

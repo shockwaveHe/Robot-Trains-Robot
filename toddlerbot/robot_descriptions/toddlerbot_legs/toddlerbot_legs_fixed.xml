@@ -50,22 +50,22 @@
   </asset>
   <worldbody>
     <site name="torso" fromto="0.01 0 0.4 -0.01 0 0.4" type="cylinder" size="0.005 0.005 1" group="3" />
-    <geom rgba="0.602652 0.747582 0.822925 1" mesh="body_link_visual" class="visual" />
-    <geom rgba="0.602652 0.747582 0.822925 1" mesh="body_link_collision" class="collision" />
-    <body name="hip_yaw_link" pos="-0.0064 0.034 0.2855" quat="1 0 0 0">
+    <geom rgba="0.611917 0.793202 0.898614 1" mesh="body_link_visual" class="visual" />
+    <geom rgba="0.611917 0.793202 0.898614 1" mesh="body_link_collision" class="collision" />
+    <body name="hip_yaw_link" pos="-0.0094 0.034 0.285" quat="1 0 0 0">
       <inertial pos="0 0 -0.00983905" quat="0 0.707107 0 0.707107" mass="0.00902588" diaginertia="3.87214e-06 3.84085e-06 1.32305e-06" />
       <joint name="left_hip_yaw" pos="0 0 0" axis="0 0 1" limited="true" range="-0.785398 0.785398" damping="0.077" armature="0.0034" />
       <geom rgba="0.615686 0.811765 0.929412 1" mesh="left_hip_yaw_link_visual" class="visual" />
       <body name="hip_roll_link" pos="0.019 0 -0.026" quat="0 0.707107 0 0.707107">
-        <inertial pos="-0.0120002 -0.000495888 -0.018504" quat="0.654458 0.267712 0.652088 0.27349" mass="0.0980124" diaginertia="2.78674e-05 2.68492e-05 2.02212e-05" />
+        <inertial pos="-0.0119998 -0.000495981 -0.0185041" quat="-0.273471 0.652073 -0.267709 0.654482" mass="0.0980124" diaginertia="2.78674e-05 2.68492e-05 2.02212e-05" />
         <joint name="left_hip_roll" pos="0 0 0" axis="0 0 1" limited="true" range="-0.785398 1.5708" damping="3.122" armature="0.1" />
         <geom rgba="0.950187 0.706789 0.0616121 1" mesh="left_hip_roll_link_visual" class="visual" />
         <geom rgba="0.950187 0.706789 0.0616121 1" mesh="left_hip_roll_link_collision" class="collision" />
         <body name="left_hip_pitch_link" pos="-0.024 -0.019 -0.019" quat="0.5 -0.5 0.5 0.5">
-          <inertial pos="-0.000219373 0.0528645 0.0147109" quat="0.670209 0.691924 0.196498 -0.182892" mass="0.0935391" diaginertia="6.26008e-05 6.22249e-05 2.14423e-05" />
+          <inertial pos="-0.000219203 0.0528672 0.0146752" quat="0.675957 0.69839 0.172666 -0.15975" mass="0.0936117" diaginertia="6.26646e-05 6.22569e-05 2.15273e-05" />
           <joint name="left_hip_pitch" pos="0 0 0" axis="0 0 1" limited="true" range="-1.5708 1.5708" damping="1.286" armature="0.0032" />
-          <geom rgba="0.616541 0.807276 0.921717 1" mesh="left_hip_pitch_link_visual" class="visual" />
-          <geom rgba="0.616541 0.807276 0.921717 1" mesh="left_hip_pitch_link_collision" class="collision" />
+          <geom rgba="0.616541 0.807279 0.921723 1" mesh="left_hip_pitch_link_visual" class="visual" />
+          <geom rgba="0.616541 0.807279 0.921723 1" mesh="left_hip_pitch_link_collision" class="collision" />
           <body name="left_calf_link" pos="0 0.096 0.0274" quat="0 1 0 0">
             <inertial pos="-0.0038993 -0.0424193 0.00818649" quat="0.707628 0.706515 -0.00993164 -0.00118734" mass="0.0157824" diaginertia="1.47483e-05 1.4045e-05 1.89387e-06" />
             <joint name="left_knee" pos="0 0 0" axis="0 0 1" limited="true" range="0 1.5708" damping="1.142" armature="0.0" />
@@ -146,21 +146,21 @@
         </body>
       </body>
     </body>
-    <body name="hip_yaw_link_2" pos="-0.0064 -0.034 0.2855" quat="1 0 0 0">
+    <body name="hip_yaw_link_2" pos="-0.0094 -0.034 0.285" quat="1 0 0 0">
       <inertial pos="0 0 -0.00983905" quat="0 0.707107 0 0.707107" mass="0.00902588" diaginertia="3.87214e-06 3.84085e-06 1.32305e-06" />
       <joint name="right_hip_yaw" pos="0 0 0" axis="0 0 1" limited="true" range="-0.785398 0.785398" damping="0.077" armature="0.0034" />
       <geom rgba="0.615686 0.811765 0.929412 1" mesh="right_hip_yaw_link_visual" class="visual" />
-      <body name="hip_roll_link_2" pos="0.019 0 -0.026" quat="0.707107 0 0.707107 0">
-        <inertial pos="0.0120002 -0.000495888 -0.019496" quat="0.27349 0.652088 0.267712 0.654458" mass="0.0980124" diaginertia="2.78674e-05 2.68492e-05 2.02212e-05" />
+      <body name="hip_roll_link_2" pos="0.019 0 -0.026" quat="0 0.707107 0 0.707107">
+        <inertial pos="-0.0119998 -0.000495981 -0.0185041" quat="-0.273471 0.652073 -0.267709 0.654482" mass="0.0980124" diaginertia="2.78674e-05 2.68492e-05 2.02212e-05" />
         <joint name="right_hip_roll" pos="0 0 0" axis="0 0 1" limited="true" range="-1.5708 0.785398" damping="3.122" armature="0.1" />
         <geom rgba="0.950187 0.706789 0.0616121 1" mesh="right_hip_roll_link_visual" class="visual" />
         <geom rgba="0.950187 0.706789 0.0616121 1" mesh="right_hip_roll_link_collision" class="collision" />
-        <body name="right_hip_pitch_link" pos="0.024 -0.019 -0.019" quat="0.5 -0.5 -0.5 -0.5">
-          <inertial pos="-1.30438e-05 0.0528645 0.0147109" quat="0.694626 0.71927 0.0065765 -0.0101395" mass="0.0935391" diaginertia="6.24972e-05 6.23298e-05 2.145e-05" />
+        <body name="right_hip_pitch_link" pos="-0.024 -0.019 -0.019" quat="0.5 -0.5 -0.5 -0.5">
+          <inertial pos="-1.30337e-05 -0.0528672 0.0233248" quat="0.694519 0.719422 -0.00407443 0.00772147" mass="0.0936117" diaginertia="6.25764e-05 6.23465e-05 2.15349e-05" />
           <joint name="right_hip_pitch" pos="0 0 0" axis="0 0 1" limited="true" range="-1.5708 1.5708" damping="1.286" armature="0.0032" />
-          <geom rgba="0.616541 0.807276 0.921717 1" mesh="right_hip_pitch_link_visual" class="visual" />
-          <geom rgba="0.616541 0.807276 0.921717 1" mesh="right_hip_pitch_link_collision" class="collision" />
-          <body name="right_calf_link" pos="0 0.096 0.0274" quat="0 0 -1 0">
+          <geom rgba="0.616541 0.807279 0.921723 1" mesh="right_hip_pitch_link_visual" class="visual" />
+          <geom rgba="0.616541 0.807279 0.921723 1" mesh="right_hip_pitch_link_collision" class="collision" />
+          <body name="right_calf_link" pos="0 -0.096 0.0106" quat="0 0 0 1">
             <inertial pos="-0.00389996 0.0424094 0.00818387" quat="0.706581 0.70756 0.0011042 0.0100571" mass="0.0157797" diaginertia="1.47387e-05 1.40359e-05 1.89319e-06" />
             <joint name="right_knee" pos="0 0 0" axis="0 0 1" limited="true" range="-1.5708 0" damping="1.142" armature="0.0" />
             <geom rgba="0.551838 0.729737 0.876696 1" mesh="right_calf_link_visual" class="visual" />
@@ -184,7 +184,7 @@
                     <geom rgba="0.927718 0.610493 0.218477 1" mesh="right_12lf_rod_end_visual" class="visual" />
                   </body>
                 </body>
-                <body name="ank_rr_link_4" pos="0.018 0.016 -0.0206" quat="0 0.00933097 -0.999956 0">
+                <body name="ank_rr_link_4" pos="0.018 0.016 -0.0206" quat="0 -0.00933097 0.999956 0">
                   <inertial pos="0 -0.00614477 0" quat="0.5 0.5 -0.5 0.5" mass="0.000425071" diaginertia="1.25044e-08 8.78432e-09 8.03017e-09" />
                   <joint name="right_ank_R12" pos="0 0 0" axis="0 0 1" limited="true" range="-1.5708 1.5708" />
                   <geom rgba="0.615686 0.811765 0.929412 1" mesh="right_ank_rr_link_2_visual" class="visual" />
