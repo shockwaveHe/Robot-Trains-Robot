@@ -8,7 +8,6 @@ from dataclasses import asdict
 import matplotlib.pyplot as plt
 import numpy as np
 
-from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.sim.robot import HumanoidRobot
 from toddlerbot.tasks.walking import Walking
 from toddlerbot.tasks.walking_configs import walking_configs
@@ -63,6 +62,8 @@ def main():
 
         sim = MuJoCoSim(robot)
     elif args.sim == "real":
+        from toddlerbot.sim.real_world import RealWorld
+
         sim = RealWorld(robot)
     else:
         raise ValueError("Unknown simulator")

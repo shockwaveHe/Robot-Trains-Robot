@@ -22,7 +22,7 @@ from toddlerbot.sim import BaseSim
 from toddlerbot.sim.robot import HumanoidRobot
 from toddlerbot.utils.file_utils import find_ports
 from toddlerbot.utils.math_utils import round_floats
-from toddlerbot.utils.misc_utils import log, profile
+from toddlerbot.utils.misc_utils import log, profile, snake2camel
 
 
 class RealWorld(BaseSim):
@@ -173,7 +173,7 @@ class RealWorld(BaseSim):
                 if f is future:
                     # end_time = time.time()
                     results[key] = future.result()
-                    # log(f"Time taken for {key}: {end_time - start_times[key]}", header="RealWorld", level="debug")
+                    # log(f"Time taken for {key}: {end_time - start_times[key]}", header=snake2camel(self.name), level="debug")
                     break
 
         # Note: MightyZap positions are the lengthsmof linear actuators
@@ -194,7 +194,7 @@ class RealWorld(BaseSim):
                 else:
                     log(
                         "The MightyZap position is negative",
-                        header="RealWorld",
+                        header=snake2camel(self.name),
                         level="warning",
                     )
                     mighty_zap_pos.append(
@@ -236,7 +236,11 @@ class RealWorld(BaseSim):
                 joint_state_dict[joint_name].pos *= -1
                 joint_state_dict[joint_name].vel *= -1
 
-        log(f"Joint states: {joint_state_dict}", header="RealWorld", level="debug")
+        log(
+            f"Joint states: {joint_state_dict}",
+            header=snake2camel(self.name),
+            level="debug",
+        )
 
         return joint_state_dict
 
@@ -276,6 +280,10 @@ if __name__ == "__main__":
         while True:
             sim.set_joint_angles(initial_joint_angles)
             joint_state_dict = sim.get_joint_state()
-            log(f"Joint states: {joint_state_dict}", header="RealWorld", level="debug")
+            log(
+                f"Joint states: {joint_state_dict}",
+                header=snake2camel(sim.name),
+                level="debug",
+            )
     finally:
         sim.close()

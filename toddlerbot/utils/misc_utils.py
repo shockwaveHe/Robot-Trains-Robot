@@ -102,3 +102,31 @@ def dump_profiling_data(prof_path="profile_output.lprof"):
     subprocess.run(f"python -m line_profiler {prof_path} > {txt_path}", shell=True)
 
     log(f"Profile results saved to {txt_path}.", header="Profiler")
+
+
+def snake2camel(snake_str):
+    """
+    Convert a snake_case string to CamelCase.
+
+    Parameters:
+    - snake_str: The snake_case string to convert.
+
+    Returns:
+    - The CamelCase string.
+    """
+    return "".join(word.title() for word in snake_str.split("_"))
+
+
+def camel2snake(camel_str):
+    """
+    Convert a CamelCase string to snake_case.
+
+    Parameters:
+    - camel_str: The CamelCase string to convert.
+
+    Returns:
+    - The snake_case string.
+    """
+    return "".join(["_" + c.lower() if c.isupper() else c for c in camel_str]).lstrip(
+        "_"
+    )

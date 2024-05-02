@@ -301,16 +301,17 @@ class MuJoCoSim(BaseSim):
 
         return joint_state_dict
 
-    def get_observation(self):
+    def get_observation(self, joint_ordering):
         """Extracts an observation from the mujoco data structure"""
-        q = self.data.qpos.copy()
-        dq = self.data.qvel.copy()
+        q = np.zeros(len(joint_ordering))
+        dq = np.zeros(len(joint_ordering))
+        for i, name in enumerate(joint_ordering):
+            q[i] = self.data.joint(name).qpos.item()
+            dq[i] = self.data.joint(name).qvel.item()
+
         quat = self.data.sensor("orientation").data.copy()
-        r = quat2mat(quat)
-        v = dq[:3] @ r.T
         omega = self.data.sensor("angular_velocity").data.copy()
-        gvec = np.array([0.0, 0.0, -1.0]) @ r.T
-        return (q, dq, quat, v, omega, gvec)
+        return (q, dq, quat, omega)
 
     def get_zmp(self, com_pos, pz=0.0):
         M = self.model.body(0).subtreemass

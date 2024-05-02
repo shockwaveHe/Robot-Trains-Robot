@@ -101,14 +101,6 @@ def interpolate_pos(
 
         counter += 1
 
-    # time_end = time.time()
-    # interp_freq = counter / (time_end - time_start)
-    # log(
-    #     f"Interpolation frequency: {interp_freq}",
-    #     header="".join(x.title() for x in actuator_type.split("_")),
-    #     level="debug",
-    # )
-
 
 def resample_trajectory(trajectory, desired_interval=0.01, interp_type="linear"):
     resampled_trajectory = []

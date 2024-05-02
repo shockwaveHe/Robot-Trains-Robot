@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 from jinja2 import Environment, FileSystemLoader
 
 from toddlerbot.sim.robot import HumanoidRobot
+from toddlerbot.utils.misc_utils import snake2camel
 
 rewards_config = {
     "base_height_target": 0.3,
@@ -113,12 +114,12 @@ def create_humanoid_gym_env(robot_name):
     template_env = Environment(loader=FileSystemLoader(template_dir))
     config_template = template_env.get_template(config_template_name)
 
-    robot_name_capitalized = "".join(x.title() for x in robot_name.split("_"))
+    robot_name_camel = snake2camel(robot_name)
     urdf_relpath = os.path.relpath(isaac_urdf_path, humanoid_gym_root_dir)
 
     config_script_content = config_template.render(
         robot_name=robot_name,
-        robot_name_capitalized=robot_name_capitalized,
+        robot_name_camel=robot_name_camel,
         num_actions=num_actions,
         urdf_relpath=urdf_relpath,
         foot_name=foot_name,
@@ -145,9 +146,9 @@ def create_humanoid_gym_env(robot_name):
         file.write(config_script_content)
 
     # Format the import and registration lines
-    env_class = f"{robot_name_capitalized}Env"
-    cfg_class = f"{robot_name_capitalized}Cfg"
-    ppo_class = f"{robot_name_capitalized}CfgPPO"
+    env_class = f"{robot_name_camel}Env"
+    cfg_class = f"{robot_name_camel}Cfg"
+    ppo_class = f"{robot_name_camel}CfgPPO"
     import_lines = (
         f"from .{robot_name}.{robot_name}_env import {env_class}\n"
         f"from .{robot_name}.{robot_name}_config import {cfg_class}, {ppo_class}\n"

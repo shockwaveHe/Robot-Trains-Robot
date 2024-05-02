@@ -205,6 +205,7 @@
                 "--load-model",
                 "toddlerbot/sim/humanoid_gym/logs/walk_toddlerbot_legs_isaac/exported/policies/policy_1.pt",
             ],
+            "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
         },
         {
             "name": "Python: walk_toddlerbot_sim2real",

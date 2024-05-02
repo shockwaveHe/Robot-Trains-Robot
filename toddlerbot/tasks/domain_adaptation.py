@@ -41,7 +41,7 @@ from transforms3d.euler import quat2euler
 
 from toddlerbot.sim.robot import HumanoidRobot
 from toddlerbot.utils.math_utils import resample_trajectory, round_floats
-from toddlerbot.utils.misc_utils import log, precise_sleep, profile
+from toddlerbot.utils.misc_utils import log, precise_sleep, profile, snake2camel
 
 
 class cmd:
@@ -98,7 +98,7 @@ class ToddlerbotLegsCfg:
 
 
 # @profile()
-def main(sim, robot, policy, cfg, sim_duration=30.0):
+def main(sim, robot, policy, cfg, sim_duration=60.0):
     """
     Run the Mujoco simulation using the provided policy and configuration.
 
@@ -109,12 +109,17 @@ def main(sim, robot, policy, cfg, sim_duration=30.0):
     Returns:
         None
     """
+    name = f"sim2{sim.name}"
+    if hasattr(sim, "run_simulation"):
+        sim.run_simulation(headless=True)
+
     control_dt = cfg.sim.dt * cfg.control.decimation
-    zero_joint_angles, _ = robot.initialize_joint_angles()
+    zero_joint_angles, initial_joint_angles = robot.initialize_joint_angles()
 
     joint_angles_traj = []
     joint_angles_traj.append((0.0, zero_joint_angles))
-    joint_angles_traj.append((0.5, cfg.init_state.default_joint_angles))
+    joint_angles_traj.append((0.5, initial_joint_angles))
+    joint_angles_traj.append((1.0, cfg.init_state.default_joint_angles))
     joint_angles_traj = resample_trajectory(
         joint_angles_traj,
         desired_interval=control_dt,
@@ -122,11 +127,14 @@ def main(sim, robot, policy, cfg, sim_duration=30.0):
     )
     step_idx = 0
     time_start = time.time()
-    while time.time() - time_start < 0.5:
+    while time.time() - time_start < joint_angles_traj[-1][0]:
         step_start = time.time()
+
         _, joint_angles = joint_angles_traj[min(step_idx, len(joint_angles_traj) - 1)]
 
         sim.set_joint_angles(joint_angles)
+
+        sim.get_joint_state()
 
         step_idx += 1
 
@@ -155,10 +163,10 @@ def main(sim, robot, policy, cfg, sim_duration=30.0):
         # Obtain an observation
         q_obs, dq, quat, omega = sim.get_observation(joint_ordering)
         q = q_obs - default_q
-        log(f"q: {round_floats(q, 3)}", header="Sim2Real", level="debug")
-        log(f"dq: {round_floats(dq, 3)}", header="Sim2Real", level="debug")
-        log(f"quat: {quat}", header="Sim2Real", level="debug")
-        log(f"omega: {omega}", header="Sim2Real", level="debug")
+        log(f"q: {round_floats(q, 3)}", header=snake2camel(name), level="debug")
+        log(f"dq: {round_floats(dq, 3)}", header=snake2camel(name), level="debug")
+        log(f"quat: {quat}", header=snake2camel(name), level="debug")
+        log(f"omega: {omega}", header=snake2camel(name), level="debug")
 
         obs = np.zeros([1, cfg.env.num_single_obs])
         eu_ang = np.array(quat2euler(quat))
@@ -207,7 +215,7 @@ def main(sim, robot, policy, cfg, sim_duration=30.0):
             joint_name: target_angle
             for joint_name, target_angle in zip(joint_ordering, target_q)
         }
-        log(str(joint_angles), header="Sim2Real", level="debug")
+        log(str(joint_angles), header=snake2camel(name), level="debug")
         sim.set_joint_angles(joint_angles)
 
         step_idx += 1
@@ -219,7 +227,7 @@ def main(sim, robot, policy, cfg, sim_duration=30.0):
 
     sim.close()
 
-    exp_name = f"sim2sim_{robot.name}"
+    exp_name = f"sim2{sim.name}_{robot.name}"
     time_str = time.strftime("%Y%m%d_%H%M%S")
     exp_folder_path = f"results/{time_str}_{exp_name}"
 
@@ -230,8 +238,8 @@ def main(sim, robot, policy, cfg, sim_duration=30.0):
     else:
         log(
             "Current visualizer does not support video writing.",
-            header="Domain",
-            level="warn",
+            header=snake2camel(name),
+            level="warning",
         )
 
 
