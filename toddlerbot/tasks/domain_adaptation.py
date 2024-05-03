@@ -126,7 +126,7 @@ def main(sim, robot, policy, cfg, sim_duration=60.0, debug=False):
     joint_angles_traj = []
     joint_angles_traj.append((0.0, zero_joint_angles))
     joint_angles_traj.append((0.5, initial_joint_angles))
-    joint_angles_traj.append((1.0, cfg.init_state.default_joint_angles))
+    joint_angles_traj.append((1.5, cfg.init_state.default_joint_angles))
     joint_angles_traj = resample_trajectory(
         joint_angles_traj,
         desired_interval=control_dt,
