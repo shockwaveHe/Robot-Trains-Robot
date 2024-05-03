@@ -12,7 +12,7 @@
     <mesh name="left_calf_link_collision" file="collisions/left_calf_link_collision.stl" />
     <mesh name="left_ank_pitch_link_visual" file="../assemblies/left_3R+RH5_leg/meshes/left_ank_pitch_link_visual.stl" />
     <mesh name="left_ank_roll_link_visual" file="../assemblies/left_3R+RH5_leg/meshes/left_ank_roll_link_visual.stl" />
-    <mesh name="left_ank_roll_link_collision" file="collisions/left_ank_roll_link_collision.stl" />
+    <mesh name="left_ank_roll_link_collision" file="../assemblies/left_3R+RH5_leg/meshes/left_ank_roll_link_collision.stl" />
     <mesh name="left_ank_rr_link_visual" file="../assemblies/left_3R+RH5_leg/meshes/left_ank_rr_link_visual.stl" />
     <mesh name="left_12lf_rod_end_visual" file="../assemblies/left_3R+RH5_leg/meshes/left_12lf_rod_end_visual.stl" />
     <mesh name="left_ank_rr_link_2_visual" file="../assemblies/left_3R+RH5_leg/meshes/left_ank_rr_link_2_visual.stl" />
@@ -34,7 +34,7 @@
     <mesh name="right_calf_link_collision" file="collisions/right_calf_link_collision.stl" />
     <mesh name="right_ank_pitch_link_visual" file="../assemblies/right_3R+RH5_leg/meshes/right_ank_pitch_link_visual.stl" />
     <mesh name="right_ank_roll_link_visual" file="../assemblies/right_3R+RH5_leg/meshes/right_ank_roll_link_visual.stl" />
-    <mesh name="right_ank_roll_link_collision" file="collisions/right_ank_roll_link_collision.stl" />
+    <mesh name="right_ank_roll_link_collision" file="../assemblies/right_3R+RH5_leg/meshes/right_ank_roll_link_collision.stl" />
     <mesh name="right_ank_rr_link_visual" file="../assemblies/right_3R+RH5_leg/meshes/right_ank_rr_link_visual.stl" />
     <mesh name="right_12lf_rod_end_visual" file="../assemblies/right_3R+RH5_leg/meshes/right_12lf_rod_end_visual.stl" />
     <mesh name="right_ank_rr_link_2_visual" file="../assemblies/right_3R+RH5_leg/meshes/right_ank_rr_link_2_visual.stl" />
@@ -76,7 +76,7 @@
               <joint name="left_ank_pitch" pos="0 0 0" axis="0 0 1" limited="true" range="-0.785398 0.959931" damping="0.523" armature="0.0115" />
               <geom rgba="0.631892 0.726687 0.783564 1" mesh="left_ank_pitch_link_visual" class="visual" />
               <body name="ank_roll_link" pos="0 0.0015 -0.0146" quat="0.5 -0.5 -0.5 -0.5">
-                <inertial pos="-0.00709592 0.0316695 0.00154472" quat="0.77277 -0.0767089 -0.00738736 0.62999" mass="0.0203124" diaginertia="1.81786e-05 1.48386e-05 6.69761e-06" />
+                <inertial pos="-3.28026e-07 0.0289226 0.00175005" quat="0.996871 -0.0790494 6.17315e-06 5.36738e-05" mass="0.013975" diaginertia="1.02121e-05 9.92043e-06 2.55434e-06" />
                 <joint name="left_ank_roll" pos="0 0 0" axis="0 0 1" limited="true" range="-0.785398 0.785398" damping="0.583" armature="0.0158" />
                 <geom rgba="0.615686 0.811765 0.929412 1" mesh="left_ank_roll_link_visual" class="visual" />
                 <geom rgba="0.615686 0.811765 0.929412 1" mesh="left_ank_roll_link_collision" class="collision" />
@@ -170,7 +170,7 @@
               <joint name="right_ank_pitch" pos="0 0 0" axis="0 0 1" limited="true" range="-0.785398 0.959931" damping="0.523" armature="0.0115" />
               <geom rgba="0.631892 0.726687 0.783564 1" mesh="right_ank_pitch_link_visual" class="visual" />
               <body name="ank_roll_link_2" pos="0 0.0015 -0.0146" quat="0.5 -0.5 0.5 0.5">
-                <inertial pos="0.00709592 0.0316695 0.00154472" quat="0.62999 0.00738738 0.076709 0.77277" mass="0.0203124" diaginertia="1.81786e-05 1.48386e-05 6.69761e-06" />
+                <inertial pos="-1.72813e-07 0.0289226 0.00175013" quat="0.996871 -0.07905 7.3645e-06 4.94885e-05" mass="0.013975" diaginertia="1.02121e-05 9.92044e-06 2.55435e-06" />
                 <joint name="right_ank_roll" pos="0 0 0" axis="0 0 1" limited="true" range="-0.785398 0.785398" damping="0.583" armature="0.0158" />
                 <geom rgba="0.615686 0.811765 0.929412 1" mesh="right_ank_roll_link_visual" class="visual" />
                 <geom rgba="0.615686 0.811765 0.929412 1" mesh="right_ank_roll_link_collision" class="collision" />
