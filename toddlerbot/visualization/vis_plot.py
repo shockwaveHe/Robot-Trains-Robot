@@ -135,10 +135,10 @@ def plot_joint_tracking(
     motor_params=None,
     colors_dict=None,
 ):
-    all_angles = np.concatenate(
-        list(joint_angle_dict.values()) + list(joint_angle_ref_dict.values())
-    )
-    global_ymin, global_ymax = np.min(all_angles) - 0.1, np.max(all_angles) + 0.1
+    # all_angles = np.concatenate(
+    #     list(joint_angle_dict.values()) + list(joint_angle_ref_dict.values())
+    # )
+    # global_ymin, global_ymax = np.min(all_angles) - 0.1, np.max(all_angles) + 0.1
 
     x_list = []
     y_list = []
@@ -166,7 +166,7 @@ def plot_joint_tracking(
             ax.set_visible(False)
             continue
 
-        ax.set_ylim(global_ymin, global_ymax)
+        # ax.set_ylim(global_ymin, global_ymax)
         if motor_params is not None and colors_dict is not None:
             ax.set_facecolor(colors_dict[motor_params[legend_labels[2 * i]].brand])
 

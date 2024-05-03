@@ -8,6 +8,7 @@ import trimesh
 from toddlerbot.utils.file_utils import find_robot_file_path
 
 default_scale_factor = (1.0, 1.0, 1.0)
+hip_scale_factor = (0.5, 1.0, 1.0)
 leg_scale_factor = (1.0, 0.5, 1.0)
 arm_scale_factor = (1.0, 0.5, 1.0)
 
@@ -15,14 +16,14 @@ collision_link_dict = {
     "body_link": default_scale_factor,
     "neck_link": default_scale_factor,
     "head_link": default_scale_factor,
-    "hip_roll_link": leg_scale_factor,
+    "hip_roll_link": hip_scale_factor,
     "left_hip_pitch_link": leg_scale_factor,
     "left_calf_link": leg_scale_factor,
-    "ank_roll_link": default_scale_factor,
-    "hip_roll_link_2": leg_scale_factor,
+    # "ank_roll_link": default_scale_factor, # We need accurate contact for the feet
+    "hip_roll_link_2": hip_scale_factor,
     "right_hip_pitch_link": leg_scale_factor,
     "right_calf_link": leg_scale_factor,
-    "ank_roll_link_2": default_scale_factor,
+    # "ank_roll_link_2": default_scale_factor,
     "sho_roll_link": arm_scale_factor,
     "elb_link": arm_scale_factor,
     "sho_roll_link_2": arm_scale_factor,
@@ -32,20 +33,19 @@ collision_link_dict = {
 
 def compute_bounding_box_mesh(robot_dir, mesh_filename, scale_factors):
     mesh = trimesh.load(os.path.join(robot_dir, mesh_filename))
-    # Compute the oriented bounding box
-    bounding_box = mesh.bounding_box_oriented
-    # Compute the centroid of the bounding box
-    centroid = bounding_box.centroid
 
-    bbox_mesh = trimesh.Trimesh(
-        vertices=bounding_box.vertices, faces=bounding_box.faces
+    # Compute the centroid of the bounding box
+    centroid = mesh.bounding_box.centroid
+
+    bounding_mesh = trimesh.Trimesh(
+        vertices=mesh.bounding_box.vertices, faces=mesh.bounding_box.faces
     )
     # Translate the mesh to the origin
-    bbox_mesh.apply_translation(-centroid)
+    bounding_mesh.apply_translation(-centroid)
     # Apply non-uniform scaling
-    bbox_mesh.apply_scale(scale_factors)
+    bounding_mesh.apply_scale(scale_factors)
     # Translate the mesh back to its original centroid
-    bbox_mesh.apply_translation(centroid)
+    bounding_mesh.apply_translation(centroid)
 
     # Create the full path for the bounding box file
     collision_mesh_file_path = os.path.join(
@@ -54,7 +54,7 @@ def compute_bounding_box_mesh(robot_dir, mesh_filename, scale_factors):
         os.path.basename(mesh_filename).replace("visual", "collision"),
     )
     # Export the bounding box to a file
-    bbox_mesh.export(collision_mesh_file_path)
+    bounding_mesh.export(collision_mesh_file_path)
 
     return os.path.relpath(collision_mesh_file_path, robot_dir)
 
@@ -100,7 +100,7 @@ def update_collisons(robot_name):
                     mesh = geometry.find("mesh")
 
                 mesh.set("filename", collision_bbox_file)
-            else:
+            elif "ank_roll_link" not in link_name:
                 # Remove the collision element if it exists
                 collision = link.find("collision")
                 if collision is not None:

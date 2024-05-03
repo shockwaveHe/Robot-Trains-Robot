@@ -91,7 +91,7 @@ def create_humanoid_gym_env(robot_name):
         )
 
     env_path = os.path.join(humanoid_gym_env_dir, f"{robot_name}")
-    os.makedirs(env_path, exist_ok=True)
+    os.makedirs(env_path, exist_ok=False)
 
     robot = HumanoidRobot(robot_name)
     num_actions = len(robot.config.motor_params)

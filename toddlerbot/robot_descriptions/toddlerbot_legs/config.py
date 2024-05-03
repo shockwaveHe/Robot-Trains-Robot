@@ -41,7 +41,7 @@ def compute_leg_angles(target_foot_pos, target_foot_ori, side, offsets):
     angles_dict = {
         "hip_yaw": -hip_yaw,
         "hip_roll": hip_roll,
-        "hip_pitch": -hip_pitch if side == "left" else hip_pitch,
+        "hip_pitch": -hip_pitch,
         "knee": knee_pitch if side == "left" else -knee_pitch,
         "ank_pitch": ankle_pitch if side == "left" else -ankle_pitch,
         "ank_roll": ankle_roll - hip_roll,
