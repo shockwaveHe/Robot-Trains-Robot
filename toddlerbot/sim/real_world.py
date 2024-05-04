@@ -35,7 +35,6 @@ class RealWorld(BaseSim):
         self.negated_joint_names = [
             "left_hip_yaw",
             "right_hip_yaw",
-            "right_hip_pitch",
             "left_ank_pitch",
         ]
 
@@ -50,15 +49,16 @@ class RealWorld(BaseSim):
         n_ports = 1 + 1 + len(mighty_zap_port)
 
         dynamixel_ids = sorted(list(self.robot.dynamixel_joint2id.values()))
-        dynamixel_init_pos = np.radians([245, 180, 180, 322, 180, 180])
+        # The init pos needs to be calibrated after the robot is assembled
+        dynamixel_init_pos = np.radians([241.17, 180, 180, 118.12, 180, 180])
         # TODO: Replace the hard-coded gains
         dynamixel_config = DynamixelConfig(
             port=dynamixel_port,
             kFF2=[0, 0, 0, 0, 0, 0],
             kFF1=[0, 0, 0, 0, 0, 0],
-            kP=[400, 3200, 1600, 400, 3200, 1600],
+            kP=[800, 3200, 1600, 800, 3200, 1600],
             kI=[0, 0, 0, 0, 0, 0],
-            kD=[400, 1600, 1600, 400, 1600, 1600],
+            kD=[800, 1600, 1600, 800, 1600, 1600],
             current_limit=[700, 700, 700, 700, 700, 700],
             init_pos=dynamixel_init_pos,
             gear_ratio=np.array([19 / 21, 1, 1, 19 / 21, 1, 1]),

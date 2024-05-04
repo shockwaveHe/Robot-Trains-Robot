@@ -83,6 +83,8 @@ class DynamixelController(BaseController):
         self.client.sync_write(self.motor_ids, self.config.kFF1, 90, 2)
         self.client.sync_write(self.motor_ids, self.config.current_limit, 102, 2)
 
+        # init_state = self.get_motor_state()
+
         precise_sleep(0.1)
         self.set_pos(np.zeros(len(self.motor_ids)))
         precise_sleep(0.1)
@@ -130,6 +132,8 @@ class DynamixelController(BaseController):
 
         state_dict = {}
         pos_arr, vel_arr = self.client.read_pos_vel()
+        # log(f"Pos: {np.round(np.rad2deg(pos_arr), 2)}", header="Dynamixel")
+
         pos_arr_driven = (self.config.init_pos - pos_arr) * self.config.gear_ratio
         for i, id in enumerate(self.motor_ids):
             state_dict[id] = JointState(
@@ -151,7 +155,7 @@ if __name__ == "__main__":
             kI=[0, 0, 0, 0, 0, 0],
             kD=[200, 400, 400, 200, 400, 400],
             current_limit=[350, 350, 350, 350, 350, 350],
-            init_pos=np.radians([245, 180, 180, 322, 180, 180]),
+            init_pos=np.radians([241.17, 180, 180, 118.12, 180, 180]),
             gear_ratio=np.array([19 / 21, 1, 1, 19 / 21, 1, 1]),
         ),
         motor_ids=[7, 8, 9, 10, 11, 12],
