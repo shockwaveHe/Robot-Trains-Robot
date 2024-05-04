@@ -2,6 +2,7 @@ import copy
 
 import numpy as np
 
+from toddlerbot.control.lqr_full_body_control import LQRFullBodyController
 from toddlerbot.control.zmp_preview_control import (
     ZMPPreviewController,
     ZMPPreviewControlParameters,
@@ -23,6 +24,11 @@ class Walking:
         self.x_offset_com_to_foot = robot.com[0]
         self.y_offset_com_to_foot = robot.offsets["y_offset_com_to_foot"]
 
+        zero_joint_angles, self.initial_joint_angles = robot.initialize_joint_angles()
+        self.joint_angles = self.initial_joint_angles
+        # (time, joint_angles)
+        self.joint_angles_traj = [(0.0, zero_joint_angles)]
+
         plan_params = FootStepPlanParameters(
             max_stride=np.array(config.plan_max_stride),
             t_step=config.plan_t_step,
@@ -35,21 +41,23 @@ class Walking:
             dt=config.control_dt,
             t_preview=config.control_t_preview,
             t_filter=config.control_t_filter,
-            Q_val=config.control_cost_Q_val,
-            R_val=config.control_cost_R_val,
+            Q_val=config.zmp_control_cost_Q,
+            R_val=config.zmp_control_cost_R,
             x_offset_com_to_foot=self.x_offset_com_to_foot,
             y_disp_zmp=config.y_offset_zmp - self.y_offset_com_to_foot,
         )
-        self.pc = ZMPPreviewController(control_params)
+        self.zmp_controller = ZMPPreviewController(control_params)
+        # self.lqr_controller = LQRFullBodyController(
+        #     nq=len(self.initial_joint_angles),
+        #     dt=config.control_dt,
+        #     Q_val=config.lqr_control_cost_Q,
+        #     R_val=config.lqr_control_cost_R,
+        # )
 
         self.curr_pose = None
         self.com_init = np.concatenate(
             [np.array(robot.com)[None, :2], np.zeros((2, 2))], axis=0
         )
-        zero_joint_angles, self.initial_joint_angles = robot.initialize_joint_angles()
-        self.joint_angles = self.initial_joint_angles
-        # (time, joint_angles)
-        self.joint_angles_traj = [(0.0, zero_joint_angles)]
 
         self.idx = 0
 
@@ -67,8 +75,8 @@ class Walking:
             curr_pose = self.curr_pose
 
         path, self.foot_steps = self.fsp.compute_steps(curr_pose, target_pose)
-        zmp_ref_traj = self.pc.compute_zmp_ref_traj(self.foot_steps)
-        zmp_traj, self.com_ref_traj = self.pc.compute_com_traj(
+        zmp_ref_traj = self.zmp_controller.compute_zmp_ref_traj(self.foot_steps)
+        zmp_traj, self.com_ref_traj = self.zmp_controller.compute_com_traj(
             self.com_init, zmp_ref_traj
         )
 

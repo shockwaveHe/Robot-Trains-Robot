@@ -12,8 +12,10 @@ class WalkingConfig:
     control_dt: float = 0.01
     control_t_preview: float = 1.0
     control_t_filter: float = 0.5
-    control_cost_Q_val: float = 1.0
-    control_cost_R_val: float = 1e-6
+    zmp_control_cost_Q: float = 1.0
+    zmp_control_cost_R: float = 1e-6
+    # lqr_control_cost_Q: float = 1.0
+    # lqr_control_cost_R: float = 1e-6
     target_pose_init: list = field(default_factory=lambda: [0.2, 0.0, 0.785])
     foot_step_height: float = 0.04
     squat_time: float = 1.0

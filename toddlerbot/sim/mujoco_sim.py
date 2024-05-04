@@ -232,7 +232,7 @@ class MuJoCoSim(BaseSim):
                 + f" Change the z value of {body_link_name} as {desired_z}"
             )
 
-    def compute_dmom(self):
+    def _compute_dmom(self):
         if not hasattr(self, "t_last"):
             self.last_mom = np.zeros(3)
             self.last_angmom = np.zeros(3)
@@ -327,6 +327,26 @@ class MuJoCoSim(BaseSim):
         zmp = [px_zmp.item(), py_zmp.item()]
         return zmp
 
+    def _compute_dynamics(self):
+        """Compute dynamics properties for active joints including the filtered mass matrix and bias forces."""
+        # Compute the full mass matrix
+        full_mass_matrix = np.zeros((self.model.nv, self.model.nv))
+        mujoco.mj_fullM(self.model, full_mass_matrix, self.data.qM)
+
+        # Copy the full bias forces from the simulation
+        full_bias_forces = self.data.qfrc_bias.copy()
+
+        # Identify active joint indices
+        active_indices = []
+        for name, info in self.robot.joints_info.items():
+            if info["active"]:
+                joint_id = self.model.joint(name).id
+                active_indices.append(joint_id)
+
+        # Filter the mass matrix and bias forces for active joints
+        self.mass_matrix = full_mass_matrix[np.ix_(active_indices, active_indices)]
+        self.bias_forces = full_bias_forces[active_indices]
+
     def set_joint_angles(self, joint_angles):
         self.controller.add_command(joint_angles)
 
@@ -346,6 +366,8 @@ class MuJoCoSim(BaseSim):
         while not self.stop_event.is_set():
             step_start = time.time()
             mujoco.mj_step(self.model, self.data)
+
+            # self._compute_dynamics()
 
             self.visualizer.visualize(self.model, self.data, vis_data)
 

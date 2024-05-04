@@ -20,7 +20,7 @@ from toddlerbot.visualization.vis_plot import (
 )
 
 
-# @profile()
+@profile()
 def main():
     parser = argparse.ArgumentParser(description="Run the walking simulation.")
     parser.add_argument(
@@ -95,11 +95,10 @@ def main():
         }
         sim.run_simulation(headless=True, vis_data=vis_data)
 
-    time_start = time.time()
-    duration_max = 60
+    # time_start = time.time()
     try:
         step_idx = 0
-        while time.time() - time_start < duration_max:
+        while True:
             step_start = time.time()
 
             time_ref, joint_angles_ref = joint_angles_traj[
@@ -126,6 +125,27 @@ def main():
                 # Assume the state fetching is instantaneous
                 time_seq_dict[name].append(step_idx * config.control_dt)
                 joint_angle_dict[name].append(joint_state.pos)
+
+            # qpos = np.array(
+            #     [joint_state.pos for joint_state in joint_state_dict.values()]
+            # )
+            # qpos_ref = np.array(
+            #     [joint_angles[name] for name in joint_state_dict.keys()]
+            # )
+            # qvel = np.array(
+            #     [joint_state.vel for joint_state in joint_state_dict.values()]
+            # )
+            # qvel_ref = np.zeros_like(qvel)
+
+            # while not hasattr(sim, "mass_matrix") or not hasattr(sim, "bias_forces"):
+            #     continue
+
+            # control_input = walking.lqr_controller.control(
+            #     qpos, qvel, qpos_ref, qvel_ref, sim.mass_matrix, sim.bias_forces
+            # )
+            # # log(f"Mass matrix: {sim.mass_matrix}", header="Walking", level="debug")
+            # # log(f"Bias forces: {sim.bias_forces}", header="Walking", level="debug")
+            # log(f"Control input: {control_input}", header="Walking", level="debug")
 
             torso_pos, torso_mat = sim.get_torso_pose()
             torso_mat_delta = torso_mat @ torso_mat_init.T
