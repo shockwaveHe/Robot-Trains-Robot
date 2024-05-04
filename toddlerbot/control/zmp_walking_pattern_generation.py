@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from typing import List
 
 import control
@@ -8,26 +7,30 @@ from toddlerbot.planning.foot_step_planner import FootStep
 from toddlerbot.utils.constants import GRAVITY
 
 
-@dataclass
-class ZMPPreviewControlParameters:
-    """Data class to hold control parameters for preview control."""
-
-    com_z: float  # Height of the center of mass
-    dt: float  # Time step
-    t_preview: float  # Control period
-    t_filter: float  # Filter time constant
-    Q_val: float  # Weighting for state cost
-    R_val: float  # Weighting for control input cost
-    x_offset_com_to_foot: float  # Offset of the center of mass from the foot
-    y_disp_zmp: float  # Offset of the zero moment point from the center of mass
-
-
 class ZMPPreviewController:
-    def __init__(self, params: ZMPPreviewControlParameters):
+    def __init__(
+        self,
+        com_z: float,
+        dt: float,
+        t_preview: float,
+        t_filter: float,
+        Q_val: float,
+        R_val: float,
+        x_offset_com_to_foot: float,
+        y_disp_zmp: float,
+    ):
         """
         Initialize the Preview Control system.
         """
-        self.params = params
+        self.com_z = com_z
+        self.dt = dt
+        self.t_preview = t_preview
+        self.t_filter = t_filter
+        self.Q_val = Q_val
+        self.R_val = R_val
+        self.x_offset_com_to_foot = x_offset_com_to_foot
+        self.y_disp_zmp = y_disp_zmp
+
         self._setup()
 
     def _setup(self):
@@ -36,21 +39,21 @@ class ZMPPreviewController:
         """
         # The notations follow p.145-146 in "Introduction to Humanoid Robotics" by Shuuji Kajita
 
-        self.n_preview = round(self.params.t_preview / self.params.dt)
-        # self.n_filter = round(self.params.t_filter / self.params.dt)
+        self.n_preview = round(self.t_preview / self.dt)
+        # self.n_filter = round(self.t_filter / self.dt)
 
         # State-space matrices
         A = np.array([[0, 1, 0], [0, 0, 1], [0, 0, 0]])
         B = np.array([[0], [0], [1]])
-        C = np.array([[1, 0, -self.params.com_z / GRAVITY]])
+        C = np.array([[1, 0, -self.com_z / GRAVITY]])
         D = np.array([[0]])
-        Q = np.array([[self.params.Q_val]])
-        R = np.array([[self.params.R_val]])
+        Q = np.array([[self.Q_val]])
+        R = np.array([[self.R_val]])
 
         # Convert a continuous time system to discrete time by sampling
         # Return state space data objects for a system
         sys = control.ss(A, B, C, D)
-        sys_d = control.c2d(sys, self.params.dt)
+        sys_d = control.c2d(sys, self.dt)
         A_d, B_d, C_d, _ = control.ssdata(sys_d)  # C doesn't change
         self.A_d, self.B_d, self.C_d = A_d, B_d, C_d
 
@@ -70,7 +73,7 @@ class ZMPPreviewController:
         A_tilde = np.block([[1.0, C_d @ A_d], [np.zeros((3, 1)), A_d]])
         B_tilde = np.block([[C_d @ B_d], [B_d]])
         Q_tilde = np.zeros((4, 4))
-        Q_tilde[0, 0] = self.params.Q_val
+        Q_tilde[0, 0] = self.Q_val
         # Solve the discrete-time algebraic Riccati equation
         # The gain matrix is chosen to minimize the cost function
         P_tilde, _, K_tilde = control.dare(A_tilde, B_tilde, Q_tilde, R)
@@ -91,10 +94,10 @@ class ZMPPreviewController:
 
     def compute_zmp_ref_traj(self, foot_steps: List[FootStep]) -> List:
         # Prepare the timing and positions matrix for all foot steps in advance
-        x_offset = self.params.x_offset_com_to_foot
-        y_offset = self.params.y_disp_zmp
+        x_offset = self.x_offset_com_to_foot
+        y_offset = self.y_disp_zmp
 
-        dt = self.params.dt
+        dt = self.dt
         fs_times = np.array([fs.time for fs in foot_steps])
 
         fs_positions = []
@@ -121,7 +124,7 @@ class ZMPPreviewController:
 
         zmp_ref_traj = []
         i = 0
-        for t in np.arange(fs_times[0], fs_times[-1] + self.params.t_preview + dt, dt):
+        for t in np.arange(fs_times[0], fs_times[-1] + self.t_preview + dt, dt):
             if t >= fs_times[-1]:
                 zmp_ref_traj.append(fs_positions[-1])
             else:

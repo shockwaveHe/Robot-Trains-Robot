@@ -2,11 +2,7 @@ import copy
 
 import numpy as np
 
-from toddlerbot.control.lqr_full_body_control import LQRFullBodyController
-from toddlerbot.control.zmp_preview_control import (
-    ZMPPreviewController,
-    ZMPPreviewControlParameters,
-)
+from toddlerbot.control.zmp_walking_pattern_generation import ZMPPreviewController
 from toddlerbot.planning.foot_step_planner import (
     FootStepPlanner,
     FootStepPlanParameters,
@@ -36,7 +32,7 @@ class Walking:
         )
         self.fsp = FootStepPlanner(plan_params)
 
-        control_params = ZMPPreviewControlParameters(
+        self.zmp_controller = ZMPPreviewController(
             com_z=robot.com[2] - config.squat_height,
             dt=config.control_dt,
             t_preview=config.control_t_preview,
@@ -46,7 +42,6 @@ class Walking:
             x_offset_com_to_foot=self.x_offset_com_to_foot,
             y_disp_zmp=config.y_offset_zmp - self.y_offset_com_to_foot,
         )
-        self.zmp_controller = ZMPPreviewController(control_params)
         # self.lqr_controller = LQRFullBodyController(
         #     nq=len(self.initial_joint_angles),
         #     dt=config.control_dt,

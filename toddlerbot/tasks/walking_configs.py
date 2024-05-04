@@ -59,7 +59,7 @@ walking_configs = {
         squat_height=0.01,
         plan_max_stride=[0.03, 0.03, 0.2],
         plan_t_step=1.2,
-        y_offset_zmp=0.05,
+        y_offset_zmp=0.034,
         target_pose_init=[0.3, 0.0, 0.0],
         speed_factor=1.0,
     ),
@@ -68,7 +68,7 @@ walking_configs = {
         squat_height=0.01,
         plan_max_stride=[0.03, 0.03, 0.2],  # TODO: Let's shoot for 0.15
         plan_t_step=1.2,
-        y_offset_zmp=0.05,
+        y_offset_zmp=0.034,
         target_pose_init=[0.3, 0.0, 0.0],
         speed_factor=1.0,
     ),
