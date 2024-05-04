@@ -79,7 +79,11 @@ def add_default_settings(root):
     ET.SubElement(default, "position", {"forcelimited": "false"})
 
     # Set <geom> settings
-    ET.SubElement(default, "geom", {"type": "mesh", "solref": ".004 1"})
+    ET.SubElement(
+        default,
+        "geom",
+        {"type": "mesh", "condim": "4", "solref": ".001 2", "friction": "0.9 0.2 0.2"},
+    )
 
     # Add <default class="visual"> settings
     visual_default = ET.SubElement(default, "default", {"class": "visual"})
@@ -352,6 +356,7 @@ def create_base_scene_xml(mjcf_path):
             "size": "0 0 0.05",
             "type": "plane",
             "material": "groundplane",
+            "condim": "1",
         },
     )
 

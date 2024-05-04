@@ -50,11 +50,11 @@
   </asset>
   <worldbody>
     <body name="body_link" pos="0 0 0" quat="1 0 0 0">
-      <inertial pos="-0.014920 -0.000542 0.369674" quat="1.000000 0.000000 0.000000 0.000000" mass="0.45859598" diaginertia="2.17982e-03 1.87716e-03 1.00943e-03" />
+      <inertial pos="-0.014994 -0.000617 0.378655" quat="1.000000 0.000000 0.000000 0.000000" mass="1.00865345" diaginertia="4.68582e-03 3.97341e-03 2.41713e-03" />
       <freejoint />
       <site name="torso" fromto="0.01 0 0.4 -0.01 0 0.4" type="cylinder" size="0.005 0.005 1" group="3" />
-      <geom rgba="0.611917 0.793202 0.898614 1" mesh="body_link_visual" class="visual" />
-      <geom rgba="0.611917 0.793202 0.898614 1" mesh="body_link_collision" class="collision" />
+      <geom rgba="0.613972 0.803325 0.915409 1" mesh="body_link_visual" class="visual" />
+      <geom rgba="0.613972 0.803325 0.915409 1" mesh="body_link_collision" class="collision" />
       <body name="hip_yaw_link" pos="-0.0094 0.034 0.285" quat="1 0 0 0">
         <inertial pos="0 0 -0.00983905" quat="0 0.707107 0 0.707107" mass="0.00902588" diaginertia="3.87214e-06 3.84085e-06 1.32305e-06" />
         <joint name="left_hip_yaw" pos="0 0 0" axis="0 0 1" limited="true" range="-0.785398 0.785398" damping="0.077" armature="0.0034" />
@@ -267,7 +267,7 @@
   </equality>
   <default>
     <position forcelimited="false" />
-    <geom type="mesh" solref=".004 1" />
+    <geom type="mesh" condim="4" solref=".001 2" friction="0.9 0.2 0.2" />
     <default class="visual">
       <geom contype="0" conaffinity="0" group="2" density="0" />
     </default>
