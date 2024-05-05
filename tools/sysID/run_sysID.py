@@ -9,7 +9,7 @@ from multiprocessing import Pool
 import numpy as np
 
 from toddlerbot.sim.robot import HumanoidRobot
-from toddlerbot.tasks.sysID import (
+from toddlerbot.tools.sysID.sysID import (
     collect_data,
     evaluate,
     optimize_parameters,

@@ -30,7 +30,7 @@
             "name": "Python: walk_op",
             "type": "python",
             "request": "launch",
-            "program": "toddlerbot/tasks/run_walking.py",
+            "program": "toddlerbot/skills/run_walking.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -42,7 +42,7 @@
             "name": "Python: walk_op3",
             "type": "python",
             "request": "launch",
-            "program": "toddlerbot/tasks/run_walking.py",
+            "program": "toddlerbot/skills/run_walking.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -54,7 +54,7 @@
             "name": "Python: walk_op3_mujoco",
             "type": "python",
             "request": "launch",
-            "program": "toddlerbot/tasks/run_walking.py",
+            "program": "toddlerbot/skills/run_walking.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -69,7 +69,7 @@
             "name": "Python: walk_toddlerbot_mujoco",
             "type": "python",
             "request": "launch",
-            "program": "toddlerbot/tasks/run_walking.py",
+            "program": "toddlerbot/skills/run_walking.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -84,7 +84,7 @@
             "name": "Python: walk_toddlerbot_legs_mujoco",
             "type": "python",
             "request": "launch",
-            "program": "toddlerbot/tasks/run_walking.py",
+            "program": "toddlerbot/skills/run_walking.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -99,7 +99,7 @@
             "name": "Python: stand_toddlerbot_real",
             "type": "python",
             "request": "launch",
-            "program": "toddlerbot/tasks/run_standing.py",
+            "program": "toddlerbot/skills/run_standing.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -113,7 +113,7 @@
             "name": "Python: walk_toddlerbot_real",
             "type": "python",
             "request": "launch",
-            "program": "toddlerbot/tasks/run_walking.py",
+            "program": "toddlerbot/skills/run_walking.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -127,7 +127,7 @@
             "name": "Python: stand_toddlerbot_legs_real",
             "type": "python",
             "request": "launch",
-            "program": "toddlerbot/tasks/run_standing.py",
+            "program": "toddlerbot/skills/run_standing.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -141,7 +141,7 @@
             "name": "Python: walk_toddlerbot_legs_real",
             "type": "python",
             "request": "launch",
-            "program": "toddlerbot/tasks/run_walking.py",
+            "program": "toddlerbot/skills/run_walking.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -155,7 +155,7 @@
             "name": "Python: sysID_toddlerbot_legs",
             "type": "python",
             "request": "launch",
-            "program": "toddlerbot/tasks/run_sysID.py",
+            "program": "toddlerbot/tools/sysID/run_sysID.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -194,7 +194,7 @@
             "name": "Python: walk_toddlerbot_sim2sim",
             "type": "python",
             "request": "launch",
-            "program": "toddlerbot/tasks/domain_adaptation.py",
+            "program": "toddlerbot/skills/walking_RL.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -211,7 +211,7 @@
             "name": "Python: walk_toddlerbot_sim2real",
             "type": "python",
             "request": "launch",
-            "program": "toddlerbot/tasks/domain_adaptation.py",
+            "program": "toddlerbot/skills/walking_RL.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
