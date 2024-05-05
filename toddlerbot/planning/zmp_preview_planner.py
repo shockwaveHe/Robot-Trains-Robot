@@ -7,7 +7,7 @@ from toddlerbot.planning.foot_step_planner import FootStep
 from toddlerbot.utils.constants import GRAVITY
 
 
-class ZMPPreviewController:
+class ZMPPreviewPlanner:
     def __init__(
         self,
         com_z: float,

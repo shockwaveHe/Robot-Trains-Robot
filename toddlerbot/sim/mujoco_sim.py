@@ -12,7 +12,7 @@ import numpy as np
 from transforms3d.euler import euler2mat
 from transforms3d.quaternions import quat2mat
 
-from toddlerbot.actuation import JointState
+from toddlerbot.control import JointState
 from toddlerbot.sim import BaseSim
 from toddlerbot.utils.constants import GRAVITY, MUJOCO_TIMESTEP
 from toddlerbot.utils.file_utils import find_robot_file_path

@@ -1,7 +1,7 @@
 import numpy as np
 from pynput import keyboard
 
-from toddlerbot.actuation.dynamixel.dynamixel_control import (
+from toddlerbot.control.dynamixel.dynamixel_control import (
     DynamixelConfig,
     DynamixelController,
 )

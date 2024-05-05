@@ -1,6 +1,6 @@
 import control
 import numpy as np
-from scipy.interpolate import PPoly, interp1d
+from scipy.interpolate import PPoly
 from scipy.linalg import expm
 
 from toddlerbot.utils.constants import GRAVITY
@@ -43,7 +43,7 @@ class ExponentialPlusPiecewisePolynomial:
         )
 
 
-class ZMPPlanner:
+class ZMPFeedbackPlanner:
     def __init__(self):
         self.planned = False
 

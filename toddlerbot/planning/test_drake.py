@@ -1,54 +1,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from toddlerbot.control.zmp_feedback_control import ZMPPlanner
+from toddlerbot.planning.zmp_feedback_planner import ZMPFeedbackPlanner
 
 
-def parse_data():
-    filepath = "toddlerbot/control/cpp_results_raw.txt"
-    raw_data_dict = {}
-    current_key = None
-    buffer = []
-
-    with open(filepath, "r") as file:
-        for line in file:
-            line = line.strip()
-            if line.endswith(":"):  # New block starting
-                if current_key is not None and buffer:
-                    # Convert buffer to NumPy array and store in dictionary
-                    raw_data_dict[current_key] = np.array(buffer, dtype=float)
-                    buffer = []  # Reset buffer for the next block of data
-                current_key = line[:-1]  # Remove the colon and set as current key
-            elif line:  # If line is not empty, it's part of the current data block
-                # Split line by spaces and extend the buffer list
-                buffer.extend(map(float, line.split()))
-
-        # Store the last block of data
-        if current_key is not None and buffer:
-            raw_data_dict[current_key] = np.array(buffer, dtype=float)
-
-    data_dict = {}
-    data_dict["time"] = raw_data_dict["Time"]
-    data_dict["desired_zmp"] = (
-        raw_data_dict["Desired ZMP"].reshape(-1, len(data_dict["time"])).T
-    )
-    data_dict["nominal_com"] = (
-        raw_data_dict["Nominal COM"].reshape(-1, len(data_dict["time"])).T
-    )
-    data_dict["cop"] = (
-        raw_data_dict["Center of Pressure (COP)"].reshape(-1, len(data_dict["time"])).T
-    )
-    data_dict["x"] = (
-        raw_data_dict["State Vector (x)"].reshape(-1, len(data_dict["time"])).T
-    )
-    data_dict["u"] = (
-        raw_data_dict["Control Inputs (u)"].reshape(-1, len(data_dict["time"])).T
-    )
-
-    return data_dict
-
-
-def PlotResults(data_dict, suffix=""):
+def plot_results(data_dict, suffix=""):
     # Figure 1
     plt.figure(figsize=(10, 10))
     plt.clf()
@@ -108,7 +64,7 @@ def PlotResults(data_dict, suffix=""):
     plt.savefig(f"plot{suffix}_3.png")
 
 
-def PrintResults(data_dict):
+def print_results(data_dict):
     print("Time: \n", data_dict["time"])
     print("Desired ZMP: \n", data_dict["desired_zmp"])
     print("Nominal COM: \n", data_dict["nominal_com"])
@@ -117,7 +73,7 @@ def PrintResults(data_dict):
     print("Control Inputs (u): \n", data_dict["u"])
 
 
-def PrintResultsToFile(data_dict, suffix=""):
+def print_results_to_files(data_dict, suffix=""):
     with open(f"cpp_results{suffix}.txt", "w") as file:
         file.write("Time:\n" + str(data_dict["time"]) + "\n\n")
         file.write("Desired ZMP:\n" + str(data_dict["desired_zmp"]) + "\n\n")
@@ -196,11 +152,6 @@ def generate_desired_zmp_trajs(
 
 
 def main():
-    gt_data_dict = parse_data()
-    PlotResults(gt_data_dict, "_gt")
-    PrintResults(gt_data_dict)
-    PrintResultsToFile(gt_data_dict, "_gt")
-
     footsteps = [
         np.array([0, 0]),
         np.array([0.5, 0.1]),
@@ -214,7 +165,7 @@ def main():
 
     x0 = np.array([0, 0, 0, 0], dtype=float)
     com_z = 1
-    zmp_planner = ZMPPlanner()
+    zmp_planner = ZMPFeedbackPlanner()
     zmp_planner.plan(time_steps, zmp_d, x0, com_z, Qy=np.eye(2), R=np.eye(2) * 0.1)
 
     sample_dt = 0.01
@@ -222,9 +173,9 @@ def main():
     x0 = np.array([0, 0, 0.2, -0.1])
     data_dict = simulate_zmp_policy(zmp_planner, x0, sample_dt, 2)
 
-    PlotResults(data_dict)
-    PrintResults(data_dict)
-    PrintResultsToFile(data_dict)
+    plot_results(data_dict)
+    print_results(data_dict)
+    print_results_to_files(data_dict)
 
 
 if __name__ == "__main__":

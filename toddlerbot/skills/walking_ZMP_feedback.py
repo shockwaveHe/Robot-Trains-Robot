@@ -6,7 +6,7 @@ from toddlerbot.planning.foot_step_planner import (
     FootStepPlanner,
     FootStepPlanParameters,
 )
-from toddlerbot.planning.zmp_preview_planner import ZMPPreviewPlanner
+from toddlerbot.planning.zmp_feedback_planner import ZMPFeedbackPlanner
 from toddlerbot.utils.math_utils import resample_trajectory
 
 
@@ -32,7 +32,7 @@ class Walking:
         )
         self.fsp = FootStepPlanner(plan_params)
 
-        self.zmp_controller = ZMPPreviewPlanner(
+        self.zmp_controller = ZMPFeedbackPlanner(
             com_z=robot.com[2] - config.squat_height,
             dt=config.control_dt,
             t_preview=config.control_t_preview,

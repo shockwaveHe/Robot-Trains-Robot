@@ -4,7 +4,7 @@ from threading import Lock
 import numpy as np
 from adafruit_servokit import ServoKit
 
-from toddlerbot.actuation import BaseController
+from toddlerbot.control import BaseController
 from toddlerbot.utils.misc_utils import log, precise_sleep
 
 

@@ -4,7 +4,7 @@ import sys
 import serial
 from PyQt5 import QtCore, QtWidgets, uic
 
-from toddlerbot.actuation.mighty_zap import mighty_zap
+from toddlerbot.control.mighty_zap import mighty_zap
 
 QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
 QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)
