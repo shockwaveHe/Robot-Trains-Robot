@@ -119,7 +119,7 @@ def update_joint_params(root, motor_params):
         joint_name = joint.get("name")
         if joint_name in motor_params:
             for field in fields(motor_params[joint_name]):
-                if field.name in ["damping", "armature", "fricionloss"]:
+                if field.name in ["damping", "armature", "frictionloss"]:
                     joint.set(
                         field.name, str(getattr(motor_params[joint_name], field.name))
                     )
