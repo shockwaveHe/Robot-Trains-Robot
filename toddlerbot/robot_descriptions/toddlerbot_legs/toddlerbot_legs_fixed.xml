@@ -49,6 +49,7 @@
     <mesh name="right_12lf_rod_2_visual" file="../assemblies/right_3R+RH5_leg/meshes/right_12lf_rod_2_visual.stl" />
   </asset>
   <worldbody>
+    <site name="imu" size="0.01" pos="0.0 0 0.0" />
     <site name="torso" fromto="0.01 0 0.4 -0.01 0 0.4" type="cylinder" size="0.005 0.005 1" group="3" />
     <geom rgba="0.613972 0.803325 0.915409 1" mesh="body_link_visual" class="visual" />
     <geom rgba="0.613972 0.803325 0.915409 1" mesh="body_link_collision" class="collision" />
@@ -241,6 +242,14 @@
       </body>
     </body>
   </worldbody>
+  <sensor>
+    <framequat name="orientation" objtype="site" noise="0.001" objname="imu" />
+    <framepos name="position" objtype="site" noise="0.001" objname="imu" />
+    <gyro name="angular_velocity" site="imu" noise="0.005" cutoff="34.9" />
+    <velocimeter name="linear_velocity" site="imu" noise="0.001" cutoff="30" />
+    <accelerometer name="linear_acceleration" site="imu" noise="0.005" cutoff="157" />
+    <magnetometer name="magnetometer" site="imu" />
+  </sensor>
   <contact>
     <exclude body1="hip_yaw_link" body2="hip_roll_link" />
     <exclude body1="hip_yaw_link" body2="left_hip_pitch_link" />

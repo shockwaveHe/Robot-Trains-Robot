@@ -140,6 +140,30 @@ def plot_joint_tracking(
     # )
     # global_ymin, global_ymax = np.min(all_angles) - 0.1, np.max(all_angles) + 0.1
 
+    def get_brand(joint_name):
+        if joint_name in motor_params:
+            return motor_params[joint_name].brand
+        return "default"
+
+    time_seq_dict = {
+        joint_name: x
+        for joint_name, x in sorted(
+            time_seq_dict.items(), key=lambda item: (get_brand(item[0]), item[0])
+        )
+    }
+    joint_angle_dict = {
+        joint_name: x
+        for joint_name, x in sorted(
+            joint_angle_dict.items(), key=lambda item: (get_brand(item[0]), item[0])
+        )
+    }
+    joint_angle_ref_dict = {
+        joint_name: x
+        for joint_name, x in sorted(
+            joint_angle_ref_dict.items(), key=lambda item: (get_brand(item[0]), item[0])
+        )
+    }
+
     x_list = []
     y_list = []
     legend_labels = []
@@ -182,6 +206,78 @@ def plot_joint_tracking(
             file_suffix=file_suffix,
             ax=ax,
             legend_labels=legend_labels[2 * i : 2 * i + 2],
+        )()
+
+
+def plot_joint_velocity(
+    time_seq_dict,
+    joint_vel_dict,
+    save_path,
+    file_name="joint_velocity_tracking",
+    file_suffix="",
+    title_list=None,
+    motor_params=None,
+    colors_dict=None,
+):
+    # all_angles = np.concatenate(
+    #     list(joint_angle_dict.values()) + list(joint_angle_ref_dict.values())
+    # )
+    # global_ymin, global_ymax = np.min(all_angles) - 0.1, np.max(all_angles) + 0.1
+
+    def get_brand(joint_name):
+        if joint_name in motor_params:
+            return motor_params[joint_name].brand
+        return "default"
+
+    time_seq_dict = {
+        joint_name: x
+        for joint_name, x in sorted(
+            time_seq_dict.items(), key=lambda item: (get_brand(item[0]), item[0])
+        )
+    }
+    joint_vel_dict = {
+        joint_name: x
+        for joint_name, x in sorted(
+            joint_vel_dict.items(), key=lambda item: (get_brand(item[0]), item[0])
+        )
+    }
+
+    x_list = []
+    y_list = []
+    legend_labels = []
+    for name in time_seq_dict.keys():
+        x_list.append(time_seq_dict[name])
+        y_list.append(joint_vel_dict[name])
+        legend_labels.append(name)
+
+    n_plots = len(time_seq_dict)
+    n_rows = int(np.ceil(n_plots / 3))
+    n_cols = 3
+
+    fig, axs = plt.subplots(n_rows, n_cols, figsize=(n_cols * 5, n_rows * 3))
+    plt.subplots_adjust(hspace=0.4, wspace=0.4)
+
+    for i, ax in enumerate(axs.flat):
+        if i >= n_plots:
+            ax.set_visible(False)
+            continue
+
+        # ax.set_ylim(global_ymin, global_ymax)
+        if motor_params is not None and colors_dict is not None:
+            ax.set_facecolor(colors_dict[motor_params[legend_labels[i]].brand])
+
+        plot_line_graph(
+            y_list[i],
+            x_list[i],
+            title=f"{legend_labels[i]}" if title_list is None else title_list[i],
+            x_label="Time (s)",
+            y_label="Velocity (rad/s)",
+            save_config=True if i == n_plots - 1 else False,
+            save_path=save_path if i == n_plots - 1 else None,
+            file_name=file_name if i == n_plots - 1 else None,
+            file_suffix=file_suffix,
+            ax=ax,
+            legend_labels=legend_labels[i],
         )()
 
 

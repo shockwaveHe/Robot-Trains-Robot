@@ -32,6 +32,84 @@ def add_torso_site(root):
     worldbody.insert(0, site_element)
 
 
+def add_imu_sensor(root):
+    worldbody = root.find("worldbody")
+    site_attributes = {"name": "imu", "size": "0.01", "pos": "0.0 0 0.0"}
+    site_element = ET.Element("site", site_attributes)
+    worldbody.insert(0, site_element)
+
+    sensor = root.find("sensor")
+    if sensor is not None:
+        root.remove(sensor)
+
+    sensor = ET.SubElement(root, "sensor")
+
+    # Adding framequat sub-element
+    ET.SubElement(
+        sensor,
+        "framequat",
+        attrib={
+            "name": "orientation",
+            "objtype": "site",
+            "noise": "0.001",
+            "objname": "imu",
+        },
+    )
+
+    # Adding framepos sub-element
+    ET.SubElement(
+        sensor,
+        "framepos",
+        attrib={
+            "name": "position",
+            "objtype": "site",
+            "noise": "0.001",
+            "objname": "imu",
+        },
+    )
+
+    # Adding gyro sub-element
+    ET.SubElement(
+        sensor,
+        "gyro",
+        attrib={
+            "name": "angular_velocity",
+            "site": "imu",
+            "noise": "0.005",
+            "cutoff": "34.9",
+        },
+    )
+
+    # Adding velocimeter sub-element
+    ET.SubElement(
+        sensor,
+        "velocimeter",
+        attrib={
+            "name": "linear_velocity",
+            "site": "imu",
+            "noise": "0.001",
+            "cutoff": "30",
+        },
+    )
+
+    # Adding accelerometer sub-element
+    ET.SubElement(
+        sensor,
+        "accelerometer",
+        attrib={
+            "name": "linear_acceleration",
+            "site": "imu",
+            "noise": "0.005",
+            "cutoff": "157",
+        },
+    )
+
+    # Adding magnetometer sub-element
+    ET.SubElement(
+        sensor, "magnetometer", attrib={"name": "magnetometer", "site": "imu"}
+    )
+
+
 def update_joint_params(root, motor_params):
     if motor_params is None:
         return
@@ -367,6 +445,7 @@ def create_base_scene_xml(mjcf_path):
 
 def process_mjcf_fixed_file(root, config):
     add_torso_site(root)
+    add_imu_sensor(root)
     update_joint_params(root, config.motor_params)
     update_geom_classes(root, ["type", "contype", "conaffinity", "group", "density"])
     exclude_all_contacts(root)

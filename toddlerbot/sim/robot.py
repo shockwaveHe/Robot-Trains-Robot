@@ -170,17 +170,9 @@ class HumanoidRobot:
                 "active": joint.name in self.config.motor_params.keys(),
             }
 
-        def get_brand(joint_name):
-            if joint_name in self.config.motor_params:
-                return self.config.motor_params[joint_name].brand
-            return "default"
-
-        sorted_joint_info = sorted(
-            joint_info_dict.items(), key=lambda item: (get_brand(item[0]), item[0])
-        )
-        sorted_joint_info_dict = {
-            joint_name: info for joint_name, info in sorted_joint_info
-        }
+        sorted_joint_info_dict = {}
+        for joint_name in self.config.motor_params:
+            sorted_joint_info_dict[joint_name] = joint_info_dict[joint_name]
 
         return sorted_joint_info_dict
 

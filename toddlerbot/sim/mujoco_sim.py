@@ -296,7 +296,9 @@ class MuJoCoSim(BaseSim):
         for name, info in self.robot.joints_info.items():
             if info["active"]:
                 joint_state_dict[name] = JointState(
-                    time=time_curr, pos=self.data.joint(name).qpos.item()
+                    time=time_curr,
+                    pos=self.data.joint(name).qpos.item(),
+                    vel=self.data.joint(name).qvel.item(),
                 )
 
         return joint_state_dict
