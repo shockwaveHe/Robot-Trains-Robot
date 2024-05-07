@@ -10,11 +10,10 @@ import mujoco.rollout
 import mujoco.viewer
 import numpy as np
 from transforms3d.euler import euler2mat
-from transforms3d.quaternions import quat2mat
 
 from toddlerbot.control import JointState
 from toddlerbot.sim import BaseSim
-from toddlerbot.utils.constants import GRAVITY, MUJOCO_TIMESTEP
+from toddlerbot.utils.constants import GRAVITY, SIM_TIMESTEP
 from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.misc_utils import precise_sleep
 
@@ -163,18 +162,18 @@ class MuJoCoController:
     def __init__(self):
         self.command_queue = queue.Queue()
 
-    def add_command(self, joint_angles):
-        self.command_queue.put(joint_angles)
+    def add_command(self, joint_ctrls):
+        self.command_queue.put(joint_ctrls)
 
     def process_commands(self, model, data):
         while not self.command_queue.empty():
-            joint_angles = self.command_queue.get()
-            if isinstance(joint_angles, dict):
-                for name, angle in joint_angles.items():
-                    data.actuator(f"{name}_act").ctrl = angle
+            joint_ctrls = self.command_queue.get()
+            if isinstance(joint_ctrls, dict):
+                for name, ctrl in joint_ctrls.items():
+                    data.actuator(f"{name}_act").ctrl = ctrl
             else:
-                for i, angle in enumerate(joint_angles):
-                    data.actuator(i).ctrl = angle
+                for i, ctrl in enumerate(joint_ctrls):
+                    data.actuator(i).ctrl = ctrl
 
 
 class MuJoCoSim(BaseSim):
@@ -195,7 +194,7 @@ class MuJoCoSim(BaseSim):
             xml_path = find_robot_file_path(robot.name, suffix="_scene.xml")
             self.model = mujoco.MjModel.from_xml_path(xml_path)
 
-        self.model.opt.timestep = MUJOCO_TIMESTEP
+        self.model.opt.timestep = SIM_TIMESTEP
         self.data = mujoco.MjData(self.model)
 
         self.controller = MuJoCoController()

@@ -52,6 +52,12 @@ def main():
         help="The name of the robot. Need to match the name in robot_descriptions.",
     )
     parser.add_argument(
+        "--sim",
+        type=str,
+        default="mujoco",
+        help="The simulator to use.",
+    )
+    parser.add_argument(
         "--joint-names",
         type=str,
         nargs="+",  # Indicates that one or more values are expected

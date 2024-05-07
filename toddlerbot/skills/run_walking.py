@@ -7,6 +7,7 @@ from dataclasses import asdict
 
 import matplotlib.pyplot as plt
 import numpy as np
+from tqdm import tqdm
 
 from toddlerbot.sim.robot import HumanoidRobot
 from toddlerbot.skills.walking_ZMP import Walking
@@ -20,7 +21,7 @@ from toddlerbot.visualization.vis_plot import (
 )
 
 
-@profile()
+# @profile()
 def main():
     parser = argparse.ArgumentParser(description="Run the walking simulation.")
     parser.add_argument(
@@ -34,12 +35,6 @@ def main():
         type=str,
         default="pybullet",
         help="The simulator to use.",
-    )
-    parser.add_argument(
-        "--sleep-time",
-        type=float,
-        default=0.0,
-        help="Time to sleep between steps.",
     )
     args = parser.parse_args()
 
@@ -57,14 +52,26 @@ def main():
         from toddlerbot.sim.pybullet_sim import PyBulletSim
 
         sim = PyBulletSim(robot)
+
     elif args.sim == "mujoco":
         from toddlerbot.sim.mujoco_sim import MuJoCoSim
 
         sim = MuJoCoSim(robot)
+
+    elif args.sim == "isaac":
+        from toddlerbot.sim.isaac_sim import IsaacSim
+
+        custom_parameters = [
+            {"name": "--robot-name", "type": str, "default": "sustaina_op"},
+            {"name": "--sim", "type": str, "default": "pybullet"},
+        ]
+        sim = IsaacSim(robot, custom_parameters=custom_parameters)
+
     elif args.sim == "real":
         from toddlerbot.sim.real_world import RealWorld
 
         sim = RealWorld(robot)
+
     else:
         raise ValueError("Unknown simulator")
 
@@ -87,13 +94,10 @@ def main():
     joint_angle_dict = {}
     actuate_horizon = 0
 
-    if sim.name == "mujoco":
-        vis_data = {
-            "foot_steps": foot_steps,
-            "com_ref_traj": com_ref_traj,
-            "torso": None,
-        }
-        sim.run_simulation(headless=True, vis_data=vis_data)
+    if args.sim != "real":
+        sim.run_simulation(headless=True)
+
+    progress_bar = tqdm(desc=f"Running {args.sim}")
 
     # time_start = time.time()
     try:
@@ -170,6 +174,7 @@ def main():
                 )
 
             step_idx += 1
+            progress_bar.update(1)
 
             time_until_next_step = 1 / config.speed_factor * config.control_dt - (
                 time.time() - step_start
@@ -181,8 +186,6 @@ def main():
         log("KeyboardInterrupt recieved. Closing...", header="Walking")
 
     finally:
-        sim.close()
-
         log("Saving config and data...", header="Walking")
         os.makedirs(exp_folder_path, exist_ok=True)
 
@@ -260,6 +263,8 @@ def main():
             legend_labels=list(robot_state_traj_data.keys()),
             ax=ax,
         )()
+
+        sim.close()
 
 
 if __name__ == "__main__":

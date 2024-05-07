@@ -96,6 +96,20 @@
             "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
         },
         {
+            "name": "Python: walk_toddlerbot_legs_isaac",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/skills/run_walking.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot-name",
+                "toddlerbot_legs",
+                "--sim",
+                "isaac",
+            ],
+        },
+        {
             "name": "Python: stand_toddlerbot_real",
             "type": "python",
             "request": "launch",
@@ -150,6 +164,39 @@
                 "--sim",
                 "real",
             ]
+        },
+        {
+            "name": "Python: sysID_toddlerbot_legs_mujoco",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/tools/sysID/run_sysID.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot-name",
+                "toddlerbot_legs",
+                "sim",
+                "mujoco",
+                "--joint-names",
+                "all",
+            ],
+            "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
+        },
+        {
+            "name": "Python: sysID_toddlerbot_legs_isaac",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/tools/sysID/run_sysID.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot-name",
+                "toddlerbot_legs",
+                "sim",
+                "issac",
+                "--joint-names",
+                "all",
+            ],
         },
         {
             "name": "Python: sysID_toddlerbot_legs",

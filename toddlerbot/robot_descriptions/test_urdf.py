@@ -22,12 +22,6 @@ def main():
         choices=["pybullet", "mujoco"],
         help="The simulator to use.",
     )
-    parser.add_argument(
-        "--sleep-time",
-        type=float,
-        default=0.0,
-        help="Time to sleep between steps.",
-    )
     args = parser.parse_args()
 
     robot = HumanoidRobot(args.robot_name)
@@ -60,7 +54,7 @@ def main():
 
         return (sim_step_idx,)
 
-    sim.simulate(step_func, (sim_step_idx,), sleep_time=args.sleep_time)
+    sim.simulate(step_func, (sim_step_idx,))
 
 
 if __name__ == "__main__":

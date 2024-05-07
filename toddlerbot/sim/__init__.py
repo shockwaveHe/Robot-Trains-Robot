@@ -13,3 +13,7 @@ class BaseSim(ABC):
     @abstractmethod
     def set_joint_angles(self, joint_angles: dict):
         pass
+
+    @abstractmethod
+    def close(self):
+        pass

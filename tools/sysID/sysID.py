@@ -8,7 +8,7 @@ import optuna
 
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.real_world import RealWorld
-from toddlerbot.utils.constants import MUJOCO_TIMESTEP
+from toddlerbot.utils.constants import SIM_TIMESTEP
 from toddlerbot.utils.math_utils import round_floats
 from toddlerbot.utils.misc_utils import log, precise_sleep
 from toddlerbot.visualization.vis_plot import plot_joint_tracking
@@ -115,8 +115,8 @@ def actuate(sim, robot, joint_name, signal_pos, control_dt, prep_time=1):
             joint_data_dict["pos"] = [-pos for pos in joint_data_dict["pos"]]
 
     elif sim.name == "mujoco":
-        prep_steps = int(prep_time / MUJOCO_TIMESTEP)
-        control_steps = int(control_dt / MUJOCO_TIMESTEP)
+        prep_steps = int(prep_time / SIM_TIMESTEP)
+        control_steps = int(control_dt / SIM_TIMESTEP)
 
         joint_control_traj = []
         for _ in range(prep_steps):

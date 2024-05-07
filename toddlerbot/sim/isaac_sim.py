@@ -1,0 +1,299 @@
+import os
+import sys
+import threading
+import time
+
+import mediapy as media
+import numpy as np
+from isaacgym import gymapi, gymtorch, gymutil
+
+from toddlerbot.control import JointState
+from toddlerbot.sim import BaseSim
+from toddlerbot.utils.constants import SIM_TIMESTEP
+from toddlerbot.utils.file_utils import find_robot_file_path
+from toddlerbot.utils.misc_utils import precise_sleep
+
+pass
+
+import torch  # noqa: E402
+
+# initialize gym
+gym = gymapi.acquire_gym()
+
+
+class IsaacViewer:
+    def __init__(self, sim, env):
+        self.sim = sim
+        self.viewer = gym.create_viewer(self.sim, gymapi.CameraProperties())
+        self.enable_viewer_sync = True
+        gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_ESCAPE, "QUIT")
+        gym.subscribe_viewer_keyboard_event(
+            self.viewer, gymapi.KEY_V, "toggle_viewer_sync"
+        )
+
+        cam_pos = gymapi.Vec3(-1, -0.5, 0.5)
+        cam_target = gymapi.Vec3(0.0, 0.0, 0.3)
+        gym.viewer_camera_look_at(self.viewer, None, cam_pos, cam_target)
+
+    def visualize(self):
+        # update viewer
+        # check for window closed
+        if gym.query_viewer_has_closed(self.viewer):
+            sys.exit()
+
+        # check for keyboard events
+        for evt in gym.query_viewer_action_events(self.viewer):
+            if evt.action == "QUIT" and evt.value > 0:
+                sys.exit()
+            elif evt.action == "toggle_viewer_sync" and evt.value > 0:
+                self.enable_viewer_sync = not self.enable_viewer_sync
+
+        if self.enable_viewer_sync:
+            gym.step_graphics(self.sim)
+            gym.draw_viewer(self.viewer, self.sim, False)
+            gym.sync_frame_time(self.sim)
+        else:
+            gym.poll_viewer_events(self.viewer)
+
+    def close(self):
+        gym.destroy_viewer(self.viewer)
+
+
+class IssacRenderer:
+    def __init__(self, sim, env, height=720, width=1280, frame_rate=24):
+        self.sim = sim
+        self.env = env
+        self.height = height
+        self.width = width
+        self.frame_rate = frame_rate
+        self.video_frames = []
+
+        camera_properties = gymapi.CameraProperties()
+        camera_properties.width = width
+        camera_properties.height = height
+        self.camera_tensor = gym.create_camera_sensor(env, camera_properties)
+        camera_offset = gymapi.Vec3(1, -1, 0.5)
+        camera_rotation = gymapi.Quat.from_axis_angle(
+            gymapi.Vec3(-0.3, 0.2, 1), np.deg2rad(135)
+        )
+        actor_handle = gym.get_actor_handle(env, 0)
+        body_handle = gym.get_actor_rigid_body_handle(env, actor_handle, 0)
+        gym.attach_camera_to_body(
+            self.camera_tensor,
+            env,
+            body_handle,
+            gymapi.Transform(camera_offset, camera_rotation),
+            gymapi.FOLLOW_POSITION,
+        )
+
+    def visualize(self):
+        time_curr = gym.get_sim_time(self.sim)
+        if len(self.video_frames) < time_curr * self.frame_rate:
+            gym.fetch_results(self.sim, True)
+            gym.step_graphics(self.sim)
+            gym.render_all_camera_sensors(self.sim)
+            img = gym.get_camera_image(
+                self.sim, self.env, self.camera_tensor, gymapi.IMAGE_COLOR
+            )
+            img = np.reshape(img, (self.height, self.width, 4))
+            self.video_frames.append(img[..., :3])
+
+    def save_recording(self, exp_folder_path):
+        video_path = os.path.join(exp_folder_path, "isaac.mp4")
+        media.write_video(video_path, self.video_frames, fps=self.frame_rate)
+
+    def anim_pose_callback(self):
+        # TODO: implement for blender rendering
+        pass
+
+    def close(self):
+        pass
+
+
+class IsaacSim(BaseSim):
+    def __init__(self, robot, fixed=False, custom_parameters=[]):
+        self.robot = robot
+        self.name = "isaac"
+
+        # parse arguments
+        args = gymutil.parse_arguments(
+            description="Asset and Environment Information",
+            custom_parameters=custom_parameters,
+        )
+
+        # create simulation context
+        sim_params = gymapi.SimParams()
+        sim_params.dt = SIM_TIMESTEP
+        sim_params.gravity = gymapi.Vec3(0.0, 0.0, -9.81)
+        sim_params.up_axis = gymapi.UP_AXIS_Z
+        self.sim = gym.create_sim(
+            args.compute_device_id,
+            args.graphics_device_id,
+            args.physics_engine,
+            sim_params,
+        )
+
+        urdf_path = find_robot_file_path(robot.name, suffix="_isaac.urdf")
+        asset_options = gymapi.AssetOptions()
+        asset_options.fix_base_link = fixed  # fixe the base of the robot
+        asset_options.default_dof_drive_mode = 3
+        # merge bodies connected by fixed joints.
+        asset_options.collapse_fixed_joints = True
+        asset_options.density = 0.001
+        asset_options.angular_damping = 0.0
+        asset_options.linear_damping = 0.0
+        asset_options.max_angular_velocity = 1000.0
+        asset_options.max_linear_velocity = 1000.0
+        asset_options.armature = 0.0
+        asset_options.thickness = 0.01
+        robot_asset = gym.load_asset(
+            self.sim,
+            os.path.dirname(urdf_path),
+            os.path.basename(urdf_path),
+            asset_options,
+        )
+
+        # print_asset_info(robot_asset, robot.name)
+
+        # Add ground plane
+        plane_params = gymapi.PlaneParams()
+        plane_params.normal = gymapi.Vec3(0, 0, 1)
+        plane_params.static_friction = 0.6
+        plane_params.dynamic_friction = 0.6
+        plane_params.restitution = 0.0
+        gym.add_ground(self.sim, plane_params)
+
+        # Setup environment spacing
+        spacing = 2.0
+        lower = gymapi.Vec3(-spacing, 0.0, -spacing)
+        upper = gymapi.Vec3(spacing, spacing, spacing)
+
+        # Create one environment
+        self.env = gym.create_env(self.sim, lower, upper, 1)
+        # Add actors to environment
+        start_pose = gymapi.Transform()
+        # TODO: Figure out why 0.0 doesn't work
+        start_pos_z = 0.1 if fixed else 0.005
+        start_pose.p = gymapi.Vec3(0.0, 0.0, start_pos_z)
+        gym.create_actor(self.env, robot_asset, start_pose, robot.name, 0, 0, 0)
+
+        # print("=== Environment info: ================================================")
+
+        self.actor_handle = gym.get_actor_handle(self.env, 0)
+        # print_actor_info(gym, self.env, self.actor_handle)
+
+        self.last_command = None
+
+        self.thread = None
+        self.stop_event = threading.Event()
+
+    def get_torso_pose(self):
+        return np.array([0, 0, self.robot.com[-1]]), np.eye(3)
+
+    def get_joint_state(self):
+        dof_names = gym.get_actor_dof_names(self.env, self.actor_handle)
+        dof_states = gym.get_actor_dof_states(
+            self.env, self.actor_handle, gymapi.STATE_ALL
+        )
+
+        joint_state_dict = {}
+        time_curr = time.time()
+        for name, info in self.robot.joints_info.items():
+            if info["active"]:
+                dof_idx = dof_names.index(name)
+                joint_state_dict[name] = JointState(
+                    time=time_curr,
+                    pos=dof_states["pos"][dof_idx],
+                    vel=dof_states["vel"][dof_idx],
+                )
+
+        return joint_state_dict
+
+    def set_joint_angles(self, joint_ctrls, ctrl_type="position"):
+        self.last_command = (joint_ctrls, ctrl_type)
+
+    def step_control(self):
+        if self.last_command is None:
+            return  # Do nothing if no command has been set yet
+
+        joint_ctrls, ctrl_type = self.last_command
+
+        if ctrl_type == "position":
+            joint_state_dict = self.get_joint_state()
+            joint_ctrls_tensor = torch.zeros(len(joint_ctrls), dtype=torch.float)
+            for i, (name, state) in enumerate(joint_state_dict.items()):
+                joint_ctrls_tensor[i] = self.robot.config.motor_params[name].kp * (
+                    joint_ctrls[name] - state.pos
+                )
+        elif ctrl_type == "torque":
+            joint_ctrls_tensor = torch.zeros(len(joint_ctrls), dtype=torch.float)
+            for i, (name, state) in enumerate(joint_state_dict.items()):
+                joint_ctrls_tensor[i] = joint_ctrls[name]
+        else:
+            raise ValueError(f"Unknown control type: {ctrl_type}")
+
+        gym.set_dof_actuation_force_tensor(
+            self.sim, gymtorch.unwrap_tensor(joint_ctrls_tensor)
+        )
+
+    def rollout(self, joint_angles_traj):
+        for joint_angles in joint_angles_traj:
+            step_start = time.time()
+            # step the physics
+            gym.simulate(self.sim)
+            gym.fetch_results(self.sim, True)
+
+            # refresh tensors
+            gym.refresh_rigid_body_state_tensor(self.sim)
+            gym.refresh_dof_state_tensor(self.sim)
+
+            joint_state_dict = self.get_joint_state()
+            joint_ctrls = torch.zeros(len(joint_angles), dtype=torch.float)
+            for i, (name, state) in enumerate(joint_state_dict.items()):
+                joint_ctrls[i] = self.robot.config.motor_params[name].kp * (
+                    joint_angles[name] - state.pos
+                )
+
+            gym.set_dof_actuation_force_tensor(
+                self.sim, gymtorch.unwrap_tensor(joint_ctrls)
+            )
+
+            time_until_next_step = SIM_TIMESTEP - (time.time() - step_start)
+            if time_until_next_step > 0:
+                precise_sleep(time_until_next_step)
+
+    def run_simulation(self, headless=True):
+        self.thread = threading.Thread(target=self.simulate, args=(headless,))
+        self.thread.start()
+
+    def simulate(self, headless):
+        if headless:
+            self.visualizer = IssacRenderer(self.sim, self.env)
+        else:
+            self.visualizer = IsaacViewer(self.sim, self.env)
+
+        # simulation loop
+        while not self.stop_event.is_set():
+            step_start = time.time()
+
+            self.step_control()
+
+            # step the physics
+            gym.simulate(self.sim)
+            gym.fetch_results(self.sim, True)
+
+            # refresh tensors
+            gym.refresh_rigid_body_state_tensor(self.sim)
+            gym.refresh_dof_state_tensor(self.sim)
+
+            self.visualizer.visualize()
+
+            time_until_next_step = SIM_TIMESTEP - (time.time() - step_start)
+            if time_until_next_step > 0:
+                precise_sleep(time_until_next_step)
+
+        self.visualizer.close()
+
+    def close(self):
+        # Cleanup the simulator
+        gym.destroy_sim(self.sim)

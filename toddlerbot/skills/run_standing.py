@@ -23,12 +23,6 @@ def main():
         default="mujoco",
         help="The simulator to use.",
     )
-    parser.add_argument(
-        "--sleep-time",
-        type=float,
-        default=0.0,
-        help="Time to sleep between steps.",
-    )
     args = parser.parse_args()
 
     exp_name = f"stand_{args.robot_name}_{args.sim}"
@@ -75,7 +69,7 @@ def main():
         sim.set_joint_angles(robot, initial_joint_angles)
 
     try:
-        sim.simulate_worker(step_func, sleep_time=args.sleep_time)
+        sim.simulate_worker(step_func)
     finally:
         os.makedirs(exp_folder_path, exist_ok=True)
 
