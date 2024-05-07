@@ -1,17 +1,26 @@
 import copy
 import json
+import os
 import time
-from xml.etree.ElementTree import tostring
+import xml.etree.ElementTree as ET
 
 import numpy as np
 import optuna
 
-from toddlerbot.sim.mujoco_sim import MuJoCoSim
-from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.utils.constants import SIM_TIMESTEP
 from toddlerbot.utils.math_utils import round_floats
 from toddlerbot.utils.misc_utils import log, precise_sleep
 from toddlerbot.visualization.vis_plot import plot_joint_tracking
+
+# TODO: Remove the hardcoded custom_parameters
+custom_parameters = [
+    {"name": "--robot-name", "type": str, "default": "toddlerbot_legs"},
+    {"name": "--sim", "type": str, "default": "mujoco"},
+    {"name": "--joint-names", "type": str, "default": "all"},
+    {"name": "--n-trials", "type": int, "default": 15},
+    {"name": "--n-iters", "type": int, "default": 1000},
+    {"name": "--exp-folder-path", "type": str, "default": ""},
+]
 
 
 def generate_random_sinusoidal_config(
@@ -114,7 +123,7 @@ def actuate(sim, robot, joint_name, signal_pos, control_dt, prep_time=1):
         ):
             joint_data_dict["pos"] = [-pos for pos in joint_data_dict["pos"]]
 
-    elif sim.name == "mujoco":
+    else:
         prep_steps = int(prep_time / SIM_TIMESTEP)
         control_steps = int(control_dt / SIM_TIMESTEP)
 
@@ -152,6 +161,8 @@ def collect_data(
     frequency_range=(0.5, 2),
     amplitude_min=np.pi / 12,
 ):
+    from toddlerbot.sim.real_world import RealWorld
+
     real_world = RealWorld(robot)
     lower_limit = robot.joints_info[joint_name]["lower_limit"]
     upper_limit = robot.joints_info[joint_name]["upper_limit"]
@@ -214,7 +225,7 @@ def collect_data(
     return real_world_data_dict
 
 
-def update_xml(tree, params_dict):
+def update_xml(sim_name, tree, params_dict):
     """
     Update the MuJoCo XML file with new actuator parameters and return it as a string.
     """
@@ -231,20 +242,33 @@ def update_xml(tree, params_dict):
             # Find the joint by name
             joint = root.find(f".//joint[@name='{name}']")
             if joint is not None:
-                # Update the joint with new parameters
-                for param_name, param_value in params.items():
-                    joint.set(param_name, str(param_value))
+                if sim_name == "mujoco":
+                    # Update the joint with new parameters
+                    for param_name, param_value in params.items():
+                        joint.set(param_name, str(param_value))
+                elif sim_name == "isaac":
+                    dynamics = joint.find("dynamics")
+                    if dynamics is None:
+                        dynamics = ET.Element("dynamics")
+                        joint.append(dynamics)
+
+                    # Update the joint with new parameters
+                    for param_name, param_value in params.items():
+                        dynamics.set(param_name, str(param_value))
+                else:
+                    raise ValueError("Invalid simulator")
             else:
-                print(f"Joint '{name}' not found in the XML tree.")
+                raise ValueError(f"Joint '{name}' not found in the XML tree.")
 
     # Convert the updated XML tree back to a string
-    xml_string = tostring(root, encoding="unicode")
+    xml_string = ET.tostring(root, encoding="unicode")
 
     return xml_string
 
 
 def optimize_parameters(
     robot,
+    sim_name,
     joint_name,
     tree,
     assets_dict,
@@ -264,25 +288,57 @@ def optimize_parameters(
     observed_response = np.concatenate(observed_response)
 
     def objective(trial: optuna.Trial):
-        # Calculate the model response using the current set of parameters
-        damping = trial.suggest_float(
-            "damping", *damping_range[:2], step=damping_range[2]
-        )
-        armature = trial.suggest_float(
-            "armature", *armature_range[:2], step=armature_range[2]
-        )
-        frictionloss = trial.suggest_float(
-            "frictionloss", *friction_range[:2], step=friction_range[2]
-        )
-        params_dict = {
-            joint_name: {
-                "damping": damping,
-                "armature": armature,
-                "frictionloss": frictionloss,
+        if sim_name == "mujoco":
+            from toddlerbot.sim.mujoco_sim import MuJoCoSim
+
+            damping = trial.suggest_float(
+                "damping", *damping_range[:2], step=damping_range[2]
+            )
+            armature = trial.suggest_float(
+                "armature", *armature_range[:2], step=armature_range[2]
+            )
+            frictionloss = trial.suggest_float(
+                "frictionloss", *friction_range[:2], step=friction_range[2]
+            )
+            params_dict = {
+                joint_name: {
+                    "damping": damping,
+                    "armature": armature,
+                    "frictionloss": frictionloss,
+                }
             }
-        }
-        xml_str = update_xml(copy.deepcopy(tree), params_dict)
-        sim = MuJoCoSim(robot, xml_str=xml_str, assets=assets_dict, fixed=True)
+            xml_str = update_xml(sim_name, copy.deepcopy(tree), params_dict)
+            sim = MuJoCoSim(robot, xml_str=xml_str, assets=assets_dict, fixed=True)
+
+        elif sim_name == "isaac":
+            from toddlerbot.sim.isaac_sim import IsaacSim
+
+            damping = trial.suggest_float(
+                "damping", *damping_range[:2], step=damping_range[2]
+            )
+            friction = trial.suggest_float(
+                "friction", *friction_range[:2], step=friction_range[2]
+            )
+            params_dict = {joint_name: {"damping": damping, "friction": friction}}
+            xml_str = update_xml(sim_name, copy.deepcopy(tree), params_dict)
+            time_str = time.strftime("%Y%m%d_%H%M%S")
+            urdf_path_temp = os.path.join(
+                "toddlerbot",
+                "robot_descriptions",
+                robot.name,
+                f"{robot.name}_{sim_name}_{joint_name}_sysID_{time_str}.urdf",
+            )
+            with open(urdf_path_temp, "w") as f:
+                f.write(xml_str)
+
+            sim = IsaacSim(
+                robot,
+                urdf_path=urdf_path_temp,
+                fixed=True,
+                custom_parameters=custom_parameters,
+            )
+
+            os.remove(urdf_path_temp)
 
         model_response = []
         for signal_config in signal_config_list:
@@ -326,13 +382,26 @@ def optimize_parameters(
 
 def evaluate(
     robot,
+    sim_name,
     joint_name,
-    new_xml_path,
+    sysID_file_path,
     signal_config_list,
     observed_response,
     exp_folder_path,
 ):
-    sim = MuJoCoSim(robot, xml_path=new_xml_path, fixed=True)
+    if sim_name == "mujoco":
+        from toddlerbot.sim.mujoco_sim import MuJoCoSim
+
+        sim = MuJoCoSim(robot, xml_path=sysID_file_path, fixed=True)
+    elif sim_name == "isaac":
+        from toddlerbot.sim.isaac_sim import IsaacSim
+
+        sim = IsaacSim(
+            robot,
+            urdf_path=sysID_file_path,
+            fixed=True,
+            custom_parameters=custom_parameters,
+        )
 
     time_seq_ref_dict = {}
     time_seq_dict = {}
@@ -385,6 +454,7 @@ def evaluate(
         save_path=exp_folder_path,
         file_name=f"{joint_name}_sim_tracking",
         title_list=title_list,
+        motor_params=robot.config.motor_params,
     )
 
     return sim_data_dict

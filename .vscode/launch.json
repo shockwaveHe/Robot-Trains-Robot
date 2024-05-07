@@ -175,7 +175,7 @@
             "args": [
                 "--robot-name",
                 "toddlerbot_legs",
-                "sim",
+                "--sim",
                 "mujoco",
                 "--joint-names",
                 "all",
@@ -192,10 +192,12 @@
             "args": [
                 "--robot-name",
                 "toddlerbot_legs",
-                "sim",
-                "issac",
+                "--sim",
+                "isaac",
                 "--joint-names",
                 "all",
+                "--exp-folder-path",
+                "results/20240506_223843_sysID_toddlerbot_legs"
             ],
         },
         {

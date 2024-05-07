@@ -18,29 +18,107 @@ from toddlerbot.tools.sysID.sysID import (
 from toddlerbot.utils.file_utils import find_robot_file_path
 
 
-def multiprocessing_optimization(
-    robot, joint_names, tree, assets_dict, real_world_data_dict, n_iters
-):
-    # Prepare a list of arguments for each joint
-    joint_args = [
-        (robot, joint_name, tree, assets_dict, real_world_data_dict, n_iters)
-        for joint_name in joint_names
-    ]
-
-    # Create a pool of processes
-    with Pool(processes=len(joint_names)) as pool:
-        results = pool.starmap(optimize_parameters, joint_args)
-
-    # Process results
+def check_if_optimized(opt_params_file_path, opt_values_file_path, joint_names):
     opt_params_dict = {}
     opt_values_dict = {}
-    for joint_name, result in zip(joint_names, results):
-        opt_params, opt_values = result
-        if opt_params is not None:
-            opt_params_dict[joint_name] = opt_params
-            opt_values_dict[joint_name] = opt_values
+    is_optimized = False
+    if os.path.exists(opt_params_file_path) and os.path.exists(opt_values_file_path):
+        is_optimized = True
+        with open(opt_params_file_path, "r") as f:
+            opt_params_dict = json.load(f)
 
-    return opt_params_dict, opt_values_dict
+        with open(opt_values_file_path, "r") as f:
+            opt_values_dict = json.load(f)
+
+        for joint_name in joint_names:
+            if joint_name not in opt_params_dict:
+                is_optimized = False
+                break
+
+    return is_optimized, opt_params_dict, opt_values_dict
+
+
+def multiprocessing_optimization(
+    exp_folder_path, robot, sim_name, joint_names, real_world_data_dict, n_iters
+):
+    opt_params_file_path = os.path.join(exp_folder_path, "opt_params.json")
+    opt_values_file_path = os.path.join(exp_folder_path, "opt_values.json")
+    is_optimized, opt_params_dict, opt_values_dict = check_if_optimized(
+        opt_params_file_path, opt_values_file_path, joint_names
+    )
+
+    if sim_name == "mujoco":
+        fixed_xml_path = find_robot_file_path(robot.name, suffix="_fixed.xml")
+        sysID_file_path = os.path.join(
+            os.path.dirname(fixed_xml_path), f"{robot.name}_{sim_name}_sysID.xml"
+        )
+        robot_tree = ET.parse(fixed_xml_path)
+        assets_dict = {}
+        # Find mesh file references
+        for mesh in robot_tree.getroot().findall(".//mesh"):
+            mesh_file = mesh.get("file")
+            if mesh_file and mesh_file not in assets_dict:
+                mesh_file_path = os.path.join(
+                    os.path.dirname(fixed_xml_path), mesh_file
+                )
+                with open(mesh_file_path, "rb") as f:
+                    assets_dict[mesh_file] = f.read()
+
+    elif sim_name == "isaac":
+        urdf_path = find_robot_file_path(robot.name, suffix="_isaac.urdf")
+        sysID_file_path = os.path.join(
+            os.path.dirname(urdf_path), f"{robot.name}_{sim_name}_sysID.urdf"
+        )
+        robot_tree = ET.parse(urdf_path)
+        assets_dict = None
+
+    else:
+        raise ValueError("Unknown simulator")
+
+    if not is_optimized:
+        # Prepare a list of arguments for each joint
+        joint_args = [
+            (
+                robot,
+                sim_name,
+                joint_name,
+                robot_tree,
+                assets_dict,
+                real_world_data_dict,
+                n_iters,
+            )
+            for joint_name in joint_names
+        ]
+
+        # Create a pool of processes
+        with Pool(processes=len(joint_names)) as pool:
+            results = pool.starmap(optimize_parameters, joint_args)
+
+        # Process results
+        opt_params_dict = {}
+        opt_values_dict = {}
+        for joint_name, result in zip(joint_names, results):
+            opt_params, opt_values = result
+            if opt_params is not None:
+                opt_params_dict[joint_name] = opt_params
+                opt_values_dict[joint_name] = opt_values
+
+            with open(opt_params_file_path, "w") as f:
+                json.dump(opt_params_dict, f, indent=4)
+
+            with open(opt_values_file_path, "w") as f:
+                json.dump(opt_values_dict, f, indent=4)
+
+    update_xml(sim_name, robot_tree, opt_params_dict)
+    robot_tree.write(sysID_file_path)
+
+    if sim_name == "mujoco":
+        xml_path = find_robot_file_path(robot.name, suffix=".xml")
+        robot_tree_free = ET.parse(xml_path)
+        update_xml(sim_name, robot_tree_free, opt_params_dict)
+        robot_tree_free.write(xml_path)
+
+    return sysID_file_path
 
 
 def main():
@@ -138,65 +216,14 @@ def main():
                 pickle.dump(real_world_data_dict, f)
 
     ###### Optimize the hyperparameters ######
-    fixed_xml_path = find_robot_file_path(args.robot_name, suffix="_fixed.xml")
-    new_fixed_xml_path = os.path.join(
-        os.path.dirname(fixed_xml_path), f"{args.robot_name}_fixed_sysID.xml"
+    sysID_file_path = multiprocessing_optimization(
+        exp_folder_path,
+        robot,
+        args.sim,
+        args.joint_names,
+        real_world_data_dict,
+        args.n_iters,
     )
-    xml_path = find_robot_file_path(args.robot_name, suffix=".xml")
-
-    fixed_tree = ET.parse(fixed_xml_path)
-    opt_params_file_path = os.path.join(exp_folder_path, "opt_params.json")
-    opt_values_file_path = os.path.join(exp_folder_path, "opt_values.json")
-
-    opt_params_dict = {}
-    opt_values_dict = {}
-    is_optimized = False
-    if os.path.exists(opt_params_file_path) and os.path.exists(opt_values_file_path):
-        is_optimized = True
-        with open(opt_params_file_path, "r") as f:
-            opt_params_dict = json.load(f)
-
-        with open(opt_values_file_path, "r") as f:
-            opt_values_dict = json.load(f)
-
-        for joint_name in args.joint_names:
-            if joint_name not in opt_params_dict:
-                is_optimized = False
-                break
-
-    if not is_optimized:
-        assets_dict = {}
-        # Find mesh file references
-        for mesh in fixed_tree.getroot().findall(".//mesh"):
-            mesh_file = mesh.get("file")
-            if mesh_file and mesh_file not in assets_dict:
-                mesh_file_path = os.path.join(
-                    os.path.dirname(fixed_xml_path), mesh_file
-                )
-                with open(mesh_file_path, "rb") as f:
-                    assets_dict[mesh_file] = f.read()
-
-        opt_params_dict, opt_values_dict = multiprocessing_optimization(
-            robot,
-            args.joint_names,
-            fixed_tree,
-            assets_dict,
-            real_world_data_dict,
-            n_iters=args.n_iters,
-        )
-
-        with open(opt_params_file_path, "w") as f:
-            json.dump(opt_params_dict, f, indent=4)
-
-        with open(opt_values_file_path, "w") as f:
-            json.dump(opt_values_dict, f, indent=4)
-
-    update_xml(fixed_tree, opt_params_dict)
-    fixed_tree.write(new_fixed_xml_path)
-
-    tree = ET.parse(xml_path)
-    update_xml(tree, opt_params_dict)
-    tree.write(xml_path)
 
     ###### Evaluate the optimized parameters in the simulation ######
     sim_data_dict = {}
@@ -211,8 +238,9 @@ def main():
 
         sim_data_dict[joint_name] = evaluate(
             robot,
+            args.sim,
             joint_name,
-            new_fixed_xml_path,
+            sysID_file_path,
             signal_config_list,
             observed_response,
             exp_folder_path,

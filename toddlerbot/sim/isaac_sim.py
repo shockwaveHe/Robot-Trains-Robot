@@ -111,7 +111,7 @@ class IssacRenderer:
 
 
 class IsaacSim(BaseSim):
-    def __init__(self, robot, fixed=False, custom_parameters=[]):
+    def __init__(self, robot, urdf_path=None, fixed=False, custom_parameters=[]):
         self.robot = robot
         self.name = "isaac"
 
@@ -133,7 +133,8 @@ class IsaacSim(BaseSim):
             sim_params,
         )
 
-        urdf_path = find_robot_file_path(robot.name, suffix="_isaac.urdf")
+        if urdf_path is None:
+            urdf_path = find_robot_file_path(robot.name, suffix="_isaac.urdf")
         asset_options = gymapi.AssetOptions()
         asset_options.fix_base_link = fixed  # fixe the base of the robot
         asset_options.default_dof_drive_mode = 3
@@ -237,8 +238,13 @@ class IsaacSim(BaseSim):
         )
 
     def rollout(self, joint_angles_traj):
-        for joint_angles in joint_angles_traj:
-            step_start = time.time()
+        joint_state_dict = self.get_joint_state()
+        joint_state_traj = []
+        for i, joint_angles in enumerate(joint_angles_traj):
+            self.set_joint_angles(joint_angles, ctrl_type="position")
+
+            self.step_control()
+
             # step the physics
             gym.simulate(self.sim)
             gym.fetch_results(self.sim, True)
@@ -248,19 +254,13 @@ class IsaacSim(BaseSim):
             gym.refresh_dof_state_tensor(self.sim)
 
             joint_state_dict = self.get_joint_state()
-            joint_ctrls = torch.zeros(len(joint_angles), dtype=torch.float)
-            for i, (name, state) in enumerate(joint_state_dict.items()):
-                joint_ctrls[i] = self.robot.config.motor_params[name].kp * (
-                    joint_angles[name] - state.pos
-                )
 
-            gym.set_dof_actuation_force_tensor(
-                self.sim, gymtorch.unwrap_tensor(joint_ctrls)
-            )
+            for joint_name in joint_state_dict:
+                joint_state_dict[joint_name].time = i * SIM_TIMESTEP
 
-            time_until_next_step = SIM_TIMESTEP - (time.time() - step_start)
-            if time_until_next_step > 0:
-                precise_sleep(time_until_next_step)
+            joint_state_traj.append(joint_state_dict)
+
+        return joint_state_traj
 
     def run_simulation(self, headless=True):
         self.thread = threading.Thread(target=self.simulate, args=(headless,))
