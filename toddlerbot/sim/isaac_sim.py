@@ -295,5 +295,10 @@ class IsaacSim(BaseSim):
         self.visualizer.close()
 
     def close(self):
+        if self.thread is not None and threading.current_thread() is not self.thread:
+            # Wait for the thread to finish if it's not the current thread
+            self.stop_event.set()
+            self.thread.join()
+
         # Cleanup the simulator
         gym.destroy_sim(self.sim)
