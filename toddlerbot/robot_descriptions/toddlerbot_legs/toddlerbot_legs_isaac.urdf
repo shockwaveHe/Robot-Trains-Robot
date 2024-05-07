@@ -31,7 +31,7 @@
     <child link="hip_yaw_link" />
     <axis xyz="0 0 1" />
     <limit effort="10" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
-    <dynamics damping="0.077" />
+    <dynamics damping="0.088" friction="0.0001" />
   </joint>
 
   <joint name="right_hip_yaw" type="revolute">
@@ -40,7 +40,7 @@
     <child link="hip_yaw_link_2" />
     <axis xyz="0 0 1" />
     <limit effort="10" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
-    <dynamics damping="0.077" />
+    <dynamics damping="0.088" friction="0.0001" />
   </joint>
 
 
@@ -276,7 +276,7 @@
     <child link="ank_roll_link" />
     <axis xyz="0 0 1" />
     <limit effort="10" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
-    <dynamics damping="0.583" />
+    <dynamics damping="0.2" friction="0.0537" />
   </joint>
 
   <joint name="left_ank_pitch" type="revolute">
@@ -285,7 +285,7 @@
     <child link="ank_pitch_link" />
     <axis xyz="0 0 1" />
     <limit effort="10" velocity="20" lower="-0.785398163397448279" upper="0.95993108859688125456" />
-    <dynamics damping="0.523" />
+    <dynamics damping="0.327" friction="0.0553" />
   </joint>
 
   <link name="ball_joint_container">
@@ -494,7 +494,7 @@
     <child link="left_calf_link" />
     <axis xyz="0 0 1" />
     <limit effort="10" velocity="20" lower="0" upper="1.570796326794896558" />
-    <dynamics damping="1.142" />
+    <dynamics damping="0.819" friction="0.0085" />
   </joint>
 
   <joint name="left_hip_pitch" type="revolute">
@@ -503,7 +503,7 @@
     <child link="left_hip_pitch_link" />
     <axis xyz="0 0 1" />
     <limit effort="10" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
-    <dynamics damping="1.286" />
+    <dynamics damping="0.76" friction="0.018" />
   </joint>
 
   <joint name="left_hip_roll" type="revolute">
@@ -512,7 +512,7 @@
     <child link="hip_roll_link" />
     <axis xyz="0 0 1" />
     <limit effort="10" velocity="20" lower="-0.785398163397448279" upper="1.570796326794896558" />
-    <dynamics damping="3.122" />
+    <dynamics damping="0.399" friction="0.0909" />
   </joint>
 
 
@@ -748,7 +748,7 @@
     <child link="ank_roll_link_2" />
     <axis xyz="0 0 1" />
     <limit effort="10" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279" />
-    <dynamics damping="0.583" />
+    <dynamics damping="0.2" friction="0.0537" />
   </joint>
 
   <joint name="right_ank_pitch" type="revolute">
@@ -757,7 +757,7 @@
     <child link="ank_pitch_link_2" />
     <axis xyz="0 0 1" />
     <limit effort="10" velocity="20" lower="-0.785398163397448279" upper="0.95993108859688125456" />
-    <dynamics damping="0.523" />
+    <dynamics damping="0.327" friction="0.0553" />
   </joint>
 
   <link name="ball_joint_container_3">
@@ -966,7 +966,7 @@
     <child link="right_calf_link" />
     <axis xyz="0 0 1" />
     <limit effort="10" velocity="20" lower="-1.570796326794896558" upper="0" />
-    <dynamics damping="1.142" />
+    <dynamics damping="0.819" friction="0.0085" />
   </joint>
 
   <joint name="right_hip_pitch" type="revolute">
@@ -975,7 +975,7 @@
     <child link="right_hip_pitch_link" />
     <axis xyz="0 0 1" />
     <limit effort="10" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
-    <dynamics damping="1.286" />
+    <dynamics damping="0.76" friction="0.018" />
   </joint>
 
   <joint name="right_hip_roll" type="revolute">
@@ -984,7 +984,7 @@
     <child link="hip_roll_link_2" />
     <axis xyz="0 0 1" />
     <limit effort="10" velocity="20" lower="-1.570796326794896558" upper="0.785398163397448279" />
-    <dynamics damping="3.122" />
+    <dynamics damping="0.399" friction="0.0909" />
   </joint>
 
 

@@ -201,21 +201,6 @@
             ],
         },
         {
-            "name": "Python: sysID_toddlerbot_legs",
-            "type": "python",
-            "request": "launch",
-            "program": "toddlerbot/tools/sysID/run_sysID.py",
-            "console": "integratedTerminal",
-            "justMyCode": true,
-            "args": [
-                "--robot-name",
-                "toddlerbot_legs",
-                "--joint-names",
-                "all",
-            ],
-            "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
-        },
-        {
             "name": "Python: walk_toddlerbot_isaac_train",
             "type": "python",
             "request": "launch",

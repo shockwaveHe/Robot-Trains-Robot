@@ -45,6 +45,22 @@ reward_scales_config = {
 }
 
 
+robot_params = {
+    "left_hip_yaw": {"damping": 0.088, "friction": 0.0001},
+    "left_hip_roll": {"damping": 0.399, "friction": 0.0909},
+    "left_hip_pitch": {"damping": 0.76, "friction": 0.018},
+    "left_knee": {"damping": 0.819, "friction": 0.0085},
+    "left_ank_roll": {"damping": 0.2, "friction": 0.0537},
+    "left_ank_pitch": {"damping": 0.327, "friction": 0.0553},
+    "right_hip_yaw": {"damping": 0.088, "friction": 0.0001},
+    "right_hip_roll": {"damping": 0.399, "friction": 0.0909},
+    "right_hip_pitch": {"damping": 0.76, "friction": 0.018},
+    "right_knee": {"damping": 0.819, "friction": 0.0085},
+    "right_ank_roll": {"damping": 0.2, "friction": 0.0537},
+    "right_ank_pitch": {"damping": 0.327, "friction": 0.0553},
+}
+
+
 def create_isaac_urdf(robot_name):
     robot = HumanoidRobot(robot_name)
     robot_dir = os.path.join("toddlerbot", "robot_descriptions", robot_name)
@@ -70,9 +86,9 @@ def create_isaac_urdf(robot_name):
         # Add <dynamics> element
         joint_name = joint.get("name")
         if joint_name in robot.config.motor_params:
-            motor_params = robot.config.motor_params[joint_name]
             dynamics = ET.Element("dynamics")
-            dynamics.set("damping", str(motor_params.damping))
+            dynamics.set("damping", str(robot_params[joint_name]["damping"]))
+            dynamics.set("friction", str(robot_params[joint_name]["friction"]))
             joint.append(dynamics)
 
     isaac_urdf_path = os.path.join(robot_dir, f"{robot_name}_isaac.urdf")
