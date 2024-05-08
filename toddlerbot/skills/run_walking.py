@@ -186,6 +186,8 @@ def main():
         log("KeyboardInterrupt recieved. Closing...", header="Walking")
 
     finally:
+        sim.close()
+
         log("Saving config and data...", header="Walking")
         os.makedirs(exp_folder_path, exist_ok=True)
 
@@ -263,8 +265,6 @@ def main():
             legend_labels=list(robot_state_traj_data.keys()),
             ax=ax,
         )()
-
-        sim.close()
 
 
 if __name__ == "__main__":
