@@ -246,7 +246,7 @@ class SunnySkyController(BaseController):
                     state_dict[id] = JointState(
                         time=time.time(),
                         pos=p / self.config.gear_ratio - self.init_pos[id],
-                        vel=v,
+                        vel=v / self.config.gear_ratio,
                     )
 
             if len(state_dict) == len(self.motor_ids):

@@ -43,7 +43,7 @@ struct MotorCommand
     byte packet_buffer[8];
 };
 
-const int buffer_size = 20;
+const int buffer_size = 50;
 struct MotorState
 {
     float p, v, t, vb;

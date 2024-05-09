@@ -45,6 +45,7 @@ from toddlerbot.utils.misc_utils import (
     dump_profiling_data,
     log,
     precise_sleep,
+    profile,
     snake2camel,
 )
 from toddlerbot.visualization.vis_plot import plot_joint_tracking, plot_joint_velocity
@@ -103,8 +104,8 @@ class cmd:
     dyaw = 0.0
 
 
-# @profile()
-def main(sim, robot, policy, cfg, duration=5.0, debug=False):
+@profile()
+def main(sim, robot, policy, cfg, duration=5.0, debug=True):
     """
     Run the Mujoco simulation using the provided policy and configuration.
 
@@ -180,6 +181,8 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=False):
             step_start = time.time()
 
             # Obtain an observation
+            # TODO: Separate the threads for inference and state fetching
+            # TODO: separate the get_observation into get_quat and get_omega
             q_obs, dq, quat, omega = sim.get_observation(joint_ordering)
             q = q_obs - default_q
             eu_ang = np.array(quat2euler(quat))

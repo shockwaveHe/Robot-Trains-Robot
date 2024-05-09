@@ -1,3 +1,4 @@
+import copy
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -213,8 +214,15 @@ class RealWorld(BaseSim):
                         mighty_zap_state[motor_id].time
                         - self.last_mighty_zap_state[motor_id].time
                     )
+                    # log(
+                    #     f"{motor_id}: {mighty_zap_state[motor_id].vel}="
+                    #     + f"({ankle_pos[i]}-{self.last_mighty_zap_state[motor_id].pos})/"
+                    #     + f"({mighty_zap_state[motor_id].time}-{self.last_mighty_zap_state[motor_id].time})",
+                    #     header=snake2camel(self.name),
+                    #     level="debug",
+                    # )
 
-        self.last_mighty_zap_state = mighty_zap_state
+        self.last_mighty_zap_state = copy.deepcopy(mighty_zap_state)
 
         joint_state_dict = {}
         for name in self.robot.joints_info.keys():
@@ -236,19 +244,18 @@ class RealWorld(BaseSim):
                 joint_state_dict[joint_name].pos *= -1
                 joint_state_dict[joint_name].vel *= -1
 
-        log(
-            f"Joint states: {joint_state_dict}",
-            header=snake2camel(self.name),
-            level="debug",
-        )
+        # log(
+        #     f"Joint states: {joint_state_dict}",
+        #     header=snake2camel(self.name),
+        #     level="debug",
+        # )
 
         return joint_state_dict
 
     def get_observation(self, joint_ordering):
         joint_state_dict = self.get_joint_state()
         q = np.array([joint_state_dict[j].pos for j in joint_ordering])
-        dq = np.zeros_like(q)
-        # dq = np.array([joint_state_dict[j].vel for j in joint_ordering])
+        dq = np.array([joint_state_dict[j].vel for j in joint_ordering])
         quat = self.imu.get_quaternion()
         omega = self.imu.get_angular_velocity()
         return (q, dq, quat, omega)

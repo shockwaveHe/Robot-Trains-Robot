@@ -132,12 +132,18 @@ class DynamixelController(BaseController):
 
         state_dict = {}
         pos_arr, vel_arr = self.client.read_pos_vel()
-        # log(f"Pos: {np.round(np.rad2deg(pos_arr), 2)}", header="Dynamixel")
+        # log(
+        #     f"Pos: {np.round(np.rad2deg(pos_arr), 2)}",
+        #     header="Dynamixel",
+        #     level="debug",
+        # )
+        # log(f"Vel: {np.round(vel_arr, 2)}", header="Dynamixel", level="debug")
 
         pos_arr_driven = (self.config.init_pos - pos_arr) * self.config.gear_ratio
+        vel_arr_driven = -vel_arr * self.config.gear_ratio
         for i, id in enumerate(self.motor_ids):
             state_dict[id] = JointState(
-                time=time.time(), pos=pos_arr_driven[i], vel=vel_arr[i]
+                time=time.time(), pos=pos_arr_driven[i], vel=vel_arr_driven[i]
             )
 
         # log(f"End... {time.time()}", header="Dynamixel", level="warning")
@@ -165,6 +171,7 @@ if __name__ == "__main__":
     while i < 30:
         controller.set_pos(
             # [np.pi / 12] * 6
+            # [0.0, -np.pi / 12, -np.pi / 12, -np.pi / 2, -np.pi / 12, -np.pi / 12],
             [0.0, np.pi / 12, np.pi / 12, np.pi / 2, np.pi / 12, np.pi / 12]
         )
         i += 1
