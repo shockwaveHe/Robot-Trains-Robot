@@ -31,11 +31,11 @@
 import argparse
 import math
 import os
+import pickle
 import time
 from collections import deque
 
 import numpy as np
-import torch
 from tqdm import tqdm
 from transforms3d.euler import quat2euler
 
@@ -45,15 +45,9 @@ from toddlerbot.utils.misc_utils import (
     dump_profiling_data,
     log,
     precise_sleep,
-    profile,
     snake2camel,
 )
-
-
-class cmd:
-    vx = 0.4
-    vy = 0.0
-    dyaw = 0.0
+from toddlerbot.visualization.vis_plot import plot_joint_tracking, plot_joint_velocity
 
 
 class ToddlerbotLegsCfg:
@@ -73,7 +67,7 @@ class ToddlerbotLegsCfg:
             "left_ank_roll": 0.0,
             "right_hip_yaw": 0.0,
             "right_hip_roll": 0.0,
-            "right_hip_pitch": -0.325,
+            "right_hip_pitch": 0.325,
             "right_knee": -0.65,
             "right_ank_pitch": -0.325,
             "right_ank_roll": 0.0,
@@ -103,8 +97,14 @@ class ToddlerbotLegsCfg:
         cycle_time = 0.64
 
 
-@profile()
-def main(sim, robot, policy, cfg, sim_duration=60.0, debug=False):
+class cmd:
+    vx = 0.4
+    vy = 0.0
+    dyaw = 0.0
+
+
+# @profile()
+def main(sim, robot, policy, cfg, duration=5.0, debug=False):
     """
     Run the Mujoco simulation using the provided policy and configuration.
 
@@ -115,79 +115,97 @@ def main(sim, robot, policy, cfg, sim_duration=60.0, debug=False):
     Returns:
         None
     """
+    header_name = f"sim2{sim.name}"
     device = next(policy.parameters()).device
-    name = f"sim2{sim.name}"
-    if hasattr(sim, "run_simulation"):
-        sim.run_simulation(headless=True)
 
     control_dt = cfg.sim.dt * cfg.control.decimation
-    zero_joint_angles, initial_joint_angles = robot.initialize_joint_angles()
-
-    joint_angles_traj = []
-    joint_angles_traj.append((0.0, zero_joint_angles))
-    joint_angles_traj.append((0.5, initial_joint_angles))
-    joint_angles_traj.append((1.5, cfg.init_state.default_joint_angles))
-    joint_angles_traj = resample_trajectory(
-        joint_angles_traj,
-        desired_interval=control_dt,
-        interp_type="cubic",
-    )
-    step_idx = 0
-    time_start = time.time()
-    while time.time() - time_start < joint_angles_traj[-1][0]:
-        step_start = time.time()
-
-        _, joint_angles = joint_angles_traj[min(step_idx, len(joint_angles_traj) - 1)]
-
-        sim.set_joint_angles(joint_angles)
-
-        step_idx += 1
-
-        time_until_next_step = control_dt - (time.time() - step_start)
-        if time_until_next_step > 0:
-            precise_sleep(time_until_next_step)
-
     joint_ordering = list(cfg.init_state.default_joint_angles.keys())
     default_q = np.array(list(cfg.init_state.default_joint_angles.values()))
-    target_q = np.zeros((cfg.env.num_actions))
-    action = np.zeros((cfg.env.num_actions))
+
+    if sim.name == "mujoco":
+        sim.run_simulation(headless=True)
+
+        zero_joint_angles, initial_joint_angles = robot.initialize_joint_angles()
+        joint_angles_traj = []
+        joint_angles_traj.append((0.0, zero_joint_angles))
+        joint_angles_traj.append((0.5, initial_joint_angles))
+        joint_angles_traj.append((1.5, cfg.init_state.default_joint_angles))
+        joint_angles_traj.append((2.0, cfg.init_state.default_joint_angles))
+        joint_angles_traj = resample_trajectory(
+            joint_angles_traj,
+            desired_interval=control_dt,
+            interp_type="cubic",
+        )
+        step_idx = 0
+        time_start = time.time()
+        while time.time() - time_start < joint_angles_traj[-1][0]:
+            step_start = time.time()
+
+            _, joint_angles = joint_angles_traj[
+                min(step_idx, len(joint_angles_traj) - 1)
+            ]
+            sim.set_joint_angles(joint_angles)
+
+            step_idx += 1
+
+            time_until_next_step = control_dt - (time.time() - step_start)
+            if time_until_next_step > 0:
+                precise_sleep(time_until_next_step)
+
+    elif sim.name == "isaac":
+        sim.reset_dof_state(default_q)
+
+        sim.run_simulation(headless=True)
 
     hist_obs = deque()
     for _ in range(cfg.env.frame_stack):
         hist_obs.append(np.zeros([1, cfg.env.num_single_obs]))
 
     step_idx = 0
-    progress_bar = tqdm(
-        total=round(sim_duration / (cfg.control.decimation * cfg.sim.dt)),
-        desc=f"Running {sim.name}",
-    )
+    progress_bar = tqdm(total=round(duration / control_dt), desc=f"Running {sim.name}")
 
+    time_seq_ref = []
+    time_seq_dict = {}
+    dof_pos_ref_dict = {}
+    dof_pos_dict = {}
+    dof_vel_dict = {}
+
+    # with open("results/20240507_130013_walk_toddlerbot_legs_isaac/obs.pkl", "rb") as f:
+    #     obs_dump = pickle.load(f)
+
+    target_q = np.zeros((cfg.env.num_actions))
+    action = np.zeros((cfg.env.num_actions))
     try:
-        while step_idx < sim_duration / control_dt:
+        while step_idx < duration / control_dt:
             step_start = time.time()
 
             # Obtain an observation
             q_obs, dq, quat, omega = sim.get_observation(joint_ordering)
             q = q_obs - default_q
-            if debug:
-                log(f"q: {round_floats(q, 3)}", header=snake2camel(name), level="debug")
-                log(
-                    f"dq: {round_floats(dq, 3)}",
-                    header=snake2camel(name),
-                    level="debug",
-                )
-                log(f"quat: {quat}", header=snake2camel(name), level="debug")
-                log(f"omega: {omega}", header=snake2camel(name), level="debug")
-
-            obs = np.zeros([1, cfg.env.num_single_obs])
             eu_ang = np.array(quat2euler(quat))
             eu_ang[eu_ang > math.pi] -= 2 * math.pi
 
+            if debug:
+                log(
+                    f"q: {round_floats(q, 3)}",
+                    header=snake2camel(header_name),
+                    level="debug",
+                )
+                log(
+                    f"dq: {round_floats(dq, 3)}",
+                    header=snake2camel(header_name),
+                    level="debug",
+                )
+                log(f"quat: {quat}", header=snake2camel(header_name), level="debug")
+                log(f"omega: {omega}", header=snake2camel(header_name), level="debug")
+
+            obs = np.zeros([1, cfg.env.num_single_obs])
+            # step_idx + 1?
             obs[0, 0] = math.sin(
-                2 * math.pi * step_idx * cfg.sim.dt / cfg.rewards.cycle_time
+                2 * math.pi * step_idx * control_dt / cfg.rewards.cycle_time
             )
             obs[0, 1] = math.cos(
-                2 * math.pi * step_idx * cfg.sim.dt / cfg.rewards.cycle_time
+                2 * math.pi * step_idx * control_dt / cfg.rewards.cycle_time
             )
             obs[0, 2] = cmd.vx * cfg.normalization.obs_scales.lin_vel
             obs[0, 3] = cmd.vy * cfg.normalization.obs_scales.lin_vel
@@ -213,6 +231,7 @@ def main(sim, robot, policy, cfg, sim_duration=60.0, debug=False):
                     0, i * cfg.env.num_single_obs : (i + 1) * cfg.env.num_single_obs
                 ] = hist_obs[i][0, :]
 
+            # policy_input = obs_dump[step_idx]
             policy_input_tensor = torch.tensor(
                 policy_input, dtype=torch.float32, device=device
             )
@@ -225,14 +244,35 @@ def main(sim, robot, policy, cfg, sim_duration=60.0, debug=False):
             action_scaled = action * cfg.control.action_scale
             target_q = action_scaled + default_q
 
-            joint_angles = {
-                joint_name: target_angle
-                for joint_name, target_angle in zip(joint_ordering, target_q)
-            }
-            sim.set_joint_angles(joint_angles)
+            time_seq_ref.append(step_idx * control_dt)
+            joint_angles = {}
+            for name, target_angle in zip(joint_ordering, target_q):
+                if name not in dof_pos_ref_dict:
+                    dof_pos_ref_dict[name] = []
+
+                joint_angles[name] = target_angle
+                dof_pos_ref_dict[name].append(target_angle)
 
             if debug:
-                log(str(joint_angles), header=snake2camel(name), level="debug")
+                log(
+                    f"Joint angles: {joint_angles}",
+                    header=snake2camel(header_name),
+                    level="debug",
+                )
+
+            sim.set_joint_angles(joint_angles)
+
+            joint_state_dict = sim.get_joint_state()
+            for name, joint_state in joint_state_dict.items():
+                if name not in time_seq_dict:
+                    time_seq_dict[name] = []
+                    dof_pos_dict[name] = []
+                    dof_vel_dict[name] = []
+
+                # Assume the state fetching is instantaneous
+                time_seq_dict[name].append(step_idx * control_dt)
+                dof_pos_dict[name].append(joint_state.pos)
+                dof_vel_dict[name].append(joint_state.vel)
 
             step_idx += 1
             progress_bar.update(1)
@@ -242,7 +282,7 @@ def main(sim, robot, policy, cfg, sim_duration=60.0, debug=False):
                 precise_sleep(time_until_next_step)
 
     except KeyboardInterrupt:
-        log("KeyboardInterrupt recieved. Closing...", header=snake2camel(name))
+        log("KeyboardInterrupt recieved. Closing...", header=snake2camel(header_name))
 
     finally:
         sim.close()
@@ -261,9 +301,38 @@ def main(sim, robot, policy, cfg, sim_duration=60.0, debug=False):
         else:
             log(
                 "Current visualizer does not support video writing.",
-                header=snake2camel(name),
+                header=snake2camel(header_name),
                 level="warning",
             )
+
+        log("Visualizing...", header="Walking")
+        plot_joint_tracking(
+            time_seq_dict,
+            time_seq_ref,
+            dof_pos_dict,
+            dof_pos_ref_dict,
+            save_path=exp_folder_path,
+            file_suffix="",
+            motor_params=robot.config.motor_params,
+            colors_dict={
+                "dynamixel": "cyan",
+                "sunny_sky": "oldlace",
+                "mighty_zap": "whitesmoke",
+            },
+        )
+
+        plot_joint_velocity(
+            time_seq_dict,
+            dof_vel_dict,
+            save_path=exp_folder_path,
+            file_suffix="",
+            motor_params=robot.config.motor_params,
+            colors_dict={
+                "dynamixel": "cyan",
+                "sunny_sky": "oldlace",
+                "mighty_zap": "whitesmoke",
+            },
+        )
 
 
 if __name__ == "__main__":
@@ -292,9 +361,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     robot = HumanoidRobot(args.robot_name)
-    policy = torch.jit.load(args.load_model)
-    if not args.use_cpu:
-        policy = policy.cuda()
 
     if args.sim == "pybullet":
         from toddlerbot.sim.pybullet_sim import PyBulletSim
@@ -304,11 +370,29 @@ if __name__ == "__main__":
         from toddlerbot.sim.mujoco_sim import MuJoCoSim
 
         sim = MuJoCoSim(robot)
+
+    elif args.sim == "isaac":
+        from toddlerbot.sim.isaac_sim import IsaacSim
+
+        custom_parameters = [
+            {"name": "--robot-name", "type": str, "default": args.robot_name},
+            {"name": "--sim", "type": str, "default": "pybullet"},
+            {"name": "--load-model", "type": str, "default": args.load_model},
+            {"name": "--use-cpu", "type": bool, "default": args.use_cpu},
+        ]
+        sim = IsaacSim(robot, custom_parameters=custom_parameters)
+
     elif args.sim == "real":
         from toddlerbot.sim.real_world import RealWorld
 
         sim = RealWorld(robot)
     else:
         raise ValueError("Unknown simulator")
+
+    import torch
+
+    policy = torch.jit.load(args.load_model)
+    if not args.use_cpu:
+        policy = policy.cuda()
 
     main(sim, robot, policy, ToddlerbotLegsCfg())

@@ -130,3 +130,23 @@ def camel2snake(camel_str):
     return "".join(["_" + c.lower() if c.isupper() else c for c in camel_str]).lstrip(
         "_"
     )
+
+
+def set_seed(seed):
+    import os
+    import random
+
+    import numpy as np
+    import torch
+
+    if seed == -1:
+        seed = np.random.randint(0, 10000)
+
+    log(f"Setting seed: {seed}", header="Seed")
+
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)

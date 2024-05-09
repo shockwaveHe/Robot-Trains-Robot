@@ -225,10 +225,10 @@
             ],
         },
         {
-            "name": "Python: walk_toddlerbot_isaac_my_play",
+            "name": "Python: walk_toddlerbot_isaac_replay",
             "type": "python",
             "request": "launch",
-            "program": "toddlerbot/sim/humanoid_gym/humanoid/scripts/my_play.py",
+            "program": "toddlerbot/skills/walking_RL_replay.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -237,10 +237,26 @@
             ],
         },
         {
-            "name": "Python: walk_toddlerbot_sim2sim",
+            "name": "Python: walk_toddlerbot_sim2isaac",
             "type": "python",
             "request": "launch",
-            "program": "toddlerbot/skills/walking_RL.py",
+            "program": "toddlerbot/skills/walking_RL_transfer.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot-name",
+                "toddlerbot_legs",
+                "--sim",
+                "isaac",
+                "--load-model",
+                "toddlerbot/sim/humanoid_gym/logs/walk_toddlerbot_legs_isaac/exported/policies/policy_1.pt",
+            ],
+        },
+        {
+            "name": "Python: walk_toddlerbot_sim2mujoco",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/skills/walking_RL_transfer.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -251,13 +267,13 @@
                 "--load-model",
                 "toddlerbot/sim/humanoid_gym/logs/walk_toddlerbot_legs_isaac/exported/policies/policy_1.pt",
             ],
-            "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
+            // "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
         },
         {
             "name": "Python: walk_toddlerbot_sim2real",
             "type": "python",
             "request": "launch",
-            "program": "toddlerbot/skills/walking_RL.py",
+            "program": "toddlerbot/skills/walking_RL_transfer.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [

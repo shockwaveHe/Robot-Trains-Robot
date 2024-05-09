@@ -10,8 +10,8 @@ import numpy as np
 from tqdm import tqdm
 
 from toddlerbot.sim.robot import HumanoidRobot
-from toddlerbot.skills.walking_ZMP import Walking
 from toddlerbot.skills.walking_ZMP_configs import walking_configs
+from toddlerbot.skills.walking_ZMP_preview import Walking
 from toddlerbot.utils.math_utils import round_floats
 from toddlerbot.utils.misc_utils import dump_profiling_data, log, precise_sleep, profile
 from toddlerbot.visualization.vis_plot import (
