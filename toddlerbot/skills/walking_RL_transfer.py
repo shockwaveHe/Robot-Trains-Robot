@@ -392,7 +392,7 @@ if __name__ == "__main__":
     import torch
 
     policy = torch.jit.load(args.load_model)
-    if not args.use_cpu:
+    if not args.use_cpu and torch.cuda.is_available():
         policy = policy.cuda()
 
     main(sim, robot, policy, ToddlerbotLegsCfg())
