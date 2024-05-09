@@ -98,7 +98,7 @@ class ToddlerbotLegsCfg:
 
 
 class cmd:
-    vx = 0.4
+    vx = 0.1
     vy = 0.0
     dyaw = 0.0
 
@@ -122,8 +122,13 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=False):
     joint_ordering = list(cfg.init_state.default_joint_angles.keys())
     default_q = np.array(list(cfg.init_state.default_joint_angles.values()))
 
-    if sim.name == "mujoco":
+    if sim.name == "isaac":
+        sim.reset_dof_state(default_q)
         sim.run_simulation(headless=True)
+
+    else:
+        if hasattr(sim, "run_simulation"):
+            sim.run_simulation(headless=True)
 
         zero_joint_angles, initial_joint_angles = robot.initialize_joint_angles()
         joint_angles_traj = []
@@ -151,11 +156,6 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=False):
             time_until_next_step = control_dt - (time.time() - step_start)
             if time_until_next_step > 0:
                 precise_sleep(time_until_next_step)
-
-    elif sim.name == "isaac":
-        sim.reset_dof_state(default_q)
-
-        sim.run_simulation(headless=True)
 
     hist_obs = deque()
     for _ in range(cfg.env.frame_stack):

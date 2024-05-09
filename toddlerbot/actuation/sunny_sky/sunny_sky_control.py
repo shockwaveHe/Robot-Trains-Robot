@@ -14,7 +14,7 @@ from threading import Lock
 import numpy as np
 import serial
 
-from toddlerbot.control import BaseController, JointState
+from toddlerbot.actuation import BaseController, JointState
 from toddlerbot.utils.file_utils import ReadLine, find_ports
 from toddlerbot.utils.math_utils import interpolate_pos
 from toddlerbot.utils.misc_utils import log, precise_sleep, profile

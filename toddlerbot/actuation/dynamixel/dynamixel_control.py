@@ -6,8 +6,8 @@ from typing import List
 
 import numpy as np
 
-from toddlerbot.control import BaseController, JointState
-from toddlerbot.control.dynamixel.dynamixel_client import DynamixelClient
+from toddlerbot.actuation import BaseController, JointState
+from toddlerbot.actuation.dynamixel.dynamixel_client import DynamixelClient
 from toddlerbot.utils.file_utils import find_ports
 from toddlerbot.utils.math_utils import interpolate_pos
 from toddlerbot.utils.misc_utils import log, precise_sleep, profile

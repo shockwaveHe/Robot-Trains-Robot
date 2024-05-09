@@ -1,6 +1,6 @@
 import time
 
-from toddlerbot.control.mighty_zap import mighty_zap
+from toddlerbot.actuation.mighty_zap import mighty_zap
 
 Actuator_ID_1 = 0
 Actuator_ID_2 = 1

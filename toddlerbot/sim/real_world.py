@@ -5,15 +5,15 @@ import numpy as np
 from transforms3d.euler import euler2quat
 from transforms3d.quaternions import quat2mat
 
-from toddlerbot.control.dynamixel.dynamixel_control import (
+from toddlerbot.actuation.dynamixel.dynamixel_control import (
     DynamixelConfig,
     DynamixelController,
 )
-from toddlerbot.control.mighty_zap.mighty_zap_control import (
+from toddlerbot.actuation.mighty_zap.mighty_zap_control import (
     MightyZapConfig,
     MightyZapController,
 )
-from toddlerbot.control.sunny_sky.sunny_sky_control import (
+from toddlerbot.actuation.sunny_sky.sunny_sky_control import (
     SunnySkyConfig,
     SunnySkyController,
 )

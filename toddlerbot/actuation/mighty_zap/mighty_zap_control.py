@@ -7,8 +7,8 @@ from typing import List
 import numpy as np
 
 # import uvloop
-from toddlerbot.control import BaseController, JointState
-from toddlerbot.control.mighty_zap.mighty_zap_client import MightyZapClient
+from toddlerbot.actuation import BaseController, JointState
+from toddlerbot.actuation.mighty_zap.mighty_zap_client import MightyZapClient
 
 # from toddlerbot.actuation.mighty_zap.mighty_zap_client_async import MightyZapClient
 from toddlerbot.utils.file_utils import find_ports

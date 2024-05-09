@@ -8,7 +8,7 @@ import numpy as np
 from isaacgym import gymapi, gymtorch, gymutil
 from isaacgym.torch_utils import quat_rotate_inverse
 
-from toddlerbot.control import JointState
+from toddlerbot.actuation import JointState
 from toddlerbot.sim import BaseSim
 from toddlerbot.utils.constants import SIM_TIMESTEP
 from toddlerbot.utils.file_utils import find_robot_file_path
