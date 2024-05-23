@@ -43,7 +43,7 @@ def plot_ankle_mapping(self, ankle_ik):
     plt.show()
 
 
-def plot_foot(ax, center, size, angle, side):
+def plot_one_footstep(ax, center, size, angle, side):
     length, width = size
     # Calculate the corner points
     dx = np.cos(angle) * length / 2
@@ -102,11 +102,15 @@ def plot_footsteps(
                 dy = y_offset_com_to_foot * np.cos(step.position[2])
 
                 left_foot_pos = [step.position[0] + dx, step.position[1] + dy]
-                plot_foot(ax, left_foot_pos, foot_size, step.position[2], "left")
+                plot_one_footstep(
+                    ax, left_foot_pos, foot_size, step.position[2], "left"
+                )
                 right_foot_pos = [step.position[0] - dx, step.position[1] - dy]
-                plot_foot(ax, right_foot_pos, foot_size, step.position[2], "right")
+                plot_one_footstep(
+                    ax, right_foot_pos, foot_size, step.position[2], "right"
+                )
             else:
-                plot_foot(
+                plot_one_footstep(
                     ax, step.position[:2], foot_size, step.position[2], step.support_leg
                 )
 
@@ -123,7 +127,7 @@ def plot_footsteps(
     return vis_function
 
 
-def plot_joint_tracking(
+def plot_joint_angle_tracking(
     time_seq_dict,
     time_seq_ref,
     joint_angle_dict,
@@ -209,7 +213,7 @@ def plot_joint_tracking(
         )()
 
 
-def plot_joint_velocity(
+def plot_joint_velocity_tracking(
     time_seq_dict,
     joint_vel_dict,
     save_path,
@@ -281,6 +285,48 @@ def plot_joint_velocity(
         )()
 
 
+def plot_orientation_tracking(
+    time_list,
+    euler_angle_list,
+    save_path,
+    file_name="euler_angles_tracking",
+    file_suffix="",
+):
+    plot_line_graph(
+        np.array(euler_angle_list).T,
+        time_list,
+        legend_labels=["Roll (X)", "Pitch (Y)", "Yaw (Z)"],
+        title="Euler Angles Over Time",
+        x_label="Time Step",
+        y_label="Euler Angles (rad)",
+        save_config=True,
+        save_path=save_path,
+        file_name=file_name,
+        file_suffix=file_suffix,
+    )()
+
+
+def plot_angular_velocity_tracking(
+    time_list,
+    ang_vel_list,
+    save_path,
+    file_name="angular_velocity_tracking",
+    file_suffix="",
+):
+    plot_line_graph(
+        np.array(ang_vel_list).T,
+        time_list,
+        legend_labels=["Roll (X)", "Pitch (Y)", "Yaw (Z)"],
+        title="Angular Velocities Over Time",
+        x_label="Time Step",
+        y_label="Angular Velocity (rad/s)",
+        save_config=True,
+        save_path=save_path,
+        file_name=file_name,
+        file_suffix=file_suffix,
+    )()
+
+
 def plot_line_graph(
     y,
     x=None,
@@ -317,7 +363,7 @@ def plot_line_graph(
         else:
             x_local = x
 
-        if isinstance(y[0], list):  # Multiple lines
+        if isinstance(y[0], list) or isinstance(y[0], np.ndarray):  # Multiple lines
             for i, sub_y in enumerate(y):
                 xi = x_local[i] if isinstance(x_local[0], list) else x_local
                 style = line_styles_local[i % len(line_styles_local)]

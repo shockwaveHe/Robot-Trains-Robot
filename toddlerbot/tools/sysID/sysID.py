@@ -10,7 +10,7 @@ import optuna
 from toddlerbot.utils.constants import SIM_TIMESTEP
 from toddlerbot.utils.math_utils import round_floats
 from toddlerbot.utils.misc_utils import log, precise_sleep
-from toddlerbot.visualization.vis_plot import plot_joint_tracking
+from toddlerbot.visualization.vis_plot import plot_joint_angle_tracking
 
 # TODO: Remove the hardcoded custom_parameters
 custom_parameters = [
@@ -212,7 +212,7 @@ def collect_data(
 
     real_world.close()
 
-    plot_joint_tracking(
+    plot_joint_angle_tracking(
         time_seq_dict,
         time_seq_ref_dict,
         joint_angle_dict,
@@ -446,7 +446,7 @@ def evaluate(
     error = np.sqrt(np.mean((observed_response - np.array(model_response)) ** 2))
     log(f"Root mean squared error: {error}", header="SysID", level="info")
 
-    plot_joint_tracking(
+    plot_joint_angle_tracking(
         time_seq_dict,
         time_seq_ref_dict,
         joint_angle_dict,

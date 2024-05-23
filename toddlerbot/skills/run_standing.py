@@ -6,7 +6,7 @@ from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.pybullet_sim import PyBulletSim
 from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.sim.robot import HumanoidRobot
-from toddlerbot.visualization.vis_plot import plot_joint_tracking
+from toddlerbot.visualization.vis_plot import plot_joint_angle_tracking
 
 
 def main():
@@ -73,7 +73,7 @@ def main():
     finally:
         os.makedirs(exp_folder_path, exist_ok=True)
 
-        plot_joint_tracking(
+        plot_joint_angle_tracking(
             time_seq_dict,
             time_seq_ref,
             joint_angle_dict,

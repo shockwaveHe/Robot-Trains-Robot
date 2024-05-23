@@ -48,7 +48,12 @@ from toddlerbot.utils.misc_utils import (
     profile,
     snake2camel,
 )
-from toddlerbot.visualization.vis_plot import plot_joint_tracking, plot_joint_velocity
+from toddlerbot.visualization.vis_plot import (
+    plot_angular_velocity_tracking,
+    plot_joint_angle_tracking,
+    plot_joint_velocity_tracking,
+    plot_orientation_tracking,
+)
 
 
 class ToddlerbotLegsCfg:
@@ -166,12 +171,12 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=True):
     progress_bar = tqdm(total=round(duration / control_dt), desc=f"Running {sim.name}")
 
     time_seq_ref = []
+    euler_angle_obs_list = []
+    ang_vel_obs_list = []
     time_seq_dict = {}
     dof_pos_ref_dict = {}
     dof_pos_dict = {}
     dof_vel_dict = {}
-    euler_angle_obs_list = []
-    omega_obs_list = []
 
     # with open("results/20240507_130013_walk_toddlerbot_legs_isaac/obs.pkl", "rb") as f:
     #     obs_dump = pickle.load(f)
@@ -193,9 +198,11 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=True):
             euler_angle_obs = np.array(quat2euler(quat_obs))
             euler_angle_obs[euler_angle_obs > math.pi] -= 2 * math.pi
 
-            omega_obs = sim.get_base_angular_velocity()
+            ang_vel_obs = sim.get_base_angular_velocity()
 
             time_seq_ref.append(step_idx * control_dt)
+            euler_angle_obs_list.append(euler_angle_obs)
+            ang_vel_obs_list.append(ang_vel_obs)
             for name, joint_state in joint_state_dict.items():
                 if name not in time_seq_dict:
                     time_seq_dict[name] = []
@@ -206,8 +213,6 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=True):
                 time_seq_dict[name].append(step_idx * control_dt)
                 dof_pos_dict[name].append(joint_state.pos)
                 dof_vel_dict[name].append(joint_state.vel)
-                euler_angle_obs_list.append(euler_angle_obs)
-                omega_obs_list.append(omega_obs)
 
             if debug:
                 log(
@@ -222,7 +227,7 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=True):
                 )
                 log(f"quat: {quat_obs}", header=snake2camel(header_name), level="debug")
                 log(
-                    f"omega: {omega_obs}",
+                    f"ang_vel: {ang_vel_obs}",
                     header=snake2camel(header_name),
                     level="debug",
                 )
@@ -240,7 +245,7 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=True):
             obs[0, 5:17] = q_delta * cfg.normalization.obs_scales.dof_pos
             obs[0, 17:29] = dq_obs * cfg.normalization.obs_scales.dof_vel
             obs[0, 29:41] = action
-            obs[0, 41:44] = omega_obs
+            obs[0, 41:44] = ang_vel_obs
             obs[0, 44:47] = euler_angle_obs
 
             obs = np.clip(
@@ -327,19 +332,28 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=True):
             "dof_pos_ref_dict": dof_pos_ref_dict,
             "dof_vel_dict": dof_vel_dict,
             "euler_angle_obs_list": euler_angle_obs_list,
-            "omega_obs_list": omega_obs_list,
+            "ang_vel_obs_list": ang_vel_obs_list,
         }
         with open(log_data_path, "wb") as f:
             pickle.dump(log_data_dict, f)
 
         log("Visualizing...", header="Walking")
-        plot_joint_tracking(
+        plot_orientation_tracking(
+            time_seq_ref,
+            euler_angle_obs_list,
+            save_path=exp_folder_path,
+        )
+        plot_angular_velocity_tracking(
+            time_seq_ref,
+            ang_vel_obs_list,
+            save_path=exp_folder_path,
+        )
+        plot_joint_angle_tracking(
             time_seq_dict,
             time_seq_ref,
             dof_pos_dict,
             dof_pos_ref_dict,
             save_path=exp_folder_path,
-            file_suffix="",
             motor_params=robot.config.motor_params,
             colors_dict={
                 "dynamixel": "cyan",
@@ -348,11 +362,10 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=True):
             },
         )
 
-        plot_joint_velocity(
+        plot_joint_velocity_tracking(
             time_seq_dict,
             dof_vel_dict,
             save_path=exp_folder_path,
-            file_suffix="",
             motor_params=robot.config.motor_params,
             colors_dict={
                 "dynamixel": "cyan",

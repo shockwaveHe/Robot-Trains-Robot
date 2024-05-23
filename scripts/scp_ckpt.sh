@@ -3,11 +3,20 @@
 # Variables
 REMOTE_USER="haochen"
 REMOTE_HOST="10.5.66.54"
-REMOTE_REPO_PATH="/home/haochen/projects/toddlerbot"
+REMOTE_REPO_PATH="/home/${REMOTE_USER}/projects/toddlerbot"
 LOCAL_REPO_PATH="/Users/haochen/Projects/toddlerbot"
 RELATIVE_PATH="toddlerbot/sim/humanoid_gym/logs/walk_toddlerbot_legs_isaac"
 REMOTE_FOLDER_PATH="${REMOTE_REPO_PATH}/${RELATIVE_PATH}"
 LOCAL_FOLDER_PATH="${LOCAL_REPO_PATH}/${RELATIVE_PATH}"
+
+# REMOTE_USER="toddy"
+# REMOTE_HOST="10.5.86.207"
+# REMOTE_REPO_PATH="/home/${REMOTE_USER}/projects/toddlerbot"
+# LOCAL_REPO_PATH="/home/haochen/projects/toddlerbot"
+# RELATIVE_PATH="toddlerbot/sim/humanoid_gym/logs/walk_toddlerbot_legs_isaac"
+# REMOTE_FOLDER_PATH="${REMOTE_REPO_PATH}/${RELATIVE_PATH}"
+# LOCAL_FOLDER_PATH="${LOCAL_REPO_PATH}/${RELATIVE_PATH}"
+
 
 # SSH to remote host and list directories
 ssh -n ${REMOTE_USER}@${REMOTE_HOST} "cd ${REMOTE_FOLDER_PATH} && ls -d */" | while read subdir; do
