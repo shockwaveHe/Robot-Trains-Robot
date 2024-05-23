@@ -109,7 +109,8 @@ class RealWorld(BaseSim):
         return negated_joint_angles
 
     def _initialize_sensors(self):
-        self.imu = IMU(default_pose=euler2quat(-np.pi / 2, 0, 0))
+        self.imu = IMU()
+        self.imu.set_default_pose(euler2quat(-np.pi / 2, 0, 0))
 
     # @profile()
     def set_joint_angles(self, joint_angles):

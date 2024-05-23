@@ -14,7 +14,7 @@ from transforms3d.quaternions import qinverse, qmult
 
 
 class IMU:
-    def __init__(self, default_pose=(1, 0, 0, 0)):
+    def __init__(self):
         # Initialize the I2C bus and sensor
         self.i2c = busio.I2C(board.SCL, board.SDA)
         self.sensor = BNO08X_I2C(self.i2c)
@@ -24,6 +24,10 @@ class IMU:
         self.sensor.enable_feature(BNO_REPORT_GYROSCOPE)
         self.sensor.enable_feature(BNO_REPORT_ROTATION_VECTOR)
 
+        self.default_pose = np.array([1, 0, 0, 0])
+        self.default_pose_inv = qinverse(self.default_pose)
+
+    def set_default_pose(self, default_pose):
         self.default_pose = np.array(default_pose)
         self.default_pose_inv = qinverse(self.default_pose)
 
