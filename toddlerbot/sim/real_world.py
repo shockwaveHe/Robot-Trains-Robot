@@ -252,13 +252,11 @@ class RealWorld(BaseSim):
 
         return joint_state_dict
 
-    def get_observation(self, joint_ordering):
-        joint_state_dict = self.get_joint_state()
-        q = np.array([joint_state_dict[j].pos for j in joint_ordering])
-        dq = np.array([joint_state_dict[j].vel for j in joint_ordering])
-        quat = self.imu.get_quaternion()
-        omega = self.imu.get_angular_velocity()
-        return (q, dq, quat, omega)
+    def get_base_orientation(self):
+        return self.imu.get_quaternion()
+
+    def get_base_angular_velocity(self):
+        return self.imu.get_angular_velocity()
 
     def get_link_pos(self, link_name: str):
         pass

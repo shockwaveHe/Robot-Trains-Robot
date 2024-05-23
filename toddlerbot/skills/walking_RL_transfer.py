@@ -99,7 +99,7 @@ class ToddlerbotLegsCfg:
 
 
 class cmd:
-    vx = 0.1
+    vx = 0.0
     vy = 0.0
     dyaw = 0.0
 
@@ -170,6 +170,8 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=True):
     dof_pos_ref_dict = {}
     dof_pos_dict = {}
     dof_vel_dict = {}
+    euler_angle_obs_list = []
+    omega_obs_list = []
 
     # with open("results/20240507_130013_walk_toddlerbot_legs_isaac/obs.pkl", "rb") as f:
     #     obs_dump = pickle.load(f)
@@ -182,28 +184,50 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=True):
 
             # Obtain an observation
             # TODO: Separate the threads for inference and state fetching
-            # TODO: separate the get_observation into get_quat and get_omega
-            q_obs, dq, quat, omega = sim.get_observation(joint_ordering)
-            q = q_obs - default_q
-            eu_ang = np.array(quat2euler(quat))
-            eu_ang[eu_ang > math.pi] -= 2 * math.pi
+            joint_state_dict = sim.get_joint_state()
+            q_obs = np.array([joint_state_dict[j].pos for j in joint_ordering])
+            q_delta = q_obs - default_q
+            dq_obs = np.array([joint_state_dict[j].vel for j in joint_ordering])
+
+            quat_obs = sim.get_base_orientation()
+            euler_angle_obs = np.array(quat2euler(quat_obs))
+            euler_angle_obs[euler_angle_obs > math.pi] -= 2 * math.pi
+
+            omega_obs = sim.get_base_angular_velocity()
+
+            time_seq_ref.append(step_idx * control_dt)
+            for name, joint_state in joint_state_dict.items():
+                if name not in time_seq_dict:
+                    time_seq_dict[name] = []
+                    dof_pos_dict[name] = []
+                    dof_vel_dict[name] = []
+
+                # Assume the state fetching is instantaneous
+                time_seq_dict[name].append(step_idx * control_dt)
+                dof_pos_dict[name].append(joint_state.pos)
+                dof_vel_dict[name].append(joint_state.vel)
+                euler_angle_obs_list.append(euler_angle_obs)
+                omega_obs_list.append(omega_obs)
 
             if debug:
                 log(
-                    f"q: {round_floats(q, 3)}",
+                    f"q: {round_floats(q_delta, 3)}",
                     header=snake2camel(header_name),
                     level="debug",
                 )
                 log(
-                    f"dq: {round_floats(dq, 3)}",
+                    f"dq: {round_floats(dq_obs, 3)}",
                     header=snake2camel(header_name),
                     level="debug",
                 )
-                log(f"quat: {quat}", header=snake2camel(header_name), level="debug")
-                log(f"omega: {omega}", header=snake2camel(header_name), level="debug")
+                log(f"quat: {quat_obs}", header=snake2camel(header_name), level="debug")
+                log(
+                    f"omega: {omega_obs}",
+                    header=snake2camel(header_name),
+                    level="debug",
+                )
 
             obs = np.zeros([1, cfg.env.num_single_obs])
-            # step_idx + 1?
             obs[0, 0] = math.sin(
                 2 * math.pi * step_idx * control_dt / cfg.rewards.cycle_time
             )
@@ -213,11 +237,11 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=True):
             obs[0, 2] = cmd.vx * cfg.normalization.obs_scales.lin_vel
             obs[0, 3] = cmd.vy * cfg.normalization.obs_scales.lin_vel
             obs[0, 4] = cmd.dyaw * cfg.normalization.obs_scales.ang_vel
-            obs[0, 5:17] = q * cfg.normalization.obs_scales.dof_pos
-            obs[0, 17:29] = dq * cfg.normalization.obs_scales.dof_vel
+            obs[0, 5:17] = q_delta * cfg.normalization.obs_scales.dof_pos
+            obs[0, 17:29] = dq_obs * cfg.normalization.obs_scales.dof_vel
             obs[0, 29:41] = action
-            obs[0, 41:44] = omega
-            obs[0, 44:47] = eu_ang
+            obs[0, 41:44] = omega_obs
+            obs[0, 44:47] = euler_angle_obs
 
             obs = np.clip(
                 obs,
@@ -247,7 +271,6 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=True):
             action_scaled = action * cfg.control.action_scale
             target_q = action_scaled + default_q
 
-            time_seq_ref.append(step_idx * control_dt)
             joint_angles = {}
             for name, target_angle in zip(joint_ordering, target_q):
                 if name not in dof_pos_ref_dict:
@@ -264,18 +287,6 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=True):
                 )
 
             sim.set_joint_angles(joint_angles)
-
-            joint_state_dict = sim.get_joint_state()
-            for name, joint_state in joint_state_dict.items():
-                if name not in time_seq_dict:
-                    time_seq_dict[name] = []
-                    dof_pos_dict[name] = []
-                    dof_vel_dict[name] = []
-
-                # Assume the state fetching is instantaneous
-                time_seq_dict[name].append(step_idx * control_dt)
-                dof_pos_dict[name].append(joint_state.pos)
-                dof_vel_dict[name].append(joint_state.vel)
 
             step_idx += 1
             progress_bar.update(1)
@@ -307,6 +318,19 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=True):
                 header=snake2camel(header_name),
                 level="warning",
             )
+
+        log_data_path = os.path.join(exp_folder_path, "log_data.pkl")
+        log_data_dict = {
+            "time_seq_dict": time_seq_dict,
+            "time_seq_ref": time_seq_ref,
+            "dof_pos_dict": dof_pos_dict,
+            "dof_pos_ref_dict": dof_pos_ref_dict,
+            "dof_vel_dict": dof_vel_dict,
+            "euler_angle_obs_list": euler_angle_obs_list,
+            "omega_obs_list": omega_obs_list,
+        }
+        with open(log_data_path, "wb") as f:
+            pickle.dump(log_data_dict, f)
 
         log("Visualizing...", header="Walking")
         plot_joint_tracking(

@@ -239,26 +239,16 @@ class IsaacSim(BaseSim):
 
         return joint_state_dict
 
-    def get_observation(self, joint_ordering):
-        """Extracts an observation from the mujoco data structure"""
+    def get_base_orientation(self):
         self.gym.refresh_dof_state_tensor(self.sim)
-        self.gym.refresh_actor_root_state_tensor(self.sim)
+        return np.array([self.root_state[0, 6], *self.root_state[0, 3:6]])
 
-        q = np.zeros(len(joint_ordering))
-        dq = np.zeros(len(joint_ordering))
-        for i, name in enumerate(joint_ordering):
-            dof_idx = self.dof_names.index(name)
-            q[i] = self.dof_state[dof_idx, 0].item()
-            dq[i] = self.dof_state[dof_idx, 1].item()
-
-        quat = np.array([self.root_state[0, 6], *self.root_state[0, 3:6]])
-
+    def get_base_angular_velocity(self):
+        self.gym.refresh_dof_state_tensor(self.sim)
         ang_vel_tensor = quat_rotate_inverse(
             self.root_state[:, 3:7], self.root_state[:, 10:13]
         )
-        omega = ang_vel_tensor.detach().cpu().numpy()
-
-        return (q, dq, quat, omega)
+        return ang_vel_tensor.detach().cpu().numpy()
 
     def set_joint_angles(self, joint_ctrls, ctrl_type="position"):
         self.last_command = (joint_ctrls, ctrl_type)
