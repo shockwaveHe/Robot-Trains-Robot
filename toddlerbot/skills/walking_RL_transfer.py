@@ -1,41 +1,14 @@
-# SPDX-License-Identifier: BSD-3-Clause
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-# 1. Redistributions of source code must retain the above copyright notice, this
-# list of conditions and the following disclaimer.
-#
-# 2. Redistributions in binary form must reproduce the above copyright notice,
-# this list of conditions and the following disclaimer in the documentation
-# and/or other materials provided with the distribution.
-#
-# 3. Neither the name of the copyright holder nor the names of its
-# contributors may be used to endorse or promote products derived from
-# this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
-# Copyright (c) 2024 Beijing RobotEra TECHNOLOGY CO.,LTD. All rights reserved.
-
-
 import argparse
 import math
 import os
 import pickle
+import queue
+import threading
 import time
 from collections import deque
 
 import numpy as np
+import torch
 from tqdm import tqdm
 
 from toddlerbot.sim.robot import HumanoidRobot
@@ -112,26 +85,8 @@ class cmd:
     dyaw = 0.0
 
 
-@profile()
-def main(sim, robot, policy, cfg, duration=5.0, debug=True):
-    """
-    Run the Mujoco simulation using the provided policy and configuration.
-
-    Args:
-        policy: The policy used for controlling the simulation.
-        cfg: The configuration object containing simulation settings.
-
-    Returns:
-        None
-    """
-    if debug and sim.name == "real_world":
-        duration = 1.0
-
-    header_name = f"sim2{sim.name}"
-    device = next(policy.parameters()).device
-
+def initialize(sim, cfg, robot):
     control_dt = cfg.sim.dt * cfg.control.decimation
-    joint_ordering = list(cfg.init_state.default_joint_angles.keys())
     default_q = np.array(list(cfg.init_state.default_joint_angles.values()))
 
     if sim.name == "isaac":
@@ -169,6 +124,51 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=True):
             if time_until_next_step > 0:
                 precise_sleep(time_until_next_step)
 
+
+@profile()
+def fetch_state(sim, cfg, state_queue, duration):
+    control_dt = cfg.sim.dt * cfg.control.decimation
+    joint_ordering = list(cfg.init_state.default_joint_angles.keys())
+
+    time_start = time.time()
+    try:
+        while time.time() - time_start < duration:
+            step_start = time.time()
+
+            joint_state_dict = sim.get_joint_state()
+            q_obs = np.array([joint_state_dict[j].pos for j in joint_ordering])
+            dq_obs = np.array([joint_state_dict[j].vel for j in joint_ordering])
+            quat_obs = sim.get_base_orientation()  # wxyz quaternion format
+            euler_angle_obs = quaternion_to_euler_array(quat_obs)
+            ang_vel_obs = sim.get_base_angular_velocity()
+
+            state = {
+                "q_obs": q_obs,
+                "dq_obs": dq_obs,
+                "quat_obs": quat_obs,
+                "euler_angle_obs": euler_angle_obs,
+                "ang_vel_obs": ang_vel_obs,
+            }
+
+            state_queue.put(state)
+
+            time_until_next_step = control_dt - (time.time() - step_start)
+            if time_until_next_step > 0:
+                precise_sleep(time_until_next_step)
+
+    except KeyboardInterrupt:
+        pass
+
+
+@profile()
+def run_policy(sim, cfg, state_queue, robot, policy, duration, debug=True):
+    control_dt = cfg.sim.dt * cfg.control.decimation
+    joint_ordering = list(cfg.init_state.default_joint_angles.keys())
+    default_q = np.array(list(cfg.init_state.default_joint_angles.values()))
+
+    header_name = f"sim2{sim.name}"
+    device = next(policy.parameters()).device
+
     hist_obs = deque()
     for _ in range(cfg.env.frame_stack):
         hist_obs.append(np.zeros([1, cfg.env.num_single_obs]))
@@ -184,128 +184,134 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=True):
     dof_pos_dict = {}
     dof_vel_dict = {}
 
-    # with open("results/20240507_130013_walk_toddlerbot_legs_isaac/obs.pkl", "rb") as f:
-    #     obs_dump = pickle.load(f)
-
     target_q = np.zeros((cfg.env.num_actions))
     action = np.zeros((cfg.env.num_actions))
+
     try:
         while step_idx < duration / control_dt:
             step_start = time.time()
 
-            # Obtain an observation
-            # TODO: Separate the threads for inference and state fetching
-            joint_state_dict = sim.get_joint_state()
-            q_obs = np.array([joint_state_dict[j].pos for j in joint_ordering])
-            q_delta = q_obs - default_q
-            dq_obs = np.array([joint_state_dict[j].vel for j in joint_ordering])
+            # Get the latest state from the queue
+            if not state_queue.empty():
+                state = state_queue.get()
+                q_obs = state["q_obs"]
+                dq_obs = state["dq_obs"]
+                quat_obs = state["quat_obs"]
+                euler_angle_obs = state["euler_angle_obs"]
+                ang_vel_obs = state["ang_vel_obs"]
 
-            quat_obs = sim.get_base_orientation()
-            euler_angle_obs = quaternion_to_euler_array(quat_obs)
+                q_delta = q_obs - default_q
 
-            ang_vel_obs = sim.get_base_angular_velocity()
+                time_seq_ref.append(step_idx * control_dt)
+                euler_angle_obs_list.append(euler_angle_obs)
+                ang_vel_obs_list.append(ang_vel_obs)
+                for i, joint_name in enumerate(joint_ordering):
+                    if joint_name not in time_seq_dict:
+                        time_seq_dict[joint_name] = []
+                        dof_pos_dict[joint_name] = []
+                        dof_vel_dict[joint_name] = []
 
-            time_seq_ref.append(step_idx * control_dt)
-            euler_angle_obs_list.append(euler_angle_obs)
-            ang_vel_obs_list.append(ang_vel_obs)
-            for name, joint_state in joint_state_dict.items():
-                if name not in time_seq_dict:
-                    time_seq_dict[name] = []
-                    dof_pos_dict[name] = []
-                    dof_vel_dict[name] = []
+                    # Assume the state fetching is instantaneous
+                    time_seq_dict[joint_name].append(step_idx * control_dt)
+                    dof_pos_dict[joint_name].append(q_obs[i])
+                    dof_vel_dict[joint_name].append(dq_obs[i])
 
-                # Assume the state fetching is instantaneous
-                time_seq_dict[name].append(step_idx * control_dt)
-                dof_pos_dict[name].append(joint_state.pos)
-                dof_vel_dict[name].append(joint_state.vel)
+                if debug:
+                    log(
+                        f"q: {round_floats(q_delta, 3)}",
+                        header=snake2camel(header_name),
+                        level="debug",
+                    )
+                    log(
+                        f"dq: {round_floats(dq_obs, 3)}",
+                        header=snake2camel(header_name),
+                        level="debug",
+                    )
+                    log(
+                        f"quat: {quat_obs}",
+                        header=snake2camel(header_name),
+                        level="debug",
+                    )
+                    log(
+                        f"euler: {euler_angle_obs}",
+                        header=snake2camel(header_name),
+                        level="debug",
+                    )
+                    log(
+                        f"ang_vel: {ang_vel_obs}",
+                        header=snake2camel(header_name),
+                        level="debug",
+                    )
 
-            if debug:
-                log(
-                    f"q: {round_floats(q_delta, 3)}",
-                    header=snake2camel(header_name),
-                    level="debug",
+                obs = np.zeros([1, cfg.env.num_single_obs])
+                obs[0, 0] = math.sin(
+                    2 * math.pi * step_idx * control_dt / cfg.rewards.cycle_time
                 )
-                log(
-                    f"dq: {round_floats(dq_obs, 3)}",
-                    header=snake2camel(header_name),
-                    level="debug",
+                obs[0, 1] = math.cos(
+                    2 * math.pi * step_idx * control_dt / cfg.rewards.cycle_time
                 )
-                log(
-                    f"quat: {quat_obs}",
-                    header=snake2camel(header_name),
-                    level="debug",
-                )
-                log(
-                    f"euler: {euler_angle_obs}",
-                    header=snake2camel(header_name),
-                    level="debug",
-                )
-                log(
-                    f"ang_vel: {ang_vel_obs}",
-                    header=snake2camel(header_name),
-                    level="debug",
-                )
+                obs[0, 2] = cmd.vx * cfg.normalization.obs_scales.lin_vel
+                obs[0, 3] = cmd.vy * cfg.normalization.obs_scales.lin_vel
+                obs[0, 4] = cmd.dyaw * cfg.normalization.obs_scales.ang_vel
+                obs[0, 5:17] = q_delta * cfg.normalization.obs_scales.dof_pos
+                obs[0, 17:29] = dq_obs * cfg.normalization.obs_scales.dof_vel
+                obs[0, 29:41] = action
+                obs[0, 41:44] = ang_vel_obs
+                obs[0, 44:47] = euler_angle_obs
 
-            obs = np.zeros([1, cfg.env.num_single_obs])
-            obs[0, 0] = math.sin(
-                2 * math.pi * step_idx * control_dt / cfg.rewards.cycle_time
-            )
-            obs[0, 1] = math.cos(
-                2 * math.pi * step_idx * control_dt / cfg.rewards.cycle_time
-            )
-            obs[0, 2] = cmd.vx * cfg.normalization.obs_scales.lin_vel
-            obs[0, 3] = cmd.vy * cfg.normalization.obs_scales.lin_vel
-            obs[0, 4] = cmd.dyaw * cfg.normalization.obs_scales.ang_vel
-            obs[0, 5:17] = q_delta * cfg.normalization.obs_scales.dof_pos
-            obs[0, 17:29] = dq_obs * cfg.normalization.obs_scales.dof_vel
-            obs[0, 29:41] = action
-            obs[0, 41:44] = ang_vel_obs
-            obs[0, 44:47] = euler_angle_obs
-
-            obs = np.clip(
-                obs,
-                -cfg.normalization.clip_observations,
-                cfg.normalization.clip_observations,
-            )
-
-            hist_obs.append(obs)
-            hist_obs.popleft()
-
-            policy_input = np.zeros([1, cfg.env.num_observations])
-            for i in range(cfg.env.frame_stack):
-                policy_input[
-                    0, i * cfg.env.num_single_obs : (i + 1) * cfg.env.num_single_obs
-                ] = hist_obs[i][0, :]
-
-            # policy_input = obs_dump[step_idx]
-            policy_input_tensor = torch.tensor(
-                policy_input, dtype=torch.float32, device=device
-            )
-            policy_output = policy(policy_input_tensor)
-            action[:] = policy_output[0].detach().cpu().numpy()
-            action = np.clip(
-                action, -cfg.normalization.clip_actions, cfg.normalization.clip_actions
-            )
-
-            action_scaled = action * cfg.control.action_scale
-            target_q = action_scaled + default_q
-
-            joint_angles = {}
-            for name, target_angle in zip(joint_ordering, target_q):
-                if name not in dof_pos_ref_dict:
-                    dof_pos_ref_dict[name] = []
-
-                joint_angles[name] = target_angle
-                dof_pos_ref_dict[name].append(target_angle)
-
-            if debug:
-                log(
-                    f"Joint angles: {joint_angles}",
-                    header=snake2camel(header_name),
-                    level="debug",
+                obs = np.clip(
+                    obs,
+                    -cfg.normalization.clip_observations,
+                    cfg.normalization.clip_observations,
                 )
 
-            sim.set_joint_angles(joint_angles)
+                hist_obs.append(obs)
+                hist_obs.popleft()
+
+                policy_input = np.zeros([1, cfg.env.num_observations])
+                for i in range(cfg.env.frame_stack):
+                    policy_input[
+                        0, i * cfg.env.num_single_obs : (i + 1) * cfg.env.num_single_obs
+                    ] = hist_obs[i][0, :]
+
+                policy_input_tensor = torch.tensor(
+                    policy_input, dtype=torch.float32, device=device
+                )
+
+                policy_output = policy(policy_input_tensor)
+                action[:] = policy_output[0].detach().cpu().numpy()
+                action = np.clip(
+                    action,
+                    -cfg.normalization.clip_actions,
+                    cfg.normalization.clip_actions,
+                )
+
+                action_scaled = action * cfg.control.action_scale
+                target_q = action_scaled + default_q
+
+                joint_angles = {}
+                for name, target_angle in zip(joint_ordering, target_q):
+                    if name not in dof_pos_ref_dict:
+                        dof_pos_ref_dict[name] = []
+
+                    joint_angles[name] = target_angle
+                    dof_pos_ref_dict[name].append(target_angle)
+
+                if debug:
+                    log(
+                        f"Joint angles: {joint_angles}",
+                        header=snake2camel(header_name),
+                        level="debug",
+                    )
+
+                sim.set_joint_angles(joint_angles)
+
+                if debug:
+                    log(
+                        f"Control Frequency: {1 / (time.time() - step_start):.2f} Hz",
+                        header=snake2camel(header_name),
+                        level="debug",
+                    )
 
             step_idx += 1
             progress_bar.update(1)
@@ -383,7 +389,6 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=True):
                 "mighty_zap": "whitesmoke",
             },
         )
-
         plot_joint_velocity_tracking(
             time_seq_dict,
             dof_vel_dict,
@@ -395,6 +400,27 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=True):
                 "mighty_zap": "whitesmoke",
             },
         )
+
+
+def main(sim, robot, policy, cfg, duration=5.0, debug=True):
+    if sim.name == "real_world" and debug:
+        duration = 1.0
+
+    initialize(sim, cfg, robot)
+
+    state_queue = queue.Queue()
+    state_thread = threading.Thread(
+        target=fetch_state, args=(sim, cfg, state_queue, duration)
+    )
+    policy_thread = threading.Thread(
+        target=run_policy, args=(sim, cfg, state_queue, robot, policy, duration, debug)
+    )
+
+    state_thread.start()
+    policy_thread.start()
+
+    state_thread.join()
+    policy_thread.join()
 
 
 if __name__ == "__main__":
