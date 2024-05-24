@@ -155,10 +155,7 @@ def fetch_state(sim, cfg, state_queue, stop_event):
 
 
 @profile()
-def main(sim, robot, policy, cfg, duration=5.0, debug=True):
-    if sim.name == "real_world" and debug:
-        duration = 1.0
-
+def main(sim, robot, policy, cfg, duration=5.0, debug=False):
     initialize(sim, cfg, robot)
 
     control_dt = cfg.sim.dt * cfg.control.decimation
@@ -313,23 +310,23 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=True):
 
                 sim.set_joint_angles(joint_angles)
 
-                if debug:
-                    log(
-                        f"Control Frequency: {1 / (time.time() - step_start):.2f} Hz",
-                        header=snake2camel(header_name),
-                        level="debug",
-                    )
-
-            step_idx += 1
-            progress_bar.update(1)
-
-            step_time = time.time() - step_start
-            if debug:
+                step_time = time.time() - step_start
                 log(
                     f"Control Frequency: {1 / step_time:.2f} Hz",
                     header=snake2camel(header_name),
                     level="debug",
                 )
+            else:
+                step_time = time.time() - step_start
+
+                log(
+                    "State queue is empty. Skipping this step.",
+                    header=snake2camel(header_name),
+                    level="warning",
+                )
+
+            step_idx += 1
+            progress_bar.update(1)
 
             time_until_next_step = control_dt - step_time
             if time_until_next_step > 0:
