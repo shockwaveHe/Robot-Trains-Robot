@@ -155,7 +155,7 @@ class MuJoCoRenderer:
                 self.anim_data[body_name] = [data_tuple]
 
     def close(self):
-        pass
+        self.renderer.close()
 
 
 class MuJoCoController:
@@ -301,10 +301,10 @@ class MuJoCoSim(BaseSim):
                 )
 
         return joint_state_dict
-    
+
     def get_base_orientation(self):
         return self.data.sensor("orientation").data.copy()
-    
+
     def get_base_angular_velocity(self):
         return self.data.sensor("angular_velocity").data.copy()
 

@@ -2,13 +2,11 @@ import argparse
 import math
 import os
 import pickle
-import queue
 import threading
 import time
 from collections import deque
 
 import numpy as np
-import torch
 from tqdm import tqdm
 
 from toddlerbot.sim.robot import HumanoidRobot
@@ -126,42 +124,43 @@ def initialize(sim, cfg, robot):
 
 
 @profile()
-def fetch_state(sim, cfg, state_queue, duration):
-    control_dt = cfg.sim.dt * cfg.control.decimation
+def fetch_state(sim, cfg, state_queue, stop_event):
+    sim_dt = cfg.sim.dt
     joint_ordering = list(cfg.init_state.default_joint_angles.keys())
 
-    time_start = time.time()
-    try:
-        while time.time() - time_start < duration:
-            step_start = time.time()
+    while not stop_event.is_set():
+        step_start = time.time()
 
-            joint_state_dict = sim.get_joint_state()
-            q_obs = np.array([joint_state_dict[j].pos for j in joint_ordering])
-            dq_obs = np.array([joint_state_dict[j].vel for j in joint_ordering])
-            quat_obs = sim.get_base_orientation()  # wxyz quaternion format
-            euler_angle_obs = quaternion_to_euler_array(quat_obs)
-            ang_vel_obs = sim.get_base_angular_velocity()
+        joint_state_dict = sim.get_joint_state()
+        q_obs = np.array([joint_state_dict[j].pos for j in joint_ordering])
+        dq_obs = np.array([joint_state_dict[j].vel for j in joint_ordering])
+        quat_obs = sim.get_base_orientation()  # wxyz quaternion format
+        euler_angle_obs = quaternion_to_euler_array(quat_obs)
+        ang_vel_obs = sim.get_base_angular_velocity()
 
-            state = {
-                "q_obs": q_obs,
-                "dq_obs": dq_obs,
-                "quat_obs": quat_obs,
-                "euler_angle_obs": euler_angle_obs,
-                "ang_vel_obs": ang_vel_obs,
-            }
+        state = {
+            "q_obs": q_obs,
+            "dq_obs": dq_obs,
+            "quat_obs": quat_obs,
+            "euler_angle_obs": euler_angle_obs,
+            "ang_vel_obs": ang_vel_obs,
+        }
 
-            state_queue.put(state)
+        state_queue.append(state)
 
-            time_until_next_step = control_dt - (time.time() - step_start)
-            if time_until_next_step > 0:
-                precise_sleep(time_until_next_step)
-
-    except KeyboardInterrupt:
-        pass
+        time_until_next_step = sim_dt - (time.time() - step_start)
+        if time_until_next_step > 0:
+            # precise_sleep will block until the time has passed
+            time.sleep(time_until_next_step)
 
 
 @profile()
-def run_policy(sim, cfg, state_queue, robot, policy, duration, debug=True):
+def main(sim, robot, policy, cfg, duration=5.0, debug=True):
+    if sim.name == "real_world" and debug:
+        duration = 1.0
+
+    initialize(sim, cfg, robot)
+
     control_dt = cfg.sim.dt * cfg.control.decimation
     joint_ordering = list(cfg.init_state.default_joint_angles.keys())
     default_q = np.array(list(cfg.init_state.default_joint_angles.values()))
@@ -187,13 +186,21 @@ def run_policy(sim, cfg, state_queue, robot, policy, duration, debug=True):
     target_q = np.zeros((cfg.env.num_actions))
     action = np.zeros((cfg.env.num_actions))
 
+    state_queue = deque()
+    stop_event = threading.Event()
+    state_thread = threading.Thread(
+        target=fetch_state, args=(sim, cfg, state_queue, stop_event)
+    )
+    state_thread.start()
+
     try:
         while step_idx < duration / control_dt:
             step_start = time.time()
 
             # Get the latest state from the queue
-            if not state_queue.empty():
-                state = state_queue.get()
+            if len(state_queue) > 0:
+                state = state_queue.pop()
+
                 q_obs = state["q_obs"]
                 dq_obs = state["dq_obs"]
                 quat_obs = state["quat_obs"]
@@ -332,16 +339,14 @@ def run_policy(sim, cfg, state_queue, robot, policy, duration, debug=True):
         log("KeyboardInterrupt recieved. Closing...", header=snake2camel(header_name))
 
     finally:
-        sim.close()
+        stop_event.set()
+        state_thread.join()
 
         exp_name = f"sim2{sim.name}_{robot.name}"
         time_str = time.strftime("%Y%m%d_%H%M%S")
         exp_folder_path = f"results/{time_str}_{exp_name}"
 
         os.makedirs(exp_folder_path, exist_ok=True)
-
-        prof_path = os.path.join(exp_folder_path, "profile_output.lprof")
-        dump_profiling_data(prof_path)
 
         if hasattr(sim, "visualizer") and hasattr(sim.visualizer, "save_recording"):
             sim.visualizer.save_recording(exp_folder_path)
@@ -351,6 +356,11 @@ def run_policy(sim, cfg, state_queue, robot, policy, duration, debug=True):
                 header=snake2camel(header_name),
                 level="warning",
             )
+
+        sim.close()
+
+        prof_path = os.path.join(exp_folder_path, "profile_output.lprof")
+        dump_profiling_data(prof_path)
 
         log_data_path = os.path.join(exp_folder_path, "log_data.pkl")
         log_data_dict = {
@@ -400,27 +410,6 @@ def run_policy(sim, cfg, state_queue, robot, policy, duration, debug=True):
                 "mighty_zap": "whitesmoke",
             },
         )
-
-
-def main(sim, robot, policy, cfg, duration=5.0, debug=True):
-    if sim.name == "real_world" and debug:
-        duration = 1.0
-
-    initialize(sim, cfg, robot)
-
-    state_queue = queue.Queue()
-    state_thread = threading.Thread(
-        target=fetch_state, args=(sim, cfg, state_queue, duration)
-    )
-    policy_thread = threading.Thread(
-        target=run_policy, args=(sim, cfg, state_queue, robot, policy, duration, debug)
-    )
-
-    state_thread.start()
-    policy_thread.start()
-
-    state_thread.join()
-    policy_thread.join()
 
 
 if __name__ == "__main__":
