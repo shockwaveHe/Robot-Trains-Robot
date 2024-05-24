@@ -38,10 +38,9 @@ sudo udevadm control --reload-rules && sudo udevadm trigger
 sudo usermod -aG i2c $USER
 sudo usermod -aG dialout $USER
 ```
-The usb-c port on Jetson is only for flashing, which means it's not fully functional.
+The usb-c port on Jetson is only for flashing, which means it's not fully functional. Do not plug cables into this port to transfer data.
 
-Follow [these instructions](https://docs.nvidia.com/deeplearning/frameworks/install-pytorch-jetson-platform/index.html) to install PyTorch.
-For reference, we install with
+Follow [these instructions](https://docs.nvidia.com/deeplearning/frameworks/install-pytorch-jetson-platform/index.html) to install PyTorch. For reference, we install with
 ```
 pip install --no-cache https://developer.download.nvidia.com/compute/redist/jp/v51/pytorch/torch-1.14.0a0+44dac51c.nv23.02-cp38-cp38-linux_aarch64.whl
 ```

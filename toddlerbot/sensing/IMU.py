@@ -10,7 +10,7 @@ from adafruit_bno08x import (
     BNO_REPORT_ROTATION_VECTOR,
 )
 from adafruit_bno08x.i2c import BNO08X_I2C
-from transforms3d.quaternions import qinverse, qmult
+from scipy.spatial.transform import Rotation as R
 
 
 class IMU:
@@ -24,31 +24,44 @@ class IMU:
         self.sensor.enable_feature(BNO_REPORT_GYROSCOPE)
         self.sensor.enable_feature(BNO_REPORT_ROTATION_VECTOR)
 
-        self.default_pose = np.array([1, 0, 0, 0])
-        self.default_pose_inv = qinverse(self.default_pose)
+        self.default_pose_inv = None
 
-    def set_default_pose(self, default_pose):
-        self.default_pose = np.array(default_pose)
-        self.default_pose_inv = qinverse(self.default_pose)
+    def set_default_pose(self):
+        quat = self.sensor.quaternion
+        self.default_pose = R.from_quat(quat)
+        self.default_pose_inv = self.default_pose.inv()
 
     def get_acceleration(self):
         """Returns the accelerometer data as a tuple (x, y, z)."""
-        return np.array(self.sensor.acceleration)
+        accel = np.array(self.sensor.acceleration)
+        # Transform acceleration to the default pose frame
+        accel_relative = self.default_pose.apply(accel)
+        return accel_relative
 
     def get_angular_velocity(self):
         """Returns the gyroscope data as a tuple (x, y, z)."""
-        return np.array(self.sensor.gyro)
+        omega = np.array(self.sensor.gyro)
+        # Transform angular velocity to the default pose frame
+        omega_relative = self.default_pose.apply(omega)
+        return omega_relative
 
     def get_quaternion(self):
-        """Returns the quaternion data as a tuple (i, j, k, real)."""
-        quat = self.sensor.quaternion
-        quat_curr = np.array([quat[3], quat[0], quat[1], quat[2]])
-        quat_relative = qmult(self.default_pose_inv, quat_curr)
-        return quat_relative
+        """Returns the quaternion data as a tuple (w, x, y, z)."""
+        quat_relative = self.default_pose_inv * R.from_quat(self.sensor.quaternion)
+        quat_relative_xyzw = quat_relative.as_quat()
+        quat_relative_wxyz = np.array([quat_relative_xyzw[3], *quat_relative_xyzw[:3]])
+
+        # Ensure the quaternion is in canonical form
+        if quat_relative_wxyz[0] < 0:
+            quat_relative_wxyz = -quat_relative_wxyz
+
+        return quat_relative_wxyz
 
 
 if __name__ == "__main__":
     imu = IMU()
+    time.sleep(0.1)
+    imu.set_default_pose()
     while True:
         acceleration = imu.get_acceleration()
         angular_velocity = imu.get_angular_velocity()

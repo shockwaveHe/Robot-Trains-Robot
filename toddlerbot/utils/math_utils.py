@@ -37,6 +37,32 @@ def round_floats(obj, precision):
     return obj
 
 
+def quaternion_to_euler_array(quat):
+    # Ensure quaternion is in the correct format [x, y, z, w]
+    w, x, y, z = quat
+
+    # Roll (x-axis rotation)
+    t0 = 2.0 * (w * x + y * z)
+    t1 = 1.0 - 2.0 * (x * x + y * y)
+    roll_x = np.arctan2(t0, t1)
+
+    # Pitch (y-axis rotation)
+    t2 = 2.0 * (w * y - z * x)
+    t2 = np.clip(t2, -1.0, 1.0)
+    pitch_y = np.arcsin(t2)
+
+    # Yaw (z-axis rotation)
+    t3 = 2.0 * (w * z + x * y)
+    t4 = 1.0 - 2.0 * (y * y + z * z)
+    yaw_z = np.arctan2(t3, t4)
+
+    # Returns roll, pitch, yaw in a NumPy array in radians
+    euler_angles = np.array([roll_x, pitch_y, yaw_z])
+    euler_angles[euler_angles > np.pi] -= 2 * np.pi
+
+    return euler_angles
+
+
 def quatxyzw2mat(quat):
     return quat2mat([quat[3], quat[0], quat[1], quat[2]])
 

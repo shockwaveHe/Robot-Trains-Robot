@@ -37,10 +37,13 @@ from collections import deque
 
 import numpy as np
 from tqdm import tqdm
-from transforms3d.euler import quat2euler
 
 from toddlerbot.sim.robot import HumanoidRobot
-from toddlerbot.utils.math_utils import resample_trajectory, round_floats
+from toddlerbot.utils.math_utils import (
+    quaternion_to_euler_array,
+    resample_trajectory,
+    round_floats,
+)
 from toddlerbot.utils.misc_utils import (
     dump_profiling_data,
     log,
@@ -121,6 +124,9 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=True):
     Returns:
         None
     """
+    if debug and sim.name == "real_world":
+        duration = 1.0
+
     header_name = f"sim2{sim.name}"
     device = next(policy.parameters()).device
 
@@ -195,8 +201,7 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=True):
             dq_obs = np.array([joint_state_dict[j].vel for j in joint_ordering])
 
             quat_obs = sim.get_base_orientation()
-            euler_angle_obs = np.array(quat2euler(quat_obs))
-            euler_angle_obs[euler_angle_obs > math.pi] -= 2 * math.pi
+            euler_angle_obs = quaternion_to_euler_array(quat_obs)
 
             ang_vel_obs = sim.get_base_angular_velocity()
 
@@ -225,7 +230,16 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=True):
                     header=snake2camel(header_name),
                     level="debug",
                 )
-                log(f"quat: {quat_obs}", header=snake2camel(header_name), level="debug")
+                log(
+                    f"quat: {quat_obs}",
+                    header=snake2camel(header_name),
+                    level="debug",
+                )
+                log(
+                    f"euler: {euler_angle_obs}",
+                    header=snake2camel(header_name),
+                    level="debug",
+                )
                 log(
                     f"ang_vel: {ang_vel_obs}",
                     header=snake2camel(header_name),
@@ -296,7 +310,15 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=True):
             step_idx += 1
             progress_bar.update(1)
 
-            time_until_next_step = control_dt - (time.time() - step_start)
+            step_time = time.time() - step_start
+            if debug:
+                log(
+                    f"Control Frequency: {1 / step_time:.2f} Hz",
+                    header=snake2camel(header_name),
+                    level="debug",
+                )
+
+            time_until_next_step = control_dt - step_time
             if time_until_next_step > 0:
                 precise_sleep(time_until_next_step)
 

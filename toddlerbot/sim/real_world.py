@@ -110,7 +110,6 @@ class RealWorld(BaseSim):
 
     def _initialize_sensors(self):
         self.imu = IMU()
-        self.imu.set_default_pose(euler2quat(-np.pi / 2, 0, 0))
 
     # @profile()
     def set_joint_angles(self, joint_angles):
@@ -254,9 +253,15 @@ class RealWorld(BaseSim):
         return joint_state_dict
 
     def get_base_orientation(self):
+        if self.imu.default_pose_inv is None:
+            self.imu.set_default_pose()
+
         return self.imu.get_quaternion()
 
     def get_base_angular_velocity(self):
+        if self.imu.default_pose_inv is None:
+            self.imu.set_default_pose()
+
         return self.imu.get_angular_velocity()
 
     def get_link_pos(self, link_name: str):
