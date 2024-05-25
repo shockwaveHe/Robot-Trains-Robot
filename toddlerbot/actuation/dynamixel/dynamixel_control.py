@@ -21,7 +21,7 @@ class DynamixelConfig:
     kP: List[float]
     kI: List[float]
     kD: List[float]
-    current_limit: List[float]
+    # current_limit: List[float]
     init_pos: np.ndarray
     gear_ratio: np.ndarray
     baudrate: int = 3000000
@@ -53,7 +53,7 @@ class DynamixelController(BaseController):
         except subprocess.CalledProcessError as e:
             log(f"Failed to set latency timer: {e}", header="Dynamixel", level="error")
 
-        precise_sleep(0.1)
+        time.sleep(0.1)
 
         try:
             self.client = DynamixelClient(
@@ -81,13 +81,13 @@ class DynamixelController(BaseController):
         self.client.sync_write(self.motor_ids, self.config.kP, 84, 2)
         self.client.sync_write(self.motor_ids, self.config.kFF2, 88, 2)
         self.client.sync_write(self.motor_ids, self.config.kFF1, 90, 2)
-        self.client.sync_write(self.motor_ids, self.config.current_limit, 102, 2)
+        # self.client.sync_write(self.motor_ids, self.config.current_limit, 102, 2)
 
         # init_state = self.get_motor_state()
 
-        precise_sleep(0.1)
+        time.sleep(0.1)
         self.set_pos(np.zeros(len(self.motor_ids)))
-        precise_sleep(0.1)
+        time.sleep(0.1)
 
     def close_motors(self):
         open_clients = list(DynamixelClient.OPEN_CLIENTS)
@@ -131,6 +131,7 @@ class DynamixelController(BaseController):
         # log(f"Start... {time.time()}", header="Dynamixel", level="warning")
 
         state_dict = {}
+        # with self.lock:
         pos_arr, vel_arr = self.client.read_pos_vel()
         # log(
         #     f"Pos: {np.round(np.rad2deg(pos_arr), 2)}",

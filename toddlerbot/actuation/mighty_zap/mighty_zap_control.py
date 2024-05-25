@@ -2,6 +2,7 @@ import asyncio
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from threading import Lock
 from typing import List
 
 import numpy as np
@@ -38,6 +39,7 @@ class MightyZapController(BaseController):
 
         self.config = config
         self.motor_ids = motor_ids
+        self.lock = Lock()
 
         self.connect_to_client()
         self.initialize_motors()
@@ -62,12 +64,12 @@ class MightyZapController(BaseController):
 
     def initialize_motors(self):
         log("Initializing motors...", header="MightyZap")
-        for motor_id, client in self.clients.items():
-            client.set_return_delay_time(motor_id, 0)
-            precise_sleep(0.1)
+        # for motor_id, client in self.clients.items():
+        #     client.set_return_delay_time(motor_id, 0)
+        #     time.sleep(0.1)
 
-        self.set_pos(self.config.init_pos)
-        precise_sleep(0.1)
+        # self.set_pos(self.config.init_pos)
+        time.sleep(0.1)
 
     def close_motors(self):
         for motor_id, client in self.clients.items():
@@ -78,6 +80,7 @@ class MightyZapController(BaseController):
             client.close()
 
     def set_pos_single(self, pos, motor_id):
+        # with self.lock:
         self.clients[motor_id].goal_position(motor_id, round(pos))
 
     def set_pos(self, pos, interp=False, vel=None, delta_t=None):
@@ -110,7 +113,9 @@ class MightyZapController(BaseController):
     # @profile()
     def get_motor_state_single(self, motor_id):
         # log(f"Start... {time.time()}", header="MightyZap", level="warning")
+        # with self.lock:
         pos = self.clients[motor_id].present_position(motor_id)
+
         # log(f"End... {time.time()}", header="MightyZap", level="warning")
         return JointState(time=time.time(), pos=pos)
 

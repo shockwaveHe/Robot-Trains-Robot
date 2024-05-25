@@ -24,6 +24,7 @@ class IMU:
         self.sensor.enable_feature(BNO_REPORT_GYROSCOPE)
         self.sensor.enable_feature(BNO_REPORT_ROTATION_VECTOR)
 
+        self.default_pose = None
         self.default_pose_inv = None
 
     def set_default_pose(self):
@@ -56,6 +57,14 @@ class IMU:
             quat_relative_wxyz = -quat_relative_wxyz
 
         return quat_relative_wxyz
+
+    def get_state(self):
+        if self.default_pose is None:
+            self.set_default_pose()
+
+        quat = self.get_quaternion()
+        ang_vel = self.get_angular_velocity()
+        return quat, ang_vel
 
 
 if __name__ == "__main__":

@@ -57,7 +57,7 @@ class ToddlerbotLegsCfg:
         # action scale: target angle = actionScale * action + defaultAngle
         action_scale = 0.25
         # decimation: Number of control action updates @ sim DT per policy DT
-        decimation = 10  # 100hz
+        decimation = 20  # 100hz
 
     class sim:
         dt = 0.001  # 1000 Hz
@@ -83,7 +83,7 @@ class cmd:
     dyaw = 0.0
 
 
-def initialize(sim, cfg, robot):
+def warm_up_sim(sim, cfg, robot):
     control_dt = cfg.sim.dt * cfg.control.decimation
     default_q = np.array(list(cfg.init_state.default_joint_angles.values()))
 
@@ -123,20 +123,28 @@ def initialize(sim, cfg, robot):
                 precise_sleep(time_until_next_step)
 
 
+def warm_up_gpu(policy, cfg, device, gpu_stop_event):
+    # Warm up the GPU
+    while not gpu_stop_event.is_set():
+        policy_input = np.zeros([1, cfg.env.num_observations])
+        policy_input_tensor = torch.tensor(
+            policy_input, dtype=torch.float32, device=device
+        )
+        policy(policy_input_tensor)
+
+
 @profile()
-def fetch_state(sim, cfg, state_queue, stop_event):
+def fetch_state(sim, cfg, state_queue, obs_stop_event):
     sim_dt = cfg.sim.dt
     joint_ordering = list(cfg.init_state.default_joint_angles.keys())
 
-    while not stop_event.is_set():
+    while not obs_stop_event.is_set():
         step_start = time.time()
 
-        joint_state_dict = sim.get_joint_state()
+        joint_state_dict, quat_obs, ang_vel_obs = sim.get_observation()
         q_obs = np.array([joint_state_dict[j].pos for j in joint_ordering])
         dq_obs = np.array([joint_state_dict[j].vel for j in joint_ordering])
-        quat_obs = sim.get_base_orientation()  # wxyz quaternion format
         euler_angle_obs = quaternion_to_euler_array(quat_obs)
-        ang_vel_obs = sim.get_base_angular_velocity()
 
         state = {
             "q_obs": q_obs,
@@ -156,8 +164,6 @@ def fetch_state(sim, cfg, state_queue, stop_event):
 
 @profile()
 def main(sim, robot, policy, cfg, duration=5.0, debug=False):
-    initialize(sim, cfg, robot)
-
     control_dt = cfg.sim.dt * cfg.control.decimation
     joint_ordering = list(cfg.init_state.default_joint_angles.keys())
     default_q = np.array(list(cfg.init_state.default_joint_angles.values()))
@@ -165,9 +171,15 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=False):
     header_name = f"sim2{sim.name}"
     device = next(policy.parameters()).device
 
-    hist_obs = deque()
-    for _ in range(cfg.env.frame_stack):
-        hist_obs.append(np.zeros([1, cfg.env.num_single_obs]))
+    warm_up_sim_thread = threading.Thread(target=warm_up_sim, args=(sim, cfg, robot))
+    log("Warming up the sim...", header=snake2camel(header_name))
+    warm_up_sim_thread.start()
+    gpu_stop_event = threading.Event()
+    warm_up_gpu_thread = threading.Thread(
+        target=warm_up_gpu, args=(policy, cfg, device, gpu_stop_event)
+    )
+    log("Warming up the GPU...", header=snake2camel(header_name))
+    warm_up_gpu_thread.start()
 
     step_idx = 0
     progress_bar = tqdm(total=round(duration / control_dt), desc=f"Running {sim.name}")
@@ -180,154 +192,156 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=False):
     dof_pos_dict = {}
     dof_vel_dict = {}
 
+    hist_obs = deque()
+    for _ in range(cfg.env.frame_stack):
+        hist_obs.append(np.zeros([1, cfg.env.num_single_obs]))
     target_q = np.zeros((cfg.env.num_actions))
     action = np.zeros((cfg.env.num_actions))
 
+    warm_up_sim_thread.join()
+
+    time.sleep(1.0)
+    gpu_stop_event.set()
+    warm_up_gpu_thread.join()
+
     state_queue = deque()
-    stop_event = threading.Event()
+    obs_stop_event = threading.Event()
     state_thread = threading.Thread(
-        target=fetch_state, args=(sim, cfg, state_queue, stop_event)
+        target=fetch_state, args=(sim, cfg, state_queue, obs_stop_event)
     )
     state_thread.start()
+
+    while len(state_queue) < 10:
+        time.sleep(0.1)
 
     try:
         while step_idx < duration / control_dt:
             step_start = time.time()
 
             # Get the latest state from the queue
-            if len(state_queue) > 0:
-                state = state_queue.pop()
+            state = state_queue.pop()
 
-                q_obs = state["q_obs"]
-                dq_obs = state["dq_obs"]
-                quat_obs = state["quat_obs"]
-                euler_angle_obs = state["euler_angle_obs"]
-                ang_vel_obs = state["ang_vel_obs"]
+            q_obs = state["q_obs"]
+            dq_obs = state["dq_obs"]
+            quat_obs = state["quat_obs"]
+            euler_angle_obs = state["euler_angle_obs"]
+            ang_vel_obs = state["ang_vel_obs"]
 
-                q_delta = q_obs - default_q
+            q_delta = q_obs - default_q
 
-                time_seq_ref.append(step_idx * control_dt)
-                euler_angle_obs_list.append(euler_angle_obs)
-                ang_vel_obs_list.append(ang_vel_obs)
-                for i, joint_name in enumerate(joint_ordering):
-                    if joint_name not in time_seq_dict:
-                        time_seq_dict[joint_name] = []
-                        dof_pos_dict[joint_name] = []
-                        dof_vel_dict[joint_name] = []
+            time_seq_ref.append(step_idx * control_dt)
+            euler_angle_obs_list.append(euler_angle_obs)
+            ang_vel_obs_list.append(ang_vel_obs)
+            for i, joint_name in enumerate(joint_ordering):
+                if joint_name not in time_seq_dict:
+                    time_seq_dict[joint_name] = []
+                    dof_pos_dict[joint_name] = []
+                    dof_vel_dict[joint_name] = []
 
-                    # Assume the state fetching is instantaneous
-                    time_seq_dict[joint_name].append(step_idx * control_dt)
-                    dof_pos_dict[joint_name].append(q_obs[i])
-                    dof_vel_dict[joint_name].append(dq_obs[i])
+                # Assume the state fetching is instantaneous
+                time_seq_dict[joint_name].append(step_idx * control_dt)
+                dof_pos_dict[joint_name].append(q_obs[i])
+                dof_vel_dict[joint_name].append(dq_obs[i])
 
-                if debug:
-                    log(
-                        f"q: {round_floats(q_delta, 3)}",
-                        header=snake2camel(header_name),
-                        level="debug",
-                    )
-                    log(
-                        f"dq: {round_floats(dq_obs, 3)}",
-                        header=snake2camel(header_name),
-                        level="debug",
-                    )
-                    log(
-                        f"quat: {quat_obs}",
-                        header=snake2camel(header_name),
-                        level="debug",
-                    )
-                    log(
-                        f"euler: {euler_angle_obs}",
-                        header=snake2camel(header_name),
-                        level="debug",
-                    )
-                    log(
-                        f"ang_vel: {ang_vel_obs}",
-                        header=snake2camel(header_name),
-                        level="debug",
-                    )
-
-                obs = np.zeros([1, cfg.env.num_single_obs])
-                obs[0, 0] = math.sin(
-                    2 * math.pi * step_idx * control_dt / cfg.rewards.cycle_time
-                )
-                obs[0, 1] = math.cos(
-                    2 * math.pi * step_idx * control_dt / cfg.rewards.cycle_time
-                )
-                obs[0, 2] = cmd.vx * cfg.normalization.obs_scales.lin_vel
-                obs[0, 3] = cmd.vy * cfg.normalization.obs_scales.lin_vel
-                obs[0, 4] = cmd.dyaw * cfg.normalization.obs_scales.ang_vel
-                obs[0, 5:17] = q_delta * cfg.normalization.obs_scales.dof_pos
-                obs[0, 17:29] = dq_obs * cfg.normalization.obs_scales.dof_vel
-                obs[0, 29:41] = action
-                obs[0, 41:44] = ang_vel_obs
-                obs[0, 44:47] = euler_angle_obs
-
-                obs = np.clip(
-                    obs,
-                    -cfg.normalization.clip_observations,
-                    cfg.normalization.clip_observations,
-                )
-
-                hist_obs.append(obs)
-                hist_obs.popleft()
-
-                policy_input = np.zeros([1, cfg.env.num_observations])
-                for i in range(cfg.env.frame_stack):
-                    policy_input[
-                        0, i * cfg.env.num_single_obs : (i + 1) * cfg.env.num_single_obs
-                    ] = hist_obs[i][0, :]
-
-                policy_input_tensor = torch.tensor(
-                    policy_input, dtype=torch.float32, device=device
-                )
-
-                policy_output = policy(policy_input_tensor)
-                action[:] = policy_output[0].detach().cpu().numpy()
-                action = np.clip(
-                    action,
-                    -cfg.normalization.clip_actions,
-                    cfg.normalization.clip_actions,
-                )
-
-                action_scaled = action * cfg.control.action_scale
-                target_q = action_scaled + default_q
-
-                joint_angles = {}
-                for name, target_angle in zip(joint_ordering, target_q):
-                    if name not in dof_pos_ref_dict:
-                        dof_pos_ref_dict[name] = []
-
-                    joint_angles[name] = target_angle
-                    dof_pos_ref_dict[name].append(target_angle)
-
-                if debug:
-                    log(
-                        f"Joint angles: {joint_angles}",
-                        header=snake2camel(header_name),
-                        level="debug",
-                    )
-
-                sim.set_joint_angles(joint_angles)
-
-                step_time = time.time() - step_start
+            if debug:
                 log(
-                    f"Control Frequency: {1 / step_time:.2f} Hz",
+                    f"q: {round_floats(q_delta, 3)}",
                     header=snake2camel(header_name),
                     level="debug",
                 )
-            else:
-                step_time = time.time() - step_start
-
                 log(
-                    "State queue is empty. Skipping this step.",
+                    f"dq: {round_floats(dq_obs, 3)}",
                     header=snake2camel(header_name),
-                    level="warning",
+                    level="debug",
                 )
+                log(
+                    f"quat: {quat_obs}",
+                    header=snake2camel(header_name),
+                    level="debug",
+                )
+                log(
+                    f"euler: {euler_angle_obs}",
+                    header=snake2camel(header_name),
+                    level="debug",
+                )
+                log(
+                    f"ang_vel: {ang_vel_obs}",
+                    header=snake2camel(header_name),
+                    level="debug",
+                )
+
+            obs = np.zeros([1, cfg.env.num_single_obs])
+            obs[0, 0] = math.sin(
+                2 * math.pi * step_idx * control_dt / cfg.rewards.cycle_time
+            )
+            obs[0, 1] = math.cos(
+                2 * math.pi * step_idx * control_dt / cfg.rewards.cycle_time
+            )
+            obs[0, 2] = cmd.vx * cfg.normalization.obs_scales.lin_vel
+            obs[0, 3] = cmd.vy * cfg.normalization.obs_scales.lin_vel
+            obs[0, 4] = cmd.dyaw * cfg.normalization.obs_scales.ang_vel
+            obs[0, 5:17] = q_delta * cfg.normalization.obs_scales.dof_pos
+            obs[0, 17:29] = dq_obs * cfg.normalization.obs_scales.dof_vel
+            obs[0, 29:41] = action
+            obs[0, 41:44] = ang_vel_obs
+            obs[0, 44:47] = euler_angle_obs
+
+            obs = np.clip(
+                obs,
+                -cfg.normalization.clip_observations,
+                cfg.normalization.clip_observations,
+            )
+
+            hist_obs.append(obs)
+            hist_obs.popleft()
+
+            policy_input = np.zeros([1, cfg.env.num_observations])
+            for i in range(cfg.env.frame_stack):
+                policy_input[
+                    0, i * cfg.env.num_single_obs : (i + 1) * cfg.env.num_single_obs
+                ] = hist_obs[i][0, :]
+
+            policy_input_tensor = torch.tensor(
+                policy_input, dtype=torch.float32, device=device
+            )
+
+            policy_output = policy(policy_input_tensor)
+            action[:] = policy_output[0].detach().cpu().numpy()
+            action = np.clip(
+                action,
+                -cfg.normalization.clip_actions,
+                cfg.normalization.clip_actions,
+            )
+
+            action_scaled = action * cfg.control.action_scale
+            target_q = action_scaled + default_q
+
+            joint_angles = {}
+            for name, target_angle in zip(joint_ordering, target_q):
+                if name not in dof_pos_ref_dict:
+                    dof_pos_ref_dict[name] = []
+
+                joint_angles[name] = target_angle
+                dof_pos_ref_dict[name].append(target_angle)
+
+            if debug:
+                log(
+                    f"Joint angles: {joint_angles}",
+                    header=snake2camel(header_name),
+                    level="debug",
+                )
+
+            sim.set_joint_angles(joint_angles)
 
             step_idx += 1
             progress_bar.update(1)
 
+            step_time = time.time() - step_start
+            log(
+                f"Control Frequency: {1 / step_time:.2f} Hz",
+                header=snake2camel(header_name),
+                level="debug",
+            )
             time_until_next_step = control_dt - step_time
             if time_until_next_step > 0:
                 precise_sleep(time_until_next_step)
@@ -336,7 +350,7 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=False):
         log("KeyboardInterrupt recieved. Closing...", header=snake2camel(header_name))
 
     finally:
-        stop_event.set()
+        obs_stop_event.set()
         state_thread.join()
 
         exp_name = f"sim2{sim.name}_{robot.name}"

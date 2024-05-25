@@ -39,15 +39,31 @@ class RealWorld(BaseSim):
             "left_ank_pitch",
         ]
 
-        self._initialize_motors()
-        self._initialize_sensors()
+        self._initialize()
 
-    def _initialize_motors(self):
+    def _initialize(self):
         dynamixel_port = find_ports("USB <-> Serial Converter")
         sunny_sky_port = find_ports("Feather")
         mighty_zap_port = find_ports("USB Quad_Serial")
 
-        n_ports = 1 + 1 + len(mighty_zap_port)
+        n_ports = 2 + len(mighty_zap_port) + 1
+        self.executor = ThreadPoolExecutor(max_workers=n_ports)
+
+        future_imu = self.executor.submit(IMU)
+
+        self.mighty_zap_ids = sorted(list(self.robot.mighty_zap_joint2id.values()))
+        self.mighty_zap_init_pos = [0] * len(self.mighty_zap_ids)
+        self.last_mighty_zap_state = None
+        self.last_ankle_state = None
+
+        mighty_zap_config = MightyZapConfig(
+            port=mighty_zap_port, init_pos=self.mighty_zap_init_pos
+        )
+        future_mighty_zap = self.executor.submit(
+            MightyZapController,
+            mighty_zap_config,
+            motor_ids=self.mighty_zap_ids,
+        )
 
         dynamixel_ids = sorted(list(self.robot.dynamixel_joint2id.values()))
         # The init pos needs to be calibrated after the robot is assembled
@@ -60,43 +76,31 @@ class RealWorld(BaseSim):
             kP=[800, 3200, 1600, 800, 3200, 1600],
             kI=[0, 0, 0, 0, 0, 0],
             kD=[800, 1600, 1600, 800, 1600, 1600],
-            current_limit=[700, 700, 700, 700, 700, 700],
+            # current_limit=[700, 700, 700, 700, 700, 700],
             init_pos=dynamixel_init_pos,
             gear_ratio=np.array([19 / 21, 1, 1, 19 / 21, 1, 1]),
+        )
+        future_dynamixel = self.executor.submit(
+            DynamixelController, dynamixel_config, motor_ids=dynamixel_ids
         )
 
         sunny_sky_config = SunnySkyConfig(port=sunny_sky_port)
         # Temorarily hard-coded joint range for SunnySky
         joint_range_dict = {1: (0, np.pi / 2), 2: (0, -np.pi / 2)}
-
-        self.mighty_zap_ids = sorted(list(self.robot.mighty_zap_joint2id.values()))
-        self.mighty_zap_init_pos = [0] * len(self.mighty_zap_ids)
-        self.last_mighty_zap_state = None
-
-        mighty_zap_config = MightyZapConfig(
-            port=mighty_zap_port, init_pos=self.mighty_zap_init_pos
-        )
-
-        self.executor = ThreadPoolExecutor(max_workers=n_ports)
-
-        future_dynamixel = self.executor.submit(
-            DynamixelController, dynamixel_config, motor_ids=dynamixel_ids
-        )
+        self.sunny_sky_ids = sorted(list(self.robot.sunny_sky_joint2id.values()))
+        self.last_sunny_sky_state = None
         future_sunny_sky = self.executor.submit(
             SunnySkyController,
             sunny_sky_config,
             joint_range_dict=joint_range_dict,
         )
-        future_mighty_zap = self.executor.submit(
-            MightyZapController,
-            mighty_zap_config,
-            motor_ids=self.mighty_zap_ids,
-        )
 
         # Assign the results of futures to the attributes
-        self.dynamixel_controller = future_dynamixel.result()
+
         self.sunny_sky_controller = future_sunny_sky.result()
+        self.dynamixel_controller = future_dynamixel.result()
         self.mighty_zap_controller = future_mighty_zap.result()
+        self.imu = future_imu.result()
 
     def _negate_joint_angles(self, joint_angles):
         negated_joint_angles = {}
@@ -107,9 +111,6 @@ class RealWorld(BaseSim):
                 negated_joint_angles[name] = angle
 
         return negated_joint_angles
-
-    def _initialize_sensors(self):
-        self.imu = IMU()
 
     # @profile()
     def set_joint_angles(self, joint_angles):
@@ -142,19 +143,106 @@ class RealWorld(BaseSim):
                 self.mighty_zap_controller.set_pos_single, pos, mighty_zap_id
             )
 
+    def _process_joint_state(self, results):
+        # Note: MightyZap positions are the lengthsmof linear actuators
+        mighty_zap_state = {}
+        for motor_name, result in results.items():
+            if motor_name.startswith("mighty_zap"):
+                motor_id = int(motor_name.split("_")[2])
+                mighty_zap_state[motor_id] = result
+
+        self.last_mighty_zap_state = copy.deepcopy(mighty_zap_state)
+        ankle_state = copy.deepcopy(mighty_zap_state)
+
+        sunny_sky_state = results["sunny_sky"]
+        if self.last_sunny_sky_state is not None:
+            for motor_id in self.sunny_sky_ids:
+                pos_delta = (
+                    sunny_sky_state[motor_id].pos
+                    - self.last_sunny_sky_state[motor_id].pos
+                )
+                time_delta = (
+                    sunny_sky_state[motor_id].time
+                    - self.last_sunny_sky_state[motor_id].time
+                )
+
+                sunny_sky_state[motor_id].vel = pos_delta / time_delta
+
+                if sunny_sky_state[motor_id].vel > 5:
+                    log(
+                        f"{motor_id}: {sunny_sky_state[motor_id].vel}="
+                        + f"{pos_delta}/{time_delta}",
+                        header=snake2camel(self.name),
+                        level="warning",
+                    )
+
+        self.last_sunny_sky_state = copy.deepcopy(sunny_sky_state)
+
+        dynamixel_state = results["dynamixel"]
+
+        for side, motor_ids in self.robot.ankle2mighty_zap.items():
+            mighty_zap_pos = []
+            for motor_id in motor_ids:
+                if (
+                    mighty_zap_state[motor_id].pos > 0
+                    and mighty_zap_state[motor_id].pos < 4096
+                ):
+                    mighty_zap_pos.append(mighty_zap_state[motor_id].pos)
+                else:
+                    mighty_zap_pos.append(
+                        self.mighty_zap_init_pos[self.mighty_zap_ids.index(motor_id)]
+                        if self.last_mighty_zap_state is None
+                        else np.clip(self.last_mighty_zap_state[motor_id].pos, 1, 4095)
+                    )
+                    log(
+                        f"The MightyZap position is out of range. Use {mighty_zap_pos[-1]}.",
+                        header=snake2camel(self.name),
+                        level="warning",
+                    )
+
+            ankle_pos = self.robot.ankle_fk(mighty_zap_pos)
+            for i, motor_id in enumerate(motor_ids):
+                ankle_state[motor_id].pos = ankle_pos[i]
+                if self.last_ankle_state is not None:
+                    pos_delta = ankle_pos[i] - self.last_ankle_state[motor_id].pos
+                    time_delta = (
+                        ankle_state[motor_id].time
+                        - self.last_ankle_state[motor_id].time
+                    )
+                    ankle_state[motor_id].vel = pos_delta / time_delta
+
+                    if ankle_state[motor_id].vel > 5:
+                        log(
+                            f"{motor_id}: {ankle_state[motor_id].vel}="
+                            + f"{pos_delta}/{time_delta}",
+                            header=snake2camel(self.name),
+                            level="warning",
+                        )
+
+        self.last_ankle_state = copy.deepcopy(ankle_state)
+
+        joint_state_dict = {}
+        for name in self.robot.joints_info.keys():
+            id = None
+            if name in self.robot.dynamixel_joint2id and dynamixel_state is not None:
+                id = self.robot.dynamixel_joint2id[name]
+                joint_state_dict[name] = dynamixel_state[id]
+            elif name in self.robot.sunny_sky_joint2id and sunny_sky_state is not None:
+                id = self.robot.sunny_sky_joint2id[name]
+                joint_state_dict[name] = sunny_sky_state[id]
+            elif name in self.robot.mighty_zap_joint2id and ankle_state is not None:
+                id = self.robot.mighty_zap_joint2id[name]
+                joint_state_dict[name] = ankle_state[id]
+
+        for joint_name in joint_state_dict.keys():
+            if joint_name in self.negated_joint_names:
+                joint_state_dict[joint_name].pos *= -1
+                joint_state_dict[joint_name].vel *= -1
+
+        return joint_state_dict
+
     # @profile()
     def get_joint_state(self):
-        dynamixel_state = sunny_sky_state = mighty_zap_state = None
-
-        # mighty_zap_state = {}
-        # for mighty_zap_id in self.mighty_zap_ids:
-        #     mighty_zap_state[mighty_zap_id] = (
-        #         self.mighty_zap_controller.get_motor_state_single(mighty_zap_id)
-        #     )
-
-        # sunny_sky_state = self.sunny_sky_controller.get_motor_state()
-        # dynamixel_state = self.dynamixel_controller.get_motor_state()
-
         futures = {}
         for mighty_zap_id in self.mighty_zap_ids:
             futures[f"mighty_zap_{mighty_zap_id}"] = self.executor.submit(
@@ -177,92 +265,41 @@ class RealWorld(BaseSim):
                     # log(f"Time taken for {key}: {end_time - start_times[key]}", header=snake2camel(self.name), level="debug")
                     break
 
-        # Note: MightyZap positions are the lengthsmof linear actuators
-        mighty_zap_state = {}
-        for motor_name, result in results.items():
-            if motor_name.startswith("mighty_zap"):
-                motor_id = int(motor_name.split("_")[2])
-                mighty_zap_state[motor_id] = result
-
-        sunny_sky_state = results["sunny_sky"]
-        dynamixel_state = results["dynamixel"]
-
-        for side, motor_ids in self.robot.ankle2mighty_zap.items():
-            mighty_zap_pos = []
-            for motor_id in motor_ids:
-                if mighty_zap_state[motor_id].pos > 0:
-                    mighty_zap_pos.append(mighty_zap_state[motor_id].pos)
-                else:
-                    log(
-                        "The MightyZap position is negative",
-                        header=snake2camel(self.name),
-                        level="warning",
-                    )
-                    mighty_zap_pos.append(
-                        self.mighty_zap_init_pos[self.mighty_zap_ids.index(motor_id)]
-                        if self.last_mighty_zap_state is None
-                        else self.last_mighty_zap_state[motor_id].pos
-                    )
-
-            ankle_pos = self.robot.ankle_fk(mighty_zap_pos)
-            for i, motor_id in enumerate(motor_ids):
-                mighty_zap_state[motor_id].pos = ankle_pos[i]
-                if self.last_mighty_zap_state is not None:
-                    mighty_zap_state[motor_id].vel = (
-                        ankle_pos[i] - self.last_mighty_zap_state[motor_id].pos
-                    ) / (
-                        mighty_zap_state[motor_id].time
-                        - self.last_mighty_zap_state[motor_id].time
-                    )
-                    # log(
-                    #     f"{motor_id}: {mighty_zap_state[motor_id].vel}="
-                    #     + f"({ankle_pos[i]}-{self.last_mighty_zap_state[motor_id].pos})/"
-                    #     + f"({mighty_zap_state[motor_id].time}-{self.last_mighty_zap_state[motor_id].time})",
-                    #     header=snake2camel(self.name),
-                    #     level="debug",
-                    # )
-
-        self.last_mighty_zap_state = copy.deepcopy(mighty_zap_state)
-
-        joint_state_dict = {}
-        for name in self.robot.joints_info.keys():
-            id = None
-            if name in self.robot.dynamixel_joint2id and dynamixel_state is not None:
-                id = self.robot.dynamixel_joint2id[name]
-                joint_state_dict[name] = dynamixel_state[id]
-            elif name in self.robot.sunny_sky_joint2id and sunny_sky_state is not None:
-                id = self.robot.sunny_sky_joint2id[name]
-                joint_state_dict[name] = sunny_sky_state[id]
-            elif (
-                name in self.robot.mighty_zap_joint2id and mighty_zap_state is not None
-            ):
-                id = self.robot.mighty_zap_joint2id[name]
-                joint_state_dict[name] = mighty_zap_state[id]
-
-        for joint_name in joint_state_dict.keys():
-            if joint_name in self.negated_joint_names:
-                joint_state_dict[joint_name].pos *= -1
-                joint_state_dict[joint_name].vel *= -1
-
-        # log(
-        #     f"Joint states: {joint_state_dict}",
-        #     header=snake2camel(self.name),
-        #     level="debug",
-        # )
+        joint_state_dict = self._process_joint_state(results)
 
         return joint_state_dict
 
-    def get_base_orientation(self):
-        if self.imu.default_pose_inv is None:
-            self.imu.set_default_pose()
+    def get_observation(self):
+        futures = {}
+        for mighty_zap_id in self.mighty_zap_ids:
+            futures[f"mighty_zap_{mighty_zap_id}"] = self.executor.submit(
+                self.mighty_zap_controller.get_motor_state_single, mighty_zap_id
+            )
+        futures["dynamixel"] = self.executor.submit(
+            self.dynamixel_controller.get_motor_state
+        )
+        futures["sunny_sky"] = self.executor.submit(
+            self.sunny_sky_controller.get_motor_state
+        )
+        futures["imu"] = self.executor.submit(self.imu.get_state)
 
-        return self.imu.get_quaternion()
+        results = {}
+        # start_times = {key: time.time() for key in futures.keys()}
+        for future in as_completed(futures.values()):
+            for key, f in futures.items():
+                if f is future:
+                    # end_time = time.time()
+                    results[key] = future.result()
+                    # log(f"Time taken for {key}: {end_time - start_times[key]}", header=snake2camel(self.name), level="debug")
+                    break
 
-    def get_base_angular_velocity(self):
-        if self.imu.default_pose_inv is None:
-            self.imu.set_default_pose()
+        joint_state_dict = self._process_joint_state(results)
 
-        return self.imu.get_angular_velocity()
+        quat, ang_vel = results["imu"]
+
+        ang_vel *= 0.1
+
+        return joint_state_dict, quat, ang_vel
 
     def get_link_pos(self, link_name: str):
         pass
