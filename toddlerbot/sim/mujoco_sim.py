@@ -177,9 +177,7 @@ class MuJoCoController:
 
 
 class MuJoCoSim(BaseSim):
-    def __init__(
-        self, robot, xml_str=None, assets=None, xml_path=None, fixed: bool = False
-    ):
+    def __init__(self, robot, xml_str=None, assets=None, xml_path=None):
         """Initialize the MuJoCo simulation environment."""
         super().__init__()
 
@@ -199,7 +197,7 @@ class MuJoCoSim(BaseSim):
 
         self.controller = MuJoCoController()
 
-        if not fixed:
+        if xml_path is not None and "fixed" not in xml_path and "sysID" not in xml_path:
             self.put_robot_on_ground()
 
         self.thread = None
@@ -302,11 +300,13 @@ class MuJoCoSim(BaseSim):
 
         return joint_state_dict
 
-    def get_base_orientation(self):
-        return self.data.sensor("orientation").data.copy()
+    def get_observation(self):
+        joint_state_dict = self.get_joint_state()
 
-    def get_base_angular_velocity(self):
-        return self.data.sensor("angular_velocity").data.copy()
+        quat = self.data.sensor("orientation").data.copy()
+        ang_vel = self.data.sensor("angular_velocity").data.copy()
+
+        return joint_state_dict, quat, ang_vel
 
     def get_zmp(self, com_pos, pz=0.0):
         M = self.model.body(0).subtreemass

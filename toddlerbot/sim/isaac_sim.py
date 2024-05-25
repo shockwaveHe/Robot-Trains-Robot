@@ -217,8 +217,12 @@ class IsaacSim(BaseSim):
             if dq is None
             else torch.tensor(dq, dtype=torch.float)
         )
+        self.root_state[:, 2] = -0.005
 
         self.gym.set_dof_state_tensor(self.sim, gymtorch.unwrap_tensor(self.dof_state))
+        self.gym.set_actor_root_state_tensor(
+            self.sim, gymtorch.unwrap_tensor(self.root_state)
+        )
 
     def get_torso_pose(self):
         return np.array([0, 0, self.robot.com[-1]]), np.eye(3)
@@ -239,16 +243,18 @@ class IsaacSim(BaseSim):
 
         return joint_state_dict
 
-    def get_base_orientation(self):
-        self.gym.refresh_actor_root_state_tensor(self.sim)
-        return np.array([self.root_state[0, 6], *self.root_state[0, 3:6]])
+    def get_observation(self):
+        joint_state_dict = self.get_joint_state()
 
-    def get_base_angular_velocity(self):
         self.gym.refresh_actor_root_state_tensor(self.sim)
+
+        quat = np.array([self.root_state[0, 6], *self.root_state[0, 3:6]])
         ang_vel_tensor = quat_rotate_inverse(
             self.root_state[:, 3:7], self.root_state[:, 10:13]
         )
-        return ang_vel_tensor.detach().cpu().numpy().squeeze()
+        ang_vel = ang_vel_tensor.detach().cpu().numpy().squeeze()
+
+        return joint_state_dict, quat, ang_vel
 
     def set_joint_angles(self, joint_ctrls, ctrl_type="position"):
         self.last_command = (joint_ctrls, ctrl_type)

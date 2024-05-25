@@ -85,9 +85,11 @@ def make_vis_function(
             if not os.path.exists(save_path):
                 os.makedirs(save_path)
 
-            file_path = os.path.join(save_path, f"{name}.svg")
-            plt.savefig(file_path)
-            log(f"Graph saved as: {file_path}", header="Visualization")
+            png_file_path = os.path.join(save_path, f"{name}.png")
+            plt.savefig(png_file_path)
+            svg_file_path = os.path.join(save_path, f"{name}.svg")
+            plt.savefig(svg_file_path)
+            log(f"Graph saved as: {png_file_path}", header="Visualization")
         else:
             if backend_curr not in non_interactive_backends:
                 plt.show()

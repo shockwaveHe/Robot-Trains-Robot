@@ -308,7 +308,7 @@ def optimize_parameters(
                 }
             }
             xml_str = update_xml(sim_name, copy.deepcopy(tree), params_dict)
-            sim = MuJoCoSim(robot, xml_str=xml_str, assets=assets_dict, fixed=True)
+            sim = MuJoCoSim(robot, xml_str=xml_str, assets=assets_dict)
 
         elif sim_name == "isaac":
             from toddlerbot.sim.isaac_sim import IsaacSim
@@ -392,7 +392,7 @@ def evaluate(
     if sim_name == "mujoco":
         from toddlerbot.sim.mujoco_sim import MuJoCoSim
 
-        sim = MuJoCoSim(robot, xml_path=sysID_file_path, fixed=True)
+        sim = MuJoCoSim(robot, xml_path=sysID_file_path)
     elif sim_name == "isaac":
         from toddlerbot.sim.isaac_sim import IsaacSim
 

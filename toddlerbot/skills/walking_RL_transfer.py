@@ -88,6 +88,7 @@ def warm_up_sim(sim, cfg, robot):
     default_q = np.array(list(cfg.init_state.default_joint_angles.values()))
 
     if sim.name == "isaac":
+        # TODO: Isaac has a bug when warming up
         sim.reset_dof_state(default_q)
         sim.run_simulation(headless=True)
 
