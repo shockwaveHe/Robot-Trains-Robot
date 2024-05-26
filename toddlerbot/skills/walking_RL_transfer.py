@@ -142,9 +142,11 @@ def fetch_state(sim, cfg, state_queue, obs_stop_event):
     while not obs_stop_event.is_set():
         step_start = time.time()
 
-        joint_state_dict, quat_obs, ang_vel_obs = sim.get_observation()
+        joint_state_dict, root_state = sim.get_observation()
         q_obs = np.array([joint_state_dict[j].pos for j in joint_ordering])
         dq_obs = np.array([joint_state_dict[j].vel for j in joint_ordering])
+        quat_obs = root_state["quaternion"]
+        ang_vel_obs = root_state["angular_velocity"]
         euler_angle_obs = quaternion_to_euler_array(quat_obs)
 
         state = {

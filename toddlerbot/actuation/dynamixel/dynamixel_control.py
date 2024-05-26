@@ -102,8 +102,8 @@ class DynamixelController(BaseController):
         def set_pos_helper(pos):
             pos = np.array(pos)
             pos_drive = self.config.init_pos - pos / self.config.gear_ratio
-            # with self.lock:
-            self.client.write_desired_pos(self.motor_ids, pos_drive)
+            with self.lock:
+                self.client.write_desired_pos(self.motor_ids, pos_drive)
 
         if interp:
             pos = np.array(pos)
@@ -131,8 +131,8 @@ class DynamixelController(BaseController):
         # log(f"Start... {time.time()}", header="Dynamixel", level="warning")
 
         state_dict = {}
-        # with self.lock:
-        pos_arr, vel_arr = self.client.read_pos_vel()
+        with self.lock:
+            pos_arr, vel_arr = self.client.read_pos_vel()
         # log(
         #     f"Pos: {np.round(np.rad2deg(pos_arr), 2)}",
         #     header="Dynamixel",

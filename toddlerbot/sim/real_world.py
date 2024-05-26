@@ -3,8 +3,6 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import numpy as np
-from transforms3d.euler import euler2quat
-from transforms3d.quaternions import quat2mat
 
 from toddlerbot.actuation.dynamixel.dynamixel_control import (
     DynamixelConfig,
@@ -295,11 +293,12 @@ class RealWorld(BaseSim):
 
         joint_state_dict = self._process_joint_state(results)
 
-        quat, ang_vel = results["imu"]
+        root_state = results["imu"]
 
-        ang_vel *= 0.1
+        # root_state["quaternion"] = np.array([1, 0, 0, 0])
+        # root_state["angular_velocity"] = np.array([0, 0, 0])
 
-        return joint_state_dict, quat, ang_vel
+        return joint_state_dict, root_state
 
     def get_link_pos(self, link_name: str):
         pass

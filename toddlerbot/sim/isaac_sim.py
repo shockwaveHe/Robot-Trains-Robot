@@ -248,13 +248,16 @@ class IsaacSim(BaseSim):
 
         self.gym.refresh_actor_root_state_tensor(self.sim)
 
-        quat = np.array([self.root_state[0, 6], *self.root_state[0, 3:6]])
+        root_state = {}
+        root_state["quaternion"] = np.array(
+            [self.root_state[0, 6], *self.root_state[0, 3:6]]
+        )
         ang_vel_tensor = quat_rotate_inverse(
             self.root_state[:, 3:7], self.root_state[:, 10:13]
         )
-        ang_vel = ang_vel_tensor.detach().cpu().numpy().squeeze()
+        root_state["angular_velocity"] = ang_vel_tensor.detach().cpu().numpy().squeeze()
 
-        return joint_state_dict, quat, ang_vel
+        return joint_state_dict, root_state
 
     def set_joint_angles(self, joint_ctrls, ctrl_type="position"):
         self.last_command = (joint_ctrls, ctrl_type)

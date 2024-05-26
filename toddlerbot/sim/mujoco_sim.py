@@ -303,10 +303,13 @@ class MuJoCoSim(BaseSim):
     def get_observation(self):
         joint_state_dict = self.get_joint_state()
 
-        quat = self.data.sensor("orientation").data.copy()
-        ang_vel = self.data.sensor("angular_velocity").data.copy()
+        root_state = {}
+        root_state["quaternion"] = self.data.sensor("orientation").data.copy()
+        root_state["angular_velocity"] = self.data.sensor(
+            "angular_velocity"
+        ).data.copy()
 
-        return joint_state_dict, quat, ang_vel
+        return joint_state_dict, root_state
 
     def get_zmp(self, com_pos, pz=0.0):
         M = self.model.body(0).subtreemass
