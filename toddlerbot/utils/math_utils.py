@@ -37,9 +37,11 @@ def round_floats(obj, precision):
     return obj
 
 
-def quaternion_to_euler_array(quat):
-    # Ensure quaternion is in the correct format [x, y, z, w]
-    w, x, y, z = quat
+def quaternion_to_euler_array(quat, order="wxyz"):
+    if order == "xyzw":
+        x, y, z, w = quat
+    else:
+        w, x, y, z = quat
 
     # Roll (x-axis rotation)
     t0 = 2.0 * (w * x + y * z)

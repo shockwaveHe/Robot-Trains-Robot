@@ -267,6 +267,7 @@ class RealWorld(BaseSim):
 
         return joint_state_dict
 
+    # @profile()
     def get_observation(self):
         futures = {}
         for mighty_zap_id in self.mighty_zap_ids:
@@ -313,6 +314,7 @@ class RealWorld(BaseSim):
         self.executor.submit(self.dynamixel_controller.close_motors)
         self.executor.submit(self.sunny_sky_controller.close_motors)
         self.executor.submit(self.mighty_zap_controller.close_motors)
+        self.executor.submit(self.imu.close)
 
         self.executor.shutdown(wait=True)
 

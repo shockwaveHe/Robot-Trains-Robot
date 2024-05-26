@@ -145,14 +145,15 @@ def fetch_state(sim, cfg, state_queue, obs_stop_event):
         joint_state_dict, root_state = sim.get_observation()
         q_obs = np.array([joint_state_dict[j].pos for j in joint_ordering])
         dq_obs = np.array([joint_state_dict[j].vel for j in joint_ordering])
-        quat_obs = root_state["quaternion"]
         ang_vel_obs = root_state["angular_velocity"]
-        euler_angle_obs = quaternion_to_euler_array(quat_obs)
+        if "euler" in root_state:
+            euler_angle_obs = root_state["euler"]
+        else:
+            euler_angle_obs = quaternion_to_euler_array(root_state["quaternion"])
 
         state = {
             "q_obs": q_obs,
             "dq_obs": dq_obs,
-            "quat_obs": quat_obs,
             "euler_angle_obs": euler_angle_obs,
             "ang_vel_obs": ang_vel_obs,
         }
@@ -226,7 +227,6 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=False):
 
             q_obs = state["q_obs"]
             dq_obs = state["dq_obs"]
-            quat_obs = state["quat_obs"]
             euler_angle_obs = state["euler_angle_obs"]
             ang_vel_obs = state["ang_vel_obs"]
 
@@ -254,11 +254,6 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=False):
                 )
                 log(
                     f"dq: {round_floats(dq_obs, 3)}",
-                    header=snake2camel(header_name),
-                    level="debug",
-                )
-                log(
-                    f"quat: {quat_obs}",
                     header=snake2camel(header_name),
                     level="debug",
                 )
