@@ -35,7 +35,6 @@ class IMU:
         self.default_pose_inv = None
 
         # Initialize history buffers for moving average
-        self.window_size = window_size
         self.euler_history = deque(maxlen=window_size)
         self.angular_velocity_history = deque(maxlen=window_size)
 
@@ -52,7 +51,7 @@ class IMU:
         self.default_pose = R.from_quat(quat)
         self.default_pose_inv = self.default_pose.inv()
 
-    # @profile()
+    @profile()
     def get_state(self):
         if self.default_pose is None:
             self.set_default_pose()
@@ -60,10 +59,11 @@ class IMU:
         # Compute moving averages
         avg_euler = np.mean(self.euler_history, axis=0)
         rotation_relative = self.default_pose_inv * R.from_euler("xyz", avg_euler)
-        euler_relative = rotation_relative.as_euler("xyz")
+        quat_relative = rotation_relative.as_quat()
+        euler_relative = quaternion_to_euler_array(quat_relative, order="xyzw")
 
         avg_angular_velocity = np.mean(self.angular_velocity_history, axis=0)
-        ang_vel_relative = self.default_pose_inv.apply(avg_angular_velocity)
+        ang_vel_relative = self.default_pose.apply(avg_angular_velocity)
 
         state = {"euler": euler_relative, "angular_velocity": ang_vel_relative}
 

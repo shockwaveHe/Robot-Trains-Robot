@@ -205,6 +205,7 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=False):
     warm_up_sim_thread.join()
 
     time.sleep(1.0)
+
     gpu_stop_event.set()
     warm_up_gpu_thread.join()
 

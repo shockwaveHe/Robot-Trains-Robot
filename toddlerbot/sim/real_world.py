@@ -141,6 +141,7 @@ class RealWorld(BaseSim):
                 self.mighty_zap_controller.set_pos_single, pos, mighty_zap_id
             )
 
+    @profile()
     def _process_joint_state(self, results):
         # Note: MightyZap positions are the lengthsmof linear actuators
         mighty_zap_state = {}
@@ -199,23 +200,26 @@ class RealWorld(BaseSim):
                     )
 
             ankle_pos = self.robot.ankle_fk(mighty_zap_pos)
-            for i, motor_id in enumerate(motor_ids):
-                ankle_state[motor_id].pos = ankle_pos[i]
-                if self.last_ankle_state is not None:
-                    pos_delta = ankle_pos[i] - self.last_ankle_state[motor_id].pos
-                    time_delta = (
-                        ankle_state[motor_id].time
-                        - self.last_ankle_state[motor_id].time
-                    )
-                    ankle_state[motor_id].vel = pos_delta / time_delta
-
-                    if ankle_state[motor_id].vel > 5:
-                        log(
-                            f"{motor_id}: {ankle_state[motor_id].vel}="
-                            + f"{pos_delta}/{time_delta}",
-                            header=snake2camel(self.name),
-                            level="warning",
+            if np.any(np.isnan(ankle_pos)):
+                ankle_state = self.last_ankle_state
+            else:
+                for i, motor_id in enumerate(motor_ids):
+                    ankle_state[motor_id].pos = ankle_pos[i]
+                    if self.last_ankle_state is not None:
+                        pos_delta = ankle_pos[i] - self.last_ankle_state[motor_id].pos
+                        time_delta = (
+                            ankle_state[motor_id].time
+                            - self.last_ankle_state[motor_id].time
                         )
+                        ankle_state[motor_id].vel = pos_delta / time_delta
+
+                        if ankle_state[motor_id].vel > 5:
+                            log(
+                                f"{motor_id}: {ankle_state[motor_id].vel}="
+                                + f"{pos_delta}/{time_delta}",
+                                header=snake2camel(self.name),
+                                level="warning",
+                            )
 
         self.last_ankle_state = copy.deepcopy(ankle_state)
 
@@ -267,7 +271,7 @@ class RealWorld(BaseSim):
 
         return joint_state_dict
 
-    # @profile()
+    @profile()
     def get_observation(self):
         futures = {}
         for mighty_zap_id in self.mighty_zap_ids:
