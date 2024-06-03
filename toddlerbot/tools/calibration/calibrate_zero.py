@@ -34,12 +34,6 @@ def calibrate_dynamixel(port: str, robot: HumanoidRobot, group: str):
         robot.get_attrs("dynamixel", "is_indirect", group)
     )
 
-    time.sleep(1.0)
-
-    controller.set_pos([0] * len(dynamixel_ids))
-
-    time.sleep(1.0)
-
     robot.set_attrs("dynamixel", "init_pos", init_pos, group)
 
     controller.close_motors()

@@ -165,7 +165,7 @@
         "kff2_real": 0.0,
         "kff1_real": 0.0,
         "gear_ratio": 1.0,
-        "init_pos": 3.0066022872924805
+        "init_pos": 3.005068302154541
     },
     "left_wrist_roll": {
         "id": 8,
@@ -270,7 +270,7 @@
         "kff2_real": 0.0,
         "kff1_real": 0.0,
         "gear_ratio": 1.0,
-        "init_pos": 1.7165244817733765
+        "init_pos": 1.7134565114974976
     },
     "right_elbow_roll": {
         "id": 13,
@@ -333,7 +333,7 @@
         "kff2_real": 0.0,
         "kff1_real": 0.0,
         "gear_ratio": 1.0,
-        "init_pos": 3.0127382278442383
+        "init_pos": 3.011204242706299
     },
     "right_wrist_roll": {
         "id": 16,
@@ -396,7 +396,7 @@
         "kff2_real": 0.0,
         "kff1_real": 0.0,
         "gear_ratio": 3.0,
-        "init_pos": 0.28122981389363605
+        "init_pos": 0.2817411422729492
     },
     "waist_yaw": {
         "id": 19,
@@ -417,7 +417,7 @@
         "kff2_real": 0.0,
         "kff1_real": 0.0,
         "gear_ratio": 3.0,
-        "init_pos": 1.9711653391520183
+        "init_pos": 1.9716766675313313
     },
     "left_hip_yaw": {
         "id": 20,
@@ -669,6 +669,6 @@
         "kff2_real": 0.0,
         "kff1_real": 0.0,
         "gear_ratio": 1.0,
-        "init_pos": 4.4991655349731445
+        "init_pos": 4.500699520111084
     }
 }

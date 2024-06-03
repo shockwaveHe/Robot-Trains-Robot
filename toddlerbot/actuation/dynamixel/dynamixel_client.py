@@ -5,11 +5,11 @@ import atexit
 import time
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
-import dynamixel_sdk  # type: ignore
 import numpy as np
 import numpy.typing as npt
-from dynamixel_sdk import GroupSyncRead, GroupSyncWrite  # type: ignore
 
+import toddlerbot.actuation.dynamixel.dynamixel_sdk as dynamixel_sdk
+from toddlerbot.actuation.dynamixel.dynamixel_sdk import GroupSyncRead, GroupSyncWrite
 from toddlerbot.utils.misc_utils import log
 
 PROTOCOL_VERSION = 2.0
@@ -77,9 +77,6 @@ class DynamixelClient:
         port: str = "/dev/ttyUSB0",
         baudrate: int = 1000000,
         lazy_connect: bool = False,
-        pos_scale: Optional[float] = None,
-        vel_scale: Optional[float] = None,
-        cur_scale: Optional[float] = None,
     ):
         """Initializes a new client.
 
