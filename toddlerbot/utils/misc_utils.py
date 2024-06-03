@@ -4,6 +4,7 @@ import inspect
 import logging
 import subprocess
 import time
+from typing import Any, Callable, TypeVar
 
 from colorama import Fore, init
 from line_profiler import LineProfiler
@@ -24,7 +25,7 @@ my_logger.addHandler(handler)
 my_logger.propagate = False
 
 
-def log(message, header=None, level="info"):
+def log(message: str, header: str = "", level: str = "info"):
     """
     Log a message to the console with color coding.
 
@@ -32,7 +33,7 @@ def log(message, header=None, level="info"):
     - message: The message to log.
     - level: The log level (ERROR, WARNING, INFO).
     """
-    header_msg = f"[{header}] " if header is not None else ""
+    header_msg = f"[{header}] "
     if level == "debug":
         my_logger.debug(Fore.CYAN + "[Debug] " + header_msg + message)
     elif level == "error":
@@ -43,7 +44,7 @@ def log(message, header=None, level="info"):
         my_logger.info(Fore.WHITE + "[Info] " + header_msg + message)
 
 
-def precise_sleep(duration):
+def precise_sleep(duration: float):
     """
     Sleep for a specified amount of time.
 
@@ -68,16 +69,18 @@ def precise_sleep(duration):
 
 # Create a global profiler instance
 global_profiler = LineProfiler()
+F = TypeVar("F", bound=Callable[..., Any])
 
 
-def profile():
-    def decorator(func):
+def profile() -> Callable[[F], F]:
+    def decorator(func: F) -> F:
         # Register function to the global profiler
-        global_profiler.add_function(func)
+        global_profiler.add_function(func)  # type: ignore
 
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            global_profiler.enable_by_count()  # Enable profiling
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            # Enable profiling
+            global_profiler.enable_by_count()  # type: ignore
             try:
                 if inspect.iscoroutinefunction(func):
                     # Handle coroutine functions
@@ -86,25 +89,26 @@ def profile():
                     # Handle regular functions
                     result = func(*args, **kwargs)
             finally:
-                global_profiler.disable_by_count()  # Disable profiling
+                # Disable profiling
+                global_profiler.disable_by_count()  # type: ignore
 
             return result
 
-        return wrapper
+        return wrapper  # type: ignore
 
     return decorator
 
 
-def dump_profiling_data(prof_path="profile_output.lprof"):
+def dump_profiling_data(prof_path: str = "profile_output.lprof"):
     # Dump all profiling data into a single file
-    global_profiler.dump_stats(prof_path)
+    global_profiler.dump_stats(prof_path)  # type: ignore
     txt_path = prof_path.replace(".lprof", ".txt")
     subprocess.run(f"python -m line_profiler {prof_path} > {txt_path}", shell=True)
 
     log(f"Profile results saved to {txt_path}.", header="Profiler")
 
 
-def snake2camel(snake_str):
+def snake2camel(snake_str: str) -> str:
     """
     Convert a snake_case string to CamelCase.
 
@@ -117,7 +121,7 @@ def snake2camel(snake_str):
     return "".join(word.title() for word in snake_str.split("_"))
 
 
-def camel2snake(camel_str):
+def camel2snake(camel_str: str) -> str:
     """
     Convert a CamelCase string to snake_case.
 
@@ -132,7 +136,7 @@ def camel2snake(camel_str):
     )
 
 
-def set_seed(seed):
+def set_seed(seed: int):
     import os
     import random
 
@@ -140,13 +144,13 @@ def set_seed(seed):
     import torch
 
     if seed == -1:
-        seed = np.random.randint(0, 10000)
+        seed = np.random.randint(0, 10000)  # type: ignore
 
     log(f"Setting seed: {seed}", header="Seed")
 
     random.seed(seed)
     np.random.seed(seed)
-    torch.manual_seed(seed)
+    torch.manual_seed(seed)  # type: ignore
     os.environ["PYTHONHASHSEED"] = str(seed)
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)

@@ -1,16 +1,16 @@
 import os
 import xml.dom.minidom
 import xml.etree.ElementTree as ET
-from typing import Optional
+from typing import List, Optional
 
 import serial.tools.list_ports as list_ports
 
 from toddlerbot.utils.misc_utils import log
 
 
-def find_ports(target):
+def find_ports(target: str) -> List[str]:
     ports = list(list_ports.comports())
-    target_ports = []
+    target_ports: List[str] = []
     for port, desc, hwid in ports:
         # Adjust the condition below according to your board's unique identifier or pattern
         if target in desc:
@@ -24,8 +24,6 @@ def find_ports(target):
 
     if len(target_ports) == 0:
         raise ConnectionError(f"Could not find the {target} board.")
-    elif len(target_ports) == 1:
-        return target_ports[0]
     else:
         return sorted(target_ports)
 
@@ -100,7 +98,7 @@ def find_robot_file_path(robot_name: str, suffix: str = ".urdf") -> str:
     raise FileNotFoundError(f"No {suffix} file found for robot '{robot_name}'.")
 
 
-def is_xml_pretty_printed(file_path):
+def is_xml_pretty_printed(file_path: str) -> bool:
     """Check if an XML file is pretty-printed based on indentation and line breaks."""
     with open(file_path, "r") as file:
         lines = file.readlines()
@@ -115,7 +113,7 @@ def is_xml_pretty_printed(file_path):
     return False
 
 
-def prettify(elem, file_path):
+def prettify(elem: ET.Element, file_path: str):
     """Return a pretty-printed XML string for the Element."""
     rough_string = ET.tostring(elem, "utf-8")
     reparsed = xml.dom.minidom.parseString(rough_string)
@@ -124,27 +122,3 @@ def prettify(elem, file_path):
         return reparsed.toxml()
     else:
         return reparsed.toprettyxml(indent="  ", newl="")
-
-
-# https://github.com/pyserial/pyserial/issues/216#issuecomment-369414522
-class ReadLine:
-    def __init__(self, s):
-        self.buf = bytearray()
-        self.s = s
-
-    def readline(self):
-        i = self.buf.find(b"\n")
-        if i >= 0:
-            r = self.buf[: i + 1]
-            self.buf = self.buf[i + 1 :]
-            return r
-        while True:
-            i = max(1, min(2048, self.s.in_waiting))
-            data = self.s.read(i)
-            i = data.find(b"\n")
-            if i >= 0:
-                r = self.buf + data[: i + 1]
-                self.buf[0:] = data[i + 1 :]
-                return r
-            else:
-                self.buf.extend(data)

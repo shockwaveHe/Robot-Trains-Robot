@@ -1,13 +1,14 @@
 import time
 from dataclasses import is_dataclass
+from typing import Any, Callable, Iterable
 
 import numpy as np
-from transforms3d.quaternions import mat2quat, quat2mat
+import numpy.typing as npt
 
 from toddlerbot.utils.misc_utils import precise_sleep
 
 
-def round_floats(obj, precision):
+def round_floats(obj: Any, precision: int = 6) -> Any:
     """
     Recursively round floats in a list-like structure to a given precision.
 
@@ -21,11 +22,11 @@ def round_floats(obj, precision):
     if isinstance(obj, float):
         return round(obj, precision)
     elif isinstance(obj, (list, tuple)):
-        return type(obj)(round_floats(x, precision) for x in obj)
+        return type(obj)(round_floats(x, precision) for x in obj)  # type: ignore
     elif isinstance(obj, np.ndarray):
-        return list(np.round(obj, decimals=precision))
+        return list(np.round(obj, decimals=precision))  # type: ignore
     elif isinstance(obj, dict):
-        return {k: round_floats(v, precision) for k, v in obj.items()}
+        return {k: round_floats(v, precision) for k, v in obj.items()}  # type: ignore
     elif is_dataclass(obj):
         return type(obj)(
             **{
@@ -37,7 +38,9 @@ def round_floats(obj, precision):
     return obj
 
 
-def quaternion_to_euler_array(quat, order="wxyz"):
+def quaternion_to_euler_array(
+    quat: Iterable[float], order: str = "wxyz"
+) -> npt.NDArray[np.float32]:
     if order == "xyzw":
         x, y, z, w = quat
     else:
@@ -65,16 +68,13 @@ def quaternion_to_euler_array(quat, order="wxyz"):
     return euler_angles
 
 
-def quatxyzw2mat(quat):
-    return quat2mat([quat[3], quat[0], quat[1], quat[2]])
-
-
-def mat2quatxyzw(mat):
-    quat = mat2quat(mat)
-    return [quat[1], quat[2], quat[3], quat[0]]
-
-
-def interpolate(p_start, p_end, delta_t, t, interp_type="linear"):
+def interpolate(
+    p_start: npt.NDArray[np.float32],
+    p_end: npt.NDArray[np.float32],
+    delta_t: float,
+    t: float,
+    interp_type: str = "linear",
+) -> npt.NDArray[np.float32]:
     """
     Interpolate position at time t using specified interpolation type.
 
@@ -109,18 +109,22 @@ def interpolate(p_start, p_end, delta_t, t, interp_type="linear"):
 
 
 def interpolate_pos(
-    set_pos, pos_start, pos, delta_t, interp_type, actuator_type, sleep_time=0.0
+    set_pos: Callable[[npt.NDArray[np.float32]], None],
+    pos_start: npt.NDArray[np.float32],
+    pos: npt.NDArray[np.float32],
+    delta_t: float,
+    interp_type: str,
+    sleep_time: float = 0.0,
 ):
     time_start = time.time()
     time_curr = 0
     counter = 0
     while time_curr <= delta_t:
         time_curr = time.time() - time_start
-        pos_interp = interpolate(
+        pos_interp: npt.NDArray[np.float32] = interpolate(
             pos_start, pos, delta_t, time_curr, interp_type=interp_type
         )
         set_pos(pos_interp)
-        # log(f"Setting position: {pos_interp}", header=actuator_type, level="debug")
 
         time_elapsed = time.time() - time_start - time_curr
         time_until_next_step = sleep_time - time_elapsed

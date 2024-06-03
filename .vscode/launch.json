@@ -63,7 +63,7 @@
                 "--sim",
                 "mujoco",
             ],
-            "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
+            // "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
         },
         {
             "name": "Python: walk_toddlerbot_mujoco",
@@ -78,7 +78,7 @@
                 "--sim",
                 "mujoco",
             ],
-            "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
+            // "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
         },
         {
             "name": "Python: walk_toddlerbot_legs_mujoco",
@@ -93,7 +93,7 @@
                 "--sim",
                 "mujoco",
             ],
-            "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
+            // "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
         },
         {
             "name": "Python: walk_toddlerbot_legs_isaac",
@@ -166,6 +166,18 @@
             ]
         },
         {
+            "name": "Python: calibrate_toddlerbot_real",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/tools/calibration/calibrate_zero.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot-name",
+                "toddlerbot",
+            ],
+        },
+        {
             "name": "Python: sysID_toddlerbot_legs_mujoco",
             "type": "python",
             "request": "launch",
@@ -180,7 +192,7 @@
                 "--joint-names",
                 "all",
             ],
-            "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
+            // "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
         },
         {
             "name": "Python: sysID_toddlerbot_legs_isaac",

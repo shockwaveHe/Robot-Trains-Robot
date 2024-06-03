@@ -1,13 +1,13 @@
 import copy
+import json
 import os
 import pickle
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
-from scipy.interpolate import LinearNDInterpolator
-from yourdfpy import URDF
+from scipy.interpolate import LinearNDInterpolator  # type: ignore
+from yourdfpy import URDF, Joint  # type: ignore
 
-from toddlerbot.robot_descriptions.robot_configs import robot_configs
 from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.misc_utils import log
 
@@ -25,42 +25,33 @@ class HumanoidRobot:
         Raises:
             ValueError: If the robot name is not supported.
         """
-        if robot_name not in robot_configs:
-            raise ValueError(f"Robot '{robot_name}' is not supported.")
-
         self.id = 0
         self.name = robot_name
-        self.config = robot_configs[robot_name]
 
-        self.load_robot_data()
+        root_path = os.path.join("toddlerbot", "robot_descriptions", self.name)
+        self.config_file_path = os.path.join(root_path, "config.json")
+        self.cache_file_path = os.path.join(root_path, f"{self.name}_data.pkl")
 
-        self.dynamixel_joint2id = {}
-        self.sunny_sky_joint2id = {}
-        self.mighty_zap_joint2id = {}
-        for name, motor_param in self.config.motor_params.items():
-            if motor_param.brand == "dynamixel":
-                self.dynamixel_joint2id[name] = motor_param.id
-            elif motor_param.brand == "sunny_sky":
-                self.sunny_sky_joint2id[name] = motor_param.id
-            elif motor_param.brand == "mighty_zap":
-                self.mighty_zap_joint2id[name] = motor_param.id
-            else:
-                raise ValueError(f"Motor brand '{motor_param.brand}' is not supported.")
+        self.load_robot_config()
 
-        self.dynamixel_id2joint = {v: k for k, v in self.dynamixel_joint2id.items()}
-        self.sunny_sky_id2joint = {v: k for k, v in self.sunny_sky_joint2id.items()}
-        self.mighty_zap_id2joint = {v: k for k, v in self.mighty_zap_joint2id.items()}
+        # TODO: Add support for loading the robot data
+        # self.load_robot_data()
 
-        self.ankle2mighty_zap = {"left": [0, 1], "right": [2, 3]}
+    def load_robot_config(self):
+        if os.path.exists(self.config_file_path):
+            with open(self.config_file_path, "r") as f:
+                self.config = json.load(f)
+        else:
+            raise FileNotFoundError(f"No config file found for robot '{self.name}'.")
+
+    def write_robot_config(self):
+        with open(self.config_file_path, "w") as f:
+            json.dump(self.config, f, indent=4)
 
     def load_robot_data(self):
-        cache_file_path = os.path.join(
-            "toddlerbot", "robot_descriptions", self.name, f"{self.name}_data.pkl"
-        )
-
-        if os.path.exists(cache_file_path):
-            with open(cache_file_path, "rb") as f:
-                robot_data = pickle.load(f)
+        if os.path.exists(self.cache_file_path):
+            with open(self.cache_file_path, "rb") as f:
+                robot_data: Dict[str, Any] = pickle.load(f)
                 log("Loaded cached data.", header="Robot")
 
             self.joints_info = robot_data["joints_info"]
@@ -68,10 +59,11 @@ class HumanoidRobot:
             self.foot_size = robot_data["foot_size"]
             self.offsets = robot_data["offsets"]
             points, values = robot_data["ankle_fk_lookup_table"]
+            self.ankle_fk_lookup_table = LinearNDInterpolator(points, values)
 
         else:
             urdf_path = find_robot_file_path(self.name)
-            urdf = URDF.load(urdf_path)
+            urdf: URDF = URDF.load(urdf_path)  # type: ignore
             self.joints_info = self.get_joint_info(urdf)
 
             if self.config.com is None:
@@ -90,8 +82,9 @@ class HumanoidRobot:
                 self.offsets = self.config.offsets
 
             points, values = self.precompute_ankle_fk_lookup()
+            self.ankle_fk_lookup_table = LinearNDInterpolator(points, values)
 
-            with open(cache_file_path, "wb") as f:
+            with open(self.cache_file_path, "wb") as f:
                 robot_data = {
                     "joints_info": self.joints_info,
                     "com": self.com,
@@ -103,7 +96,32 @@ class HumanoidRobot:
 
                 log("Computed and cached new data.", header="Robot")
 
-        self.ankle_fk_lookup_table = LinearNDInterpolator(points, values)
+    def get_joint_info(self, urdf: URDF) -> Dict[str, Any]:
+        joint_info_dict: Dict[str, Any] = {}
+        actuated_joints: List[Joint] = urdf.actuated_joints  # type: ignore
+        for joint, angle in zip(actuated_joints, urdf.cfg):
+            joint_info_dict[joint.name] = {
+                "init_angle": angle,
+                "type": joint.type,
+                "lower_limit": joint.limit.lower,  # type: ignore
+                "upper_limit": joint.limit.upper,  # type: ignore
+                "active": joint.name in self.config.motor_params.keys(),
+            }
+
+        sorted_joint_info_dict: Dict[str, Any] = {}
+        for joint_name in self.config.motor_params:
+            sorted_joint_info_dict[joint_name] = joint_info_dict[joint_name]
+
+        return sorted_joint_info_dict
+
+    def compute_foot_size(self, urdf: URDF) -> np.ndarray:  # type: ignore
+        foot_bounds = urdf.scene.geometry.get("left_ank_roll_link_visual.stl").bounds
+        foot_ori = urdf.scene.graph.get("ank_roll_link")[0][:3, :3]
+        foot_bounds_rotated = foot_bounds @ foot_ori.T
+        foot_size = np.abs(foot_bounds_rotated[1] - foot_bounds_rotated[0])
+
+        # 0.004 is the thickness of the foot pad
+        return np.array([foot_size[0], foot_size[1], 0.004])
 
     def compute_offsets(self, urdf):
         graph = urdf.scene.graph
@@ -150,32 +168,6 @@ class HumanoidRobot:
 
         return offsets
 
-    def compute_foot_size(self, urdf):
-        foot_bounds = urdf.scene.geometry.get("left_ank_roll_link_visual.stl").bounds
-        foot_ori = urdf.scene.graph.get("ank_roll_link")[0][:3, :3]
-        foot_bounds_rotated = foot_bounds @ foot_ori.T
-        foot_size = np.abs(foot_bounds_rotated[1] - foot_bounds_rotated[0])
-
-        # 0.004 is the thickness of the foot pad
-        return np.array([foot_size[0], foot_size[1], 0.004])
-
-    def get_joint_info(self, urdf):
-        joint_info_dict = {}
-        for joint, angle in zip(urdf.actuated_joints, urdf.cfg):
-            joint_info_dict[joint.name] = {
-                "init_angle": angle,
-                "type": joint.type,
-                "lower_limit": joint.limit.lower,
-                "upper_limit": joint.limit.upper,
-                "active": joint.name in self.config.motor_params.keys(),
-            }
-
-        sorted_joint_info_dict = {}
-        for joint_name in self.config.motor_params:
-            sorted_joint_info_dict[joint_name] = joint_info_dict[joint_name]
-
-        return sorted_joint_info_dict
-
     # @profile()
     def precompute_ankle_fk_lookup(self, step_deg=0.5):
         step_rad = np.deg2rad(step_deg)
@@ -212,6 +204,29 @@ class HumanoidRobot:
         values = np.column_stack((pitch_grid[valid_mask], roll_grid[valid_mask]))
 
         return points, values
+
+    def get_attrs(self, type: str, attr_name: str, group: str = "all") -> List[Any]:
+        attrs: List[Any] = []
+        for _, joint_config in self.config.items():
+            if joint_config["type"] == type:
+                if joint_config["group"] == group or group == "all":
+                    attrs.append(joint_config[attr_name])
+
+        return attrs
+
+    def set_attrs(
+        self, type: str, attr_name: str, attr_values: Any, group: str = "all"
+    ):
+        i = 0
+        for joint_name, joint_config in self.config.items():
+            if joint_config["type"] == type:
+                if joint_config["group"] == group or group == "all":
+                    if isinstance(attr_values, dict):
+                        id = joint_config["id"]
+                        self.config[joint_name][attr_name] = attr_values[id]
+                    else:
+                        self.config[joint_name][attr_name] = attr_values[i]
+                        i += 1
 
     def ankle_fk(self, mighty_zap_pos):
         ankle_pos = self.ankle_fk_lookup_table(np.clip(mighty_zap_pos, 1, 4095))
