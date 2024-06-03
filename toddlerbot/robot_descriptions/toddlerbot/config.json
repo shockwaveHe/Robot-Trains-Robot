@@ -4,7 +4,7 @@
         "group": "upper_body",
         "type": "dynamixel",
         "control_mode": "current_based_position",
-        "has_gear_box": true,
+        "is_indirect": true,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -18,14 +18,14 @@
         "kff2_real": 0.0,
         "kff1_real": 0.0,
         "gear_ratio": 1.3846153846153846,
-        "init_pos": 2.0152246819602118
+        "init_pos": 2.1138254933887057
     },
     "neck_pitch": {
         "id": 1,
         "group": "upper_body",
         "type": "dynamixel",
         "control_mode": "current_based_position",
-        "has_gear_box": true,
+        "is_indirect": true,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -39,14 +39,14 @@
         "kff2_real": 0.0,
         "kff1_real": 0.0,
         "gear_ratio": 1.1,
-        "init_pos": 1.6120743751525877
+        "init_pos": 1.3750045949762517
     },
     "left_sho_pitch": {
         "id": 2,
         "group": "upper_body",
         "type": "dynamixel",
         "control_mode": "position",
-        "has_gear_box": false,
+        "is_indirect": false,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -67,7 +67,7 @@
         "group": "upper_body",
         "type": "dynamixel",
         "control_mode": "position",
-        "has_gear_box": false,
+        "is_indirect": false,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -88,7 +88,7 @@
         "group": "upper_body",
         "type": "dynamixel",
         "control_mode": "position",
-        "has_gear_box": true,
+        "is_indirect": true,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -102,14 +102,14 @@
         "kff2_real": 0.0,
         "kff1_real": 0.0,
         "gear_ratio": 1.0,
-        "init_pos": 3.804272413253784
+        "init_pos": 3.8196122646331787
     },
     "left_elbow_roll": {
         "id": 5,
         "group": "upper_body",
         "type": "dynamixel",
         "control_mode": "position",
-        "has_gear_box": false,
+        "is_indirect": false,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -130,7 +130,7 @@
         "group": "upper_body",
         "type": "dynamixel",
         "control_mode": "position",
-        "has_gear_box": true,
+        "is_indirect": true,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -144,14 +144,14 @@
         "kff2_real": 0.0,
         "kff1_real": 0.0,
         "gear_ratio": 1.0,
-        "init_pos": 4.565126895904541
+        "init_pos": 4.578932762145996
     },
     "left_wrist_pitch": {
         "id": 7,
         "group": "upper_body",
         "type": "dynamixel",
         "control_mode": "position",
-        "has_gear_box": true,
+        "is_indirect": true,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -165,14 +165,14 @@
         "kff2_real": 0.0,
         "kff1_real": 0.0,
         "gear_ratio": 1.0,
-        "init_pos": 3.0096702575683594
+        "init_pos": 3.0066022872924805
     },
     "left_wrist_roll": {
         "id": 8,
         "group": "upper_body",
         "type": "dynamixel",
         "control_mode": "position",
-        "has_gear_box": false,
+        "is_indirect": false,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -193,7 +193,7 @@
         "group": "upper_body",
         "type": "dynamixel",
         "control_mode": "current",
-        "has_gear_box": true,
+        "is_indirect": true,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -207,14 +207,14 @@
         "kff2_real": 0.0,
         "kff1_real": 0.0,
         "gear_ratio": 1.0,
-        "init_pos": 0.8421554565429688
+        "init_pos": 0.8436894416809082
     },
     "right_sho_pitch": {
         "id": 10,
         "group": "upper_body",
         "type": "dynamixel",
         "control_mode": "position",
-        "has_gear_box": false,
+        "is_indirect": false,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -235,7 +235,7 @@
         "group": "upper_body",
         "type": "dynamixel",
         "control_mode": "position",
-        "has_gear_box": false,
+        "is_indirect": false,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -256,7 +256,7 @@
         "group": "upper_body",
         "type": "dynamixel",
         "control_mode": "position",
-        "has_gear_box": true,
+        "is_indirect": true,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -270,14 +270,14 @@
         "kff2_real": 0.0,
         "kff1_real": 0.0,
         "gear_ratio": 1.0,
-        "init_pos": 1.7226604223251343
+        "init_pos": 1.7165244817733765
     },
     "right_elbow_roll": {
         "id": 13,
         "group": "upper_body",
         "type": "dynamixel",
         "control_mode": "position",
-        "has_gear_box": false,
+        "is_indirect": false,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -298,7 +298,7 @@
         "group": "upper_body",
         "type": "dynamixel",
         "control_mode": "position",
-        "has_gear_box": true,
+        "is_indirect": true,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -312,14 +312,14 @@
         "kff2_real": 0.0,
         "kff1_real": 0.0,
         "gear_ratio": 1.0,
-        "init_pos": 1.1842331886291504
+        "init_pos": 1.147417664527893
     },
     "right_wrist_pitch": {
         "id": 15,
         "group": "upper_body",
         "type": "dynamixel",
         "control_mode": "position",
-        "has_gear_box": true,
+        "is_indirect": true,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -333,14 +333,14 @@
         "kff2_real": 0.0,
         "kff1_real": 0.0,
         "gear_ratio": 1.0,
-        "init_pos": 3.055689811706543
+        "init_pos": 3.0127382278442383
     },
     "right_wrist_roll": {
         "id": 16,
         "group": "upper_body",
         "type": "dynamixel",
         "control_mode": "position",
-        "has_gear_box": false,
+        "is_indirect": false,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -361,7 +361,7 @@
         "group": "upper_body",
         "type": "dynamixel",
         "control_mode": "current",
-        "has_gear_box": true,
+        "is_indirect": true,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -382,7 +382,7 @@
         "group": "lower_body",
         "type": "dynamixel",
         "control_mode": "current_based_position",
-        "has_gear_box": true,
+        "is_indirect": true,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -396,14 +396,14 @@
         "kff2_real": 0.0,
         "kff1_real": 0.0,
         "gear_ratio": 3.0,
-        "init_pos": 0.320090651512146
+        "init_pos": 0.28122981389363605
     },
     "waist_yaw": {
         "id": 19,
         "group": "lower_body",
         "type": "dynamixel",
         "control_mode": "current_based_position",
-        "has_gear_box": true,
+        "is_indirect": true,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -417,14 +417,14 @@
         "kff2_real": 0.0,
         "kff1_real": 0.0,
         "gear_ratio": 3.0,
-        "init_pos": 2.018207391103109
+        "init_pos": 1.9711653391520183
     },
     "left_hip_yaw": {
         "id": 20,
         "group": "lower_body",
         "type": "dynamixel",
         "control_mode": "current_based_position",
-        "has_gear_box": true,
+        "is_indirect": true,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -438,14 +438,14 @@
         "kff2_real": 0.0,
         "kff1_real": 0.0,
         "gear_ratio": 1.105263157894737,
-        "init_pos": 4.346863088153657
+        "init_pos": 4.3538025447300495
     },
     "left_hip_roll": {
         "id": 21,
         "group": "lower_body",
         "type": "dynamixel",
         "control_mode": "current_based_position",
-        "has_gear_box": false,
+        "is_indirect": false,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -459,14 +459,14 @@
         "kff2_real": 0.0,
         "kff1_real": 0.0,
         "gear_ratio": 1.0,
-        "init_pos": 2.356194490192345
+        "init_pos": 3.141592653589793
     },
     "left_hip_pitch": {
         "id": 22,
         "group": "lower_body",
         "type": "dynamixel",
         "control_mode": "position",
-        "has_gear_box": false,
+        "is_indirect": false,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -486,7 +486,7 @@
         "id": 1,
         "group": "lower_body",
         "type": "sunny_sky",
-        "has_gear_box": true,
+        "is_indirect": true,
         "joint_limit": 1.9198621771937625,
         "init_angle": 0.0,
         "default_angle": 0.65,
@@ -508,7 +508,7 @@
         "group": "lower_body",
         "type": "dynamixel",
         "control_mode": "current_based_position",
-        "has_gear_box": false,
+        "is_indirect": true,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -522,14 +522,14 @@
         "kff2_real": 0.0,
         "kff1_real": 0.0,
         "gear_ratio": 1.0,
-        "init_pos": 3.141592653589793
+        "init_pos": 2.8946218490600586
     },
     "left_ank_roll": {
         "id": 24,
         "group": "lower_body",
         "type": "dynamixel",
         "control_mode": "current_based_position",
-        "has_gear_box": false,
+        "is_indirect": true,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -543,14 +543,14 @@
         "kff2_real": 0.0,
         "kff1_real": 0.0,
         "gear_ratio": 1.0,
-        "init_pos": 3.141592653589793
+        "init_pos": 1.7732818126678467
     },
     "right_hip_yaw": {
         "id": 25,
         "group": "lower_body",
         "type": "dynamixel",
         "control_mode": "current_based_position",
-        "has_gear_box": true,
+        "is_indirect": true,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -564,14 +564,14 @@
         "kff2_real": 0.0,
         "kff1_real": 0.0,
         "gear_ratio": 1.105263157894737,
-        "init_pos": 1.607173613139561
+        "init_pos": 2.376063244683402
     },
     "right_hip_roll": {
         "id": 26,
         "group": "lower_body",
         "type": "dynamixel",
         "control_mode": "position",
-        "has_gear_box": false,
+        "is_indirect": false,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -592,7 +592,7 @@
         "group": "lower_body",
         "type": "dynamixel",
         "control_mode": "position",
-        "has_gear_box": false,
+        "is_indirect": false,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -612,7 +612,7 @@
         "id": 2,
         "group": "lower_body",
         "type": "sunny_sky",
-        "has_gear_box": true,
+        "is_indirect": true,
         "joint_limit": -1.9198621771937625,
         "init_angle": 0.0,
         "default_angle": 0.65,
@@ -634,7 +634,7 @@
         "group": "lower_body",
         "type": "dynamixel",
         "control_mode": "current_based_position",
-        "has_gear_box": false,
+        "is_indirect": true,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -648,14 +648,14 @@
         "kff2_real": 0.0,
         "kff1_real": 0.0,
         "gear_ratio": 1.0,
-        "init_pos": 1.5707963267948966
+        "init_pos": 1.7548739910125732
     },
     "right_ank_roll": {
         "id": 29,
         "group": "lower_body",
         "type": "dynamixel",
         "control_mode": "current_based_position",
-        "has_gear_box": false,
+        "is_indirect": true,
         "init_angle": 0.0,
         "default_angle": 0.0,
         "damping": 0.0,
@@ -669,6 +669,6 @@
         "kff2_real": 0.0,
         "kff1_real": 0.0,
         "gear_ratio": 1.0,
-        "init_pos": 4.71238898038469
+        "init_pos": 4.4991655349731445
     }
 }

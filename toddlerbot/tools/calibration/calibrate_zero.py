@@ -31,7 +31,7 @@ def calibrate_dynamixel(port: str, robot: HumanoidRobot, group: str):
 
     controller = DynamixelController(dynamixel_config, dynamixel_ids)
     init_pos: Dict[int, float] = controller.calibrate_motors(
-        robot.get_attrs("dynamixel", "has_gear_box", group)
+        robot.get_attrs("dynamixel", "is_indirect", group)
     )
 
     time.sleep(1.0)

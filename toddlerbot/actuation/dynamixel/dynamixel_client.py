@@ -2,11 +2,15 @@
 
 ##This is based off of the dynamixel SDK
 import atexit
-import logging
 import time
-from typing import Optional, Sequence, Tuple, Union
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 
+import dynamixel_sdk  # type: ignore
 import numpy as np
+import numpy.typing as npt
+from dynamixel_sdk import GroupSyncRead, GroupSyncWrite  # type: ignore
+
+from toddlerbot.utils.misc_utils import log
 
 PROTOCOL_VERSION = 2.0
 
@@ -33,10 +37,10 @@ DEFAULT_CUR_SCALE = 1.34
 
 def dynamixel_cleanup_handler():
     """Cleanup function to ensure Dynamixels are disconnected properly."""
-    open_clients = list(DynamixelClient.OPEN_CLIENTS)
+    open_clients: List[DynamixelClient] = list(DynamixelClient.OPEN_CLIENTS)  # type: ignore
     for open_client in open_clients:
         if open_client.port_handler.is_using:
-            logging.warning("Forcing client to close.")
+            log("Forcing client to close.", header="Dynamixel", level="warning")
         open_client.port_handler.is_using = False
         open_client.disconnect()
 
@@ -65,7 +69,7 @@ class DynamixelClient:
     """
 
     # The currently open clients.
-    OPEN_CLIENTS = set()
+    OPEN_CLIENTS = set()  # type: ignore
 
     def __init__(
         self,
@@ -95,8 +99,6 @@ class DynamixelClient:
             cur_scale: The scaling factor for the currents. This is
                 motor-dependent. If not provided uses the default scale.
         """
-        import dynamixel_sdk
-
         self.dxl = dynamixel_sdk
 
         self.motor_ids = list(motor_ids)
@@ -105,46 +107,12 @@ class DynamixelClient:
         self.lazy_connect = lazy_connect
 
         self.port_handler = self.dxl.PortHandler(port)
-        self.packet_handler = self.dxl.PacketHandler(PROTOCOL_VERSION)
+        self.packet_handler = self.dxl.PacketHandler(PROTOCOL_VERSION)  # type: ignore
 
-        self._pos_vel_cur_reader = DynamixelPosVelCurReader(
-            self,
-            self.motor_ids,
-            pos_scale=pos_scale if pos_scale is not None else DEFAULT_POS_SCALE,
-            vel_scale=vel_scale if vel_scale is not None else DEFAULT_VEL_SCALE,
-            cur_scale=cur_scale if cur_scale is not None else DEFAULT_CUR_SCALE,
-        )
-        self._pos_vel_reader = DynamixelPosVelReader(
-            self,
-            self.motor_ids,
-            pos_scale=pos_scale if pos_scale is not None else DEFAULT_POS_SCALE,
-            vel_scale=vel_scale if vel_scale is not None else DEFAULT_VEL_SCALE,
-            cur_scale=cur_scale if cur_scale is not None else DEFAULT_CUR_SCALE,
-        )
-        self._pos_reader = DynamixelPosReader(
-            self,
-            self.motor_ids,
-            pos_scale=pos_scale if pos_scale is not None else DEFAULT_POS_SCALE,
-            vel_scale=vel_scale if vel_scale is not None else DEFAULT_VEL_SCALE,
-            cur_scale=cur_scale if cur_scale is not None else DEFAULT_CUR_SCALE,
-        )
-        self._vel_reader = DynamixelVelReader(
-            self,
-            self.motor_ids,
-            pos_scale=pos_scale if pos_scale is not None else DEFAULT_POS_SCALE,
-            vel_scale=vel_scale if vel_scale is not None else DEFAULT_VEL_SCALE,
-            cur_scale=cur_scale if cur_scale is not None else DEFAULT_CUR_SCALE,
-        )
-        self._cur_reader = DynamixelCurReader(
-            self,
-            self.motor_ids,
-            pos_scale=pos_scale if pos_scale is not None else DEFAULT_POS_SCALE,
-            vel_scale=vel_scale if vel_scale is not None else DEFAULT_VEL_SCALE,
-            cur_scale=cur_scale if cur_scale is not None else DEFAULT_CUR_SCALE,
-        )
-        self._sync_writers = {}
+        self._sync_readers: Dict[Tuple[int, int], GroupSyncRead] = {}
+        self._sync_writers: Dict[Tuple[int, int], GroupSyncWrite] = {}
 
-        self.OPEN_CLIENTS.add(self)
+        self.OPEN_CLIENTS.add(self)  # type: ignore
 
     @property
     def is_connected(self) -> bool:
@@ -159,7 +127,7 @@ class DynamixelClient:
         assert not self.is_connected, "Client is already connected."
 
         if self.port_handler.openPort():
-            logging.info("Succeeded to open port: %s", self.port_name)
+            log(f"Succeeded to open port: {self.port_name}", header="Dynamixel")
         else:
             raise OSError(
                 (
@@ -168,8 +136,8 @@ class DynamixelClient:
                 ).format(self.port_name)
             )
 
-        if self.port_handler.setBaudRate(self.baudrate):
-            logging.info("Succeeded to set baudrate to %d", self.baudrate)
+        if self.port_handler.setBaudRate(self.baudrate):  # type: ignore
+            log(f"Succeeded to set baudrate to {self.baudrate}", header="Dynamixel")
         else:
             raise OSError(
                 (
@@ -186,13 +154,17 @@ class DynamixelClient:
         if not self.is_connected:
             return
         if self.port_handler.is_using:
-            logging.error("Port handler in use; cannot disconnect.")
+            log(
+                "Port handler in use; cannot disconnect.",
+                header="Dynamixel",
+                level="error",
+            )
             return
         # Ensure motors are disabled at the end.
-        self.set_torque_enabled(self.motor_ids, False, retries=0)
+        self.set_torque_enabled(self.motor_ids, False)
         self.port_handler.closePort()
-        if self in self.OPEN_CLIENTS:
-            self.OPEN_CLIENTS.remove(self)
+        if self in self.OPEN_CLIENTS:  # type: ignore
+            self.OPEN_CLIENTS.remove(self)  # type: ignore
 
     def set_torque_enabled(
         self,
@@ -218,37 +190,37 @@ class DynamixelClient:
                 ADDR_TORQUE_ENABLE,
             )
             if remaining_ids:
-                logging.error(
-                    "Could not set torque %s for IDs: %s",
-                    "enabled" if enabled else "disabled",
-                    str(remaining_ids),
+                log(
+                    f"Could not set torque {'enabled' if enabled else 'disabled'} for IDs: {str(remaining_ids)}",
+                    header="Dynamixel",
+                    level="error",
                 )
             if retries == 0:
                 break
             time.sleep(retry_interval)
             retries -= 1
 
-    def read_pos_vel_cur(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def read_pos(self) -> npt.NDArray[np.float32]:
         """Returns the current positions and velocities."""
-        return self._pos_vel_cur_reader.read()
+        return self.sync_read(
+            ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION, DEFAULT_POS_SCALE
+        )
 
-    def read_pos_vel(self) -> Tuple[np.ndarray, np.ndarray]:
+    def read_vel(self) -> npt.NDArray[np.float32]:
         """Returns the current positions and velocities."""
-        return self._pos_vel_reader.read()
+        return self.sync_read(
+            ADDR_PRESENT_VELOCITY, LEN_PRESENT_VELOCITY, DEFAULT_VEL_SCALE
+        )
 
-    def read_pos(self) -> np.ndarray:
+    def read_cur(self) -> npt.NDArray[np.float32]:
         """Returns the current positions and velocities."""
-        return self._pos_reader.read()
+        return self.sync_read(
+            ADDR_PRESENT_CURRENT, LEN_PRESENT_CURRENT, DEFAULT_CUR_SCALE
+        )
 
-    def read_vel(self) -> np.ndarray:
-        """Returns the current positions and velocities."""
-        return self._vel_reader.read()
-
-    def read_cur(self) -> np.ndarray:
-        """Returns the current positions and velocities."""
-        return self._cur_reader.read()
-
-    def write_desired_pos(self, motor_ids: Sequence[int], positions: np.ndarray):
+    def write_desired_pos(
+        self, motor_ids: Sequence[int], positions: npt.NDArray[np.float32]
+    ):
         """Writes the given desired positions.
 
         Args:
@@ -258,8 +230,8 @@ class DynamixelClient:
         assert len(motor_ids) == len(positions)
 
         # Convert to Dynamixel position space.
-        positions = positions / self._pos_vel_cur_reader.pos_scale
-        self.sync_write(motor_ids, positions, ADDR_GOAL_POSITION, LEN_GOAL_POSITION)
+        positions /= DEFAULT_POS_SCALE
+        self.sync_write(motor_ids, positions, ADDR_GOAL_POSITION, LEN_GOAL_POSITION)  # type: ignore
 
     def write_byte(
         self,
@@ -278,17 +250,78 @@ class DynamixelClient:
             A list of IDs that were unsuccessful.
         """
         self.check_connected()
-        errored_ids = []
+        errored_ids: List[int] = []
         for motor_id in motor_ids:
-            comm_result, dxl_error = self.packet_handler.write1ByteTxRx(
+            comm_result, dxl_error = self.packet_handler.write1ByteTxRx(  # type: ignore
                 self.port_handler, motor_id, address, value
             )
             success = self.handle_packet_result(
-                comm_result, dxl_error, motor_id, context="write_byte"
+                comm_result,
+                dxl_error,  # type: ignore
+                motor_id,
+                context="write_byte",
             )
             if not success:
                 errored_ids.append(motor_id)
         return errored_ids
+
+    def sync_read(
+        self, address: int, size: int, scale: float
+    ) -> npt.NDArray[np.float32]:
+        """Reads values from a group of motors.
+
+        Args:
+            motor_ids: The motor IDs to read from.
+            address: The control table address to read from.
+            size: The size of the control table value being read.
+
+        Returns:
+            The values read from the motors.
+        """
+        self.check_connected()
+        key = (address, size)
+        if key not in self._sync_readers:
+            self._sync_readers[key] = self.dxl.GroupSyncRead(
+                self.port_handler, self.packet_handler, address, size
+            )
+            for motor_id in self.motor_ids:
+                success = self._sync_readers[key].addParam(motor_id)  # type: ignore
+                if not success:
+                    raise OSError(
+                        "[Motor ID: {}] Could not add parameter to bulk read.".format(
+                            motor_id
+                        )
+                    )
+
+        sync_reader: GroupSyncRead = self._sync_readers[key]
+
+        success = False
+        while not success:
+            # fastSyncRead does not work for 2XL and 2XC
+            comm_result = sync_reader.txRxPacket()  # type: ignore
+            success = self.handle_packet_result(comm_result, context="sync_read")  # type: ignore
+
+        errored_ids: List[int] = []
+        data_arr = np.zeros(len(self.motor_ids), dtype=np.float32)
+        for i, motor_id in enumerate(self.motor_ids):
+            # Check if the data is available.
+            available = sync_reader.isAvailable(motor_id, address, size)  # type: ignore
+            if not available:
+                errored_ids.append(motor_id)
+                continue
+
+            data_unsigned = sync_reader.getData(motor_id, address, size)  # type: ignore
+            data_signed = unsigned_to_signed(data_unsigned, size=size)  # type: ignore
+            data_arr[i] = float(data_signed) * scale
+
+        if errored_ids:
+            log(
+                f"Sync read failed for: {str(errored_ids)}",
+                header="Dynamixel",
+                level="error",
+            )
+
+        return data_arr
 
     def sync_write(
         self,
@@ -313,19 +346,23 @@ class DynamixelClient:
             )
         sync_writer = self._sync_writers[key]
 
-        errored_ids = []
+        errored_ids: List[int] = []
         for motor_id, desired_pos in zip(motor_ids, values):
             value = signed_to_unsigned(int(desired_pos), size=size)
             value = value.to_bytes(size, byteorder="little")
-            success = sync_writer.addParam(motor_id, value)
+            success = sync_writer.addParam(motor_id, value)  # type: ignore
             if not success:
                 errored_ids.append(motor_id)
 
         if errored_ids:
-            logging.error("Sync write failed for: %s", str(errored_ids))
+            log(
+                f"Sync write failed for: {str(errored_ids)}",
+                header="Dynamixel",
+                level="error",
+            )
 
-        comm_result = sync_writer.txPacket()
-        self.handle_packet_result(comm_result, context="sync_write")
+        comm_result = sync_writer.txPacket()  # type: ignore
+        self.handle_packet_result(comm_result, context="sync_write")  # type: ignore
 
         sync_writer.clearParam()
 
@@ -346,16 +383,19 @@ class DynamixelClient:
         """Handles the result from a communication request."""
         error_message = None
         if comm_result != self.dxl.COMM_SUCCESS:
-            error_message = self.packet_handler.getTxRxResult(comm_result)
+            error_message = self.packet_handler.getTxRxResult(comm_result)  # type: ignore
         elif dxl_error is not None:
-            error_message = self.packet_handler.getRxPacketError(dxl_error)
+            error_message = self.packet_handler.getRxPacketError(dxl_error)  # type: ignore
         if error_message:
             if dxl_id is not None:
                 error_message = "[Motor ID: {}] {}".format(dxl_id, error_message)
             if context is not None:
                 error_message = "> {}: {}".format(context, error_message)
-            logging.error(error_message)
+
+            log(error_message, header="Dynamixel", level="warning")
+
             return False
+
         return True
 
     def convert_to_unsigned(self, value: int, size: int) -> int:
@@ -371,7 +411,7 @@ class DynamixelClient:
             self.connect()
         return self
 
-    def __exit__(self, *args):
+    def __exit__(self, *args):  # type: ignore
         """Enables use as a context manager."""
         self.disconnect()
 
@@ -380,319 +420,5 @@ class DynamixelClient:
         self.disconnect()
 
 
-class DynamixelReader:
-    """Reads data from Dynamixel motors.
-
-    This wraps a GroupBulkRead from the DynamixelSDK.
-    """
-
-    def __init__(
-        self, client: DynamixelClient, motor_ids: Sequence[int], address: int, size: int
-    ):
-        """Initializes a new reader."""
-        self.client = client
-        self.motor_ids = motor_ids
-        self.address = address
-        self.size = size
-        self._initialize_data()
-
-        self.operation = self.client.dxl.GroupBulkRead(
-            client.port_handler, client.packet_handler
-        )
-
-        for motor_id in motor_ids:
-            success = self.operation.addParam(motor_id, address, size)
-            if not success:
-                raise OSError(
-                    "[Motor ID: {}] Could not add parameter to bulk read.".format(
-                        motor_id
-                    )
-                )
-
-    def read(self, retries: int = 1):
-        """Reads data from the motors."""
-        self.client.check_connected()
-        success = False
-        while not success and retries >= 0:
-            comm_result = self.operation.txRxPacket()
-            success = self.client.handle_packet_result(comm_result, context="read")
-            retries -= 1
-
-        # If we failed, send a copy of the previous data.
-        if not success:
-            return self._get_data()
-
-        errored_ids = []
-        for i, motor_id in enumerate(self.motor_ids):
-            # Check if the data is available.
-            available = self.operation.isAvailable(motor_id, self.address, self.size)
-            if not available:
-                errored_ids.append(motor_id)
-                continue
-
-            self._update_data(i, motor_id)
-
-        if errored_ids:
-            logging.error("Bulk read data is unavailable for: %s", str(errored_ids))
-
-        return self._get_data()
-
-    def _initialize_data(self):
-        """Initializes the cached data."""
-        self._data = np.zeros(len(self.motor_ids), dtype=np.float32)
-
-    def _update_data(self, index: int, motor_id: int):
-        """Updates the data index for the given motor ID."""
-        self._data[index] = self.operation.getData(motor_id, self.address, self.size)
-
-    def _get_data(self):
-        """Returns a copy of the data."""
-        return self._data.copy()
-
-
-class DynamixelPosVelCurReader(DynamixelReader):
-    """Reads positions and velocities."""
-
-    def __init__(
-        self,
-        client: DynamixelClient,
-        motor_ids: Sequence[int],
-        pos_scale: float = 1.0,
-        vel_scale: float = 1.0,
-        cur_scale: float = 1.0,
-    ):
-        super().__init__(
-            client,
-            motor_ids,
-            address=ADDR_PRESENT_POS_VEL_CUR,
-            size=LEN_PRESENT_POS_VEL_CUR,
-        )
-        self.pos_scale = pos_scale
-        self.vel_scale = vel_scale
-        self.cur_scale = cur_scale
-
-    def _initialize_data(self):
-        """Initializes the cached data."""
-        self._pos_data = np.zeros(len(self.motor_ids), dtype=np.float32)
-        self._vel_data = np.zeros(len(self.motor_ids), dtype=np.float32)
-        self._cur_data = np.zeros(len(self.motor_ids), dtype=np.float32)
-
-    def _update_data(self, index: int, motor_id: int):
-        """Updates the data index for the given motor ID."""
-        cur = self.operation.getData(
-            motor_id, ADDR_PRESENT_CURRENT, LEN_PRESENT_CURRENT
-        )
-        vel = self.operation.getData(
-            motor_id, ADDR_PRESENT_VELOCITY, LEN_PRESENT_VELOCITY
-        )
-        pos = self.operation.getData(
-            motor_id, ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION
-        )
-        cur = unsigned_to_signed(cur, size=2)
-        vel = unsigned_to_signed(vel, size=4)
-        pos = unsigned_to_signed(pos, size=4)
-        self._pos_data[index] = float(pos) * self.pos_scale
-        self._vel_data[index] = float(vel) * self.vel_scale
-        self._cur_data[index] = float(cur) * self.cur_scale
-
-    def _get_data(self):
-        """Returns a copy of the data."""
-        return (self._pos_data.copy(), self._vel_data.copy(), self._cur_data.copy())
-
-
-class DynamixelPosVelReader(DynamixelReader):
-    """Reads positions and velocities."""
-
-    def __init__(
-        self,
-        client: DynamixelClient,
-        motor_ids: Sequence[int],
-        pos_scale: float = 1.0,
-        vel_scale: float = 1.0,
-        cur_scale: float = 1.0,
-    ):
-        super().__init__(
-            client,
-            motor_ids,
-            address=ADDR_PRESENT_POS_VEL_CUR,
-            size=LEN_PRESENT_POS_VEL_CUR,
-        )
-        self.pos_scale = pos_scale
-        self.vel_scale = vel_scale
-
-    def _initialize_data(self):
-        """Initializes the cached data."""
-        self._pos_data = np.zeros(len(self.motor_ids), dtype=np.float32)
-        self._vel_data = np.zeros(len(self.motor_ids), dtype=np.float32)
-
-    def _update_data(self, index: int, motor_id: int):
-        """Updates the data index for the given motor ID."""
-        vel = self.operation.getData(
-            motor_id, ADDR_PRESENT_VELOCITY, LEN_PRESENT_VELOCITY
-        )
-        pos = self.operation.getData(
-            motor_id, ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION
-        )
-        vel = unsigned_to_signed(vel, size=4)
-        pos = unsigned_to_signed(pos, size=4)
-        self._pos_data[index] = float(pos) * self.pos_scale
-        self._vel_data[index] = float(vel) * self.vel_scale
-
-    def _get_data(self):
-        """Returns a copy of the data."""
-        return (self._pos_data.copy(), self._vel_data.copy())
-
-
-class DynamixelPosReader(DynamixelReader):
-    """Reads positions and velocities."""
-
-    def __init__(
-        self,
-        client: DynamixelClient,
-        motor_ids: Sequence[int],
-        pos_scale: float = 1.0,
-        vel_scale: float = 1.0,
-        cur_scale: float = 1.0,
-    ):
-        super().__init__(
-            client,
-            motor_ids,
-            address=ADDR_PRESENT_POS_VEL_CUR,
-            size=LEN_PRESENT_POS_VEL_CUR,
-        )
-        self.pos_scale = pos_scale
-
-    def _initialize_data(self):
-        """Initializes the cached data."""
-        self._pos_data = np.zeros(len(self.motor_ids), dtype=np.float32)
-
-    def _update_data(self, index: int, motor_id: int):
-        """Updates the data index for the given motor ID."""
-        pos = self.operation.getData(
-            motor_id, ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION
-        )
-        pos = unsigned_to_signed(pos, size=4)
-        self._pos_data[index] = float(pos) * self.pos_scale
-
-    def _get_data(self):
-        """Returns a copy of the data."""
-        return self._pos_data.copy()
-
-
-class DynamixelVelReader(DynamixelReader):
-    """Reads positions and velocities."""
-
-    def __init__(
-        self,
-        client: DynamixelClient,
-        motor_ids: Sequence[int],
-        pos_scale: float = 1.0,
-        vel_scale: float = 1.0,
-        cur_scale: float = 1.0,
-    ):
-        super().__init__(
-            client,
-            motor_ids,
-            address=ADDR_PRESENT_POS_VEL_CUR,
-            size=LEN_PRESENT_POS_VEL_CUR,
-        )
-        self.pos_scale = pos_scale
-        self.vel_scale = vel_scale
-        self.cur_scale = cur_scale
-
-    def _initialize_data(self):
-        """Initializes the cached data."""
-        self._vel_data = np.zeros(len(self.motor_ids), dtype=np.float32)
-
-    def _update_data(self, index: int, motor_id: int):
-        """Updates the data index for the given motor ID."""
-        vel = self.operation.getData(
-            motor_id, ADDR_PRESENT_VELOCITY, LEN_PRESENT_VELOCITY
-        )
-        vel = unsigned_to_signed(vel, size=4)
-        self._vel_data[index] = float(vel) * self.vel_scale
-
-    def _get_data(self):
-        """Returns a copy of the data."""
-        return self._vel_data.copy()
-
-
-class DynamixelCurReader(DynamixelReader):
-    """Reads positions and velocities."""
-
-    def __init__(
-        self,
-        client: DynamixelClient,
-        motor_ids: Sequence[int],
-        pos_scale: float = 1.0,
-        vel_scale: float = 1.0,
-        cur_scale: float = 1.0,
-    ):
-        super().__init__(
-            client,
-            motor_ids,
-            address=ADDR_PRESENT_POS_VEL_CUR,
-            size=LEN_PRESENT_POS_VEL_CUR,
-        )
-        self.cur_scale = cur_scale
-
-    def _initialize_data(self):
-        """Initializes the cached data."""
-        self._cur_data = np.zeros(len(self.motor_ids), dtype=np.float32)
-
-    def _update_data(self, index: int, motor_id: int):
-        """Updates the data index for the given motor ID."""
-        cur = self.operation.getData(
-            motor_id, ADDR_PRESENT_CURRENT, LEN_PRESENT_CURRENT
-        )
-        cur = unsigned_to_signed(cur, size=2)
-        self._cur_data[index] = float(cur) * self.cur_scale
-
-    def _get_data(self):
-        """Returns a copy of the data."""
-        return self._cur_data.copy()
-
-
 # Register global cleanup function.
 atexit.register(dynamixel_cleanup_handler)
-
-if __name__ == "__main__":
-    import argparse
-    import itertools
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-m", "--motors", required=True, help="Comma-separated list of motor IDs."
-    )
-    parser.add_argument(
-        "-d",
-        "--device",
-        default="/dev/ttyUSB0",
-        help="The Dynamixel device to connect to.",
-    )
-    parser.add_argument(
-        "-b", "--baud", default=1000000, help="The baudrate to connect with."
-    )
-    parsed_args = parser.parse_args()
-
-    motors = [int(motor) for motor in parsed_args.motors.split(",")]
-
-    way_points = [np.zeros(len(motors)), np.full(len(motors), np.pi)]
-
-    with DynamixelClient(motors, parsed_args.device, parsed_args.baud) as dxl_client:
-        for step in itertools.count():
-            if step > 0 and step % 50 == 0:
-                way_point = way_points[(step // 100) % len(way_points)]
-                print("Writing: {}".format(way_point.tolist()))
-                dxl_client.write_desired_pos(motors, way_point)
-            read_start = time.time()
-            pos_now, vel_now, cur_now = dxl_client.read_pos_vel_cur()
-            if step % 5 == 0:
-                print(
-                    "[{}] Frequency: {:.2f} Hz".format(
-                        step, 1.0 / (time.time() - read_start)
-                    )
-                )
-                print("> Pos: {}".format(pos_now.tolist()))
-                print("> Vel: {}".format(vel_now.tolist()))
-                print("> Cur: {}".format(cur_now.tolist()))

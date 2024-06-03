@@ -2,7 +2,7 @@ import subprocess
 import time
 from dataclasses import dataclass
 from threading import Lock
-from typing import Any, Dict, List, Tuple
+from typing import Dict, List
 
 import numpy as np
 import numpy.typing as npt
@@ -11,7 +11,7 @@ from toddlerbot.actuation import BaseController, JointState
 from toddlerbot.actuation.dynamixel.dynamixel_client import DynamixelClient
 from toddlerbot.utils.file_utils import find_ports
 from toddlerbot.utils.math_utils import interpolate_pos
-from toddlerbot.utils.misc_utils import log, precise_sleep, profile
+from toddlerbot.utils.misc_utils import log, profile
 
 CONTROL_MODE_DICT: Dict[str, int] = {
     "current": 0,
@@ -36,6 +36,7 @@ class DynamixelConfig:
     baudrate: int = 4000000
     default_vel: float = np.pi
     interp_method: str = "cubic"
+    return_delay_time: int = 5
 
 
 class DynamixelController(BaseController):
@@ -81,7 +82,9 @@ class DynamixelController(BaseController):
     def initialize_motors(self):
         log("Initializing motors...", header="Dynamixel")
         # Set the return delay time to 5*2=10us
-        self.client.sync_write(self.motor_ids, [5] * len(self.motor_ids), 9, 1)
+        self.client.sync_write(
+            self.motor_ids, [self.config.return_delay_time] * len(self.motor_ids), 9, 1
+        )
         self.client.sync_write(
             self.motor_ids,
             [CONTROL_MODE_DICT[m] for m in self.config.control_mode],
@@ -99,11 +102,11 @@ class DynamixelController(BaseController):
 
         time.sleep(1.0)
 
-    def calibrate_motors(self, has_gear_box_list: List[bool]) -> Dict[int, float]:
+    def calibrate_motors(self, is_indirect_list: List[bool]) -> Dict[int, float]:
         state_dict = self.get_motor_state()
         init_pos: Dict[int, float] = {}
-        for has_gear_box, (id, state) in zip(has_gear_box_list, state_dict.items()):
-            if has_gear_box:
+        for is_indirect, (id, state) in zip(is_indirect_list, state_dict.items()):
+            if is_indirect:
                 init_pos[id] = state.pos
             else:
                 init_pos[id] = np.pi / 4 * round(state.pos / (np.pi / 4))
@@ -162,7 +165,8 @@ class DynamixelController(BaseController):
 
         state_dict: Dict[int, JointState] = {}
         with self.lock:
-            pos_arr, vel_arr = self.client.read_pos_vel()  # type: ignore
+            pos_arr = self.client.read_pos()
+            vel_arr = self.client.read_vel()
 
         # log(
         #     f"Pos: {np.round(np.rad2deg(pos_arr), 2)}",
