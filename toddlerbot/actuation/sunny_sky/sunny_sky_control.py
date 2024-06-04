@@ -172,7 +172,7 @@ class SunnySkyController(BaseController):
 
         return init_pos
 
-    @profile()
+    # @profile()
     def set_pos(
         self,
         pos: List[float],
@@ -253,7 +253,7 @@ class SunnySkyController(BaseController):
         else:
             set_pos_helper(pos_arr)
 
-    @profile()
+    # @profile()
     def get_motor_state(self) -> Dict[int, JointState]:
         # log(f"Start... {time.time()}", header="SunnySky", level="warning")
 

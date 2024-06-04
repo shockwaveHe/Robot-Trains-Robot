@@ -49,7 +49,7 @@ from toddlerbot.visualization.vis_plot import (
 )
 
 
-@profile()
+# @profile()
 def play(args, duration=5, fix_command=True, export=True, render=True):
     env_cfg, train_cfg = task_registry.get_cfgs(name=args.task)
     # override some parameters for testing

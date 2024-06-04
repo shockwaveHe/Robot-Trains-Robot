@@ -51,7 +51,7 @@ class IMU:
         self.default_pose = R.from_quat(quat)
         self.default_pose_inv = self.default_pose.inv()
 
-    @profile()
+    # @profile()
     def get_state(self):
         if self.default_pose is None:
             self.set_default_pose()

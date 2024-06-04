@@ -134,7 +134,7 @@ def warm_up_gpu(policy, cfg, device, gpu_stop_event):
         policy(policy_input_tensor)
 
 
-@profile()
+# @profile()
 def fetch_state(sim, cfg, state_queue, obs_stop_event):
     sim_dt = cfg.sim.dt
     joint_ordering = list(cfg.init_state.default_joint_angles.keys())
@@ -166,7 +166,7 @@ def fetch_state(sim, cfg, state_queue, obs_stop_event):
             time.sleep(time_until_next_step)
 
 
-@profile()
+# @profile()
 def main(sim, robot, policy, cfg, duration=5.0, debug=False):
     control_dt = cfg.sim.dt * cfg.control.decimation
     joint_ordering = list(cfg.init_state.default_joint_angles.keys())

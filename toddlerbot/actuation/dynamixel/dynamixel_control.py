@@ -35,7 +35,7 @@ class DynamixelConfig:
     baudrate: int = 4000000
     default_vel: float = np.pi
     interp_method: str = "cubic"
-    return_delay_time: int = 5
+    return_delay_time: int = 1
 
 
 class DynamixelController(BaseController):
@@ -124,7 +124,7 @@ class DynamixelController(BaseController):
             open_client.port_handler.is_using = False
             open_client.disconnect()
 
-    @profile()
+    # @profile()
     def set_pos(
         self,
         pos: List[float],
@@ -158,7 +158,7 @@ class DynamixelController(BaseController):
         else:
             set_pos_helper(pos_arr)
 
-    @profile()
+    # @profile()
     def get_motor_state(self) -> Dict[int, JointState]:
         # log(f"Start... {time.time()}", header="Dynamixel", level="warning")
 

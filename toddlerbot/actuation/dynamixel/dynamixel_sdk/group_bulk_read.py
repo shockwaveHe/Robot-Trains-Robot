@@ -19,6 +19,8 @@
 
 # Author: Ryu Woon Jung (Leon)
 
+from toddlerbot.utils.misc_utils import profile
+
 from .robotis_def import *
 
 PARAM_NUM_DATA = 0
@@ -78,6 +80,7 @@ class GroupBulkRead:
         self.data_dict.clear()
         return
 
+    # @profile()
     def txPacket(self):
         if len(self.data_dict.keys()) == 0:
             return COMM_NOT_AVAILABLE
@@ -86,10 +89,15 @@ class GroupBulkRead:
             self.makeParam()
 
         if self.ph.getProtocolVersion() == 1.0:
-            return self.ph.bulkReadTx(self.port, self.param, len(self.data_dict.keys()) * 3)
+            return self.ph.bulkReadTx(
+                self.port, self.param, len(self.data_dict.keys()) * 3
+            )
         else:
-            return self.ph.bulkReadTx(self.port, self.param, len(self.data_dict.keys()) * 5)
+            return self.ph.bulkReadTx(
+                self.port, self.param, len(self.data_dict.keys()) * 5
+            )
 
+    # @profile()
     def rxPacket(self):
         self.last_result = False
 
@@ -99,8 +107,9 @@ class GroupBulkRead:
             return COMM_NOT_AVAILABLE
 
         for dxl_id in self.data_dict:
-            self.data_dict[dxl_id][PARAM_NUM_DATA], result, _ = self.ph.readRx(self.port, dxl_id,
-                                                                               self.data_dict[dxl_id][PARAM_NUM_LENGTH])
+            self.data_dict[dxl_id][PARAM_NUM_DATA], result, _ = self.ph.readRx(
+                self.port, dxl_id, self.data_dict[dxl_id][PARAM_NUM_LENGTH]
+            )
             if result != COMM_SUCCESS:
                 return result
 
@@ -109,6 +118,7 @@ class GroupBulkRead:
 
         return result
 
+    # @profile()
     def txRxPacket(self):
         result = self.txPacket()
         if result != COMM_SUCCESS:
@@ -122,7 +132,10 @@ class GroupBulkRead:
 
         start_addr = self.data_dict[dxl_id][PARAM_NUM_ADDRESS]
 
-        if (address < start_addr) or (start_addr + self.data_dict[dxl_id][PARAM_NUM_LENGTH] - data_length < address):
+        if (address < start_addr) or (
+            start_addr + self.data_dict[dxl_id][PARAM_NUM_LENGTH] - data_length
+            < address
+        ):
             return False
 
         return True
@@ -136,12 +149,20 @@ class GroupBulkRead:
         if data_length == 1:
             return self.data_dict[dxl_id][PARAM_NUM_DATA][address - start_addr]
         elif data_length == 2:
-            return DXL_MAKEWORD(self.data_dict[dxl_id][PARAM_NUM_DATA][address - start_addr],
-                                self.data_dict[dxl_id][PARAM_NUM_DATA][address - start_addr + 1])
+            return DXL_MAKEWORD(
+                self.data_dict[dxl_id][PARAM_NUM_DATA][address - start_addr],
+                self.data_dict[dxl_id][PARAM_NUM_DATA][address - start_addr + 1],
+            )
         elif data_length == 4:
-            return DXL_MAKEDWORD(DXL_MAKEWORD(self.data_dict[dxl_id][PARAM_NUM_DATA][address - start_addr + 0],
-                                              self.data_dict[dxl_id][PARAM_NUM_DATA][address - start_addr + 1]),
-                                 DXL_MAKEWORD(self.data_dict[dxl_id][PARAM_NUM_DATA][address - start_addr + 2],
-                                              self.data_dict[dxl_id][PARAM_NUM_DATA][address - start_addr + 3]))
+            return DXL_MAKEDWORD(
+                DXL_MAKEWORD(
+                    self.data_dict[dxl_id][PARAM_NUM_DATA][address - start_addr + 0],
+                    self.data_dict[dxl_id][PARAM_NUM_DATA][address - start_addr + 1],
+                ),
+                DXL_MAKEWORD(
+                    self.data_dict[dxl_id][PARAM_NUM_DATA][address - start_addr + 2],
+                    self.data_dict[dxl_id][PARAM_NUM_DATA][address - start_addr + 3],
+                ),
+            )
         else:
             return 0

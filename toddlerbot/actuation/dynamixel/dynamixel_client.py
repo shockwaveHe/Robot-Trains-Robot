@@ -24,12 +24,14 @@ ADDR_GOAL_POSITION = 116
 ADDR_PRESENT_POSITION = 132
 ADDR_PRESENT_VELOCITY = 128
 ADDR_PRESENT_CURRENT = 126
+ADDR_PRESENT_POS_VEL = 126
 ADDR_PRESENT_POS_VEL_CUR = 126
 
 # Data Byte Length
 LEN_PRESENT_POSITION = 4
 LEN_PRESENT_VELOCITY = 4
 LEN_PRESENT_CURRENT = 2
+LEN_PRESENT_POS_VEL = 8
 LEN_PRESENT_POS_VEL_CUR = 10
 LEN_GOAL_POSITION = 4
 
@@ -115,7 +117,7 @@ class DynamixelClient:
         )
         for motor_id in self.motor_ids:
             success = self._bulk_reader.addParam(  # type: ignore
-                motor_id, ADDR_PRESENT_POS_VEL_CUR, LEN_PRESENT_POS_VEL_CUR
+                motor_id, ADDR_PRESENT_POS_VEL, LEN_PRESENT_POS_VEL
             )
             if not success:
                 raise OSError(
@@ -279,7 +281,7 @@ class DynamixelClient:
                 errored_ids.append(motor_id)
         return errored_ids
 
-    @profile()
+    # @profile()
     def bulk_read(self, attr_list: List[str]) -> Dict[str, npt.NDArray[np.float32]]:
         """Reads values from a group of motors.
 
@@ -305,7 +307,7 @@ class DynamixelClient:
         for i, motor_id in enumerate(self.motor_ids):
             # Check if the data is available.
             available = self._bulk_reader.isAvailable(  # type: ignore
-                motor_id, ADDR_PRESENT_POS_VEL_CUR, LEN_PRESENT_POS_VEL_CUR
+                motor_id, ADDR_PRESENT_POS_VEL, LEN_PRESENT_POS_VEL
             )
             if not available:
                 errored_ids.append(motor_id)

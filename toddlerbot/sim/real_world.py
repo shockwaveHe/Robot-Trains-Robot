@@ -119,7 +119,7 @@ class RealWorld(BaseSim):
         time_delta = time - last_time
         return pos_delta / time_delta
 
-    @profile()
+    # @profile()
     def _process_joint_state(
         self, results: Dict[str, Dict[int, JointState]]
     ) -> Dict[str, JointState]:
@@ -166,7 +166,7 @@ class RealWorld(BaseSim):
     def get_torso_pose(self):
         return np.array([0, 0, self.robot.com[-1]]), np.eye(3)
 
-    @profile()
+    # @profile()
     def get_joint_state(self) -> Dict[str, JointState]:
         futures: Dict[str, Any] = {}
         futures["dynamixel"] = self.executor.submit(
@@ -190,7 +190,7 @@ class RealWorld(BaseSim):
 
         return joint_state_dict
 
-    @profile()
+    # @profile()
     def get_observation(
         self,
     ) -> Tuple[Dict[str, JointState], Dict[str, npt.NDArray[np.float32]]]:

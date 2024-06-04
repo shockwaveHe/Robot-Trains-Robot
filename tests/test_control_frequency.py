@@ -1,19 +1,21 @@
 import argparse
 import time
+from typing import List
 
 from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.sim.robot import HumanoidRobot
 from toddlerbot.utils.misc_utils import dump_profiling_data, log, precise_sleep, profile
 
 
-@profile()
+# @profile()
 def main(robot: HumanoidRobot):
     sim = RealWorld(robot, debug=True)
 
     step_idx = 0
     sim_dt = 0.001
+    step_time_list: List[float] = []
     try:
-        while step_idx < 100:
+        while True:
             step_start = time.time()
 
             _ = sim.get_joint_state()
@@ -21,11 +23,8 @@ def main(robot: HumanoidRobot):
             step_idx += 1
 
             step_time = time.time() - step_start
-            log(
-                f"Control Frequency: {1 / step_time:.2f} Hz",
-                header="Test",
-                level="debug",
-            )
+            step_time_list.append(step_time)
+            log(f"Latency: {step_time * 1000:.2f} ms", header="Test", level="debug")
             time_until_next_step = sim_dt - step_time
             if time_until_next_step > 0:
                 precise_sleep(time_until_next_step)
@@ -34,9 +33,17 @@ def main(robot: HumanoidRobot):
         pass
 
     finally:
+        time.sleep(1)
+
         sim.close()
 
         dump_profiling_data("profile_output.lprof")
+
+        log(
+            f"Average Latency: {sum(step_time_list) / len(step_time_list) * 1000:.2f} ms",
+            header="Test",
+            level="info",
+        )
 
 
 if __name__ == "__main__":
