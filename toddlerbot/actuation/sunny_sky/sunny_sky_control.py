@@ -17,7 +17,6 @@ import numpy.typing as npt
 import serial
 
 from toddlerbot.actuation import BaseController, JointState
-from toddlerbot.utils.file_utils import find_ports
 from toddlerbot.utils.math_utils import interpolate_pos
 from toddlerbot.utils.misc_utils import log, profile
 
@@ -173,6 +172,7 @@ class SunnySkyController(BaseController):
 
         return init_pos
 
+    @profile()
     def set_pos(
         self,
         pos: List[float],
@@ -253,7 +253,7 @@ class SunnySkyController(BaseController):
         else:
             set_pos_helper(pos_arr)
 
-    # @profile()
+    @profile()
     def get_motor_state(self) -> Dict[int, JointState]:
         # log(f"Start... {time.time()}", header="SunnySky", level="warning")
 
@@ -309,42 +309,3 @@ class SunnySkyController(BaseController):
                 )
 
         return state_dict
-
-
-if __name__ == "__main__":
-    joint_range_dict = {1: (0, np.pi / 2), 2: (0, -np.pi / 2)}
-    pos_ref_seq = [
-        [0.0, 0.0],
-        [np.pi / 2, -np.pi / 4],
-        [0.0, 0.0],
-        [np.pi / 4, -np.pi / 2],
-        [0.64, -0.64],
-    ]
-
-    # joint_range_dict = {1: (0, np.pi / 2)}
-    # pos_ref_seq = [[0.0], [np.pi / 2], [0.0], [np.pi / 4], [0.64]]
-
-    # joint_range_dict = {2: (0, -np.pi / 2)}
-    # pos_ref_seq = [[0.0], [-np.pi / 2], [0.0], [-np.pi / 4], [-0.64]]
-
-    config = SunnySkyConfig(port=find_ports("Feather"))
-    controller = SunnySkyController(config, joint_range_dict=joint_range_dict)
-
-    time_start = time.time()
-    for pos_ref in pos_ref_seq:
-        controller.set_pos(pos_ref)
-        state_dict = controller.get_motor_state()
-
-        message = "Motor states:"
-        for id, state in state_dict.items():
-            message += f" {id}: {state.pos:.4f} at {state.time - time_start:.4f}s"
-
-        log(message, header="SunnySky", level="debug")
-
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        pass
-
-    controller.close_motors()

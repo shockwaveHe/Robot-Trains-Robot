@@ -1,5 +1,4 @@
 import argparse
-import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, List
 
@@ -91,7 +90,7 @@ def main(robot: HumanoidRobot):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run the SysID data collection.")
+    parser = argparse.ArgumentParser(description="Run the zero point calibration.")
     parser.add_argument(
         "--robot-name",
         type=str,

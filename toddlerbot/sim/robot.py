@@ -205,6 +205,14 @@ class HumanoidRobot:
 
         return points, values
 
+    def get_names(self, type: str) -> List[str]:
+        names: List[str] = []
+        for joint_name, joint_config in self.config.items():
+            if joint_config["type"] == type:
+                names.append(joint_name)
+
+        return names
+
     def get_attrs(self, type: str, attr_name: str, group: str = "all") -> List[Any]:
         attrs: List[Any] = []
         for _, joint_config in self.config.items():

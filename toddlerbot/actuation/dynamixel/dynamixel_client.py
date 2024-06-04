@@ -9,8 +9,12 @@ import numpy as np
 import numpy.typing as npt
 
 import toddlerbot.actuation.dynamixel.dynamixel_sdk as dynamixel_sdk
-from toddlerbot.actuation.dynamixel.dynamixel_sdk import GroupSyncRead, GroupSyncWrite
-from toddlerbot.utils.misc_utils import log
+from toddlerbot.actuation.dynamixel.dynamixel_sdk import (
+    GroupBulkRead,
+    GroupSyncRead,
+    GroupSyncWrite,
+)
+from toddlerbot.utils.misc_utils import log, profile
 
 PROTOCOL_VERSION = 2.0
 
@@ -106,6 +110,20 @@ class DynamixelClient:
         self.port_handler = self.dxl.PortHandler(port)
         self.packet_handler = self.dxl.PacketHandler(PROTOCOL_VERSION)  # type: ignore
 
+        self._bulk_reader = self.dxl.GroupBulkRead(
+            self.port_handler, self.packet_handler
+        )
+        for motor_id in self.motor_ids:
+            success = self._bulk_reader.addParam(  # type: ignore
+                motor_id, ADDR_PRESENT_POS_VEL_CUR, LEN_PRESENT_POS_VEL_CUR
+            )
+            if not success:
+                raise OSError(
+                    "[Motor ID: {}] Could not add parameter to bulk read.".format(
+                        motor_id
+                    )
+                )
+
         self._sync_readers: Dict[Tuple[int, int], GroupSyncRead] = {}
         self._sync_writers: Dict[Tuple[int, int], GroupSyncWrite] = {}
 
@@ -199,21 +217,20 @@ class DynamixelClient:
 
     def read_pos(self) -> npt.NDArray[np.float32]:
         """Returns the current positions and velocities."""
-        return self.sync_read(
-            ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION, DEFAULT_POS_SCALE
-        )
+        return self.bulk_read(["pos"])["pos"]
 
     def read_vel(self) -> npt.NDArray[np.float32]:
         """Returns the current positions and velocities."""
-        return self.sync_read(
-            ADDR_PRESENT_VELOCITY, LEN_PRESENT_VELOCITY, DEFAULT_VEL_SCALE
-        )
+        return self.bulk_read(["vel"])["vel"]
 
     def read_cur(self) -> npt.NDArray[np.float32]:
         """Returns the current positions and velocities."""
-        return self.sync_read(
-            ADDR_PRESENT_CURRENT, LEN_PRESENT_CURRENT, DEFAULT_CUR_SCALE
-        )
+        return self.bulk_read(["cur"])["cur"]
+
+    def read_pos_vel(self) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
+        """Returns the current positions and velocities."""
+        data_dict = self.bulk_read(["pos", "vel"])
+        return data_dict["pos"], data_dict["vel"]
 
     def write_desired_pos(
         self, motor_ids: Sequence[int], positions: npt.NDArray[np.float32]
@@ -262,6 +279,77 @@ class DynamixelClient:
                 errored_ids.append(motor_id)
         return errored_ids
 
+    @profile()
+    def bulk_read(self, attr_list: List[str]) -> Dict[str, npt.NDArray[np.float32]]:
+        """Reads values from a group of motors.
+
+        Args:
+            motor_ids: The motor IDs to read from.
+            address: The control table address to read from.
+            size: The size of the control table value being read.
+
+        Returns:
+            The values read from the motors.
+        """
+        self.check_connected()
+        success = False
+        while not success:
+            # fastSyncRead does not work for 2XL and 2XC
+            comm_result = self._bulk_reader.txRxPacket()  # type: ignore
+            success = self.handle_packet_result(comm_result, context="bulk_read")  # type: ignore
+
+        errored_ids: List[int] = []
+        data_dict = {
+            attr: np.zeros(len(self.motor_ids), dtype=np.float32) for attr in attr_list
+        }
+        for i, motor_id in enumerate(self.motor_ids):
+            # Check if the data is available.
+            available = self._bulk_reader.isAvailable(  # type: ignore
+                motor_id, ADDR_PRESENT_POS_VEL_CUR, LEN_PRESENT_POS_VEL_CUR
+            )
+            if not available:
+                errored_ids.append(motor_id)
+                continue
+
+            if "pos" in attr_list:
+                data_unsigned = self._bulk_reader.getData(  # type: ignore
+                    motor_id, ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION
+                )
+                data_signed = unsigned_to_signed(
+                    data_unsigned,  # type: ignore
+                    size=LEN_PRESENT_POSITION,
+                )
+                data_dict["pos"][i] = float(data_signed) * DEFAULT_POS_SCALE
+
+            if "vel" in attr_list:
+                data_unsigned = self._bulk_reader.getData(  # type: ignore
+                    motor_id, ADDR_PRESENT_VELOCITY, LEN_PRESENT_VELOCITY
+                )
+                data_signed = unsigned_to_signed(
+                    data_unsigned,  # type: ignore
+                    size=LEN_PRESENT_VELOCITY,
+                )
+                data_dict["vel"][i] = float(data_signed) * DEFAULT_VEL_SCALE
+
+            if "cur" in attr_list:
+                data_unsigned = self._bulk_reader.getData(  # type: ignore
+                    motor_id, ADDR_PRESENT_CURRENT, LEN_PRESENT_CURRENT
+                )
+                data_signed = unsigned_to_signed(
+                    data_unsigned,  # type: ignore
+                    size=LEN_PRESENT_CURRENT,
+                )
+                data_dict["cur"][i] = float(data_signed) * DEFAULT_CUR_SCALE
+
+        if errored_ids:
+            log(
+                f"Bulk read failed for: {str(errored_ids)}",
+                header="Dynamixel",
+                level="error",
+            )
+
+        return data_dict
+
     def sync_read(
         self, address: int, size: int, scale: float
     ) -> npt.NDArray[np.float32]:
@@ -285,7 +373,7 @@ class DynamixelClient:
                 success = self._sync_readers[key].addParam(motor_id)  # type: ignore
                 if not success:
                     raise OSError(
-                        "[Motor ID: {}] Could not add parameter to bulk read.".format(
+                        "[Motor ID: {}] Could not add parameter to sync read.".format(
                             motor_id
                         )
                     )

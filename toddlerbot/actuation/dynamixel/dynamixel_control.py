@@ -9,7 +9,6 @@ import numpy.typing as npt
 
 from toddlerbot.actuation import BaseController, JointState
 from toddlerbot.actuation.dynamixel.dynamixel_client import DynamixelClient
-from toddlerbot.utils.file_utils import find_ports
 from toddlerbot.utils.math_utils import interpolate_pos
 from toddlerbot.utils.misc_utils import log, profile
 
@@ -125,7 +124,7 @@ class DynamixelController(BaseController):
             open_client.port_handler.is_using = False
             open_client.disconnect()
 
-    # Receive pos and directly control the robot
+    @profile()
     def set_pos(
         self,
         pos: List[float],
@@ -159,14 +158,13 @@ class DynamixelController(BaseController):
         else:
             set_pos_helper(pos_arr)
 
-    # @profile()
+    @profile()
     def get_motor_state(self) -> Dict[int, JointState]:
         # log(f"Start... {time.time()}", header="Dynamixel", level="warning")
 
         state_dict: Dict[int, JointState] = {}
         with self.lock:
-            pos_arr = self.client.read_pos()
-            vel_arr = self.client.read_vel()
+            pos_arr, vel_arr = self.client.read_pos_vel()
 
         # log(
         #     f"Pos: {np.round(np.rad2deg(pos_arr), 2)}",
@@ -185,39 +183,3 @@ class DynamixelController(BaseController):
         # log(f"End... {time.time()}", header="Dynamixel", level="warning")
 
         return state_dict
-
-
-if __name__ == "__main__":
-    controller = DynamixelController(
-        DynamixelConfig(
-            port=find_ports("USB <-> Serial Converter"),
-            kFF2=[0, 0, 0, 0, 0, 0],
-            kFF1=[0, 0, 0, 0, 0, 0],
-            kP=[400, 1200, 1200, 400, 1200, 1200],
-            kI=[0, 0, 0, 0, 0, 0],
-            kD=[200, 400, 400, 200, 400, 400],
-            current_limit=[350, 350, 350, 350, 350, 350],
-            init_pos=np.radians([241.17, 180, 180, 118.12, 180, 180]),
-            gear_ratio=[19 / 21, 1, 1, 19 / 21, 1, 1],
-        ),
-        motor_ids=[7, 8, 9, 10, 11, 12],
-    )
-
-    i = 0
-    while i < 30:
-        controller.set_pos(
-            # [np.pi / 12] * 6
-            # [0.0, -np.pi / 12, -np.pi / 12, -np.pi / 2, -np.pi / 12, -np.pi / 12],
-            [0.0, np.pi / 12, np.pi / 12, np.pi / 2, np.pi / 12, np.pi / 12]
-        )
-        i += 1
-
-    i = 0
-    while i < 30:
-        controller.set_pos([0.0] * 6)
-        i += 1
-
-    time.sleep(0.1)
-    controller.close_motors()
-
-    log("Process completed successfully.", header="Dynamixel")
