@@ -54,7 +54,7 @@ class DynamixelController(BaseController):
         self.connect_to_client()
         self.initialize_motors()
 
-    def connect_to_client(self, latency_value: float = 1):
+    def connect_to_client(self, latency_value: int = 1):
         try:
             # Construct the command to set the latency timer
             command = f"echo {latency_value} | sudo tee /sys/bus/usb-serial/devices/{self.config.port.split('/')[-1]}/latency_timer"
@@ -97,6 +97,8 @@ class DynamixelController(BaseController):
         self.client.sync_write(self.motor_ids, self.config.kFF1, 90, 2)
         # self.client.sync_write(self.motor_ids, self.config.current_limit, 102, 2)
 
+        time.sleep(1.0)
+
         self.client.set_torque_enabled(self.motor_ids, True)
 
         time.sleep(1.0)
@@ -108,7 +110,7 @@ class DynamixelController(BaseController):
             if is_indirect:
                 init_pos[id] = state.pos
             else:
-                init_pos[id] = np.pi / 4 * round(state.pos / (np.pi / 4))
+                init_pos[id] = np.pi / 2 * round(state.pos / (np.pi / 2))
 
         log(f"Initial positions: {init_pos}", header="Dynamixel")
 

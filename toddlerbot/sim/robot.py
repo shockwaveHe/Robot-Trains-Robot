@@ -5,6 +5,7 @@ import pickle
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
+import numpy.typing as npt
 from scipy.interpolate import LinearNDInterpolator  # type: ignore
 from yourdfpy import URDF, Joint  # type: ignore
 
@@ -205,54 +206,81 @@ class HumanoidRobot:
 
         return points, values
 
-    def get_names(self, type: str) -> List[str]:
-        names: List[str] = []
-        for joint_name, joint_config in self.config.items():
-            if joint_config["type"] == type:
-                names.append(joint_name)
-
-        return names
-
-    def get_attrs(self, type: str, attr_name: str, group: str = "all") -> List[Any]:
+    def get_attrs(
+        self,
+        key_name: str,
+        key_value: Any,
+        attr_name: str = "name",
+        group: str = "all",
+    ) -> List[Any]:
         attrs: List[Any] = []
-        for _, joint_config in self.config.items():
-            if joint_config["type"] == type:
-                if joint_config["group"] == group or group == "all":
+        for joint_name, joint_config in self.config.items():
+            if joint_config[key_name] == key_value and [
+                joint_config["group"] == group or group == "all"
+            ]:
+                if attr_name == "name":
+                    attrs.append(joint_name)
+                else:
                     attrs.append(joint_config[attr_name])
 
         return attrs
 
     def set_attrs(
-        self, type: str, attr_name: str, attr_values: Any, group: str = "all"
+        self,
+        key_name: str,
+        key_value: Any,
+        attr_name: str,
+        attr_values: Any,
+        group: str = "all",
     ):
         i = 0
         for joint_name, joint_config in self.config.items():
-            if joint_config["type"] == type:
-                if joint_config["group"] == group or group == "all":
-                    if isinstance(attr_values, dict):
-                        id = joint_config["id"]
-                        self.config[joint_name][attr_name] = attr_values[id]
-                    else:
-                        self.config[joint_name][attr_name] = attr_values[i]
-                        i += 1
+            if joint_config[key_name] == key_value and (
+                joint_config["group"] == group or group == "all"
+            ):
+                if isinstance(attr_values, dict):
+                    id = joint_config["id"]
+                    self.config[joint_name][attr_name] = attr_values[id]
+                else:
+                    self.config[joint_name][attr_name] = attr_values[i]
+                    i += 1
 
-    def ankle_fk(self, mighty_zap_pos):
-        ankle_pos = self.ankle_fk_lookup_table(np.clip(mighty_zap_pos, 1, 4095))
+    def ankle_fk(self, motor_pos: List[float]) -> npt.NDArray[np.float32]:
+        ankle_pos = self.ankle_fk_lookup_table(np.clip(motor_pos, 1, 4095))
         # Ensure the output is squeezed to a 1D array and handle NaN cases.
         ankle_pos = np.array(ankle_pos).squeeze()
 
         return ankle_pos
 
-    def ankle_ik(self, ankle_pos):
+    def ankle_ik(self, ankle_pos: List[float], side: str) -> npt.NDArray[np.float32]:
         # Extracting offset values and converting to NumPy arrays
-        offsets = self.offsets
-        s1 = np.array(offsets["s1"])
-        s2 = np.array([s1[0], -s1[1], s1[2]])
-        f1E = np.array(offsets["f1E"])
-        f2E = np.array([f1E[0], -f1E[1], f1E[2]])
-        nE = np.array(offsets["nE"])
-        r = offsets["r"]
-        mighty_zap_len = offsets["mighty_zap_len"]
+        # offsets = self.offsets
+        # s1 = np.array(offsets["s1"])
+        # s2 = np.array([s1[0], -s1[1], s1[2]])
+        # f1E = np.array(offsets["f1E"])
+        # f2E = np.array([f1E[0], -f1E[1], f1E[2]])
+        # nE = np.array(offsets["nE"])
+        # r = offsets["r"]
+        # mighty_zap_len = offsets["mighty_zap_len"]
+
+        # TODO: Replace the hard code
+        m = [
+            np.array([-0.0135, 0.018, 0.0555]),
+            np.array([-0.0135, -0.018, 0.0355]),
+        ]
+        fE = [
+            np.array([-0.01916, 0.018, -0.01567]),
+            np.array([-0.01916, -0.018, -0.01567]),
+        ]
+        link_len = [0.059, 0.0395]
+        nE = np.array([1, 0, 0])
+        a = 0.02
+        r = 0.01
+
+        motor_pos_init: List[float] = []
+        for joint_name in self.get_attrs("has_closed_loop", True):
+            if f"{side}_ank" in joint_name:
+                motor_pos_init.append(self.config[joint_name]["init_pos"])
 
         # Extract ankle pitch and roll from the input
         ankle_pitch, ankle_roll = ankle_pos
@@ -274,31 +302,28 @@ class HumanoidRobot:
         # Combined rotation matrix
         R = R_roll @ R_pitch
 
-        # Rotated vectors
         n_hat = R @ nE
-        f1 = R @ f1E
-        f2 = R @ f2E
 
-        # Delta calculations
-        delta1 = s1 - f1
-        delta2 = s2 - f2
+        motor_pos = np.zeros(len(ankle_pos), dtype=np.float32)
+        for i in range(2):
+            f = R @ fE[i]
+            delta = m[i] - f
+            k = delta - np.dot(n_hat, delta) * n_hat
+            d = delta - r * k / np.linalg.norm(k)
+            c1 = -2 * a * d[0]
+            c2 = 2 * a * d[2]
+            c3 = np.sqrt(c1**2 + c2**2)
+            c4 = a**2 + d[0] ** 2 + d[1] ** 2 + d[2] ** 2 - link_len[i] ** 2
+            phi = np.arctan2(c2, c1)
+            theta = phi + np.arccos(c4 / c3)  # cosine needs to be smaller than 0
+            motor_pos_init_base = np.pi / 2 * (motor_pos_init[i] // (np.pi / 2))
+            motor_pos_init_remainder = motor_pos_init[i] - motor_pos_init_base
+            if motor_pos_init_remainder > np.pi / 4:
+                motor_pos[i] = motor_pos_init_base + theta % (np.pi / 2)
+            else:
+                motor_pos[i] = motor_pos_init_base + np.pi / 2 - theta % (np.pi / 2)
 
-        # Distance calculations
-        d1_raw = np.sqrt(
-            np.dot(n_hat, delta1) ** 2
-            + (np.linalg.norm(np.cross(n_hat, delta1)) - r) ** 2
-        )
-        d2_raw = np.sqrt(
-            np.dot(n_hat, delta2) ** 2
-            + (np.linalg.norm(np.cross(n_hat, delta2)) - r) ** 2
-        )
-
-        # Final distance adjustments
-        scale_factor = 1.365 * 1e5
-        d1 = (d1_raw - mighty_zap_len) * scale_factor
-        d2 = (d2_raw - mighty_zap_len) * scale_factor
-
-        return [d1, d2]
+        return motor_pos
 
     def initialize_joint_angles(self):
         joint_angles = {}

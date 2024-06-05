@@ -45,31 +45,31 @@ class RealWorld(BaseSim):
 
         future_imu = self.executor.submit(IMU)
 
-        dynamixel_ids = self.robot.get_attrs("dynamixel", "id")
+        dynamixel_ids = self.robot.get_attrs("type", "dynamixel", "id")
         dynamixel_config = DynamixelConfig(
             port=dynamixel_ports[0],
-            control_mode=self.robot.get_attrs("dynamixel", "control_mode"),
-            kP=self.robot.get_attrs("dynamixel", "kp_real"),
-            kI=self.robot.get_attrs("dynamixel", "ki_real"),
-            kD=self.robot.get_attrs("dynamixel", "kd_real"),
-            kFF2=self.robot.get_attrs("dynamixel", "kff2_real"),
-            kFF1=self.robot.get_attrs("dynamixel", "kff1_real"),
-            gear_ratio=self.robot.get_attrs("dynamixel", "gear_ratio"),
-            init_pos=self.robot.get_attrs("dynamixel", "init_pos"),
+            control_mode=self.robot.get_attrs("type", "dynamixel", "control_mode"),
+            kP=self.robot.get_attrs("type", "dynamixel", "kp_real"),
+            kI=self.robot.get_attrs("type", "dynamixel", "ki_real"),
+            kD=self.robot.get_attrs("type", "dynamixel", "kd_real"),
+            kFF2=self.robot.get_attrs("type", "dynamixel", "kff2_real"),
+            kFF1=self.robot.get_attrs("type", "dynamixel", "kff1_real"),
+            gear_ratio=self.robot.get_attrs("type", "dynamixel", "gear_ratio"),
+            init_pos=self.robot.get_attrs("type", "dynamixel", "init_pos"),
         )
         future_dynamixel = self.executor.submit(
             DynamixelController, dynamixel_config, dynamixel_ids
         )
 
-        sunny_sky_ids = self.robot.get_attrs("sunny_sky", "id")
+        sunny_sky_ids = self.robot.get_attrs("type", "sunny_sky", "id")
         sunny_sky_config = SunnySkyConfig(
             port=sunny_sky_ports[0],
-            kP=self.robot.get_attrs("sunny_sky", "kp_real"),
-            kD=self.robot.get_attrs("sunny_sky", "kd_real"),
-            i_ff=self.robot.get_attrs("sunny_sky", "i_ff_real"),
-            gear_ratio=self.robot.get_attrs("sunny_sky", "gear_ratio"),
-            joint_limit=self.robot.get_attrs("sunny_sky", "joint_limit"),
-            init_pos=self.robot.get_attrs("sunny_sky", "init_pos"),
+            kP=self.robot.get_attrs("type", "sunny_sky", "kp_real"),
+            kD=self.robot.get_attrs("type", "sunny_sky", "kd_real"),
+            i_ff=self.robot.get_attrs("type", "sunny_sky", "i_ff_real"),
+            gear_ratio=self.robot.get_attrs("type", "sunny_sky", "gear_ratio"),
+            joint_limit=self.robot.get_attrs("type", "sunny_sky", "joint_limit"),
+            init_pos=self.robot.get_attrs("type", "sunny_sky", "init_pos"),
         )
         future_sunny_sky = self.executor.submit(
             SunnySkyController, sunny_sky_config, sunny_sky_ids
@@ -97,8 +97,12 @@ class RealWorld(BaseSim):
         # Directions are tuned to match the assembly of the robot.
         joint_angles = self._negate_joint_angles(joint_angles)
 
-        dynamixel_pos = [joint_angles[k] for k in self.robot.get_names("dynamixel")]
-        sunny_sky_pos = [joint_angles[k] for k in self.robot.get_names("sunny_sky")]
+        dynamixel_pos = [
+            joint_angles[k] for k in self.robot.get_attrs("type", "dynamixel")
+        ]
+        sunny_sky_pos = [
+            joint_angles[k] for k in self.robot.get_attrs("type", "sunny_sky")
+        ]
 
         if self.debug:
             log(f"{round_floats(dynamixel_pos, 4)}", header="Dynamixel", level="debug")
@@ -125,7 +129,7 @@ class RealWorld(BaseSim):
     ) -> Dict[str, JointState]:
         joint_state_dict: Dict[str, JointState] = {}
         sunny_sky_state = results["sunny_sky"]
-        for joint_name in self.robot.get_names("sunny_sky"):
+        for joint_name in self.robot.get_attrs("type", "sunny_sky"):
             motor_id = self.robot.config[joint_name]["id"]
             if joint_name in self.last_state:
                 sunny_sky_state[motor_id].vel = self._finite_diff_vel(
@@ -139,7 +143,7 @@ class RealWorld(BaseSim):
             joint_state_dict[joint_name] = sunny_sky_state[motor_id]
 
         dynamixel_state = results["dynamixel"]
-        for joint_name in self.robot.get_names("dynamixel"):
+        for joint_name in self.robot.get_attrs("type", "dynamixel"):
             motor_id = self.robot.config[joint_name]["id"]
             if self.robot.config[joint_name]["has_closed_loop"]:
                 if joint_name in self.last_state:

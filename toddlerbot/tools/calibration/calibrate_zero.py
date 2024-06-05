@@ -15,45 +15,45 @@ from toddlerbot.utils.file_utils import find_ports
 
 
 def calibrate_dynamixel(port: str, robot: HumanoidRobot, group: str):
-    dynamixel_ids = robot.get_attrs("dynamixel", "id", group)
+    dynamixel_ids = robot.get_attrs("type", "dynamixel", "id", group)
     dynamixel_config = DynamixelConfig(
         port=port,
-        control_mode=robot.get_attrs("dynamixel", "control_mode", group),
-        kP=robot.get_attrs("dynamixel", "kp_real", group),
-        kI=robot.get_attrs("dynamixel", "ki_real", group),
-        kD=robot.get_attrs("dynamixel", "kd_real", group),
-        kFF2=robot.get_attrs("dynamixel", "kff2_real", group),
-        kFF1=robot.get_attrs("dynamixel", "kff1_real", group),
-        gear_ratio=robot.get_attrs("dynamixel", "gear_ratio", group),
+        control_mode=robot.get_attrs("type", "dynamixel", "control_mode", group),
+        kP=robot.get_attrs("type", "dynamixel", "kp_real", group),
+        kI=robot.get_attrs("type", "dynamixel", "ki_real", group),
+        kD=robot.get_attrs("type", "dynamixel", "kd_real", group),
+        kFF2=robot.get_attrs("type", "dynamixel", "kff2_real", group),
+        kFF1=robot.get_attrs("type", "dynamixel", "kff1_real", group),
+        gear_ratio=robot.get_attrs("type", "dynamixel", "gear_ratio", group),
         init_pos=[],
     )
 
     controller = DynamixelController(dynamixel_config, dynamixel_ids)
     init_pos: Dict[int, float] = controller.calibrate_motors(
-        robot.get_attrs("dynamixel", "is_indirect", group)
+        robot.get_attrs("type", "dynamixel", "is_indirect", group)
     )
 
-    robot.set_attrs("dynamixel", "init_pos", init_pos, group)
+    robot.set_attrs("type", "dynamixel", "init_pos", init_pos, group)
 
     controller.close_motors()
 
 
 def calibrate_sunny_sky(port: str):
-    sunny_sky_ids = robot.get_attrs("sunny_sky", "id")
+    sunny_sky_ids = robot.get_attrs("type", "sunny_sky", "id")
     sunny_sky_config = SunnySkyConfig(
         port=port,
-        kP=robot.get_attrs("sunny_sky", "kp_real"),
-        kD=robot.get_attrs("sunny_sky", "kd_real"),
-        i_ff=robot.get_attrs("sunny_sky", "i_ff_real"),
-        gear_ratio=robot.get_attrs("sunny_sky", "gear_ratio"),
-        joint_limit=robot.get_attrs("sunny_sky", "joint_limit"),
+        kP=robot.get_attrs("type", "sunny_sky", "kp_real"),
+        kD=robot.get_attrs("type", "sunny_sky", "kd_real"),
+        i_ff=robot.get_attrs("type", "sunny_sky", "i_ff_real"),
+        gear_ratio=robot.get_attrs("type", "sunny_sky", "gear_ratio"),
+        joint_limit=robot.get_attrs("type", "sunny_sky", "joint_limit"),
         init_pos=[],
     )
     controller = SunnySkyController(sunny_sky_config, sunny_sky_ids)
 
     init_pos: Dict[int, float] = controller.calibrate_motors()
 
-    robot.set_attrs("sunny_sky", "init_pos", init_pos)
+    robot.set_attrs("type", "sunny_sky", "init_pos", init_pos)
 
     controller.close_motors()
 
