@@ -97,11 +97,11 @@ class DynamixelController(BaseController):
         self.client.sync_write(self.motor_ids, self.config.kFF1, 90, 2)
         # self.client.sync_write(self.motor_ids, self.config.current_limit, 102, 2)
 
-        time.sleep(1.0)
+        time.sleep(0.2)
 
         self.client.set_torque_enabled(self.motor_ids, True)
 
-        time.sleep(1.0)
+        time.sleep(0.2)
 
     def calibrate_motors(self, is_indirect_list: List[bool]) -> Dict[int, float]:
         state_dict = self.get_motor_state()
@@ -168,12 +168,8 @@ class DynamixelController(BaseController):
         with self.lock:
             pos_arr, vel_arr = self.client.read_pos_vel()
 
-        # log(
-        #     f"Pos: {np.round(np.rad2deg(pos_arr), 2)}",
-        #     header="Dynamixel",
-        #     level="debug",
-        # )
-        # log(f"Vel: {np.round(vel_arr, 2)}", header="Dynamixel", level="debug")
+        # log(f"Pos: {np.round(pos_arr, 2)}", header="Dynamixel", level="debug")  # type: ignore
+        # log(f"Vel: {np.round(vel_arr, 2)}", header="Dynamixel", level="debug")  # type: ignore
 
         pos_arr_driven = pos_arr / np.array(self.config.gear_ratio) - self.init_pos
         vel_arr_driven = vel_arr / np.array(self.config.gear_ratio)
