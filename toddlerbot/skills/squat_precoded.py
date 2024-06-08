@@ -17,10 +17,26 @@ def main(robot: HumanoidRobot):
     control_dt = 0.01
     zero_joint_angles: Dict[str, float] = {name: 0 for name in robot.config}
     default_joint_angles = robot.initialize_joint_angles()
+    middle_joint_angles: Dict[str, float] = {}
+    for name in robot.config:
+        middle_joint_angles[name] = (
+            zero_joint_angles[name]
+            + (default_joint_angles[name] - zero_joint_angles[name]) / 2
+        )
+
+    middle_joint_angles["left_sho_roll"] = np.pi / 6
+    middle_joint_angles["right_sho_roll"] = np.pi / 6
 
     joint_angles_traj: List[Tuple[float, Dict[str, float]]] = []
-    joint_angles_traj.append((0.0, zero_joint_angles))
+    joint_angles_traj.append(
+        (0.0, {name: state.pos for name, state in sim.get_joint_state().items()})
+    )
+    joint_angles_traj.append((1.0, zero_joint_angles))
+    joint_angles_traj.append((1.5, middle_joint_angles))
     joint_angles_traj.append((2.0, default_joint_angles))
+    joint_angles_traj.append((3.0, default_joint_angles))
+    joint_angles_traj.append((3.5, middle_joint_angles))
+    joint_angles_traj.append((4.0, zero_joint_angles))
     joint_angles_traj = resample_trajectory(
         joint_angles_traj,
         desired_interval=control_dt,
@@ -28,7 +44,6 @@ def main(robot: HumanoidRobot):
     )
 
     step_idx = 0
-    sim_dt = 0.001
     step_time_list: List[float] = []
     try:
         while True:
@@ -45,7 +60,7 @@ def main(robot: HumanoidRobot):
             step_time = time.time() - step_start
             step_time_list.append(step_time)
             log(f"Latency: {step_time * 1000:.2f} ms", header="Test", level="debug")
-            time_until_next_step = sim_dt - step_time
+            time_until_next_step = control_dt - step_time
             if time_until_next_step > 0:
                 precise_sleep(time_until_next_step)
 
@@ -56,8 +71,6 @@ def main(robot: HumanoidRobot):
         time.sleep(1)
 
         sim.close()
-
-        dump_profiling_data("profile_output.lprof")
 
         log(
             f"Average Latency: {sum(step_time_list) / len(step_time_list) * 1000:.2f} ms",

@@ -294,10 +294,10 @@ class HumanoidRobot:
             motor_pos_init_base = np.pi / 2 * (motor_pos_init[i] // (np.pi / 2))
             motor_pos_init_remainder = motor_pos_init[i] - motor_pos_init_base
             if motor_pos_init_remainder > np.pi / 4:
-                motor_pos[joint_name] = motor_pos_init_base + theta % (np.pi / 2)
+                motor_pos[joint_name] = theta % (np.pi / 2) - motor_pos_init_remainder
             else:
                 motor_pos[joint_name] = (
-                    motor_pos_init_base + np.pi / 2 - theta % (np.pi / 2)
+                    np.pi / 2 - theta % (np.pi / 2) - motor_pos_init_remainder
                 )
 
         return motor_pos

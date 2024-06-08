@@ -178,6 +178,18 @@
             ],
         },
         {
+            "name": "Python: squat_toddlerbot_real_precoded",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/skills/squat_precoded.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot-name",
+                "toddlerbot",
+            ],
+        },
+        {
             "name": "Python: sysID_toddlerbot_legs_mujoco",
             "type": "python",
             "request": "launch",
