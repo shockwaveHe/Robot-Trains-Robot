@@ -12,7 +12,6 @@ def main(robot: HumanoidRobot):
     sim = RealWorld(robot, debug=True)
 
     step_idx = 0
-    sim_dt = 0.001
     step_time_list: List[float] = []
     try:
         while True:
@@ -25,9 +24,6 @@ def main(robot: HumanoidRobot):
             step_time = time.time() - step_start
             step_time_list.append(step_time)
             log(f"Latency: {step_time * 1000:.2f} ms", header="Test", level="debug")
-            time_until_next_step = sim_dt - step_time
-            if time_until_next_step > 0:
-                precise_sleep(time_until_next_step)
 
     except KeyboardInterrupt:
         pass
@@ -37,7 +33,7 @@ def main(robot: HumanoidRobot):
 
         sim.close()
 
-        dump_profiling_data("profile_output.lprof")
+        # dump_profiling_data("profile_output.lprof")
 
         log(
             f"Average Latency: {sum(step_time_list) / len(step_time_list) * 1000:.2f} ms",

@@ -129,6 +129,8 @@ class DynamixelClient:
         self._sync_readers: Dict[Tuple[int, int], GroupSyncRead] = {}
         self._sync_writers: Dict[Tuple[int, int], GroupSyncWrite] = {}
 
+        self._data_dict = None
+
         self.OPEN_CLIENTS.add(self)  # type: ignore
 
     @property
@@ -219,20 +221,21 @@ class DynamixelClient:
 
     def read_pos(self) -> npt.NDArray[np.float32]:
         """Returns the current positions and velocities."""
-        return self.bulk_read(["pos"])["pos"]
+        return self.bulk_read(["pos"])["pos"].copy()
 
     def read_vel(self) -> npt.NDArray[np.float32]:
         """Returns the current positions and velocities."""
-        return self.bulk_read(["vel"])["vel"]
+        return self.bulk_read(["vel"])["vel"].copy()
 
     def read_cur(self) -> npt.NDArray[np.float32]:
         """Returns the current positions and velocities."""
-        return self.bulk_read(["cur"])["cur"]
+        return self.bulk_read(["cur"])["cur"].copy()
 
+    # @profile()
     def read_pos_vel(self) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
         """Returns the current positions and velocities."""
         data_dict = self.bulk_read(["pos", "vel"])
-        return data_dict["pos"], data_dict["vel"]
+        return data_dict["pos"].copy(), data_dict["vel"].copy()
 
     def write_desired_pos(
         self, motor_ids: Sequence[int], positions: npt.NDArray[np.float32]
@@ -294,16 +297,23 @@ class DynamixelClient:
             The values read from the motors.
         """
         self.check_connected()
+
+        if self._data_dict is None:
+            self._data_dict = {
+                attr: np.zeros(len(self.motor_ids), dtype=np.float32)
+                for attr in attr_list
+            }
+
         success = False
-        while not success:
-            # fastSyncRead does not work for 2XL and 2XC
-            comm_result = self._bulk_reader.txRxPacket()  # type: ignore
-            success = self.handle_packet_result(comm_result, context="bulk_read")  # type: ignore
+        # while not success:
+        # fastSyncRead does not work for 2XL and 2XC
+        comm_result = self._bulk_reader.txRxPacket()  # type: ignore
+        success = self.handle_packet_result(comm_result, context="bulk_read")  # type: ignore
+
+        if not success:
+            return self._data_dict
 
         errored_ids: List[int] = []
-        data_dict = {
-            attr: np.zeros(len(self.motor_ids), dtype=np.float32) for attr in attr_list
-        }
         for i, motor_id in enumerate(self.motor_ids):
             # Check if the data is available.
             available = self._bulk_reader.isAvailable(  # type: ignore
@@ -321,7 +331,7 @@ class DynamixelClient:
                     data_unsigned,  # type: ignore
                     size=LEN_PRESENT_POSITION,
                 )
-                data_dict["pos"][i] = float(data_signed) * DEFAULT_POS_SCALE
+                self._data_dict["pos"][i] = float(data_signed) * DEFAULT_POS_SCALE
 
             if "vel" in attr_list:
                 data_unsigned = self._bulk_reader.getData(  # type: ignore
@@ -331,7 +341,7 @@ class DynamixelClient:
                     data_unsigned,  # type: ignore
                     size=LEN_PRESENT_VELOCITY,
                 )
-                data_dict["vel"][i] = float(data_signed) * DEFAULT_VEL_SCALE
+                self._data_dict["vel"][i] = float(data_signed) * DEFAULT_VEL_SCALE
 
             if "cur" in attr_list:
                 data_unsigned = self._bulk_reader.getData(  # type: ignore
@@ -341,7 +351,7 @@ class DynamixelClient:
                     data_unsigned,  # type: ignore
                     size=LEN_PRESENT_CURRENT,
                 )
-                data_dict["cur"][i] = float(data_signed) * DEFAULT_CUR_SCALE
+                self._data_dict["cur"][i] = float(data_signed) * DEFAULT_CUR_SCALE
 
         if errored_ids:
             log(
@@ -350,7 +360,7 @@ class DynamixelClient:
                 level="error",
             )
 
-        return data_dict
+        return self._data_dict
 
     def sync_read(
         self, address: int, size: int, scale: float
