@@ -169,42 +169,12 @@ class HumanoidRobot:
 
         return offsets
 
-    # @profile()
-    def precompute_ankle_fk_lookup(self, step_deg=0.5):
-        step_rad = np.deg2rad(step_deg)
-        pitch_limits = [
-            self.joints_info["left_ank_pitch"]["lower_limit"],
-            self.joints_info["left_ank_pitch"]["upper_limit"],
-        ]
-        roll_limits = [
-            self.joints_info["left_ank_roll"]["lower_limit"],
-            self.joints_info["left_ank_roll"]["upper_limit"],
-        ]
+    def initialize_joint_angles(self) -> Dict[str, float]:
+        joint_angles: Dict[str, float] = {}
+        for joint_name, joint_config in self.config.items():
+            joint_angles[joint_name] = joint_config["default_pos"]
 
-        pitch_range = np.arange(pitch_limits[0], pitch_limits[1] + step_rad, step_rad)
-        roll_range = np.arange(roll_limits[0], roll_limits[1] + step_rad, step_rad)
-        pitch_grid, roll_grid = np.meshgrid(pitch_range, roll_range, indexing="ij")
-
-        d1_values = np.zeros_like(pitch_grid)
-        d2_values = np.zeros_like(roll_grid)
-        for i in range(len(pitch_range)):
-            for j in range(len(roll_range)):
-                d1, d2 = self.ankle_ik([pitch_range[i], roll_range[j]])
-                d1_values[i, j] = d1
-                d2_values[i, j] = d2
-
-        valid_mask = (
-            (d1_values >= 0)
-            & (d1_values <= 4096)
-            & (d2_values >= 0)
-            & (d2_values <= 4096)
-        )
-
-        # Filter out valid data points
-        points = np.column_stack((d1_values[valid_mask], d2_values[valid_mask]))
-        values = np.column_stack((pitch_grid[valid_mask], roll_grid[valid_mask]))
-
-        return points, values
+        return joint_angles
 
     def get_attrs(
         self,
@@ -245,14 +215,19 @@ class HumanoidRobot:
                     self.config[joint_name][attr_name] = attr_values[i]
                     i += 1
 
-    def ankle_fk(self, motor_pos: List[float]) -> npt.NDArray[np.float32]:
-        ankle_pos = self.ankle_fk_lookup_table(np.clip(motor_pos, 1, 4095))
-        # Ensure the output is squeezed to a 1D array and handle NaN cases.
-        ankle_pos = np.array(ankle_pos).squeeze()
+    def get_ankle_pos(
+        self, joint_angles: Dict[str, float]
+    ) -> Tuple[Dict[str, float], Dict[str, float]]:
+        left_ankle_pos: Dict[str, float] = {}
+        right_ankle_pos: Dict[str, float] = {}
+        for k in self.get_attrs("has_closed_loop", True):
+            if "left_ank" in k:
+                left_ankle_pos[k] = joint_angles[k]
+            if "right_ank" in k:
+                right_ankle_pos[k] = joint_angles[k]
+        return left_ankle_pos, right_ankle_pos
 
-        return ankle_pos
-
-    def ankle_ik(self, ankle_pos: List[float], side: str) -> npt.NDArray[np.float32]:
+    def ankle_ik(self, ankle_pos: Dict[str, float]) -> Dict[str, float]:
         # Extracting offset values and converting to NumPy arrays
         # offsets = self.offsets
         # s1 = np.array(offsets["s1"])
@@ -279,11 +254,11 @@ class HumanoidRobot:
 
         motor_pos_init: List[float] = []
         for joint_name in self.get_attrs("has_closed_loop", True):
-            if f"{side}_ank" in joint_name:
+            if joint_name in ankle_pos:
                 motor_pos_init.append(self.config[joint_name]["init_pos"])
 
         # Extract ankle pitch and roll from the input
-        ankle_pitch, ankle_roll = ankle_pos
+        ankle_pitch, ankle_roll = ankle_pos.values()
 
         # Precompute cosine and sine for roll and pitch to use in rotation matrices
         cos_roll, sin_roll = np.cos(ankle_roll), np.sin(ankle_roll)
@@ -304,8 +279,8 @@ class HumanoidRobot:
 
         n_hat = R @ nE
 
-        motor_pos = np.zeros(len(ankle_pos), dtype=np.float32)
-        for i in range(2):
+        motor_pos: Dict[str, float] = {}
+        for i, joint_name in enumerate(ankle_pos.keys()):
             f = R @ fE[i]
             delta = m[i] - f
             k = delta - np.dot(n_hat, delta) * n_hat
@@ -319,27 +294,57 @@ class HumanoidRobot:
             motor_pos_init_base = np.pi / 2 * (motor_pos_init[i] // (np.pi / 2))
             motor_pos_init_remainder = motor_pos_init[i] - motor_pos_init_base
             if motor_pos_init_remainder > np.pi / 4:
-                motor_pos[i] = motor_pos_init_base + theta % (np.pi / 2)
+                motor_pos[joint_name] = motor_pos_init_base + theta % (np.pi / 2)
             else:
-                motor_pos[i] = motor_pos_init_base + np.pi / 2 - theta % (np.pi / 2)
+                motor_pos[joint_name] = (
+                    motor_pos_init_base + np.pi / 2 - theta % (np.pi / 2)
+                )
 
         return motor_pos
 
-    def initialize_joint_angles(self):
-        joint_angles = {}
-        for name, info in self.joints_info.items():
-            if info["active"]:
-                joint_angles[name] = info["init_angle"]
+    def ankle_fk(self, motor_pos: List[float]) -> npt.NDArray[np.float32]:
+        ankle_pos = self.ankle_fk_lookup_table(np.clip(motor_pos, 1, 4095))
+        # Ensure the output is squeezed to a 1D array and handle NaN cases.
+        ankle_pos = np.array(ankle_pos).squeeze()
 
-        initial_joint_angles = copy.deepcopy(joint_angles)
-        if self.name == "robotis_op3":
-            initial_joint_angles["l_sho_roll"] = np.pi / 2
-            initial_joint_angles["r_sho_roll"] = -np.pi / 2
-        elif self.name == "toddlerbot":
-            initial_joint_angles["left_sho_roll"] = -np.pi / 2
-            initial_joint_angles["right_sho_roll"] = np.pi / 2
+        return ankle_pos
 
-        return joint_angles, initial_joint_angles
+    # @profile()
+    def precompute_ankle_fk_lookup(self, step_deg=0.5):
+        step_rad = np.deg2rad(step_deg)
+        pitch_limits = [
+            self.joints_info["left_ank_pitch"]["lower_limit"],
+            self.joints_info["left_ank_pitch"]["upper_limit"],
+        ]
+        roll_limits = [
+            self.joints_info["left_ank_roll"]["lower_limit"],
+            self.joints_info["left_ank_roll"]["upper_limit"],
+        ]
+
+        pitch_range = np.arange(pitch_limits[0], pitch_limits[1] + step_rad, step_rad)
+        roll_range = np.arange(roll_limits[0], roll_limits[1] + step_rad, step_rad)
+        pitch_grid, roll_grid = np.meshgrid(pitch_range, roll_range, indexing="ij")
+
+        d1_values = np.zeros_like(pitch_grid)
+        d2_values = np.zeros_like(roll_grid)
+        for i in range(len(pitch_range)):
+            for j in range(len(roll_range)):
+                d1, d2 = self.ankle_ik([pitch_range[i], roll_range[j]])
+                d1_values[i, j] = d1
+                d2_values[i, j] = d2
+
+        valid_mask = (
+            (d1_values >= 0)
+            & (d1_values <= 4096)
+            & (d2_values >= 0)
+            & (d2_values <= 4096)
+        )
+
+        # Filter out valid data points
+        points = np.column_stack((d1_values[valid_mask], d2_values[valid_mask]))
+        values = np.column_stack((pitch_grid[valid_mask], roll_grid[valid_mask]))
+
+        return points, values
 
     def solve_ik(
         self,

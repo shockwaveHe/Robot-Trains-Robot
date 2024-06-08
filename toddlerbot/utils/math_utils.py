@@ -1,6 +1,6 @@
 import time
 from dataclasses import is_dataclass
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -69,12 +69,12 @@ def quaternion_to_euler_array(
 
 
 def interpolate(
-    p_start: npt.NDArray[np.float32],
-    p_end: npt.NDArray[np.float32],
+    p_start: Union[npt.NDArray[np.float32], float],
+    p_end: Union[npt.NDArray[np.float32], float],
     delta_t: float,
     t: float,
     interp_type: str = "linear",
-) -> npt.NDArray[np.float32]:
+) -> Union[npt.NDArray[np.float32], float]:
     """
     Interpolate position at time t using specified interpolation type.
 
@@ -121,10 +121,10 @@ def interpolate_pos(
     counter = 0
     while time_curr <= delta_t:
         time_curr = time.time() - time_start
-        pos_interp: npt.NDArray[np.float32] = interpolate(
+        pos_interp = interpolate(
             pos_start, pos, delta_t, time_curr, interp_type=interp_type
         )
-        set_pos(pos_interp)
+        set_pos(pos_interp)  # type: ignore
 
         time_elapsed = time.time() - time_start - time_curr
         time_until_next_step = sleep_time - time_elapsed
@@ -134,8 +134,12 @@ def interpolate_pos(
         counter += 1
 
 
-def resample_trajectory(trajectory, desired_interval=0.01, interp_type="linear"):
-    resampled_trajectory = []
+def resample_trajectory(
+    trajectory: List[Tuple[float, Dict[str, float]]],
+    desired_interval: float = 0.01,
+    interp_type: str = "linear",
+) -> List[Tuple[float, Dict[str, float]]]:
+    resampled_trajectory: List[Tuple[float, Dict[str, float]]] = []
     for i in range(len(trajectory) - 1):
         t0, joint_angles_0 = trajectory[i]
         t1, joint_angles_1 = trajectory[i + 1]
@@ -147,12 +151,11 @@ def resample_trajectory(trajectory, desired_interval=0.01, interp_type="linear")
             num_steps = int(delta_t / desired_interval)
             for j in range(num_steps):
                 t = j * desired_interval
-                interpolated_joint_angles = {}
+                interpolated_joint_angles: Dict[str, float] = {}
                 for joint_name, p_start in joint_angles_0.items():
                     p_end = joint_angles_1[joint_name]
-                    interpolated_joint_angles[joint_name] = interpolate(
-                        p_start, p_end, delta_t, t, interp_type
-                    )
+                    p_interp = interpolate(p_start, p_end, delta_t, t, interp_type)
+                    interpolated_joint_angles[joint_name] = p_interp  # type: ignore
                 resampled_trajectory.append((t0 + t, interpolated_joint_angles))
         else:
             # Interval is fine, keep the original point

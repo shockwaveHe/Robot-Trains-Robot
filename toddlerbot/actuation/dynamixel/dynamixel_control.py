@@ -110,7 +110,7 @@ class DynamixelController(BaseController):
             if is_indirect:
                 init_pos[id] = state.pos
             else:
-                init_pos[id] = np.pi / 2 * round(state.pos / (np.pi / 2))
+                init_pos[id] = np.pi / 4 * round(state.pos / (np.pi / 4))
 
         log(f"Initial positions: {init_pos}", header="Dynamixel")
 

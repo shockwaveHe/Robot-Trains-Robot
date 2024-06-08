@@ -83,25 +83,33 @@ class RealWorld(BaseSim):
         self.imu = future_imu.result()
 
     def _negate_joint_angles(self, joint_angles: Dict[str, float]) -> Dict[str, float]:
-        negated_joint_angles: Dict[str, float] = {}
+        joint_angles_negated: Dict[str, float] = {}
         for name, angle in joint_angles.items():
             if name in self.negated_joint_names:
-                negated_joint_angles[name] = -angle
+                joint_angles_negated[name] = -angle
             else:
-                negated_joint_angles[name] = angle
+                joint_angles_negated[name] = angle
 
-        return negated_joint_angles
+        return joint_angles_negated
 
     # @profile()
     def set_joint_angles(self, joint_angles: Dict[str, float]):
         # Directions are tuned to match the assembly of the robot.
-        joint_angles = self._negate_joint_angles(joint_angles)
+        joint_angles_negated = self._negate_joint_angles(joint_angles)
+
+        left_ankle_pos, right_ankle_pos = self.robot.get_ankle_pos(joint_angles_negated)
+
+        left_ank_motor_pos = self.robot.ankle_ik(left_ankle_pos)
+        right_ank_motor_pos = self.robot.ankle_ik(right_ankle_pos)
+
+        joint_angles_negated.update(left_ank_motor_pos)
+        joint_angles_negated.update(right_ank_motor_pos)
 
         dynamixel_pos = [
-            joint_angles[k] for k in self.robot.get_attrs("type", "dynamixel")
+            joint_angles_negated[k] for k in self.robot.get_attrs("type", "dynamixel")
         ]
         sunny_sky_pos = [
-            joint_angles[k] for k in self.robot.get_attrs("type", "sunny_sky")
+            joint_angles_negated[k] for k in self.robot.get_attrs("type", "sunny_sky")
         ]
 
         if self.debug:
