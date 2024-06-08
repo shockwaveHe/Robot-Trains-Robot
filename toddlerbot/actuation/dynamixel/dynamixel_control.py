@@ -104,7 +104,7 @@ class DynamixelController(BaseController):
         time.sleep(0.2)
 
     def calibrate_motors(self, is_indirect_list: List[bool]) -> Dict[int, float]:
-        state_dict = self.get_motor_state()
+        state_dict = self.get_motor_state(retries=-1)
         init_pos: Dict[int, float] = {}
         for is_indirect, (id, state) in zip(is_indirect_list, state_dict.items()):
             if is_indirect:
@@ -161,12 +161,12 @@ class DynamixelController(BaseController):
             set_pos_helper(pos_arr)
 
     # @profile()
-    def get_motor_state(self) -> Dict[int, JointState]:
+    def get_motor_state(self, retries: int = 0) -> Dict[int, JointState]:
         # log(f"Start... {time.time()}", header="Dynamixel", level="warning")
 
         state_dict: Dict[int, JointState] = {}
         with self.lock:
-            pos_arr, vel_arr = self.client.read_pos_vel()
+            pos_arr, vel_arr = self.client.read_pos_vel(retries=retries)
 
         # log(f"Pos: {np.round(pos_arr, 2)}", header="Dynamixel", level="debug")  # type: ignore
         # log(f"Vel: {np.round(vel_arr, 2)}", header="Dynamixel", level="debug")  # type: ignore

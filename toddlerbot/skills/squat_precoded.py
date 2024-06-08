@@ -15,6 +15,9 @@ def main(robot: HumanoidRobot):
     sim = RealWorld(robot, debug=True)
 
     control_dt = 0.01
+    curr_joint_angles = {
+        name: state.pos for name, state in sim.get_joint_state(retries=-1).items()
+    }
     zero_joint_angles: Dict[str, float] = {name: 0 for name in robot.config}
     default_joint_angles = robot.initialize_joint_angles()
     middle_joint_angles: Dict[str, float] = {}
@@ -28,15 +31,14 @@ def main(robot: HumanoidRobot):
     middle_joint_angles["right_sho_roll"] = np.pi / 6
 
     joint_angles_traj: List[Tuple[float, Dict[str, float]]] = []
-    joint_angles_traj.append(
-        (0.0, {name: state.pos for name, state in sim.get_joint_state().items()})
-    )
+    joint_angles_traj.append((0.0, curr_joint_angles))
     joint_angles_traj.append((1.0, zero_joint_angles))
-    joint_angles_traj.append((1.5, middle_joint_angles))
-    joint_angles_traj.append((2.0, default_joint_angles))
-    joint_angles_traj.append((3.0, default_joint_angles))
-    joint_angles_traj.append((3.5, middle_joint_angles))
     joint_angles_traj.append((4.0, zero_joint_angles))
+    joint_angles_traj.append((4.5, middle_joint_angles))
+    joint_angles_traj.append((5.0, default_joint_angles))
+    joint_angles_traj.append((8.0, default_joint_angles))
+    # joint_angles_traj.append((8.5, middle_joint_angles))
+    # joint_angles_traj.append((9.0, zero_joint_angles))
     joint_angles_traj = resample_trajectory(
         joint_angles_traj,
         desired_interval=control_dt,

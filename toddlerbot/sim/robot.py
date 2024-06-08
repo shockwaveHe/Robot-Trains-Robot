@@ -291,13 +291,13 @@ class HumanoidRobot:
             c4 = a**2 + d[0] ** 2 + d[1] ** 2 + d[2] ** 2 - link_len[i] ** 2
             phi = np.arctan2(c2, c1)
             theta = phi + np.arccos(c4 / c3)  # cosine needs to be smaller than 0
-            motor_pos_init_base = np.pi / 2 * (motor_pos_init[i] // (np.pi / 2))
-            motor_pos_init_remainder = motor_pos_init[i] - motor_pos_init_base
+            # TODO: Double check the computation here
+            motor_pos_init_remainder = motor_pos_init[i] % (np.pi / 2)
             if motor_pos_init_remainder > np.pi / 4:
                 motor_pos[joint_name] = theta % (np.pi / 2) - motor_pos_init_remainder
             else:
                 motor_pos[joint_name] = (
-                    np.pi / 2 - theta % (np.pi / 2) - motor_pos_init_remainder
+                    np.pi / 2 - motor_pos_init_remainder - theta % (np.pi / 2)
                 )
 
         return motor_pos

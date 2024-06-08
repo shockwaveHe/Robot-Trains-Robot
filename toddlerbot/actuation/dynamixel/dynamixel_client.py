@@ -219,22 +219,24 @@ class DynamixelClient:
             time.sleep(retry_interval)
             retries -= 1
 
-    def read_pos(self) -> npt.NDArray[np.float32]:
+    def read_pos(self, retries: int = 0) -> npt.NDArray[np.float32]:
         """Returns the current positions and velocities."""
-        return self.bulk_read(["pos"])["pos"].copy()
+        return self.bulk_read(["pos"], retries=retries)["pos"].copy()
 
-    def read_vel(self) -> npt.NDArray[np.float32]:
+    def read_vel(self, retries: int = 0) -> npt.NDArray[np.float32]:
         """Returns the current positions and velocities."""
-        return self.bulk_read(["vel"])["vel"].copy()
+        return self.bulk_read(["vel"], retries=retries)["vel"].copy()
 
-    def read_cur(self) -> npt.NDArray[np.float32]:
+    def read_cur(self, retries: int = 0) -> npt.NDArray[np.float32]:
         """Returns the current positions and velocities."""
-        return self.bulk_read(["cur"])["cur"].copy()
+        return self.bulk_read(["cur"], retries=retries)["cur"].copy()
 
     # @profile()
-    def read_pos_vel(self) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
+    def read_pos_vel(
+        self, retries: int = 0
+    ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
         """Returns the current positions and velocities."""
-        data_dict = self.bulk_read(["pos", "vel"])
+        data_dict = self.bulk_read(["pos", "vel"], retries=retries)
         return data_dict["pos"].copy(), data_dict["vel"].copy()
 
     def write_desired_pos(
@@ -285,7 +287,9 @@ class DynamixelClient:
         return errored_ids
 
     # @profile()
-    def bulk_read(self, attr_list: List[str]) -> Dict[str, npt.NDArray[np.float32]]:
+    def bulk_read(
+        self, attr_list: List[str], retries: int
+    ) -> Dict[str, npt.NDArray[np.float32]]:
         """Reads values from a group of motors.
 
         Args:
@@ -305,10 +309,15 @@ class DynamixelClient:
             }
 
         success = False
-        # while not success:
-        # fastSyncRead does not work for 2XL and 2XC
-        comm_result = self._bulk_reader.txRxPacket()  # type: ignore
-        success = self.handle_packet_result(comm_result, context="bulk_read")  # type: ignore
+        while not success:
+            # fastSyncRead does not work for 2XL and 2XC
+            comm_result = self._bulk_reader.txRxPacket()  # type: ignore
+            success = self.handle_packet_result(comm_result, context="bulk_read")  # type: ignore
+
+            if retries == 0:
+                break
+
+            retries -= 1
 
         if not success:
             return self._data_dict

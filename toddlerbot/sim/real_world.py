@@ -28,11 +28,7 @@ class RealWorld(BaseSim):
         self.robot = robot
         self.debug = debug
 
-        self.negated_joint_names: List[str] = [
-            "left_hip_yaw",
-            "right_hip_yaw",
-            "left_ank_pitch",
-        ]
+        self.negated_joint_names: List[str] = []
 
         self._initialize()
 
@@ -179,10 +175,10 @@ class RealWorld(BaseSim):
         return np.array([0, 0, self.robot.com[-1]]), np.eye(3)
 
     # @profile()
-    def get_joint_state(self) -> Dict[str, JointState]:
+    def get_joint_state(self, retries: int = 0) -> Dict[str, JointState]:
         futures: Dict[str, Any] = {}
         futures["dynamixel"] = self.executor.submit(
-            self.dynamixel_controller.get_motor_state
+            self.dynamixel_controller.get_motor_state, retries
         )
         futures["sunny_sky"] = self.executor.submit(
             self.sunny_sky_controller.get_motor_state
