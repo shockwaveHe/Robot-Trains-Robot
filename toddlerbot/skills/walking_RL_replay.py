@@ -41,7 +41,7 @@ from humanoid.utils.task_registry import task_registry
 from isaacgym import gymapi
 from tqdm import tqdm
 
-from toddlerbot.sim.robot import HumanoidRobot
+from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.misc_utils import dump_profiling_data, log, profile
 from toddlerbot.visualization.vis_plot import (
     plot_joint_angle_tracking,
@@ -172,7 +172,7 @@ def play(args, duration=5, fix_command=True, export=True, render=True):
 
         time_ref += env.dt
 
-    robot = HumanoidRobot(args.task)
+    robot = Robot(args.task)
     exp_name = f"walk_{robot.name}_isaac"
     time_str = time.strftime("%Y%m%d_%H%M%S")
     exp_folder_path = f"results/{time_str}_{exp_name}"

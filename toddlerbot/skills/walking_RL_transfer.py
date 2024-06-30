@@ -9,7 +9,7 @@ from collections import deque
 import numpy as np
 from tqdm import tqdm
 
-from toddlerbot.sim.robot import HumanoidRobot
+from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.math_utils import (
     quaternion_to_euler_array,
     resample_trajectory,
@@ -447,7 +447,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    robot = HumanoidRobot(args.robot_name)
+    robot = Robot(args.robot_name)
 
     if args.sim == "pybullet":
         from toddlerbot.sim.pybullet_sim import PyBulletSim

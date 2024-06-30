@@ -4,7 +4,7 @@ import xml.etree.ElementTree as ET
 
 from jinja2 import Environment, FileSystemLoader
 
-from toddlerbot.sim.robot import HumanoidRobot
+from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.misc_utils import snake2camel
 
 rewards_config = {
@@ -62,7 +62,7 @@ robot_params = {
 
 
 def create_isaac_urdf(robot_name):
-    robot = HumanoidRobot(robot_name)
+    robot = Robot(robot_name)
     robot_dir = os.path.join("toddlerbot", "robot_descriptions", robot_name)
     source_urdf_path = os.path.join(robot_dir, f"{robot_name}.urdf")
     tree = ET.parse(source_urdf_path)
@@ -109,7 +109,7 @@ def create_humanoid_gym_env(robot_name):
     env_path = os.path.join(humanoid_gym_env_dir, f"{robot_name}")
     os.makedirs(env_path, exist_ok=False)
 
-    robot = HumanoidRobot(robot_name)
+    robot = Robot(robot_name)
     num_actions = len(robot.config.motor_params)
     foot_name = robot.config.canonical_name2link_name["foot_link"]
     knee_name = robot.config.canonical_name2link_name["knee_link"]

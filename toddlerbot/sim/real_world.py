@@ -15,14 +15,14 @@ from toddlerbot.actuation.sunny_sky.sunny_sky_control import (
 )
 from toddlerbot.sensing.IMU import IMU
 from toddlerbot.sim import BaseSim
-from toddlerbot.sim.robot import HumanoidRobot
+from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_ports
 from toddlerbot.utils.math_utils import round_floats
 from toddlerbot.utils.misc_utils import log, profile, snake2camel
 
 
 class RealWorld(BaseSim):
-    def __init__(self, robot: HumanoidRobot, debug: bool = False):
+    def __init__(self, robot: Robot, debug: bool = False):
         super().__init__()
         self.name = "real_world"
         self.robot = robot

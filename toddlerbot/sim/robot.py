@@ -13,7 +13,7 @@ from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.misc_utils import log
 
 
-class HumanoidRobot:
+class Robot:
     """Class representing a humanoid robot."""
 
     def __init__(self, robot_name: str):

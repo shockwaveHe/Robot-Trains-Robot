@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
-from toddlerbot.sim.robot import HumanoidRobot
+from toddlerbot.sim.robot import Robot
 from toddlerbot.skills.walking_ZMP_configs import walking_configs
 from toddlerbot.skills.walking_ZMP_preview import Walking
 from toddlerbot.utils.math_utils import round_floats
@@ -44,7 +44,7 @@ def main():
 
     config = walking_configs[f"{args.robot_name}_{args.sim}"]
 
-    robot = HumanoidRobot(args.robot_name)
+    robot = Robot(args.robot_name)
 
     walking = Walking(robot, config)
 

@@ -5,13 +5,13 @@ from typing import Dict, List, Tuple
 import numpy as np
 
 from toddlerbot.sim.real_world import RealWorld
-from toddlerbot.sim.robot import HumanoidRobot
+from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.math_utils import resample_trajectory
 from toddlerbot.utils.misc_utils import dump_profiling_data, log, precise_sleep, profile
 
 
 # @profile()
-def main(robot: HumanoidRobot):
+def main(robot: Robot):
     sim = RealWorld(robot, debug=True)
 
     control_dt = 0.01
@@ -91,6 +91,6 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    robot = HumanoidRobot(args.robot_name)
+    robot = Robot(args.robot_name)
 
     main(robot)

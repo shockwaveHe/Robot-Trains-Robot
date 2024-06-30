@@ -1,0 +1,46 @@
+<robot name="sysID_XC430">  
+  <mujoco><compiler strippath="false" balanceinertia="true" discardvisual="false" /></mujoco><link name="xc430">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0" />      
+      <geometry>        
+        <mesh filename="../assemblies/sysID_XC430/meshes/xc430_visual.stl" />        
+      </geometry>      
+      <material name="xc430_material">        
+        <color rgba="0.4501024869999305511 0.53856719363707639125 0.6974374687027361519 1.0" />        
+      </material>      
+    </visual>    
+    <inertial>      
+      <origin xyz="0.070803382406150860984 0.016525136218340005095 0.0055416231408350596216" rpy="0 0 0" />      
+      <mass value="0.082871926915724300478" />      
+      <inertia ixx="2.6883552248435861116e-05" ixy="-5.7009576492078162829e-06" ixz="-3.8722869948390971044e-08" iyy="2.8445301599901689208e-05" iyz="-5.0211748860960795012e-08" izz="4.2142728568908698647e-05" />      
+    </inertial>    
+  </link>  
+
+  <link name="arm_430">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0" />      
+      <geometry>        
+        <mesh filename="../assemblies/sysID_XC430/meshes/arm_430_visual.stl" />        
+      </geometry>      
+      <material name="arm_430_material">        
+        <color rgba="0.63637372706091777097 0.65214796198853397513 0.66652949030079344794 1.0" />        
+      </material>      
+    </visual>    
+    <inertial>      
+      <origin xyz="2.1495864167436237511e-17 0.072793282502280523549 0.018999999999999999528" rpy="0 0 0" />      
+      <mass value="0.37449999999999999956" />      
+      <inertia ixx="0.0005613914325652946246" ixy="-8.4703294725430033907e-21" ixz="1.4661896794999603258e-16" iyy="0.00037309315070967359607" iyz="4.8704394467122269496e-21" izz="0.00027081483122170119668" />      
+    </inertial>    
+  </link>  
+
+  <joint name="joint_0" type="revolute">    
+    <origin xyz="0.054999999999999715783 0.032699857927858969053 0.0055693959459660099393" rpy="5.1209490560719009338e-16 1.5707963267948958919 0" />    
+    <parent link="xc430" />    
+    <child link="arm_430" />    
+    <axis xyz="0 0 1" />    
+    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />    
+    <joint_properties friction="0.0" />    
+  </joint>  
+
+
+</robot>

@@ -2,8 +2,9 @@ import argparse
 import os
 import shutil
 import xml.etree.ElementTree as ET
+from typing import Dict, Tuple
 
-import trimesh
+import trimesh  # type: ignore
 
 from toddlerbot.utils.file_utils import find_robot_file_path
 
@@ -12,7 +13,7 @@ hip_scale_factor = (0.5, 1.0, 1.0)
 leg_scale_factor = (1.0, 0.5, 1.0)
 arm_scale_factor = (1.0, 0.5, 1.0)
 
-collision_link_dict = {
+collision_link_dict: Dict[str, Tuple[float, float, float]] = {
     "body_link": default_scale_factor,
     "neck_link": default_scale_factor,
     "head_link": default_scale_factor,
@@ -31,8 +32,10 @@ collision_link_dict = {
 }
 
 
-def compute_bounding_box_mesh(robot_dir, mesh_filename, scale_factors):
-    mesh = trimesh.load(os.path.join(robot_dir, mesh_filename))
+def compute_bounding_box_mesh(
+    robot_dir: str, mesh_filename: str, scale_factor: Tuple[float, float, float]
+):
+    mesh: trimesh.Trimesh = trimesh.load(os.path.join(robot_dir, mesh_filename))  # type: ignore
 
     # Compute the centroid of the bounding box
     centroid = mesh.bounding_box.centroid
@@ -41,11 +44,11 @@ def compute_bounding_box_mesh(robot_dir, mesh_filename, scale_factors):
         vertices=mesh.bounding_box.vertices, faces=mesh.bounding_box.faces
     )
     # Translate the mesh to the origin
-    bounding_mesh.apply_translation(-centroid)
+    bounding_mesh.apply_translation(-centroid)  # type: ignore
     # Apply non-uniform scaling
-    bounding_mesh.apply_scale(scale_factors)
+    bounding_mesh.apply_scale(scale_factor)  # type: ignore
     # Translate the mesh back to its original centroid
-    bounding_mesh.apply_translation(centroid)
+    bounding_mesh.apply_translation(centroid)  # type: ignore
 
     # Create the full path for the bounding box file
     collision_mesh_file_path = os.path.join(
@@ -54,12 +57,12 @@ def compute_bounding_box_mesh(robot_dir, mesh_filename, scale_factors):
         os.path.basename(mesh_filename).replace("visual", "collision"),
     )
     # Export the bounding box to a file
-    bounding_mesh.export(collision_mesh_file_path)
+    bounding_mesh.export(collision_mesh_file_path)  # type: ignore
 
     return os.path.relpath(collision_mesh_file_path, robot_dir)
 
 
-def update_collisons(robot_name):
+def update_collisons(robot_name: str):
     urdf_path = find_robot_file_path(robot_name)
 
     # Ensure the collision directory exists
@@ -74,11 +77,14 @@ def update_collisons(robot_name):
 
     for link in root.findall("link"):
         link_name = link.get("name")
+        if link_name is None:
+            continue
+
         # Find the visual element and its mesh filename
         visual = link.find("visual")
         if visual is not None:
             geometry = visual.find("geometry")
-            mesh = geometry.find("mesh")
+            mesh = geometry.find("mesh") if geometry is not None else None
             mesh_filename = mesh.get("filename") if mesh is not None else None
 
             # Check if the link is in the list for updating collisions
@@ -97,9 +103,11 @@ def update_collisons(robot_name):
                     mesh = ET.SubElement(geometry, "mesh")
                 else:
                     geometry = collision.find("geometry")
-                    mesh = geometry.find("mesh")
+                    mesh = geometry.find("mesh") if geometry is not None else None
 
-                mesh.set("filename", collision_bbox_file)
+                if mesh is not None:
+                    mesh.set("filename", collision_bbox_file)
+
             elif "ank_roll_link" not in link_name:
                 # Remove the collision element if it exists
                 collision = link.find("collision")

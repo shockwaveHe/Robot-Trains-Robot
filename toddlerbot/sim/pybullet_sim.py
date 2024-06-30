@@ -3,7 +3,7 @@ import pybullet as p
 import pybullet_data
 
 from toddlerbot.sim import BaseSim
-from toddlerbot.sim.robot import HumanoidRobot
+from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.constants import GRAVITY
 from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.math_utils import quatxyzw2mat
@@ -131,6 +131,6 @@ class PyBulletSim(BaseSim):
 
 
 if __name__ == "__main__":
-    robot = HumanoidRobot("robotis_op3")
+    robot = Robot("robotis_op3")
     sim = PyBulletSim(robot)
     sim.simulate()

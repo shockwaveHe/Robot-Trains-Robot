@@ -7,21 +7,31 @@
 # LEG_NAME="3R+RH5_leg"
 # DOC_ID_LIST="d2a8be5ce536cd2e18740efa d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe 93bd073d2ef7800c8ba429de 93bd073d2ef7800c8ba429de"
 # ASSEMBLY_LIST="4R_body left_3R+RH5_leg right_3R+RH5_leg left_OP3_arm right_OP3_arm"
-# DOC_ID_LIST="d2a8be5ce536cd2e18740efa"
-# ASSEMBLY_LIST="4R_body"
+# # DOC_ID_LIST="d2a8be5ce536cd2e18740efa"
+# # ASSEMBLY_LIST="4R_body"
 
 ##### toddlerbot_legs #####
-ROBOT_NAME="toddlerbot_legs"
-BODY_NAME="no_body"
-LEG_NAME="3R+RH5_leg"
-DOC_ID_LIST="dca63e30dcbfe66f561f5fd4 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe"
-ASSEMBLY_LIST="no_body left_3R+RH5_leg right_3R+RH5_leg"
-# DOC_ID_LIST="dca63e30dcbfe66f561f5fd4"
-# ASSEMBLY_LIST="no_body"
+# ROBOT_NAME="toddlerbot_legs"
+# BODY_NAME="no_body"
+# LEG_NAME="3R+RH5_leg"
+# DOC_ID_LIST="dca63e30dcbfe66f561f5fd4 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe"
+# ASSEMBLY_LIST="no_body left_3R+RH5_leg right_3R+RH5_leg"
+# # DOC_ID_LIST="dca63e30dcbfe66f561f5fd4"
+# # ASSEMBLY_LIST="no_body"
+
+##### toddlerbot_legs #####
+ROBOT_NAME="sysID_XC430"
+BODY_NAME="sysID_XC430"
+DOC_ID_LIST="4b8df5a39fb5e7db7afa93b4"
+ASSEMBLY_LIST="sysID_XC430"
 
 REPO_NAME="toddlerbot"
 URDF_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/$ROBOT_NAME.urdf
 MJCF_FIXED_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/${ROBOT_NAME}_fixed.xml
+CONFIG_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/config.json
+
+# shellcheck disable=SC1091
+source "$HOME/.bashrc"
 
 printf "Do you want to export urdf from onshape? (y/n)"
 read -r -p " > " run_onshape
@@ -46,7 +56,7 @@ if [ "$run_process" == "y" ]; then
     if [ -n "$LEG_NAME" ]; then
         cmd+=" --leg-name $LEG_NAME"
     fi
-    eval $cmd
+    eval "$cmd"
 
     printf "Visualizing the kinematic tree...\n\n"
     python $REPO_NAME/visualization/vis_kine_tree.py \
@@ -56,31 +66,44 @@ if [ "$run_process" == "y" ]; then
     printf "Generating the collision files...\n\n"
     python $REPO_NAME/robot_descriptions/update_collisions.py --robot-name $ROBOT_NAME
 
-    printf "Generating the configuration file...\n\n"
-    python $REPO_NAME/robot_descriptions/write_config.py --robot-name $ROBOT_NAME
+    # Check if the config file exists
+    if [ -f "$CONFIG_PATH" ]; then
+        printf "Configuration file already exists. Do you want to overwrite it? (y/n)"
+        read -r -p " > " overwrite_config
+        if [ "$overwrite_config" == "y" ]; then
+            printf "Overwriting the configuration file...\n\n"
+            python $REPO_NAME/robot_descriptions/write_config.py --robot-name $ROBOT_NAME
+        else
+            printf "Configuration file not overwritten.\n\n"
+        fi
+    else
+        printf "Generating the configuration file...\n\n"
+        python $REPO_NAME/robot_descriptions/write_config.py --robot-name $ROBOT_NAME
+    fi
 
     printf "IMPORTANT: Double-check the auto-generated config file before proceeding!\n\n"
 else
     printf "Process skipped.\n\n"
 fi
 
-# Ask user if they want to run the simulation
-printf "Do you want to run the pybullet simulation? (y/n)"
-read -r -p " > " run_pybullet
+# TODO: bring this back
+# # Ask user if they want to run the simulation
+# printf "Do you want to run the pybullet simulation? (y/n)"
+# read -r -p " > " run_pybullet
 
-if [ "$run_pybullet" == "y" ]; then
-    printf "Simulation running...\n\n"
-    python $REPO_NAME/robot_descriptions/test_urdf.py --robot-name $ROBOT_NAME
-else
-    printf "Simulation skipped.\n\n"
-fi
+# if [ "$run_pybullet" == "y" ]; then
+#     printf "Simulation running...\n\n"
+#     python $REPO_NAME/robot_descriptions/test_urdf.py --robot-name $ROBOT_NAME
+# else
+#     printf "Simulation skipped.\n\n"
+# fi
 
 
 printf "Do you want to convert to MJCF (y/n)"
 
 read -r -p " > " run_convert
 if [ "$run_convert" == "y" ]; then
-    printf "Converting... Click the button save_xml to save the model to mjmodel.xml in the root directory.\n\n"
+    printf "Converting... \n1. Click the button save_xml to save the model to mjmodel.xml to the current directory.\n2. Close MuJoCo.\n\n"
     python -m mujoco.viewer --mjcf=$URDF_PATH
 
     printf "Processing...\n\n"

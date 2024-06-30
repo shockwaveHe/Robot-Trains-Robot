@@ -6,7 +6,7 @@ from dataclasses import fields
 
 from transforms3d.euler import euler2quat
 
-from toddlerbot.sim.robot import HumanoidRobot
+from toddlerbot.sim.robot import Robot
 
 
 def replace_mesh_file(root, old_file, new_file):
@@ -467,7 +467,7 @@ def process_mjcf_files(robot_name):
     if os.path.exists(cache_file_path):
         os.remove(cache_file_path)
 
-    robot = HumanoidRobot(robot_name)
+    robot = Robot(robot_name)
 
     robot_dir = os.path.join("toddlerbot", "robot_descriptions", robot_name)
     source_mjcf_path = os.path.join("mjmodel.xml")

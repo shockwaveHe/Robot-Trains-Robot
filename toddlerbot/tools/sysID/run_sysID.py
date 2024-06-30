@@ -8,7 +8,7 @@ from multiprocessing import Pool
 
 import numpy as np
 
-from toddlerbot.sim.robot import HumanoidRobot
+from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.sysID.sysID import (
     collect_data,
     evaluate,
@@ -186,7 +186,7 @@ def main():
     with open(os.path.join(exp_folder_path, "args.json"), "w") as json_file:
         json.dump(args_dict, json_file, indent=4)
 
-    robot = HumanoidRobot(args.robot_name)
+    robot = Robot(args.robot_name)
 
     ###### Collect data in the real world ######
     real_world_data_file_path = os.path.join(exp_folder_path, "real_world_data.pkl")

@@ -5,7 +5,7 @@ import time
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.pybullet_sim import PyBulletSim
 from toddlerbot.sim.real_world import RealWorld
-from toddlerbot.sim.robot import HumanoidRobot
+from toddlerbot.sim.robot import Robot
 from toddlerbot.visualization.vis_plot import plot_joint_angle_tracking
 
 
@@ -30,7 +30,7 @@ def main():
     exp_folder_path = f"results/{time_str}_{exp_name}"
 
     # A 0.3725 offset moves the robot slightly up from the ground
-    robot = HumanoidRobot(args.robot_name)
+    robot = Robot(args.robot_name)
 
     if args.sim == "pybullet":
         sim = PyBulletSim(robot)

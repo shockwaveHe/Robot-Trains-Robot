@@ -23,37 +23,6 @@ custom_parameters = [
 ]
 
 
-def generate_random_sinusoidal_config(
-    duration, control_dt, mean, frequency_range, amplitude_range
-):
-    frequency = np.random.uniform(*frequency_range)
-    amplitude = np.random.uniform(*amplitude_range)
-
-    return {
-        "frequency": frequency,
-        "amplitude": amplitude,
-        "duration": duration,
-        "control_dt": control_dt,
-        "mean": mean,
-    }
-
-
-def generate_sinusoidal_signal(signal_config):
-    """
-    Generates a sinusoidal signal based on the given parameters.
-    """
-    t = np.linspace(
-        0,
-        signal_config["duration"],
-        int(signal_config["duration"] / signal_config["control_dt"]),
-        endpoint=False,
-    )
-    signal = signal_config["mean"] + signal_config["amplitude"] * np.sin(
-        2 * np.pi * signal_config["frequency"] * t
-    )
-    return t, signal
-
-
 def actuate(sim, robot, joint_name, signal_pos, control_dt, prep_time=1):
     """
     Actuates a single joint with the given signal and collects the response.
@@ -149,80 +118,6 @@ def actuate(sim, robot, joint_name, signal_pos, control_dt, prep_time=1):
             joint_data_dict["pos"].append(joint_state_dict[joint_name].pos)
 
     return joint_data_dict
-
-
-def collect_data(
-    robot,
-    joint_name,
-    exp_folder_path,
-    n_trials,
-    duration=3,
-    control_dt=0.05,
-    frequency_range=(0.5, 2),
-    amplitude_min=np.pi / 12,
-):
-    from toddlerbot.sim.real_world import RealWorld
-
-    real_world = RealWorld(robot)
-    lower_limit = robot.joints_info[joint_name]["lower_limit"]
-    upper_limit = robot.joints_info[joint_name]["upper_limit"]
-
-    if joint_name == "left_ank_pitch":
-        lower_limit = 0.0
-        upper_limit = np.pi / 6
-
-    mean = (lower_limit + upper_limit) / 2
-    amplitude_max = upper_limit - mean
-
-    time_seq_ref_dict = {}
-    time_seq_dict = {}
-    joint_angle_ref_dict = {}
-    joint_angle_dict = {}
-
-    real_world_data_dict = {}
-    title_list = []
-    for trial in range(n_trials):
-        signal_config = generate_random_sinusoidal_config(
-            duration, control_dt, mean, frequency_range, (amplitude_min, amplitude_max)
-        )
-        signal_time, signal_pos = generate_sinusoidal_signal(signal_config)
-        signal_config_rounded = round_floats(signal_config, 3)
-        del signal_config_rounded["duration"]
-        del signal_config_rounded["control_dt"]
-        del signal_config_rounded["mean"]
-        title_list.append(json.dumps(signal_config_rounded))
-
-        # Actuate the joint and collect data
-        log(
-            f"Actuating {joint_name} in real with {signal_config}...",
-            header="SysID",
-            level="debug",
-        )
-        joint_data_dict = actuate(real_world, robot, joint_name, signal_pos, control_dt)
-
-        real_world_data_dict[trial] = {
-            "signal_config": signal_config,
-            "joint_data": joint_data_dict,
-        }
-
-        time_seq_ref_dict[f"trial_{trial}"] = list(signal_time)
-        time_seq_dict[f"trial_{trial}"] = joint_data_dict["time"]
-        joint_angle_ref_dict[f"trial_{trial}"] = list(signal_pos)
-        joint_angle_dict[f"trial_{trial}"] = joint_data_dict["pos"]
-
-    real_world.close()
-
-    plot_joint_angle_tracking(
-        time_seq_dict,
-        time_seq_ref_dict,
-        joint_angle_dict,
-        joint_angle_ref_dict,
-        save_path=exp_folder_path,
-        file_name=f"{joint_name}_real_world_tracking",
-        title_list=title_list,
-    )
-
-    return real_world_data_dict
 
 
 def update_xml(sim_name, tree, params_dict):

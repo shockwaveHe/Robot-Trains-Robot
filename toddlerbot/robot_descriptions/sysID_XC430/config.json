@@ -1,0 +1,23 @@
+{
+    "joint_0": {
+        "id": 0,
+        "group": "default",
+        "type": "dynamixel",
+        "control_mode": "position",
+        "is_indirect": false,
+        "has_closed_loop": false,
+        "damping": 0.0,
+        "armature": 0.0,
+        "frictionloss": 0.0,
+        "kp_real": 2400.0,
+        "ki_real": 0.0,
+        "kd_real": 2400.0,
+        "kp_sim": 18.75,
+        "kd_sim": 0.0,
+        "kff2_real": 0.0,
+        "kff1_real": 0.0,
+        "gear_ratio": 1.0,
+        "init_pos": 3.141592653589793,
+        "default_pos": 0.0
+    }
+}

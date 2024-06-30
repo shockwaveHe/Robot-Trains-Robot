@@ -10,11 +10,11 @@ from toddlerbot.actuation.sunny_sky.sunny_sky_control import (
     SunnySkyConfig,
     SunnySkyController,
 )
-from toddlerbot.sim.robot import HumanoidRobot
+from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_ports
 
 
-def calibrate_dynamixel(port: str, robot: HumanoidRobot, group: str):
+def calibrate_dynamixel(port: str, robot: Robot, group: str):
     dynamixel_ids = robot.get_attrs("type", "dynamixel", "id", group)
     dynamixel_config = DynamixelConfig(
         port=port,
@@ -58,7 +58,7 @@ def calibrate_sunny_sky(port: str):
     controller.close_motors()
 
 
-def main(robot: HumanoidRobot):
+def main(robot: Robot):
     while True:
         response = input("Have you installed the calibration parts? (Y/N): ")
         response = response.strip().lower()
@@ -99,6 +99,6 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    robot = HumanoidRobot(args.robot_name)
+    robot = Robot(args.robot_name)
 
     main(robot)

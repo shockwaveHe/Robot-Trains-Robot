@@ -4,7 +4,7 @@ import pybullet as p
 
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.pybullet_sim import PyBulletSim
-from toddlerbot.sim.robot import HumanoidRobot
+from toddlerbot.sim.robot import Robot
 
 
 def main():
@@ -24,7 +24,7 @@ def main():
     )
     args = parser.parse_args()
 
-    robot = HumanoidRobot(args.robot_name)
+    robot = Robot(args.robot_name)
     if args.sim == "pybullet":
         sim = PyBulletSim(robot, fixed=True)
         controls = {}
