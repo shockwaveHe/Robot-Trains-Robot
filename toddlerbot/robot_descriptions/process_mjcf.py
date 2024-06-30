@@ -2,14 +2,26 @@ import argparse
 import os
 import shutil
 import xml.etree.ElementTree as ET
-from dataclasses import fields
+from typing import Any, Dict, List, Tuple
 
-from transforms3d.euler import euler2quat
+from transforms3d.euler import euler2quat  # type: ignore
 
 from toddlerbot.sim.robot import Robot
 
 
-def replace_mesh_file(root, old_file, new_file):
+def find_root_link_name(root: ET.Element):
+    child_links = {joint.find("child").get("link") for joint in root.findall("joint")}  # type: ignore
+    all_links = {link.get("name") for link in root.findall("link")}
+
+    # The root link is the one not listed as a child
+    root_link = all_links - child_links
+    if root_link:
+        return str(root_link.pop())
+    else:
+        raise ValueError("Could not find root link in URDF")
+
+
+def replace_mesh_file(root: ET.Element, old_file: str, new_file: str):
     # Find all mesh elements
     for mesh in root.findall(".//mesh"):
         # Check if the file attribute matches the old file name
@@ -18,8 +30,11 @@ def replace_mesh_file(root, old_file, new_file):
             mesh.set("file", new_file)
 
 
-def add_torso_site(root):
+def add_torso_site(root: ET.Element):
     worldbody = root.find("worldbody")
+    if worldbody is None:
+        raise ValueError("No worldbody element found in the XML.")
+
     site_attributes = {
         "name": "torso",
         "fromto": "0.01 0 0.4 -0.01 0 0.4",
@@ -32,8 +47,11 @@ def add_torso_site(root):
     worldbody.insert(0, site_element)
 
 
-def add_imu_sensor(root):
+def add_imu_sensor(root: ET.Element):
     worldbody = root.find("worldbody")
+    if worldbody is None:
+        raise ValueError("No worldbody element found in the XML.")
+
     site_attributes = {"name": "imu", "size": "0.01", "pos": "0.0 0 0.0"}
     site_element = ET.Element("site", site_attributes)
     worldbody.insert(0, site_element)
@@ -110,24 +128,22 @@ def add_imu_sensor(root):
     )
 
 
-def update_joint_params(root, motor_params):
-    if motor_params is None:
-        return
-
+def update_joint_params(root: ET.Element, config: Dict[str, Any]):
     # Iterate over all joints in the XML
     for joint in root.findall(".//joint"):
         joint_name = joint.get("name")
-        if joint_name in motor_params:
-            for field in fields(motor_params[joint_name]):
-                if field.name in ["damping", "armature", "frictionloss"]:
-                    joint.set(
-                        field.name, str(getattr(motor_params[joint_name], field.name))
-                    )
+        if joint_name in config:
+            for attr_name in config[joint_name]:
+                if attr_name in ["damping", "armature", "frictionloss"]:
+                    joint.set(attr_name, str(config[joint_name][attr_name]))
 
 
-def update_geom_classes(root, geom_keys):
+def update_geom_classes(root: ET.Element, geom_keys: List[str]):
     for geom in root.findall(".//geom[@mesh]"):
         mesh_name = geom.get("mesh")
+
+        if mesh_name is None:
+            continue
 
         # Determine the class based on the mesh name
         if "visual" in mesh_name:
@@ -142,7 +158,7 @@ def update_geom_classes(root, geom_keys):
                 del geom.attrib[attr]
 
 
-def add_default_settings(root):
+def add_default_settings(root: ET.Element):
     # Create or find the <default> element
     default = root.find("default")
     if default is not None:
@@ -177,7 +193,7 @@ def add_default_settings(root):
     ET.SubElement(collision_default, "geom", {"group": "3"})
 
 
-def exclude_all_contacts(root):
+def exclude_all_contacts(root: ET.Element):
     contact = root.find("contact")
     if contact is not None:
         root.remove(contact)
@@ -188,11 +204,15 @@ def exclude_all_contacts(root):
         body1_name = body1.get("name")
         for body2 in root.findall(".//body"):
             body2_name = body2.get("name")
-            if body1_name != body2_name:
+            if (
+                body1_name is not None
+                and body2_name is not None
+                and body1_name != body2_name
+            ):
                 ET.SubElement(contact, "exclude", body1=body1_name, body2=body2_name)
 
 
-def add_contact_exclusion_to_mjcf(root):
+def add_contact_exclusion_to_mjcf(root: ET.Element):
     # Ensure there is a <contact> element
     contact = root.find("contact")
     if contact is not None:
@@ -216,7 +236,9 @@ def add_contact_exclusion_to_mjcf(root):
                     )
 
 
-def add_equality_constraints_for_leaves(root, body_pairs):
+def add_equality_constraints_for_leaves(
+    root: ET.Element, body_pairs: List[Tuple[str, str]]
+):
     # Ensure there is an <equality> element
     equality = root.find("./equality")
     if equality is not None:
@@ -236,7 +258,7 @@ def add_equality_constraints_for_leaves(root, body_pairs):
         )
 
 
-def add_actuators_to_mjcf(root, motor_params):
+def add_actuators_to_mjcf(root: ET.Element, config: Dict[str, Any]):
     # Create <actuator> element if it doesn't exist
     actuator = root.find("./actuator")
     if actuator is not None:
@@ -246,7 +268,7 @@ def add_actuators_to_mjcf(root, motor_params):
 
     for joint in root.findall(".//joint"):
         joint_name = joint.get("name")
-        if joint_name in motor_params:
+        if joint_name in config:
             motor_name = f"{joint_name}_act"
             ctrlrange = joint.get("range", "-3.141592 3.141592")
             ET.SubElement(
@@ -254,31 +276,26 @@ def add_actuators_to_mjcf(root, motor_params):
                 "position",
                 name=motor_name,
                 joint=joint_name,
-                kp=str(motor_params[joint_name].kp),
-                kv=str(motor_params[joint_name].kv),
+                kp=str(config[joint_name]["kp_sim"]),
+                kv=str(config[joint_name]["kd_sim"]),
                 ctrlrange=ctrlrange,
             )
 
 
-def parse_urdf_body_link(config, urdf_path):
-    urdf_tree = ET.parse(urdf_path)
-    urdf_root = urdf_tree.getroot()
-
+def parse_urdf_body_link(root: ET.Element, root_link_name: str):
     # Assuming you want to extract properties for 'body_link'
-    body_link = urdf_root.find(
-        f"link[@name='{config.canonical_name2link_name['body_link']}']"
-    )
+    body_link = root.find(f"link[@name='{root_link_name}']")
     inertial = body_link.find("inertial") if body_link is not None else None
 
     if inertial is None:
         return None
     else:
-        origin = inertial.find("origin").attrib
-        mass = inertial.find("mass").attrib["value"]
-        inertia = inertial.find("inertia").attrib
+        origin = inertial.find("origin").attrib  # type: ignore
+        mass = inertial.find("mass").attrib["value"]  # type: ignore
+        inertia = inertial.find("inertia").attrib  # type: ignore
 
         pos = [float(x) for x in origin["xyz"].split(" ")]
-        quat = euler2quat(*[float(x) for x in origin["rpy"].split(" ")])
+        quat = euler2quat(*[float(x) for x in origin["rpy"].split(" ")])  # type: ignore
         diaginertia = [
             float(x) for x in [inertia["ixx"], inertia["iyy"], inertia["izz"]]
         ]
@@ -291,17 +308,22 @@ def parse_urdf_body_link(config, urdf_path):
         return properties
 
 
-def add_body_link(root, config, urdf_path):
-    properties = parse_urdf_body_link(config, urdf_path)
+def add_body_link(root: ET.Element, urdf_path: str):
+    urdf_tree = ET.parse(urdf_path)
+    urdf_root = urdf_tree.getroot()
+    root_link_name: str = find_root_link_name(urdf_root)
+    properties = parse_urdf_body_link(root, root_link_name)
     if properties is None:
         print("No inertial properties found in URDF file.")
         return
 
     worldbody = root.find(".//worldbody")
+    if worldbody is None:
+        raise ValueError("No worldbody element found in the XML.")
 
     body_link = ET.Element(
         "body",
-        name=config.canonical_name2link_name["body_link"],
+        name=root_link_name,
         pos="0 0 0",
         quat="1 0 0 0",
     )
@@ -323,7 +345,7 @@ def add_body_link(root, config, urdf_path):
         body_link.append(element)
 
 
-def update_actuator_types(root, motor_params):
+def update_actuator_types(root: ET.Element, config: Dict[str, Any]):
     # Create <actuator> element if it doesn't exist
     actuator = root.find("./actuator")
     if actuator is not None:
@@ -333,17 +355,17 @@ def update_actuator_types(root, motor_params):
 
     for joint in root.findall(".//joint"):
         joint_name = joint.get("name")
-        if joint_name in motor_params:
+        if joint_name in config:
             motor_name = f"{joint_name}_act"
             ET.SubElement(
                 actuator,
-                motor_params[joint_name].type,
+                config[joint_name]["control_mode"],
                 name=motor_name,
                 joint=joint_name,
             )
 
 
-def create_base_scene_xml(mjcf_path):
+def create_base_scene_xml(mjcf_path: str):
     robot_name = os.path.basename(mjcf_path).replace(".xml", "")
 
     # Create the root element
@@ -443,24 +465,31 @@ def create_base_scene_xml(mjcf_path):
     tree.write(os.path.join(os.path.dirname(mjcf_path), f"{robot_name}_scene.xml"))
 
 
-def process_mjcf_fixed_file(root, config):
-    add_torso_site(root)
-    add_imu_sensor(root)
-    update_joint_params(root, config.motor_params)
+def process_mjcf_fixed_file(root: ET.Element, config: Dict[str, Any]):
+    if config["general"]["use_torso_site"]:
+        add_torso_site(root)
+
+    if config["general"]["has_imu"]:
+        add_imu_sensor(root)
+
+    update_joint_params(root, config)
     update_geom_classes(root, ["type", "contype", "conaffinity", "group", "density"])
     exclude_all_contacts(root)
-    add_actuators_to_mjcf(root, config.motor_params)
-    add_equality_constraints_for_leaves(root, config.constraint_pairs)
+    add_actuators_to_mjcf(root, config)
+
+    if len(config["general"]["constraint_pairs"]) > 0:
+        add_equality_constraints_for_leaves(root, config["general"]["constraint_pairs"])
+
     add_default_settings(root)
 
 
-def process_mjcf_file(root, config, urdf_path):
+def process_mjcf_file(root: ET.Element, config: Dict[str, Any], urdf_path: str):
     # update_actuator_types(root, config.motor_params)
-    add_body_link(root, config, urdf_path)
+    add_body_link(root, urdf_path)
     add_contact_exclusion_to_mjcf(root)
 
 
-def process_mjcf_files(robot_name):
+def get_mjcf_files(robot_name: str):
     cache_file_path = os.path.join(
         "toddlerbot", "robot_descriptions", robot_name, f"{robot_name}_data.pkl"
     )
@@ -470,13 +499,14 @@ def process_mjcf_files(robot_name):
     robot = Robot(robot_name)
 
     robot_dir = os.path.join("toddlerbot", "robot_descriptions", robot_name)
+    urdf_path = os.path.join(robot_dir, robot_name + ".urdf")
     source_mjcf_path = os.path.join("mjmodel.xml")
     mjcf_fixed_path = os.path.join(robot_dir, robot_name + "_fixed.xml")
     if os.path.exists(source_mjcf_path):
         shutil.move(source_mjcf_path, mjcf_fixed_path)
     else:
         raise ValueError(
-            "No MJCF file found. Remember to click the button save_xml to save the model to mjmodel.xml in the root directory."
+            "No MJCF file found. Remember to click the button save_xml to save the model to mjmodel.xml in the current directory."
         )
 
     xml_tree = ET.parse(mjcf_fixed_path)
@@ -485,7 +515,6 @@ def process_mjcf_files(robot_name):
     process_mjcf_fixed_file(xml_root, robot.config)
     xml_tree.write(mjcf_fixed_path)
 
-    urdf_path = os.path.join(robot_dir, robot_name + ".urdf")
     mjcf_path = os.path.join(robot_dir, robot_name + ".xml")
     process_mjcf_file(xml_root, robot.config, urdf_path)
     xml_tree.write(mjcf_path)
@@ -498,12 +527,12 @@ def main():
     parser.add_argument(
         "--robot-name",
         type=str,
-        default="toddlerbot",
+        default="sysID_XC430",
         help="The name of the robot. Need to match the name in robot_descriptions.",
     )
     args = parser.parse_args()
 
-    process_mjcf_files(args.robot_name)
+    get_mjcf_files(args.robot_name)
 
 
 if __name__ == "__main__":

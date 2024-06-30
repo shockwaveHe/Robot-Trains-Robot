@@ -12,14 +12,14 @@ class URDFConfig:
     leg_name: str
 
 
-def find_root_link_name(root):
-    child_links = {joint.find("child").get("link") for joint in root.findall("joint")}
+def find_root_link_name(root: ET.Element):
+    child_links = {joint.find("child").get("link") for joint in root.findall("joint")}  # type: ignore
     all_links = {link.get("name") for link in root.findall("link")}
 
     # The root link is the one not listed as a child
     root_link = all_links - child_links
     if root_link:
-        return root_link.pop()
+        return str(root_link.pop())
     else:
         raise ValueError("Could not find root link in URDF")
 

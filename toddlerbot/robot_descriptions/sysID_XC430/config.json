@@ -1,4 +1,9 @@
 {
+    "general": {
+        "use_torso_site": false,
+        "has_imu": false,
+        "constraint_pairs": []
+    },
     "joint_0": {
         "id": 0,
         "group": "default",

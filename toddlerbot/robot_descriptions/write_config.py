@@ -13,6 +13,13 @@ def get_default_config(robot_name: str, kp: float = 2400.0, kd: float = 2400.0):
     root = tree.getroot()
 
     config_dict: Dict[str, Dict[str, Any]] = {}
+
+    config_dict["general"] = {
+        "use_torso_site": False,
+        "has_imu": False,
+        "constraint_pairs": [],
+    }
+
     for id, joint in enumerate(root.findall("joint")):
         joint_name = joint.get("name")
 
