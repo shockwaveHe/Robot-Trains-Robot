@@ -5,7 +5,7 @@ import shutil
 import subprocess
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
-from typing import List
+from typing import List, Set
 
 from toddlerbot.utils.file_utils import prettify
 
@@ -21,7 +21,7 @@ class OnShapeConfig:
     maxSTLSize: int = 1
 
 
-def process_urdf_and_stl_files(assembly_path):
+def process_urdf_and_stl_files(assembly_path: str):
     urdf_path = os.path.join(assembly_path, "robot.urdf")
     if not os.path.exists(urdf_path):
         raise ValueError("No URDF file found in the robot directory.")
@@ -36,7 +36,7 @@ def process_urdf_and_stl_files(assembly_path):
         root.attrib["name"] = robot_name
 
     # Find and update all mesh filenames
-    referenced_stls = set()
+    referenced_stls: Set[str] = set()
     for mesh in root.findall(".//mesh"):
         filename_attr = mesh.get("filename")
         if filename_attr and filename_attr.startswith("package:///"):
@@ -86,7 +86,7 @@ def process_urdf_and_stl_files(assembly_path):
         os.rename(urdf_path, new_urdf_path)
 
 
-def run_onshape_to_robot(onshape_config):
+def run_onshape_to_robot(onshape_config: OnShapeConfig):
     assembly_dir = os.path.join("toddlerbot", "robot_descriptions", "assemblies")
 
     # Process each assembly in series

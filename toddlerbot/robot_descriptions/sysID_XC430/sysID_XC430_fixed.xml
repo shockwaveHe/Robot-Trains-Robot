@@ -12,4 +12,18 @@
       <geom rgba="0.636374 0.652148 0.666529 1" mesh="arm_430_visual" class="visual" />
     </body>
   </worldbody>
-<contact /><actuator><position name="joint_0_act" joint="joint_0" kp="18.75" kv="0.0" ctrlrange="-1.5708 1.5708" /></actuator><default><position forcelimited="false" /><geom type="mesh" condim="4" solref=".001 2" friction="0.9 0.2 0.2" /><default class="visual"><geom contype="0" conaffinity="0" group="2" density="0" /></default><default class="collision"><geom group="3" /></default></default></mujoco>
+  <actuator>
+    <position name="joint_0_act" joint="joint_0" kp="18.75" kv="0.0" ctrlrange="-1.5708 1.5708" />
+  </actuator>
+  <default>
+    <position forcelimited="false" />
+    <geom type="mesh" condim="4" solref=".001 2" friction="0.9 0.2 0.2" />
+    <default class="visual">
+      <geom contype="0" conaffinity="0" group="2" density="0" />
+    </default>
+    <default class="collision">
+      <geom group="3" />
+    </default>
+  </default>
+  <contact />
+</mujoco>

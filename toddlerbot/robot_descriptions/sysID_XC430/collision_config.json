@@ -1,0 +1,20 @@
+{
+    "xc430": {
+        "has_collision": false,
+        "type": "box",
+        "size": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "arm_430": {
+        "has_collision": false,
+        "type": "box",
+        "size": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    }
+}

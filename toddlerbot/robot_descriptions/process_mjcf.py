@@ -312,7 +312,7 @@ def add_body_link(root: ET.Element, urdf_path: str):
     urdf_tree = ET.parse(urdf_path)
     urdf_root = urdf_tree.getroot()
     root_link_name: str = find_root_link_name(urdf_root)
-    properties = parse_urdf_body_link(root, root_link_name)
+    properties = parse_urdf_body_link(urdf_root, root_link_name)
     if properties is None:
         print("No inertial properties found in URDF file.")
         return
@@ -366,13 +366,13 @@ def update_actuator_types(root: ET.Element, config: Dict[str, Any]):
 
 
 def create_base_scene_xml(mjcf_path: str):
-    robot_name = os.path.basename(mjcf_path).replace(".xml", "")
+    robot_name = os.path.basename(mjcf_path).replace("_fixed", "").replace(".xml", "")
 
     # Create the root element
     mujoco = ET.Element("mujoco", attrib={"model": f"{robot_name}_scene"})
 
     # Include the robot model
-    ET.SubElement(mujoco, "include", attrib={"file": f"{robot_name}.xml"})
+    ET.SubElement(mujoco, "include", attrib={"file": mjcf_path})
 
     # Add statistic element
     ET.SubElement(mujoco, "statistic", attrib={"center": "0 0 0.2", "extent": "0.6"})
@@ -481,11 +481,6 @@ def process_mjcf_fixed_file(root: ET.Element, config: Dict[str, Any]):
         add_equality_constraints_for_leaves(root, config["general"]["constraint_pairs"])
 
     add_default_settings(root)
-
-
-def process_mjcf_file(root: ET.Element, config: Dict[str, Any], urdf_path: str):
-    # update_actuator_types(root, config.motor_params)
-    add_body_link(root, urdf_path)
     add_contact_exclusion_to_mjcf(root)
 
 
@@ -515,9 +510,12 @@ def get_mjcf_files(robot_name: str):
     process_mjcf_fixed_file(xml_root, robot.config)
     xml_tree.write(mjcf_fixed_path)
 
-    mjcf_path = os.path.join(robot_dir, robot_name + ".xml")
-    process_mjcf_file(xml_root, robot.config, urdf_path)
-    xml_tree.write(mjcf_path)
+    if robot.config["general"]["is_fixed"]:
+        mjcf_path = mjcf_fixed_path
+    else:
+        mjcf_path = os.path.join(robot_dir, robot_name + ".xml")
+        add_body_link(xml_root, urdf_path)
+        xml_tree.write(mjcf_path)
 
     create_base_scene_xml(mjcf_path)
 

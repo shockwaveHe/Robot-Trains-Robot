@@ -2,6 +2,7 @@ import argparse
 import os
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
+from typing import List
 
 
 @dataclass
@@ -24,7 +25,7 @@ def find_root_link_name(root: ET.Element):
         raise ValueError("Could not find root link in URDF")
 
 
-def update_link_names_and_references(body_root, part_root):
+def update_link_names_and_references(body_root: ET.Element, part_root: ET.Element):
     """
     Updates link names in part_root to ensure uniqueness in body_root and updates all references.
 
@@ -38,7 +39,7 @@ def update_link_names_and_references(body_root, part_root):
     existing_links = {link.attrib["name"] for link in body_root.findall("link")}
 
     # Function to find or generate a unique link name
-    def get_unique_name(old_name):
+    def get_unique_name(old_name: str):
         if old_name not in existing_links:
             return old_name
         i = 2
@@ -66,7 +67,7 @@ def update_link_names_and_references(body_root, part_root):
                 link_element.attrib["link"] = name_changes[link_element.attrib["link"]]
 
 
-def assemble_urdf(urdf_config):
+def assemble_urdf(urdf_config: URDFConfig):
     # Parse the target URDF
     description_dir = os.path.join("toddlerbot", "robot_descriptions")
     assembly_dir = os.path.join(description_dir, "assemblies")
@@ -78,7 +79,7 @@ def assemble_urdf(urdf_config):
     body_root = body_tree.getroot()
     body_root.set("name", urdf_config.robot_name)
 
-    assembly_list = []
+    assembly_list: List[str] = []
     if len(urdf_config.arm_name) > 0:
         assembly_list.append("left_" + urdf_config.arm_name)
         assembly_list.append("right_" + urdf_config.arm_name)
@@ -96,7 +97,12 @@ def assemble_urdf(urdf_config):
 
     for joint in body_root.findall("joint"):
         child_link = joint.find("child")
+        if child_link is None:
+            continue
+
         child_link_name = child_link.attrib.get("link")
+        if child_link_name is None:
+            continue
 
         if not ("leg" in child_link_name and len(urdf_config.leg_name) > 0) and not (
             "arm" in child_link_name and len(urdf_config.arm_name) > 0
@@ -108,11 +114,11 @@ def assemble_urdf(urdf_config):
                 body_root.remove(link)
 
         source_urdf_path = None
-        for assembly_name in assembly_list:
-            if assembly_name.lower() == child_link_name.lower():
-                source_urdf_path = os.path.join(
-                    assembly_dir, assembly_name, assembly_name + ".urdf"
-                )
+        assembly_name = ""
+        for name in assembly_list:
+            if name.lower() == child_link_name.lower():
+                source_urdf_path = os.path.join(assembly_dir, name, name + ".urdf")
+                assembly_name = name
                 break
 
         if source_urdf_path is None:

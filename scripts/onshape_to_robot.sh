@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# YELLOW='\033[0;33m'
+# NC='\033[0m' # No Color
+
 ##### toddlerbot #####
 # ROBOT_NAME="toddlerbot"
 # BODY_NAME="4R_body"
@@ -63,9 +66,6 @@ if [ "$run_process" == "y" ]; then
         --path $URDF_PATH \
         -o $REPO_NAME/robot_descriptions/$ROBOT_NAME/${ROBOT_NAME}_kine_tree.png
 
-    printf "Generating the collision files...\n\n"
-    python $REPO_NAME/robot_descriptions/update_collisions.py --robot-name $ROBOT_NAME
-
     # Check if the config file exists
     if [ -f "$CONFIG_PATH" ]; then
         printf "Configuration file already exists. Do you want to overwrite it? (y/n)"
@@ -81,7 +81,15 @@ if [ "$run_process" == "y" ]; then
         python $REPO_NAME/robot_descriptions/write_config.py --robot-name $ROBOT_NAME
     fi
 
-    printf "IMPORTANT: Double-check the auto-generated config file before proceeding!\n\n"
+    printf "Have you updated the configs in the auto-generated config.json and collision_config.json? (y/n)"
+    read -r -p " > " update_collision
+    if [ "$update_collision" == "y" ]; then
+        printf "Generating the collision files...\n\n"
+        python $REPO_NAME/robot_descriptions/update_collisions.py --robot-name $ROBOT_NAME
+    else
+        printf "Collision files not updated.\n\n"
+    fi
+
 else
     printf "Process skipped.\n\n"
 fi

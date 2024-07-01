@@ -5,16 +5,12 @@ import xml.etree.ElementTree as ET
 from typing import Any, Dict
 
 
-def get_default_config(robot_name: str, kp: float = 2400.0, kd: float = 2400.0):
+def get_default_config(root: ET.Element, kp: float = 2400.0, kd: float = 2400.0):
     # Define the URDF file path
-    robot_dir = os.path.join("toddlerbot", "robot_descriptions", robot_name)
-    urdf_path = os.path.join(robot_dir, f"{robot_name}.urdf")
-    tree = ET.parse(urdf_path)
-    root = tree.getroot()
-
     config_dict: Dict[str, Dict[str, Any]] = {}
 
     config_dict["general"] = {
+        "is_fixed": False,
         "use_torso_site": False,
         "has_imu": False,
         "constraint_pairs": [],
@@ -49,12 +45,29 @@ def get_default_config(robot_name: str, kp: float = 2400.0, kd: float = 2400.0):
         }
         config_dict[joint_name] = joint_dict
 
-    config_file_path = os.path.join(robot_dir, "config.json")
-    with open(config_file_path, "w") as f:
-        f.write(json.dumps(config_dict, indent=4))
+    return config_dict
 
 
-if __name__ == "__main__":
+def get_default_collision_config(root: ET.Element):
+    config_dict: Dict[str, Dict[str, Any]] = {}
+
+    for link in root.findall("link"):
+        link_name = link.get("name")
+
+        if link_name is None:
+            continue
+
+        link_dict = {
+            "has_collision": True,
+            "type": "box",  # box, mesh
+            "size": [1.0, 1.0, 1.0],
+        }
+        config_dict[link_name] = link_dict
+
+    return config_dict
+
+
+def main():
     parser = argparse.ArgumentParser(description="Get the config.")
     parser.add_argument(
         "--robot-name",
@@ -64,4 +77,21 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    get_default_config(args.robot_name)
+    robot_dir = os.path.join("toddlerbot", "robot_descriptions", args.robot_name)
+    urdf_path = os.path.join(robot_dir, f"{args.robot_name}.urdf")
+    tree = ET.parse(urdf_path)
+    root = tree.getroot()
+
+    config_dict = get_default_config(root)
+    config_file_path = os.path.join(robot_dir, "config.json")
+    with open(config_file_path, "w") as f:
+        f.write(json.dumps(config_dict, indent=4))
+
+    collision_config_dict = get_default_collision_config(root)
+    collision_config_file_path = os.path.join(robot_dir, "collision_config.json")
+    with open(collision_config_file_path, "w") as f:
+        f.write(json.dumps(collision_config_dict, indent=4))
+
+
+if __name__ == "__main__":
+    main()

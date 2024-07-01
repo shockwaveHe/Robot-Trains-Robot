@@ -1,40 +1,37 @@
 import argparse
+import json
 import os
 import shutil
 import xml.etree.ElementTree as ET
-from typing import Dict, Tuple
+from typing import List
 
 import trimesh  # type: ignore
 
-from toddlerbot.utils.file_utils import find_robot_file_path
+# default_scale_factor = (1.0, 1.0, 1.0)
+# hip_scale_factor = (0.5, 1.0, 1.0)
+# leg_scale_factor = (1.0, 0.5, 1.0)
+# arm_scale_factor = (1.0, 0.5, 1.0)
 
-default_scale_factor = (1.0, 1.0, 1.0)
-hip_scale_factor = (0.5, 1.0, 1.0)
-leg_scale_factor = (1.0, 0.5, 1.0)
-arm_scale_factor = (1.0, 0.5, 1.0)
-
-collision_link_dict: Dict[str, Tuple[float, float, float]] = {
-    "body_link": default_scale_factor,
-    "neck_link": default_scale_factor,
-    "head_link": default_scale_factor,
-    "hip_roll_link": hip_scale_factor,
-    "left_hip_pitch_link": leg_scale_factor,
-    "left_calf_link": leg_scale_factor,
-    # "ank_roll_link": default_scale_factor, # We need accurate contact for the feet
-    "hip_roll_link_2": hip_scale_factor,
-    "right_hip_pitch_link": leg_scale_factor,
-    "right_calf_link": leg_scale_factor,
-    # "ank_roll_link_2": default_scale_factor,
-    "sho_roll_link": arm_scale_factor,
-    "elb_link": arm_scale_factor,
-    "sho_roll_link_2": arm_scale_factor,
-    "elb_link_2": arm_scale_factor,
-}
+# collision_link_dict: Dict[str, Tuple[float, float, float]] = {
+#     "body_link": default_scale_factor,
+#     "neck_link": default_scale_factor,
+#     "head_link": default_scale_factor,
+#     "hip_roll_link": hip_scale_factor,
+#     "left_hip_pitch_link": leg_scale_factor,
+#     "left_calf_link": leg_scale_factor,
+#     # "ank_roll_link": default_scale_factor, # We need accurate contact for the feet
+#     "hip_roll_link_2": hip_scale_factor,
+#     "right_hip_pitch_link": leg_scale_factor,
+#     "right_calf_link": leg_scale_factor,
+#     # "ank_roll_link_2": default_scale_factor,
+#     "sho_roll_link": arm_scale_factor,
+#     "elb_link": arm_scale_factor,
+#     "sho_roll_link_2": arm_scale_factor,
+#     "elb_link_2": arm_scale_factor,
+# }
 
 
-def compute_bounding_box_mesh(
-    robot_dir: str, mesh_filename: str, scale_factor: Tuple[float, float, float]
-):
+def compute_bounding_box_mesh(robot_dir: str, mesh_filename: str, size: List[float]):
     mesh: trimesh.Trimesh = trimesh.load(os.path.join(robot_dir, mesh_filename))  # type: ignore
 
     # Compute the centroid of the bounding box
@@ -46,7 +43,7 @@ def compute_bounding_box_mesh(
     # Translate the mesh to the origin
     bounding_mesh.apply_translation(-centroid)  # type: ignore
     # Apply non-uniform scaling
-    bounding_mesh.apply_scale(scale_factor)  # type: ignore
+    bounding_mesh.apply_scale(size)  # type: ignore
     # Translate the mesh back to its original centroid
     bounding_mesh.apply_translation(centroid)  # type: ignore
 
@@ -63,7 +60,9 @@ def compute_bounding_box_mesh(
 
 
 def update_collisons(robot_name: str):
-    urdf_path = find_robot_file_path(robot_name)
+    robot_dir = os.path.join("toddlerbot", "robot_descriptions", robot_name)
+    config_file_path = os.path.join(robot_dir, "collision_config.json")
+    urdf_path = os.path.join(robot_dir, f"{robot_name}.urdf")
 
     # Ensure the collision directory exists
     collision_dir = os.path.join(os.path.dirname(urdf_path), "collisions")
@@ -72,41 +71,49 @@ def update_collisons(robot_name: str):
 
     os.makedirs(collision_dir, exist_ok=True)
 
+    with open(config_file_path, "r") as f:
+        collision_config_dict = json.load(f)
+
     tree = ET.parse(urdf_path)
     root = tree.getroot()
 
     for link in root.findall("link"):
         link_name = link.get("name")
-        if link_name is None:
+        if link_name is None or link_name not in collision_config_dict:
             continue
 
-        # Find the visual element and its mesh filename
-        visual = link.find("visual")
-        if visual is not None:
-            geometry = visual.find("geometry")
-            mesh = geometry.find("mesh") if geometry is not None else None
-            mesh_filename = mesh.get("filename") if mesh is not None else None
+        if collision_config_dict[link_name]["has_collision"]:
+            if collision_config_dict[link_name]["type"] == "box":
+                # Find the visual element and its mesh filename
+                visual = link.find("visual")
+                geometry = visual.find("geometry") if visual is not None else None
+                mesh = geometry.find("mesh") if geometry is not None else None
+                mesh_filename = mesh.get("filename") if mesh is not None else None
 
-            # Check if the link is in the list for updating collisions
-            if link_name in collision_link_dict and mesh_filename is not None:
-                # Compute the bounding box and replace the collision mesh
-                collision_bbox_file = compute_bounding_box_mesh(
-                    os.path.dirname(urdf_path),
-                    mesh_filename,
-                    collision_link_dict[link_name],
-                )
-                collision = link.find("collision")
-                if collision is None:
-                    # If no collision tag exists, create one
-                    collision = ET.SubElement(link, "collision")
-                    geometry = ET.SubElement(collision, "geometry")
-                    mesh = ET.SubElement(geometry, "mesh")
-                else:
-                    geometry = collision.find("geometry")
-                    mesh = geometry.find("mesh") if geometry is not None else None
+                if mesh_filename is not None:
+                    # Compute the bounding box and replace the collision mesh
+                    collision_bbox_file = compute_bounding_box_mesh(
+                        os.path.dirname(urdf_path),
+                        mesh_filename,
+                        collision_config_dict[link_name]["size"],
+                    )
+                    collision = link.find("collision")
+                    if collision is None:
+                        # If no collision tag exists, create one
+                        collision = ET.SubElement(link, "collision")
+                        geometry = ET.SubElement(collision, "geometry")
+                        mesh = ET.SubElement(geometry, "mesh")
+                    else:
+                        geometry = collision.find("geometry")
+                        mesh = geometry.find("mesh") if geometry is not None else None
 
-                if mesh is not None:
-                    mesh.set("filename", collision_bbox_file)
+                    if mesh is not None:
+                        mesh.set("filename", collision_bbox_file)
+        else:
+            # Remove the collision element if it exists
+            collision = link.find("collision")
+            if collision is not None:
+                link.remove(collision)
 
             elif "ank_roll_link" not in link_name:
                 # Remove the collision element if it exists

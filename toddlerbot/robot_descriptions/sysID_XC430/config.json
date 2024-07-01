@@ -1,5 +1,6 @@
 {
     "general": {
+        "is_fixed": true,
         "use_torso_site": false,
         "has_imu": false,
         "constraint_pairs": []
