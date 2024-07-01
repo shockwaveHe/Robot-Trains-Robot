@@ -1,3 +1,4 @@
+import platform
 import subprocess
 import time
 from dataclasses import dataclass
@@ -24,6 +25,7 @@ CONTROL_MODE_DICT: Dict[str, int] = {
 @dataclass
 class DynamixelConfig:
     port: str
+    baudrate: int
     control_mode: List[str]
     kP: List[float]
     kI: List[float]
@@ -32,7 +34,6 @@ class DynamixelConfig:
     kFF1: List[float]
     gear_ratio: List[float]
     init_pos: List[float]
-    baudrate: int = 4000000
     default_vel: float = np.pi
     interp_method: str = "cubic"
     return_delay_time: int = 1
@@ -55,9 +56,16 @@ class DynamixelController(BaseController):
         self.initialize_motors()
 
     def connect_to_client(self, latency_value: int = 1):
+        os_type = platform.system()
         try:
-            # Construct the command to set the latency timer
-            command = f"echo {latency_value} | sudo tee /sys/bus/usb-serial/devices/{self.config.port.split('/')[-1]}/latency_timer"
+            if os_type == "Linux":
+                # Construct the command to set the latency timer on Linux
+                command = f"echo {latency_value} | sudo tee /sys/bus/usb-serial/devices/{self.config.port.split('/')[-1]}/latency_timer"
+            elif os_type == "Darwin":
+                # Construct the command to set the latency timer on macOS
+                command = f"./toddlerbot/actuation/dynamixel/latency_timer_setter_macOS/set_latency_timer -l {latency_value}"
+            else:
+                raise Exception(f"Unsupported OS: {os_type}")
             # Run the command
             result = subprocess.run(
                 command, shell=True, text=True, check=True, stdout=subprocess.PIPE

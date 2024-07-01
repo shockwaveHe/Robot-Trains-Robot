@@ -34,9 +34,7 @@ class Robot:
         self.cache_file_path = os.path.join(root_path, f"{self.name}_data.pkl")
 
         self.load_robot_config()
-
-        # TODO: Add support for loading the robot data
-        # self.load_robot_data()
+        self.load_robot_data()
 
     def load_robot_config(self):
         if os.path.exists(self.config_file_path):
@@ -52,68 +50,46 @@ class Robot:
     def load_robot_data(self):
         if os.path.exists(self.cache_file_path):
             with open(self.cache_file_path, "rb") as f:
-                robot_data: Dict[str, Any] = pickle.load(f)
+                self.data: Dict[str, Any] = pickle.load(f)
                 log("Loaded cached data.", header="Robot")
 
-            self.joints_info = robot_data["joints_info"]
-            self.com = robot_data["com"]
-            self.foot_size = robot_data["foot_size"]
-            self.offsets = robot_data["offsets"]
-            points, values = robot_data["ankle_fk_lookup_table"]
-            self.ankle_fk_lookup_table = LinearNDInterpolator(points, values)
+            # TODO: bring these fields back for the humanoid
+            # self.com = robot_data["com"]
+            # self.foot_size = robot_data["foot_size"]
+            # self.offsets = robot_data["offsets"]
+            # points, values = robot_data["ankle_fk_lookup_table"]
+            # self.ankle_fk_lookup_table = LinearNDInterpolator(points, values)
 
         else:
             urdf_path = find_robot_file_path(self.name)
             urdf: URDF = URDF.load(urdf_path)  # type: ignore
-            self.joints_info = self.get_joint_info(urdf)
-
-            if self.config.com is None:
-                self.com = urdf.scene.center_mass
-            else:
-                self.com = self.config.com
-
-            if self.config.foot_size is None:
-                self.foot_size = self.compute_foot_size(urdf)
-            else:
-                self.foot_size = self.config.foot_size
-
-            if self.config.offsets is None:
-                self.offsets = self.compute_offsets(urdf)
-            else:
-                self.offsets = self.config.offsets
-
-            points, values = self.precompute_ankle_fk_lookup()
-            self.ankle_fk_lookup_table = LinearNDInterpolator(points, values)
+            self.data = self.get_data(urdf)
 
             with open(self.cache_file_path, "wb") as f:
-                robot_data = {
-                    "joints_info": self.joints_info,
-                    "com": self.com,
-                    "foot_size": self.foot_size,
-                    "offsets": self.offsets,
-                    "ankle_fk_lookup_table": (points, values),
-                }
-                pickle.dump(robot_data, f)
-
+                pickle.dump(self.data, f)
                 log("Computed and cached new data.", header="Robot")
 
-    def get_joint_info(self, urdf: URDF) -> Dict[str, Any]:
-        joint_info_dict: Dict[str, Any] = {}
-        actuated_joints: List[Joint] = urdf.actuated_joints  # type: ignore
-        for joint, angle in zip(actuated_joints, urdf.cfg):
-            joint_info_dict[joint.name] = {
-                "init_angle": angle,
-                "type": joint.type,
-                "lower_limit": joint.limit.lower,  # type: ignore
-                "upper_limit": joint.limit.upper,  # type: ignore
-                "active": joint.name in self.config.motor_params.keys(),
-            }
+    def get_data(self, urdf: URDF) -> Dict[str, Any]:
+        data_dict: Dict[str, Any] = {}
+        # if self.config.com is None:
+        #     self.com = urdf.scene.center_mass
+        # else:
+        #     self.com = self.config.com
 
-        sorted_joint_info_dict: Dict[str, Any] = {}
-        for joint_name in self.config.motor_params:
-            sorted_joint_info_dict[joint_name] = joint_info_dict[joint_name]
+        # if self.config.foot_size is None:
+        #     self.foot_size = self.compute_foot_size(urdf)
+        # else:
+        #     self.foot_size = self.config.foot_size
 
-        return sorted_joint_info_dict
+        # if self.config.offsets is None:
+        #     self.offsets = self.compute_offsets(urdf)
+        # else:
+        #     self.offsets = self.config.offsets
+
+        # points, values = self.precompute_ankle_fk_lookup()
+        # self.ankle_fk_lookup_table = LinearNDInterpolator(points, values)
+
+        return data_dict
 
     def compute_foot_size(self, urdf: URDF) -> np.ndarray:  # type: ignore
         foot_bounds = urdf.scene.geometry.get("left_ank_roll_link_visual.stl").bounds
@@ -124,7 +100,7 @@ class Robot:
         # 0.004 is the thickness of the foot pad
         return np.array([foot_size[0], foot_size[1], 0.004])
 
-    def compute_offsets(self, urdf):
+    def compute_offsets(self, urdf: URDF):
         graph = urdf.scene.graph
 
         offsets = {}
@@ -185,9 +161,11 @@ class Robot:
     ) -> List[Any]:
         attrs: List[Any] = []
         for joint_name, joint_config in self.config.items():
-            if joint_config[key_name] == key_value and [
-                joint_config["group"] == group or group == "all"
-            ]:
+            if (
+                key_name in joint_config
+                and joint_config[key_name] == key_value
+                and (joint_config["group"] == group or group == "all")
+            ):
                 if attr_name == "name":
                     attrs.append(joint_name)
                 else:
@@ -205,7 +183,7 @@ class Robot:
     ):
         i = 0
         for joint_name, joint_config in self.config.items():
-            if joint_config[key_name] == key_value and (
+            if key_name in joint_config in joint_config[key_name] == key_value and (
                 joint_config["group"] == group or group == "all"
             ):
                 if isinstance(attr_values, dict):

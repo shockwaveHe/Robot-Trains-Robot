@@ -128,14 +128,14 @@ def add_imu_sensor(root: ET.Element):
     )
 
 
-def update_joint_params(root: ET.Element, config: Dict[str, Any]):
+def update_joint_params(root: ET.Element, joints_config: Dict[str, Any]):
     # Iterate over all joints in the XML
     for joint in root.findall(".//joint"):
         joint_name = joint.get("name")
-        if joint_name in config:
-            for attr_name in config[joint_name]:
+        if joint_name in joints_config:
+            for attr_name in joints_config[joint_name]:
                 if attr_name in ["damping", "armature", "frictionloss"]:
-                    joint.set(attr_name, str(config[joint_name][attr_name]))
+                    joint.set(attr_name, str(joints_config[joint_name][attr_name]))
 
 
 def update_geom_classes(root: ET.Element, geom_keys: List[str]):
@@ -258,7 +258,7 @@ def add_equality_constraints_for_leaves(
         )
 
 
-def add_actuators_to_mjcf(root: ET.Element, config: Dict[str, Any]):
+def add_actuators_to_mjcf(root: ET.Element, joints_config: Dict[str, Any]):
     # Create <actuator> element if it doesn't exist
     actuator = root.find("./actuator")
     if actuator is not None:
@@ -268,7 +268,7 @@ def add_actuators_to_mjcf(root: ET.Element, config: Dict[str, Any]):
 
     for joint in root.findall(".//joint"):
         joint_name = joint.get("name")
-        if joint_name in config:
+        if joint_name in joints_config:
             motor_name = f"{joint_name}_act"
             ctrlrange = joint.get("range", "-3.141592 3.141592")
             ET.SubElement(
@@ -276,8 +276,8 @@ def add_actuators_to_mjcf(root: ET.Element, config: Dict[str, Any]):
                 "position",
                 name=motor_name,
                 joint=joint_name,
-                kp=str(config[joint_name]["kp_sim"]),
-                kv=str(config[joint_name]["kd_sim"]),
+                kp=str(joints_config[joint_name]["kp_sim"]),
+                kv=str(joints_config[joint_name]["kd_sim"]),
                 ctrlrange=ctrlrange,
             )
 
@@ -345,7 +345,7 @@ def add_body_link(root: ET.Element, urdf_path: str):
         body_link.append(element)
 
 
-def update_actuator_types(root: ET.Element, config: Dict[str, Any]):
+def update_actuator_types(root: ET.Element, joints_config: Dict[str, Any]):
     # Create <actuator> element if it doesn't exist
     actuator = root.find("./actuator")
     if actuator is not None:
@@ -355,11 +355,11 @@ def update_actuator_types(root: ET.Element, config: Dict[str, Any]):
 
     for joint in root.findall(".//joint"):
         joint_name = joint.get("name")
-        if joint_name in config:
+        if joint_name in joints_config:
             motor_name = f"{joint_name}_act"
             ET.SubElement(
                 actuator,
-                config[joint_name]["control_mode"],
+                joints_config[joint_name]["control_mode"],
                 name=motor_name,
                 joint=joint_name,
             )
@@ -472,10 +472,10 @@ def process_mjcf_fixed_file(root: ET.Element, config: Dict[str, Any]):
     if config["general"]["has_imu"]:
         add_imu_sensor(root)
 
-    update_joint_params(root, config)
+    update_joint_params(root, config["joints"])
     update_geom_classes(root, ["type", "contype", "conaffinity", "group", "density"])
     exclude_all_contacts(root)
-    add_actuators_to_mjcf(root, config)
+    add_actuators_to_mjcf(root, config["joints"])
 
     if len(config["general"]["constraint_pairs"]) > 0:
         add_equality_constraints_for_leaves(root, config["general"]["constraint_pairs"])

@@ -5,15 +5,6 @@ import numpy as np
 import numpy.typing as npt
 
 from toddlerbot.actuation import JointState
-from toddlerbot.actuation.dynamixel.dynamixel_control import (
-    DynamixelConfig,
-    DynamixelController,
-)
-from toddlerbot.actuation.sunny_sky.sunny_sky_control import (
-    SunnySkyConfig,
-    SunnySkyController,
-)
-from toddlerbot.sensing.IMU import IMU
 from toddlerbot.sim import BaseSim
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_ports
@@ -33,50 +24,72 @@ class RealWorld(BaseSim):
         self._initialize()
 
     def _initialize(self):
-        dynamixel_ports: List[str] = find_ports("USB <-> Serial Converter")
-        sunny_sky_ports: List[str] = find_ports("Feather")
-
-        n_ports = len(dynamixel_ports) + len(sunny_sky_ports) + 1  # 1 is for IMU
-        self.executor = ThreadPoolExecutor(max_workers=n_ports)
-
-        future_imu = self.executor.submit(IMU)
-
-        dynamixel_ids = self.robot.get_attrs("type", "dynamixel", "id")
-        dynamixel_config = DynamixelConfig(
-            port=dynamixel_ports[0],
-            control_mode=self.robot.get_attrs("type", "dynamixel", "control_mode"),
-            kP=self.robot.get_attrs("type", "dynamixel", "kp_real"),
-            kI=self.robot.get_attrs("type", "dynamixel", "ki_real"),
-            kD=self.robot.get_attrs("type", "dynamixel", "kd_real"),
-            kFF2=self.robot.get_attrs("type", "dynamixel", "kff2_real"),
-            kFF1=self.robot.get_attrs("type", "dynamixel", "kff1_real"),
-            gear_ratio=self.robot.get_attrs("type", "dynamixel", "gear_ratio"),
-            init_pos=self.robot.get_attrs("type", "dynamixel", "init_pos"),
-        )
-        future_dynamixel = self.executor.submit(
-            DynamixelController, dynamixel_config, dynamixel_ids
-        )
-
-        sunny_sky_ids = self.robot.get_attrs("type", "sunny_sky", "id")
-        sunny_sky_config = SunnySkyConfig(
-            port=sunny_sky_ports[0],
-            kP=self.robot.get_attrs("type", "sunny_sky", "kp_real"),
-            kD=self.robot.get_attrs("type", "sunny_sky", "kd_real"),
-            i_ff=self.robot.get_attrs("type", "sunny_sky", "i_ff_real"),
-            gear_ratio=self.robot.get_attrs("type", "sunny_sky", "gear_ratio"),
-            joint_limit=self.robot.get_attrs("type", "sunny_sky", "joint_limit"),
-            init_pos=self.robot.get_attrs("type", "sunny_sky", "init_pos"),
-        )
-        future_sunny_sky = self.executor.submit(
-            SunnySkyController, sunny_sky_config, sunny_sky_ids
-        )
-
         self.last_state: Dict[str, JointState] = {}
 
+        self.executor = ThreadPoolExecutor()
+
+        future_imu = None
+        if self.robot.config["general"]["has_imu"]:
+            from toddlerbot.sensing.IMU import IMU
+
+            future_imu = self.executor.submit(IMU)
+
+        future_dynamixel = None
+        if self.robot.config["general"]["has_dynamixel"]:
+            from toddlerbot.actuation.dynamixel.dynamixel_control import (
+                DynamixelConfig,
+                DynamixelController,
+            )
+
+            dynamixel_ports: List[str] = find_ports("USB <-> Serial Converter")
+
+            dynamixel_ids = self.robot.get_attrs("type", "dynamixel", "id")
+            dynamixel_config = DynamixelConfig(
+                port=dynamixel_ports[0],
+                baudrate=self.robot.config["general"]["dynamixel_baudrate"],
+                control_mode=self.robot.get_attrs("type", "dynamixel", "control_mode"),
+                kP=self.robot.get_attrs("type", "dynamixel", "kp_real"),
+                kI=self.robot.get_attrs("type", "dynamixel", "ki_real"),
+                kD=self.robot.get_attrs("type", "dynamixel", "kd_real"),
+                kFF2=self.robot.get_attrs("type", "dynamixel", "kff2_real"),
+                kFF1=self.robot.get_attrs("type", "dynamixel", "kff1_real"),
+                gear_ratio=self.robot.get_attrs("type", "dynamixel", "gear_ratio"),
+                init_pos=self.robot.get_attrs("type", "dynamixel", "init_pos"),
+            )
+            future_dynamixel = self.executor.submit(
+                DynamixelController, dynamixel_config, dynamixel_ids
+            )
+
+        future_sunny_sky = None
+        if self.robot.config["general"]["has_sunny_sky"]:
+            from toddlerbot.actuation.sunny_sky.sunny_sky_control import (
+                SunnySkyConfig,
+                SunnySkyController,
+            )
+
+            sunny_sky_ports: List[str] = find_ports("Feather")
+
+            sunny_sky_ids = self.robot.get_attrs("type", "sunny_sky", "id")
+            sunny_sky_config = SunnySkyConfig(
+                port=sunny_sky_ports[0],
+                kP=self.robot.get_attrs("type", "sunny_sky", "kp_real"),
+                kD=self.robot.get_attrs("type", "sunny_sky", "kd_real"),
+                i_ff=self.robot.get_attrs("type", "sunny_sky", "i_ff_real"),
+                gear_ratio=self.robot.get_attrs("type", "sunny_sky", "gear_ratio"),
+                joint_limit=self.robot.get_attrs("type", "sunny_sky", "joint_limit"),
+                init_pos=self.robot.get_attrs("type", "sunny_sky", "init_pos"),
+            )
+            future_sunny_sky = self.executor.submit(
+                SunnySkyController, sunny_sky_config, sunny_sky_ids
+            )
+
         # Assign the results of futures to the attributes
-        self.sunny_sky_controller = future_sunny_sky.result()
-        self.dynamixel_controller = future_dynamixel.result()
-        self.imu = future_imu.result()
+        if future_sunny_sky is not None:
+            self.sunny_sky_controller = future_sunny_sky.result()
+        if future_dynamixel is not None:
+            self.dynamixel_controller = future_dynamixel.result()
+        if future_imu is not None:
+            self.imu = future_imu.result()
 
     def _negate_joint_angles(self, joint_angles: Dict[str, float]) -> Dict[str, float]:
         joint_angles_negated: Dict[str, float] = {}

@@ -262,12 +262,6 @@ def main():
         help="The name of the robot. Need to match the name in robot_descriptions.",
     )
     parser.add_argument(
-        "--sim",
-        type=str,
-        default="mujoco",
-        help="The simulator to use.",
-    )
-    parser.add_argument(
         "--joint-names",
         type=str,
         nargs="+",  # Indicates that one or more values are expected
@@ -283,7 +277,7 @@ def main():
         "--n-loads",
         type=int,
         default=0,
-        help="The number of loads in the box.",
+        help="The number of loads in the load box.",
     )
     parser.add_argument(
         "--exp-folder-path",
@@ -293,27 +287,26 @@ def main():
     )
     args = parser.parse_args()
 
-    if "all" in args.joint_names:
-        args.joint_names = [
-            "left_hip_yaw",
-            "left_hip_roll",
-            "left_hip_pitch",
-            "left_knee",
-            "left_ank_roll",
-            "left_ank_pitch",
-        ]
-
     if len(args.exp_folder_path) > 0:
         exp_folder_path = args.exp_folder_path
     else:
-        exp_name = f"sysID_{args.robot_name}"
+        exp_phrases: List[str] = []
+        if "sysID" in args.robot_name:
+            exp_phrases.append(args.robot_name)
+        else:
+            exp_phrases.append(f"sysID_{args.robot_name}")
+
+        exp_phrases.append("J=" + "_".join(args.joint_names))
+        exp_phrases.append("N=" + str(args.n_trials))
+        exp_phrases.append("L=" + str(args.n_loads))
+
+        exp_name = "_".join(exp_phrases)
         time_str = time.strftime("%Y%m%d_%H%M%S")
         exp_folder_path = f"results/{time_str}_{exp_name}"
 
     os.makedirs(exp_folder_path, exist_ok=True)
 
     args_dict = vars(args)
-
     # Save to JSON file
     with open(os.path.join(exp_folder_path, "args.json"), "w") as json_file:
         json.dump(args_dict, json_file, indent=4)

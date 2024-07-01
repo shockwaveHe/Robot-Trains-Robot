@@ -14,10 +14,21 @@ def get_default_config(root: ET.Element, kp: float = 2400.0, kd: float = 2400.0)
         "use_torso_site": False,
         "has_imu": False,
         "constraint_pairs": [],
+        "has_dynamixel": True,
+        "has_sunny_sky": False,
+        "dynamixel_baudrate": 4000000,
     }
 
+    config_dict["joints"] = {}
     for id, joint in enumerate(root.findall("joint")):
         joint_name = joint.get("name")
+
+        joint_limit = joint.find("limit")
+        if joint_limit is None:
+            raise ValueError(f"Joint {joint_name} does not have a limit tag.")
+        else:
+            lower_limit = float(joint_limit.get("lower"))  # type: ignore
+            upper_limit = float(joint_limit.get("upper"))  # type: ignore
 
         if joint_name is None:
             continue
@@ -42,15 +53,12 @@ def get_default_config(root: ET.Element, kp: float = 2400.0, kd: float = 2400.0)
             "gear_ratio": 1.0,
             "init_pos": 0.0,
             "default_pos": 0.0,
+            "lower_limit": lower_limit,
+            "upper_limit": upper_limit,
         }
-        config_dict[joint_name] = joint_dict
+        config_dict["joints"][joint_name] = joint_dict
 
-    return config_dict
-
-
-def get_default_collision_config(root: ET.Element):
-    config_dict: Dict[str, Dict[str, Any]] = {}
-
+    config_dict["links"] = {}
     for link in root.findall("link"):
         link_name = link.get("name")
 
@@ -59,10 +67,10 @@ def get_default_collision_config(root: ET.Element):
 
         link_dict = {
             "has_collision": True,
-            "type": "box",  # box, mesh
-            "size": [1.0, 1.0, 1.0],
+            "collision_type": "box",  # box, mesh
+            "collision_scale": [1.0, 1.0, 1.0],
         }
-        config_dict[link_name] = link_dict
+        config_dict["links"][link_name] = link_dict
 
     return config_dict
 
@@ -86,11 +94,6 @@ def main():
     config_file_path = os.path.join(robot_dir, "config.json")
     with open(config_file_path, "w") as f:
         f.write(json.dumps(config_dict, indent=4))
-
-    collision_config_dict = get_default_collision_config(root)
-    collision_config_file_path = os.path.join(robot_dir, "collision_config.json")
-    with open(collision_config_file_path, "w") as f:
-        f.write(json.dumps(collision_config_dict, indent=4))
 
 
 if __name__ == "__main__":

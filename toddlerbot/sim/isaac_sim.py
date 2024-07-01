@@ -232,14 +232,13 @@ class IsaacSim(BaseSim):
 
         joint_state_dict = {}
         time_curr = time.time()
-        for name, info in self.robot.joints_info.items():
-            if info["active"]:
-                dof_idx = self.dof_names.index(name)
-                joint_state_dict[name] = JointState(
-                    time=time_curr,
-                    pos=self.dof_state[dof_idx, 0].item(),
-                    vel=self.dof_state[dof_idx, 0].item(),
-                )
+        for name in self.robot.config["joints"]:
+            dof_idx = self.dof_names.index(name)
+            joint_state_dict[name] = JointState(
+                time=time_curr,
+                pos=self.dof_state[dof_idx, 0].item(),
+                vel=self.dof_state[dof_idx, 0].item(),
+            )
 
         return joint_state_dict
 

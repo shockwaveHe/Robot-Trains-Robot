@@ -72,16 +72,16 @@ if [ "$run_process" == "y" ]; then
         read -r -p " > " overwrite_config
         if [ "$overwrite_config" == "y" ]; then
             printf "Overwriting the configuration file...\n\n"
-            python $REPO_NAME/robot_descriptions/write_config.py --robot-name $ROBOT_NAME
+            python $REPO_NAME/robot_descriptions/add_config.py --robot-name $ROBOT_NAME
         else
             printf "Configuration file not overwritten.\n\n"
         fi
     else
         printf "Generating the configuration file...\n\n"
-        python $REPO_NAME/robot_descriptions/write_config.py --robot-name $ROBOT_NAME
+        python $REPO_NAME/robot_descriptions/add_config.py --robot-name $ROBOT_NAME
     fi
 
-    printf "Have you updated the configs in the auto-generated config.json and collision_config.json? (y/n)"
+    printf "Have you double-checked and updated the configs in the auto-generated config.json? (y/n)"
     read -r -p " > " update_collision
     if [ "$update_collision" == "y" ]; then
         printf "Generating the collision files...\n\n"

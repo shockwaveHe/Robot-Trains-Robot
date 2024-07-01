@@ -31,7 +31,7 @@ import trimesh  # type: ignore
 # }
 
 
-def compute_bounding_box_mesh(robot_dir: str, mesh_filename: str, size: List[float]):
+def compute_bounding_box_mesh(robot_dir: str, mesh_filename: str, scale: List[float]):
     mesh: trimesh.Trimesh = trimesh.load(os.path.join(robot_dir, mesh_filename))  # type: ignore
 
     # Compute the centroid of the bounding box
@@ -43,7 +43,7 @@ def compute_bounding_box_mesh(robot_dir: str, mesh_filename: str, size: List[flo
     # Translate the mesh to the origin
     bounding_mesh.apply_translation(-centroid)  # type: ignore
     # Apply non-uniform scaling
-    bounding_mesh.apply_scale(size)  # type: ignore
+    bounding_mesh.apply_scale(scale)  # type: ignore
     # Translate the mesh back to its original centroid
     bounding_mesh.apply_translation(centroid)  # type: ignore
 
@@ -61,7 +61,7 @@ def compute_bounding_box_mesh(robot_dir: str, mesh_filename: str, size: List[flo
 
 def update_collisons(robot_name: str):
     robot_dir = os.path.join("toddlerbot", "robot_descriptions", robot_name)
-    config_file_path = os.path.join(robot_dir, "collision_config.json")
+    config_file_path = os.path.join(robot_dir, "config.json")
     urdf_path = os.path.join(robot_dir, f"{robot_name}.urdf")
 
     # Ensure the collision directory exists
@@ -72,18 +72,20 @@ def update_collisons(robot_name: str):
     os.makedirs(collision_dir, exist_ok=True)
 
     with open(config_file_path, "r") as f:
-        collision_config_dict = json.load(f)
+        config_dict = json.load(f)
+
+    link_config_dict = config_dict["links"]
 
     tree = ET.parse(urdf_path)
     root = tree.getroot()
 
     for link in root.findall("link"):
         link_name = link.get("name")
-        if link_name is None or link_name not in collision_config_dict:
+        if link_name is None or link_name not in link_config_dict:
             continue
 
-        if collision_config_dict[link_name]["has_collision"]:
-            if collision_config_dict[link_name]["type"] == "box":
+        if link_config_dict[link_name]["has_collision"]:
+            if link_config_dict[link_name]["collision_type"] == "box":
                 # Find the visual element and its mesh filename
                 visual = link.find("visual")
                 geometry = visual.find("geometry") if visual is not None else None
@@ -95,7 +97,7 @@ def update_collisons(robot_name: str):
                     collision_bbox_file = compute_bounding_box_mesh(
                         os.path.dirname(urdf_path),
                         mesh_filename,
-                        collision_config_dict[link_name]["size"],
+                        link_config_dict[link_name]["collision_scale"],
                     )
                     collision = link.find("collision")
                     if collision is None:

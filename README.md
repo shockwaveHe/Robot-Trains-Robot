@@ -308,8 +308,21 @@ Press `E` and then `Esc` to check if the menu shows up.
 
 ## Actuation
 
+### Dynamixel
+
 According to the doc [here](https://emanual.robotis.com/docs/en/software/dynamixel/dynamixel_sdk/faq/#how-to-change-an-usb-latency-in-dynamixel-sdk),
 Set `LATENCY_TIMER = 1` in `/path_to_env/toddlerbot/lib/python3.8/site-packages/dynamixel_sdk/port_handler.py`.
+
+MacOS users:
+
+According to the discussion [here](https://openbci.com/forum/index.php?p=/discussion/3108/driver-latency-timer-fix-for-macos-11-m1-m2) and [this blog post](https://www.mattkeeter.com/blog/2022-05-31-xmodem/#ftdi), we run a small C program each time to set the latency timer to 1.
+
+```
+brew install libftdi
+cd toddlerbot/actuation/dynamixel/latency_timer_setter_macOS
+cc -arch arm64 -I/opt/homebrew/include/libftdi1 -L/opt/homebrew/lib -lftdi1 main.c -o set_latency_timer
+./set_latency_timer
+```
 
 ### MightyZap linear actuators
 

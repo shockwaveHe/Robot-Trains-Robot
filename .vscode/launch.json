@@ -190,6 +190,24 @@
             ],
         },
         {
+            "name": "Python: sysID_XC430",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/tools/sysID/collect_data.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot-name",
+                "sysID_XC430",
+                "--joint-names",
+                "joint_0",
+                "--n-trials",
+                "1",
+                "--n-loads",
+                "4"
+            ],
+        },
+        {
             "name": "Python: sysID_toddlerbot_legs_mujoco",
             "type": "python",
             "request": "launch",
