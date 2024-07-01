@@ -290,13 +290,12 @@ class MuJoCoSim(BaseSim):
     def get_joint_state(self):
         joint_state_dict = {}
         time_curr = time.time()
-        for name, info in self.robot.joints_info.items():
-            if info["active"]:
-                joint_state_dict[name] = JointState(
-                    time=time_curr,
-                    pos=self.data.joint(name).qpos.item(),
-                    vel=self.data.joint(name).qvel.item(),
-                )
+        for name in self.robot.config["joints"]:
+            joint_state_dict[name] = JointState(
+                time=time_curr,
+                pos=self.data.joint(name).qpos.item(),
+                vel=self.data.joint(name).qvel.item(),
+            )
 
         return joint_state_dict
 
@@ -336,10 +335,9 @@ class MuJoCoSim(BaseSim):
 
         # Identify active joint indices
         active_indices = []
-        for name, info in self.robot.joints_info.items():
-            if info["active"]:
-                joint_id = self.model.joint(name).id
-                active_indices.append(joint_id)
+        for name in self.robot.config["joints"]:
+            joint_id = self.model.joint(name).id
+            active_indices.append(joint_id)
 
         # Filter the mass matrix and bias forces for active joints
         self.mass_matrix = full_mass_matrix[np.ix_(active_indices, active_indices)]
@@ -401,11 +399,10 @@ class MuJoCoSim(BaseSim):
         # mjSTATE_TIME ｜ mjSTATE_QPOS | mjSTATE_QVEL | mjSTATE_ACT
         for state in state_traj:
             joint_state = {}
-            for name, info in self.robot.joints_info.items():
-                if info["active"]:
-                    joint_state[name] = JointState(
-                        time=state[0], pos=state[1 + self.model.joint(name).id]
-                    )
+            for name in self.robot.config["joints"]:
+                joint_state[name] = JointState(
+                    time=state[0], pos=state[1 + self.model.joint(name).id]
+                )
             joint_state_traj.append(joint_state)
 
         return joint_state_traj

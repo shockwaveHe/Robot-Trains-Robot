@@ -36,6 +36,8 @@ class Robot:
         self.load_robot_config()
         self.load_robot_data()
 
+        self.init_joint_angles = self.initialize_joint_angles()
+
     def load_robot_config(self):
         if os.path.exists(self.config_file_path):
             with open(self.config_file_path, "r") as f:
@@ -147,12 +149,12 @@ class Robot:
 
     def initialize_joint_angles(self) -> Dict[str, float]:
         joint_angles: Dict[str, float] = {}
-        for joint_name, joint_config in self.config.items():
+        for joint_name, joint_config in self.config["joints"].items():
             joint_angles[joint_name] = joint_config["default_pos"]
 
         return joint_angles
 
-    def get_attrs(
+    def get_joint_attrs(
         self,
         key_name: str,
         key_value: Any,
@@ -160,7 +162,7 @@ class Robot:
         group: str = "all",
     ) -> List[Any]:
         attrs: List[Any] = []
-        for joint_name, joint_config in self.config.items():
+        for joint_name, joint_config in self.config["joints"].items():
             if (
                 key_name in joint_config
                 and joint_config[key_name] == key_value
@@ -173,7 +175,7 @@ class Robot:
 
         return attrs
 
-    def set_attrs(
+    def set_joint_attrs(
         self,
         key_name: str,
         key_value: Any,
@@ -182,7 +184,7 @@ class Robot:
         group: str = "all",
     ):
         i = 0
-        for joint_name, joint_config in self.config.items():
+        for joint_name, joint_config in self.config["joints"].items():
             if key_name in joint_config in joint_config[key_name] == key_value and (
                 joint_config["group"] == group or group == "all"
             ):
@@ -198,7 +200,7 @@ class Robot:
     ) -> Tuple[Dict[str, float], Dict[str, float]]:
         left_ankle_pos: Dict[str, float] = {}
         right_ankle_pos: Dict[str, float] = {}
-        for k in self.get_attrs("has_closed_loop", True):
+        for k in self.get_joint_attrs("has_closed_loop", True):
             if "left_ank" in k:
                 left_ankle_pos[k] = joint_angles[k]
             if "right_ank" in k:
@@ -231,7 +233,7 @@ class Robot:
         r = 0.01
 
         motor_pos_init: List[float] = []
-        for joint_name in self.get_attrs("has_closed_loop", True):
+        for joint_name in self.get_joint_attrs("has_closed_loop", True):
             if joint_name in ankle_pos:
                 motor_pos_init.append(self.config[joint_name]["init_pos"])
 
@@ -291,12 +293,12 @@ class Robot:
     def precompute_ankle_fk_lookup(self, step_deg=0.5):
         step_rad = np.deg2rad(step_deg)
         pitch_limits = [
-            self.joints_info["left_ank_pitch"]["lower_limit"],
-            self.joints_info["left_ank_pitch"]["upper_limit"],
+            self.config["joints"]["left_ank_pitch"]["lower_limit"],
+            self.config["joints"]["left_ank_pitch"]["upper_limit"],
         ]
         roll_limits = [
-            self.joints_info["left_ank_roll"]["lower_limit"],
-            self.joints_info["left_ank_roll"]["upper_limit"],
+            self.config["joints"]["left_ank_roll"]["lower_limit"],
+            self.config["joints"]["left_ank_roll"]["upper_limit"],
         ]
 
         pitch_range = np.arange(pitch_limits[0], pitch_limits[1] + step_rad, step_rad)
@@ -332,9 +334,6 @@ class Robot:
         target_right_foot_ori: List[float],
         joint_angles_curr: List[float],
     ) -> List[float]:
-        if self.id is None or self.joints_info is None:
-            raise ValueError("Robot has not been loaded yet.")
-
         joint_angles = copy.deepcopy(joint_angles_curr)
 
         self._solve_leg_ik(

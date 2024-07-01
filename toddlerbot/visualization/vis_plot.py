@@ -1,4 +1,5 @@
 import argparse
+from typing import Any, Dict, List
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -128,49 +129,23 @@ def plot_footsteps(
 
 
 def plot_joint_angle_tracking(
-    time_seq_dict,
-    time_seq_ref,
-    joint_angle_dict,
-    joint_angle_ref_dict,
-    save_path,
-    file_name="joint_angle_tracking",
-    file_suffix="",
-    title_list=None,
-    motor_params=None,
-    colors_dict=None,
+    time_seq_dict: Dict[str, List[float]],
+    time_seq_ref: Dict[str, List[float]],
+    joint_angle_dict: Dict[str, List[float]],
+    joint_angle_ref_dict: Dict[str, List[float]],
+    save_path: str,
+    file_name: str = "joint_angle_tracking",
+    file_suffix: str = "",
+    title_list: List[str] = [],
 ):
     # all_angles = np.concatenate(
     #     list(joint_angle_dict.values()) + list(joint_angle_ref_dict.values())
     # )
     # global_ymin, global_ymax = np.min(all_angles) - 0.1, np.max(all_angles) + 0.1
 
-    def get_brand(joint_name):
-        if joint_name in motor_params:
-            return motor_params[joint_name].brand
-        return "default"
-
-    time_seq_dict = {
-        joint_name: x
-        for joint_name, x in sorted(
-            time_seq_dict.items(), key=lambda item: (get_brand(item[0]), item[0])
-        )
-    }
-    joint_angle_dict = {
-        joint_name: x
-        for joint_name, x in sorted(
-            joint_angle_dict.items(), key=lambda item: (get_brand(item[0]), item[0])
-        )
-    }
-    joint_angle_ref_dict = {
-        joint_name: x
-        for joint_name, x in sorted(
-            joint_angle_ref_dict.items(), key=lambda item: (get_brand(item[0]), item[0])
-        )
-    }
-
-    x_list = []
-    y_list = []
-    legend_labels = []
+    x_list: List[List[float]] = []
+    y_list: List[List[float]] = []
+    legend_labels: List[str] = []
     for name in time_seq_dict.keys():
         x_list.append(time_seq_dict[name])
         if isinstance(time_seq_ref, list):
@@ -186,22 +161,21 @@ def plot_joint_angle_tracking(
     n_rows = int(np.ceil(n_plots / 3))
     n_cols = 3
 
-    fig, axs = plt.subplots(n_rows, n_cols, figsize=(n_cols * 5, n_rows * 3))
-    plt.subplots_adjust(hspace=0.4, wspace=0.4)
+    fig, axs = plt.subplots(n_rows, n_cols, figsize=(n_cols * 5, n_rows * 3))  # type: ignore
+    plt.subplots_adjust(hspace=0.4, wspace=0.4)  # type: ignore
 
-    for i, ax in enumerate(axs.flat):
+    for i, ax in enumerate(axs.flat):  # type: ignore
         if i >= n_plots:
-            ax.set_visible(False)
+            ax.set_visible(False)  # type: ignore
             continue
 
         # ax.set_ylim(global_ymin, global_ymax)
-        if motor_params is not None and colors_dict is not None:
-            ax.set_facecolor(colors_dict[motor_params[legend_labels[2 * i]].brand])
+        # ax.set_facecolor(colors_dict[motor_params[legend_labels[2 * i]].brand])
 
         plot_line_graph(
             y_list[2 * i : 2 * i + 2],
             x_list[2 * i : 2 * i + 2],
-            title=f"{legend_labels[2*i]}" if title_list is None else title_list[i],
+            title=f"{legend_labels[2*i]}" if len(title_list) == 0 else title_list[i],
             x_label="Time (s)",
             y_label="Position (rad)",
             save_config=True if i == n_plots - 1 else False,

@@ -37,6 +37,8 @@ class DynamixelConfig:
     default_vel: float = np.pi
     interp_method: str = "cubic"
     return_delay_time: int = 1
+    pos_max: float = 2 * np.pi
+    pos_min: float = -2 * np.pi
 
 
 class DynamixelController(BaseController):
@@ -51,6 +53,8 @@ class DynamixelController(BaseController):
             self.init_pos = np.array(config.init_pos)
 
         self.lock = Lock()
+
+        self.last_state_dict: Dict[int, JointState] = {}
 
         self.connect_to_client()
         self.initialize_motors()
@@ -88,7 +92,7 @@ class DynamixelController(BaseController):
 
     def initialize_motors(self):
         log("Initializing motors...", header="Dynamixel")
-        # Set the return delay time to 5*2=10us
+        # Set the return delay time to 1*2=2us
         self.client.sync_write(
             self.motor_ids, [self.config.return_delay_time] * len(self.motor_ids), 9, 1
         )
@@ -185,6 +189,15 @@ class DynamixelController(BaseController):
             state_dict[id] = JointState(
                 time=time.time(), pos=pos_arr_driven[i], vel=vel_arr_driven[i]
             )
+
+        if len(self.last_state_dict) > 0 and (
+            np.any(pos_arr_driven > self.config.pos_max)
+            or np.any(pos_arr_driven < self.config.pos_min)
+        ):
+            log("Position out of range!", header="Dynamixel", level="warning")
+            state_dict = self.last_state_dict
+
+        self.last_state_dict = state_dict
 
         # log(f"End... {time.time()}", header="Dynamixel", level="warning")
 
