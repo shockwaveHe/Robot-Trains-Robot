@@ -116,13 +116,13 @@ class IssacRenderer:
 
 class IsaacSim(BaseSim):
     def __init__(self, robot, urdf_path=None, fixed=False, custom_parameters=[]):
+        super().__init__()
+        self.name = "isaac"
+        self.robot = robot
+
         set_seed(3407)
         # initialize gym
         self.gym = gymapi.acquire_gym()
-
-        self.robot = robot
-        self.name = "isaac"
-
         # parse arguments
         args = gymutil.parse_arguments(
             description="Asset and Environment Information",

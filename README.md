@@ -94,6 +94,10 @@ GRANT ALL PRIVILEGES ON DATABASE optuna_db TO optuna_user;
 ```
 Exit the PostgreSQL prompt.
 
+Run:
+```
+optuna-dashboard postgresql://optuna_user:password@localhost/optuna_db
+```
 
 #### Install legged_gym
 Follow [these instructions](https://github.com/leggedrobotics/legged_gym).

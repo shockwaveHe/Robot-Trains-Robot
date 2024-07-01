@@ -37,7 +37,7 @@ def get_random_sine_signal_config(
     return sine_signal_config
 
 
-def get_sin_signal(sine_signal_config: Dict[str, float]):
+def get_sine_signal(sine_signal_config: Dict[str, float]):
     """
     Generates a sinusoidal signal based on the given parameters.
     """
@@ -212,13 +212,13 @@ def collect_data(
     joint_angle_ref_dict: Dict[str, List[float]] = {}
     joint_angle_dict: Dict[str, List[float]] = {}
 
-    real_world_data_dict: Dict[int, Dict[str, Any]] = {}
+    data_dict: Dict[int, Dict[str, Any]] = {}
     title_list: List[str] = []
     for trial in range(n_trials):
         signal_config = get_random_sine_signal_config(
             duration, control_dt, mean, frequency_range, [amplitude_min, amplitude_max]
         )
-        signal_time, signal_pos = get_sin_signal(signal_config)
+        signal_time, signal_pos = get_sine_signal(signal_config)
         # Actuate the joint and collect data
         log(
             f"Actuating {joint_name} in real with {signal_config}...",
@@ -229,7 +229,7 @@ def collect_data(
             real_world, robot, joint_name, signal_pos, control_dt
         )
 
-        real_world_data_dict[trial] = {
+        data_dict[trial] = {
             "signal_config": signal_config,
             "joint_data": joint_data_dict,
         }
@@ -259,7 +259,7 @@ def collect_data(
         title_list=title_list,
     )
 
-    return real_world_data_dict
+    return data_dict
 
 
 def main():

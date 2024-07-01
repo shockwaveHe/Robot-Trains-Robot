@@ -180,10 +180,9 @@ class MuJoCoSim(BaseSim):
     def __init__(self, robot, xml_str=None, assets=None, xml_path=None):
         """Initialize the MuJoCo simulation environment."""
         super().__init__()
-
+        self.name = "mujoco"
         self.robot = robot
 
-        self.name = "mujoco"
         if xml_str is not None and assets is not None:
             self.model = mujoco.MjModel.from_xml_string(xml_str, assets)
         elif xml_path is not None:
