@@ -222,9 +222,9 @@
                 "--joint-names",
                 "joint_0",
                 "--n-iters",
-                "1000",
+                "500",
                 "--exp-folder-path",
-                "results/20240701_163359_sysID_XC430_J=joint_0_N=3_L=4"
+                "results/20240702_173732_sysID_XC430_joint_0"
             ],
         },
         {

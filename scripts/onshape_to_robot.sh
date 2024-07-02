@@ -36,7 +36,7 @@ CONFIG_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/config.json
 # shellcheck disable=SC1091
 source "$HOME/.bashrc"
 
-printf "Do you want to export urdf from onshape? (y/n)"
+printf "Do you want to export urdf from onshape? (y/n) > "
 read -r -p " > " run_onshape
 
 if [ "$run_onshape" == "y" ]; then
@@ -47,7 +47,7 @@ else
 fi
 
 
-printf "Do you want to process the urdf? (y/n)"
+printf "Do you want to process the urdf? (y/n) > "
 read -r -p " > " run_process
 if [ "$run_process" == "y" ]; then
     printf "Processing...\n\n"
@@ -68,7 +68,7 @@ if [ "$run_process" == "y" ]; then
 
     # Check if the config file exists
     if [ -f "$CONFIG_PATH" ]; then
-        printf "Configuration file already exists. Do you want to overwrite it? (y/n)"
+        printf "Configuration file already exists. Do you want to overwrite it? (y/n) > "
         read -r -p " > " overwrite_config
         if [ "$overwrite_config" == "y" ]; then
             printf "Overwriting the configuration file...\n\n"
@@ -81,7 +81,7 @@ if [ "$run_process" == "y" ]; then
         python $REPO_NAME/robot_descriptions/add_config.py --robot-name $ROBOT_NAME
     fi
 
-    printf "Have you double-checked and updated the configs in the auto-generated config.json? (y/n)"
+    printf "Have you double-checked and updated the configs in the auto-generated config.json? (y/n) > "
     read -r -p " > " update_collision
     if [ "$update_collision" == "y" ]; then
         printf "Generating the collision files...\n\n"
@@ -96,7 +96,7 @@ fi
 
 # TODO: bring this back
 # # Ask user if they want to run the simulation
-# printf "Do you want to run the pybullet simulation? (y/n)"
+# printf "Do you want to run the pybullet simulation? (y/n) > "
 # read -r -p " > " run_pybullet
 
 # if [ "$run_pybullet" == "y" ]; then
@@ -107,7 +107,7 @@ fi
 # fi
 
 
-printf "Do you want to convert to MJCF (y/n)"
+printf "Do you want to convert to MJCF (y/n) > "
 
 read -r -p " > " run_convert
 if [ "$run_convert" == "y" ]; then
@@ -120,7 +120,7 @@ else
     printf "Process skipped.\n\n"
 fi
 
-printf "Do you want to run the mujoco simulation? (y/n)"
+printf "Do you want to run the mujoco simulation? (y/n) > "
 read -r -p " > " run_mujoco
 
 if [ "$run_mujoco" == "y" ]; then
@@ -130,7 +130,7 @@ else
     printf "Simulation skipped.\n\n"
 fi
 
-printf "Do you want to create the isaac gym environment? (y/n)"
+printf "Do you want to create the isaac gym environment? (y/n) > "
 read -r -p " > " run_gym
 
 if [ "$run_gym" == "y" ]; then

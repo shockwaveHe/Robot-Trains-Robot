@@ -4,8 +4,31 @@ import xml.etree.ElementTree as ET
 from typing import List, Optional
 
 import serial.tools.list_ports as list_ports
+from PIL import Image
 
 from toddlerbot.utils.misc_utils import log
+
+
+def combine_images(image1_path: str, image2_path: str, output_path: str):
+    # Open the two images
+    image1 = Image.open(image1_path)
+    image2 = Image.open(image2_path)
+
+    # Get the dimensions of the images
+    width1, height1 = image1.size
+    width2, height2 = image2.size
+
+    # Create a new image with the combined width and the maximum height
+    combined_image = Image.new("RGB", (width1 + width2, max(height1, height2)))
+
+    # Paste the first image at the left
+    combined_image.paste(image1, (0, 0))
+
+    # Paste the second image at the right
+    combined_image.paste(image2, (width1, 0))
+
+    # Save the combined image
+    combined_image.save(output_path)
 
 
 def find_ports(target: str) -> List[str]:

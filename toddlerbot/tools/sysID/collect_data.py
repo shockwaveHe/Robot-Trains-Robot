@@ -13,8 +13,6 @@ from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.misc_utils import log, precise_sleep, set_seed
 from toddlerbot.visualization.vis_plot import plot_joint_angle_tracking
 
-set_seed(0)
-
 
 def get_random_sine_signal_config(
     duration: float,
@@ -190,12 +188,15 @@ def collect_data(
     robot: Robot,
     joint_name: str,
     exp_folder_path: str,
+    exp_suffix: str,
     n_trials: int,
     duration: float = 3,
     control_dt: float = 0.01,
     frequency_range: List[float] = [0.5, 2],
     amplitude_min: float = np.pi / 12,
 ):
+    set_seed(0)
+
     real_world = RealWorld(robot)
     lower_limit = robot.config["joints"][joint_name]["lower_limit"]
     upper_limit = robot.config["joints"][joint_name]["upper_limit"]
@@ -255,7 +256,7 @@ def collect_data(
         joint_angle_dict,
         joint_angle_ref_dict,
         save_path=exp_folder_path,
-        file_name=f"{joint_name}_real_world_tracking",
+        file_name=f"{joint_name}_real_world_tracking_{exp_suffix}",
         title_list=title_list,
     )
 
@@ -305,25 +306,30 @@ def main():
         else:
             exp_phrases.append(f"sysID_{args.robot_name}")
 
-        exp_phrases.append("J=" + "_".join(args.joint_names))
-        exp_phrases.append("N=" + str(args.n_trials))
-        exp_phrases.append("L=" + str(args.n_loads))
-
+        exp_phrases.extend(args.joint_names)
         exp_name = "_".join(exp_phrases)
         time_str = time.strftime("%Y%m%d_%H%M%S")
         exp_folder_path = f"results/{time_str}_{exp_name}"
 
     os.makedirs(exp_folder_path, exist_ok=True)
 
+    exp_suffix = f"N={args.n_trials}"
+    if args.n_loads > 0:
+        exp_suffix += f"_L={args.n_loads}"
+
     args_dict = vars(args)
     # Save to JSON file
-    with open(os.path.join(exp_folder_path, "args.json"), "w") as json_file:
+    with open(
+        os.path.join(exp_folder_path, f"args_{exp_suffix}.json"), "w"
+    ) as json_file:
         json.dump(args_dict, json_file, indent=4)
 
     robot = Robot(args.robot_name)
 
     ###### Collect data in the real world ######
-    real_world_data_file_path = os.path.join(exp_folder_path, "real_world_data.pkl")
+    real_world_data_file_path = os.path.join(
+        exp_folder_path, f"real_world_data_{exp_suffix}.pkl"
+    )
     real_world_data_dict = {}
 
     is_collected = False
@@ -343,7 +349,11 @@ def main():
                 continue
 
             real_world_data_dict[joint_name] = collect_data(
-                robot, joint_name, exp_folder_path, n_trials=args.n_trials
+                robot,
+                joint_name,
+                exp_folder_path,
+                exp_suffix,
+                n_trials=args.n_trials,
             )
             # Save the data in intermediate steps
             with open(real_world_data_file_path, "wb") as f:

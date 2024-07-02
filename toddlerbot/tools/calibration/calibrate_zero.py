@@ -60,7 +60,7 @@ def calibrate_sunny_sky(port: str):
 
 def main(robot: Robot):
     while True:
-        response = input("Have you installed the calibration parts? (Y/N): ")
+        response = input("Have you installed the calibration parts? (y/n) > ")
         response = response.strip().lower()
         if response == "y" or response[0] == "y":
             break

@@ -1,5 +1,6 @@
 import argparse
 import copy
+import glob
 import json
 import os
 import pickle
@@ -11,13 +12,13 @@ from typing import Any, Dict, List, Tuple
 import numpy as np
 import numpy.typing as npt
 import optuna
+from sklearn.model_selection import train_test_split  # type: ignore
 
 from toddlerbot.sim import BaseSim
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.sysID.collect_data import get_sine_signal
 from toddlerbot.utils.constants import SIM_TIMESTEP
-from toddlerbot.utils.file_utils import find_robot_file_path
-from toddlerbot.utils.math_utils import round_floats
+from toddlerbot.utils.file_utils import combine_images, find_robot_file_path
 from toddlerbot.utils.misc_utils import log
 from toddlerbot.visualization.vis_plot import plot_joint_angle_tracking
 
@@ -30,6 +31,105 @@ custom_parameters = [
     {"name": "--n-iters", "type": int, "default": 1000},
     {"name": "--exp-folder-path", "type": str, "default": ""},
 ]
+
+
+def extract_data(
+    real_world_data_dict: Dict[str, Dict[int, Dict[str, Any]]], joint_name: str
+):
+    signal_config_list: List[Dict[str, float]] = []
+    observed_time_list: List[List[float]] = []
+    observed_pos_list: List[List[float]] = []
+    for data in real_world_data_dict[joint_name].values():
+        signal_config_list.append(data["signal_config"])
+        observed_time_list.append(data["joint_data"]["time"])
+        observed_pos_list.append(data["joint_data"]["pos"])
+
+    return signal_config_list, observed_time_list, observed_pos_list
+
+
+def load_datasets(
+    exp_folder_path: str,
+    joint_names: str,
+    test_split_ratio: float = 0.2,
+    load_weight: float = 0.07,
+):
+    # Use glob to find all pickle files matching the pattern
+    pickle_files = sorted(
+        glob.glob(os.path.join(exp_folder_path, "real_world_data*.pkl"))
+    )
+    if not pickle_files:
+        raise ValueError("No real world data files found")
+
+    signal_config_train: Dict[str, List[List[Dict[str, float]]]] = {}
+    signal_config_test: Dict[str, List[List[Dict[str, float]]]] = {}
+    observed_time_train: Dict[str, List[List[List[float]]]] = {}
+    observed_time_test: Dict[str, List[List[List[float]]]] = {}
+    observed_pos_train: Dict[str, List[List[List[float]]]] = {}
+    observed_pos_test: Dict[str, List[List[List[float]]]] = {}
+    load_weight_list: List[float] = []
+
+    for pickle_file in pickle_files:
+        with open(pickle_file, "rb") as f:
+            real_world_data_dict = pickle.load(f)
+
+        n_load_str = pickle_file.split(".")[0].split("L=")[-1].split("_")[0]
+        if n_load_str.isdigit():
+            load_weight_list.append(int(n_load_str) * load_weight)
+        else:
+            load_weight_list.append(0.0)
+
+        for joint_name in joint_names:
+            signal_config_list, observed_time_list, observed_pos_list = extract_data(
+                real_world_data_dict, joint_name
+            )
+
+            # Split the data into train and test sets
+            output: List[Any] = train_test_split(
+                signal_config_list,
+                observed_time_list,
+                observed_pos_list,
+                test_size=test_split_ratio,
+                random_state=0,
+            )
+            (
+                signal_config_train_split,
+                signal_config_test_split,
+                observed_time_train_split,
+                observed_time_test_split,
+                observed_pos_train_split,
+                observed_pos_test_split,
+            ) = output
+
+            if joint_name in signal_config_train:
+                signal_config_train[joint_name].append(signal_config_train_split)
+                signal_config_test[joint_name].append(signal_config_test_split)
+                observed_time_train[joint_name].append(observed_time_train_split)
+                observed_time_test[joint_name].append(observed_time_test_split)
+                observed_pos_train[joint_name].append(observed_pos_train_split)
+                observed_pos_test[joint_name].append(observed_pos_test_split)
+            else:
+                signal_config_train[joint_name] = [signal_config_train_split]
+                signal_config_test[joint_name] = [signal_config_test_split]
+                observed_time_train[joint_name] = [observed_time_train_split]
+                observed_time_test[joint_name] = [observed_time_test_split]
+                observed_pos_train[joint_name] = [observed_pos_train_split]
+                observed_pos_test[joint_name] = [observed_pos_test_split]
+
+    observed_pos_train_arr: Dict[str, npt.NDArray[np.float32]] = {}
+    observed_pos_test_arr: Dict[str, npt.NDArray[np.float32]] = {}
+    for joint_name in joint_names:
+        observed_pos_train_arr[joint_name] = np.array(observed_pos_train[joint_name])
+        observed_pos_test_arr[joint_name] = np.array(observed_pos_test[joint_name])
+
+    return (
+        signal_config_train,
+        signal_config_test,
+        observed_time_train,
+        observed_time_test,
+        observed_pos_train_arr,
+        observed_pos_test_arr,
+        load_weight_list,
+    )
 
 
 def actuate_single_motor(
@@ -105,8 +205,31 @@ def update_xml(
                                 f"Actuator '{name}' not found in the XML tree."
                             )
 
+                    if "load_weight" in params:
+                        parent_body = None
+                        for body in root.findall(".//body"):
+                            if joint in body:
+                                parent_body = body
+                                break
+
+                        if parent_body is not None:
+                            # Find the inertial element and update the mass
+                            inertial = parent_body.find("inertial")
+                            if inertial is not None:
+                                current_mass = float(inertial.get("mass", "0"))
+                                new_mass = current_mass + params["load_weight"]
+                                inertial.set("mass", str(new_mass))
+                            else:
+                                raise ValueError(
+                                    f"Inertial element for joint '{name}' not found."
+                                )
+                        else:
+                            raise ValueError(
+                                f"Parent body for joint '{name}' not found."
+                            )
+
                     for param_name, param_value in params.items():
-                        if param_name != "gain":
+                        if param_name in ["damping", "armature", "frictionloss"]:
                             joint.set(param_name, str(param_value))
 
                 elif sim_name == "isaac":
@@ -130,30 +253,15 @@ def update_xml(
     return xml_string
 
 
-def extract_data(
-    real_world_data_dict: Dict[str, Dict[int, Dict[str, Any]]], joint_name: str
-):
-    signal_config_list: List[Dict[str, float]] = []
-    observed_response_list: List[List[float]] = []
-    for data in real_world_data_dict[joint_name].values():
-        signal_config_list.append(data["signal_config"])
-        observed_response_list.append(data["joint_data"]["pos"])
-
-    observed_response_arr: npt.NDArray[np.float32] = np.concatenate(
-        observed_response_list
-    )
-
-    return signal_config_list, observed_response_arr
-
-
 def optimize_parameters(
     robot: Robot,
     sim_name: str,
     joint_name: str,
     tree: ET.ElementTree,
     assets_dict: Dict[str, bytes],
-    signal_config_list: List[Dict[str, float]],
-    observed_response_arr: npt.NDArray[np.float32],
+    signal_config_list: List[List[Dict[str, float]]],
+    observed_pos_arr: npt.NDArray[np.float32],
+    load_weight_list: List[float],
     n_iters: int = 1000,
     sampler_name: str = "CMA",
     # gain_range: Tuple[float, float, float] = (0, 50, 0.1),
@@ -162,76 +270,85 @@ def optimize_parameters(
     friction_range: Tuple[float, float, float] = (0, 1.0, 1e-3),
 ):
     def objective(trial: optuna.Trial):
-        if sim_name == "mujoco":
-            from toddlerbot.sim.mujoco_sim import MuJoCoSim
+        model_response_all: List[List[List[float]]] = []
+        for i, load_weight in enumerate(load_weight_list):
+            if sim_name == "mujoco":
+                from toddlerbot.sim.mujoco_sim import MuJoCoSim
 
-            # gain = trial.suggest_float("gain", *gain_range[:2], step=gain_range[2])
-            damping = trial.suggest_float(
-                "damping", *damping_range[:2], step=damping_range[2]
-            )
-            armature = trial.suggest_float(
-                "armature", *armature_range[:2], step=armature_range[2]
-            )
-            frictionloss = trial.suggest_float(
-                "frictionloss", *friction_range[:2], step=friction_range[2]
-            )
-            params_dict = {
-                joint_name: {
-                    # "gain": gain,
-                    "damping": damping,
-                    "armature": armature,
-                    "frictionloss": frictionloss,
+                # gain = trial.suggest_float("gain", *gain_range[:2], step=gain_range[2])
+                damping = trial.suggest_float(
+                    "damping", *damping_range[:2], step=damping_range[2]
+                )
+                armature = trial.suggest_float(
+                    "armature", *armature_range[:2], step=armature_range[2]
+                )
+                frictionloss = trial.suggest_float(
+                    "frictionloss", *friction_range[:2], step=friction_range[2]
+                )
+                params_dict = {
+                    joint_name: {
+                        # "gain": gain,
+                        "damping": damping,
+                        "armature": armature,
+                        "frictionloss": frictionloss,
+                        "load_weight": load_weight,
+                    }
                 }
-            }
-            xml_str = update_xml(sim_name, copy.deepcopy(tree), params_dict)
-            sim = MuJoCoSim(robot, xml_str=xml_str, assets=assets_dict)
+                xml_str = update_xml(sim_name, copy.deepcopy(tree), params_dict)
+                sim = MuJoCoSim(robot, xml_str=xml_str, assets=assets_dict)
 
-        elif sim_name == "isaac":
-            from toddlerbot.sim.isaac_sim import IsaacSim
+            elif sim_name == "isaac":
+                from toddlerbot.sim.isaac_sim import IsaacSim
 
-            damping = trial.suggest_float(
-                "damping", *damping_range[:2], step=damping_range[2]
-            )
-            friction = trial.suggest_float(
-                "friction", *friction_range[:2], step=friction_range[2]
-            )
-            params_dict = {joint_name: {"damping": damping, "friction": friction}}
-            xml_str = update_xml(sim_name, copy.deepcopy(tree), params_dict)
-            time_str = time.strftime("%Y%m%d_%H%M%S")
-            urdf_path_temp = os.path.join(
-                "toddlerbot",
-                "robot_descriptions",
-                robot.name,
-                f"{robot.name}_{sim_name}_{joint_name}_sysID_{time_str}.urdf",
-            )
-            with open(urdf_path_temp, "w") as f:
-                f.write(xml_str)
+                damping = trial.suggest_float(
+                    "damping", *damping_range[:2], step=damping_range[2]
+                )
+                friction = trial.suggest_float(
+                    "friction", *friction_range[:2], step=friction_range[2]
+                )
+                params_dict = {
+                    joint_name: {
+                        "damping": damping,
+                        "friction": friction,
+                        "load_weight": load_weight,
+                    }
+                }
+                xml_str = update_xml(sim_name, copy.deepcopy(tree), params_dict)
+                time_str = time.strftime("%Y%m%d_%H%M%S")
+                urdf_path_temp = os.path.join(
+                    "toddlerbot",
+                    "robot_descriptions",
+                    robot.name,
+                    f"{robot.name}_{sim_name}_{joint_name}_sysID_{time_str}.urdf",
+                )
+                with open(urdf_path_temp, "w") as f:
+                    f.write(xml_str)
 
-            sim = IsaacSim(
-                robot,
-                urdf_path=urdf_path_temp,
-                fixed=True,
-                custom_parameters=custom_parameters,
-            )
+                sim = IsaacSim(
+                    robot,
+                    urdf_path=urdf_path_temp,
+                    fixed=True,
+                    custom_parameters=custom_parameters,
+                )
 
-            os.remove(urdf_path_temp)
+                os.remove(urdf_path_temp)
 
-        else:
-            raise ValueError("Invalid simulator")
+            else:
+                raise ValueError("Invalid simulator")
 
-        model_response: List[float] = []
-        for signal_config in signal_config_list:
-            _, signal_pos = get_sine_signal(signal_config)
-            joint_data_dict = actuate_single_motor(
-                sim, robot, joint_name, signal_pos, signal_config["control_dt"]
-            )
-            model_response.extend(joint_data_dict["pos"])
+            model_response_list: List[List[float]] = []
+            for signal_config in signal_config_list[i]:
+                _, signal_pos = get_sine_signal(signal_config)
+                joint_data_dict = actuate_single_motor(
+                    sim, robot, joint_name, signal_pos, signal_config["control_dt"]
+                )
+                model_response_list.append(joint_data_dict["pos"])
 
-        sim.close()
+            sim.close()
 
-        error = np.sqrt(
-            np.mean((observed_response_arr - np.array(model_response)) ** 2)
-        )
+            model_response_all.append(model_response_list)
+
+        error = np.sqrt(np.mean((observed_pos_arr - np.array(model_response_all)) ** 2))
 
         return error
 
@@ -265,46 +382,15 @@ def multiprocessing_optimization(
     robot: Robot,
     sim_name: str,
     exp_folder_path: str,
-    joint_names: List[str],
+    sysID_robot_tree: ET.ElementTree,
+    sysID_file_path: str,
+    assets_dict: Dict[str, bytes],
+    signal_config_data: Dict[str, List[List[Dict[str, float]]]],
+    observed_pos_data: Dict[str, npt.NDArray[np.float32]],
+    load_weight_list: List[float],
     n_iters: int,
 ):
-    real_world_data_file_path = os.path.join(exp_folder_path, "real_world_data.pkl")
-    if not os.path.exists(real_world_data_file_path):
-        raise ValueError("Real world data not found")
-
-    with open(real_world_data_file_path, "rb") as f:
-        real_world_data_dict = pickle.load(f)
-
-    if sim_name == "mujoco":
-        fixed_xml_path = find_robot_file_path(robot.name, suffix="_fixed.xml")
-        sysID_file_path = os.path.join(
-            os.path.dirname(fixed_xml_path), f"{robot.name}_{sim_name}_sysID.xml"
-        )
-        sysID_robot_tree = ET.parse(fixed_xml_path)
-        assets_dict = {}
-        # Find mesh file references
-        for mesh in sysID_robot_tree.getroot().findall(".//mesh"):
-            mesh_file = mesh.get("file")
-            if mesh_file and mesh_file not in assets_dict:
-                mesh_file_path = os.path.join(
-                    os.path.dirname(fixed_xml_path), mesh_file
-                )
-                with open(mesh_file_path, "rb") as f:
-                    assets_dict[mesh_file] = f.read()
-
-    elif sim_name == "isaac":
-        urdf_path = find_robot_file_path(robot.name, suffix="_isaac.urdf")
-        sysID_file_path = os.path.join(
-            os.path.dirname(urdf_path), f"{robot.name}_{sim_name}_sysID.urdf"
-        )
-        sysID_robot_tree = ET.parse(urdf_path)
-        assets_dict = {}
-
-    else:
-        raise ValueError("Invalid simulator")
-
     # return sysID_file_path
-
     optimize_args: List[
         Tuple[
             Robot,
@@ -312,8 +398,9 @@ def multiprocessing_optimization(
             str,
             ET.ElementTree,
             Dict[str, bytes],
-            List[Dict[str, float]],
+            List[List[Dict[str, float]]],
             npt.NDArray[np.float32],
+            List[float],
             int,
         ]
     ] = [
@@ -323,14 +410,16 @@ def multiprocessing_optimization(
             joint_name,
             sysID_robot_tree,
             assets_dict,
-            *extract_data(real_world_data_dict, joint_name),
+            signal_config_data[joint_name],
+            observed_pos_data[joint_name],
+            load_weight_list,
             n_iters,
         )
-        for joint_name in joint_names
+        for joint_name in signal_config_data
     ]
 
     # Create a pool of processes
-    with Pool(processes=len(joint_names)) as pool:
+    with Pool(processes=len(signal_config_data)) as pool:
         results = pool.starmap(optimize_parameters, optimize_args)
 
     time_str = time.strftime("%Y%m%d_%H%M%S")
@@ -340,7 +429,7 @@ def multiprocessing_optimization(
     # Process results
     opt_params_dict: Dict[str, Dict[str, float]] = {}
     opt_values_dict: Dict[str, float] = {}
-    for joint_name, result in zip(joint_names, results):
+    for joint_name, result in zip(signal_config_data.keys(), results):
         opt_params, opt_values = result
         if len(opt_params) > 0:
             opt_params_dict[joint_name] = opt_params
@@ -352,13 +441,13 @@ def multiprocessing_optimization(
         with open(opt_values_file_path, "w") as f:
             json.dump(opt_values_dict, f, indent=4)
 
-    update_xml(sim_name, sysID_robot_tree, opt_params_dict)
-    sysID_robot_tree.write(sysID_file_path)
-
     for joint_name, opt_params in opt_params_dict.items():
         robot.config["joints"][joint_name].update(opt_params)
 
     robot.write_robot_config()
+
+    update_xml(sim_name, sysID_robot_tree, opt_params_dict)
+    sysID_robot_tree.write(sysID_file_path)
 
     if sim_name == "mujoco":
         suffix = "_fixed" if robot.config["general"]["is_fixed"] else ""
@@ -367,106 +456,114 @@ def multiprocessing_optimization(
         update_xml(sim_name, robot_tree, opt_params_dict)
         robot_tree.write(xml_path)
 
-    return sysID_file_path
-
 
 def evaluate(
     robot: Robot,
     sim_name: str,
     exp_folder_path: str,
-    joint_name: str,
-    sysID_file_path: str,
+    tree: ET.ElementTree,
+    assets_dict: Dict[str, bytes],
+    signal_config_data: Dict[str, List[List[Dict[str, float]]]],
+    observed_time_data: Dict[str, List[List[List[float]]]],
+    observed_pos_data: Dict[str, npt.NDArray[np.float32]],
+    load_weight_list: List[float],
+    dataset_name: str,
 ):
-    real_world_data_file_path = os.path.join(exp_folder_path, "real_world_data.pkl")
-    if not os.path.exists(real_world_data_file_path):
-        raise ValueError("Real world data not found")
+    for joint_name in signal_config_data:
+        model_response_all: List[List[List[float]]] = []
 
-    with open(real_world_data_file_path, "rb") as f:
-        real_world_data_dict = pickle.load(f)
+        time_seq_ref_dict: Dict[str, List[float]] = {}
+        time_seq_dict: Dict[str, List[float]] = {}
+        time_seq_dict_gt: Dict[str, List[float]] = {}
+        joint_angle_ref_dict: Dict[str, List[float]] = {}
+        joint_angle_dict: Dict[str, List[float]] = {}
+        joint_angle_dict_gt: Dict[str, List[float]] = {}
+        title_list: List[str] = []
 
-    signal_config_list, observed_response_arr = extract_data(
-        real_world_data_dict, joint_name
-    )
+        for i, load_weight in enumerate(load_weight_list):
+            if sim_name == "mujoco":
+                from toddlerbot.sim.mujoco_sim import MuJoCoSim
 
-    if sim_name == "mujoco":
-        from toddlerbot.sim.mujoco_sim import MuJoCoSim
+                params_dict = {joint_name: {"load_weight": load_weight}}
+                xml_str = update_xml(sim_name, copy.deepcopy(tree), params_dict)
+                sim = MuJoCoSim(robot, xml_str=xml_str, assets=assets_dict)
 
-        sim = MuJoCoSim(robot, xml_path=sysID_file_path)
+            elif sim_name == "isaac":
+                from toddlerbot.sim.isaac_sim import IsaacSim
 
-    elif sim_name == "isaac":
-        from toddlerbot.sim.isaac_sim import IsaacSim
+                # TODO: update later
+                sim = IsaacSim(robot, fixed=True, custom_parameters=custom_parameters)
 
-        sim = IsaacSim(
-            robot,
-            urdf_path=sysID_file_path,
-            fixed=True,
-            custom_parameters=custom_parameters,
-        )
+            else:
+                raise ValueError("Invalid simulator")
 
-    else:
-        raise ValueError("Invalid simulator")
+            model_response_list: List[List[float]] = []
+            for trial, signal_config in enumerate(signal_config_data[joint_name][i]):
+                signal_time, signal_pos = get_sine_signal(signal_config)
 
-    time_seq_ref_dict: Dict[str, List[float]] = {}
-    time_seq_dict: Dict[str, List[float]] = {}
-    joint_angle_ref_dict: Dict[str, List[float]] = {}
-    joint_angle_dict: Dict[str, List[float]] = {}
+                joint_data_dict = actuate_single_motor(
+                    sim, robot, joint_name, signal_pos, signal_config["control_dt"]
+                )
+                model_response_list.append(joint_data_dict["pos"])
 
-    sim_data_dict: Dict[int, Dict[str, Any]] = {}
-    title_list: List[str] = []
-    model_response_list: List[float] = []
-    for trial, signal_config in enumerate(signal_config_list):
-        signal_config = signal_config_list[trial]
-        signal_time, signal_pos = get_sine_signal(signal_config)
+                title_list.append(
+                    json.dumps(
+                        {
+                            "load": round(load_weight, 2),
+                            "freq": round(signal_config["frequency"], 3),
+                            "amp": round(signal_config["amplitude"], 3),
+                        }
+                    )
+                )
+                time_seq_ref_dict[f"m={load_weight}_i={trial}"] = list(signal_time)
+                time_seq_dict[f"m={load_weight}_i={trial}"] = joint_data_dict["time"]
+                time_seq_dict_gt[f"m={load_weight}_i={trial}"] = observed_time_data[
+                    joint_name
+                ][i][trial]
+                joint_angle_ref_dict[f"m={load_weight}_i={trial}"] = list(signal_pos)
+                joint_angle_dict[f"m={load_weight}_i={trial}"] = joint_data_dict["pos"]
+                joint_angle_dict_gt[f"m={load_weight}_i={trial}"] = observed_pos_data[
+                    joint_name
+                ][i][trial]
 
-        # Actuate the joint and collect data
-        log(
-            f"Actuating {joint_name} in {sim.name} "
-            + f"with {round_floats(signal_config, 3)}...",
-            header="SysID",
-            level="debug",
-        )
-        joint_data_dict = actuate_single_motor(
-            sim, robot, joint_name, signal_pos, signal_config["control_dt"]
-        )
-        model_response_list.extend(joint_data_dict["pos"])
+            sim.close()
 
-        sim_data_dict[trial] = {
-            "signal_config": signal_config,
-            "joint_data": joint_data_dict,
-        }
+            model_response_all.append(model_response_list)
 
-        title_list.append(
-            json.dumps(
-                {
-                    "freq": round(signal_config["frequency"], 3),
-                    "amp": round(signal_config["amplitude"], 3),
-                }
+        observed_pos_arr = observed_pos_data[joint_name]
+        error = np.sqrt(np.mean((observed_pos_arr - np.array(model_response_all)) ** 2))
+        log(f"Root mean squared error: {error}", header="SysID", level="info")
+
+        if dataset_name == "test":
+            time_str = time.strftime("%Y%m%d_%H%M%S")
+            sim_file_name = f"{joint_name}_sim_{dataset_name}_{time_str}"
+            plot_joint_angle_tracking(
+                time_seq_dict,
+                time_seq_ref_dict,
+                joint_angle_dict,
+                joint_angle_ref_dict,
+                save_path=exp_folder_path,
+                file_name=sim_file_name,
+                title_list=title_list,
             )
-        )
-        time_seq_ref_dict[f"trial_{trial}"] = list(signal_time)
-        time_seq_dict[f"trial_{trial}"] = joint_data_dict["time"]
-        joint_angle_ref_dict[f"trial_{trial}"] = list(signal_pos)
-        joint_angle_dict[f"trial_{trial}"] = joint_data_dict["pos"]
 
-    sim.close()
+            real_file_name = f"{joint_name}_real_{dataset_name}_{time_str}"
+            plot_joint_angle_tracking(
+                time_seq_dict_gt,
+                time_seq_ref_dict,
+                joint_angle_dict_gt,
+                joint_angle_ref_dict,
+                save_path=exp_folder_path,
+                file_name=real_file_name,
+                title_list=title_list,
+            )
 
-    error = np.sqrt(
-        np.mean((observed_response_arr - np.array(model_response_list)) ** 2)
-    )
-    log(f"Root mean squared error: {error}", header="SysID", level="info")
-
-    time_str = time.strftime("%Y%m%d_%H%M%S")
-    plot_joint_angle_tracking(
-        time_seq_dict,
-        time_seq_ref_dict,
-        joint_angle_dict,
-        joint_angle_ref_dict,
-        save_path=exp_folder_path,
-        file_name=f"{joint_name}_sim_tracking_{time_str}",
-        title_list=title_list,
-    )
-
-    return sim_data_dict
+            combined_file_name = f"{joint_name}_combined_{dataset_name}_{time_str}"
+            combine_images(
+                os.path.join(exp_folder_path, sim_file_name + ".png"),
+                os.path.join(exp_folder_path, real_file_name + ".png"),
+                os.path.join(exp_folder_path, combined_file_name + ".png"),
+            )
 
 
 def main():
@@ -508,22 +605,84 @@ def main():
 
     robot = Robot(args.robot_name)
 
+    (
+        signal_config_train,
+        signal_config_test,
+        observed_time_train,
+        observed_time_test,
+        observed_pos_train,
+        observed_pos_test,
+        load_weight_list,
+    ) = load_datasets(args.exp_folder_path, args.joint_names)
+
+    if args.sim == "mujoco":
+        fixed_xml_path = find_robot_file_path(robot.name, suffix="_fixed.xml")
+        sysID_file_path = os.path.join(
+            os.path.dirname(fixed_xml_path), f"{robot.name}_{args.sim}_sysID.xml"
+        )
+        sysID_robot_tree = ET.parse(fixed_xml_path)
+        assets_dict: Dict[str, bytes] = {}
+        # Find mesh file references
+        for mesh in sysID_robot_tree.getroot().findall(".//mesh"):
+            mesh_file = mesh.get("file")
+            if mesh_file and mesh_file not in assets_dict:
+                mesh_file_path = os.path.join(
+                    os.path.dirname(fixed_xml_path), mesh_file
+                )
+                with open(mesh_file_path, "rb") as f:
+                    assets_dict[mesh_file] = f.read()
+
+    elif args.sim == "isaac":
+        urdf_path = find_robot_file_path(robot.name, suffix="_isaac.urdf")
+        sysID_file_path = os.path.join(
+            os.path.dirname(urdf_path), f"{robot.name}_{args.sim}_sysID.urdf"
+        )
+        sysID_robot_tree = ET.parse(urdf_path)
+        assets_dict: Dict[str, bytes] = {}
+
+    else:
+        raise ValueError("Invalid simulator")
+
     ###### Optimize the hyperparameters ######
-    sysID_file_path = multiprocessing_optimization(
-        robot, args.sim, args.exp_folder_path, args.joint_names, args.n_iters
+    multiprocessing_optimization(
+        robot,
+        args.sim,
+        args.exp_folder_path,
+        sysID_robot_tree,
+        sysID_file_path,
+        assets_dict,
+        signal_config_train,
+        observed_pos_train,
+        load_weight_list,
+        args.n_iters,
     )
 
     ###### Evaluate the optimized parameters in the simulation ######
-    sim_data_dict = {}
-    for joint_name in args.joint_names:
-        sim_data_dict[joint_name] = evaluate(
-            robot, args.sim, args.exp_folder_path, joint_name, sysID_file_path
-        )
-
-    time_str = time.strftime("%Y%m%d_%H%M%S")
-    sim_data_file_path = os.path.join(args.exp_folder_path, f"sim_data_{time_str}.pkl")
-    with open(sim_data_file_path, "wb") as f:
-        pickle.dump(sim_data_dict, f)
+    sysID_robot_tree = ET.parse(sysID_file_path)
+    evaluate(
+        robot,
+        args.sim,
+        args.exp_folder_path,
+        sysID_robot_tree,
+        assets_dict,
+        signal_config_train,
+        observed_time_train,
+        observed_pos_train,
+        load_weight_list,
+        "train",
+    )
+    evaluate(
+        robot,
+        args.sim,
+        args.exp_folder_path,
+        sysID_robot_tree,
+        assets_dict,
+        signal_config_test,
+        observed_time_test,
+        observed_pos_test,
+        load_weight_list,
+        "test",
+    )
 
 
 if __name__ == "__main__":
