@@ -37,6 +37,7 @@ def get_default_config(root: ET.Element, kp: float = 2400.0, kd: float = 2400.0)
             "id": id,
             "group": "default",
             "type": "dynamixel",
+            "spec": "XC430",
             "control_mode": "position",
             "is_indirect": False,
             "has_closed_loop": False,

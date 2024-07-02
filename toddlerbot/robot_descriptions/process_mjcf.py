@@ -30,6 +30,14 @@ def replace_mesh_file(root: ET.Element, old_file: str, new_file: str):
             mesh.set("file", new_file)
 
 
+def update_compiler_settings(root: ET.Element):
+    compiler = root.find("compiler")
+    if compiler is None:
+        raise ValueError("No compiler element found in the XML.")
+
+    compiler.set("autolimits", "true")
+
+
 def add_torso_site(root: ET.Element):
     worldbody = root.find("worldbody")
     if worldbody is None:
@@ -166,25 +174,25 @@ def add_default_settings(root: ET.Element):
 
     default = ET.SubElement(root, "default")
 
-    # Set <joint> settings
-    # ET.SubElement(default, "joint", {"frictionloss": "0.03"})
+    XM430_default = ET.SubElement(default, "default", {"class": "XM430"})
+    ET.SubElement(XM430_default, "position", {"forcerange": "-5 5"})
 
-    # Set <position> settings
-    ET.SubElement(default, "position", {"forcelimited": "false"})
+    XC430_default = ET.SubElement(default, "default", {"class": "XC430"})
+    ET.SubElement(XC430_default, "position", {"forcerange": "-2 2"})
+
+    XL430_default = ET.SubElement(default, "default", {"class": "XL430"})
+    ET.SubElement(XL430_default, "position", {"forcerange": "-2 2"})
+
+    XC330_default = ET.SubElement(default, "default", {"class": "XC330"})
+    ET.SubElement(XC330_default, "position", {"forcerange": "-1 1"})
 
     # Set <geom> settings
-    ET.SubElement(
-        default,
-        "geom",
-        {"type": "mesh", "condim": "4", "solref": ".001 2", "friction": "0.9 0.2 0.2"},
-    )
+    ET.SubElement(default, "geom", {"type": "mesh", "solref": ".004 1"})
 
     # Add <default class="visual"> settings
     visual_default = ET.SubElement(default, "default", {"class": "visual"})
     ET.SubElement(
-        visual_default,
-        "geom",
-        {"contype": "0", "conaffinity": "0", "group": "2", "density": "0"},
+        visual_default, "geom", {"contype": "0", "conaffinity": "0", "group": "2"}
     )
 
     # Add <default class="collision"> settings
@@ -271,15 +279,16 @@ def add_actuators_to_mjcf(root: ET.Element, joints_config: Dict[str, Any]):
         if joint_name in joints_config:
             motor_name = f"{joint_name}_act"
             ctrlrange = joint.get("range", "-3.141592 3.141592")
-            ET.SubElement(
+            position = ET.SubElement(
                 actuator,
                 "position",
                 name=motor_name,
                 joint=joint_name,
                 kp=str(joints_config[joint_name]["kp_sim"]),
-                kv=str(joints_config[joint_name]["kd_sim"]),
+                # kv=str(joints_config[joint_name]["kd_sim"]),
                 ctrlrange=ctrlrange,
             )
+            position.set("class", joints_config[joint_name]["spec"])
 
 
 def parse_urdf_body_link(root: ET.Element, root_link_name: str):
@@ -343,26 +352,6 @@ def add_body_link(root: ET.Element, urdf_path: str):
     for element in existing_elements:
         worldbody.remove(element)
         body_link.append(element)
-
-
-def update_actuator_types(root: ET.Element, joints_config: Dict[str, Any]):
-    # Create <actuator> element if it doesn't exist
-    actuator = root.find("./actuator")
-    if actuator is not None:
-        root.remove(actuator)
-
-    actuator = ET.SubElement(root, "actuator")
-
-    for joint in root.findall(".//joint"):
-        joint_name = joint.get("name")
-        if joint_name in joints_config:
-            motor_name = f"{joint_name}_act"
-            ET.SubElement(
-                actuator,
-                joints_config[joint_name]["control_mode"],
-                name=motor_name,
-                joint=joint_name,
-            )
 
 
 def create_base_scene_xml(mjcf_path: str):
@@ -466,6 +455,8 @@ def create_base_scene_xml(mjcf_path: str):
 
 
 def process_mjcf_fixed_file(root: ET.Element, config: Dict[str, Any]):
+    update_compiler_settings(root)
+
     if config["general"]["use_torso_site"]:
         add_torso_site(root)
 

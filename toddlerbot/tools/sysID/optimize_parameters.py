@@ -96,13 +96,14 @@ def update_xml(
             if joint is not None:
                 if sim_name == "mujoco":
                     # Update the joint with new parameters
-                    actuator = root.find(f".//position[@name='{name}_act']")
-                    if actuator is not None:
-                        actuator.set("kp", str(params["gain"]))
-                    else:
-                        raise ValueError(
-                            f"Actuator '{name}' not found in the XML tree."
-                        )
+                    if "gain" in params:
+                        actuator = root.find(f".//position[@name='{name}_act']")
+                        if actuator is not None:
+                            actuator.set("kp", str(params["gain"]))
+                        else:
+                            raise ValueError(
+                                f"Actuator '{name}' not found in the XML tree."
+                            )
 
                     for param_name, param_value in params.items():
                         if param_name != "gain":
@@ -155,7 +156,7 @@ def optimize_parameters(
     observed_response_arr: npt.NDArray[np.float32],
     n_iters: int = 1000,
     sampler_name: str = "CMA",
-    gain_range: Tuple[float, float, float] = (0, 50, 0.1),
+    # gain_range: Tuple[float, float, float] = (0, 50, 0.1),
     damping_range: Tuple[float, float, float] = (0, 5, 1e-3),
     armature_range: Tuple[float, float, float] = (0, 0.1, 1e-3),
     friction_range: Tuple[float, float, float] = (0, 1.0, 1e-3),
@@ -164,7 +165,7 @@ def optimize_parameters(
         if sim_name == "mujoco":
             from toddlerbot.sim.mujoco_sim import MuJoCoSim
 
-            gain = trial.suggest_float("gain", *gain_range[:2], step=gain_range[2])
+            # gain = trial.suggest_float("gain", *gain_range[:2], step=gain_range[2])
             damping = trial.suggest_float(
                 "damping", *damping_range[:2], step=damping_range[2]
             )
@@ -176,7 +177,7 @@ def optimize_parameters(
             )
             params_dict = {
                 joint_name: {
-                    "gain": gain,
+                    # "gain": gain,
                     "damping": damping,
                     "armature": armature,
                     "frictionloss": frictionloss,
@@ -188,7 +189,6 @@ def optimize_parameters(
         elif sim_name == "isaac":
             from toddlerbot.sim.isaac_sim import IsaacSim
 
-            # TODO: add gain
             damping = trial.suggest_float(
                 "damping", *damping_range[:2], step=damping_range[2]
             )
