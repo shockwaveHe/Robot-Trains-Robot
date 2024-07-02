@@ -96,8 +96,18 @@ def update_xml(
             if joint is not None:
                 if sim_name == "mujoco":
                     # Update the joint with new parameters
+                    actuator = root.find(f".//position[@name='{name}_act']")
+                    if actuator is not None:
+                        actuator.set("kp", str(params["gain"]))
+                    else:
+                        raise ValueError(
+                            f"Actuator '{name}' not found in the XML tree."
+                        )
+
                     for param_name, param_value in params.items():
-                        joint.set(param_name, str(param_value))
+                        if param_name != "gain":
+                            joint.set(param_name, str(param_value))
+
                 elif sim_name == "isaac":
                     dynamics = joint.find("dynamics")
                     if dynamics is None:
@@ -107,6 +117,7 @@ def update_xml(
                     # Update the joint with new parameters
                     for param_name, param_value in params.items():
                         dynamics.set(param_name, str(param_value))
+
                 else:
                     raise ValueError("Invalid simulator")
             else:
@@ -134,28 +145,6 @@ def extract_data(
     return signal_config_list, observed_response_arr
 
 
-# def check_if_optimized(
-#     opt_params_file_path: str, opt_values_file_path: str, joint_names: List[str]
-# ):
-#     opt_params_dict: Dict[str, Dict[str, float]] = {}
-#     opt_values_dict: Dict[str, float] = {}
-#     is_optimized = False
-#     if os.path.exists(opt_params_file_path) and os.path.exists(opt_values_file_path):
-#         is_optimized = True
-#         with open(opt_params_file_path, "r") as f:
-#             opt_params_dict = json.load(f)
-
-#         with open(opt_values_file_path, "r") as f:
-#             opt_values_dict = json.load(f)
-
-#         for joint_name in joint_names:
-#             if joint_name not in opt_params_dict:
-#                 is_optimized = False
-#                 break
-
-#     return is_optimized, opt_params_dict, opt_values_dict
-
-
 def optimize_parameters(
     robot: Robot,
     sim_name: str,
@@ -164,16 +153,18 @@ def optimize_parameters(
     assets_dict: Dict[str, bytes],
     signal_config_list: List[Dict[str, float]],
     observed_response_arr: npt.NDArray[np.float32],
-    n_iters: int = 500,
-    sampler_name: str = "TPE",
+    n_iters: int = 1000,
+    sampler_name: str = "CMA",
+    gain_range: Tuple[float, float, float] = (0, 50, 0.1),
     damping_range: Tuple[float, float, float] = (0, 5, 1e-3),
-    armature_range: Tuple[float, float, float] = (0, 0.1, 1e-4),
-    friction_range: Tuple[float, float, float] = (0, 1.0, 1e-4),
+    armature_range: Tuple[float, float, float] = (0, 0.1, 1e-3),
+    friction_range: Tuple[float, float, float] = (0, 1.0, 1e-3),
 ):
     def objective(trial: optuna.Trial):
         if sim_name == "mujoco":
             from toddlerbot.sim.mujoco_sim import MuJoCoSim
 
+            gain = trial.suggest_float("gain", *gain_range[:2], step=gain_range[2])
             damping = trial.suggest_float(
                 "damping", *damping_range[:2], step=damping_range[2]
             )
@@ -185,6 +176,7 @@ def optimize_parameters(
             )
             params_dict = {
                 joint_name: {
+                    "gain": gain,
                     "damping": damping,
                     "armature": armature,
                     "frictionloss": frictionloss,
@@ -196,6 +188,7 @@ def optimize_parameters(
         elif sim_name == "isaac":
             from toddlerbot.sim.isaac_sim import IsaacSim
 
+            # TODO: add gain
             damping = trial.suggest_float(
                 "damping", *damping_range[:2], step=damping_range[2]
             )
@@ -309,6 +302,8 @@ def multiprocessing_optimization(
 
     else:
         raise ValueError("Invalid simulator")
+
+    # return sysID_file_path
 
     optimize_args: List[
         Tuple[

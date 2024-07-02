@@ -1,25 +1,25 @@
 <mujoco model="sysID_XC430">
-  <compiler angle="radian" />
+  <compiler angle="radian" autolimits="true" />
   <asset>
     <mesh name="xc430_visual" file="../assemblies/sysID_XC430/meshes/xc430_visual.stl" />
     <mesh name="arm_430_visual" file="../assemblies/sysID_XC430/meshes/arm_430_visual.stl" />
   </asset>
   <worldbody>
     <geom rgba="0.450102 0.538567 0.697437 1" mesh="xc430_visual" class="visual" />
-    <body name="arm_430" pos="0.055 0.0326999 0.0055694" quat="0.707107 0 0.707107 0">
-      <inertial pos="0 0.0727933 0.019" mass="0.3745" diaginertia="0.000561391 0.000373093 0.000270815" />
-      <joint name="joint_0" pos="0 0 0" axis="0 0 1" limited="true" range="-1.5708 1.5708" damping="0.622" armature="0.0" frictionloss="0.0178" />
+    <body name="arm_430" pos="0.055 0.0326999 0.0055694" quat="0.5 0.5 -0.5 -0.5">
+      <inertial pos="-0.0727933 0 -0.019" quat="0.707107 0 0 0.707107" mass="0.3745" diaginertia="0.000561391 0.000373093 0.000270815" />
+      <joint name="joint_0" pos="0 0 0" axis="0 0 1" limited="true" range="-1.5708 1.5708" damping="0.234" armature="0.002" frictionloss="0.231" />
       <geom rgba="0.636374 0.652148 0.666529 1" mesh="arm_430_visual" class="visual" />
     </body>
   </worldbody>
   <actuator>
-    <position name="joint_0_act" joint="joint_0" kp="18.75" kv="0.0" ctrlrange="-1.5708 1.5708" />
+    <position name="joint_0_act" joint="joint_0" kp="15.9" kv="0.0" ctrlrange="-1.5708 1.5708" />
   </actuator>
   <default>
-    <position forcelimited="false" />
-    <geom type="mesh" condim="4" solref=".001 2" friction="0.9 0.2 0.2" />
+    <position forcerange="-2 2" />
+    <geom type="mesh" solref=".004 1" />
     <default class="visual">
-      <geom contype="0" conaffinity="0" group="2" density="0" />
+      <geom contype="0" conaffinity="0" group="2" />
     </default>
     <default class="collision">
       <geom group="3" />

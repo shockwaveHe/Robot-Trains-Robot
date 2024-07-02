@@ -16,9 +16,9 @@
             "control_mode": "position",
             "is_indirect": false,
             "has_closed_loop": false,
-            "damping": 0.622,
-            "armature": 0.0,
-            "frictionloss": 0.0178,
+            "damping": 0.234,
+            "armature": 0.002,
+            "frictionloss": 0.231,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -30,7 +30,8 @@
             "init_pos": 3.141592653589793,
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
-            "upper_limit": 1.5707963267948966
+            "upper_limit": 1.5707963267948966,
+            "gain": 15.9
         }
     },
     "links": {

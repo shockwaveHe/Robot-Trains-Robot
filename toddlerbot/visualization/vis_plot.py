@@ -182,7 +182,7 @@ def plot_joint_angle_tracking(
             save_path=save_path if i == n_plots - 1 else None,
             file_name=file_name if i == n_plots - 1 else None,
             file_suffix=file_suffix,
-            ax=ax,
+            ax=ax,  # type: ignore
             legend_labels=legend_labels[2 * i : 2 * i + 2],
         )()
 
