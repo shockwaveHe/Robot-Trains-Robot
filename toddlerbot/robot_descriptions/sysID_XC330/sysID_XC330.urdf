@@ -1,0 +1,49 @@
+<robot name="sysID_XC330">
+  <mujoco>
+    <compiler strippath="false" balanceinertia="true" discardvisual="false" />
+  </mujoco>
+  <link name="xc330">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 -0 0" />
+      <geometry>
+        <mesh filename="../assemblies/sysID_XC330/meshes/xc330_visual.stl" />
+      </geometry>
+      <material name="xc330_material">
+        <color rgba="0.66223384147661523702 0.70298350489095318139 0.66642745066522124375 1.0" />
+      </material>
+    </visual>
+    <inertial>
+      <origin xyz="0.067045862671275713307 0.0086608910511881617711 0.0041222017357433436702" rpy="0 0 0" />
+      <mass value="0.0337537472645257422" />
+      <inertia ixx="6.4808662584696893666e-06" ixy="-4.1297757912061735342e-06" ixz="3.5490498700440220868e-07" iyy="1.5492252679530571979e-05" iyz="3.1297490799071719933e-07" izz="1.9627489127736090014e-05" />
+    </inertial>
+  </link>
+
+  <link name="arm_330">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 -0 0" />
+      <geometry>
+        <mesh filename="../assemblies/sysID_XC330/meshes/arm_330_visual.stl" />
+      </geometry>
+      <material name="arm_330_material">
+        <color rgba="0.604714181969083997 0.66722689075630248201 0.72422035480858992784 1.0" />
+      </material>
+    </visual>
+    <inertial>
+      <origin xyz="0.069949643575130379669 -1.7693577120423160926e-17 -0.014500000000000025022" rpy="0 0 0" />
+      <mass value="0.094500000000000014544" />
+      <inertia ixx="9.6648053576060919279e-05" ixy="2.3028708253476290468e-20" ixz="2.3505164286306834409e-20" iyy="0.00017555912455268309937" iyz="3.899833921574180802e-16" izz="9.8086683715700140568e-05" />
+    </inertial>
+  </link>
+
+  <joint name="joint_0" type="revolute">
+    <origin xyz="0.089400000000000034994 0.021949857927858897055 0.0034193959459662111658" rpy="1.5707963267948978903 -1.6653345369377634068e-16 1.5707963267948961139" />
+    <parent link="xc330" />
+    <child link="arm_330" />
+    <axis xyz="0 0 1" />
+    <limit effort="1" velocity="20" lower="-1.3962634015954635824" upper="1.3962634015954635824" />
+    <joint_properties friction="0.0" />
+  </joint>
+
+
+</robot>

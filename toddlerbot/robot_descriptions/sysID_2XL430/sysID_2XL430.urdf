@@ -1,0 +1,49 @@
+<robot name="sysID_2XL430">
+  <mujoco>
+    <compiler strippath="false" balanceinertia="true" discardvisual="false" />
+  </mujoco>
+  <link name="2xl430">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 -0 0" />
+      <geometry>
+        <mesh filename="../assemblies/sysID_2XL430/meshes/2xl430_visual.stl" />
+      </geometry>
+      <material name="2xl430_material">
+        <color rgba="0.89659481946997099389 0.69622904450734179882 0.16511792881747547335 1.0" />
+      </material>
+    </visual>
+    <inertial>
+      <origin xyz="0.075316571195115589177 0.017588796249223766915 0.0056697414010457719558" rpy="0 0 0" />
+      <mass value="0.11906239148352866508" />
+      <inertia ixx="4.2349732073519816711e-05" ixy="-6.2882913433315499148e-06" ixz="-5.7431839129640897275e-07" iyy="4.2315110262053282737e-05" iyz="-1.3427815583044516969e-07" izz="5.5264194475968286314e-05" />
+    </inertial>
+  </link>
+
+  <link name="arm_430">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 -0 0" />
+      <geometry>
+        <mesh filename="../assemblies/sysID_2XL430/meshes/arm_430_visual.stl" />
+      </geometry>
+      <material name="arm_430_material">
+        <color rgba="0.604714181969083997 0.66722689075630248201 0.72422035480858992784 1.0" />
+      </material>
+    </visual>
+    <inertial>
+      <origin xyz="-0.070000487132979016813 -4.2557803529771614392e-17 -0.019000000000000061978" rpy="0 0 0" />
+      <mass value="0.094500000000000014544" />
+      <inertia ixx="9.7686465200451456426e-05" ixy="-9.7144091138227570137e-20" ixz="-1.5140713932170618561e-19" iyy="0.00017605681504883615796" iyz="1.4655776981955690938e-16" izz="9.7562052053041373504e-05" />
+    </inertial>
+  </link>
+
+  <joint name="joint_0" type="revolute">
+    <origin xyz="0.096000000152447931279 0.032699858643998887253 0.0062193960984140176859" rpy="-1.5707963267948950037 2.9918979570903574849e-15 -1.5707963267948910069" />
+    <parent link="2xl430" />
+    <child link="arm_430" />
+    <axis xyz="0 0 1" />
+    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
+    <joint_properties friction="0.0" />
+  </joint>
+
+
+</robot>

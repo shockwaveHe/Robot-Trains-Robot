@@ -1,0 +1,40 @@
+<mujoco model="sysID_2XL430">
+  <compiler angle="radian" autolimits="true" />
+  <asset>
+    <mesh name="2xl430_visual" file="../assemblies/sysID_2XL430/meshes/2xl430_visual.stl" />
+    <mesh name="arm_430_visual" file="../assemblies/sysID_2XL430/meshes/arm_430_visual.stl" />
+  </asset>
+  <worldbody>
+    <geom rgba="0.896595 0.696229 0.165118 1" mesh="2xl430_visual" class="visual" />
+    <body name="arm_430" pos="0.096 0.0326999 0.0062194" quat="0.5 -0.5 0.5 -0.5">
+      <inertial pos="-0.0700005 0 -0.019" quat="0.707107 0 0 0.707107" mass="0.0945" diaginertia="0.000176057 9.76865e-05 9.75621e-05" />
+      <joint name="joint_0" pos="0 0 0" axis="0 0 1" limited="true" range="-1.5708 1.5708" damping="0.0" armature="0.0" frictionloss="0.0" />
+      <geom rgba="0.604714 0.667227 0.72422 1" mesh="arm_430_visual" class="visual" />
+    </body>
+  </worldbody>
+  <actuator>
+    <position name="joint_0_act" joint="joint_0" kp="18.75" ctrlrange="-1.5708 1.5708" class="XL430" />
+  </actuator>
+  <default>
+    <default class="XM430">
+      <position forcerange="-5 5" />
+    </default>
+    <default class="XC430">
+      <position forcerange="-2 2" />
+    </default>
+    <default class="XL430">
+      <position forcerange="-2 2" />
+    </default>
+    <default class="XC330">
+      <position forcerange="-1 1" />
+    </default>
+    <geom type="mesh" solref=".004 1" />
+    <default class="visual">
+      <geom contype="0" conaffinity="0" group="2" />
+    </default>
+    <default class="collision">
+      <geom group="3" />
+    </default>
+  </default>
+  <contact />
+</mujoco>
