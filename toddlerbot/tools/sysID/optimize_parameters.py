@@ -554,7 +554,7 @@ def evaluate(
             if sim_name == "mujoco":
                 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 
-                params_dict = {joint_name: {"n_load": n_load}}
+                params_dict = {joint_name: {"n_load": float(n_load)}}
                 xml_str = update_xml(sim_name, copy.deepcopy(tree), params_dict)
                 sim = MuJoCoSim(robot, xml_str=xml_str, assets=assets_dict)
 
