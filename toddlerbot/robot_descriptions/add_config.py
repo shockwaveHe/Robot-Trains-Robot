@@ -20,8 +20,15 @@ def get_default_config(root: ET.Element, kp: float = 2400.0, kd: float = 2400.0)
     }
 
     config_dict["joints"] = {}
-    for id, joint in enumerate(root.findall("joint")):
+    id = 0
+    for joint in root.findall("joint"):
+        joint_type = joint.get("type")
+        if joint_type is None or joint_type == "fixed":
+            continue
+
         joint_name = joint.get("name")
+        if joint_name is None:
+            continue
 
         joint_limit = joint.find("limit")
         if joint_limit is None:
@@ -29,9 +36,6 @@ def get_default_config(root: ET.Element, kp: float = 2400.0, kd: float = 2400.0)
         else:
             lower_limit = float(joint_limit.get("lower"))  # type: ignore
             upper_limit = float(joint_limit.get("upper"))  # type: ignore
-
-        if joint_name is None:
-            continue
 
         joint_dict = {
             "id": id,
@@ -59,6 +63,8 @@ def get_default_config(root: ET.Element, kp: float = 2400.0, kd: float = 2400.0)
         }
         config_dict["joints"][joint_name] = joint_dict
 
+        id += 1
+
     config_dict["links"] = {}
     for link in root.findall("link"):
         link_name = link.get("name")
@@ -67,7 +73,7 @@ def get_default_config(root: ET.Element, kp: float = 2400.0, kd: float = 2400.0)
             continue
 
         link_dict = {
-            "has_collision": True,
+            "has_collision": False,
             "collision_type": "box",  # box, mesh
             "collision_scale": [1.0, 1.0, 1.0],
         }

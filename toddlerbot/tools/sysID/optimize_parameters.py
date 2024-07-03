@@ -32,6 +32,61 @@ custom_parameters = [
     {"name": "--exp-folder-path", "type": str, "default": ""},
 ]
 
+inertial_data_430_list = [
+    {
+        "pos_x": "-0.0700005",
+        "mass": "0.0945",
+        "diaginertia": "0.000176057 9.76865e-05 9.75621e-05",
+    },
+    {
+        "pos_x": "-0.07159",
+        "mass": "0.1645",
+        "diaginertia": "0.000272705 0.000166538 0.00014119",
+    },
+    {
+        "pos_x": "-0.0722306",
+        "mass": "0.2345",
+        "diaginertia": "0.000369018 0.00023539 0.000184483",
+    },
+    {
+        "pos_x": "-0.0725766",
+        "mass": "0.3045",
+        "diaginertia": "0.000465228 0.000304241 0.000227672",
+    },
+    {
+        "pos_x": "-0.0727933",
+        "mass": "0.3745",
+        "diaginertia": "0.000561391 0.000373093 0.000270815",
+    },
+]
+inertial_data_330_list = [
+    {
+        "pos_x": "0.0699496",
+        "mass": "0.0945",
+        "diaginertia": "0.000175559 9.80867e-05 9.66481e-05",
+    },
+    {
+        "pos_x": "0.0715608",
+        "mass": "0.1645",
+        "diaginertia": "0.000272223 0.0001655 0.00014173",
+    },
+    {
+        "pos_x": "0.0722101",
+        "mass": "0.2345",
+        "diaginertia": "0.000368542 0.000234351 0.000185029",
+    },
+    {
+        "pos_x": "0.0725608",
+        "mass": "0.3045",
+        "diaginertia": "0.000464755 0.000303203 0.000228221",
+    },
+    {
+        "pos_x": "0.0727805",
+        "mass": "0.3745",
+        "diaginertia": "0.000560921 0.000372055 0.000271366",
+    },
+]
+
 
 def extract_data(
     real_world_data_dict: Dict[str, Dict[int, Dict[str, Any]]], joint_name: str
@@ -48,10 +103,7 @@ def extract_data(
 
 
 def load_datasets(
-    exp_folder_path: str,
-    joint_names: str,
-    test_split_ratio: float = 0.2,
-    load_weight: float = 0.07,
+    exp_folder_path: str, joint_names: str, test_split_ratio: float = 0.2
 ):
     # Use glob to find all pickle files matching the pattern
     pickle_files = sorted(
@@ -66,7 +118,7 @@ def load_datasets(
     observed_time_test: Dict[str, List[List[List[float]]]] = {}
     observed_pos_train: Dict[str, List[List[List[float]]]] = {}
     observed_pos_test: Dict[str, List[List[List[float]]]] = {}
-    load_weight_list: List[float] = []
+    n_load_list: List[int] = []
 
     for pickle_file in pickle_files:
         with open(pickle_file, "rb") as f:
@@ -74,9 +126,9 @@ def load_datasets(
 
         n_load_str = pickle_file.split(".")[0].split("L=")[-1].split("_")[0]
         if n_load_str.isdigit():
-            load_weight_list.append(int(n_load_str) * load_weight)
+            n_load_list.append(int(n_load_str))
         else:
-            load_weight_list.append(0.0)
+            n_load_list.append(0)
 
         for joint_name in joint_names:
             signal_config_list, observed_time_list, observed_pos_list = extract_data(
@@ -128,7 +180,7 @@ def load_datasets(
         observed_time_test,
         observed_pos_train_arr,
         observed_pos_test_arr,
-        load_weight_list,
+        n_load_list,
     )
 
 
@@ -205,7 +257,7 @@ def update_xml(
                                 f"Actuator '{name}' not found in the XML tree."
                             )
 
-                    if "load_weight" in params:
+                    if "n_load" in params:
                         parent_body = None
                         for body in root.findall(".//body"):
                             if joint in body:
@@ -213,12 +265,30 @@ def update_xml(
                                 break
 
                         if parent_body is not None:
+                            parent_body_name = parent_body.get("name", "")
+                            if "430" in parent_body_name:
+                                inertial_data = inertial_data_430_list[
+                                    int(params["n_load"])
+                                ]
+                            elif "330" in parent_body_name:
+                                inertial_data = inertial_data_330_list[
+                                    int(params["n_load"])
+                                ]
+                            else:
+                                raise ValueError(
+                                    f"Parent body '{parent_body_name}' not found."
+                                )
+
                             # Find the inertial element and update the mass
                             inertial = parent_body.find("inertial")
                             if inertial is not None:
-                                current_mass = float(inertial.get("mass", "0"))
-                                new_mass = current_mass + params["load_weight"]
-                                inertial.set("mass", str(new_mass))
+                                current_pos_list = inertial.get("pos", "").split(" ")
+                                current_pos_list[0] = inertial_data["pos_x"]
+                                inertial.set("pos", " ".join(current_pos_list))
+                                inertial.set("mass", inertial_data["mass"])
+                                inertial.set(
+                                    "diaginertia", inertial_data["diaginertia"]
+                                )
                             else:
                                 raise ValueError(
                                     f"Inertial element for joint '{name}' not found."
@@ -261,7 +331,7 @@ def optimize_parameters(
     assets_dict: Dict[str, bytes],
     signal_config_list: List[List[Dict[str, float]]],
     observed_pos_arr: npt.NDArray[np.float32],
-    load_weight_list: List[float],
+    n_load_list: List[int],
     n_iters: int = 1000,
     sampler_name: str = "CMA",
     # gain_range: Tuple[float, float, float] = (0, 50, 0.1),
@@ -271,7 +341,7 @@ def optimize_parameters(
 ):
     def objective(trial: optuna.Trial):
         model_response_all: List[List[List[float]]] = []
-        for i, load_weight in enumerate(load_weight_list):
+        for i, n_load in enumerate(n_load_list):
             if sim_name == "mujoco":
                 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 
@@ -291,7 +361,7 @@ def optimize_parameters(
                         "damping": damping,
                         "armature": armature,
                         "frictionloss": frictionloss,
-                        "load_weight": load_weight,
+                        "n_load": n_load,
                     }
                 }
                 xml_str = update_xml(sim_name, copy.deepcopy(tree), params_dict)
@@ -310,7 +380,7 @@ def optimize_parameters(
                     joint_name: {
                         "damping": damping,
                         "friction": friction,
-                        "load_weight": load_weight,
+                        "n_load": n_load,
                     }
                 }
                 xml_str = update_xml(sim_name, copy.deepcopy(tree), params_dict)
@@ -387,7 +457,7 @@ def multiprocessing_optimization(
     assets_dict: Dict[str, bytes],
     signal_config_data: Dict[str, List[List[Dict[str, float]]]],
     observed_pos_data: Dict[str, npt.NDArray[np.float32]],
-    load_weight_list: List[float],
+    n_load_list: List[int],
     n_iters: int,
 ):
     # return sysID_file_path
@@ -400,7 +470,7 @@ def multiprocessing_optimization(
             Dict[str, bytes],
             List[List[Dict[str, float]]],
             npt.NDArray[np.float32],
-            List[float],
+            List[int],
             int,
         ]
     ] = [
@@ -412,7 +482,7 @@ def multiprocessing_optimization(
             assets_dict,
             signal_config_data[joint_name],
             observed_pos_data[joint_name],
-            load_weight_list,
+            n_load_list,
             n_iters,
         )
         for joint_name in signal_config_data
@@ -466,7 +536,7 @@ def evaluate(
     signal_config_data: Dict[str, List[List[Dict[str, float]]]],
     observed_time_data: Dict[str, List[List[List[float]]]],
     observed_pos_data: Dict[str, npt.NDArray[np.float32]],
-    load_weight_list: List[float],
+    n_load_list: List[int],
     dataset_name: str,
 ):
     for joint_name in signal_config_data:
@@ -480,11 +550,11 @@ def evaluate(
         joint_angle_dict_gt: Dict[str, List[float]] = {}
         title_list: List[str] = []
 
-        for i, load_weight in enumerate(load_weight_list):
+        for i, n_load in enumerate(n_load_list):
             if sim_name == "mujoco":
                 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 
-                params_dict = {joint_name: {"load_weight": load_weight}}
+                params_dict = {joint_name: {"n_load": n_load}}
                 xml_str = update_xml(sim_name, copy.deepcopy(tree), params_dict)
                 sim = MuJoCoSim(robot, xml_str=xml_str, assets=assets_dict)
 
@@ -509,20 +579,20 @@ def evaluate(
                 title_list.append(
                     json.dumps(
                         {
-                            "load": round(load_weight, 2),
+                            "load": n_load,
                             "freq": round(signal_config["frequency"], 3),
                             "amp": round(signal_config["amplitude"], 3),
                         }
                     )
                 )
-                time_seq_ref_dict[f"m={load_weight}_i={trial}"] = list(signal_time)
-                time_seq_dict[f"m={load_weight}_i={trial}"] = joint_data_dict["time"]
-                time_seq_dict_gt[f"m={load_weight}_i={trial}"] = observed_time_data[
+                time_seq_ref_dict[f"l={n_load}_i={trial}"] = list(signal_time)
+                time_seq_dict[f"l={n_load}_i={trial}"] = joint_data_dict["time"]
+                time_seq_dict_gt[f"l={n_load}_i={trial}"] = observed_time_data[
                     joint_name
                 ][i][trial]
-                joint_angle_ref_dict[f"m={load_weight}_i={trial}"] = list(signal_pos)
-                joint_angle_dict[f"m={load_weight}_i={trial}"] = joint_data_dict["pos"]
-                joint_angle_dict_gt[f"m={load_weight}_i={trial}"] = observed_pos_data[
+                joint_angle_ref_dict[f"l={n_load}_i={trial}"] = list(signal_pos)
+                joint_angle_dict[f"l={n_load}_i={trial}"] = joint_data_dict["pos"]
+                joint_angle_dict_gt[f"l={n_load}_i={trial}"] = observed_pos_data[
                     joint_name
                 ][i][trial]
 
@@ -612,7 +682,7 @@ def main():
         observed_time_test,
         observed_pos_train,
         observed_pos_test,
-        load_weight_list,
+        n_load_list,
     ) = load_datasets(args.exp_folder_path, args.joint_names)
 
     if args.sim == "mujoco":
@@ -653,7 +723,7 @@ def main():
         assets_dict,
         signal_config_train,
         observed_pos_train,
-        load_weight_list,
+        n_load_list,
         args.n_iters,
     )
 
@@ -668,7 +738,7 @@ def main():
         signal_config_train,
         observed_time_train,
         observed_pos_train,
-        load_weight_list,
+        n_load_list,
         "train",
     )
     evaluate(
@@ -680,7 +750,7 @@ def main():
         signal_config_test,
         observed_time_test,
         observed_pos_test,
-        load_weight_list,
+        n_load_list,
         "test",
     )
 

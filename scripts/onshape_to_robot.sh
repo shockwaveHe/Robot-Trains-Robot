@@ -23,7 +23,7 @@
 # # ASSEMBLY_LIST="no_body"
 
 ##### sysID_device #####
-MOTOR_TYPE="2XL430"
+MOTOR_TYPE="2XC430"
 ROBOT_NAME="sysID_$MOTOR_TYPE"
 BODY_NAME="sysID_$MOTOR_TYPE"
 DOC_ID_LIST="4b8df5a39fb5e7db7afa93b4"

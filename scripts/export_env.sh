@@ -9,19 +9,7 @@ if [ ! -f "README.md" ] || [ ! -f "setup.py" ]; then
     exit 1
 fi
 
-conda_info=$(conda info)
-if [[ $conda_info == *"miniconda"* ]]; then
-    conda_name="miniconda3"
-elif [[ $conda_info == *"anaconda"* ]]; then
-    conda_name="anaconda3"
-else
-    echo "Unable to determine the Conda distribution."
-fi
-
-# Activate the environment
-echo "Activating the environment..."
-source ~/$conda_name/etc/profile.d/conda.sh
-conda activate "$ENV_NAME"
+bash scripts/activate_env.sh "$ENV_NAME"
 
 # Export the environment dependencies to requirements.txt
 echo "Generating requirements.txt..."
