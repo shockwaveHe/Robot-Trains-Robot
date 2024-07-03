@@ -190,7 +190,7 @@
             ],
         },
         {
-            "name": "Python: sysID_XC430_collect_data",
+            "name": "Python: sysID_single_motor_collect_data",
             "type": "python",
             "request": "launch",
             "program": "toddlerbot/tools/sysID/collect_data.py",
@@ -208,7 +208,7 @@
             ],
         },
         {
-            "name": "Python: sysID_XC430_optimize",
+            "name": "Python: sysID_single_motor_optimize",
             "type": "python",
             "request": "launch",
             "program": "toddlerbot/tools/sysID/optimize_parameters.py",
@@ -216,7 +216,7 @@
             "justMyCode": true,
             "args": [
                 "--robot-name",
-                "sysID_XC430",
+                "sysID_2XC430",
                 "--sim",
                 "mujoco",
                 "--joint-names",
@@ -224,7 +224,7 @@
                 "--n-iters",
                 "500",
                 "--exp-folder-path",
-                "results/20240702_173732_sysID_XC430_joint_0"
+                "results/20240703_201739_sysID_2XC430_joint_0"
             ],
         },
         {
