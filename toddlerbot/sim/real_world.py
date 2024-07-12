@@ -174,10 +174,10 @@ class RealWorld(BaseSim):
             dynamixel_state = results["dynamixel"]
             for joint_name in self.robot.get_joint_attrs("type", "dynamixel"):
                 motor_id = self.robot.config["joints"][joint_name]["id"]
-                has_closed_loop = self.robot.config["joints"][joint_name][
-                    "has_closed_loop"
+                is_closed_loop = self.robot.config["joints"][joint_name][
+                    "is_closed_loop"
                 ]
-                if has_closed_loop:
+                if is_closed_loop:
                     if joint_name in self.last_state:
                         # TODO: Implement ankle and waist IK
                         dynamixel_state[motor_id].vel = self._finite_diff_vel(

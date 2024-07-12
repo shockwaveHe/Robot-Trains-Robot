@@ -30,7 +30,7 @@ def calibrate_dynamixel(port: str, robot: Robot, group: str):
 
     controller = DynamixelController(dynamixel_config, dynamixel_ids)
     init_pos: Dict[int, float] = controller.calibrate_motors(
-        robot.get_joint_attrs("type", "dynamixel", "is_indirect", group)
+        robot.get_joint_attrs("type", "dynamixel", "is_passive", group)
     )
 
     robot.set_joint_attrs("type", "dynamixel", "init_pos", init_pos, group)

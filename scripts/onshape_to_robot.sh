@@ -4,14 +4,14 @@
 # NC='\033[0m' # No Color
 
 ##### toddlerbot #####
-# ROBOT_NAME="toddlerbot"
-# BODY_NAME="4R_body"
-# ARM_NAME="OP3_arm"
-# LEG_NAME="3R+RH5_leg"
-# DOC_ID_LIST="d2a8be5ce536cd2e18740efa d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe 93bd073d2ef7800c8ba429de 93bd073d2ef7800c8ba429de"
-# ASSEMBLY_LIST="4R_body left_3R+RH5_leg right_3R+RH5_leg left_OP3_arm right_OP3_arm"
-# # DOC_ID_LIST="d2a8be5ce536cd2e18740efa"
-# # ASSEMBLY_LIST="4R_body"
+ROBOT_NAME="toddlerbot"
+BODY_NAME="toddlerbot"
+ARM_NAME="arm"
+LEG_NAME="leg"
+DOC_ID_LIST="6f1a2a766fbbc097a49abb91 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
+ASSEMBLY_LIST="toddlerbot left_leg right_leg left_arm right_arm"
+# DOC_ID_LIST="6f1a2a766fbbc097a49abb91"
+# ASSEMBLY_LIST="toddlerbot"
 
 ##### toddlerbot_legs #####
 # ROBOT_NAME="toddlerbot_legs"
@@ -23,11 +23,11 @@
 # # ASSEMBLY_LIST="no_body"
 
 ##### sysID_device #####
-MOTOR_TYPE="2XC430"
-ROBOT_NAME="sysID_$MOTOR_TYPE"
-BODY_NAME="sysID_$MOTOR_TYPE"
-DOC_ID_LIST="4b8df5a39fb5e7db7afa93b4"
-ASSEMBLY_LIST="sysID_$MOTOR_TYPE"
+# MOTOR_TYPE="2XC430"
+# ROBOT_NAME="sysID_$MOTOR_TYPE"
+# BODY_NAME="sysID_$MOTOR_TYPE"
+# DOC_ID_LIST="4b8df5a39fb5e7db7afa93b4"
+# ASSEMBLY_LIST="sysID_$MOTOR_TYPE"
 
 REPO_NAME="toddlerbot"
 URDF_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/$ROBOT_NAME.urdf

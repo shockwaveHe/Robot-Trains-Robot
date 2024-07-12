@@ -200,7 +200,7 @@ class Robot:
     ) -> Tuple[Dict[str, float], Dict[str, float]]:
         left_ankle_pos: Dict[str, float] = {}
         right_ankle_pos: Dict[str, float] = {}
-        for k in self.get_joint_attrs("has_closed_loop", True):
+        for k in self.get_joint_attrs("is_closed_loop", True):
             if "left_ank" in k:
                 left_ankle_pos[k] = joint_angles[k]
             if "right_ank" in k:
@@ -233,7 +233,7 @@ class Robot:
         r = 0.01
 
         motor_pos_init: List[float] = []
-        for joint_name in self.get_joint_attrs("has_closed_loop", True):
+        for joint_name in self.get_joint_attrs("is_closed_loop", True):
             if joint_name in ankle_pos:
                 motor_pos_init.append(self.config[joint_name]["init_pos"])
 

@@ -8,6 +8,8 @@ from transforms3d.euler import euler2quat  # type: ignore
 
 from toddlerbot.sim.robot import Robot
 
+# TODO: need to update this next
+
 
 def find_root_link_name(root: ET.Element):
     child_links = {joint.find("child").get("link") for joint in root.findall("joint")}  # type: ignore

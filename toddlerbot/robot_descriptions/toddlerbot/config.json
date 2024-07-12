@@ -1,674 +1,1854 @@
 {
-    "neck_yaw": {
-        "id": 0,
-        "group": "upper_body",
-        "type": "dynamixel",
-        "control_mode": "current_based_position",
-        "is_indirect": true,
-        "has_closed_loop": false,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 1.3846153846153846,
-        "init_pos": 0.7433841758304173,
-        "default_pos": 0.0
+    "general": {
+        "is_fixed": false,
+        "use_torso_site": true,
+        "has_imu": true,
+        "constraint_pairs": [],
+        "has_dynamixel": true,
+        "has_sunny_sky": true,
+        "dynamixel_baudrate": 4000000
     },
-    "neck_pitch": {
-        "id": 1,
-        "group": "upper_body",
-        "type": "dynamixel",
-        "control_mode": "current_based_position",
-        "is_indirect": true,
-        "has_closed_loop": false,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 1.1,
-        "init_pos": 1.2425243854522705,
-        "default_pos": 0.0
+    "joints": {
+        "neck_yaw_drive": {
+            "is_passive": false,
+            "group": "upper_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -3.141592653589793,
+            "upper_limit": 3.141592653589793,
+            "id": 0,
+            "type": "dynamixel",
+            "spec": "XC330",
+            "control_mode": "current_based_position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        },
+        "neck_pitch_drive": {
+            "is_passive": false,
+            "group": "upper_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "id": 1,
+            "type": "dynamixel",
+            "spec": "XC330",
+            "control_mode": "current_based_position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        },
+        "neck_pitch_driven": {
+            "is_passive": true,
+            "group": "upper_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "gear_ratio": 1.1
+        },
+        "neck_yaw_driven": {
+            "is_passive": true,
+            "group": "upper_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -3.141592653589793,
+            "upper_limit": 3.141592653589793,
+            "gear_ratio": 1.3846153846153846
+        },
+        "waist_act_1": {
+            "is_passive": false,
+            "group": "upper_body",
+            "is_closed_loop": true,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -6.283185307179586,
+            "upper_limit": 6.283185307179586,
+            "id": 2,
+            "type": "dynamixel",
+            "spec": "XC330",
+            "control_mode": "current_based_position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        },
+        "waist_act_2": {
+            "is_passive": false,
+            "group": "upper_body",
+            "is_closed_loop": true,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -6.283185307179586,
+            "upper_limit": 6.283185307179586,
+            "id": 3,
+            "type": "dynamixel",
+            "spec": "XC330",
+            "control_mode": "current_based_position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        },
+        "left_hip_yaw_drive": {
+            "is_passive": false,
+            "group": "lower_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "id": 4,
+            "type": "dynamixel",
+            "spec": "XC330",
+            "control_mode": "current_based_position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        },
+        "left_hip_yaw_driven": {
+            "is_passive": true,
+            "group": "lower_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "gear_ratio": 1.105263157894737
+        },
+        "right_hip_yaw_drive": {
+            "is_passive": false,
+            "group": "lower_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "id": 5,
+            "type": "dynamixel",
+            "spec": "XC330",
+            "control_mode": "current_based_position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        },
+        "right_hip_yaw_driven": {
+            "is_passive": true,
+            "group": "lower_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "gear_ratio": 1.105263157894737
+        },
+        "waist_roll": {
+            "is_passive": true,
+            "group": "upper_body",
+            "is_closed_loop": true,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -0.5235987755982988,
+            "upper_limit": 0.5235987755982988,
+            "gear_ratio": 2.4
+        },
+        "waist_yaw": {
+            "is_passive": true,
+            "group": "upper_body",
+            "is_closed_loop": true,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "gear_ratio": 2.4
+        },
+        "left_ank_rev_L1": {
+            "is_passive": true,
+            "group": "lower_body",
+            "is_closed_loop": true,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "gear_ratio": 1.0
+        },
+        "left_ank_rev_S1": {
+            "is_passive": true,
+            "group": "lower_body",
+            "is_closed_loop": true,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "gear_ratio": 1.0
+        },
+        "left_ank_roll": {
+            "is_passive": true,
+            "group": "lower_body",
+            "is_closed_loop": true,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -0.7853981633974483,
+            "upper_limit": 0.7853981633974483,
+            "gear_ratio": 1.0
+        },
+        "left_ank_pitch": {
+            "is_passive": true,
+            "group": "lower_body",
+            "is_closed_loop": true,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -0.7853981633974483,
+            "upper_limit": 0.9599310885968813,
+            "gear_ratio": 1.0
+        },
+        "left_ank_ball_L3": {
+            "is_passive": true,
+            "group": "lower_body",
+            "is_closed_loop": true,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "gear_ratio": 1.0
+        },
+        "left_ank_ball_L2": {
+            "is_passive": true,
+            "group": "lower_body",
+            "is_closed_loop": true,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -0.7853981633974483,
+            "upper_limit": 0.7853981633974483,
+            "gear_ratio": 1.0
+        },
+        "left_ank_ball_L1": {
+            "is_passive": true,
+            "group": "lower_body",
+            "is_closed_loop": true,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "gear_ratio": 1.0
+        },
+        "left_ank_act_1": {
+            "is_passive": false,
+            "group": "lower_body",
+            "is_closed_loop": true,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "id": 6,
+            "type": "dynamixel",
+            "spec": "XC330",
+            "control_mode": "current_based_position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        },
+        "left_ank_ball_S3": {
+            "is_passive": true,
+            "group": "lower_body",
+            "is_closed_loop": true,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "gear_ratio": 1.0
+        },
+        "left_ank_ball_S2": {
+            "is_passive": true,
+            "group": "lower_body",
+            "is_closed_loop": true,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -0.7853981633974483,
+            "upper_limit": 0.7853981633974483,
+            "gear_ratio": 1.0
+        },
+        "left_ank_ball_S1": {
+            "is_passive": true,
+            "group": "lower_body",
+            "is_closed_loop": true,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "gear_ratio": 1.0
+        },
+        "left_ank_act_2": {
+            "is_passive": false,
+            "group": "lower_body",
+            "is_closed_loop": true,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "id": 7,
+            "type": "dynamixel",
+            "spec": "XC330",
+            "control_mode": "current_based_position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        },
+        "left_knee": {
+            "is_passive": false,
+            "group": "lower_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": 0.0,
+            "upper_limit": 1.9198621771937625,
+            "id": 8,
+            "type": "dynamixel",
+            "spec": "XM430",
+            "control_mode": "position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        },
+        "left_hip_pitch": {
+            "is_passive": false,
+            "group": "lower_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "id": 9,
+            "type": "dynamixel",
+            "spec": "2XC430",
+            "control_mode": "position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        },
+        "left_hip_roll": {
+            "is_passive": false,
+            "group": "lower_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -0.7853981633974483,
+            "upper_limit": 1.5707963267948966,
+            "id": 10,
+            "type": "dynamixel",
+            "spec": "2XC430",
+            "control_mode": "position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        },
+        "right_ank_rev_L1": {
+            "is_passive": true,
+            "group": "lower_body",
+            "is_closed_loop": true,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "gear_ratio": 1.0
+        },
+        "right_ank_rev_S1": {
+            "is_passive": true,
+            "group": "lower_body",
+            "is_closed_loop": true,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "gear_ratio": 1.0
+        },
+        "right_ank_roll": {
+            "is_passive": true,
+            "group": "lower_body",
+            "is_closed_loop": true,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -0.7853981633974483,
+            "upper_limit": 0.7853981633974483,
+            "gear_ratio": 1.0
+        },
+        "right_ank_pitch": {
+            "is_passive": true,
+            "group": "lower_body",
+            "is_closed_loop": true,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -0.7853981633974483,
+            "upper_limit": 0.9599310885968813,
+            "gear_ratio": 1.0
+        },
+        "right_ank_ball_L3": {
+            "is_passive": true,
+            "group": "lower_body",
+            "is_closed_loop": true,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "gear_ratio": 1.0
+        },
+        "right_ank_ball_L2": {
+            "is_passive": true,
+            "group": "lower_body",
+            "is_closed_loop": true,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -0.7853981633974483,
+            "upper_limit": 0.7853981633974483,
+            "gear_ratio": 1.0
+        },
+        "right_ank_ball_L1": {
+            "is_passive": true,
+            "group": "lower_body",
+            "is_closed_loop": true,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "gear_ratio": 1.0
+        },
+        "right_ank_act_1": {
+            "is_passive": false,
+            "group": "lower_body",
+            "is_closed_loop": true,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "id": 11,
+            "type": "dynamixel",
+            "spec": "XC330",
+            "control_mode": "current_based_position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        },
+        "right_ank_ball_S3": {
+            "is_passive": true,
+            "group": "lower_body",
+            "is_closed_loop": true,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "gear_ratio": 1.0
+        },
+        "right_ank_ball_S2": {
+            "is_passive": true,
+            "group": "lower_body",
+            "is_closed_loop": true,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -0.7853981633974483,
+            "upper_limit": 0.7853981633974483,
+            "gear_ratio": 1.0
+        },
+        "right_ank_ball_S1": {
+            "is_passive": true,
+            "group": "lower_body",
+            "is_closed_loop": true,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "gear_ratio": 1.0
+        },
+        "right_ank_act_2": {
+            "is_passive": false,
+            "group": "lower_body",
+            "is_closed_loop": true,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "id": 12,
+            "type": "dynamixel",
+            "spec": "XC330",
+            "control_mode": "current_based_position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        },
+        "right_knee": {
+            "is_passive": false,
+            "group": "lower_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.9198621771937625,
+            "upper_limit": 0.0,
+            "id": 13,
+            "type": "dynamixel",
+            "spec": "XM430",
+            "control_mode": "position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        },
+        "right_hip_pitch": {
+            "is_passive": false,
+            "group": "lower_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "id": 14,
+            "type": "dynamixel",
+            "spec": "2XC430",
+            "control_mode": "position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        },
+        "right_hip_roll": {
+            "is_passive": false,
+            "group": "lower_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -0.7853981633974483,
+            "upper_limit": 1.5707963267948966,
+            "id": 15,
+            "type": "dynamixel",
+            "spec": "2XC430",
+            "control_mode": "position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        },
+        "left_sho_yaw_drive": {
+            "is_passive": false,
+            "group": "upper_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -3.141592653589793,
+            "upper_limit": 3.141592653589793,
+            "id": 16,
+            "type": "dynamixel",
+            "spec": "2XL430",
+            "control_mode": "position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        },
+        "left_elbow_yaw_drive": {
+            "is_passive": false,
+            "group": "upper_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -3.141592653589793,
+            "upper_limit": 3.141592653589793,
+            "id": 17,
+            "type": "dynamixel",
+            "spec": "2XL430",
+            "control_mode": "position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        },
+        "left_wrist_pitch_drive": {
+            "is_passive": false,
+            "group": "upper_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "id": 18,
+            "type": "dynamixel",
+            "spec": "2XL430",
+            "control_mode": "position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        },
+        "left_wrist_roll": {
+            "is_passive": false,
+            "group": "upper_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "id": 19,
+            "type": "dynamixel",
+            "spec": "2XL430",
+            "control_mode": "position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        },
+        "left_wrist_pitch_driven": {
+            "is_passive": true,
+            "group": "upper_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "gear_ratio": 1.0
+        },
+        "left_elbow_yaw_driven": {
+            "is_passive": true,
+            "group": "upper_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -3.141592653589793,
+            "upper_limit": 3.141592653589793,
+            "gear_ratio": 1.0
+        },
+        "left_elbow_roll": {
+            "is_passive": false,
+            "group": "upper_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "id": 20,
+            "type": "dynamixel",
+            "spec": "2XL430",
+            "control_mode": "position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        },
+        "left_sho_yaw_driven": {
+            "is_passive": true,
+            "group": "upper_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -3.141592653589793,
+            "upper_limit": 3.141592653589793,
+            "gear_ratio": 1.0
+        },
+        "left_sho_roll": {
+            "is_passive": false,
+            "group": "upper_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "id": 21,
+            "type": "dynamixel",
+            "spec": "2XL430",
+            "control_mode": "position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        },
+        "left_sho_pitch": {
+            "is_passive": false,
+            "group": "upper_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "id": 22,
+            "type": "dynamixel",
+            "spec": "2XL430",
+            "control_mode": "position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        },
+        "right_sho_yaw_drive": {
+            "is_passive": false,
+            "group": "upper_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -3.141592653589793,
+            "upper_limit": 3.141592653589793,
+            "id": 23,
+            "type": "dynamixel",
+            "spec": "2XL430",
+            "control_mode": "position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        },
+        "right_elbow_yaw_drive": {
+            "is_passive": false,
+            "group": "upper_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -3.141592653589793,
+            "upper_limit": 3.141592653589793,
+            "id": 24,
+            "type": "dynamixel",
+            "spec": "2XL430",
+            "control_mode": "position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        },
+        "right_wrist_pitch_drive": {
+            "is_passive": false,
+            "group": "upper_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "id": 25,
+            "type": "dynamixel",
+            "spec": "2XL430",
+            "control_mode": "position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        },
+        "right_wrist_roll": {
+            "is_passive": false,
+            "group": "upper_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "id": 26,
+            "type": "dynamixel",
+            "spec": "2XL430",
+            "control_mode": "position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        },
+        "right_wrist_pitch_driven": {
+            "is_passive": true,
+            "group": "upper_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "gear_ratio": 1.0
+        },
+        "right_elbow_yaw_driven": {
+            "is_passive": true,
+            "group": "upper_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -3.141592653589793,
+            "upper_limit": 3.141592653589793,
+            "gear_ratio": 1.0
+        },
+        "right_elbow_roll": {
+            "is_passive": false,
+            "group": "upper_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "id": 27,
+            "type": "dynamixel",
+            "spec": "2XL430",
+            "control_mode": "position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        },
+        "right_sho_yaw_driven": {
+            "is_passive": true,
+            "group": "default",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -3.141592653589793,
+            "upper_limit": 3.141592653589793,
+            "gear_ratio": 1.0
+        },
+        "right_sho_roll": {
+            "is_passive": false,
+            "group": "default",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "id": 28,
+            "type": "dynamixel",
+            "spec": "2XL430",
+            "control_mode": "position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        },
+        "right_sho_pitch": {
+            "is_passive": false,
+            "group": "upper_body",
+            "is_closed_loop": false,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "id": 29,
+            "type": "dynamixel",
+            "spec": "2XL430",
+            "control_mode": "position",
+            "init_pos": 0.0,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        }
     },
-    "left_sho_pitch": {
-        "id": 2,
-        "group": "upper_body",
-        "type": "dynamixel",
-        "control_mode": "position",
-        "is_indirect": false,
-        "has_closed_loop": false,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 1.0,
-        "init_pos": 2.356194490192345,
-        "default_pos": 0.7853981633974483
-    },
-    "left_sho_roll": {
-        "id": 3,
-        "group": "upper_body",
-        "type": "dynamixel",
-        "control_mode": "position",
-        "is_indirect": false,
-        "has_closed_loop": false,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 1.0,
-        "init_pos": 3.141592653589793,
-        "default_pos": 0.0
-    },
-    "left_sho_yaw": {
-        "id": 4,
-        "group": "upper_body",
-        "type": "dynamixel",
-        "control_mode": "position",
-        "is_indirect": true,
-        "has_closed_loop": false,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 1.0,
-        "init_pos": 3.8012044429779053,
-        "default_pos": 1.5707963267948966
-    },
-    "left_elbow_roll": {
-        "id": 5,
-        "group": "upper_body",
-        "type": "dynamixel",
-        "control_mode": "position",
-        "is_indirect": false,
-        "has_closed_loop": false,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 1.0,
-        "init_pos": 0.7853981633974483,
-        "default_pos": -0.7853981633974483
-    },
-    "left_elbow_yaw": {
-        "id": 6,
-        "group": "upper_body",
-        "type": "dynamixel",
-        "control_mode": "position",
-        "is_indirect": true,
-        "has_closed_loop": false,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 1.0,
-        "init_pos": 4.56819486618042,
-        "default_pos": -1.5707963267948966
-    },
-    "left_wrist_pitch": {
-        "id": 7,
-        "group": "upper_body",
-        "type": "dynamixel",
-        "control_mode": "position",
-        "is_indirect": true,
-        "has_closed_loop": false,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 1.0,
-        "init_pos": 2.9559810161590576,
-        "default_pos": 1.5707963267948966
-    },
-    "left_wrist_roll": {
-        "id": 8,
-        "group": "upper_body",
-        "type": "dynamixel",
-        "control_mode": "position",
-        "is_indirect": false,
-        "has_closed_loop": false,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 1.0,
-        "init_pos": 3.141592653589793,
-        "default_pos": 0.0
-    },
-    "left_gripper": {
-        "id": 9,
-        "group": "upper_body",
-        "type": "dynamixel",
-        "control_mode": "current_based_position",
-        "is_indirect": true,
-        "has_closed_loop": false,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 1.0,
-        "init_pos": 0.7991862644882035,
-        "default_pos": 5.585053606381854
-    },
-    "right_sho_pitch": {
-        "id": 10,
-        "group": "upper_body",
-        "type": "dynamixel",
-        "control_mode": "position",
-        "is_indirect": false,
-        "has_closed_loop": false,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 1.0,
-        "init_pos": 0.7853981633974483,
-        "default_pos": -0.7853981633974483
-    },
-    "right_sho_roll": {
-        "id": 11,
-        "group": "upper_body",
-        "type": "dynamixel",
-        "control_mode": "position",
-        "is_indirect": false,
-        "has_closed_loop": false,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 1.0,
-        "init_pos": 3.141592653589793,
-        "default_pos": 0.0
-    },
-    "right_sho_yaw": {
-        "id": 12,
-        "group": "upper_body",
-        "type": "dynamixel",
-        "control_mode": "position",
-        "is_indirect": true,
-        "has_closed_loop": false,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 1.0,
-        "init_pos": 1.718058466911316,
-        "default_pos": -1.5707963267948966
-    },
-    "right_elbow_roll": {
-        "id": 13,
-        "group": "upper_body",
-        "type": "dynamixel",
-        "control_mode": "position",
-        "is_indirect": false,
-        "has_closed_loop": false,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 1.0,
-        "init_pos": 1.5707963267948966,
-        "default_pos": -0.7853981633974483
-    },
-    "right_elbow_yaw": {
-        "id": 14,
-        "group": "upper_body",
-        "type": "dynamixel",
-        "control_mode": "position",
-        "is_indirect": true,
-        "has_closed_loop": false,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 1.0,
-        "init_pos": 1.1550875902175903,
-        "default_pos": 1.5707963267948966
-    },
-    "right_wrist_pitch": {
-        "id": 15,
-        "group": "upper_body",
-        "type": "dynamixel",
-        "control_mode": "position",
-        "is_indirect": true,
-        "has_closed_loop": false,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 1.0,
-        "init_pos": 3.0510878562927246,
-        "default_pos": -1.5707963267948966
-    },
-    "right_wrist_roll": {
-        "id": 16,
-        "group": "upper_body",
-        "type": "dynamixel",
-        "control_mode": "position",
-        "is_indirect": false,
-        "has_closed_loop": false,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 1.0,
-        "init_pos": 3.141592653589793,
-        "default_pos": 0.0
-    },
-    "right_gripper": {
-        "id": 17,
-        "group": "upper_body",
-        "type": "dynamixel",
-        "control_mode": "current_based_position",
-        "is_indirect": true,
-        "has_closed_loop": false,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 1.0,
-        "init_pos": -1.036900108609831,
-        "default_pos": 5.585053606381854
-    },
-    "waist_roll": {
-        "id": 18,
-        "group": "lower_body",
-        "type": "dynamixel",
-        "control_mode": "current_based_position",
-        "is_indirect": true,
-        "has_closed_loop": true,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 3.0,
-        "init_pos": 0.15442073345184326,
-        "default_pos": 0.0
-    },
-    "waist_yaw": {
-        "id": 19,
-        "group": "lower_body",
-        "type": "dynamixel",
-        "control_mode": "current_based_position",
-        "is_indirect": true,
-        "has_closed_loop": true,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 3.0,
-        "init_pos": 1.0216312408447266,
-        "default_pos": 0.0
-    },
-    "left_hip_yaw": {
-        "id": 20,
-        "group": "lower_body",
-        "type": "dynamixel",
-        "control_mode": "current_based_position",
-        "is_indirect": true,
-        "has_closed_loop": false,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 1.105263157894737,
-        "init_pos": 4.400990849449521,
-        "default_pos": 0.0
-    },
-    "left_hip_roll": {
-        "id": 21,
-        "group": "lower_body",
-        "type": "dynamixel",
-        "control_mode": "current_based_position",
-        "is_indirect": false,
-        "has_closed_loop": false,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 1.0,
-        "init_pos": 3.141592653589793,
-        "default_pos": 0.0
-    },
-    "left_hip_pitch": {
-        "id": 22,
-        "group": "lower_body",
-        "type": "dynamixel",
-        "control_mode": "position",
-        "is_indirect": false,
-        "has_closed_loop": false,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 1.0,
-        "init_pos": 3.141592653589793,
-        "default_pos": -0.325
-    },
-    "left_knee": {
-        "id": 1,
-        "group": "lower_body",
-        "type": "sunny_sky",
-        "is_indirect": true,
-        "has_closed_loop": false,
-        "joint_limit": 1.9198621771937625,
-        "damping": 1.142,
-        "armature": 0.0,
-        "frictionloss": 0.0319,
-        "kp_real": 40,
-        "kd_real": 50,
-        "i_ff_real": 0.0,
-        "kp_sim": 40.0,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 2.0,
-        "init_pos": -1.425,
-        "default_pos": 0.65
-    },
-    "left_ank_pitch": {
-        "id": 23,
-        "group": "lower_body",
-        "type": "dynamixel",
-        "control_mode": "current_based_position",
-        "is_indirect": true,
-        "has_closed_loop": true,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 1.0,
-        "init_pos": 2.903825521469116,
-        "default_pos": -0.325
-    },
-    "left_ank_roll": {
-        "id": 24,
-        "group": "lower_body",
-        "type": "dynamixel",
-        "control_mode": "current_based_position",
-        "is_indirect": true,
-        "has_closed_loop": true,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 1.0,
-        "init_pos": 1.7594759464263916,
-        "default_pos": 0.0
-    },
-    "right_hip_yaw": {
-        "id": 25,
-        "group": "lower_body",
-        "type": "dynamixel",
-        "control_mode": "current_based_position",
-        "is_indirect": true,
-        "has_closed_loop": false,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 1.105263157894737,
-        "init_pos": 4.847890558696928,
-        "default_pos": 0.0
-    },
-    "right_hip_roll": {
-        "id": 26,
-        "group": "lower_body",
-        "type": "dynamixel",
-        "control_mode": "position",
-        "is_indirect": false,
-        "has_closed_loop": false,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 1.0,
-        "init_pos": 3.141592653589793,
-        "default_pos": 0.0
-    },
-    "right_hip_pitch": {
-        "id": 27,
-        "group": "lower_body",
-        "type": "dynamixel",
-        "control_mode": "position",
-        "is_indirect": false,
-        "has_closed_loop": false,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 1.0,
-        "init_pos": 3.141592653589793,
-        "default_pos": 0.325
-    },
-    "right_knee": {
-        "id": 2,
-        "group": "lower_body",
-        "type": "sunny_sky",
-        "is_indirect": true,
-        "has_closed_loop": false,
-        "joint_limit": -1.9198621771937625,
-        "damping": 1.142,
-        "armature": 0.0,
-        "frictionloss": 0.0319,
-        "kp_real": 40,
-        "kd_real": 50,
-        "i_ff_real": 0.0,
-        "kp_sim": 40.0,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 2.0,
-        "init_pos": -0.295,
-        "default_pos": -0.65
-    },
-    "right_ank_pitch": {
-        "id": 28,
-        "group": "lower_body",
-        "type": "dynamixel",
-        "control_mode": "current_based_position",
-        "is_indirect": true,
-        "has_closed_loop": true,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 1.0,
-        "init_pos": 1.7487380504608154,
-        "default_pos": -0.325
-    },
-    "right_ank_roll": {
-        "id": 29,
-        "group": "lower_body",
-        "type": "dynamixel",
-        "control_mode": "current_based_position",
-        "is_indirect": true,
-        "has_closed_loop": true,
-        "damping": 0.0,
-        "armature": 0.0,
-        "frictionloss": 0.0,
-        "kp_real": 2400.0,
-        "ki_real": 0.0,
-        "kd_real": 2400.0,
-        "kp_sim": 3.125,
-        "kd_sim": 0.0,
-        "kff2_real": 0.0,
-        "kff1_real": 0.0,
-        "gear_ratio": 1.0,
-        "init_pos": 4.486893653869629,
-        "default_pos": 0.0
+    "links": {
+        "torso": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "spur_1m_20t": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "neck_yaw_link": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "neck_pitch_link": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "spur_gear_(13_teeth)": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "waist_gears": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "waist_link": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "spiral_bevel_1m_14t_30deg": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "spiral_bevel_1m_14t_30deg_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "spur_gear_19_teeth": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "spur_gear_21_teeth": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "spur_gear_19_teeth_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "spur_gear_21_teeth_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "hip_yaw_link": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "hip_roll_link": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "left_hip_pitch_link": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "left_calf_link": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "ank_pitch_link": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "ank_roll_link": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "ank_rr_link": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "closing_left_ank_rev_L2_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "ank_rr_link_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "closing_left_ank_rev_S2_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "ank_motor_arm": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "ball_joint_ball": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "ball_joint_container": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "ank_motor_rod_long": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "closing_left_ank_rev_L2_1": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "ank_motor_arm_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "ball_joint_ball_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "ball_joint_container_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "ank_motor_rod_short": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "closing_left_ank_rev_S2_1": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "hip_yaw_link_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "hip_roll_link_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "right_hip_pitch_link": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "right_calf_link": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "ank_pitch_link_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "ank_roll_link_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "ank_rr_link_3": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "closing_right_ank_rev_L2_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "ank_rr_link_4": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "closing_right_ank_rev_S2_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "ank_motor_arm_3": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "ball_joint_ball_3": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "ball_joint_container_3": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "ank_motor_rod_long_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "closing_right_ank_rev_L2_1": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "ank_motor_arm_4": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "ball_joint_ball_4": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "ball_joint_container_4": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "ank_motor_rod_short_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "closing_right_ank_rev_S2_1": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "xc430": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "sho_pitch_link": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "2xl430_gears": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "spur_1m_24t_drive": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "spur_1m_24t_driven": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "sho_yaw_link": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "2xl430_gears_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "spur_1m_24t_drive_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "spur_1m_24t_driven_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "elb_yaw_link": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "spur_1m_24t_driven_3": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "2xl430_gears_3": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "spur_1m_24t_drive_3": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "wrist_bearing_plate": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "gripper_connector": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "gripper": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "xc430_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "sho_pitch_link_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "2xl430_gears_4": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "spur_1m_24t_drive_4": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "spur_1m_24t_driven_4": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "sho_yaw_link_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "2xl430_gears_5": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "spur_1m_24t_drive_5": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "spur_1m_24t_driven_5": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "elb_yaw_link_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "spur_1m_24t_driven_6": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "2xl430_gears_6": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "spur_1m_24t_drive_6": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "wrist_bearing_plate_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "gripper_connector_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "gripper_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        }
     }
 }

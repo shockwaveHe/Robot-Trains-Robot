@@ -115,11 +115,11 @@ class DynamixelController(BaseController):
 
         time.sleep(0.2)
 
-    def calibrate_motors(self, is_indirect_list: List[bool]) -> Dict[int, float]:
+    def calibrate_motors(self, is_passive_list: List[bool]) -> Dict[int, float]:
         state_dict = self.get_motor_state(retries=-1)
         init_pos: Dict[int, float] = {}
-        for is_indirect, (id, state) in zip(is_indirect_list, state_dict.items()):
-            if is_indirect:
+        for is_passive, (id, state) in zip(is_passive_list, state_dict.items()):
+            if is_passive:
                 init_pos[id] = state.pos
             else:
                 init_pos[id] = np.pi / 4 * round(state.pos / (np.pi / 4))

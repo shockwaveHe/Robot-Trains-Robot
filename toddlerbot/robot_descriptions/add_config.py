@@ -4,6 +4,11 @@ import os
 import xml.etree.ElementTree as ET
 from typing import Any, Dict
 
+# TODO: Update the ids of the dynamixels
+# TODO: Use sysID results to update damping, armature, frictionloss
+# TODO: Convert to CSV and upload to google sheet with python
+# TODO: Double check default_pos
+
 
 def get_default_config(root: ET.Element, kp: float = 2400.0, kd: float = 2400.0):
     # Define the URDF file path
@@ -37,33 +42,59 @@ def get_default_config(root: ET.Element, kp: float = 2400.0, kd: float = 2400.0)
             lower_limit = float(joint_limit.get("lower"))  # type: ignore
             upper_limit = float(joint_limit.get("upper"))  # type: ignore
 
+        is_passive = False
+        if "driven" in joint_name:
+            is_passive = True
+
+        is_closed_loop = False
+        if "waist" in joint_name or "ank" in joint_name:
+            is_closed_loop = True
+            if "act" not in joint_name:
+                is_passive = True
+
+        group = "default"
+        upper_body_keywords = ["neck", "waist", "sho", "elbow", "wrist", "gripper"]
+        lower_body_keywords = ["hip", "knee", "ank"]
+        for keyword in upper_body_keywords:
+            if keyword in joint_name:
+                group = "upper_body"
+                break
+        for keyword in lower_body_keywords:
+            if keyword in joint_name:
+                group = "lower_body"
+                break
+
         joint_dict = {
-            "id": id,
-            "group": "default",
-            "type": "dynamixel",
-            "spec": "XC430",
-            "control_mode": "position",
-            "is_indirect": False,
-            "has_closed_loop": False,
+            "is_passive": is_passive,
+            "group": group,
+            "is_closed_loop": is_closed_loop,
             "damping": 0.0,
             "armature": 0.0,
             "frictionloss": 0.0,
-            "kp_real": kp,
-            "ki_real": 0.0,
-            "kd_real": kd,
-            "kp_sim": kp / 128,
-            "kd_sim": 0.0,  # TODO: Try kd / 16
-            "kff2_real": 0.0,
-            "kff1_real": 0.0,
-            "gear_ratio": 1.0,
-            "init_pos": 0.0,
             "default_pos": 0.0,
             "lower_limit": lower_limit,
             "upper_limit": upper_limit,
         }
-        config_dict["joints"][joint_name] = joint_dict
 
-        id += 1
+        if is_passive:
+            joint_dict["gear_ratio"] = 1.0
+        else:
+            joint_dict["id"] = id
+            joint_dict["type"] = "dynamixel"
+            joint_dict["spec"] = "XC430"
+            joint_dict["control_mode"] = "position"
+            joint_dict["init_pos"] = 0.0
+            joint_dict["kp_real"] = kp
+            joint_dict["ki_real"] = 0.0
+            joint_dict["kd_real"] = kd
+            joint_dict["kff2_real"] = 0.0
+            joint_dict["kff1_real"] = 0.0
+            joint_dict["kp_sim"] = kp / 128
+            joint_dict["kd_sim"] = 0.0
+
+            id += 1
+
+        config_dict["joints"][joint_name] = joint_dict
 
     config_dict["links"] = {}
     for link in root.findall("link"):
