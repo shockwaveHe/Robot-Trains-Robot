@@ -2,12 +2,76 @@ import argparse
 import json
 import os
 import xml.etree.ElementTree as ET
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
-# TODO: Update the ids of the dynamixels
-# TODO: Use sysID results to update damping, armature, frictionloss
 # TODO: Convert to CSV and upload to google sheet with python
 # TODO: Double check default_pos
+
+
+# This dict needs to be ORDERED
+joint_motor_dict: Dict[str, str] = {
+    "neck_yaw_drive": "XC330",
+    "neck_pitch_drive": "XC330",
+    "waist_act_1": "XC330",
+    "waist_act_2": "XC330",
+    "left_hip_yaw_drive": "XC330",
+    "left_hip_roll": "2XC430",
+    "left_hip_pitch": "2XC430",
+    "left_knee": "XM430",
+    "left_ank_act_1": "XC330",
+    "left_ank_act_2": "XC330",
+    "right_hip_yaw_drive": "XC330",
+    "right_hip_roll": "2XC430",
+    "right_hip_pitch": "2XC430",
+    "right_knee": "XM430",
+    "right_ank_act_1": "XC330",
+    "right_ank_act_2": "XC330",
+    "left_sho_pitch": "XC430",
+    "left_sho_roll": "2XL430",
+    "left_sho_yaw_drive": "2XL430",
+    "left_elbow_roll": "2XL430",
+    "left_elbow_yaw_drive": "2XL430",
+    "left_wrist_pitch_drive": "2XL430",
+    "left_wrist_roll": "2XL430",
+    "right_sho_pitch": "XC430",
+    "right_sho_roll": "2XL430",
+    "right_sho_yaw_drive": "2XL430",
+    "right_elbow_roll": "2XL430",
+    "right_elbow_yaw_drive": "2XL430",
+    "right_wrist_pitch_drive": "2XL430",
+    "right_wrist_roll": "2XL430",
+}
+
+joint_gear_ratio_dict: Dict[str, float] = {
+    "neck_yaw_driven": 1.3846153846153846,
+    "neck_pitch_driven": 1.1,
+    "waist_roll": 2.4,
+    "waist_yaw": 2.4,
+    "left_hip_yaw_driven": 1.105263157894737,
+    "right_hip_yaw_driven": 1.105263157894737,
+}
+
+joint_dyn_params_dict: Dict[str, Dict[str, float]] = {}
+motor_list = ["XC330", "XC430", "2XC430", "2XL430"]
+for motor_name in motor_list:
+    sysID_result_path = os.path.join(
+        "toddlerbot", "robot_descriptions", f"sysID_{motor_name}", "config.json"
+    )
+    with open(sysID_result_path, "r") as f:
+        sysID_result = json.load(f)
+
+    joint_dyn_params_dict[motor_name] = {}
+    for param_name in ["damping", "armature", "frictionloss"]:
+        joint_dyn_params_dict[motor_name][param_name] = sysID_result["joints"][
+            "joint_0"
+        ][param_name]
+
+# TODO: Update with my results
+joint_dyn_params_dict["XM430"] = {
+    "damping": 1.084,
+    "armature": 0.045,
+    "frictionloss": 0.03,
+}
 
 
 def get_default_config(root: ET.Element, kp: float = 2400.0, kd: float = 2400.0):
@@ -77,12 +141,21 @@ def get_default_config(root: ET.Element, kp: float = 2400.0, kd: float = 2400.0)
         }
 
         if is_passive:
-            joint_dict["gear_ratio"] = 1.0
+            if joint_name in joint_gear_ratio_dict:
+                joint_dict["gear_ratio"] = joint_gear_ratio_dict[joint_name]
+            else:
+                joint_dict["gear_ratio"] = 1.0
         else:
-            joint_dict["id"] = id
+            if joint_name not in joint_motor_dict:
+                raise ValueError(f"{joint_name} not found in the spec dict!")
+
+            motor_name = joint_motor_dict[joint_name]
+            joint_dict["id"] = list(joint_motor_dict.keys()).index(joint_name)
             joint_dict["type"] = "dynamixel"
-            joint_dict["spec"] = "XC430"
-            joint_dict["control_mode"] = "position"
+            joint_dict["spec"] = motor_name
+            joint_dict["control_mode"] = (
+                "current_based_position" if motor_name == "XC330" else "position"
+            )
             joint_dict["init_pos"] = 0.0
             joint_dict["kp_real"] = kp
             joint_dict["ki_real"] = 0.0
@@ -91,6 +164,9 @@ def get_default_config(root: ET.Element, kp: float = 2400.0, kd: float = 2400.0)
             joint_dict["kff1_real"] = 0.0
             joint_dict["kp_sim"] = kp / 128
             joint_dict["kd_sim"] = 0.0
+
+            for param_name in ["damping", "armature", "frictionloss"]:
+                joint_dict[param_name] = joint_dyn_params_dict[motor_name][param_name]
 
             id += 1
 
