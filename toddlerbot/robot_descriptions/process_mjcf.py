@@ -8,7 +8,7 @@ from transforms3d.euler import euler2quat  # type: ignore
 
 from toddlerbot.sim.robot import Robot
 
-# TODO: need to update this next
+# TODO: add equality constraints for all the passive joints
 
 
 def find_root_link_name(root: ET.Element):
@@ -182,8 +182,14 @@ def add_default_settings(root: ET.Element):
     XC430_default = ET.SubElement(default, "default", {"class": "XC430"})
     ET.SubElement(XC430_default, "position", {"forcerange": "-2 2"})
 
+    two_XC430_default = ET.SubElement(default, "default", {"class": "2XC430"})
+    ET.SubElement(two_XC430_default, "position", {"forcerange": "-2 2"})
+
     XL430_default = ET.SubElement(default, "default", {"class": "XL430"})
     ET.SubElement(XL430_default, "position", {"forcerange": "-2 2"})
+
+    two_XL430_default = ET.SubElement(default, "default", {"class": "2XL430"})
+    ET.SubElement(two_XL430_default, "position", {"forcerange": "-2 2"})
 
     XC330_default = ET.SubElement(default, "default", {"class": "XC330"})
     ET.SubElement(XC330_default, "position", {"forcerange": "-1 1"})
@@ -278,7 +284,7 @@ def add_actuators_to_mjcf(root: ET.Element, joints_config: Dict[str, Any]):
 
     for joint in root.findall(".//joint"):
         joint_name = joint.get("name")
-        if joint_name in joints_config:
+        if joint_name in joints_config and "spec" in joints_config[joint_name]:
             motor_name = f"{joint_name}_act"
             ctrlrange = joint.get("range", "-3.141592 3.141592")
             position = ET.SubElement(

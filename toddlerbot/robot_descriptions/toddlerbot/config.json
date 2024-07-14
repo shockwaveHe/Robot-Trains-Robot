@@ -3,9 +3,26 @@
         "is_fixed": false,
         "use_torso_site": true,
         "has_imu": true,
-        "constraint_pairs": [],
+        "constraint_pairs": [
+            [
+                "ank_rr_link",
+                "ank_motor_rod_long"
+            ],
+            [
+                "ank_rr_link_2",
+                "ank_motor_rod_short"
+            ],
+            [
+                "ank_rr_link_3",
+                "ank_motor_rod_long_2"
+            ],
+            [
+                "ank_rr_link_4",
+                "ank_motor_rod_short_2"
+            ]
+        ],
         "has_dynamixel": true,
-        "has_sunny_sky": true,
+        "has_sunny_sky": false,
         "dynamixel_baudrate": 4000000
     },
     "joints": {
