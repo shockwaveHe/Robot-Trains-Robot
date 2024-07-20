@@ -285,17 +285,33 @@ def add_actuators_to_mjcf(root: ET.Element, joints_config: Dict[str, Any]):
     for joint in root.findall(".//joint"):
         joint_name = joint.get("name")
         if joint_name in joints_config and "spec" in joints_config[joint_name]:
-            motor_name = f"{joint_name}_act"
-            ctrlrange = joint.get("range", "-3.141592 3.141592")
-            position = ET.SubElement(
-                actuator,
-                "position",
-                name=motor_name,
-                joint=joint_name,
-                kp=str(joints_config[joint_name]["kp_sim"]),
-                # kv=str(joints_config[joint_name]["kd_sim"]),
-                ctrlrange=ctrlrange,
-            )
+            if "_drive" in joint_name:
+                joint_driven_name = joint_name.replace("_drive", "_driven")
+                joint_driven = root.find(f".//joint[@name='{joint_driven_name}']")
+                if joint_driven is None:
+                    raise ValueError(
+                        f"The driven joint {joint_driven_name} is not found"
+                    )
+
+                position = ET.SubElement(
+                    actuator,
+                    "position",
+                    name=f"{joint_name.replace('_drive', '')}_act",
+                    joint=joint_driven_name,
+                    kp=str(joints_config[joint_name]["kp_sim"]),
+                    gear=str(joints_config[joint_driven_name]["gear_ratio"]),
+                    ctrlrange=joint_driven.get("range", "-3.141592 3.141592"),
+                )
+            else:
+                position = ET.SubElement(
+                    actuator,
+                    "position",
+                    name=f"{joint_name}_act",
+                    joint=joint_name,
+                    kp=str(joints_config[joint_name]["kp_sim"]),
+                    ctrlrange=joint.get("range", "-3.141592 3.141592"),
+                )
+
             position.set("class", joints_config[joint_name]["spec"])
 
 

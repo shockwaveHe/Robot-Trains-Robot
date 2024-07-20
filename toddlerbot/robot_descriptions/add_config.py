@@ -2,7 +2,7 @@ import argparse
 import json
 import os
 import xml.etree.ElementTree as ET
-from typing import Any, Dict, Tuple
+from typing import Any, Dict
 
 # TODO: Convert to CSV and upload to google sheet with python
 # TODO: Double check default_pos
@@ -132,9 +132,6 @@ def get_default_config(root: ET.Element, kp: float = 2400.0, kd: float = 2400.0)
             "is_passive": is_passive,
             "group": group,
             "is_closed_loop": is_closed_loop,
-            "damping": 0.0,
-            "armature": 0.0,
-            "frictionloss": 0.0,
             "default_pos": 0.0,
             "lower_limit": lower_limit,
             "upper_limit": upper_limit,
@@ -145,6 +142,15 @@ def get_default_config(root: ET.Element, kp: float = 2400.0, kd: float = 2400.0)
                 joint_dict["gear_ratio"] = joint_gear_ratio_dict[joint_name]
             else:
                 joint_dict["gear_ratio"] = 1.0
+
+            if "_driven" in joint_name:
+                # TODO: Make sure the gear ratio doesn't amplify the dynamics paramters
+                joint_drive_name = joint_name.replace("_driven", "_drive")
+                motor_name = joint_motor_dict[joint_drive_name]
+                for param_name in ["damping", "armature", "frictionloss"]:
+                    joint_dict[param_name] = joint_dyn_params_dict[motor_name][
+                        param_name
+                    ]
         else:
             if joint_name not in joint_motor_dict:
                 raise ValueError(f"{joint_name} not found in the spec dict!")
