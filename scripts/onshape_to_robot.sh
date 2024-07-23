@@ -6,10 +6,10 @@
 ##### toddlerbot #####
 ROBOT_NAME="toddlerbot"
 BODY_NAME="toddlerbot"
-ARM_NAME="arm"
-LEG_NAME="leg"
+ARM_NAME="arm_hand"
+LEG_NAME="leg_XM430"
 DOC_ID_LIST="6f1a2a766fbbc097a49abb91 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
-ASSEMBLY_LIST="toddlerbot left_leg right_leg left_arm right_arm"
+ASSEMBLY_LIST="toddlerbot left_leg_XM430 right_leg_XM430 left_arm_hand right_arm_hand"
 # DOC_ID_LIST="6f1a2a766fbbc097a49abb91"
 # ASSEMBLY_LIST="toddlerbot"
 
