@@ -5,7 +5,6 @@ import xml.etree.ElementTree as ET
 from typing import Any, Dict
 
 # TODO: Convert to CSV and upload to google sheet with python
-# TODO: Double check default_pos
 
 
 # This dict needs to be ORDERED
@@ -66,7 +65,6 @@ for motor_name in motor_list:
             "joint_0"
         ][param_name]
 
-# TODO: Update with my results
 joint_dyn_params_dict["XM430"] = {
     "damping": 1.084,
     "armature": 0.045,

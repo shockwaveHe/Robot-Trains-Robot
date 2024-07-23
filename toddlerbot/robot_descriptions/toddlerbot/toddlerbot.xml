@@ -401,10 +401,10 @@
     <position name="right_wrist_roll_act" joint="right_wrist_roll" kp="18.75" ctrlrange="-1.5708 1.5708" class="2XL430" />
   </actuator>
   <equality>
-    <weld body1="ank_rr_link" body2="ank_motor_rod_long" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.0001 1" />
-    <weld body1="ank_rr_link_2" body2="ank_motor_rod_short" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.0001 1" />
-    <weld body1="ank_rr_link_3" body2="ank_motor_rod_long_2" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.0001 1" />
-    <weld body1="ank_rr_link_4" body2="ank_motor_rod_short_2" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.0001 1" />
+    <connect body1="ank_motor_arm" body2="ank_motor_rod_long" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.0001 1" anchor="0.02 0 0.00582666" />
+    <connect body1="ank_motor_arm_2" body2="ank_motor_rod_short" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.0001 1" anchor="0.02 0 0.00582666" />
+    <connect body1="ank_motor_arm_3" body2="ank_motor_rod_long_2" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.0001 1" anchor="0.02 0 0.00582666" />
+    <connect body1="ank_motor_arm_4" body2="ank_motor_rod_short_2" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.0001 1" anchor="0.02 0 0.00582666" />
   </equality>
   <default>
     <default class="XM430">

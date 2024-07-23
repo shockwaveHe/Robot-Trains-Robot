@@ -9,8 +9,6 @@ from transforms3d.euler import euler2quat  # type: ignore
 from toddlerbot.sim.robot import Robot
 
 # TODO: add equality constraints for the waist
-# TODO: use ball joint and connect constraints for the ankle
-# TODO: fix the orientation of the right leg
 # TODO: Implement the actuator model of MuJoCo in IsaacGym. How should I do frictionloss?
 # What's the activation parameter? Damping and armature are known.
 
@@ -291,21 +289,22 @@ def add_ankle_constraints(root: ET.Element):
         equality = ET.SubElement(root, "equality")
 
     body_pairs: List[Tuple[str, str]] = [
-        ("ank_rr_link", "ank_motor_rod_long"),
-        ("ank_rr_link_2", "ank_motor_rod_short"),
-        ("ank_rr_link_3", "ank_motor_rod_long_2"),
-        ("ank_rr_link_4", "ank_motor_rod_short_2"),
+        ("ank_motor_arm", "ank_motor_rod_long"),
+        ("ank_motor_arm_2", "ank_motor_rod_short"),
+        ("ank_motor_arm_3", "ank_motor_rod_long_2"),
+        ("ank_motor_arm_4", "ank_motor_rod_short_2"),
     ]
 
     # Add equality constraints for each pair
     for body1, body2 in body_pairs:
         ET.SubElement(
             equality,
-            "weld",
+            "connect",
             body1=body1,
             body2=body2,
             solimp="0.9999 0.9999 0.001 0.5 2",
             solref="0.0001 1",
+            anchor="0.02 0 0.00582666",  # This is read from onshape
         )
 
 
