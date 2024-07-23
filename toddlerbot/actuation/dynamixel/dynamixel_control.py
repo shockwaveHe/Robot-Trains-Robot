@@ -17,6 +17,7 @@ CONTROL_MODE_DICT: Dict[str, int] = {
     "current": 0,
     "velocity": 1,
     "position": 3,
+    "extended_position": 4,
     "current_based_position": 5,
     "pwm": 16,
 }

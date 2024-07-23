@@ -1,0 +1,378 @@
+<?xml version="1.0" ?><robot name="left_leg_XM430">  
+  <link name="hip_yaw_link">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_hip_yaw_link_visual.stl"/>        
+      </geometry>      
+      <material name="hip_yaw_link_material">        
+        <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_hip_yaw_link_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="-2.8295513388461080681e-19 -3.4237970957901977335e-19 -0.0098390489054829086829" rpy="0 0 0"/>      
+      <mass value="0.017999999999999991701"/>      
+      <inertia ixx="2.6385033891442532385e-06" ixy="0" ixz="0" iyy="7.6596731957046890345e-06" iyz="0" izz="7.7220708070894752896e-06"/>      
+    </inertial>    
+  </link>  
+
+  <link name="hip_roll_link">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_hip_roll_link_visual.stl"/>        
+      </geometry>      
+      <material name="hip_roll_link_material">        
+        <color rgba="0.51698661238356036218 0.50347815951093466413 0.49050589017722012741 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_hip_roll_link_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="-0.01199984958218530337 -0.00049598090794046492246 -0.018504111838597580436" rpy="0 0 0"/>      
+      <mass value="0.10699970659110667748"/>      
+      <inertia ixx="2.2075996228675286354e-05" ixy="-4.5005801828807199265e-08" ixz="-4.5362214344039572237e-08" iyy="2.9866686933523838834e-05" iyz="-5.5606319466519240051e-07" izz="2.9866720157736157201e-05"/>      
+    </inertial>    
+  </link>  
+
+  <link name="left_hip_pitch_link_xm430">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_hip_pitch_link_xm430_visual.stl"/>        
+      </geometry>      
+      <material name="left_hip_pitch_link_xm430_material">        
+        <color rgba="0.58789271125196740364 0.76961381353217661605 0.89677560122075017368 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_hip_pitch_link_xm430_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="-0.0021034922210874298226 -0.056433529773950774633 -0.01878212058974302115" rpy="0 0 0"/>      
+      <mass value="0.035548688791081778371"/>      
+      <inertia ixx="4.7516856109358680967e-05" ixy="3.1522442711494422845e-07" ixz="2.5035892596237971484e-07" iyy="1.1480134512562668991e-05" iyz="-3.2345708465544602866e-07" izz="4.5084071722891830574e-05"/>      
+    </inertial>    
+  </link>  
+
+  <link name="left_calf_link">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_calf_link_visual.stl"/>        
+      </geometry>      
+      <material name="left_calf_link_material">        
+        <color rgba="0.61177930930733648296 0.71653254923097853268 0.74989274724786558757 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_calf_link_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="0.0011880880234995069324 -0.04964306841760212502 -0.0098634853143295415229" rpy="0 0 0"/>      
+      <mass value="0.079607494529051470167"/>      
+      <inertia ixx="4.8048473174226002242e-05" ixy="3.5190650833675678061e-06" ixz="3.9918574956050822519e-07" iyy="1.4293033116537747813e-05" iyz="4.8859952267608034486e-07" izz="5.1177637188996120943e-05"/>      
+    </inertial>    
+  </link>  
+
+  <link name="ank_pitch_link">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_ank_pitch_link_visual.stl"/>        
+      </geometry>      
+      <material name="ank_pitch_link_material">        
+        <color rgba="0.63189161126160264814 0.7266866879354088038 0.78356373393969258601 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_ank_pitch_link_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="0.00059528282565925356995 -4.0269680598773380526e-08 7.7616089895315615493e-08" rpy="0 0 0"/>      
+      <mass value="0.0042238381753791614387"/>      
+      <inertia ixx="3.9782741364683723499e-07" ixy="-1.6834347673011815484e-13" ixz="2.0919187769527529349e-14" iyy="4.3705254067427603978e-07" iyz="-1.6428821984567370687e-12" izz="8.8858574534605604009e-08"/>      
+    </inertial>    
+  </link>  
+
+  <link name="ank_roll_link">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_ank_roll_link_visual.stl"/>        
+      </geometry>      
+      <material name="ank_roll_link_material">        
+        <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_ank_roll_link_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="-1.3268572459728960309e-07 0.026796353429500454485 -0.0010526854006037440065" rpy="0 0 0"/>      
+      <mass value="0.024800000000000002598"/>      
+      <inertia ixx="1.9846878556458577087e-05" ixy="3.3200060665895135136e-11" ixz="1.9151591849061369162e-11" iyy="1.8695132008820605535e-05" iyz="-1.6314461615565737141e-06" izz="5.1708394998630570447e-06"/>      
+    </inertial>    
+  </link>  
+
+  <link name="ank_rr_link">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_ank_rr_link_visual.stl"/>        
+      </geometry>      
+      <material name="ank_rr_link_material">        
+        <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_ank_rr_link_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="-4.5249610960602496587e-05 0.0063096429836314582573 -3.6742706802840567721e-18" rpy="0 0 0"/>      
+      <mass value="0.0014500000000000001169"/>      
+      <inertia ixx="2.9739579267716150033e-08" ixy="2.4213146797978020574e-10" ixz="3.5523394884459888905e-14" iyy="2.7430027724071963673e-08" iyz="-4.2623487632628579504e-32" izz="4.2921949116163685671e-08"/>      
+    </inertial>    
+  </link>  
+
+  <link name="ank_motor_rod_long">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_ank_motor_rod_long_visual.stl"/>        
+      </geometry>      
+      <material name="ank_motor_rod_long_material">        
+        <color rgba="0.63549975559783222767 0.70774393017020453822 0.75109043491362792455 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_ank_motor_rod_long_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="2.4855089041386722493e-10 0.03455901997406223003 0.0009385170487845105429" rpy="0 0 0"/>      
+      <mass value="0.0021712857268636710437"/>      
+      <inertia ixx="8.5350290058000506697e-07" ixy="1.4884244339274097944e-14" ixz="4.5749525025637216644e-11" iyy="1.3237321792739608807e-08" iyz="-4.3668910960845996537e-09" izz="8.5812217519451853453e-07"/>      
+    </inertial>    
+  </link>  
+
+  <joint name="left_ank_L_rev_2" type="revolute">    
+    <origin xyz="-1.4571677198205179593e-16 0.0099999999999997868372 4.8572257327350598644e-17" rpy="-1.5707963267948941155 1.3320366994106946912 -1.5707963267949134334"/>    
+    <parent link="ank_rr_link"/>    
+    <child link="ank_motor_rod_long"/>    
+    <axis xyz="0 0 1"/>    
+    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558"/>    
+    <joint_properties friction="0.0"/>    
+  </joint>  
+
+  <joint name="left_ank_L_rev_1" type="revolute">    
+    <origin xyz="-0.018000000000000012518 0.016000000000000125233 -0.020600000000000000255" rpy="-8.4059225450220432022e-16 5.2239277705698694431e-16 3.1233695685467259828"/>    
+    <parent link="ank_roll_link"/>    
+    <child link="ank_rr_link"/>    
+    <axis xyz="0 0 1"/>    
+    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558"/>    
+    <joint_properties friction="0.0"/>    
+  </joint>  
+
+  <link name="ank_rr_link_2">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_ank_rr_link_2_visual.stl"/>        
+      </geometry>      
+      <material name="ank_rr_link_2_material">        
+        <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_ank_rr_link_2_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="-4.524961096060597281e-05 -0.0063096429836314582573 2.0482372833095216031e-19" rpy="0 0 0"/>      
+      <mass value="0.0014500000000000001169"/>      
+      <inertia ixx="2.9739579267716169886e-08" ixy="-2.4213146797978046423e-10" ixz="-3.5523394884459901527e-14" iyy="2.7430027724071963673e-08" iyz="9.9853089481893763557e-32" izz="4.2921949116163685671e-08"/>      
+    </inertial>    
+  </link>  
+
+  <link name="ank_motor_rod_short">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_ank_motor_rod_short_visual.stl"/>        
+      </geometry>      
+      <material name="ank_motor_rod_short_material">        
+        <color rgba="0.41222606689734719865 0.58339100346020766885 0.8110726643598615837 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_ank_motor_rod_short_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="2.6038938586334744884e-10 0.023830465465870892539 0.00090403506359618016151" rpy="0 0 0"/>      
+      <mass value="0.0017000000000000001221"/>      
+      <inertia ixx="3.3153416252670167126e-07" ixy="8.7419771573783562959e-15" ixz="4.574994156764911705e-11" iyy="1.0947363610305765948e-08" iyz="-3.58630986464004565e-09" izz="3.3621340447865331982e-07"/>      
+    </inertial>    
+  </link>  
+
+  <joint name="left_ank_S_rev_2" type="revolute">    
+    <origin xyz="-6.2450045135165055399e-17 -0.0099999999999998423483 -4.1633363423443370266e-17" rpy="-1.5707963267948958919 -1.2119133862911237731 -1.5707963267948858999"/>    
+    <parent link="ank_rr_link_2"/>    
+    <child link="ank_motor_rod_short"/>    
+    <axis xyz="0 0 1"/>    
+    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558"/>    
+    <joint_properties friction="0.0"/>    
+  </joint>  
+
+  <joint name="left_ank_S_rev_1" type="revolute">    
+    <origin xyz="0.017999999999999995171 0.016000000000000125233 -0.020600000000000007194" rpy="2.3133772225631454961e-16 4.5369818524477751182e-16 0.026118548507388435198"/>    
+    <parent link="ank_roll_link"/>    
+    <child link="ank_rr_link_2"/>    
+    <axis xyz="0 0 1"/>    
+    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558"/>    
+    <joint_properties friction="0.0"/>    
+  </joint>  
+
+  <joint name="left_ank_roll" type="revolute">    
+    <origin xyz="0.0014999999999999969955 -5.5511151231257827021e-17 -1.116728237660069567e-17" rpy="5.4670424773813653591e-26 1.570796326794896558 0"/>    
+    <parent link="ank_pitch_link"/>    
+    <child link="ank_roll_link"/>    
+    <axis xyz="0 0 1"/>    
+    <limit effort="1" velocity="20" lower="-0.785398163397448279" upper="0.785398163397448279"/>    
+    <joint_properties friction="0.0"/>    
+  </joint>  
+
+  <joint name="left_ank_pitch" type="revolute">    
+    <origin xyz="1.7782265719353869385e-16 -0.099999999999999367173 -0.01040000000000083219" rpy="-1.1833532294864106881e-14 4.9479686682726630759e-20 -3.141592653589793116"/>    
+    <parent link="left_calf_link"/>    
+    <child link="ank_pitch_link"/>    
+    <axis xyz="0 0 1"/>    
+    <limit effort="1" velocity="20" lower="-0.785398163397448279" upper="0.95993108859688125456"/>    
+    <joint_properties friction="0.0"/>    
+  </joint>  
+
+  <link name="ank_motor_arm">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_ank_motor_arm_visual.stl"/>        
+      </geometry>      
+      <material name="ank_motor_arm_material">        
+        <color rgba="0.62517751827980905244 0.70593642422614044651 0.75978993426662777555 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_ank_motor_arm_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="0.014511489101591673254 1.6148638001483031199e-17 0.0040925443765950589997" rpy="0 0 0"/>      
+      <mass value="0.0020595846677894939954"/>      
+      <inertia ixx="2.7591836756521862443e-08" ixy="-2.1221439534222470061e-22" ixz="-3.0270788206594736006e-08" iyy="1.6138599216238408821e-07" iyz="-3.9663336041446003847e-23" izz="1.643783676501625577e-07"/>      
+    </inertial>    
+  </link>  
+
+  <joint name="left_ank_act_1" type="revolute">    
+    <origin xyz="0.013499999999996521727 -0.044499999999990991206 0.004000000000004368117" rpy="-4.1933768254600954213e-13 -2.2608993309587937077e-13 -0.21173394130242484401"/>    
+    <parent link="left_calf_link"/>    
+    <child link="ank_motor_arm"/>    
+    <axis xyz="0 0 1"/>    
+    <limit effort="1" velocity="20" lower="-1.3089969389957472057" upper="1.3089969389957472057"/>    
+    <joint_properties friction="0.0"/>    
+  </joint>  
+
+  <link name="ank_motor_arm_2">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_ank_motor_arm_2_visual.stl"/>        
+      </geometry>      
+      <material name="ank_motor_arm_2_material">        
+        <color rgba="0.62517751827980905244 0.70593642422614044651 0.75978993426662777555 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_ank_motor_arm_2_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="0.014511489101591607334 -1.6909763789032763183e-17 0.0040925443765950589997" rpy="0 0 0"/>      
+      <mass value="0.0020595846677894939954"/>      
+      <inertia ixx="2.7591836756521849208e-08" ixy="1.7247898637471973881e-22" ixz="-3.0270788206594504395e-08" iyy="1.6138599216238257943e-07" iyz="2.1738648046739944409e-23" izz="1.6437836765016112833e-07"/>      
+    </inertial>    
+  </link>  
+
+  <joint name="left_ank_act_2" type="revolute">    
+    <origin xyz="0.013499999999999821171 -0.064499999999989482413 -0.024800000000000977513" rpy="-3.141592653589404982 8.5681358223374411603e-14 -0.22995607267358961212"/>    
+    <parent link="left_calf_link"/>    
+    <child link="ank_motor_arm_2"/>    
+    <axis xyz="0 0 1"/>    
+    <limit effort="1" velocity="20" lower="-1.3089969389957472057" upper="1.3089969389957472057"/>    
+    <joint_properties friction="0.0"/>    
+  </joint>  
+
+  <joint name="left_knee" type="revolute">    
+    <origin xyz="1.71083466609787999e-16 -0.095999999999999086064 -0.0092000000000000258654" rpy="-1.1991266448696223104e-14 1.4169663141522339643e-15 2.5724847819777364634e-18"/>    
+    <parent link="left_hip_pitch_link_xm430"/>    
+    <child link="left_calf_link"/>    
+    <axis xyz="0 0 1"/>    
+    <limit effort="1" velocity="20" lower="0" upper="1.9198621771937625091"/>    
+    <joint_properties friction="0.0"/>    
+  </joint>  
+
+  <joint name="left_hip_pitch" type="revolute">    
+    <origin xyz="-0.024000000716151929925 -0.01900000015243963683 -0.019000000152454777497" rpy="1.5707963267952702591 1.5707963267945455055 0"/>    
+    <parent link="hip_roll_link"/>    
+    <child link="left_hip_pitch_link_xm430"/>    
+    <axis xyz="0 0 1"/>    
+    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558"/>    
+    <joint_properties friction="0.0"/>    
+  </joint>  
+
+  <joint name="left_hip_roll" type="revolute">    
+    <origin xyz="0.018999999999999999528 -2.8647205520269057584e-18 -0.026000000000000002276" rpy="3.141592653589793116 -1.570796326794896558 0"/>    
+    <parent link="hip_yaw_link"/>    
+    <child link="hip_roll_link"/>    
+    <axis xyz="0 0 1"/>    
+    <limit effort="1" velocity="20" lower="-0.785398163397448279" upper="1.570796326794896558"/>    
+    <joint_properties friction="0.0"/>    
+  </joint>  
+
+
+</robot>

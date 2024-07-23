@@ -88,8 +88,8 @@ def get_default_config(root: ET.Element, kp: float = 2400.0, kd: float = 2400.0)
 
     config_dict["general"] = {
         "is_fixed": False,
-        "use_torso_site": False,
-        "has_imu": False,
+        "use_torso_site": True,
+        "has_imu": True,
         "has_dynamixel": True,
         "dynamixel_baudrate": 4000000,
         "has_sunny_sky": False,
@@ -186,7 +186,9 @@ def get_default_config(root: ET.Element, kp: float = 2400.0, kd: float = 2400.0)
             joint_dict["type"] = "dynamixel"
             joint_dict["spec"] = motor_name
             joint_dict["control_mode"] = (
-                "current_based_position" if motor_name == "XC330" else "position"
+                "current_based_position"
+                if motor_name == "XC330" or motor_name == "XM430"
+                else "extended_position"
             )
             joint_dict["init_pos"] = 0.0
             joint_dict["kp_real"] = kp

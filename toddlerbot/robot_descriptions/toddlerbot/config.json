@@ -220,7 +220,7 @@
             "frictionloss": 0.239,
             "gear_ratio": 2.4
         },
-        "left_ank_rev_L1": {
+        "left_ank_L_rev_2": {
             "is_passive": true,
             "transimission": "ankle",
             "group": "lower_body",
@@ -232,7 +232,31 @@
             "frictionloss": 0.0,
             "gear_ratio": 1.0
         },
-        "left_ank_rev_S1": {
+        "left_ank_L_rev_1": {
+            "is_passive": true,
+            "transimission": "ankle",
+            "group": "lower_body",
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "gear_ratio": 1.0
+        },
+        "left_ank_S_rev_2": {
+            "is_passive": true,
+            "transimission": "ankle",
+            "group": "lower_body",
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "gear_ratio": 1.0
+        },
+        "left_ank_S_rev_1": {
             "is_passive": true,
             "transimission": "ankle",
             "group": "lower_body",
@@ -268,49 +292,13 @@
             "frictionloss": 0.239,
             "gear_ratio": 1.0
         },
-        "left_ank_ball_L3": {
-            "is_passive": true,
-            "transimission": "ankle",
-            "group": "lower_body",
-            "default_pos": 0.0,
-            "lower_limit": -1.5707963267948966,
-            "upper_limit": 1.5707963267948966,
-            "damping": 0.0,
-            "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
-        },
-        "left_ank_ball_L2": {
-            "is_passive": true,
-            "transimission": "ankle",
-            "group": "lower_body",
-            "default_pos": 0.0,
-            "lower_limit": -0.7853981633974483,
-            "upper_limit": 0.7853981633974483,
-            "damping": 0.0,
-            "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
-        },
-        "left_ank_ball_L1": {
-            "is_passive": true,
-            "transimission": "ankle",
-            "group": "lower_body",
-            "default_pos": 0.0,
-            "lower_limit": -1.5707963267948966,
-            "upper_limit": 1.5707963267948966,
-            "damping": 0.0,
-            "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
-        },
         "left_ank_act_1": {
             "is_passive": false,
             "transimission": "ankle",
             "group": "lower_body",
             "default_pos": 0.0,
-            "lower_limit": -1.5707963267948966,
-            "upper_limit": 1.5707963267948966,
+            "lower_limit": -1.3089969389957472,
+            "upper_limit": 1.3089969389957472,
             "damping": 0.099,
             "armature": 0.002,
             "frictionloss": 0.239,
@@ -327,49 +315,13 @@
             "kp_sim": 18.75,
             "kd_sim": 0.0
         },
-        "left_ank_ball_S3": {
-            "is_passive": true,
-            "transimission": "ankle",
-            "group": "lower_body",
-            "default_pos": 0.0,
-            "lower_limit": -1.5707963267948966,
-            "upper_limit": 1.5707963267948966,
-            "damping": 0.0,
-            "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
-        },
-        "left_ank_ball_S2": {
-            "is_passive": true,
-            "transimission": "ankle",
-            "group": "lower_body",
-            "default_pos": 0.0,
-            "lower_limit": -0.7853981633974483,
-            "upper_limit": 0.7853981633974483,
-            "damping": 0.0,
-            "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
-        },
-        "left_ank_ball_S1": {
-            "is_passive": true,
-            "transimission": "ankle",
-            "group": "lower_body",
-            "default_pos": 0.0,
-            "lower_limit": -1.5707963267948966,
-            "upper_limit": 1.5707963267948966,
-            "damping": 0.0,
-            "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
-        },
         "left_ank_act_2": {
             "is_passive": false,
             "transimission": "ankle",
             "group": "lower_body",
             "default_pos": 0.0,
-            "lower_limit": -1.5707963267948966,
-            "upper_limit": 1.5707963267948966,
+            "lower_limit": -1.3089969389957472,
+            "upper_limit": 1.3089969389957472,
             "damping": 0.099,
             "armature": 0.002,
             "frictionloss": 0.239,
@@ -399,7 +351,7 @@
             "id": 7,
             "type": "dynamixel",
             "spec": "XM430",
-            "control_mode": "position",
+            "control_mode": "current_based_position",
             "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
@@ -422,7 +374,7 @@
             "id": 6,
             "type": "dynamixel",
             "spec": "2XC430",
-            "control_mode": "position",
+            "control_mode": "extended_position",
             "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
@@ -445,7 +397,7 @@
             "id": 5,
             "type": "dynamixel",
             "spec": "2XC430",
-            "control_mode": "position",
+            "control_mode": "extended_position",
             "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
@@ -455,7 +407,7 @@
             "kp_sim": 18.75,
             "kd_sim": 0.0
         },
-        "right_ank_rev_L1": {
+        "right_ank_L_rev_2": {
             "is_passive": true,
             "transimission": "ankle",
             "group": "lower_body",
@@ -467,7 +419,31 @@
             "frictionloss": 0.0,
             "gear_ratio": 1.0
         },
-        "right_ank_rev_S1": {
+        "right_ank_L_rev_1": {
+            "is_passive": true,
+            "transimission": "ankle",
+            "group": "lower_body",
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "gear_ratio": 1.0
+        },
+        "right_ank_S_rev_2": {
+            "is_passive": true,
+            "transimission": "ankle",
+            "group": "lower_body",
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "gear_ratio": 1.0
+        },
+        "right_ank_S_rev_1": {
             "is_passive": true,
             "transimission": "ankle",
             "group": "lower_body",
@@ -503,49 +479,13 @@
             "frictionloss": 0.239,
             "gear_ratio": 1.0
         },
-        "right_ank_ball_L3": {
-            "is_passive": true,
-            "transimission": "ankle",
-            "group": "lower_body",
-            "default_pos": 0.0,
-            "lower_limit": -1.5707963267948966,
-            "upper_limit": 1.5707963267948966,
-            "damping": 0.0,
-            "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
-        },
-        "right_ank_ball_L2": {
-            "is_passive": true,
-            "transimission": "ankle",
-            "group": "lower_body",
-            "default_pos": 0.0,
-            "lower_limit": -0.7853981633974483,
-            "upper_limit": 0.7853981633974483,
-            "damping": 0.0,
-            "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
-        },
-        "right_ank_ball_L1": {
-            "is_passive": true,
-            "transimission": "ankle",
-            "group": "lower_body",
-            "default_pos": 0.0,
-            "lower_limit": -1.5707963267948966,
-            "upper_limit": 1.5707963267948966,
-            "damping": 0.0,
-            "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
-        },
         "right_ank_act_1": {
             "is_passive": false,
             "transimission": "ankle",
             "group": "lower_body",
             "default_pos": 0.0,
-            "lower_limit": -1.5707963267948966,
-            "upper_limit": 1.5707963267948966,
+            "lower_limit": -1.3089969389957472,
+            "upper_limit": 1.3089969389957472,
             "damping": 0.099,
             "armature": 0.002,
             "frictionloss": 0.239,
@@ -562,49 +502,13 @@
             "kp_sim": 18.75,
             "kd_sim": 0.0
         },
-        "right_ank_ball_S3": {
-            "is_passive": true,
-            "transimission": "ankle",
-            "group": "lower_body",
-            "default_pos": 0.0,
-            "lower_limit": -1.5707963267948966,
-            "upper_limit": 1.5707963267948966,
-            "damping": 0.0,
-            "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
-        },
-        "right_ank_ball_S2": {
-            "is_passive": true,
-            "transimission": "ankle",
-            "group": "lower_body",
-            "default_pos": 0.0,
-            "lower_limit": -0.7853981633974483,
-            "upper_limit": 0.7853981633974483,
-            "damping": 0.0,
-            "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
-        },
-        "right_ank_ball_S1": {
-            "is_passive": true,
-            "transimission": "ankle",
-            "group": "lower_body",
-            "default_pos": 0.0,
-            "lower_limit": -1.5707963267948966,
-            "upper_limit": 1.5707963267948966,
-            "damping": 0.0,
-            "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
-        },
         "right_ank_act_2": {
             "is_passive": false,
             "transimission": "ankle",
             "group": "lower_body",
             "default_pos": 0.0,
-            "lower_limit": -1.5707963267948966,
-            "upper_limit": 1.5707963267948966,
+            "lower_limit": -1.3089969389957472,
+            "upper_limit": 1.3089969389957472,
             "damping": 0.099,
             "armature": 0.002,
             "frictionloss": 0.239,
@@ -634,7 +538,7 @@
             "id": 13,
             "type": "dynamixel",
             "spec": "XM430",
-            "control_mode": "position",
+            "control_mode": "current_based_position",
             "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
@@ -657,7 +561,7 @@
             "id": 12,
             "type": "dynamixel",
             "spec": "2XC430",
-            "control_mode": "position",
+            "control_mode": "extended_position",
             "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
@@ -680,7 +584,7 @@
             "id": 11,
             "type": "dynamixel",
             "spec": "2XC430",
-            "control_mode": "position",
+            "control_mode": "extended_position",
             "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
@@ -703,7 +607,7 @@
             "id": 18,
             "type": "dynamixel",
             "spec": "2XL430",
-            "control_mode": "position",
+            "control_mode": "extended_position",
             "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
@@ -726,7 +630,7 @@
             "id": 20,
             "type": "dynamixel",
             "spec": "2XL430",
-            "control_mode": "position",
+            "control_mode": "extended_position",
             "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
@@ -749,7 +653,7 @@
             "id": 21,
             "type": "dynamixel",
             "spec": "2XL430",
-            "control_mode": "position",
+            "control_mode": "extended_position",
             "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
@@ -772,7 +676,7 @@
             "id": 22,
             "type": "dynamixel",
             "spec": "2XL430",
-            "control_mode": "position",
+            "control_mode": "extended_position",
             "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
@@ -819,7 +723,7 @@
             "id": 19,
             "type": "dynamixel",
             "spec": "2XL430",
-            "control_mode": "position",
+            "control_mode": "extended_position",
             "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
@@ -854,7 +758,7 @@
             "id": 17,
             "type": "dynamixel",
             "spec": "2XL430",
-            "control_mode": "position",
+            "control_mode": "extended_position",
             "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
@@ -877,7 +781,7 @@
             "id": 16,
             "type": "dynamixel",
             "spec": "XC430",
-            "control_mode": "position",
+            "control_mode": "extended_position",
             "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
@@ -900,7 +804,7 @@
             "id": 25,
             "type": "dynamixel",
             "spec": "2XL430",
-            "control_mode": "position",
+            "control_mode": "extended_position",
             "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
@@ -923,7 +827,7 @@
             "id": 27,
             "type": "dynamixel",
             "spec": "2XL430",
-            "control_mode": "position",
+            "control_mode": "extended_position",
             "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
@@ -946,7 +850,7 @@
             "id": 28,
             "type": "dynamixel",
             "spec": "2XL430",
-            "control_mode": "position",
+            "control_mode": "extended_position",
             "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
@@ -969,7 +873,7 @@
             "id": 29,
             "type": "dynamixel",
             "spec": "2XL430",
-            "control_mode": "position",
+            "control_mode": "extended_position",
             "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
@@ -1016,7 +920,7 @@
             "id": 26,
             "type": "dynamixel",
             "spec": "2XL430",
-            "control_mode": "position",
+            "control_mode": "extended_position",
             "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
@@ -1051,7 +955,7 @@
             "id": 24,
             "type": "dynamixel",
             "spec": "2XL430",
-            "control_mode": "position",
+            "control_mode": "extended_position",
             "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
@@ -1074,7 +978,7 @@
             "id": 23,
             "type": "dynamixel",
             "spec": "XC430",
-            "control_mode": "position",
+            "control_mode": "extended_position",
             "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
@@ -1221,7 +1125,7 @@
                 1.0
             ]
         },
-        "left_hip_pitch_link": {
+        "left_hip_pitch_link_xm430": {
             "has_collision": false,
             "collision_type": "box",
             "collision_scale": [
@@ -1266,7 +1170,7 @@
                 1.0
             ]
         },
-        "closing_left_ank_rev_L2_2": {
+        "ank_motor_rod_long": {
             "has_collision": false,
             "collision_type": "box",
             "collision_scale": [
@@ -1284,7 +1188,7 @@
                 1.0
             ]
         },
-        "closing_left_ank_rev_S2_2": {
+        "ank_motor_rod_short": {
             "has_collision": false,
             "collision_type": "box",
             "collision_scale": [
@@ -1302,79 +1206,7 @@
                 1.0
             ]
         },
-        "ball_joint_ball": {
-            "has_collision": false,
-            "collision_type": "box",
-            "collision_scale": [
-                1.0,
-                1.0,
-                1.0
-            ]
-        },
-        "ball_joint_container": {
-            "has_collision": false,
-            "collision_type": "box",
-            "collision_scale": [
-                1.0,
-                1.0,
-                1.0
-            ]
-        },
-        "ank_motor_rod_long": {
-            "has_collision": false,
-            "collision_type": "box",
-            "collision_scale": [
-                1.0,
-                1.0,
-                1.0
-            ]
-        },
-        "closing_left_ank_rev_L2_1": {
-            "has_collision": false,
-            "collision_type": "box",
-            "collision_scale": [
-                1.0,
-                1.0,
-                1.0
-            ]
-        },
         "ank_motor_arm_2": {
-            "has_collision": false,
-            "collision_type": "box",
-            "collision_scale": [
-                1.0,
-                1.0,
-                1.0
-            ]
-        },
-        "ball_joint_ball_2": {
-            "has_collision": false,
-            "collision_type": "box",
-            "collision_scale": [
-                1.0,
-                1.0,
-                1.0
-            ]
-        },
-        "ball_joint_container_2": {
-            "has_collision": false,
-            "collision_type": "box",
-            "collision_scale": [
-                1.0,
-                1.0,
-                1.0
-            ]
-        },
-        "ank_motor_rod_short": {
-            "has_collision": false,
-            "collision_type": "box",
-            "collision_scale": [
-                1.0,
-                1.0,
-                1.0
-            ]
-        },
-        "closing_left_ank_rev_S2_1": {
             "has_collision": false,
             "collision_type": "box",
             "collision_scale": [
@@ -1401,7 +1233,7 @@
                 1.0
             ]
         },
-        "right_hip_pitch_link": {
+        "right_hip_pitch_link_xm430": {
             "has_collision": false,
             "collision_type": "box",
             "collision_scale": [
@@ -1446,7 +1278,7 @@
                 1.0
             ]
         },
-        "closing_right_ank_rev_L2_2": {
+        "ank_motor_rod_long_2": {
             "has_collision": false,
             "collision_type": "box",
             "collision_scale": [
@@ -1464,7 +1296,7 @@
                 1.0
             ]
         },
-        "closing_right_ank_rev_S2_2": {
+        "ank_motor_rod_short_2": {
             "has_collision": false,
             "collision_type": "box",
             "collision_scale": [
@@ -1482,79 +1314,7 @@
                 1.0
             ]
         },
-        "ball_joint_ball_3": {
-            "has_collision": false,
-            "collision_type": "box",
-            "collision_scale": [
-                1.0,
-                1.0,
-                1.0
-            ]
-        },
-        "ball_joint_container_3": {
-            "has_collision": false,
-            "collision_type": "box",
-            "collision_scale": [
-                1.0,
-                1.0,
-                1.0
-            ]
-        },
-        "ank_motor_rod_long_2": {
-            "has_collision": false,
-            "collision_type": "box",
-            "collision_scale": [
-                1.0,
-                1.0,
-                1.0
-            ]
-        },
-        "closing_right_ank_rev_L2_1": {
-            "has_collision": false,
-            "collision_type": "box",
-            "collision_scale": [
-                1.0,
-                1.0,
-                1.0
-            ]
-        },
         "ank_motor_arm_4": {
-            "has_collision": false,
-            "collision_type": "box",
-            "collision_scale": [
-                1.0,
-                1.0,
-                1.0
-            ]
-        },
-        "ball_joint_ball_4": {
-            "has_collision": false,
-            "collision_type": "box",
-            "collision_scale": [
-                1.0,
-                1.0,
-                1.0
-            ]
-        },
-        "ball_joint_container_4": {
-            "has_collision": false,
-            "collision_type": "box",
-            "collision_scale": [
-                1.0,
-                1.0,
-                1.0
-            ]
-        },
-        "ank_motor_rod_short_2": {
-            "has_collision": false,
-            "collision_type": "box",
-            "collision_scale": [
-                1.0,
-                1.0,
-                1.0
-            ]
-        },
-        "closing_right_ank_rev_S2_1": {
             "has_collision": false,
             "collision_type": "box",
             "collision_scale": [
@@ -1689,16 +1449,7 @@
                 1.0
             ]
         },
-        "gripper_connector": {
-            "has_collision": false,
-            "collision_type": "box",
-            "collision_scale": [
-                1.0,
-                1.0,
-                1.0
-            ]
-        },
-        "gripper": {
+        "hand": {
             "has_collision": false,
             "collision_type": "box",
             "collision_scale": [
@@ -1833,16 +1584,7 @@
                 1.0
             ]
         },
-        "gripper_connector_2": {
-            "has_collision": false,
-            "collision_type": "box",
-            "collision_scale": [
-                1.0,
-                1.0,
-                1.0
-            ]
-        },
-        "gripper_2": {
+        "hand_2": {
             "has_collision": false,
             "collision_type": "box",
             "collision_scale": [
