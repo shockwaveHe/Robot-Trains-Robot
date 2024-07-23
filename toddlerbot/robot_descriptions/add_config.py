@@ -72,6 +72,14 @@ joint_dyn_params_dict["XM430"] = {
     "armature": 0.045,
     "frictionloss": 0.03,
 }
+joint_dyn_params_dict["left_ank_pitch"] = joint_dyn_params_dict["right_ank_pitch"] = (
+    joint_dyn_params_dict["XC330"]
+)
+joint_dyn_params_dict["left_ank_roll"] = joint_dyn_params_dict["right_ank_roll"] = (
+    joint_dyn_params_dict["XC330"]
+)
+joint_dyn_params_dict["waist_roll"] = joint_dyn_params_dict["XC330"]
+joint_dyn_params_dict["waist_yaw"] = joint_dyn_params_dict["XC330"]
 
 
 def get_default_config(root: ET.Element, kp: float = 2400.0, kd: float = 2400.0):
@@ -82,12 +90,13 @@ def get_default_config(root: ET.Element, kp: float = 2400.0, kd: float = 2400.0)
         "is_fixed": False,
         "use_torso_site": False,
         "has_imu": False,
-        "constraint_pairs": [],
         "has_dynamixel": True,
-        "has_sunny_sky": False,
         "dynamixel_baudrate": 4000000,
+        "has_sunny_sky": False,
     }
 
+    has_waist = False
+    has_ankle = False
     config_dict["joints"] = {}
     id = 0
     for joint in root.findall("joint"):
@@ -107,12 +116,20 @@ def get_default_config(root: ET.Element, kp: float = 2400.0, kd: float = 2400.0)
             upper_limit = float(joint_limit.get("upper"))  # type: ignore
 
         is_passive = False
+        transmission = "none"
         if "driven" in joint_name:
             is_passive = True
+            transmission = "gears"
 
-        is_closed_loop = False
-        if "waist" in joint_name or "ank" in joint_name:
-            is_closed_loop = True
+        if "waist" in joint_name:
+            has_waist = True
+            transmission = "waist"
+            if "act" not in joint_name:
+                is_passive = True
+
+        if "ank" in joint_name:
+            has_ankle = True
+            transmission = "ankle"
             if "act" not in joint_name:
                 is_passive = True
 
@@ -130,11 +147,14 @@ def get_default_config(root: ET.Element, kp: float = 2400.0, kd: float = 2400.0)
 
         joint_dict = {
             "is_passive": is_passive,
+            "transimission": transmission,
             "group": group,
-            "is_closed_loop": is_closed_loop,
             "default_pos": 0.0,
             "lower_limit": lower_limit,
             "upper_limit": upper_limit,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
         }
 
         if is_passive:
@@ -143,7 +163,7 @@ def get_default_config(root: ET.Element, kp: float = 2400.0, kd: float = 2400.0)
             else:
                 joint_dict["gear_ratio"] = 1.0
 
-            if "_driven" in joint_name:
+            if transmission == "gears":
                 # TODO: Make sure the gear ratio doesn't amplify the dynamics paramters
                 joint_drive_name = joint_name.replace("_driven", "_drive")
                 motor_name = joint_motor_dict[joint_drive_name]
@@ -151,6 +171,12 @@ def get_default_config(root: ET.Element, kp: float = 2400.0, kd: float = 2400.0)
                     joint_dict[param_name] = joint_dyn_params_dict[motor_name][
                         param_name
                     ]
+            else:
+                if joint_name in joint_dyn_params_dict:
+                    for param_name in ["damping", "armature", "frictionloss"]:
+                        joint_dict[param_name] = joint_dyn_params_dict[joint_name][
+                            param_name
+                        ]
         else:
             if joint_name not in joint_motor_dict:
                 raise ValueError(f"{joint_name} not found in the spec dict!")
@@ -177,6 +203,9 @@ def get_default_config(root: ET.Element, kp: float = 2400.0, kd: float = 2400.0)
             id += 1
 
         config_dict["joints"][joint_name] = joint_dict
+
+    config_dict["general"]["has_waist"] = has_waist
+    config_dict["general"]["has_ankle"] = has_ankle
 
     config_dict["links"] = {}
     for link in root.findall("link"):

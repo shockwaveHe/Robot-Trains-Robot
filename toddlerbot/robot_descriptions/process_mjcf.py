@@ -8,7 +8,11 @@ from transforms3d.euler import euler2quat  # type: ignore
 
 from toddlerbot.sim.robot import Robot
 
-# TODO: add equality constraints for all the passive joints
+# TODO: add equality constraints for the waist
+# TODO: use ball joint and connect constraints for the ankle
+# TODO: fix the orientation of the right leg
+# TODO: Implement the actuator model of MuJoCo in IsaacGym. How should I do frictionloss?
+# What's the activation parameter? Damping and armature are known.
 
 
 def find_root_link_name(root: ET.Element):
@@ -252,15 +256,46 @@ def add_contact_exclusion_to_mjcf(root: ET.Element):
                     )
 
 
-def add_equality_constraints_for_leaves(
-    root: ET.Element, body_pairs: List[Tuple[str, str]]
-):
+# TODO: fix this
+def add_waist_constraints(root: ET.Element, joints_config: Dict[str, Any]):
     # Ensure there is an <equality> element
     equality = root.find("./equality")
-    if equality is not None:
-        root.remove(equality)
+    if equality is None:
+        equality = ET.SubElement(root, "equality")
 
-    equality = ET.SubElement(root, "equality")
+    joint_pairs = [
+        ("waist_roll", "waist_act_1", 0),
+        ("waist_roll", "waist_act_2", 0),
+        ("waist_yaw", "waist_act_1", 1),
+        ("waist_yaw", "waist_act_2", 1),
+    ]
+
+    # Add equality constraints for each pair
+    for joint1, joint2, direction in joint_pairs:
+        coef = direction * joints_config[joint1]["gear_ratio"]
+        ET.SubElement(
+            equality,
+            "joint",
+            joint1=joint1,
+            joint2=joint2,
+            solimp="0.9999 0.9999 0.001 0.5 2",
+            solref="0.0001 1",
+            polycoef=f"0 {coef} 0 0 0",
+        )
+
+
+def add_ankle_constraints(root: ET.Element):
+    # Ensure there is an <equality> element
+    equality = root.find("./equality")
+    if equality is None:
+        equality = ET.SubElement(root, "equality")
+
+    body_pairs: List[Tuple[str, str]] = [
+        ("ank_rr_link", "ank_motor_rod_long"),
+        ("ank_rr_link_2", "ank_motor_rod_short"),
+        ("ank_rr_link_3", "ank_motor_rod_long_2"),
+        ("ank_rr_link_4", "ank_motor_rod_short_2"),
+    ]
 
     # Add equality constraints for each pair
     for body1, body2 in body_pairs:
@@ -492,8 +527,11 @@ def process_mjcf_fixed_file(root: ET.Element, config: Dict[str, Any]):
     exclude_all_contacts(root)
     add_actuators_to_mjcf(root, config["joints"])
 
-    if len(config["general"]["constraint_pairs"]) > 0:
-        add_equality_constraints_for_leaves(root, config["general"]["constraint_pairs"])
+    # if config["general"]["has_waist"]:
+    #     add_waist_constraints(root, config["joints"])
+
+    if config["general"]["has_ankle"]:
+        add_ankle_constraints(root)
 
     add_default_settings(root)
     add_contact_exclusion_to_mjcf(root)
