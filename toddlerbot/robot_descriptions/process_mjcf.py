@@ -254,32 +254,29 @@ def add_contact_exclusion_to_mjcf(root: ET.Element):
                     )
 
 
-# TODO: fix this
 def add_waist_constraints(root: ET.Element, joints_config: Dict[str, Any]):
     # Ensure there is an <equality> element
-    equality = root.find("./equality")
-    if equality is None:
-        equality = ET.SubElement(root, "equality")
+    tendon = root.find("tendon")
+    if tendon is not None:
+        root.remove(tendon)
 
-    joint_pairs = [
-        ("waist_roll", "waist_act_1", 0),
-        ("waist_roll", "waist_act_2", 0),
-        ("waist_yaw", "waist_act_1", 1),
-        ("waist_yaw", "waist_act_2", 1),
-    ]
+    tendon = ET.SubElement(root, "tendon")
 
-    # Add equality constraints for each pair
-    for joint1, joint2, direction in joint_pairs:
-        coef = direction * joints_config[joint1]["gear_ratio"]
-        ET.SubElement(
-            equality,
-            "joint",
-            joint1=joint1,
-            joint2=joint2,
-            solimp="0.9999 0.9999 0.001 0.5 2",
-            solref="0.0001 1",
-            polycoef=f"0 {coef} 0 0 0",
-        )
+    # waist roll
+    fixed_roll = ET.SubElement(
+        tendon, "fixed", name="waist_roll_coupling", limited="true", range="0 0.001"
+    )
+    ET.SubElement(fixed_roll, "joint", joint="waist_act_1", coef="0.291667")
+    ET.SubElement(fixed_roll, "joint", joint="waist_act_2", coef="0.291667")
+    ET.SubElement(fixed_roll, "joint", joint="waist_roll", coef="1")
+
+    # waist roll
+    fixed_yaw = ET.SubElement(
+        tendon, "fixed", name="waist_yaw_coupling", limited="true", range="0 0.001"
+    )
+    ET.SubElement(fixed_yaw, "joint", joint="waist_act_1", coef="0.416667")
+    ET.SubElement(fixed_yaw, "joint", joint="waist_act_2", coef="-0.416667")
+    ET.SubElement(fixed_yaw, "joint", joint="waist_yaw", coef="1")
 
 
 def add_ankle_constraints(root: ET.Element):
@@ -330,7 +327,7 @@ def add_actuators_to_mjcf(root: ET.Element, joints_config: Dict[str, Any]):
                 position = ET.SubElement(
                     actuator,
                     "position",
-                    name=f"{joint_name.replace('_drive', '')}_act",
+                    name=joint_name.replace("_drive", ""),
                     joint=joint_driven_name,
                     kp=str(joints_config[joint_name]["kp_sim"]),
                     gear=str(joints_config[joint_driven_name]["gear_ratio"]),
@@ -340,7 +337,7 @@ def add_actuators_to_mjcf(root: ET.Element, joints_config: Dict[str, Any]):
                 position = ET.SubElement(
                     actuator,
                     "position",
-                    name=f"{joint_name}_act",
+                    name=joint_name,
                     joint=joint_name,
                     kp=str(joints_config[joint_name]["kp_sim"]),
                     ctrlrange=joint.get("range", "-3.141592 3.141592"),
@@ -526,8 +523,8 @@ def process_mjcf_fixed_file(root: ET.Element, config: Dict[str, Any]):
     exclude_all_contacts(root)
     add_actuators_to_mjcf(root, config["joints"])
 
-    # if config["general"]["has_waist"]:
-    #     add_waist_constraints(root, config["joints"])
+    if config["general"]["has_waist"]:
+        add_waist_constraints(root, config["joints"])
 
     if config["general"]["has_ankle"]:
         add_ankle_constraints(root)
