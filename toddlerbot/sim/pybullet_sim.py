@@ -1,12 +1,12 @@
 import numpy as np
 import pybullet as p
 import pybullet_data
+from transforms3d.quaternions import quat2mat
 
 from toddlerbot.sim import BaseSim
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.constants import GRAVITY
 from toddlerbot.utils.file_utils import find_robot_file_path
-from toddlerbot.utils.math_utils import quatxyzw2mat
 from toddlerbot.utils.misc_utils import precise_sleep
 
 
@@ -82,7 +82,9 @@ class PyBulletSim(BaseSim):
 
     def get_torso_pose(self):
         torso_pos, torso_ori = p.getBasePositionAndOrientation(self.robot.id)
-        return torso_pos, quatxyzw2mat(torso_ori)
+        return torso_pos, quat2mat(
+            [torso_ori[3], torso_ori[0], torso_ori[1], torso_ori[2]]
+        )
 
     def get_joint_state(selft):
         pass

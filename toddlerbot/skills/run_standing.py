@@ -2,9 +2,6 @@ import argparse
 import os
 import time
 
-from toddlerbot.sim.mujoco_sim import MuJoCoSim
-from toddlerbot.sim.pybullet_sim import PyBulletSim
-from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.sim.robot import Robot
 from toddlerbot.visualization.vis_plot import plot_joint_angle_tracking
 
@@ -33,10 +30,16 @@ def main():
     robot = Robot(args.robot_name)
 
     if args.sim == "pybullet":
+        from toddlerbot.sim.pybullet_sim import PyBulletSim
+
         sim = PyBulletSim(robot)
     elif args.sim == "mujoco":
+        from toddlerbot.sim.mujoco_sim import MuJoCoSim
+
         sim = MuJoCoSim(robot)
     elif args.sim == "real":
+        from toddlerbot.sim.real_world import RealWorld
+
         sim = RealWorld(robot)
     else:
         raise ValueError("Unknown simulator")

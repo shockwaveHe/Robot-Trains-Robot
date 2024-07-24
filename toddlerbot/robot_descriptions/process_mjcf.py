@@ -8,7 +8,6 @@ from transforms3d.euler import euler2quat  # type: ignore
 
 from toddlerbot.sim.robot import Robot
 
-# TODO: add equality constraints for the waist
 # TODO: Implement the actuator model of MuJoCo in IsaacGym. How should I do frictionloss?
 # What's the activation parameter? Damping and armature are known.
 
@@ -313,7 +312,6 @@ def add_actuators_to_mjcf(root: ET.Element, joints_config: Dict[str, Any]):
 
     actuator = ET.SubElement(root, "actuator")
 
-    # TODO: Update gears with constraints
     for joint in root.findall(".//joint"):
         joint_name = joint.get("name")
         if joint_name in joints_config and "spec" in joints_config[joint_name]:
@@ -417,7 +415,7 @@ def create_base_scene_xml(mjcf_path: str):
     mujoco = ET.Element("mujoco", attrib={"model": f"{robot_name}_scene"})
 
     # Include the robot model
-    ET.SubElement(mujoco, "include", attrib={"file": mjcf_path})
+    ET.SubElement(mujoco, "include", attrib={"file": os.path.basename(mjcf_path)})
 
     # Add statistic element
     ET.SubElement(mujoco, "statistic", attrib={"center": "0 0 0.2", "extent": "0.6"})
