@@ -121,9 +121,9 @@ class DynamixelController(BaseController):
         init_pos: Dict[int, float] = {}
         for transmission, (id, state) in zip(transmission_list, state_dict.items()):
             if transmission == "none":
-                init_pos[id] = state.pos
-            else:
                 init_pos[id] = np.pi / 4 * round(state.pos / (np.pi / 4))
+            else:
+                init_pos[id] = state.pos
 
         log(f"Initial positions: {init_pos}", header="Dynamixel")
 

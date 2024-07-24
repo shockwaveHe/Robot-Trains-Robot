@@ -124,6 +124,20 @@
             ]
         },
         {
+            "name": "Python: stand_toddlerbot_mujoco",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/skills/run_standing.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot-name",
+                "toddlerbot",
+                "--sim",
+                "mujoco",
+            ]
+        },
+        {
             "name": "Python: walk_toddlerbot_real",
             "type": "python",
             "request": "launch",
