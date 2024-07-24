@@ -33,7 +33,7 @@ class DynamixelConfig:
     kD: List[float]
     kFF2: List[float]
     kFF1: List[float]
-    gear_ratio: List[float]
+    # gear_ratio: List[float]
     init_pos: List[float]
     default_vel: float = np.pi
     interp_method: str = "cubic"
@@ -116,11 +116,11 @@ class DynamixelController(BaseController):
 
         time.sleep(0.2)
 
-    def calibrate_motors(self, is_passive_list: List[bool]) -> Dict[int, float]:
+    def calibrate_motors(self, transmission_list: List[str]) -> Dict[int, float]:
         state_dict = self.get_motor_state(retries=-1)
         init_pos: Dict[int, float] = {}
-        for is_passive, (id, state) in zip(is_passive_list, state_dict.items()):
-            if is_passive:
+        for transmission, (id, state) in zip(transmission_list, state_dict.items()):
+            if transmission == "none":
                 init_pos[id] = state.pos
             else:
                 init_pos[id] = np.pi / 4 * round(state.pos / (np.pi / 4))
@@ -148,7 +148,9 @@ class DynamixelController(BaseController):
         delta_t: float = -1,
     ):
         def set_pos_helper(pos_arr: npt.NDArray[np.float32]):
-            pos_arr_drive = (self.init_pos + pos_arr) * np.array(self.config.gear_ratio)
+            pos_arr_drive = (
+                self.init_pos + pos_arr
+            )  # * np.array(self.config.gear_ratio)
             with self.lock:
                 self.client.write_desired_pos(self.motor_ids, pos_arr_drive)  # type: ignore
 
@@ -184,8 +186,10 @@ class DynamixelController(BaseController):
         # log(f"Pos: {np.round(pos_arr, 2)}", header="Dynamixel", level="debug")  # type: ignore
         # log(f"Vel: {np.round(vel_arr, 2)}", header="Dynamixel", level="debug")  # type: ignore
 
-        pos_arr_driven = pos_arr / np.array(self.config.gear_ratio) - self.init_pos
-        vel_arr_driven = vel_arr / np.array(self.config.gear_ratio)
+        pos_arr_driven = (
+            pos_arr - self.init_pos
+        )  # / np.array(self.config.gear_ratio) - self.init_pos
+        vel_arr_driven = vel_arr  # / np.array(self.config.gear_ratio)
         for i, id in enumerate(self.motor_ids):
             state_dict[id] = JointState(
                 time=time.time(), pos=pos_arr_driven[i], vel=vel_arr_driven[i]

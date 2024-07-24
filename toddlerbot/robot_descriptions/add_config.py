@@ -115,9 +115,10 @@ def get_default_config(root: ET.Element, kp: float = 2400.0, kd: float = 2400.0)
 
         is_passive = False
         transmission = "none"
-        if "driven" in joint_name:
-            is_passive = True
+        if "drive" in joint_name:
             transmission = "gears"
+            if "driven" in joint_name:
+                is_passive = True
 
         if "waist" in joint_name:
             has_waist = True
@@ -145,7 +146,7 @@ def get_default_config(root: ET.Element, kp: float = 2400.0, kd: float = 2400.0)
 
         joint_dict = {
             "is_passive": is_passive,
-            "transimission": transmission,
+            "transmission": transmission,
             "group": group,
             "default_pos": 0.0,
             "lower_limit": lower_limit,

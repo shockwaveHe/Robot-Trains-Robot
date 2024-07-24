@@ -313,6 +313,7 @@ def add_actuators_to_mjcf(root: ET.Element, joints_config: Dict[str, Any]):
 
     actuator = ET.SubElement(root, "actuator")
 
+    # TODO: Update gears with constraints
     for joint in root.findall(".//joint"):
         joint_name = joint.get("name")
         if joint_name in joints_config and "spec" in joints_config[joint_name]:

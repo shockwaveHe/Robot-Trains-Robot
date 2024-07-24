@@ -13,6 +13,7 @@ from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.misc_utils import log
 
 
+# TODO：actuator position to joint position
 class Robot:
     """Class representing a humanoid robot."""
 
@@ -185,14 +186,16 @@ class Robot:
     ):
         i = 0
         for joint_name, joint_config in self.config["joints"].items():
-            if key_name in joint_config in joint_config[key_name] == key_value and (
-                joint_config["group"] == group or group == "all"
+            if (
+                key_name in joint_config
+                and joint_config[key_name] == key_value
+                and (joint_config["group"] == group or group == "all")
             ):
                 if isinstance(attr_values, dict):
                     id = joint_config["id"]
-                    self.config[joint_name][attr_name] = attr_values[id]
+                    self.config["joints"][joint_name][attr_name] = attr_values[id]
                 else:
-                    self.config[joint_name][attr_name] = attr_values[i]
+                    self.config["joints"][joint_name][attr_name] = attr_values[i]
                     i += 1
 
     def get_ankle_pos(

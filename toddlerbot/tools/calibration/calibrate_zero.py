@@ -18,19 +18,20 @@ def calibrate_dynamixel(port: str, robot: Robot, group: str):
     dynamixel_ids = robot.get_joint_attrs("type", "dynamixel", "id", group)
     dynamixel_config = DynamixelConfig(
         port=port,
+        baudrate=robot.config["general"]["dynamixel_baudrate"],
         control_mode=robot.get_joint_attrs("type", "dynamixel", "control_mode", group),
         kP=robot.get_joint_attrs("type", "dynamixel", "kp_real", group),
         kI=robot.get_joint_attrs("type", "dynamixel", "ki_real", group),
         kD=robot.get_joint_attrs("type", "dynamixel", "kd_real", group),
         kFF2=robot.get_joint_attrs("type", "dynamixel", "kff2_real", group),
         kFF1=robot.get_joint_attrs("type", "dynamixel", "kff1_real", group),
-        gear_ratio=robot.get_joint_attrs("type", "dynamixel", "gear_ratio", group),
+        # gear_ratio=robot.get_joint_attrs("type", "dynamixel", "gear_ratio", group),
         init_pos=[],
     )
 
     controller = DynamixelController(dynamixel_config, dynamixel_ids)
     init_pos: Dict[int, float] = controller.calibrate_motors(
-        robot.get_joint_attrs("type", "dynamixel", "is_passive", group)
+        robot.get_joint_attrs("type", "dynamixel", "transmission", group)
     )
 
     robot.set_joint_attrs("type", "dynamixel", "init_pos", init_pos, group)
@@ -69,20 +70,27 @@ def main(robot: Robot):
 
         print("Please answer 'yes' or 'no'.")
 
-    dynamixel_ports: List[str] = find_ports("USB <-> Serial Converter")
-    sunny_sky_ports: List[str] = find_ports("Feather")
+    executor = ThreadPoolExecutor()
 
-    n_ports = len(dynamixel_ports) + len(sunny_sky_ports)
-    executor = ThreadPoolExecutor(max_workers=n_ports)
+    has_dynamixel = robot.config["general"]["has_dynamixel"]
+    has_sunny_sky = robot.config["general"]["has_sunny_sky"]
 
-    future_dynamixel = executor.submit(
-        calibrate_dynamixel, dynamixel_ports[0], robot, "all"
-    )
+    future_dynamixel = None
+    if has_dynamixel:
+        dynamixel_ports: List[str] = find_ports("USB <-> Serial Converter")
+        future_dynamixel = executor.submit(
+            calibrate_dynamixel, dynamixel_ports[0], robot, "all"
+        )
 
-    future_sunny_sky = executor.submit(calibrate_sunny_sky, sunny_sky_ports[0])
+    future_sunny_sky = None
+    if has_sunny_sky:
+        sunny_sky_ports: List[str] = find_ports("Feather")
+        future_sunny_sky = executor.submit(calibrate_sunny_sky, sunny_sky_ports[0])
 
-    future_sunny_sky.result()
-    future_dynamixel.result()
+    if future_sunny_sky is not None:
+        future_sunny_sky.result()
+    if future_dynamixel is not None:
+        future_dynamixel.result()
 
     robot.write_robot_config()
 
