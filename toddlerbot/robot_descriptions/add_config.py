@@ -115,11 +115,12 @@ def get_default_config(
             joint_dict["id"] = list(motor_config.keys()).index(joint_name)
             joint_dict["type"] = "dynamixel"
             joint_dict["spec"] = motor_name
-            joint_dict["control_mode"] = (
-                "current_based_position"
-                if motor_name == "XC330" or motor_name == "XM430"
-                else "extended_position"
-            )
+            # joint_dict["control_mode"] = (
+            #     "current_based_position"
+            #     if motor_name == "XC330" or motor_name == "XM430"
+            #     else "extended_position"
+            # )
+            joint_dict["control_mode"] = "extended_position"
             joint_dict["init_pos"] = 0.0
             joint_dict["kp_real"] = kp
             joint_dict["ki_real"] = 0.0
@@ -220,20 +221,6 @@ def main():
                 joint_dyn_config[motor_name][param_name] = sysID_result["joints"][
                     "joint_0"
                 ][param_name]
-
-        joint_dyn_config["XM430"] = {
-            "damping": 1.084,
-            "armature": 0.045,
-            "frictionloss": 0.03,
-        }
-        joint_dyn_config["left_ank_pitch"] = joint_dyn_config["right_ank_pitch"] = (
-            joint_dyn_config["XC330"]
-        )
-        joint_dyn_config["left_ank_roll"] = joint_dyn_config["right_ank_roll"] = (
-            joint_dyn_config["XC330"]
-        )
-        joint_dyn_config["waist_roll"] = joint_dyn_config["XC330"]
-        joint_dyn_config["waist_yaw"] = joint_dyn_config["XC330"]
 
     urdf_path = os.path.join(robot_dir, f"{args.robot_name}.urdf")
     tree = ET.parse(urdf_path)
