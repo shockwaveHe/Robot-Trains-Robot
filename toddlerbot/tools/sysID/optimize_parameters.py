@@ -602,7 +602,11 @@ def evaluate(
 
         observed_pos_arr = observed_pos_data[joint_name]
         error = np.sqrt(np.mean((observed_pos_arr - np.array(model_response_all)) ** 2))
-        log(f"Root mean squared error: {error}", header="SysID", level="info")
+        log(
+            f"{dataset_name} root mean squared error: {error}",
+            header="SysID",
+            level="info",
+        )
 
         if dataset_name == "test":
             time_str = time.strftime("%Y%m%d_%H%M%S")

@@ -11,6 +11,9 @@ EXP_FOLDER_PATH=""
 
 # Determine the corresponding experiment folder path based on the motor type
 case "$MOTOR_TYPE" in
+  "XM430")
+    EXP_FOLDER_PATH="results/20240725_104025_sysID_XM430_joint_0"
+    ;;
   "XC430")
     EXP_FOLDER_PATH="results/20240702_173732_sysID_XC430_joint_0"
     ;;

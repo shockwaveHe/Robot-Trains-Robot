@@ -1,5 +1,5 @@
 #!/bin/bash
-MOTOR_TYPE="2XC430"
+MOTOR_TYPE="XM430"
 RESULT_DIR="results"
 N_TRIALS=15
 N_LOADS=4

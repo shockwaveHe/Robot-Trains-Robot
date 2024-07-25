@@ -60,9 +60,6 @@ class RealWorld(BaseSim):
                 kD=self.robot.get_joint_attrs("type", "dynamixel", "kd_real"),
                 kFF2=self.robot.get_joint_attrs("type", "dynamixel", "kff2_real"),
                 kFF1=self.robot.get_joint_attrs("type", "dynamixel", "kff1_real"),
-                gear_ratio=self.robot.get_joint_attrs(
-                    "type", "dynamixel", "gear_ratio"
-                ),
                 init_pos=self.robot.get_joint_attrs("type", "dynamixel", "init_pos"),
             )
             future_dynamixel = self.executor.submit(
@@ -174,20 +171,20 @@ class RealWorld(BaseSim):
             dynamixel_state = results["dynamixel"]
             for joint_name in self.robot.get_joint_attrs("type", "dynamixel"):
                 motor_id = self.robot.config["joints"][joint_name]["id"]
-                is_closed_loop = self.robot.config["joints"][joint_name][
-                    "is_closed_loop"
-                ]
-                if is_closed_loop:
-                    if joint_name in self.last_state:
-                        # TODO: Implement ankle and waist IK
-                        dynamixel_state[motor_id].vel = self._finite_diff_vel(
-                            dynamixel_state[motor_id].pos,
-                            self.last_state[joint_name].pos,
-                            dynamixel_state[motor_id].time,
-                            self.last_state[joint_name].time,
-                        )
+                # is_closed_loop = self.robot.config["joints"][joint_name][
+                #     "is_closed_loop"
+                # ]
+                # if is_closed_loop:
+                #     if joint_name in self.last_state:
+                #         # TODO: Implement ankle and waist IK
+                #         dynamixel_state[motor_id].vel = self._finite_diff_vel(
+                #             dynamixel_state[motor_id].pos,
+                #             self.last_state[joint_name].pos,
+                #             dynamixel_state[motor_id].time,
+                #             self.last_state[joint_name].time,
+                #         )
 
-                    self.last_state[joint_name] = dynamixel_state[motor_id]
+                #     self.last_state[joint_name] = dynamixel_state[motor_id]
 
                 joint_state_dict[joint_name] = dynamixel_state[motor_id]
 

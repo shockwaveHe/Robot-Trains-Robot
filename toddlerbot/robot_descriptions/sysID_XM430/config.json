@@ -1,0 +1,58 @@
+{
+    "general": {
+        "is_fixed": true,
+        "use_torso_site": false,
+        "has_imu": false,
+        "has_dynamixel": true,
+        "dynamixel_baudrate": 4000000,
+        "has_sunny_sky": false,
+        "is_waist_closed_loop": false,
+        "is_knee_closed_loop": false,
+        "is_ankle_closed_loop": false
+    },
+    "joints": {
+        "joint_0": {
+            "is_passive": false,
+            "transmission": "none",
+            "group": "default",
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "damping": 0.352,
+            "armature": 0.003,
+            "frictionloss": 0.0,
+            "id": 0,
+            "type": "dynamixel",
+            "spec": "XM430",
+            "control_mode": "current_based_position",
+            "init_pos": 1.902408884673819,
+            "kp_real": 2400.0,
+            "ki_real": 0.0,
+            "kd_real": 2400.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 18.75,
+            "kd_sim": 0.0
+        }
+    },
+    "links": {
+        "xm430": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "arm_430": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        }
+    }
+}

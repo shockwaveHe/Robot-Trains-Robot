@@ -480,7 +480,7 @@
   </equality>
   <default>
     <default class="XM430">
-      <position forcerange="-5 5" />
+      <position forcerange="-3 3" />
     </default>
     <default class="XC430">
       <position forcerange="-2 2" />

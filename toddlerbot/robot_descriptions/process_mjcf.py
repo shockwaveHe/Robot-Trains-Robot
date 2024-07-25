@@ -178,7 +178,7 @@ def add_default_settings(root: ET.Element):
     default = ET.SubElement(root, "default")
 
     XM430_default = ET.SubElement(default, "default", {"class": "XM430"})
-    ET.SubElement(XM430_default, "position", {"forcerange": "-5 5"})
+    ET.SubElement(XM430_default, "position", {"forcerange": "-3 3"})
 
     XC430_default = ET.SubElement(default, "default", {"class": "XC430"})
     ET.SubElement(XC430_default, "position", {"forcerange": "-2 2"})

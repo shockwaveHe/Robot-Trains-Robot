@@ -170,7 +170,7 @@ class MuJoCoController:
             joint_ctrls = self.command_queue.get()
             if isinstance(joint_ctrls, dict):
                 for name, ctrl in joint_ctrls.items():
-                    data.actuator(f"{name}_act").ctrl = ctrl
+                    data.actuator(name).ctrl = ctrl
             else:
                 for i, ctrl in enumerate(joint_ctrls):
                     data.actuator(i).ctrl = ctrl
@@ -387,7 +387,7 @@ class MuJoCoSim(BaseSim):
         control = np.zeros((len(joint_control_traj), self.model.nu))
         for i, joint_angles in enumerate(joint_control_traj):
             for name, angle in joint_angles.items():
-                control[i, self.model.actuator(f"{name}_act").id] = angle
+                control[i, self.model.actuator(name).id] = angle
 
         state_traj, _ = mujoco.rollout.rollout(
             self.model, self.data, initial_state, control

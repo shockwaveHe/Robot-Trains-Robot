@@ -1,0 +1,58 @@
+<?xml version="1.0" ?><robot name="sysID_XM430">  
+  <link name="xm430">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/xm430_visual.stl"/>        
+      </geometry>      
+      <material name="xm430_material">        
+        <color rgba="0.64705882352941179736 0.64705882352941179736 0.64705882352941179736 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/xm430_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="0.060324644876360043744 4.2778010964000801053e-05 0.0054193959459662060033" rpy="0 0 0"/>      
+      <mass value="0.017849999999999997813"/>      
+      <inertia ixx="4.6718410796497601784e-06" ixy="-1.7966582491276118102e-06" ixz="-4.6127237597421999479e-22" iyy="1.5261418896850629498e-05" iyz="-4.0828160524551003564e-24" izz="1.5277321486128431845e-05"/>      
+    </inertial>    
+  </link>  
+
+  <link name="arm_430">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/arm_430_visual.stl"/>        
+      </geometry>      
+      <material name="arm_430_material">        
+        <color rgba="0.604714181969083997 0.66722689075630248201 0.72422035480859026091 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/arm_430_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="-0.070000487132979419269 -1.7478457641755401719e-17 -0.019000000000000200756" rpy="0 0 0"/>      
+      <mass value="0.094500000000000014544"/>      
+      <inertia ixx="9.7686465200452811679e-05" ixy="-1.5627757876841841256e-19" ixz="-2.5453340064991725189e-19" iyy="0.00017605681504883924793" iyz="1.4663220283979688102e-16" izz="9.7562052053042674546e-05"/>      
+    </inertial>    
+  </link>  
+
+  <joint name="joint_0" type="revolute">    
+    <origin xyz="0.093000000000000013212 0.032699857927858892725 0.0055693959459662215755" rpy="-1.570796326794896558 2.7547408798512016148e-15 -1.5707963267948912289"/>    
+    <parent link="xm430"/>    
+    <child link="arm_430"/>    
+    <axis xyz="0 0 1"/>    
+    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558"/>    
+    <joint_properties friction="0.0"/>    
+  </joint>  
+
+
+</robot>
