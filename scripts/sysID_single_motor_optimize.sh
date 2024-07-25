@@ -12,13 +12,13 @@ EXP_FOLDER_PATH=""
 # Determine the corresponding experiment folder path based on the motor type
 case "$MOTOR_TYPE" in
   "XM430")
-    EXP_FOLDER_PATH="results/20240725_104025_sysID_XM430_joint_0"
+    EXP_FOLDER_PATH="results/20240725_140420_sysID_XM430_joint_0"
     ;;
   "XC430")
     EXP_FOLDER_PATH="results/20240702_173732_sysID_XC430_joint_0"
     ;;
   "XC330")
-    EXP_FOLDER_PATH="results/20240703_161744_sysID_XC330_joint_0"
+    EXP_FOLDER_PATH="results/20240725_154005_sysID_XC330_joint_0"
     ;;
   "2XL430")
     EXP_FOLDER_PATH="results/20240703_171234_sysID_2XL430_joint_0"

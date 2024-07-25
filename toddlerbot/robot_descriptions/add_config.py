@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 from typing import Any, Dict
 
 # TODO: Convert to CSV and upload to google sheet with python
+# TODO: Verify that the XC330 is well system identified
 
 
 def get_default_config(
@@ -115,12 +116,12 @@ def get_default_config(
             joint_dict["id"] = list(motor_config.keys()).index(joint_name)
             joint_dict["type"] = "dynamixel"
             joint_dict["spec"] = motor_name
-            # joint_dict["control_mode"] = (
-            #     "current_based_position"
-            #     if motor_name == "XC330" or motor_name == "XM430"
-            #     else "extended_position"
-            # )
-            joint_dict["control_mode"] = "extended_position"
+            joint_dict["control_mode"] = (
+                "current_based_position"
+                if motor_name == "XC330"  # or motor_name == "XM430"
+                else "extended_position"
+            )
+            # joint_dict["control_mode"] = "extended_position"
             joint_dict["init_pos"] = 0.0
             joint_dict["kp_real"] = kp
             joint_dict["ki_real"] = 0.0

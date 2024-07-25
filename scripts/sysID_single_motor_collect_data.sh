@@ -1,10 +1,10 @@
 #!/bin/bash
-MOTOR_TYPE="XM430"
+MOTOR_TYPE="XC330"
 RESULT_DIR="results"
 N_TRIALS=15
 N_LOADS=4
 EXP_FOLDER_PATH=""
-# EXP_FOLDER_PATH="results/20240702_173732_sysID_XC430_joint_0"
+# EXP_FOLDER_PATH="results/20240725_154005_sysID_XC330_joint_0"
 
 # Collect initial data
 python toddlerbot/tools/sysID/collect_data.py --robot-name sysID_$MOTOR_TYPE --joint-names joint_0 --n-trials $N_TRIALS --n-loads $N_LOADS --exp-folder-path "$EXP_FOLDER_PATH"

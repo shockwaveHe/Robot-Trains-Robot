@@ -437,6 +437,8 @@ def optimize_parameters(
         sampler=sampler,
         load_if_exists=True,
     )
+
+    # study.enqueue_trial({"damping": 0.099, "armature": 0.002, "frictionloss": 0.239})
     study.optimize(objective, n_trials=n_iters, n_jobs=1, show_progress_bar=True)
 
     log(
