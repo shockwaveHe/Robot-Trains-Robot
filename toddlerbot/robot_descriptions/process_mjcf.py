@@ -278,6 +278,31 @@ def add_waist_constraints(root: ET.Element, joints_config: Dict[str, Any]):
     ET.SubElement(fixed_yaw, "joint", joint="waist_yaw", coef="1")
 
 
+def add_knee_constraints(root: ET.Element):
+    # Ensure there is an <equality> element
+    equality = root.find("./equality")
+    if equality is None:
+        equality = ET.SubElement(root, "equality")
+
+    body_pairs: List[Tuple[str, str]] = [
+        ("knee_rod", "bearing_683"),
+        ("knee_rod_2", "bearing_683_2"),
+        ("knee_rod_3", "bearing_683_3"),
+        ("knee_rod_4", "bearing_683_4"),
+    ]
+
+    # Add equality constraints for each pair
+    for body1, body2 in body_pairs:
+        ET.SubElement(
+            equality,
+            "weld",
+            body1=body1,
+            body2=body2,
+            solimp="0.9999 0.9999 0.001 0.5 2",
+            solref="0.0001 1",
+        )
+
+
 def add_ankle_constraints(root: ET.Element):
     # Ensure there is an <equality> element
     equality = root.find("./equality")
@@ -522,10 +547,13 @@ def process_mjcf_fixed_file(root: ET.Element, config: Dict[str, Any]):
     exclude_all_contacts(root)
     add_actuators_to_mjcf(root, config["joints"])
 
-    if config["general"]["has_waist"]:
+    if config["general"]["is_waist_closed_loop"]:
         add_waist_constraints(root, config["joints"])
 
-    if config["general"]["has_ankle"]:
+    if config["general"]["is_knee_closed_loop"]:
+        add_knee_constraints(root)
+
+    if config["general"]["is_ankle_closed_loop"]:
         add_ankle_constraints(root)
 
     add_default_settings(root)

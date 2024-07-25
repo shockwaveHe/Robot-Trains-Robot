@@ -43,11 +43,13 @@ def update_link_names_and_references(body_root: ET.Element, part_root: ET.Elemen
         if old_name not in existing_links:
             return old_name
         i = 2
-        if old_name.split("_")[-1].isdigit():
-            old_name = "_".join(old_name.split("_")[:-1])
+        old_name_words = old_name.split("_")
+        if old_name_words[-1].isdigit() and int(old_name_words[-1]) < 100:
+            old_name = "_".join(old_name_words[:-1])
 
         while f"{old_name}_{i}" in existing_links:
             i += 1
+
         return f"{old_name}_{i}"
 
     # Update link names in part_root and collect changes

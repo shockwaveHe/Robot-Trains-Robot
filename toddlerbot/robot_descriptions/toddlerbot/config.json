@@ -6,8 +6,9 @@
         "has_dynamixel": true,
         "dynamixel_baudrate": 4000000,
         "has_sunny_sky": false,
-        "has_waist": true,
-        "has_ankle": true
+        "is_waist_closed_loop": true,
+        "is_knee_closed_loop": true,
+        "is_ankle_closed_loop": true
     },
     "joints": {
         "neck_yaw_drive": {
@@ -24,7 +25,7 @@
             "type": "dynamixel",
             "spec": "XC330",
             "control_mode": "current_based_position",
-            "init_pos": 0.1365242898464203,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -47,7 +48,7 @@
             "type": "dynamixel",
             "spec": "XC330",
             "control_mode": "current_based_position",
-            "init_pos": 3.351747989654541,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -94,7 +95,7 @@
             "type": "dynamixel",
             "spec": "XC330",
             "control_mode": "current_based_position",
-            "init_pos": 4.979301452636719,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -117,7 +118,7 @@
             "type": "dynamixel",
             "spec": "XC330",
             "control_mode": "current_based_position",
-            "init_pos": 1.0477088689804077,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -140,7 +141,7 @@
             "type": "dynamixel",
             "spec": "XC330",
             "control_mode": "current_based_position",
-            "init_pos": 5.560680389404297,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -175,7 +176,7 @@
             "type": "dynamixel",
             "spec": "XC330",
             "control_mode": "current_based_position",
-            "init_pos": 1.9113401174545288,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -220,7 +221,31 @@
             "frictionloss": 0.239,
             "gear_ratio": 2.4
         },
-        "left_ank_L_rev_2": {
+        "left_knee_front_rev_2": {
+            "is_passive": true,
+            "transmission": "knee",
+            "group": "lower_body",
+            "default_pos": 0.0,
+            "lower_limit": -6.283185307179586,
+            "upper_limit": 6.283185307179586,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "gear_ratio": 1.0
+        },
+        "left_knee_back_rev_2": {
+            "is_passive": true,
+            "transmission": "knee",
+            "group": "lower_body",
+            "default_pos": 0.0,
+            "lower_limit": -6.283185307179586,
+            "upper_limit": 6.283185307179586,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "gear_ratio": 1.0
+        },
+        "left_ank_long_rev_2": {
             "is_passive": true,
             "transmission": "ankle",
             "group": "lower_body",
@@ -232,7 +257,7 @@
             "frictionloss": 0.0,
             "gear_ratio": 1.0
         },
-        "left_ank_L_rev_1": {
+        "left_ank_long_rev_1": {
             "is_passive": true,
             "transmission": "ankle",
             "group": "lower_body",
@@ -244,7 +269,7 @@
             "frictionloss": 0.0,
             "gear_ratio": 1.0
         },
-        "left_ank_S_rev_2": {
+        "left_ank_small_rev_2": {
             "is_passive": true,
             "transmission": "ankle",
             "group": "lower_body",
@@ -256,7 +281,7 @@
             "frictionloss": 0.0,
             "gear_ratio": 1.0
         },
-        "left_ank_S_rev_1": {
+        "left_ank_small_rev_1": {
             "is_passive": true,
             "transmission": "ankle",
             "group": "lower_body",
@@ -306,7 +331,7 @@
             "type": "dynamixel",
             "spec": "XC330",
             "control_mode": "current_based_position",
-            "init_pos": 2.845534324645996,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -329,7 +354,7 @@
             "type": "dynamixel",
             "spec": "XC330",
             "control_mode": "current_based_position",
-            "init_pos": 1.826971173286438,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -338,9 +363,45 @@
             "kp_sim": 18.75,
             "kd_sim": 0.0
         },
-        "left_knee": {
+        "left_knee_pitch": {
+            "is_passive": true,
+            "transmission": "knee",
+            "group": "lower_body",
+            "default_pos": 0.0,
+            "lower_limit": 0.0,
+            "upper_limit": 1.9198621771937625,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "gear_ratio": 1.0
+        },
+        "left_knee_front_rev_1": {
+            "is_passive": true,
+            "transmission": "knee",
+            "group": "lower_body",
+            "default_pos": 0.0,
+            "lower_limit": -6.283185307179586,
+            "upper_limit": 6.283185307179586,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "gear_ratio": 1.0
+        },
+        "left_knee_back_rev_1": {
+            "is_passive": true,
+            "transmission": "knee",
+            "group": "lower_body",
+            "default_pos": 0.0,
+            "lower_limit": -6.283185307179586,
+            "upper_limit": 6.283185307179586,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "gear_ratio": 1.0
+        },
+        "left_knee_act": {
             "is_passive": false,
-            "transmission": "none",
+            "transmission": "knee",
             "group": "lower_body",
             "default_pos": 0.0,
             "lower_limit": 0.0,
@@ -352,7 +413,7 @@
             "type": "dynamixel",
             "spec": "XM430",
             "control_mode": "current_based_position",
-            "init_pos": 1.5707963267948966,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -375,7 +436,7 @@
             "type": "dynamixel",
             "spec": "2XC430",
             "control_mode": "extended_position",
-            "init_pos": 3.141592653589793,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -398,7 +459,7 @@
             "type": "dynamixel",
             "spec": "2XC430",
             "control_mode": "extended_position",
-            "init_pos": 3.141592653589793,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -406,6 +467,30 @@
             "kff1_real": 0.0,
             "kp_sim": 18.75,
             "kd_sim": 0.0
+        },
+        "right_knee_front_rev_2": {
+            "is_passive": true,
+            "transmission": "knee",
+            "group": "lower_body",
+            "default_pos": 0.0,
+            "lower_limit": -6.283185307179586,
+            "upper_limit": 6.283185307179586,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "gear_ratio": 1.0
+        },
+        "right_knee_back_rev_2": {
+            "is_passive": true,
+            "transmission": "knee",
+            "group": "lower_body",
+            "default_pos": 0.0,
+            "lower_limit": -6.283185307179586,
+            "upper_limit": 6.283185307179586,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "gear_ratio": 1.0
         },
         "right_ank_L_rev_2": {
             "is_passive": true,
@@ -493,7 +578,7 @@
             "type": "dynamixel",
             "spec": "XC330",
             "control_mode": "current_based_position",
-            "init_pos": 1.8054953813552856,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -516,7 +601,7 @@
             "type": "dynamixel",
             "spec": "XC330",
             "control_mode": "current_based_position",
-            "init_pos": 4.5160393714904785,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -525,9 +610,45 @@
             "kp_sim": 18.75,
             "kd_sim": 0.0
         },
-        "right_knee": {
+        "right_knee_pitch": {
+            "is_passive": true,
+            "transmission": "knee",
+            "group": "lower_body",
+            "default_pos": 0.0,
+            "lower_limit": -1.9198621771937625,
+            "upper_limit": 0.0,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "gear_ratio": 1.0
+        },
+        "right_knee_front_rev_1": {
+            "is_passive": true,
+            "transmission": "knee",
+            "group": "lower_body",
+            "default_pos": 0.0,
+            "lower_limit": -6.283185307179586,
+            "upper_limit": 6.283185307179586,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "gear_ratio": 1.0
+        },
+        "right_knee_back_rev_1": {
+            "is_passive": true,
+            "transmission": "knee",
+            "group": "lower_body",
+            "default_pos": 0.0,
+            "lower_limit": -6.283185307179586,
+            "upper_limit": 6.283185307179586,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
+            "gear_ratio": 1.0
+        },
+        "right_knee_act": {
             "is_passive": false,
-            "transmission": "none",
+            "transmission": "knee",
             "group": "lower_body",
             "default_pos": 0.0,
             "lower_limit": -1.9198621771937625,
@@ -539,7 +660,7 @@
             "type": "dynamixel",
             "spec": "XM430",
             "control_mode": "current_based_position",
-            "init_pos": 1.5707963267948966,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -562,7 +683,7 @@
             "type": "dynamixel",
             "spec": "2XC430",
             "control_mode": "extended_position",
-            "init_pos": 3.141592653589793,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -585,7 +706,7 @@
             "type": "dynamixel",
             "spec": "2XC430",
             "control_mode": "extended_position",
-            "init_pos": 3.141592653589793,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -608,7 +729,7 @@
             "type": "dynamixel",
             "spec": "2XL430",
             "control_mode": "extended_position",
-            "init_pos": 3.78739857673645,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -631,7 +752,7 @@
             "type": "dynamixel",
             "spec": "2XL430",
             "control_mode": "extended_position",
-            "init_pos": 6.1267194747924805,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -654,7 +775,7 @@
             "type": "dynamixel",
             "spec": "2XL430",
             "control_mode": "extended_position",
-            "init_pos": 0.8713011145591736,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -677,7 +798,7 @@
             "type": "dynamixel",
             "spec": "2XL430",
             "control_mode": "extended_position",
-            "init_pos": 3.141592653589793,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -724,7 +845,7 @@
             "type": "dynamixel",
             "spec": "2XL430",
             "control_mode": "extended_position",
-            "init_pos": 0.7853981633974483,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -759,7 +880,7 @@
             "type": "dynamixel",
             "spec": "2XL430",
             "control_mode": "extended_position",
-            "init_pos": 3.141592653589793,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -782,7 +903,7 @@
             "type": "dynamixel",
             "spec": "XC430",
             "control_mode": "extended_position",
-            "init_pos": 2.356194490192345,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -805,7 +926,7 @@
             "type": "dynamixel",
             "spec": "2XL430",
             "control_mode": "extended_position",
-            "init_pos": 1.7165244817733765,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -828,7 +949,7 @@
             "type": "dynamixel",
             "spec": "2XL430",
             "control_mode": "extended_position",
-            "init_pos": 5.875146389007568,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -851,7 +972,7 @@
             "type": "dynamixel",
             "spec": "2XL430",
             "control_mode": "extended_position",
-            "init_pos": 3.0004663467407227,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -874,7 +995,7 @@
             "type": "dynamixel",
             "spec": "2XL430",
             "control_mode": "extended_position",
-            "init_pos": 3.141592653589793,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -921,7 +1042,7 @@
             "type": "dynamixel",
             "spec": "2XL430",
             "control_mode": "extended_position",
-            "init_pos": 1.5707963267948966,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -956,7 +1077,7 @@
             "type": "dynamixel",
             "spec": "2XL430",
             "control_mode": "extended_position",
-            "init_pos": 3.141592653589793,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -979,7 +1100,7 @@
             "type": "dynamixel",
             "spec": "XC430",
             "control_mode": "extended_position",
-            "init_pos": 0.7853981633974483,
+            "init_pos": 0.0,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -1143,6 +1264,24 @@
                 1.0
             ]
         },
+        "bearing_683": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "bearing_683_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
         "ank_pitch_link": {
             "has_collision": false,
             "collision_type": "box",
@@ -1215,6 +1354,33 @@
                 1.0
             ]
         },
+        "xm430_plate": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "knee_rod": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "knee_rod_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
         "hip_yaw_link_2": {
             "has_collision": false,
             "collision_type": "box",
@@ -1243,6 +1409,24 @@
             ]
         },
         "right_calf_link": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "bearing_683_3": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "bearing_683_4": {
             "has_collision": false,
             "collision_type": "box",
             "collision_scale": [
@@ -1315,6 +1499,33 @@
             ]
         },
         "ank_motor_arm_4": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "xm430_plate_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "knee_rod_3": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "knee_rod_4": {
             "has_collision": false,
             "collision_type": "box",
             "collision_scale": [

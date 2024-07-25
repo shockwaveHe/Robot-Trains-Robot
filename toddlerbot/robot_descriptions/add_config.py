@@ -16,13 +16,13 @@ joint_motor_dict: Dict[str, str] = {
     "left_hip_yaw_drive": "XC330",
     "left_hip_roll": "2XC430",
     "left_hip_pitch": "2XC430",
-    "left_knee": "XM430",
+    "left_knee_act": "XM430",
     "left_ank_act_1": "XC330",
     "left_ank_act_2": "XC330",
     "right_hip_yaw_drive": "XC330",
     "right_hip_roll": "2XC430",
     "right_hip_pitch": "2XC430",
-    "right_knee": "XM430",
+    "right_knee_act": "XM430",
     "right_ank_act_1": "XC330",
     "right_ank_act_2": "XC330",
     "left_sho_pitch": "XC430",
@@ -50,8 +50,8 @@ joint_gear_ratio_dict: Dict[str, float] = {
     "right_hip_yaw_driven": 1.105263157894737,
 }
 
-joint_dyn_params_dict: Dict[str, Dict[str, float]] = {}
 motor_list = ["XC330", "XC430", "2XC430", "2XL430"]
+joint_dyn_params_dict: Dict[str, Dict[str, float]] = {}
 for motor_name in motor_list:
     sysID_result_path = os.path.join(
         "toddlerbot", "robot_descriptions", f"sysID_{motor_name}", "config.json"
@@ -93,8 +93,9 @@ def get_default_config(root: ET.Element, kp: float = 2400.0, kd: float = 2400.0)
         "has_sunny_sky": False,
     }
 
-    has_waist = False
-    has_ankle = False
+    is_waist_closed_loop = False
+    is_knee_closed_loop = False
+    is_ankle_closed_loop = False
     config_dict["joints"] = {}
     id = 0
     for joint in root.findall("joint"):
@@ -121,13 +122,19 @@ def get_default_config(root: ET.Element, kp: float = 2400.0, kd: float = 2400.0)
                 is_passive = True
 
         if "waist" in joint_name:
-            has_waist = True
+            is_waist_closed_loop = True
             transmission = "waist"
             if "act" not in joint_name:
                 is_passive = True
 
+        if "knee" in joint_name:
+            is_knee_closed_loop = True
+            transmission = "knee"
+            if "act" not in joint_name:
+                is_passive = True
+
         if "ank" in joint_name:
-            has_ankle = True
+            is_ankle_closed_loop = True
             transmission = "ankle"
             if "act" not in joint_name:
                 is_passive = True
@@ -205,8 +212,9 @@ def get_default_config(root: ET.Element, kp: float = 2400.0, kd: float = 2400.0)
 
         config_dict["joints"][joint_name] = joint_dict
 
-    config_dict["general"]["has_waist"] = has_waist
-    config_dict["general"]["has_ankle"] = has_ankle
+    config_dict["general"]["is_waist_closed_loop"] = is_waist_closed_loop
+    config_dict["general"]["is_knee_closed_loop"] = is_knee_closed_loop
+    config_dict["general"]["is_ankle_closed_loop"] = is_ankle_closed_loop
 
     config_dict["links"] = {}
     for link in root.findall("link"):
