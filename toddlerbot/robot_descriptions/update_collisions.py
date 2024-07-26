@@ -7,29 +7,6 @@ from typing import List
 
 import trimesh  # type: ignore
 
-# default_scale_factor = (1.0, 1.0, 1.0)
-# hip_scale_factor = (0.5, 1.0, 1.0)
-# leg_scale_factor = (1.0, 0.5, 1.0)
-# arm_scale_factor = (1.0, 0.5, 1.0)
-
-# collision_link_dict: Dict[str, Tuple[float, float, float]] = {
-#     "body_link": default_scale_factor,
-#     "neck_link": default_scale_factor,
-#     "head_link": default_scale_factor,
-#     "hip_roll_link": hip_scale_factor,
-#     "left_hip_pitch_link": leg_scale_factor,
-#     "left_calf_link": leg_scale_factor,
-#     # "ank_roll_link": default_scale_factor, # We need accurate contact for the feet
-#     "hip_roll_link_2": hip_scale_factor,
-#     "right_hip_pitch_link": leg_scale_factor,
-#     "right_calf_link": leg_scale_factor,
-#     # "ank_roll_link_2": default_scale_factor,
-#     "sho_roll_link": arm_scale_factor,
-#     "elb_link": arm_scale_factor,
-#     "sho_roll_link_2": arm_scale_factor,
-#     "elb_link_2": arm_scale_factor,
-# }
-
 
 def compute_bounding_box_mesh(robot_dir: str, mesh_filename: str, scale: List[float]):
     mesh: trimesh.Trimesh = trimesh.load(os.path.join(robot_dir, mesh_filename))  # type: ignore
@@ -61,7 +38,7 @@ def compute_bounding_box_mesh(robot_dir: str, mesh_filename: str, scale: List[fl
 
 def update_collisons(robot_name: str):
     robot_dir = os.path.join("toddlerbot", "robot_descriptions", robot_name)
-    config_file_path = os.path.join(robot_dir, "config.json")
+    collision_config_file_path = os.path.join(robot_dir, "config_collision.json")
     urdf_path = os.path.join(robot_dir, f"{robot_name}.urdf")
 
     # Ensure the collision directory exists
@@ -71,21 +48,19 @@ def update_collisons(robot_name: str):
 
     os.makedirs(collision_dir, exist_ok=True)
 
-    with open(config_file_path, "r") as f:
-        config_dict = json.load(f)
-
-    link_config_dict = config_dict["links"]
+    with open(collision_config_file_path, "r") as f:
+        collision_config = json.load(f)
 
     tree = ET.parse(urdf_path)
     root = tree.getroot()
 
     for link in root.findall("link"):
         link_name = link.get("name")
-        if link_name is None or link_name not in link_config_dict:
+        if link_name is None or link_name not in collision_config:
             continue
 
-        if link_config_dict[link_name]["has_collision"]:
-            if link_config_dict[link_name]["collision_type"] == "box":
+        if collision_config[link_name]["has_collision"]:
+            if collision_config[link_name]["type"] == "box":
                 # Find the visual element and its mesh filename
                 visual = link.find("visual")
                 geometry = visual.find("geometry") if visual is not None else None
@@ -94,10 +69,10 @@ def update_collisons(robot_name: str):
 
                 if mesh_filename is not None:
                     # Compute the bounding box and replace the collision mesh
-                    collision_bbox_file = compute_bounding_box_mesh(
+                    collision_filename = compute_bounding_box_mesh(
                         os.path.dirname(urdf_path),
                         mesh_filename,
-                        link_config_dict[link_name]["collision_scale"],
+                        collision_config[link_name]["scale"],
                     )
                     collision = link.find("collision")
                     if collision is None:
@@ -110,7 +85,7 @@ def update_collisons(robot_name: str):
                         mesh = geometry.find("mesh") if geometry is not None else None
 
                     if mesh is not None:
-                        mesh.set("filename", collision_bbox_file)
+                        mesh.set("filename", collision_filename)
         else:
             # Remove the collision element if it exists
             collision = link.find("collision")

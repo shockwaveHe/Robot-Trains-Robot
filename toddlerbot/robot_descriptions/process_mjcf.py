@@ -243,7 +243,7 @@ def add_contact_exclusion_to_mjcf(root: ET.Element):
         # Ensure the parent has a 'collision' class geom as a direct child
         if parent_name and body.find("./geom[@class='collision']") is not None:
             # Iterate over direct children bodies of the current body
-            for child in body.findall(".//body"):
+            for child in body.findall("./body"):
                 child_name = child.get("name")
                 # Ensure the child has a 'collision' class geom as a direct child
                 if child_name and child.find("./geom[@class='collision']") is not None:
@@ -412,7 +412,7 @@ def add_body_link(root: ET.Element, urdf_path: str):
     body_link = ET.Element(
         "body",
         name=root_link_name,
-        pos="0 0 0",
+        pos="0 0 0.3442",
         quat="1 0 0 0",
     )
 
@@ -544,7 +544,7 @@ def process_mjcf_fixed_file(root: ET.Element, config: Dict[str, Any]):
 
     update_joint_params(root, config["joints"])
     update_geom_classes(root, ["type", "contype", "conaffinity", "group", "density"])
-    exclude_all_contacts(root)
+    # exclude_all_contacts(root)
     add_actuators_to_mjcf(root, config["joints"])
 
     if config["general"]["is_waist_closed_loop"]:
@@ -557,7 +557,7 @@ def process_mjcf_fixed_file(root: ET.Element, config: Dict[str, Any]):
         add_ankle_constraints(root)
 
     add_default_settings(root)
-    add_contact_exclusion_to_mjcf(root)
+    # add_contact_exclusion_to_mjcf(root)
 
 
 def get_mjcf_files(robot_name: str):

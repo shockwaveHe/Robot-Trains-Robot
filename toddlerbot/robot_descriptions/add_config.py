@@ -144,20 +144,6 @@ def get_default_config(
     config_dict["general"]["is_knee_closed_loop"] = is_knee_closed_loop
     config_dict["general"]["is_ankle_closed_loop"] = is_ankle_closed_loop
 
-    config_dict["links"] = {}
-    for link in root.findall("link"):
-        link_name = link.get("name")
-
-        if link_name is None:
-            continue
-
-        link_dict = {
-            "has_collision": False,
-            "collision_type": "box",  # box, mesh
-            "collision_scale": [1.0, 1.0, 1.0],
-        }
-        config_dict["links"][link_name] = link_dict
-
     return config_dict
 
 
@@ -230,6 +216,20 @@ def main():
     config_file_path = os.path.join(robot_dir, "config.json")
     with open(config_file_path, "w") as f:
         f.write(json.dumps(config_dict, indent=4))
+
+    collision_config_file_path = os.path.join(robot_dir, "config_collision.json")
+    if not os.path.exists(collision_config_file_path):
+        collision_config = {}
+        for link in root.findall("link"):
+            link_name = link.get("name")
+
+            if link_name is None:
+                continue
+
+            collision_config[link_name] = {"has_collision": False}
+
+        with open(collision_config_file_path, "w") as f:
+            f.write(json.dumps(collision_config, indent=4))
 
 
 if __name__ == "__main__":

@@ -31,7 +31,7 @@ ASSEMBLY_LIST="toddlerbot left_leg_XM430 right_leg_XM430 left_arm_hand right_arm
 
 REPO_NAME="toddlerbot"
 URDF_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/$ROBOT_NAME.urdf
-MJCF_FIXED_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/${ROBOT_NAME}_fixed.xml
+MJCF_SCENE_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/${ROBOT_NAME}_scene.xml
 CONFIG_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/config.json
 
 # shellcheck disable=SC1091
@@ -66,33 +66,32 @@ if [ "$run_process" == "y" ]; then
     python $REPO_NAME/visualization/vis_kine_tree.py \
         --path $URDF_PATH \
         -o $REPO_NAME/robot_descriptions/$ROBOT_NAME/${ROBOT_NAME}_kine_tree.png
-
-    # Check if the config file exists
-    if [ -f "$CONFIG_PATH" ]; then
-        printf "Configuration file already exists. Do you want to overwrite it? (y/n)"
-        read -r -p " > " overwrite_config
-        if [ "$overwrite_config" == "y" ]; then
-            printf "Overwriting the configuration file...\n\n"
-            python $REPO_NAME/robot_descriptions/add_config.py --robot-name $ROBOT_NAME
-        else
-            printf "Configuration file not overwritten.\n\n"
-        fi
-    else
-        printf "Generating the configuration file...\n\n"
-        python $REPO_NAME/robot_descriptions/add_config.py --robot-name $ROBOT_NAME
-    fi
-
-    printf "Have you double-checked and updated the configs in the auto-generated config.json? (y/n)"
-    read -r -p " > " update_collision
-    if [ "$update_collision" == "y" ]; then
-        printf "Generating the collision files...\n\n"
-        python $REPO_NAME/robot_descriptions/update_collisions.py --robot-name $ROBOT_NAME
-    else
-        printf "Collision files not updated.\n\n"
-    fi
-
 else
     printf "Process skipped.\n\n"
+fi
+
+# Check if the config file exists
+if [ -f "$CONFIG_PATH" ]; then
+    printf "Configuration file already exists. Do you want to overwrite it? (y/n)"
+    read -r -p " > " overwrite_config
+    if [ "$overwrite_config" == "y" ]; then
+        printf "Overwriting the configuration file...\n\n"
+        python $REPO_NAME/robot_descriptions/add_config.py --robot-name $ROBOT_NAME
+    else
+        printf "Configuration file not written.\n\n"
+    fi
+else
+    printf "Generating the configuration file...\n\n"
+    python $REPO_NAME/robot_descriptions/add_config.py --robot-name $ROBOT_NAME
+fi
+
+printf "Do you want to update the collision files? If so, make sure you have edited config_collision.json! (y/n)"
+read -r -p " > " update_collision
+if [ "$update_collision" == "y" ]; then
+    printf "Generating the collision files...\n\n"
+    python $REPO_NAME/robot_descriptions/update_collisions.py --robot-name $ROBOT_NAME
+else
+    printf "Collision files not updated.\n\n"
 fi
 
 # TODO: bring this back
@@ -126,7 +125,7 @@ read -r -p " > " run_mujoco
 
 if [ "$run_mujoco" == "y" ]; then
     printf "Simulation running...\n\n"
-    python -m mujoco.viewer --mjcf=$MJCF_FIXED_PATH
+    python -m mujoco.viewer --mjcf=$MJCF_SCENE_PATH
 else
     printf "Simulation skipped.\n\n"
 fi
