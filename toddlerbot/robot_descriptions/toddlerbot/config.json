@@ -263,7 +263,7 @@
             "armature": 0.0,
             "frictionloss": 0.0
         },
-        "left_ank_small_rev_2": {
+        "left_ank_short_rev_2": {
             "is_passive": true,
             "transmission": "ankle",
             "group": "lower_body",
@@ -274,7 +274,7 @@
             "armature": 0.0,
             "frictionloss": 0.0
         },
-        "left_ank_small_rev_1": {
+        "left_ank_short_rev_1": {
             "is_passive": true,
             "transmission": "ankle",
             "group": "lower_body",
@@ -477,7 +477,7 @@
             "armature": 0.0,
             "frictionloss": 0.0
         },
-        "right_ank_L_rev_2": {
+        "right_ank_long_rev_2": {
             "is_passive": true,
             "transmission": "ankle",
             "group": "lower_body",
@@ -488,7 +488,7 @@
             "armature": 0.0,
             "frictionloss": 0.0
         },
-        "right_ank_L_rev_1": {
+        "right_ank_long_rev_1": {
             "is_passive": true,
             "transmission": "ankle",
             "group": "lower_body",
@@ -499,7 +499,7 @@
             "armature": 0.0,
             "frictionloss": 0.0
         },
-        "right_ank_S_rev_2": {
+        "right_ank_short_rev_2": {
             "is_passive": true,
             "transmission": "ankle",
             "group": "lower_body",
@@ -510,7 +510,7 @@
             "armature": 0.0,
             "frictionloss": 0.0
         },
-        "right_ank_S_rev_1": {
+        "right_ank_short_rev_1": {
             "is_passive": true,
             "transmission": "ankle",
             "group": "lower_body",
@@ -1312,6 +1312,15 @@
                 1.0
             ]
         },
+        "left_sole_link": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
         "ank_motor_arm": {
             "has_collision": false,
             "collision_type": "box",
@@ -1457,6 +1466,15 @@
             ]
         },
         "ank_motor_rod_short_2": {
+            "has_collision": false,
+            "collision_type": "box",
+            "collision_scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "right_sole_link": {
             "has_collision": false,
             "collision_type": "box",
             "collision_scale": [

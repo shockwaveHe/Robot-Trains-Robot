@@ -42,7 +42,7 @@ read -r -p " > " run_onshape
 
 if [ "$run_onshape" == "y" ]; then
     printf "Exporting...\n\n"
-    python $REPO_NAME/robot_descriptions/get_urdf.py --doc-id-list $DOC_ID_LIST --assembly-list $ASSEMBLY_LIST
+    python $REPO_NAME/robot_descriptions/get_urdf.py --doc-id-list "$DOC_ID_LIST" --assembly-list "$ASSEMBLY_LIST"
 else
     printf "Export skipped.\n\n"
 fi

@@ -13,9 +13,9 @@ def compute_leg_angles(target_foot_pos, target_foot_ori, side, offsets):
     ankle_roll, ankle_pitch, hip_yaw = target_foot_ori
 
     target_z = (
-        offsets["z_offset_thigh"]
+        offsets["hip_pitch_to_knee_z"]
         + offsets["z_offset_knee"]
-        + offsets["z_offset_shin"]
+        + offsets["knee_to_ank_roll_z"]
         - target_z
     )
 
@@ -23,19 +23,21 @@ def compute_leg_angles(target_foot_pos, target_foot_ori, side, offsets):
     transformed_y = -target_x * math.sin(hip_yaw) + target_y * math.cos(hip_yaw)
     transformed_z = target_z
 
-    hip_roll = math.atan2(
-        transformed_y, transformed_z + offsets["z_offset_hip_roll_to_pitch"]
-    )
+    hip_roll = math.atan2(transformed_y, transformed_z + offsets["hip_roll_to_pitch_z"])
 
     leg_projected_yz_length = math.sqrt(transformed_y**2 + transformed_z**2)
     leg_length = math.sqrt(transformed_x**2 + leg_projected_yz_length**2)
     leg_pitch = math.atan2(transformed_x, leg_projected_yz_length)
     hip_disp_cos = (
-        leg_length**2 + offsets["z_offset_thigh"] ** 2 - offsets["z_offset_shin"] ** 2
-    ) / (2 * leg_length * offsets["z_offset_thigh"])
+        leg_length**2
+        + offsets["hip_pitch_to_knee_z"] ** 2
+        - offsets["knee_to_ank_roll_z"] ** 2
+    ) / (2 * leg_length * offsets["hip_pitch_to_knee_z"])
     hip_disp = math.acos(min(max(hip_disp_cos, -1.0), 1.0))
     ankle_disp = math.asin(
-        offsets["z_offset_thigh"] / offsets["z_offset_shin"] * math.sin(hip_disp)
+        offsets["hip_pitch_to_knee_z"]
+        / offsets["knee_to_ank_roll_z"]
+        * math.sin(hip_disp)
     )
     hip_pitch = -leg_pitch - hip_disp
     knee_pitch = hip_disp + ankle_disp
@@ -219,10 +221,10 @@ robotis_op3_config = RobotConfig(
     com=[0, 0, 0.36],
     foot_size=[0.127, 0.08, 0.002],
     offsets={
-        "z_offset_hip_roll_to_pitch": 0.0,
-        "z_offset_thigh": 0.11,  # from the hip pitch joint to the knee joint
+        "hip_roll_to_pitch_z": 0.0,
+        "hip_pitch_to_knee_z": 0.11,  # from the hip pitch joint to the knee joint
         "z_offset_knee": 0.0,
-        "z_offset_shin": 0.11,  # from the knee joint to the ankle pitch joint
+        "knee_to_ank_roll_z": 0.11,  # from the knee joint to the ankle pitch joint
         "y_offset_com_to_foot": 0.0475,
     },
     compute_leg_angles=compute_leg_angles,

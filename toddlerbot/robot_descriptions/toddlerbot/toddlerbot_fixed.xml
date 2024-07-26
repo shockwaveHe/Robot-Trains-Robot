@@ -26,6 +26,7 @@
     <mesh name="left_ank_motor_rod_long_visual" file="../assemblies/left_leg_XM430/meshes/left_ank_motor_rod_long_visual.stl" />
     <mesh name="left_ank_rr_link_2_visual" file="../assemblies/left_leg_XM430/meshes/left_ank_rr_link_2_visual.stl" />
     <mesh name="left_ank_motor_rod_short_visual" file="../assemblies/left_leg_XM430/meshes/left_ank_motor_rod_short_visual.stl" />
+    <mesh name="left_sole_link_visual" file="../assemblies/left_leg_XM430/meshes/left_sole_link_visual.stl" />
     <mesh name="left_ank_motor_arm_visual" file="../assemblies/left_leg_XM430/meshes/left_ank_motor_arm_visual.stl" />
     <mesh name="left_ank_motor_arm_2_visual" file="../assemblies/left_leg_XM430/meshes/left_ank_motor_arm_2_visual.stl" />
     <mesh name="left_xm430_plate_visual" file="../assemblies/left_leg_XM430/meshes/left_xm430_plate_visual.stl" />
@@ -43,6 +44,7 @@
     <mesh name="right_ank_motor_rod_long_visual" file="../assemblies/right_leg_XM430/meshes/right_ank_motor_rod_long_visual.stl" />
     <mesh name="right_ank_rr_link_2_visual" file="../assemblies/right_leg_XM430/meshes/right_ank_rr_link_2_visual.stl" />
     <mesh name="right_ank_motor_rod_short_visual" file="../assemblies/right_leg_XM430/meshes/right_ank_motor_rod_short_visual.stl" />
+    <mesh name="right_sole_link_visual" file="../assemblies/right_leg_XM430/meshes/right_sole_link_visual.stl" />
     <mesh name="right_ank_motor_arm_visual" file="../assemblies/right_leg_XM430/meshes/right_ank_motor_arm_visual.stl" />
     <mesh name="right_ank_motor_arm_2_visual" file="../assemblies/right_leg_XM430/meshes/right_ank_motor_arm_2_visual.stl" />
     <mesh name="right_xm430_plate_visual" file="../assemblies/right_leg_XM430/meshes/right_xm430_plate_visual.stl" />
@@ -145,24 +147,25 @@
                 <inertial pos="0.00118809 -0.0496431 -0.00986349" quat="0.516238 0.556959 -0.428745 0.489359" mass="0.0796075" diaginertia="5.12533e-05 4.83411e-05 1.39247e-05" />
                 <joint name="left_knee_pitch" pos="0 0 0" axis="0 0 1" limited="true" range="0 1.91986" damping="0.0" armature="0.0" frictionloss="0.0" />
                 <geom rgba="0.611779 0.716533 0.749893 1" mesh="left_calf_link_visual" class="visual" />
-                <body name="bearing_683" pos="-0.00574025 0.0138582 -0.0262" quat="0.705054 0 0 0.709153">
+                <body name="bearing_683" pos="-0.00574025 0.0138582 -0.0262" quat="0.706077 0 0 0.708135">
                   <inertial pos="0 0 -0.00155" quat="0.5 0.5 -0.5 0.5" mass="0.000486947" diaginertia="3.53036e-09 2.15515e-09 2.15515e-09" />
                   <joint name="left_knee_front_rev_2" pos="0 0 0" axis="0 0 1" limited="true" range="-6.28319 6.28319" damping="0.0" armature="0.0" frictionloss="0.0" />
                   <geom rgba="0.647059 0.647059 0.647059 1" mesh="left_bearing_683_visual" class="visual" />
                 </body>
-                <body name="bearing_683_2" pos="0.00574025 -0.0138582 -0.0262" quat="0.705643 0 0 0.708568">
+                <body name="bearing_683_2" pos="0.00574025 -0.0138582 -0.0262" quat="0.706001 0 0 0.708211">
                   <inertial pos="0 0 -0.00155" quat="0.5 0.5 -0.5 0.5" mass="0.000486947" diaginertia="3.53036e-09 2.15515e-09 2.15515e-09" />
                   <joint name="left_knee_back_rev_2" pos="0 0 0" axis="0 0 1" limited="true" range="-6.28319 6.28319" damping="0.0" armature="0.0" frictionloss="0.0" />
                   <geom rgba="0.647059 0.647059 0.647059 1" mesh="left_bearing_683_2_visual" class="visual" />
                 </body>
-                <body name="ank_pitch_link" pos="0 -0.1 -0.0104" quat="0 0 0 -1">
+                <body name="ank_pitch_link" pos="0 -0.1 -0.0104" quat="0 0 0 1">
                   <inertial pos="0.000595283 -4.02697e-08 7.76161e-08" quat="0.707107 -1.66816e-06 1.66816e-06 0.707107" mass="0.00422384" diaginertia="4.37053e-07 3.97827e-07 8.88586e-08" />
                   <joint name="left_ank_pitch" pos="0 0 0" axis="0 0 1" limited="true" range="-0.785398 0.959931" damping="0.0" armature="0.0" frictionloss="0.0" />
                   <geom rgba="0.631892 0.726687 0.783564 1" mesh="left_ank_pitch_link_visual" class="visual" />
                   <body name="ank_roll_link" pos="0.0015 0 0" quat="0.707107 0 0.707107 0">
-                    <inertial pos="-1.32686e-07 0.0267964 -0.00105269" quat="0.998249 -0.0591498 1.78294e-07 1.60483e-05" mass="0.0248" diaginertia="1.98469e-05 1.88892e-05 4.97682e-06" />
+                    <inertial pos="-1.32686e-07 0.0267964 -0.00105269" quat="0.998249 -0.0591498 1.09707e-07 1.62188e-05" mass="0.0248" diaginertia="1.98469e-05 1.88892e-05 4.97682e-06" />
                     <joint name="left_ank_roll" pos="0 0 0" axis="0 0 1" limited="true" range="-0.785398 0.785398" damping="0.0" armature="0.0" frictionloss="0.0" />
                     <geom rgba="0.615686 0.811765 0.929412 1" mesh="left_ank_roll_link_visual" class="visual" />
+                    <geom pos="0 0.025 -0.0226" quat="0.5 0.5 0.5 -0.5" rgba="0.615686 0.811765 0.929412 1" mesh="left_sole_link_visual" class="visual" />
                     <body name="ank_rr_link" pos="-0.018 0.016 -0.0206" quat="0.00911142 0 0 0.999958">
                       <inertial pos="-4.52496e-05 0.00630964 0" quat="0.473509 0.525157 -0.473509 0.525157" mass="0.00145" diaginertia="4.29219e-08 2.97647e-08 2.74049e-08" />
                       <joint name="left_ank_long_rev_1" pos="0 0 0" axis="0 0 1" limited="true" range="-1.5708 1.5708" damping="0.0" armature="0.0" frictionloss="0.0" />
@@ -175,11 +178,11 @@
                     </body>
                     <body name="ank_rr_link_2" pos="0.018 0.016 -0.0206" quat="0.999915 0 0 0.0130589">
                       <inertial pos="-4.52496e-05 -0.00630964 0" quat="0.525157 0.473509 -0.525157 0.473509" mass="0.00145" diaginertia="4.29219e-08 2.97647e-08 2.74049e-08" />
-                      <joint name="left_ank_small_rev_1" pos="0 0 0" axis="0 0 1" limited="true" range="-1.5708 1.5708" damping="0.0" armature="0.0" frictionloss="0.0" />
+                      <joint name="left_ank_short_rev_1" pos="0 0 0" axis="0 0 1" limited="true" range="-1.5708 1.5708" damping="0.0" armature="0.0" frictionloss="0.0" />
                       <geom rgba="0.615686 0.811765 0.929412 1" mesh="left_ank_rr_link_2_visual" class="visual" />
                       <body name="ank_motor_rod_short" pos="0 -0.01 0" quat="0.126204 -0.695753 0.126204 -0.695753">
                         <inertial pos="2.60389e-10 0.0238305 0.000904035" quat="0.499641 0.505179 -0.500306 0.494821" mass="0.0017" diaginertia="3.36253e-07 3.31534e-07 1.09078e-08" />
-                        <joint name="left_ank_small_rev_2" pos="0 0 0" axis="0 0 1" limited="true" range="-1.5708 1.5708" damping="0.0" armature="0.0" frictionloss="0.0" />
+                        <joint name="left_ank_short_rev_2" pos="0 0 0" axis="0 0 1" limited="true" range="-1.5708 1.5708" damping="0.0" armature="0.0" frictionloss="0.0" />
                         <geom rgba="0.412226 0.583391 0.811073 1" mesh="left_ank_motor_rod_short_visual" class="visual" />
                       </body>
                     </body>
@@ -200,13 +203,13 @@
                 <inertial pos="0 0 -0.0024039" quat="-0.13795 0.69352 0.13795 0.69352" mass="0.0027" diaginertia="3.85335e-07 2.95759e-07 1.00777e-07" />
                 <joint name="left_knee_act" pos="0 0 0" axis="0 0 1" limited="true" range="0 1.91986" damping="0.369" armature="0.002" frictionloss="0.001" />
                 <geom rgba="0.615686 0.811765 0.929412 1" mesh="left_xm430_plate_visual" class="visual" />
-                <body name="knee_rod" pos="0.0138582 0.00574025 -0.005" quat="0.00289853 0 0 -0.999996">
-                  <inertial pos="0.0109673 -3.17888e-05 -0.00158729" quat="0.000400242 0.707561 -0.000399727 0.706652" mass="0.00133695" diaginertia="2.53378e-07 2.45726e-07 9.69655e-09" />
+                <body name="knee_rod" pos="0.0138582 0.00574025 -0.005" quat="0.00145536 0 0 -0.999999">
+                  <inertial pos="0.0109673 3.15214e-05 -0.00158729" quat="-0.000396875 0.707561 0.000396365 0.706652" mass="0.00133695" diaginertia="2.53378e-07 2.45726e-07 9.69655e-09" />
                   <joint name="left_knee_front_rev_1" pos="0 0 0" axis="0 0 1" limited="true" range="-6.28319 6.28319" damping="0.0" armature="0.0" frictionloss="0.0" />
                   <geom rgba="0.627113 0.751775 0.826572 1" mesh="left_knee_rod_visual" class="visual" />
                 </body>
-                <body name="knee_rod_2" pos="-0.0138582 -0.00574025 -0.005" quat="0.00206814 0 0 -0.999998">
-                  <inertial pos="0.0109674 4.63933e-06 -0.00158729" quat="-5.8412e-05 0.707561 5.8337e-05 0.706652" mass="0.00133695" diaginertia="2.53378e-07 2.45726e-07 9.69609e-09" />
+                <body name="knee_rod_2" pos="-0.0138582 -0.00574025 -0.005" quat="0.00156219 0 0 -0.999999">
+                  <inertial pos="0.0109673 2.6835e-05 -0.00158729" quat="-0.00033787 0.707561 0.000337436 0.706652" mass="0.00133695" diaginertia="2.53378e-07 2.45726e-07 9.69642e-09" />
                   <joint name="left_knee_back_rev_1" pos="0 0 0" axis="0 0 1" limited="true" range="-6.28319 6.28319" damping="0.0" armature="0.0" frictionloss="0.0" />
                   <geom rgba="0.627113 0.751775 0.826572 1" mesh="left_knee_rod_2_visual" class="visual" />
                 </body>
@@ -250,27 +253,28 @@
                   <inertial pos="0.000595283 -4.02697e-08 7.76161e-08" quat="0.707107 -1.66816e-06 1.66816e-06 0.707107" mass="0.00422384" diaginertia="4.37053e-07 3.97827e-07 8.88586e-08" />
                   <joint name="right_ank_pitch" pos="0 0 0" axis="0 0 1" limited="true" range="-0.785398 0.959931" damping="0.0" armature="0.0" frictionloss="0.0" />
                   <geom rgba="0.631892 0.726687 0.783564 1" mesh="right_ank_pitch_link_visual" class="visual" />
-                  <body name="ank_roll_link_2" pos="0.0015 0 0" quat="0 0.707107 0 0.707107">
-                    <inertial pos="-4.30767e-08 0.0267963 -0.00105226" quat="0.998249 -0.0591539 -3.82292e-06 -2.14477e-06" mass="0.0248" diaginertia="1.98468e-05 1.88891e-05 4.97681e-06" />
+                  <body name="ank_roll_link_2" pos="0.0015 0 0" quat="0 -0.707107 0 -0.707107">
+                    <inertial pos="-4.30767e-08 0.0267963 -0.00105226" quat="0.998249 -0.0591539 -3.75592e-06 -1.25753e-06" mass="0.0248" diaginertia="1.98468e-05 1.88891e-05 4.97681e-06" />
                     <joint name="right_ank_roll" pos="0 0 0" axis="0 0 1" limited="true" range="-0.785398 0.785398" damping="0.0" armature="0.0" frictionloss="0.0" />
                     <geom rgba="0.615686 0.811765 0.929412 1" mesh="right_ank_roll_link_visual" class="visual" />
+                    <geom pos="0 0.025 -0.0226" quat="0.5 0.5 0.5 -0.5" rgba="0.615686 0.811765 0.929412 1" mesh="right_sole_link_visual" class="visual" />
                     <body name="ank_rr_link_3" pos="0.018 0.016 -0.0206" quat="0.999958 0 0 0.00911142">
                       <inertial pos="-4.52496e-05 -0.00630964 0" quat="0.525157 0.473509 -0.525157 0.473509" mass="0.00145" diaginertia="4.29219e-08 2.97647e-08 2.74049e-08" />
-                      <joint name="right_ank_L_rev_1" pos="0 0 0" axis="0 0 1" limited="true" range="-1.5708 1.5708" damping="0.0" armature="0.0" frictionloss="0.0" />
+                      <joint name="right_ank_long_rev_1" pos="0 0 0" axis="0 0 1" limited="true" range="-1.5708 1.5708" damping="0.0" armature="0.0" frictionloss="0.0" />
                       <geom rgba="0.615686 0.811765 0.929412 1" mesh="right_ank_rr_link_visual" class="visual" />
                       <body name="ank_motor_rod_long_2" pos="0 -0.01 0" quat="0.0842139 -0.702074 0.0842139 -0.702074">
                         <inertial pos="2.48551e-10 0.034559 0.000938517" quat="0.501157 0.503754 -0.498814 0.496243" mass="0.00217129" diaginertia="8.58145e-07 8.53502e-07 1.32148e-08" />
-                        <joint name="right_ank_L_rev_2" pos="0 0 0" axis="0 0 1" limited="true" range="-1.5708 1.5708" damping="0.0" armature="0.0" frictionloss="0.0" />
+                        <joint name="right_ank_long_rev_2" pos="0 0 0" axis="0 0 1" limited="true" range="-1.5708 1.5708" damping="0.0" armature="0.0" frictionloss="0.0" />
                         <geom rgba="0.6355 0.707744 0.75109 1" mesh="right_ank_motor_rod_long_visual" class="visual" />
                       </body>
                     </body>
                     <body name="ank_rr_link_4" pos="-0.018 0.016 -0.0206" quat="0.0130589 0 0 0.999915">
                       <inertial pos="-4.52496e-05 0.00630964 0" quat="0.473509 0.525157 -0.473509 0.525157" mass="0.00145" diaginertia="4.29219e-08 2.97647e-08 2.74049e-08" />
-                      <joint name="right_ank_S_rev_1" pos="0 0 0" axis="0 0 1" limited="true" range="-1.5708 1.5708" damping="0.0" armature="0.0" frictionloss="0.0" />
+                      <joint name="right_ank_short_rev_1" pos="0 0 0" axis="0 0 1" limited="true" range="-1.5708 1.5708" damping="0.0" armature="0.0" frictionloss="0.0" />
                       <geom rgba="0.615686 0.811765 0.929412 1" mesh="right_ank_rr_link_2_visual" class="visual" />
                       <body name="ank_motor_rod_short_2" pos="0 0.01 0" quat="0.695753 -0.126204 0.695753 -0.126204">
                         <inertial pos="2.60389e-10 0.0238305 0.000904035" quat="0.499641 0.505179 -0.500306 0.494821" mass="0.0017" diaginertia="3.36253e-07 3.31534e-07 1.09078e-08" />
-                        <joint name="right_ank_S_rev_2" pos="0 0 0" axis="0 0 1" limited="true" range="-1.5708 1.5708" damping="0.0" armature="0.0" frictionloss="0.0" />
+                        <joint name="right_ank_short_rev_2" pos="0 0 0" axis="0 0 1" limited="true" range="-1.5708 1.5708" damping="0.0" armature="0.0" frictionloss="0.0" />
                         <geom rgba="0.412226 0.583391 0.811073 1" mesh="right_ank_motor_rod_short_visual" class="visual" />
                       </body>
                     </body>

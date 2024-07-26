@@ -16,23 +16,27 @@ def compute_leg_angles(target_foot_pos, target_foot_ori, side, offsets):
     ankle_roll, ankle_pitch, hip_yaw = target_foot_ori
 
     target_z = (
-        offsets["z_offset_thigh"]
+        offsets["hip_pitch_to_knee_z"]
         + offsets["z_offset_knee"]
-        + offsets["z_offset_shin"]
+        + offsets["knee_to_ank_roll_z"]
         - target_z
     )
 
-    hip_roll = math.atan2(target_y, target_z + offsets["z_offset_hip_roll_to_pitch"])
+    hip_roll = math.atan2(target_y, target_z + offsets["hip_roll_to_pitch_z"])
 
     leg_projected_yz_length = math.sqrt(target_y**2 + target_z**2)
     leg_length = math.sqrt(target_x**2 + leg_projected_yz_length**2)
     leg_pitch = math.atan2(target_x, leg_projected_yz_length)
     hip_disp_cos = (
-        leg_length**2 + offsets["z_offset_thigh"] ** 2 - offsets["z_offset_shin"] ** 2
-    ) / (2 * leg_length * offsets["z_offset_thigh"])
+        leg_length**2
+        + offsets["hip_pitch_to_knee_z"] ** 2
+        - offsets["knee_to_ank_roll_z"] ** 2
+    ) / (2 * leg_length * offsets["hip_pitch_to_knee_z"])
     hip_disp = math.acos(min(max(hip_disp_cos, -1.0), 1.0))
     ankle_disp = math.asin(
-        offsets["z_offset_thigh"] / offsets["z_offset_shin"] * math.sin(hip_disp)
+        offsets["hip_pitch_to_knee_z"]
+        / offsets["knee_to_ank_roll_z"]
+        * math.sin(hip_disp)
     )
     hip_pitch = -leg_pitch - hip_disp
     knee_pitch = hip_disp + ankle_disp
