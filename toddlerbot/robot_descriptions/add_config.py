@@ -11,8 +11,7 @@ from typing import Any, Dict
 def get_default_config(
     root: ET.Element,
     general_config: Dict[str, Any],
-    motor_config: Dict[str, str],
-    gear_config: Dict[str, float],
+    motor_config: Dict[str, Dict[str, Any]],
     joint_dyn_config: Dict[str, Dict[str, float]],
     kp: float = 2400.0,
     kd: float = 2400.0,
@@ -91,28 +90,20 @@ def get_default_config(
         }
 
         if is_passive:
-            if joint_name in gear_config:
-                joint_dict["gear_ratio"] = gear_config[joint_name]
-            else:
-                joint_dict["gear_ratio"] = 1.0
-
             if transmission == "gears":
                 # TODO: Make sure the gear ratio doesn't amplify the dynamics paramters
                 joint_drive_name = joint_name.replace("_driven", "_drive")
-                motor_name = motor_config[joint_drive_name]
+                motor_name = motor_config[joint_drive_name]["motor"]
                 for param_name in ["damping", "armature", "frictionloss"]:
                     joint_dict[param_name] = joint_dyn_config[motor_name][param_name]
             else:
-                if joint_name in joint_dyn_config:
-                    for param_name in ["damping", "armature", "frictionloss"]:
-                        joint_dict[param_name] = joint_dyn_config[joint_name][
-                            param_name
-                        ]
+                pass
+                # TODO: sysID the joint dynamics params for passive joints
         else:
             if joint_name not in motor_config:
-                raise ValueError(f"{joint_name} not found in the spec dict!")
+                raise ValueError(f"{joint_name} not found in the motor config!")
 
-            motor_name = motor_config[joint_name]
+            motor_name = motor_config[joint_name]["motor"]
             joint_dict["id"] = list(motor_config.keys()).index(joint_name)
             joint_dict["type"] = "dynamixel"
             joint_dict["spec"] = motor_name
@@ -122,7 +113,11 @@ def get_default_config(
                 else "extended_position"
             )
             # joint_dict["control_mode"] = "extended_position"
-            joint_dict["init_pos"] = 0.0
+            joint_dict["init_pos"] = (
+                motor_config[joint_name]["init_pos"]
+                if "init_pos" in motor_config[joint_name]
+                else 0.0
+            )
             joint_dict["kp_real"] = kp
             joint_dict["ki_real"] = 0.0
             joint_dict["kd_real"] = kd
@@ -134,6 +129,12 @@ def get_default_config(
             if motor_name in joint_dyn_config:
                 for param_name in ["damping", "armature", "frictionloss"]:
                     joint_dict[param_name] = joint_dyn_config[motor_name][param_name]
+
+            if transmission == "gears":
+                if "gear_ratio" in motor_config[joint_name]:
+                    joint_dict["gear_ratio"] = motor_config[joint_name]["gear_ratio"]
+                else:
+                    joint_dict["gear_ratio"] = 1.0
 
             id += 1
 
@@ -191,25 +192,20 @@ def main():
             "has_sunny_sky": False,
         }
 
+    # This one needs to be ORDERED
     motor_config_path = os.path.join(robot_dir, "config_motors.json")
     if os.path.exists(motor_config_path):
         with open(motor_config_path, "r") as f:
             motor_config = json.load(f)
     elif "sysID" in args.robot_name:
         motor_name = args.robot_name.split("_")[-1]
-        motor_config = {"joint_0": motor_name}
+        motor_config = {"joint_0": {"motor": motor_name, "init_pos": 0.0}}
     else:
-        motor_config: Dict[str, str] = {}
-
-    gear_config_path = os.path.join(robot_dir, "config_gears.json")
-    gear_config: Dict[str, float] = {}
-    if os.path.exists(gear_config_path):
-        with open(gear_config_path, "r") as f:
-            gear_config: Dict[str, float] = json.load(f)
+        motor_config: Dict[str, Dict[str, Any]] = {}
 
     joint_dyn_config: Dict[str, Dict[str, float]] = {}
     if "sysID" not in args.robot_name:
-        motor_list = list(motor_config.values())
+        motor_list = [motor_config["motor"] for motor_config in motor_config.values()]
         for motor_name in motor_list:
             sysID_result_path = os.path.join(
                 "toddlerbot", "robot_descriptions", f"sysID_{motor_name}", "config.json"
@@ -228,7 +224,7 @@ def main():
     root = tree.getroot()
 
     config_dict = get_default_config(
-        root, general_config, motor_config, gear_config, joint_dyn_config
+        root, general_config, motor_config, joint_dyn_config
     )
 
     config_file_path = os.path.join(robot_dir, "config.json")

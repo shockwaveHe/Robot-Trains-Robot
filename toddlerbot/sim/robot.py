@@ -30,9 +30,9 @@ class Robot:
         self.id = 0
         self.name = robot_name
 
-        root_path = os.path.join("toddlerbot", "robot_descriptions", self.name)
-        self.config_file_path = os.path.join(root_path, "config.json")
-        self.cache_file_path = os.path.join(root_path, f"{self.name}_data.pkl")
+        self.root_path = os.path.join("toddlerbot", "robot_descriptions", self.name)
+        self.config_file_path = os.path.join(self.root_path, "config.json")
+        self.cache_file_path = os.path.join(self.root_path, f"{self.name}_data.pkl")
 
         self.load_robot_config()
         self.load_robot_data()

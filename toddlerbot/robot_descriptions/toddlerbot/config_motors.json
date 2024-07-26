@@ -1,32 +1,126 @@
 {
-    "neck_yaw_drive": "XC330",
-    "neck_pitch_drive": "XC330",
-    "waist_act_1": "XC330",
-    "waist_act_2": "XC330",
-    "left_hip_yaw_drive": "XC330",
-    "left_hip_roll": "2XC430",
-    "left_hip_pitch": "2XC430",
-    "left_knee_act": "XM430",
-    "left_ank_act_1": "XC330",
-    "left_ank_act_2": "XC330",
-    "right_hip_yaw_drive": "XC330",
-    "right_hip_roll": "2XC430",
-    "right_hip_pitch": "2XC430",
-    "right_knee_act": "XM430",
-    "right_ank_act_1": "XC330",
-    "right_ank_act_2": "XC330",
-    "left_sho_pitch": "XC430",
-    "left_sho_roll": "2XL430",
-    "left_sho_yaw_drive": "2XL430",
-    "left_elbow_roll": "2XL430",
-    "left_elbow_yaw_drive": "2XL430",
-    "left_wrist_pitch_drive": "2XL430",
-    "left_wrist_roll": "2XL430",
-    "right_sho_pitch": "XC430",
-    "right_sho_roll": "2XL430",
-    "right_sho_yaw_drive": "2XL430",
-    "right_elbow_roll": "2XL430",
-    "right_elbow_yaw_drive": "2XL430",
-    "right_wrist_pitch_drive": "2XL430",
-    "right_wrist_roll": "2XL430"
+    "neck_yaw_drive": {
+        "motor": "XC330",
+        "init_pos": 0.14419420063495636,
+        "gear_ratio": 1.3846153846153846
+    },
+    "neck_pitch_drive": {
+        "motor": "XC330",
+        "init_pos": 3.3256702423095703,
+        "gear_ratio": 1.1
+    },
+    "waist_act_1": {
+        "motor": "XC330",
+        "init_pos": 4.947088241577148
+    },
+    "waist_act_2": {
+        "motor": "XC330",
+        "init_pos": 1.0477088689804077
+    },
+    "left_hip_yaw_drive": {
+        "motor": "XC330",
+        "init_pos": 5.565282344818115,
+        "gear_ratio": 1.105263157894737
+    },
+    "left_hip_roll": {
+        "motor": "2XC430",
+        "init_pos": 3.141592653589793
+    },
+    "left_hip_pitch": {
+        "motor": "2XC430",
+        "init_pos": 3.141592653589793
+    },
+    "left_knee_act": {
+        "motor": "XM430",
+        "init_pos": 0.3298058807849884
+    },
+    "left_ank_act_1": {
+        "motor": "XC330",
+        "init_pos": 2.86240816116333
+    },
+    "left_ank_act_2": {
+        "motor": "XC330",
+        "init_pos": 1.8193012475967407
+    },
+    "right_hip_yaw_drive": {
+        "motor": "XC330",
+        "init_pos": 1.9128739833831787,
+        "gear_ratio": 1.105263157894737
+    },
+    "right_hip_roll": {
+        "motor": "2XC430",
+        "init_pos": 3.141592653589793
+    },
+    "right_hip_pitch": {
+        "motor": "2XC430",
+        "init_pos": 3.141592653589793
+    },
+    "right_knee_act": {
+        "motor": "XM430",
+        "init_pos": 1.665903091430664
+    },
+    "right_ank_act_1": {
+        "motor": "XC330",
+        "init_pos": 1.7763497829437256
+    },
+    "right_ank_act_2": {
+        "motor": "XC330",
+        "init_pos": 4.506835460662842
+    },
+    "left_sho_pitch": {
+        "motor": "XC430",
+        "init_pos": 2.356194490192345
+    },
+    "left_sho_roll": {
+        "motor": "2XL430",
+        "init_pos": 3.141592653589793
+    },
+    "left_sho_yaw_drive": {
+        "motor": "2XL430",
+        "init_pos": 3.78739857673645
+    },
+    "left_elbow_roll": {
+        "motor": "2XL430",
+        "init_pos": 0.7853981633974483
+    },
+    "left_elbow_yaw_drive": {
+        "motor": "2XL430",
+        "init_pos": 6.134389400482178
+    },
+    "left_wrist_pitch_drive": {
+        "motor": "2XL430",
+        "init_pos": 0.8774369955062866
+    },
+    "left_wrist_roll": {
+        "motor": "2XL430",
+        "init_pos": 3.141592653589793
+    },
+    "right_sho_pitch": {
+        "motor": "XC430",
+        "init_pos": 0.7853981633974483
+    },
+    "right_sho_roll": {
+        "motor": "2XL430",
+        "init_pos": 3.141592653589793
+    },
+    "right_sho_yaw_drive": {
+        "motor": "2XL430",
+        "init_pos": 1.7211264371871948
+    },
+    "right_elbow_roll": {
+        "motor": "2XL430",
+        "init_pos": 1.5707963267948966
+    },
+    "right_elbow_yaw_drive": {
+        "motor": "2XL430",
+        "init_pos": 5.801515102386475
+    },
+    "right_wrist_pitch_drive": {
+        "motor": "2XL430",
+        "init_pos": 3.011204242706299
+    },
+    "right_wrist_roll": {
+        "motor": "2XL430",
+        "init_pos": 3.141592653589793
+    }
 }

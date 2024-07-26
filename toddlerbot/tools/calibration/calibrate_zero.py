@@ -1,4 +1,6 @@
 import argparse
+import json
+import os
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, List
 
@@ -93,6 +95,13 @@ def main(robot: Robot):
         future_dynamixel.result()
 
     robot.write_robot_config()
+
+    motor_names = robot.get_joint_attrs("is_passive", False)
+    motor_init_pos = robot.get_joint_attrs("is_passive", False, "init_pos")
+    init_pos_config = {name: pos for name, pos in zip(motor_names, motor_init_pos)}
+    init_pos_config_path = os.path.join(robot.root_path, "config_init_pos.json")
+    with open(init_pos_config_path, "w") as f:
+        json.dump(init_pos_config, f, indent=4)
 
     executor.shutdown(wait=True)
 

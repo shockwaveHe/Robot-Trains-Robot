@@ -24,15 +24,16 @@
             "id": 0,
             "type": "dynamixel",
             "spec": "XC330",
-            "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "control_mode": "current_based_position",
+            "init_pos": 0.14419420063495636,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 18.75,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "gear_ratio": 1.3846153846153846
         },
         "neck_pitch_drive": {
             "is_passive": false,
@@ -47,15 +48,16 @@
             "id": 1,
             "type": "dynamixel",
             "spec": "XC330",
-            "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "control_mode": "current_based_position",
+            "init_pos": 3.3256702423095703,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 18.75,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "gear_ratio": 1.1
         },
         "neck_pitch_driven": {
             "is_passive": true,
@@ -66,8 +68,7 @@
             "upper_limit": 1.5707963267948966,
             "damping": 0.099,
             "armature": 0.002,
-            "frictionloss": 0.239,
-            "gear_ratio": 1.1
+            "frictionloss": 0.239
         },
         "neck_yaw_driven": {
             "is_passive": true,
@@ -78,8 +79,7 @@
             "upper_limit": 3.141592653589793,
             "damping": 0.099,
             "armature": 0.002,
-            "frictionloss": 0.239,
-            "gear_ratio": 1.3846153846153846
+            "frictionloss": 0.239
         },
         "waist_act_1": {
             "is_passive": false,
@@ -94,8 +94,8 @@
             "id": 2,
             "type": "dynamixel",
             "spec": "XC330",
-            "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "control_mode": "current_based_position",
+            "init_pos": 4.947088241577148,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -117,8 +117,8 @@
             "id": 3,
             "type": "dynamixel",
             "spec": "XC330",
-            "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "control_mode": "current_based_position",
+            "init_pos": 1.0477088689804077,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -140,15 +140,16 @@
             "id": 4,
             "type": "dynamixel",
             "spec": "XC330",
-            "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "control_mode": "current_based_position",
+            "init_pos": 5.565282344818115,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 18.75,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "gear_ratio": 1.105263157894737
         },
         "left_hip_yaw_driven": {
             "is_passive": true,
@@ -159,8 +160,7 @@
             "upper_limit": 1.5707963267948966,
             "damping": 0.099,
             "armature": 0.002,
-            "frictionloss": 0.239,
-            "gear_ratio": 1.105263157894737
+            "frictionloss": 0.239
         },
         "right_hip_yaw_drive": {
             "is_passive": false,
@@ -175,15 +175,16 @@
             "id": 10,
             "type": "dynamixel",
             "spec": "XC330",
-            "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "control_mode": "current_based_position",
+            "init_pos": 1.9128739833831787,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 18.75,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "gear_ratio": 1.105263157894737
         },
         "right_hip_yaw_driven": {
             "is_passive": true,
@@ -194,8 +195,7 @@
             "upper_limit": 1.5707963267948966,
             "damping": 0.099,
             "armature": 0.002,
-            "frictionloss": 0.239,
-            "gear_ratio": 1.105263157894737
+            "frictionloss": 0.239
         },
         "waist_roll": {
             "is_passive": true,
@@ -206,8 +206,7 @@
             "upper_limit": 0.5235987755982988,
             "damping": 0.0,
             "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 2.4
+            "frictionloss": 0.0
         },
         "waist_yaw": {
             "is_passive": true,
@@ -218,8 +217,7 @@
             "upper_limit": 1.5707963267948966,
             "damping": 0.0,
             "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 2.4
+            "frictionloss": 0.0
         },
         "left_knee_front_rev_2": {
             "is_passive": true,
@@ -230,8 +228,7 @@
             "upper_limit": 6.283185307179586,
             "damping": 0.0,
             "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
+            "frictionloss": 0.0
         },
         "left_knee_back_rev_2": {
             "is_passive": true,
@@ -242,8 +239,7 @@
             "upper_limit": 6.283185307179586,
             "damping": 0.0,
             "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
+            "frictionloss": 0.0
         },
         "left_ank_long_rev_2": {
             "is_passive": true,
@@ -254,8 +250,7 @@
             "upper_limit": 1.5707963267948966,
             "damping": 0.0,
             "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
+            "frictionloss": 0.0
         },
         "left_ank_long_rev_1": {
             "is_passive": true,
@@ -266,8 +261,7 @@
             "upper_limit": 1.5707963267948966,
             "damping": 0.0,
             "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
+            "frictionloss": 0.0
         },
         "left_ank_small_rev_2": {
             "is_passive": true,
@@ -278,8 +272,7 @@
             "upper_limit": 1.5707963267948966,
             "damping": 0.0,
             "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
+            "frictionloss": 0.0
         },
         "left_ank_small_rev_1": {
             "is_passive": true,
@@ -290,8 +283,7 @@
             "upper_limit": 1.5707963267948966,
             "damping": 0.0,
             "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
+            "frictionloss": 0.0
         },
         "left_ank_roll": {
             "is_passive": true,
@@ -302,8 +294,7 @@
             "upper_limit": 0.7853981633974483,
             "damping": 0.0,
             "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
+            "frictionloss": 0.0
         },
         "left_ank_pitch": {
             "is_passive": true,
@@ -314,8 +305,7 @@
             "upper_limit": 0.9599310885968813,
             "damping": 0.0,
             "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
+            "frictionloss": 0.0
         },
         "left_ank_act_1": {
             "is_passive": false,
@@ -330,8 +320,8 @@
             "id": 8,
             "type": "dynamixel",
             "spec": "XC330",
-            "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "control_mode": "current_based_position",
+            "init_pos": 2.86240816116333,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -353,8 +343,8 @@
             "id": 9,
             "type": "dynamixel",
             "spec": "XC330",
-            "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "control_mode": "current_based_position",
+            "init_pos": 1.8193012475967407,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -372,8 +362,7 @@
             "upper_limit": 1.9198621771937625,
             "damping": 0.0,
             "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
+            "frictionloss": 0.0
         },
         "left_knee_front_rev_1": {
             "is_passive": true,
@@ -384,8 +373,7 @@
             "upper_limit": 6.283185307179586,
             "damping": 0.0,
             "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
+            "frictionloss": 0.0
         },
         "left_knee_back_rev_1": {
             "is_passive": true,
@@ -396,8 +384,7 @@
             "upper_limit": 6.283185307179586,
             "damping": 0.0,
             "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
+            "frictionloss": 0.0
         },
         "left_knee_act": {
             "is_passive": false,
@@ -406,14 +393,14 @@
             "default_pos": 0.0,
             "lower_limit": 0.0,
             "upper_limit": 1.9198621771937625,
-            "damping": 0.352,
-            "armature": 0.003,
-            "frictionloss": 0.0,
+            "damping": 0.369,
+            "armature": 0.002,
+            "frictionloss": 0.001,
             "id": 7,
             "type": "dynamixel",
             "spec": "XM430",
             "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "init_pos": 0.3298058807849884,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -436,7 +423,7 @@
             "type": "dynamixel",
             "spec": "2XC430",
             "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "init_pos": 3.141592653589793,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -459,7 +446,7 @@
             "type": "dynamixel",
             "spec": "2XC430",
             "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "init_pos": 3.141592653589793,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -477,8 +464,7 @@
             "upper_limit": 6.283185307179586,
             "damping": 0.0,
             "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
+            "frictionloss": 0.0
         },
         "right_knee_back_rev_2": {
             "is_passive": true,
@@ -489,8 +475,7 @@
             "upper_limit": 6.283185307179586,
             "damping": 0.0,
             "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
+            "frictionloss": 0.0
         },
         "right_ank_L_rev_2": {
             "is_passive": true,
@@ -501,8 +486,7 @@
             "upper_limit": 1.5707963267948966,
             "damping": 0.0,
             "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
+            "frictionloss": 0.0
         },
         "right_ank_L_rev_1": {
             "is_passive": true,
@@ -513,8 +497,7 @@
             "upper_limit": 1.5707963267948966,
             "damping": 0.0,
             "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
+            "frictionloss": 0.0
         },
         "right_ank_S_rev_2": {
             "is_passive": true,
@@ -525,8 +508,7 @@
             "upper_limit": 1.5707963267948966,
             "damping": 0.0,
             "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
+            "frictionloss": 0.0
         },
         "right_ank_S_rev_1": {
             "is_passive": true,
@@ -537,8 +519,7 @@
             "upper_limit": 1.5707963267948966,
             "damping": 0.0,
             "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
+            "frictionloss": 0.0
         },
         "right_ank_roll": {
             "is_passive": true,
@@ -549,8 +530,7 @@
             "upper_limit": 0.7853981633974483,
             "damping": 0.0,
             "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
+            "frictionloss": 0.0
         },
         "right_ank_pitch": {
             "is_passive": true,
@@ -561,8 +541,7 @@
             "upper_limit": 0.9599310885968813,
             "damping": 0.0,
             "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
+            "frictionloss": 0.0
         },
         "right_ank_act_1": {
             "is_passive": false,
@@ -577,8 +556,8 @@
             "id": 14,
             "type": "dynamixel",
             "spec": "XC330",
-            "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "control_mode": "current_based_position",
+            "init_pos": 1.7763497829437256,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -600,8 +579,8 @@
             "id": 15,
             "type": "dynamixel",
             "spec": "XC330",
-            "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "control_mode": "current_based_position",
+            "init_pos": 4.506835460662842,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -619,8 +598,7 @@
             "upper_limit": 0.0,
             "damping": 0.0,
             "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
+            "frictionloss": 0.0
         },
         "right_knee_front_rev_1": {
             "is_passive": true,
@@ -631,8 +609,7 @@
             "upper_limit": 6.283185307179586,
             "damping": 0.0,
             "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
+            "frictionloss": 0.0
         },
         "right_knee_back_rev_1": {
             "is_passive": true,
@@ -643,8 +620,7 @@
             "upper_limit": 6.283185307179586,
             "damping": 0.0,
             "armature": 0.0,
-            "frictionloss": 0.0,
-            "gear_ratio": 1.0
+            "frictionloss": 0.0
         },
         "right_knee_act": {
             "is_passive": false,
@@ -653,14 +629,14 @@
             "default_pos": 0.0,
             "lower_limit": -1.9198621771937625,
             "upper_limit": 0.0,
-            "damping": 0.352,
-            "armature": 0.003,
-            "frictionloss": 0.0,
+            "damping": 0.369,
+            "armature": 0.002,
+            "frictionloss": 0.001,
             "id": 13,
             "type": "dynamixel",
             "spec": "XM430",
             "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "init_pos": 1.665903091430664,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -683,7 +659,7 @@
             "type": "dynamixel",
             "spec": "2XC430",
             "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "init_pos": 3.141592653589793,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -706,7 +682,7 @@
             "type": "dynamixel",
             "spec": "2XC430",
             "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "init_pos": 3.141592653589793,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -729,14 +705,15 @@
             "type": "dynamixel",
             "spec": "2XL430",
             "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "init_pos": 3.78739857673645,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 18.75,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "gear_ratio": 1.0
         },
         "left_elbow_yaw_drive": {
             "is_passive": false,
@@ -752,14 +729,15 @@
             "type": "dynamixel",
             "spec": "2XL430",
             "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "init_pos": 6.134389400482178,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 18.75,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "gear_ratio": 1.0
         },
         "left_wrist_pitch_drive": {
             "is_passive": false,
@@ -775,14 +753,15 @@
             "type": "dynamixel",
             "spec": "2XL430",
             "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "init_pos": 0.8774369955062866,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 18.75,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "gear_ratio": 1.0
         },
         "left_wrist_roll": {
             "is_passive": false,
@@ -798,7 +777,7 @@
             "type": "dynamixel",
             "spec": "2XL430",
             "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "init_pos": 3.141592653589793,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -816,8 +795,7 @@
             "upper_limit": 1.5707963267948966,
             "damping": 0.153,
             "armature": 0.008,
-            "frictionloss": 0.998,
-            "gear_ratio": 1.0
+            "frictionloss": 0.998
         },
         "left_elbow_yaw_driven": {
             "is_passive": true,
@@ -828,8 +806,7 @@
             "upper_limit": 3.141592653589793,
             "damping": 0.153,
             "armature": 0.008,
-            "frictionloss": 0.998,
-            "gear_ratio": 1.0
+            "frictionloss": 0.998
         },
         "left_elbow_roll": {
             "is_passive": false,
@@ -845,7 +822,7 @@
             "type": "dynamixel",
             "spec": "2XL430",
             "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "init_pos": 0.7853981633974483,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -863,8 +840,7 @@
             "upper_limit": 3.141592653589793,
             "damping": 0.153,
             "armature": 0.008,
-            "frictionloss": 0.998,
-            "gear_ratio": 1.0
+            "frictionloss": 0.998
         },
         "left_sho_roll": {
             "is_passive": false,
@@ -880,7 +856,7 @@
             "type": "dynamixel",
             "spec": "2XL430",
             "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "init_pos": 3.141592653589793,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -903,7 +879,7 @@
             "type": "dynamixel",
             "spec": "XC430",
             "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "init_pos": 2.356194490192345,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -926,14 +902,15 @@
             "type": "dynamixel",
             "spec": "2XL430",
             "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "init_pos": 1.7211264371871948,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 18.75,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "gear_ratio": 1.0
         },
         "right_elbow_yaw_drive": {
             "is_passive": false,
@@ -949,14 +926,15 @@
             "type": "dynamixel",
             "spec": "2XL430",
             "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "init_pos": 5.801515102386475,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 18.75,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "gear_ratio": 1.0
         },
         "right_wrist_pitch_drive": {
             "is_passive": false,
@@ -972,14 +950,15 @@
             "type": "dynamixel",
             "spec": "2XL430",
             "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "init_pos": 3.011204242706299,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 18.75,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "gear_ratio": 1.0
         },
         "right_wrist_roll": {
             "is_passive": false,
@@ -995,7 +974,7 @@
             "type": "dynamixel",
             "spec": "2XL430",
             "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "init_pos": 3.141592653589793,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -1013,8 +992,7 @@
             "upper_limit": 1.5707963267948966,
             "damping": 0.153,
             "armature": 0.008,
-            "frictionloss": 0.998,
-            "gear_ratio": 1.0
+            "frictionloss": 0.998
         },
         "right_elbow_yaw_driven": {
             "is_passive": true,
@@ -1025,8 +1003,7 @@
             "upper_limit": 3.141592653589793,
             "damping": 0.153,
             "armature": 0.008,
-            "frictionloss": 0.998,
-            "gear_ratio": 1.0
+            "frictionloss": 0.998
         },
         "right_elbow_roll": {
             "is_passive": false,
@@ -1042,7 +1019,7 @@
             "type": "dynamixel",
             "spec": "2XL430",
             "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "init_pos": 1.5707963267948966,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -1060,8 +1037,7 @@
             "upper_limit": 3.141592653589793,
             "damping": 0.153,
             "armature": 0.008,
-            "frictionloss": 0.998,
-            "gear_ratio": 1.0
+            "frictionloss": 0.998
         },
         "right_sho_roll": {
             "is_passive": false,
@@ -1077,7 +1053,7 @@
             "type": "dynamixel",
             "spec": "2XL430",
             "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "init_pos": 3.141592653589793,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,
@@ -1100,7 +1076,7 @@
             "type": "dynamixel",
             "spec": "XC430",
             "control_mode": "extended_position",
-            "init_pos": 0.0,
+            "init_pos": 0.7853981633974483,
             "kp_real": 2400.0,
             "ki_real": 0.0,
             "kd_real": 2400.0,

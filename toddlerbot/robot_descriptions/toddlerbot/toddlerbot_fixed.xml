@@ -198,7 +198,7 @@
               </body>
               <body name="xm430_plate" pos="-0.00015 -0.0615 -0.0304" quat="0.707107 0 0 0.707107">
                 <inertial pos="0 0 -0.0024039" quat="-0.13795 0.69352 0.13795 0.69352" mass="0.0027" diaginertia="3.85335e-07 2.95759e-07 1.00777e-07" />
-                <joint name="left_knee_act" pos="0 0 0" axis="0 0 1" limited="true" range="0 1.91986" damping="0.352" armature="0.003" frictionloss="0.0" />
+                <joint name="left_knee_act" pos="0 0 0" axis="0 0 1" limited="true" range="0 1.91986" damping="0.369" armature="0.002" frictionloss="0.001" />
                 <geom rgba="0.615686 0.811765 0.929412 1" mesh="left_xm430_plate_visual" class="visual" />
                 <body name="knee_rod" pos="0.0138582 0.00574025 -0.005" quat="0.00289853 0 0 -0.999996">
                   <inertial pos="0.0109673 -3.17888e-05 -0.00158729" quat="0.000400242 0.707561 -0.000399727 0.706652" mass="0.00133695" diaginertia="2.53378e-07 2.45726e-07 9.69655e-09" />
@@ -289,7 +289,7 @@
               </body>
               <body name="xm430_plate_2" pos="0.00015 -0.0615 -0.0304" quat="0 0 0 1">
                 <inertial pos="0 0 -0.0024039" quat="0.587938 0.392847 -0.587938 0.392847" mass="0.0027" diaginertia="3.85335e-07 2.95759e-07 1.00777e-07" />
-                <joint name="right_knee_act" pos="0 0 0" axis="0 0 1" limited="true" range="-1.91986 0" damping="0.352" armature="0.003" frictionloss="0.0" />
+                <joint name="right_knee_act" pos="0 0 0" axis="0 0 1" limited="true" range="-1.91986 0" damping="0.369" armature="0.002" frictionloss="0.001" />
                 <geom rgba="0.615686 0.811765 0.929412 1" mesh="right_xm430_plate_visual" class="visual" />
                 <body name="knee_rod_3" pos="-0.00574025 -0.0138582 -0.005" quat="0.709152 0 0 0.705056">
                   <inertial pos="0.0109673 3.16765e-05 -0.00158729" quat="-0.000398827 0.707561 0.000398314 0.706652" mass="0.00133695" diaginertia="2.53378e-07 2.45726e-07 9.69655e-09" />
