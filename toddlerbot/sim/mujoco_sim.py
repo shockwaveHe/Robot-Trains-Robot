@@ -3,24 +3,27 @@ import pickle
 import queue
 import threading
 import time
+from typing import Any
 
 import mediapy as media
-import mujoco
-import mujoco.rollout
-import mujoco.viewer
+import mujoco  # type: ignore
+import mujoco.rollout  # type: ignore
+import mujoco.viewer  # type: ignore
 import numpy as np
-from transforms3d.euler import euler2mat
+from transforms3d.euler import euler2mat  # type: ignore
 
 from toddlerbot.actuation import JointState
 from toddlerbot.sim import BaseSim
-from toddlerbot.utils.constants import GRAVITY, SIM_TIMESTEP
+from toddlerbot.sim.robot import Robot
+from toddlerbot.utils.constants import GRAVITY
 from toddlerbot.utils.file_utils import find_robot_file_path
+from toddlerbot.utils.math_utils import quaternion_to_euler_array
 from toddlerbot.utils.misc_utils import precise_sleep
 
 
 class MuJoCoViewer:
-    def __init__(self, robot, model, data):
-        self.viewer = mujoco.viewer.launch_passive(model, data)
+    def __init__(self, robot: Robot, model: Any, data: Any):
+        self.viewer = mujoco.viewer.launch_passive(model, data)  # type: ignore
         self.foot_size = robot.foot_size
 
     def visualize(self, model, data, vis_data):
@@ -191,7 +194,7 @@ class MuJoCoSim(BaseSim):
             xml_path = find_robot_file_path(robot.name, suffix="_scene.xml")
             self.model = mujoco.MjModel.from_xml_path(xml_path)
 
-        self.model.opt.timestep = SIM_TIMESTEP
+        self.model.opt.timestep = self.dt
         self.data = mujoco.MjData(self.model)
 
         self.controller = MuJoCoController()
@@ -303,6 +306,7 @@ class MuJoCoSim(BaseSim):
 
         root_state = {}
         root_state["quaternion"] = self.data.sensor("orientation").data.copy()
+        root_state["euler"] = quaternion_to_euler_array(root_state["quaternion"])
         root_state["angular_velocity"] = self.data.sensor(
             "angular_velocity"
         ).data.copy()

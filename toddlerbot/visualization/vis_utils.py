@@ -2,6 +2,7 @@ import functools
 import os
 import pickle
 import time
+from typing import Any, Callable, Dict
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -11,20 +12,20 @@ from toddlerbot.utils.misc_utils import log
 backend_curr = "Agg"
 non_interactive_backends = ["Agg", "SVG", "PDF", "PS"]
 plt.switch_backend(backend_curr)
-sns.set_theme(style="darkgrid")
+sns.set_theme(style="darkgrid")  # type: ignore
 
 
-def make_vis_function(
-    func,
-    ax=None,
-    title=None,
-    x_label=None,
-    y_label=None,
-    save_config=False,
-    save_path=None,
-    file_name=None,
-    file_suffix=None,
-    blocking=True,
+def make_vis_function(  # type: ignore
+    func: Callable[..., Any],
+    ax: Any = None,
+    title: str = "",
+    x_label: str = "",
+    y_label: str = "",
+    save_config: bool = False,
+    save_path: str = "",
+    file_name: str = "",
+    file_suffix: str = "",
+    blocking: bool = True,
 ):
     """
     Creates a visualization function with pre-configured settings.
@@ -38,8 +39,8 @@ def make_vis_function(
     """
 
     @functools.wraps(func)
-    def wrapped_function(*args, **kwargs):
-        if file_suffix is None:
+    def wrapped_function(*args, **kwargs):  # type: ignore
+        if len(file_suffix) == 0:
             suffix = time.strftime("%Y%m%d_%H%M%S")
         else:
             suffix = file_suffix
@@ -47,14 +48,14 @@ def make_vis_function(
         if len(suffix) > 0:
             suffix = f"_{suffix}"
 
-        if file_name is None:
+        if len(file_name) == 0:
             name = f"{title.lower().replace(' ', '_')}{suffix}"
         else:
             name = f"{file_name}{suffix}"
 
         # Save configuration if requested
         if save_config and save_path:
-            config = {
+            config: Dict[str, Any] = {
                 "function": f"{func.__module__}.{func.__name__}",
                 "parameters": kwargs,
             }
@@ -71,35 +72,35 @@ def make_vis_function(
         # Execute the original function
         result = func(*args, **kwargs)
 
-        if title:
+        if len(title) > 0:
             ax.set_title(title)
-        if x_label:
+        if len(x_label) > 0:
             ax.set_xlabel(x_label)
-        if y_label:
+        if len(y_label) > 0:
             ax.set_ylabel(y_label)
 
         ax.grid(True)
-        plt.tight_layout()
+        plt.tight_layout()  # type: ignore
 
         if save_path:
             if not os.path.exists(save_path):
                 os.makedirs(save_path)
 
             png_file_path = os.path.join(save_path, f"{name}.png")
-            plt.savefig(png_file_path)
+            plt.savefig(png_file_path)  # type: ignore
             svg_file_path = os.path.join(save_path, f"{name}.svg")
-            plt.savefig(svg_file_path)
+            plt.savefig(svg_file_path)  # type: ignore
             log(f"Graph saved as: {png_file_path}", header="Visualization")
         else:
             if backend_curr not in non_interactive_backends:
-                plt.show()
+                plt.show()  # type: ignore
 
         return result
 
-    return wrapped_function
+    return wrapped_function  # type: ignore
 
 
-def load_and_run_visualization(config_path):
+def load_and_run_visualization(config_path: str):
     """
     Loads visualization parameters from a file and executes the specified visualization function.
 

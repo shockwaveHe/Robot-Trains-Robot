@@ -17,7 +17,6 @@ from sklearn.model_selection import train_test_split  # type: ignore
 from toddlerbot.sim import BaseSim
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.sysID.collect_data import get_sine_signal
-from toddlerbot.utils.constants import SIM_TIMESTEP
 from toddlerbot.utils.file_utils import combine_images, find_robot_file_path
 from toddlerbot.utils.misc_utils import log
 from toddlerbot.visualization.vis_plot import plot_joint_angle_tracking
@@ -201,8 +200,8 @@ def actuate_single_motor(
     joint_angles = robot.init_joint_angles.copy()
     joint_angles[joint_name] = signal_pos[0]
 
-    prep_steps = int(prep_time / SIM_TIMESTEP)
-    control_steps = int(control_dt / SIM_TIMESTEP)
+    prep_steps = int(prep_time / sim.dt)
+    control_steps = int(control_dt / sim.dt)
 
     joint_angles_list: List[Dict[str, float]] = []
     for _ in range(prep_steps):

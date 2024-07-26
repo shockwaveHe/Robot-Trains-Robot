@@ -1,8 +1,12 @@
+from typing import Dict, Tuple
+
 import numpy as np
 import pybullet as p
 import pybullet_data
+from numpy._typing import NDArray
 from transforms3d.quaternions import quat2mat
 
+from toddlerbot.actuation import JointState
 from toddlerbot.sim import BaseSim
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.constants import GRAVITY
@@ -88,6 +92,9 @@ class PyBulletSim(BaseSim):
 
     def get_joint_state(selft):
         pass
+
+    def get_observation(self):
+        return super().get_observation()
 
     def get_zmp(self):
         pass

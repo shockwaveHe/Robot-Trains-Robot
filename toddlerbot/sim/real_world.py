@@ -242,9 +242,9 @@ class RealWorld(BaseSim):
         return joint_state_dict
 
     # @profile()
-    def get_observation(
-        self,
-    ) -> Tuple[Dict[str, JointState], Dict[str, npt.NDArray[np.float32]]]:
+    def get_observation(self) -> Dict[str, npt.NDArray[np.float32]]:
+        obs_dict: Dict[str, npt.NDArray[np.float32]] = {}
+
         futures: Dict[str, Any] = {}
         if self.has_dynamixel:
             futures["dynamixel"] = self.executor.submit(
@@ -271,12 +271,24 @@ class RealWorld(BaseSim):
 
         joint_state_dict = self._process_joint_state(results)
 
-        if self.has_imu:
-            root_state: Dict[str, npt.NDArray[np.float32]] = results["imu"]
-        else:
-            root_state = {}
+        time_obs: List[float] = []
+        q_obs: List[float] = []
+        dq_obs: List[float] = []
+        for motor_name in self.robot.motor_ordering:
+            if motor_name in joint_state_dict:
+                time_obs.append(joint_state_dict[motor_name].time)
+                q_obs.append(joint_state_dict[motor_name].pos)
+                dq_obs.append(joint_state_dict[motor_name].vel)
 
-        return joint_state_dict, root_state
+        obs_dict["time"] = np.array(time_obs)
+        obs_dict["q"] = np.array(q_obs)
+        obs_dict["dq"] = np.array(dq_obs)
+
+        if self.has_imu:
+            for key, value in results["imu"].items():
+                obs_dict[key] = value
+
+        return obs_dict
 
     def close(self):
         if self.has_dynamixel:
