@@ -253,7 +253,7 @@ def add_contact_exclusion_to_mjcf(root: ET.Element):
                     )
 
 
-def add_waist_constraints(root: ET.Element, joints_config: Dict[str, Any]):
+def add_waist_constraints(root: ET.Element, offsets: Dict[str, float]):
     # Ensure there is an <equality> element
     tendon = root.find("tendon")
     if tendon is not None:
@@ -265,16 +265,24 @@ def add_waist_constraints(root: ET.Element, joints_config: Dict[str, Any]):
     fixed_roll = ET.SubElement(
         tendon, "fixed", name="waist_roll_coupling", limited="true", range="0 0.001"
     )
-    ET.SubElement(fixed_roll, "joint", joint="waist_act_1", coef="0.291667")
-    ET.SubElement(fixed_roll, "joint", joint="waist_act_2", coef="0.291667")
+    ET.SubElement(
+        fixed_roll, "joint", joint="waist_act_1", coef=f"{offsets['waist_roll_coef']}"
+    )
+    ET.SubElement(
+        fixed_roll, "joint", joint="waist_act_2", coef=f"{offsets['waist_roll_coef']}"
+    )
     ET.SubElement(fixed_roll, "joint", joint="waist_roll", coef="1")
 
     # waist roll
     fixed_yaw = ET.SubElement(
         tendon, "fixed", name="waist_yaw_coupling", limited="true", range="0 0.001"
     )
-    ET.SubElement(fixed_yaw, "joint", joint="waist_act_1", coef="0.416667")
-    ET.SubElement(fixed_yaw, "joint", joint="waist_act_2", coef="-0.416667")
+    ET.SubElement(
+        fixed_yaw, "joint", joint="waist_act_1", coef=f"{offsets['waist_yaw_coef']}"
+    )
+    ET.SubElement(
+        fixed_yaw, "joint", joint="waist_act_2", coef=f"{-offsets['waist_yaw_coef']}"
+    )
     ET.SubElement(fixed_yaw, "joint", joint="waist_yaw", coef="1")
 
 
@@ -303,7 +311,7 @@ def add_knee_constraints(root: ET.Element):
         )
 
 
-def add_ankle_constraints(root: ET.Element):
+def add_ankle_constraints(root: ET.Element, offsets: Dict[str, float]):
     # Ensure there is an <equality> element
     equality = root.find("./equality")
     if equality is None:
@@ -325,7 +333,7 @@ def add_ankle_constraints(root: ET.Element):
             body2=body2,
             solimp="0.9999 0.9999 0.001 0.5 2",
             solref="0.0001 1",
-            anchor="0.02 0 0.00582666",  # This is read from onshape
+            anchor=f"{offsets['ank_act_arm_r']} 0 {offsets['ank_act_arm_y']}",
         )
 
 
@@ -396,7 +404,7 @@ def parse_urdf_body_link(root: ET.Element, root_link_name: str):
         return properties
 
 
-def add_body_link(root: ET.Element, urdf_path: str):
+def add_body_link(root: ET.Element, urdf_path: str, offsets: Dict[str, float]):
     urdf_tree = ET.parse(urdf_path)
     urdf_root = urdf_tree.getroot()
     root_link_name: str = find_root_link_name(urdf_root)
@@ -412,7 +420,7 @@ def add_body_link(root: ET.Element, urdf_path: str):
     body_link = ET.Element(
         "body",
         name=root_link_name,
-        pos="0 0 0.3442",
+        pos=f"0 0 {offsets['torso_z']}",
         quat="1 0 0 0",
     )
 
@@ -548,13 +556,13 @@ def process_mjcf_fixed_file(root: ET.Element, config: Dict[str, Any]):
     add_actuators_to_mjcf(root, config["joints"])
 
     if config["general"]["is_waist_closed_loop"]:
-        add_waist_constraints(root, config["joints"])
+        add_waist_constraints(root, config["general"]["offsets"])
 
     if config["general"]["is_knee_closed_loop"]:
         add_knee_constraints(root)
 
     if config["general"]["is_ankle_closed_loop"]:
-        add_ankle_constraints(root)
+        add_ankle_constraints(root, config["general"]["offsets"])
 
     add_default_settings(root)
     # add_contact_exclusion_to_mjcf(root)
@@ -590,7 +598,7 @@ def get_mjcf_files(robot_name: str):
         mjcf_path = mjcf_fixed_path
     else:
         mjcf_path = os.path.join(robot_dir, robot_name + ".xml")
-        add_body_link(xml_root, urdf_path)
+        add_body_link(xml_root, urdf_path, robot.config["general"]["offsets"])
         xml_tree.write(mjcf_path)
 
     create_base_scene_xml(mjcf_path)

@@ -176,6 +176,16 @@ def main():
             "has_dynamixel": True,
             "dynamixel_baudrate": 4000000,
             "has_sunny_sky": False,
+            "offsets": {
+                "torso_z": 0.3442,
+                "waist_roll_coef": 0.29166667,
+                "waist_yaw_coef": 0.41666667,
+                "ank_act_arm_y": 0.00582666,
+                "ank_act_arm_r": 0.02,
+                "ank_long_rod_len": 0.05900847,
+                "ank_short_rod_len": 0.03951266,
+                "ank_rev_r": 0.01,
+            },
         }
 
     # This one needs to be ORDERED
