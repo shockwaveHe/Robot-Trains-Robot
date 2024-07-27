@@ -10,6 +10,7 @@ import mujoco  # type: ignore
 import mujoco.rollout  # type: ignore
 import mujoco.viewer  # type: ignore
 import numpy as np
+import numpy.typing as npt
 from transforms3d.euler import euler2mat  # type: ignore
 
 from toddlerbot.actuation import JointState
@@ -180,56 +181,29 @@ class MuJoCoController:
 
 
 class MuJoCoSim(BaseSim):
-    def __init__(self, robot, xml_str=None, assets=None, xml_path=None):
+    def __init__(
+        self, robot: Robot, xml_path: str = "", xml_str: str = "", assets: Any = None
+    ):
         """Initialize the MuJoCo simulation environment."""
         super().__init__()
         self.name = "mujoco"
         self.robot = robot
 
-        if xml_str is not None and assets is not None:
-            self.model = mujoco.MjModel.from_xml_string(xml_str, assets)
-        elif xml_path is not None:
-            self.model = mujoco.MjModel.from_xml_path(xml_path)
+        if len(xml_str) > 0 and assets is not None:
+            self.model = mujoco.MjModel.from_xml_string(xml_str, assets)  # type: ignore
+        elif len(xml_path) > 0:
+            self.model = mujoco.MjModel.from_xml_path(xml_path)  # type: ignore
         else:
             xml_path = find_robot_file_path(robot.name, suffix="_scene.xml")
-            self.model = mujoco.MjModel.from_xml_path(xml_path)
+            self.model = mujoco.MjModel.from_xml_path(xml_path)  # type: ignore
 
-        self.model.opt.timestep = self.dt
-        self.data = mujoco.MjData(self.model)
+        self.model.opt.timestep = self.dt  # type: ignore
+        self.data = mujoco.MjData(self.model)  # type: ignore
 
         self.controller = MuJoCoController()
 
-        if xml_path is not None and "fixed" not in xml_path and "sysID" not in xml_path:
-            self.put_robot_on_ground()
-
         self.thread = None
         self.stop_event = threading.Event()
-
-    def put_robot_on_ground(self, z_offset: float = 0.02):
-        lowest_z = float("inf")
-
-        mujoco.mj_kinematics(self.model, self.data)
-        # Iterate through all body parts to find the lowest point
-        for i in range(self.model.nbody):
-            if self.data.body(i).name == "world":
-                continue
-            # To correpond to the PyBullet code, we use xipos instead of xpos
-            body_pos = self.data.body(i).xipos
-            lowest_z = min(lowest_z, body_pos[2])
-
-        body_link_name = self.robot.config.canonical_name2link_name["body_link"]
-        base_pos = self.data.body(body_link_name).xpos
-        desired_z = base_pos[2] - lowest_z + z_offset
-        if lowest_z < 0:
-            raise ValueError(
-                "Robot is below the ground.\n"
-                + f"Change the z value of {body_link_name} to be {desired_z}"
-            )
-        elif lowest_z > z_offset:
-            raise ValueError(
-                "Robot is too high above the ground.\n"
-                + f" Change the z value of {body_link_name} as {desired_z}"
-            )
 
     def _compute_dmom(self):
         if not hasattr(self, "t_last"):
@@ -312,6 +286,18 @@ class MuJoCoSim(BaseSim):
         ).data.copy()
 
         return joint_state_dict, root_state
+
+    def get_com(self) -> npt.NDArray[np.float32]:
+        mujoco.mj_forward(self.model, self.data)  # type: ignore
+        subtree_com = self.data.body(0).subtree_com  # type: ignore
+        subtree_mass = self.model.body(0).subtreemass  # type: ignore
+        body_com = self.data.body("torso").xipos  # type: ignore
+        body_mass = self.model.body("torso").mass  # type: ignore
+        com: npt.NDArray[np.float32] = np.array(
+            (subtree_com * subtree_mass + body_com * body_mass)  # type: ignore
+            / (subtree_mass + body_mass)  # type: ignore
+        )
+        return com
 
     def get_zmp(self, com_pos, pz=0.0):
         M = self.model.body(0).subtreemass
