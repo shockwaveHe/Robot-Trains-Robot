@@ -95,7 +95,7 @@ def main():
     actuate_horizon = 0
 
     if args.sim != "real":
-        sim.run_simulation(headless=True)
+        sim.simulate(headless=True)
 
     progress_bar = tqdm(desc=f"Running {args.sim}")
 
@@ -118,7 +118,7 @@ def main():
                 min(step_idx + actuate_horizon, len(joint_angles_traj) - 1)
             ]
 
-            sim.set_joint_angles(joint_angles)
+            sim.set_motor_angles(joint_angles)
 
             joint_state_dict = sim.get_joint_state()
             for name, joint_state in joint_state_dict.items():

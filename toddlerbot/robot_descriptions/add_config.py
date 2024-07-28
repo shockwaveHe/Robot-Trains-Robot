@@ -91,11 +91,13 @@ def get_default_config(
 
         if is_passive:
             if transmission == "gears":
-                # TODO: Make sure the gear ratio doesn't amplify the dynamics paramters
                 joint_drive_name = joint_name.replace("_driven", "_drive")
                 motor_name = motor_config[joint_drive_name]["motor"]
+                gear_ratio = motor_config[joint_drive_name].get("gear_ratio", 1.0)
                 for param_name in ["damping", "armature", "frictionloss"]:
-                    joint_dict[param_name] = joint_dyn_config[motor_name][param_name]
+                    joint_dict[param_name] = joint_dyn_config[motor_name][
+                        param_name
+                    ] * (gear_ratio**2)
             else:
                 pass
                 # TODO: sysID the joint dynamics params for passive joints
@@ -139,6 +141,16 @@ def get_default_config(
             id += 1
 
         config_dict["joints"][joint_name] = joint_dict
+
+    joints_list = list(config_dict["joints"].items())
+
+    # Sort the list of joints first by id (if exists, otherwise use a large number) and then by name
+    sorted_joints_list = sorted(
+        joints_list, key=lambda item: (item[1].get("id", float("inf")), item[0])
+    )
+
+    # Create a new ordered dictionary from the sorted list
+    config_dict["joints"] = dict(sorted_joints_list)
 
     config_dict["general"]["is_waist_closed_loop"] = is_waist_closed_loop
     config_dict["general"]["is_knee_closed_loop"] = is_knee_closed_loop

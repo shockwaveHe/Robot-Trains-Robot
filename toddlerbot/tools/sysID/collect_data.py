@@ -65,10 +65,10 @@ def actuate_single_motor(
     # Convert signal time to sleep time between updates
     joint_data_dict: Dict[str, List[float]] = {"pos": [], "time": []}
 
-    sim.set_joint_angles(robot.init_joint_angles)
+    sim.set_motor_angles(robot.init_motor_angles)
     time.sleep(prep_time)
 
-    joint_angles = robot.init_joint_angles.copy()
+    joint_angles = robot.init_motor_angles.copy()
     time_start = time.time()
     for joint_angle in signal_pos:
         step_start = time.time()
@@ -76,7 +76,7 @@ def actuate_single_motor(
         joint_angles[joint_name] = joint_angle
 
         # log(f"Setting joint {joint_name} to {angle}...", header="SysID", level="debug")
-        sim.set_joint_angles(joint_angles)
+        sim.set_motor_angles(joint_angles)
 
         joint_state_dict = sim.get_joint_state()
 

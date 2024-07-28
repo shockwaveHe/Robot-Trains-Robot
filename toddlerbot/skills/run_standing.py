@@ -92,7 +92,7 @@ def main():
     else:
         raise ValueError("Unknown simulator")
 
-    initial_joint_angles = robot.initialize_joint_angles()
+    initial_joint_angles = robot.initialize_motor_angles()
 
     duration = float("inf")
     control_dt = 0.01
@@ -187,7 +187,7 @@ def main():
 
                 log(f"Joint angles: {joint_angles}", header=header_name, level="debug")
 
-            sim.set_joint_angles(joint_angles)
+            sim.set_motor_angles(joint_angles)
 
             step_idx += 1
 

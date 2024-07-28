@@ -112,9 +112,9 @@ class RealWorld(BaseSim):
         return joint_angles_negated
 
     # @profile()
-    def set_joint_angles(self, joint_angles: Dict[str, float]):
+    def set_motor_angles(self, motor_angles: Dict[str, float]):
         # Directions are tuned to match the assembly of the robot.
-        joint_angles_negated = self._negate_joint_angles(joint_angles)
+        joint_angles_negated = self._negate_joint_angles(motor_angles)
 
         left_ankle_pos, right_ankle_pos = self.robot.get_ankle_pos(joint_angles_negated)
         if len(left_ankle_pos) > 0:
@@ -271,18 +271,9 @@ class RealWorld(BaseSim):
 
         joint_state_dict = self._process_joint_state(results)
 
-        time_obs: List[float] = []
-        q_obs: List[float] = []
-        dq_obs: List[float] = []
-        for motor_name in self.robot.motor_ordering:
-            if motor_name in joint_state_dict:
-                time_obs.append(joint_state_dict[motor_name].time)
-                q_obs.append(joint_state_dict[motor_name].pos)
-                dq_obs.append(joint_state_dict[motor_name].vel)
-
-        obs_dict["time"] = np.array(time_obs)
-        obs_dict["q"] = np.array(q_obs)
-        obs_dict["dq"] = np.array(dq_obs)
+        obs_arr = self.robot.joint_state_to_obs_arr(joint_state_dict)
+        for k, v in obs_arr.items():
+            obs_dict[k] = v
 
         if self.has_imu:
             for key, value in results["imu"].items():

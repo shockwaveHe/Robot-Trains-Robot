@@ -258,7 +258,7 @@ class IsaacSim(BaseSim):
 
         return joint_state_dict, root_state
 
-    def set_joint_angles(self, joint_ctrls, ctrl_type="position"):
+    def set_motor_angles(self, joint_ctrls, ctrl_type="position"):
         self.last_command = (joint_ctrls, ctrl_type)
 
     def step_control(self):
@@ -289,7 +289,7 @@ class IsaacSim(BaseSim):
         joint_state_dict = self.get_joint_state()
         joint_state_traj = []
         for i, joint_angles in enumerate(joint_angles_traj):
-            self.set_joint_angles(joint_angles, ctrl_type="position")
+            self.set_motor_angles(joint_angles, ctrl_type="position")
 
             self.step_control()
 

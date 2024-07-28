@@ -197,7 +197,7 @@ def actuate_single_motor(
     # Convert signal time to sleep time between updates
     joint_data_dict: Dict[str, List[float]] = {"pos": [], "time": []}
 
-    joint_angles = robot.init_joint_angles.copy()
+    joint_angles = robot.init_motor_angles.copy()
     joint_angles[joint_name] = signal_pos[0]
 
     prep_steps = int(prep_time / sim.dt)

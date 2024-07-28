@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List
+from typing import Dict
 
 import numpy as np
 import numpy.typing as npt
@@ -19,7 +19,7 @@ class BaseSim(ABC):
         pass
 
     @abstractmethod
-    def set_joint_angles(self, joint_angles: Dict[str, float]):
+    def set_motor_angles(self, motor_angles: Dict[str, float]):
         pass
 
     @abstractmethod
@@ -27,10 +27,6 @@ class BaseSim(ABC):
         self,
     ) -> Dict[str, npt.NDArray[np.float32]]:
         pass
-
-    def rollout(self, joint_angles_list: List[Dict[str, float]]):
-        joint_state_list: List[Dict[str, JointState]] = []
-        return joint_state_list
 
     @abstractmethod
     def close(self):

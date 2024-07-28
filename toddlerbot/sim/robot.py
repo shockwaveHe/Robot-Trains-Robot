@@ -1,18 +1,18 @@
 import json
 import os
 import pickle
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
 import numpy as np
 import numpy.typing as npt
 from scipy.interpolate import LinearNDInterpolator  # type: ignore
 from yourdfpy import URDF  # type: ignore
 
+from toddlerbot.actuation import JointState
 from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.misc_utils import log
 
 
-# TODO：actuator position to joint position
 class Robot:
     """Class representing a humanoid robot."""
 
@@ -35,11 +35,6 @@ class Robot:
 
         self.load_robot_config()
         self.load_robot_data()
-
-        self.init_joint_angles = self.initialize_joint_angles()
-        motor_names = self.get_joint_attrs("is_passive", False)
-        motor_ids = self.get_joint_attrs("is_passive", False, "id")
-        self.motor_ordering = [name for _, name in sorted(zip(motor_ids, motor_names))]
 
     def load_robot_config(self):
         if os.path.exists(self.config_file_path):
@@ -67,21 +62,16 @@ class Robot:
                 pickle.dump(self.data_dict, f)
                 log("Computed and cached new data.", header="Robot")
 
-        self.com = self.data_dict["com"]
-        self.foot_size = self.data_dict["foot_size"]
-        self.offsets = self.data_dict["offsets"]
-        points, values = self.data_dict["ankle_fk_lookup_table"]
-        self.ankle_fk_lookup_table = LinearNDInterpolator(points, values)
+        points, values = self.data_dict["ank_fk_lookup_table"]
+        self.ank_fk_lookup_table = LinearNDInterpolator(points, values)
 
     def compute_data(self, urdf: URDF):
         self.data_dict: Dict[str, Any] = {}
-        # TODO: check the value in MuJoCo
-        self.data_dict["com"] = urdf.scene.center_mass
         self.data_dict["foot_size"] = self.compute_foot_size(urdf)
         self.data_dict["offsets"] = self.compute_offsets(urdf)
         self.data_dict["ank_act_zero"] = self.ankle_ik([0.0, 0.0])
         points, values = self.compute_ankle_fk_lookup()
-        self.data_dict["ankle_fk_lookup_table"] = (points, values)
+        self.data_dict["ank_fk_lookup_table"] = (points, values)
 
     def compute_foot_size(self, urdf: URDF) -> npt.NDArray[np.float32]:
         foot_bounds = urdf.scene.geometry.get("left_ank_pitch_link_visual.stl").bounds  # type: ignore
@@ -116,7 +106,6 @@ class Robot:
         offsets["y_offset_com_to_foot"] = graph.get("ank_pitch_link")[0][1, 3]  # type: ignore
 
         ##### Below are for the ankle IK #####
-        # TODO: Remove hard-coded values
         ank_origin: npt.NDArray[np.float32] = np.array(
             graph.get("ank_pitch_link")[0][:3, 3]  # type: ignore
         )
@@ -129,21 +118,39 @@ class Robot:
             graph.get("ank_motor_arm")[0][:3, 3] - ank_origin,  # type: ignore
             graph.get("ank_motor_arm_2")[0][:3, 3] - ank_origin,  # type: ignore
         ]
-        offsets["m"][0][1] += 0.00582666
-        offsets["m"][1][1] -= 0.00582666
+        ank_act_arm_y = self.config["general"]["offsets"]["ank_act_arm_y"]
+        offsets["m"][0][1] += ank_act_arm_y
+        offsets["m"][1][1] -= ank_act_arm_y
         offsets["nE"] = np.array([1, 0, 0])
-        offsets["link_len"] = [0.05900847, 0.03951266]
-        offsets["a"] = 0.02
-        offsets["r"] = 0.01
+        offsets["rod_len"] = [
+            self.config["general"]["offsets"]["ank_long_rod_len"],
+            self.config["general"]["offsets"]["ank_short_rod_len"],
+        ]
+        offsets["a"] = self.config["general"]["offsets"]["ank_act_arm_r"]
+        offsets["r"] = self.config["general"]["offsets"]["ank_rev_r"]
 
         return offsets
 
-    def initialize_joint_angles(self) -> Dict[str, float]:
-        joint_angles: Dict[str, float] = {}
+    @property
+    def init_motor_angles(self) -> Dict[str, float]:
+        motor_angles: Dict[str, float] = {}
         for joint_name, joint_config in self.config["joints"].items():
-            joint_angles[joint_name] = joint_config["default_pos"]
+            if not joint_config["is_passive"]:
+                motor_angles[joint_name] = joint_config["default_pos"]
 
-        return joint_angles
+        return motor_angles
+
+    @property
+    def init_joint_angles(self) -> Dict[str, float]:
+        return self.motor_to_joint_angles(self.init_motor_angles)
+
+    @property
+    def motor_ordering(self) -> List[str]:
+        return list(self.init_motor_angles.keys())
+
+    @property
+    def joint_ordering(self) -> List[str]:
+        return list(self.init_joint_angles.keys())
 
     def get_joint_attrs(
         self,
@@ -188,25 +195,27 @@ class Robot:
                     self.config["joints"][joint_name][attr_name] = attr_values[i]
                     i += 1
 
-    def get_ankle_pos(
-        self, joint_angles: Dict[str, float]
-    ) -> Tuple[Dict[str, float], Dict[str, float]]:
-        left_ankle_pos: Dict[str, float] = {}
-        right_ankle_pos: Dict[str, float] = {}
-        for k in self.get_joint_attrs("is_closed_loop", True):
-            if "left_ank" in k:
-                left_ankle_pos[k] = joint_angles[k]
-            if "right_ank" in k:
-                right_ankle_pos[k] = joint_angles[k]
-        return left_ankle_pos, right_ankle_pos
+    def waist_fk(self, motor_pos: List[float]) -> List[float]:
+        offsets = self.config["general"]["offsets"]
+        waist_roll = offsets["waist_roll_coef"] * (motor_pos[0] + motor_pos[1])
+        waist_yaw = offsets["waist_yaw_coef"] * (motor_pos[0] - motor_pos[1])
+        return [waist_roll, waist_yaw]
 
-    def ankle_ik(self, ankle_pos: List[float], side: str = "left") -> Dict[str, float]:
+    def waist_ik(self, waist_pos: List[float]) -> List[float]:
+        offsets = self.config["general"]["offsets"]
+        roll = waist_pos[0] / offsets["waist_roll_coef"]
+        yaw = waist_pos[1] / offsets["waist_yaw_coef"]
+        waist_act_1 = (roll + yaw) / 2
+        waist_act_2 = (roll - yaw) / 2
+        return [waist_act_1, waist_act_2]
+
+    def ankle_ik(self, ankle_pos: List[float], side: str = "left") -> List[float]:
         # Extracting offset values and converting to NumPy arrays
         offsets = self.data_dict["offsets"]
         if "ank_act_zero" in self.data_dict:
             ank_act_zero = self.data_dict["ank_act_zero"]
         else:
-            ank_act_zero = {"ank_act_1": 0, "ank_act_2": 0}
+            ank_act_zero = [0, 0]
 
         # Extract ankle pitch and roll from the input
         ankle_pitch, ankle_roll = ankle_pos
@@ -230,8 +239,8 @@ class Robot:
 
         n_hat = R @ offsets["nE"]
 
-        ank_act_dict: Dict[str, float] = {}
-        for i, ank_act_name in enumerate(ank_act_zero.keys()):
+        ank_act_pos: List[float] = []
+        for i in range(len(ank_act_zero)):
             f = R @ offsets["fE"][i]
             delta = offsets["m"][i] - f
             k = delta - np.dot(n_hat, delta) * n_hat
@@ -244,7 +253,7 @@ class Robot:
                 + d[0] ** 2
                 + d[1] ** 2
                 + d[2] ** 2
-                - offsets["link_len"][i] ** 2
+                - offsets["rod_len"][i] ** 2
             )
             phi = np.arctan2(c2, c1)
             if -1 <= c4 / c3 <= 1:
@@ -253,21 +262,18 @@ class Robot:
                 theta = np.nan
 
             if (i == 0 and side == "left") or (i == 1 and side == "right"):
-                ank_act_dict[ank_act_name] = -theta - ank_act_zero[ank_act_name]
+                ank_act_pos.append(-theta - ank_act_zero[i])
             else:
-                ank_act_dict[ank_act_name] = theta - ank_act_zero[ank_act_name]
+                ank_act_pos.append(theta - ank_act_zero[i])
 
-        return ank_act_dict
+        return ank_act_pos
 
-    def ankle_fk(
-        self, motor_pos: List[float], side: str = "left"
-    ) -> npt.NDArray[np.float32]:
+    def ankle_fk(self, motor_pos: List[float], side: str = "left") -> List[float]:
         if side == "right":
-            motor_pos *= -1
+            motor_pos = [-motor_pos[0], -motor_pos[1]]
 
-        ankle_pos = self.ankle_fk_lookup_table(np.clip(motor_pos, 1, 4095))
-        # Ensure the output is squeezed to a 1D array and handle NaN cases.
-        ankle_pos = np.array(ankle_pos).squeeze()
+        ankle_pos_arr = self.ank_fk_lookup_table(motor_pos).squeeze()
+        ankle_pos = ankle_pos_arr.tolist()
 
         return ankle_pos
 
@@ -299,9 +305,9 @@ class Robot:
         act_2_values = np.zeros_like(roll_grid)
         for i in range(len(pitch_range)):  # type: ignore
             for j in range(len(roll_range)):  # type: ignore
-                ank_act_dict = self.ankle_ik([pitch_range[i], roll_range[j]])
-                act_1_values[i, j] = ank_act_dict["ank_act_1"]
-                act_2_values[i, j] = ank_act_dict["ank_act_2"]
+                ank_act_pos = self.ankle_ik([pitch_range[i], roll_range[j]])
+                act_1_values[i, j] = ank_act_pos[0]
+                act_2_values[i, j] = ank_act_pos[1]
 
         valid_mask = (
             (act_1_values >= act_1_limits[0])
@@ -316,43 +322,109 @@ class Robot:
 
         return points, values
 
-    # def solve_ik(
-    #     self,
-    #     target_left_foot_pos: List[float],
-    #     target_left_foot_ori: List[float],
-    #     target_right_foot_pos: List[float],
-    #     target_right_foot_ori: List[float],
-    #     joint_angles_curr: List[float],
-    # ) -> List[float]:
-    #     joint_angles = copy.deepcopy(joint_angles_curr)
+    def joint_state_to_obs_arr(
+        self, joint_state_dict: Dict[str, JointState]
+    ) -> Dict[str, npt.NDArray[np.float32]]:
+        time_obs: List[float] = []
+        q_obs: List[float] = []
+        dq_obs: List[float] = []
+        for joint_name in joint_state_dict:
+            time_obs.append(joint_state_dict[joint_name].time)
+            q_obs.append(joint_state_dict[joint_name].pos)
+            dq_obs.append(joint_state_dict[joint_name].vel)
 
-    #     self._solve_leg_ik(
-    #         target_left_foot_pos, target_left_foot_ori, "left", joint_angles
-    #     )
-    #     self._solve_leg_ik(
-    #         target_right_foot_pos, target_right_foot_ori, "right", joint_angles
-    #     )
-    #     return joint_angles
+        return {
+            "time": np.array(time_obs, dtype=np.float32),
+            "q": np.array(q_obs, dtype=np.float32),
+            "dq": np.array(dq_obs, dtype=np.float32),
+        }
 
-    # def _solve_leg_ik(
-    #     self,
-    #     target_foot_pos: Tuple[float, float, float],
-    #     target_foot_ori: Tuple[float, float, float],
-    #     side: str,
-    #     joint_angles: Dict[str, float],
-    # ) -> List[float]:
-    #     # Calculate leg angles
-    #     angles_dict = self.config.compute_leg_angles(
-    #         target_foot_pos, target_foot_ori, side, self.offsets
-    #     )
+    def motor_to_joint_angles(self, motor_angles: Dict[str, float]) -> Dict[str, float]:
+        joint_angles: Dict[str, float] = {}
+        joints_config = self.config["joints"]
+        waist_act_pos: List[float] = []
+        left_ank_act_pos: List[float] = []
+        right_ank_act_pos: List[float] = []
+        for motor_name, motor_pos in motor_angles.items():
+            transmission = joints_config[motor_name]["transmission"]
+            if transmission == "gears":
+                joint_name = motor_name.replace("_drive", "_driven")
+                joint_angles[joint_name] = (
+                    motor_pos * joints_config[motor_name]["gear_ratio"]
+                )
+            elif transmission == "waist":
+                # Placeholder to ensure the correct order
+                joint_angles["waist_roll"] = 0.0
+                joint_angles["waist_yaw"] = 0.0
+                waist_act_pos.append(motor_pos)
+            elif transmission == "knee":
+                joint_name: str = motor_name.replace("_act", "_pitch")
+                joint_angles[joint_name] = motor_pos
+            elif transmission == "ankle":
+                if "left" in motor_name:
+                    joint_angles["left_ank_pitch"] = 0.0
+                    joint_angles["left_ank_roll"] = 0.0
+                    left_ank_act_pos.append(motor_pos)
+                elif "right" in motor_name:
+                    joint_angles["right_ank_pitch"] = 0.0
+                    joint_angles["right_ank_roll"] = 0.0
+                    right_ank_act_pos.append(motor_pos)
+            elif transmission == "none":
+                joint_angles[motor_name] = motor_pos
 
-    #     # Update joint angles based on calculations
-    #     for name, angle in angles_dict.items():
-    #         if f"{side}_{name}" in joint_angles:
-    #             joint_angles[f"{side}_{name}"] = angle
-    #         elif f"{side[0]}_{name}" in joint_angles:
-    #             joint_angles[f"{side[0]}_{name}"] = angle
-    #         else:
-    #             raise ValueError(f"Joint '{name}' not found in joint angles.")
+        joint_angles["waist_roll"], joint_angles["waist_yaw"] = self.waist_fk(
+            waist_act_pos
+        )
+        joint_angles["left_ank_pitch"], joint_angles["left_ank_roll"] = self.ankle_fk(
+            left_ank_act_pos, "left"
+        )
+        joint_angles["right_ank_pitch"], joint_angles["right_ank_roll"] = self.ankle_fk(
+            right_ank_act_pos, "right"
+        )
 
-    #     return joint_angles
+        return joint_angles
+
+    def joint_to_motor_angles(self, joint_angles: Dict[str, float]) -> Dict[str, float]:
+        motor_angles: Dict[str, float] = {}
+        joints_config = self.config["joints"]
+        waist_pos: List[float] = []
+        left_ankle_pos: List[float] = []
+        right_ankle_pos: List[float] = []
+        for joint_name, joint_pos in joint_angles.items():
+            transmission = joints_config[joint_name]["transmission"]
+            if transmission == "gears":
+                motor_name = joint_name.replace("_driven", "_drive")
+                motor_angles[motor_name] = (
+                    joint_pos / joints_config[motor_name]["gear_ratio"]
+                )
+            elif transmission == "waist":
+                # Placeholder to ensure the correct order
+                motor_angles["waist_act_1"] = 0.0
+                motor_angles["waist_act_2"] = 0.0
+                waist_pos.append(joint_pos)
+            elif transmission == "knee":
+                motor_name: str = joint_name.replace("_pitch", "_act")
+                motor_angles[motor_name] = joint_pos
+            elif transmission == "ankle":
+                if "left" in joint_name:
+                    motor_angles["left_ank_act_1"] = 0.0
+                    motor_angles["left_ank_act_2"] = 0.0
+                    left_ankle_pos.append(joint_pos)
+                elif "right" in joint_name:
+                    motor_angles["right_ank_act_1"] = 0.0
+                    motor_angles["right_ank_act_2"] = 0.0
+                    right_ankle_pos.append(joint_pos)
+            elif transmission == "none":
+                motor_angles[joint_name] = joint_pos
+
+        joint_angles["waist_act_1"], joint_angles["waist_act_2"] = self.waist_ik(
+            waist_pos
+        )
+        joint_angles["left_ank_act_1"], joint_angles["left_ank_act_2"] = self.ankle_ik(
+            left_ankle_pos, "left"
+        )
+        joint_angles["right_ank_act_1"], joint_angles["right_ank_act_2"] = (
+            self.ankle_ik(right_ankle_pos, "right")
+        )
+
+        return joint_angles

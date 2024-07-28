@@ -18,7 +18,7 @@ def main(robot: Robot):
             step_start = time.time()
 
             _ = sim.get_joint_state()
-            sim.set_joint_angles({name: 0 for name in robot.config})
+            sim.set_motor_angles({name: 0 for name in robot.config})
             step_idx += 1
 
             step_time = time.time() - step_start

@@ -359,10 +359,10 @@ def add_actuators_to_mjcf(root: ET.Element, joints_config: Dict[str, Any]):
                 position = ET.SubElement(
                     actuator,
                     "position",
-                    name=joint_name.replace("_drive", ""),
+                    name=joint_name,
                     joint=joint_driven_name,
                     kp=str(joints_config[joint_name]["kp_sim"]),
-                    gear=str(joints_config[joint_name]["gear_ratio"]),
+                    gear=str(1 / joints_config[joint_name]["gear_ratio"]),
                     ctrlrange=joint_driven.get("range", "-3.141592 3.141592"),
                 )
             else:

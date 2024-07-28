@@ -45,8 +45,8 @@ def main():
     # This function requires its parameters to be the same as its return values.
     def step_func(sim_step_idx):
         if args.sim == "pybullet":
-            _, joint_angles = robot.initialize_joint_angles()
-            sim.set_joint_angles(joint_angles)
+            _, joint_angles = robot.initialize_motor_angles()
+            sim.set_motor_angles(joint_angles)
         else:
             raise ValueError("Only pybullet is supported for now.")
 

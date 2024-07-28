@@ -19,7 +19,7 @@ def main(robot: Robot):
         name: state.pos for name, state in sim.get_joint_state(retries=-1).items()
     }
     zero_joint_angles: Dict[str, float] = {name: 0 for name in robot.config}
-    default_joint_angles = robot.initialize_joint_angles()
+    default_joint_angles = robot.initialize_motor_angles()
     middle_joint_angles: Dict[str, float] = {}
     for name in robot.config:
         middle_joint_angles[name] = (
@@ -56,7 +56,7 @@ def main(robot: Robot):
             ]
 
             _ = sim.get_joint_state()
-            sim.set_joint_angles(joint_angles)
+            sim.set_motor_angles(joint_angles)
             step_idx += 1
 
             step_time = time.time() - step_start
