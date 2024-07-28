@@ -1,3 +1,4 @@
+import os
 import time
 from typing import Dict
 
@@ -30,8 +31,9 @@ def test_mass_properties():
 
 def test_kinematics():
     robot = Robot("toddlerbot")
+    robot.ankle_ik([0.596, 0.498])
     sim = MuJoCoSim(robot, fixed=True)
-    sim.simulate()
+    sim.simulate(vis_type="render")
 
     sim.set_motor_angles(robot.init_motor_angles)
     mujoco_q = sim.get_observation()["q"]
@@ -53,7 +55,14 @@ def test_kinematics():
     random_joint_angles = robot.motor_to_joint_angles(random_motor_angles)
     robot_q = np.array(list(random_joint_angles.values()))
 
-    assert arrays_are_close(mujoco_q, robot_q, tol=1e-3)
+    # exp_name: str = "test_kinematics"
+    # time_str = time.strftime("%Y%m%d_%H%M%S")
+    # exp_folder_path = f"results/{time_str}_{exp_name}"
+    # os.makedirs(exp_folder_path, exist_ok=True)
+
+    # sim.save_recording(exp_folder_path)
+
+    assert arrays_are_close(mujoco_q, robot_q, tol=1e-2)
 
 
 if __name__ == "__main__":

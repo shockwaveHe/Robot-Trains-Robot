@@ -235,7 +235,7 @@ class Robot:
         )
 
         # Combined rotation matrix
-        R = R_roll @ R_pitch
+        R = R_pitch @ R_roll
 
         n_hat = R @ offsets["nE"]
 
@@ -245,26 +245,28 @@ class Robot:
             delta = offsets["m"][i] - f
             k = delta - np.dot(n_hat, delta) * n_hat
             d = delta - offsets["r"] * k / np.linalg.norm(k)
-            c1 = -2 * offsets["a"] * d[0]
-            c2 = 2 * offsets["a"] * d[2]
-            c3 = np.sqrt(c1**2 + c2**2)
-            c4 = (
-                offsets["a"] ** 2
-                + d[0] ** 2
-                + d[1] ** 2
-                + d[2] ** 2
-                - offsets["rod_len"][i] ** 2
-            )
-            phi = np.arctan2(c2, c1)
-            if -1 <= c4 / c3 <= 1:
-                theta = np.pi - (phi + np.arccos(c4 / c3))
-            else:
+            d_sq = d[0] ** 2 + d[1] ** 2 + d[2] ** 2
+            d_norm = np.sqrt(d_sq)
+            c1 = 2 * offsets["a"] * d_norm
+            c2 = offsets["a"] ** 2 + d_sq - offsets["rod_len"][i] ** 2
+            if c2 < -c1 or c2 > c1:
                 theta = np.nan
+            else:
+                alpha = np.arccos(d[0] / d_norm)
+                beta = np.arccos(c2 / c1)
+                theta = beta - alpha
 
             if (i == 0 and side == "left") or (i == 1 and side == "right"):
-                ank_act_pos.append(-theta - ank_act_zero[i])
+                pos = theta - ank_act_zero[i]
             else:
-                ank_act_pos.append(theta - ank_act_zero[i])
+                pos = -theta - ank_act_zero[i]
+
+            lower_limit = self.config["joints"][f"{side}_ank_act_{i+1}"]["lower_limit"]
+            upper_limit = self.config["joints"][f"{side}_ank_act_{i+1}"]["upper_limit"]
+            if pos < lower_limit or pos > upper_limit:
+                pos = np.nan
+
+            ank_act_pos.append(pos)
 
         return ank_act_pos
 

@@ -214,14 +214,7 @@ def main():
 
         os.makedirs(exp_folder_path, exist_ok=True)
 
-        if hasattr(sim.visualizer, "save_recording"):
-            sim.visualizer.save_recording(exp_folder_path)  # type: ignore
-        else:
-            log(
-                "Current visualizer does not support video writing.",
-                header=header_name,
-                level="warning",
-            )
+        sim.visualizer.save_recording(exp_folder_path)  # type: ignore
 
         sim.close()
 

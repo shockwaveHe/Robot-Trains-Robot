@@ -266,10 +266,10 @@ def add_waist_constraints(root: ET.Element, offsets: Dict[str, float]):
         tendon, "fixed", name="waist_roll_coupling", limited="true", range="0 0.001"
     )
     ET.SubElement(
-        fixed_roll, "joint", joint="waist_act_1", coef=f"{offsets['waist_roll_coef']}"
+        fixed_roll, "joint", joint="waist_act_1", coef=f"{-offsets['waist_roll_coef']}"
     )
     ET.SubElement(
-        fixed_roll, "joint", joint="waist_act_2", coef=f"{offsets['waist_roll_coef']}"
+        fixed_roll, "joint", joint="waist_act_2", coef=f"{-offsets['waist_roll_coef']}"
     )
     ET.SubElement(fixed_roll, "joint", joint="waist_roll", coef="1")
 
@@ -278,10 +278,10 @@ def add_waist_constraints(root: ET.Element, offsets: Dict[str, float]):
         tendon, "fixed", name="waist_yaw_coupling", limited="true", range="0 0.001"
     )
     ET.SubElement(
-        fixed_yaw, "joint", joint="waist_act_1", coef=f"{offsets['waist_yaw_coef']}"
+        fixed_yaw, "joint", joint="waist_act_1", coef=f"{-offsets['waist_yaw_coef']}"
     )
     ET.SubElement(
-        fixed_yaw, "joint", joint="waist_act_2", coef=f"{-offsets['waist_yaw_coef']}"
+        fixed_yaw, "joint", joint="waist_act_2", coef=f"{offsets['waist_yaw_coef']}"
     )
     ET.SubElement(fixed_yaw, "joint", joint="waist_yaw", coef="1")
 
@@ -441,8 +441,8 @@ def add_body_link(root: ET.Element, urdf_path: str, offsets: Dict[str, float]):
         body_link.append(element)
 
 
-def create_base_scene_xml(mjcf_path: str):
-    robot_name = os.path.basename(mjcf_path).replace("_fixed", "").replace(".xml", "")
+def create_base_scene_xml(mjcf_path: str, is_fixed: bool):
+    robot_name = os.path.basename(mjcf_path).replace(".xml", "")
 
     # Create the root element
     mujoco = ET.Element("mujoco", attrib={"model": f"{robot_name}_scene"})
@@ -451,7 +451,10 @@ def create_base_scene_xml(mjcf_path: str):
     ET.SubElement(mujoco, "include", attrib={"file": os.path.basename(mjcf_path)})
 
     # Add statistic element
-    ET.SubElement(mujoco, "statistic", attrib={"center": "0 0 0.2", "extent": "0.6"})
+    center_z = -0.05 if is_fixed else 0.2
+    ET.SubElement(
+        mujoco, "statistic", attrib={"center": f"0 0 {center_z}", "extent": "0.6"}
+    )
 
     # Visual settings
     visual = ET.SubElement(mujoco, "visual")
@@ -476,6 +479,13 @@ def create_base_scene_xml(mjcf_path: str):
         },
     )
 
+    worldbody = ET.SubElement(mujoco, "worldbody")
+    ET.SubElement(
+        worldbody,
+        "light",
+        attrib={"pos": "0 0 1.5", "dir": "0 0 -1", "directional": "true"},
+    )
+
     # Asset settings
     asset = ET.SubElement(mujoco, "asset")
     ET.SubElement(
@@ -490,51 +500,45 @@ def create_base_scene_xml(mjcf_path: str):
             "height": "3072",
         },
     )
-    ET.SubElement(
-        asset,
-        "texture",
-        attrib={
-            "type": "2d",
-            "name": "groundplane",
-            "builtin": "checker",
-            "mark": "edge",
-            "rgb1": "0.2 0.3 0.4",
-            "rgb2": "0.1 0.2 0.3",
-            "markrgb": "0.8 0.8 0.8",
-            "width": "300",
-            "height": "300",
-        },
-    )
-    ET.SubElement(
-        asset,
-        "material",
-        attrib={
-            "name": "groundplane",
-            "texture": "groundplane",
-            "texuniform": "true",
-            "texrepeat": "5 5",
-            "reflectance": "0.0",
-        },
-    )
-
-    # Worldbody settings
-    worldbody = ET.SubElement(mujoco, "worldbody")
-    ET.SubElement(
-        worldbody,
-        "light",
-        attrib={"pos": "0 0 1.5", "dir": "0 0 -1", "directional": "true"},
-    )
-    ET.SubElement(
-        worldbody,
-        "geom",
-        attrib={
-            "name": "floor",
-            "size": "0 0 0.05",
-            "type": "plane",
-            "material": "groundplane",
-            "condim": "1",
-        },
-    )
+    if not is_fixed:
+        ET.SubElement(
+            asset,
+            "texture",
+            attrib={
+                "type": "2d",
+                "name": "groundplane",
+                "builtin": "checker",
+                "mark": "edge",
+                "rgb1": "0.2 0.3 0.4",
+                "rgb2": "0.1 0.2 0.3",
+                "markrgb": "0.8 0.8 0.8",
+                "width": "300",
+                "height": "300",
+            },
+        )
+        ET.SubElement(
+            asset,
+            "material",
+            attrib={
+                "name": "groundplane",
+                "texture": "groundplane",
+                "texuniform": "true",
+                "texrepeat": "5 5",
+                "reflectance": "0.0",
+            },
+        )
+        # Worldbody settings
+        ET.SubElement(
+            worldbody,
+            "geom",
+            attrib={
+                "name": "floor",
+                "size": "0 0 0.05",
+                "type": "plane",
+                "material": "groundplane",
+                "condim": "1",
+            },
+        )
 
     # Create a tree from the root element and write it to a file
     tree = ET.ElementTree(mujoco)
@@ -597,11 +601,13 @@ def get_mjcf_files(robot_name: str):
     if robot.config["general"]["is_fixed"]:
         mjcf_path = mjcf_fixed_path
     else:
+        create_base_scene_xml(mjcf_fixed_path, is_fixed=True)
+
         mjcf_path = os.path.join(robot_dir, robot_name + ".xml")
         add_body_link(xml_root, urdf_path, robot.config["general"]["offsets"])
         xml_tree.write(mjcf_path)
 
-    create_base_scene_xml(mjcf_path)
+    create_base_scene_xml(mjcf_path, robot.config["general"]["is_fixed"])
 
 
 def main():

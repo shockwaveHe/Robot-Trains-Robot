@@ -36,7 +36,9 @@ class MuJoCoSim(BaseSim):
         else:
             if len(xml_path) == 0:
                 if fixed:
-                    xml_path = find_robot_file_path(robot.name, suffix="_fixed.xml")
+                    xml_path = find_robot_file_path(
+                        robot.name, suffix="_fixed_scene.xml"
+                    )
                 else:
                     xml_path = find_robot_file_path(robot.name, suffix="_scene.xml")
 
@@ -275,6 +277,10 @@ class MuJoCoSim(BaseSim):
             joint_state_list.append(joint_state_dict)
 
         return joint_state_list
+
+    def save_recording(self, exp_folder_path: str):
+        if isinstance(self.visualizer, MuJoCoRenderer):
+            self.visualizer.save_recording(exp_folder_path)
 
     def close(self):
         if self.thread is not None and threading.current_thread() is not self.thread:
