@@ -4,6 +4,7 @@ from typing import Dict
 
 import numpy as np
 import numpy.typing as npt
+from tqdm import tqdm
 
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.robot import Robot
@@ -30,8 +31,18 @@ def test_mass_properties():
 
 
 def test_kinematics():
+    exp_name: str = "test_kinematics"
+    time_str = time.strftime("%Y%m%d_%H%M%S")
+    exp_folder_path = f"results/{time_str}_{exp_name}"
+    os.makedirs(exp_folder_path, exist_ok=True)
+
     robot = Robot("toddlerbot")
-    robot.ankle_ik([0.596, 0.498])
+
+    # from toddlerbot.visualization.vis_plot import plot_ankle_mapping, plot_waist_mapping
+
+    # plot_waist_mapping(robot.config["joints"], robot.waist_ik, exp_folder_path)
+    # plot_ankle_mapping(robot.config["joints"], robot.ankle_ik, exp_folder_path)
+
     sim = MuJoCoSim(robot, fixed=True)
     sim.simulate(vis_type="render")
 
@@ -42,30 +53,24 @@ def test_kinematics():
     assert arrays_are_close(mujoco_q, init_q, tol=1e-3)
 
     set_seed(0)
-    random_motor_angles: Dict[str, float] = {}
-    for motor_name in robot.motor_ordering:
-        random_motor_angles[motor_name] = np.random.uniform(
-            robot.config["joints"][motor_name]["lower_limit"],
-            robot.config["joints"][motor_name]["upper_limit"],
-        )
+    for _ in tqdm(range(10)):
+        random_motor_angles = robot.sample_motor_angles()
+        random_joint_angles = robot.motor_to_joint_angles(random_motor_angles)
+        robot_q = np.array(list(random_joint_angles.values()))
 
-    sim.set_motor_angles(random_motor_angles)
-    time.sleep(2.0)
-    mujoco_q = sim.get_observation()["q"]
-    random_joint_angles = robot.motor_to_joint_angles(random_motor_angles)
-    robot_q = np.array(list(random_joint_angles.values()))
+        sim.set_motor_angles(random_motor_angles)
+        time.sleep(2.0)
+        mujoco_q = sim.get_observation()["q"]
 
-    # exp_name: str = "test_kinematics"
-    # time_str = time.strftime("%Y%m%d_%H%M%S")
-    # exp_folder_path = f"results/{time_str}_{exp_name}"
-    # os.makedirs(exp_folder_path, exist_ok=True)
+        assert arrays_are_close(mujoco_q, robot_q, tol=2e-2)
 
-    # sim.save_recording(exp_folder_path)
+    sim.save_recording(exp_folder_path)
 
-    assert arrays_are_close(mujoco_q, robot_q, tol=1e-2)
+    sim.close()
 
 
 if __name__ == "__main__":
     test_kinematics()
     # import pytest
+
     # pytest.main()

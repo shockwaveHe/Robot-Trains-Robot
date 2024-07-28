@@ -217,16 +217,22 @@ def exclude_all_contacts(root: ET.Element):
 
     contact = ET.SubElement(root, "contact")
 
-    for body1 in root.findall(".//body"):
-        body1_name = body1.get("name")
-        for body2 in root.findall(".//body"):
-            body2_name = body2.get("name")
-            if (
-                body1_name is not None
-                and body2_name is not None
-                and body1_name != body2_name
-            ):
+    collision_bodies: List[str] = []
+    for body in root.findall(".//body"):
+        body_name = body.get("name")
+        if body_name and body.find("./geom[@class='collision']") is not None:
+            collision_bodies.append(body_name)
+
+    for body1_name in collision_bodies:
+        for body2_name in collision_bodies:
+            if body1_name != body2_name:
                 ET.SubElement(contact, "exclude", body1=body1_name, body2=body2_name)
+
+
+def include_all_contacts(root: ET.Element):
+    contact = root.find("contact")
+    if contact is not None:
+        root.remove(contact)
 
 
 def add_contact_exclusion_to_mjcf(root: ET.Element):
@@ -556,7 +562,6 @@ def process_mjcf_fixed_file(root: ET.Element, config: Dict[str, Any]):
 
     update_joint_params(root, config["joints"])
     update_geom_classes(root, ["type", "contype", "conaffinity", "group", "density"])
-    # exclude_all_contacts(root)
     add_actuators_to_mjcf(root, config["joints"])
 
     if config["general"]["is_waist_closed_loop"]:
@@ -570,6 +575,7 @@ def process_mjcf_fixed_file(root: ET.Element, config: Dict[str, Any]):
 
     add_default_settings(root)
     # add_contact_exclusion_to_mjcf(root)
+    exclude_all_contacts(root)
 
 
 def get_mjcf_files(robot_name: str):
@@ -605,6 +611,7 @@ def get_mjcf_files(robot_name: str):
 
         mjcf_path = os.path.join(robot_dir, robot_name + ".xml")
         add_body_link(xml_root, urdf_path, robot.config["general"]["offsets"])
+        include_all_contacts(xml_root)
         xml_tree.write(mjcf_path)
 
     create_base_scene_xml(mjcf_path, robot.config["general"]["is_fixed"])

@@ -12,37 +12,164 @@ from toddlerbot.visualization.vis_utils import (
 )
 
 LINE_STYLES = ["-", "--", "-.", ":"]
-LINE_COLORS = ["b", "g", "r", "c", "y", "k"]
-LINE_MARKERS = ["o", "s", "D", "v", "^", "<"]
+MARKERS = ["o", "s", "D", "v", "^", "<"]
+COLORS = ["b", "g", "r", "c", "y", "k"]
 
 
-def plot_ankle_mapping(ankle_ik: Callable[..., Tuple[float, float]]):
-    pitch_range = np.linspace(-np.pi / 2, np.pi / 2, 180)
-    roll_range = np.linspace(-np.pi / 2, np.pi / 2, 180)
-    pitch_grid, roll_grid = np.meshgrid(pitch_range, roll_range)
-    d1_values = np.zeros_like(pitch_grid)
-    d2_values = np.zeros_like(roll_grid)
+def plot_waist_mapping(
+    joints_config: Dict[str, Dict[str, Any]],
+    waist_ik: Callable[..., List[float]],
+    save_path: str,
+    file_name: str = "waist_mapping",
+):
+    # Prepare data for plotting
+    roll_limits = [
+        joints_config["waist_roll"]["lower_limit"],
+        joints_config["waist_roll"]["upper_limit"],
+    ]
+    yaw_limits = [
+        joints_config["waist_yaw"]["lower_limit"],
+        joints_config["waist_yaw"]["upper_limit"],
+    ]
+    act_1_limits = [
+        joints_config["waist_act_1"]["lower_limit"],
+        joints_config["waist_act_1"]["upper_limit"],
+    ]
+    act_2_limits = [
+        joints_config["waist_act_2"]["lower_limit"],
+        joints_config["waist_act_2"]["upper_limit"],
+    ]
 
-    for i in range(pitch_grid.shape[0]):
-        for j in range(pitch_grid.shape[1]):
-            d1, d2 = ankle_ik((pitch_grid[i, j], roll_grid[i, j]))
-            d1_values[i, j] = d1
-            d2_values[i, j] = d2
+    step_rad = 0.02
+    tol = 1e-3
+    roll_range = np.arange(roll_limits[0], roll_limits[1] + step_rad, step_rad)  # type: ignore
+    yaw_range = np.arange(yaw_limits[0], yaw_limits[1] + step_rad, step_rad)  # type: ignore
+    roll_grid, yaw_grid = np.meshgrid(roll_range, yaw_range, indexing="ij")  # type: ignore
 
-    valid_mask_d1 = (d1_values >= 0) & (d1_values <= 4095)
-    valid_mask_d2 = (d2_values >= 0) & (d2_values <= 4095)
-    valid_both = valid_mask_d1 & valid_mask_d2
+    act_1_grid = np.zeros_like(roll_grid)
+    act_2_grid = np.zeros_like(yaw_grid)
+    for i in range(len(roll_range)):  # type: ignore
+        for j in range(len(yaw_range)):  # type: ignore
+            act_pos: List[float] = waist_ik([roll_range[i], yaw_range[j]])
+            act_1_grid[i, j] = act_pos[0]
+            act_2_grid[i, j] = act_pos[1]
 
-    fig, ax = plt.subplots(figsize=(10, 7))  # type: ignore
-    ax.contour(  # type: ignore
-        pitch_grid, roll_grid, valid_both, levels=[0.5], colors="red", linewidths=2
+    valid_mask = (
+        (act_1_grid >= act_1_limits[0] - tol)
+        & (act_1_grid <= act_1_limits[1] + tol)
+        & (act_2_grid >= act_2_limits[0] - tol)
+        & (act_2_grid <= act_2_limits[1] + tol)
     )
 
-    ax.set_title("Ankle Position Validity Mapping")  # type: ignore
-    ax.set_xlabel("Ankle Pitch (radians)")  # type: ignore
-    ax.set_ylabel("Ankle Roll (radians)")  # type: ignore
+    # Create a color array based on the valid_mask
+    colors = np.where(valid_mask.flatten(), "red", "white")
 
-    plt.show()  # type: ignore
+    n_rows = 1
+    n_cols = 2
+    fig, axs = plt.subplots(n_rows, n_cols, figsize=(n_cols * 5, n_rows * 3))  # type: ignore
+
+    for i, ax in enumerate(axs.flat):  # type: ignore
+        if i == 0:
+            plot_scatter_graph(
+                act_2_grid.flatten(),
+                act_1_grid.flatten(),
+                colors,
+                x_label="Actuator 1 (rad)",
+                y_label="Actuator 2 (rad)",
+                title="Waist Forward Mapping",
+                ax=ax,
+            )()
+        else:
+            plot_scatter_graph(
+                yaw_grid.flatten(),
+                roll_grid.flatten(),
+                colors,
+                x_label="Roll (rad)",
+                y_label="Yaw (rad)",
+                title="Waist Inverse Mapping",
+                save_config=True,
+                save_path=save_path,
+                file_name=file_name,
+                ax=ax,
+            )()
+
+
+def plot_ankle_mapping(
+    joints_config: Dict[str, Dict[str, Any]],
+    ankle_ik: Callable[..., List[float]],
+    save_path: str,
+    file_name: str = "ankle_mapping",
+):
+    # Prepare data for plotting
+    roll_limits = [
+        joints_config["left_ank_roll"]["lower_limit"],
+        joints_config["left_ank_roll"]["upper_limit"],
+    ]
+    pitch_limits = [
+        joints_config["left_ank_pitch"]["lower_limit"],
+        joints_config["left_ank_pitch"]["upper_limit"],
+    ]
+    act_1_limits = [
+        joints_config["left_ank_act_1"]["lower_limit"],
+        joints_config["left_ank_act_1"]["upper_limit"],
+    ]
+    act_2_limits = [
+        joints_config["left_ank_act_2"]["lower_limit"],
+        joints_config["left_ank_act_2"]["upper_limit"],
+    ]
+
+    step_rad = 0.02
+    tol = 1e-3
+    roll_range = np.arange(roll_limits[0], roll_limits[1] + step_rad, step_rad)  # type: ignore
+    pitch_range = np.arange(pitch_limits[0], pitch_limits[1] + step_rad, step_rad)  # type: ignore
+    roll_grid, pitch_grid = np.meshgrid(roll_range, pitch_range, indexing="ij")  # type: ignore
+
+    act_1_grid = np.zeros_like(roll_grid)
+    act_2_grid = np.zeros_like(pitch_grid)
+    for i in range(len(roll_range)):  # type: ignore
+        for j in range(len(pitch_range)):  # type: ignore
+            act_pos: List[float] = ankle_ik([roll_range[i], pitch_range[j]])
+            act_1_grid[i, j] = act_pos[0]
+            act_2_grid[i, j] = act_pos[1]
+
+    valid_mask = (
+        (act_1_grid >= act_1_limits[0] - tol)
+        & (act_1_grid <= act_1_limits[1] + tol)
+        & (act_2_grid >= act_2_limits[0] - tol)
+        & (act_2_grid <= act_2_limits[1] + tol)
+    )
+
+    # Create a color array based on the valid_mask
+    colors = np.where(valid_mask.flatten(), "red", "white")
+
+    n_rows = 1
+    n_cols = 2
+    fig, axs = plt.subplots(n_rows, n_cols, figsize=(n_cols * 5, n_rows * 3))  # type: ignore
+
+    for i, ax in enumerate(axs.flat):  # type: ignore
+        if i == 0:
+            plot_scatter_graph(
+                act_2_grid.flatten(),
+                act_1_grid.flatten(),
+                colors,
+                x_label="Actuator 1 (rad)",
+                y_label="Actuator 2 (rad)",
+                title="Ankle Forward Mapping",
+                ax=ax,
+            )()
+        else:
+            plot_scatter_graph(
+                pitch_grid.flatten(),
+                roll_grid.flatten(),
+                colors,
+                x_label="Roll (rad)",
+                y_label="Pitch (rad)",
+                title="Ankle Inverse Mapping",
+                save_config=True,
+                save_path=save_path,
+                file_name=file_name,
+                ax=ax,
+            )()
 
 
 # def plot_one_footstep(ax, center, size, angle, side):
@@ -302,7 +429,7 @@ def plot_line_graph(
     def plot():
         # Ensure line_styles and line_colors are lists and have sufficient length
         line_styles_local = line_styles if len(line_styles) > 0 else LINE_STYLES
-        line_colors_local = line_colors if len(line_colors) > 0 else LINE_COLORS
+        line_colors_local = line_colors if len(line_colors) > 0 else COLORS
 
         # Determine if x is None and set it to the index of y if so
         if x is None:
@@ -330,7 +457,7 @@ def plot_line_graph(
                 if checkpoint_period and checkpoint_period[i]:
                     for idx, value in enumerate(sub_y):
                         if idx % checkpoint_period[i] == 0:
-                            ax.plot(xi[idx], value, LINE_MARKERS[i], color=color)  # type: ignore
+                            ax.plot(xi[idx], value, MARKERS[i], color=color)  # type: ignore
         else:  # Single line
             ax.plot(
                 x_local,
@@ -346,11 +473,58 @@ def plot_line_graph(
                         ax.plot(
                             x_local[idx],
                             value,
-                            LINE_MARKERS[0],
+                            MARKERS[0],
                             color=line_colors_local[0],
                         )
 
         if legend_labels:
+            ax.legend()
+
+    # Create and return a visualization function using the make_vis_function
+    vis_function: Any = make_vis_function(
+        plot,
+        ax=ax,
+        title=title,
+        x_label=x_label,
+        y_label=y_label,
+        save_config=save_config,
+        save_path=save_path,
+        file_name=file_name,
+        file_suffix=file_suffix,
+    )
+
+    return vis_function
+
+
+def plot_scatter_graph(
+    y: npt.NDArray[np.float32],
+    x: npt.NDArray[np.float32],
+    colors: npt.NDArray[np.float32],
+    fig_size: Tuple[int, int] = (10, 6),
+    title: str = "",
+    x_label: str = "",
+    y_label: str = "",
+    legend_label: str = "",
+    save_config: bool = False,
+    save_path: str = "",
+    file_name: str = "",
+    file_suffix: str = "",
+    ax: Any = None,
+):
+    if ax is None:
+        plt.figure(figsize=fig_size)  # type: ignore
+        ax = plt.gca()  # type: ignore
+
+    def plot():
+        # Ensure point_styles and point_colors are lists and have sufficient length
+        ax.scatter(
+            x,
+            y,
+            color=colors,
+            label=legend_label if len(legend_label) > 0 else None,
+        )
+
+        if len(legend_label) > 0:
             ax.legend()
 
     # Create and return a visualization function using the make_vis_function

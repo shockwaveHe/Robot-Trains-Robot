@@ -6,6 +6,7 @@ from typing import Any, Dict, List
 import numpy as np
 import numpy.typing as npt
 from scipy.interpolate import LinearNDInterpolator  # type: ignore
+from scipy.spatial import Delaunay  # type: ignore
 from yourdfpy import URDF  # type: ignore
 
 from toddlerbot.actuation import JointState
@@ -64,6 +65,8 @@ class Robot:
 
         points, values = self.data_dict["ank_fk_lookup_table"]
         self.ank_fk_lookup_table = LinearNDInterpolator(points, values)
+        self.ank_act_pos_tri = Delaunay(points)
+        self.ank_pos_tri = Delaunay(values)
 
     def compute_data(self, urdf: URDF):
         self.data_dict: Dict[str, Any] = {}
@@ -209,6 +212,61 @@ class Robot:
         waist_act_2 = (roll - yaw) / 2
         return [waist_act_1, waist_act_2]
 
+    def is_valid_waist_point(
+        self, point: List[float], direction: str = "forward"
+    ) -> bool:
+        # Create Delaunay triangulation
+        if direction == "forward":
+            waist_roll, waist_yaw = self.waist_ik(point)
+        else:
+            waist_roll, waist_yaw = point
+
+        roll_limits = [
+            self.config["joints"]["waist_roll"]["lower_limit"],
+            self.config["joints"]["waist_roll"]["upper_limit"],
+        ]
+        yaw_limits = [
+            self.config["joints"]["waist_yaw"]["lower_limit"],
+            self.config["joints"]["waist_yaw"]["upper_limit"],
+        ]
+        if (
+            waist_roll < roll_limits[0]
+            or waist_roll > roll_limits[1]
+            or waist_yaw < yaw_limits[0]
+            or waist_yaw > yaw_limits[1]
+        ):
+            return False
+        else:
+            return True
+
+    def sample_waist_point(self, direction: str = "forward") -> List[float]:
+        if direction == "forward":
+            min_bounds = [
+                self.config["joints"]["waist_act_1"]["lower_limit"],
+                self.config["joints"]["waist_act_2"]["lower_limit"],
+            ]
+            max_bounds = [
+                self.config["joints"]["waist_act_1"]["upper_limit"],
+                self.config["joints"]["waist_act_2"]["upper_limit"],
+            ]
+        else:
+            min_bounds = [
+                self.config["joints"]["waist_roll"]["lower_limit"],
+                self.config["joints"]["waist_yaw"]["lower_limit"],
+            ]
+            max_bounds = [
+                self.config["joints"]["waist_roll"]["upper_limit"],
+                self.config["joints"]["waist_yaw"]["upper_limit"],
+            ]
+
+        while True:
+            # Generate a random point within the bounding box of the convex hull
+            random_point = list(np.random.uniform(min_bounds, max_bounds))
+
+            # Check if the point is within the convex hull
+            if self.is_valid_waist_point(random_point, direction):
+                return random_point
+
     def ankle_ik(self, ankle_pos: List[float], side: str = "left") -> List[float]:
         # Extracting offset values and converting to NumPy arrays
         offsets = self.data_dict["offsets"]
@@ -218,7 +276,7 @@ class Robot:
             ank_act_zero = [0, 0]
 
         # Extract ankle pitch and roll from the input
-        ankle_pitch, ankle_roll = ankle_pos
+        ankle_roll, ankle_pitch = ankle_pos
 
         # Precompute cosine and sine for roll and pitch to use in rotation matrices
         cos_roll, sin_roll = np.cos(ankle_roll), np.sin(ankle_roll)
@@ -277,18 +335,21 @@ class Robot:
         ankle_pos_arr = self.ank_fk_lookup_table(motor_pos).squeeze()
         ankle_pos = ankle_pos_arr.tolist()
 
+        if side == "right":
+            ankle_pos = [-ankle_pos[0], -ankle_pos[1]]
+
         return ankle_pos
 
     # @profile()
     def compute_ankle_fk_lookup(self, step_degree: float = 0.5):
         step_rad = np.deg2rad(step_degree)
-        pitch_limits = [
-            self.config["joints"]["left_ank_pitch"]["lower_limit"],
-            self.config["joints"]["left_ank_pitch"]["upper_limit"],
-        ]
         roll_limits = [
             self.config["joints"]["left_ank_roll"]["lower_limit"],
             self.config["joints"]["left_ank_roll"]["upper_limit"],
+        ]
+        pitch_limits = [
+            self.config["joints"]["left_ank_pitch"]["lower_limit"],
+            self.config["joints"]["left_ank_pitch"]["upper_limit"],
         ]
         act_1_limits = [
             self.config["joints"]["left_ank_act_1"]["lower_limit"],
@@ -299,30 +360,80 @@ class Robot:
             self.config["joints"]["left_ank_act_2"]["upper_limit"],
         ]
 
-        pitch_range = np.arange(pitch_limits[0], pitch_limits[1] + step_rad, step_rad)  # type: ignore
         roll_range = np.arange(roll_limits[0], roll_limits[1] + step_rad, step_rad)  # type: ignore
-        pitch_grid, roll_grid = np.meshgrid(pitch_range, roll_range, indexing="ij")  # type: ignore
+        pitch_range = np.arange(pitch_limits[0], pitch_limits[1] + step_rad, step_rad)  # type: ignore
+        roll_grid, pitch_grid = np.meshgrid(roll_range, pitch_range, indexing="ij")  # type: ignore
 
-        act_1_values = np.zeros_like(pitch_grid)
-        act_2_values = np.zeros_like(roll_grid)
-        for i in range(len(pitch_range)):  # type: ignore
-            for j in range(len(roll_range)):  # type: ignore
-                ank_act_pos = self.ankle_ik([pitch_range[i], roll_range[j]])
-                act_1_values[i, j] = ank_act_pos[0]
-                act_2_values[i, j] = ank_act_pos[1]
+        act_1_grid = np.zeros_like(roll_grid)
+        act_2_grid = np.zeros_like(pitch_grid)
+        for i in range(len(roll_range)):  # type: ignore
+            for j in range(len(pitch_range)):  # type: ignore
+                act_pos: List[float] = self.ankle_ik([roll_range[i], pitch_range[j]])
+                act_1_grid[i, j] = act_pos[0]
+                act_2_grid[i, j] = act_pos[1]
 
         valid_mask = (
-            (act_1_values >= act_1_limits[0])
-            & (act_1_values <= act_1_limits[1])
-            & (act_2_values >= act_2_limits[0])
-            & (act_2_values <= act_2_limits[1])
+            (act_1_grid >= act_1_limits[0])
+            & (act_1_grid <= act_1_limits[1])
+            & (act_2_grid >= act_2_limits[0])
+            & (act_2_grid <= act_2_limits[1])
         )
 
         # Filter out valid data points
-        points = np.column_stack((act_1_values[valid_mask], act_2_values[valid_mask]))
-        values = np.column_stack((pitch_grid[valid_mask], roll_grid[valid_mask]))
+        points = np.column_stack((act_1_grid[valid_mask], act_2_grid[valid_mask]))
+        values = np.column_stack((roll_grid[valid_mask], pitch_grid[valid_mask]))
 
         return points, values
+
+    def is_valid_ankle_point(
+        self, point: List[float], direction: str = "forward", side: str = "left"
+    ) -> bool:
+        # Create Delaunay triangulation
+        if direction == "forward":
+            tri = self.ank_act_pos_tri
+        else:
+            tri = self.ank_pos_tri
+
+        if side == "right":
+            point = [-point[0], -point[1]]
+
+        if tri.find_simplex(point) >= 0:
+            if np.isnan(self.ank_fk_lookup_table(point)).any():
+                return False
+            else:
+                return True
+        else:
+            return False
+
+    def sample_ankle_point(
+        self, direction: str = "forward", side: str = "left"
+    ) -> List[float]:
+        if direction == "forward":
+            min_bounds = [
+                self.config["joints"][f"{side}_ank_act_1"]["lower_limit"],
+                self.config["joints"][f"{side}_ank_act_2"]["lower_limit"],
+            ]
+            max_bounds = [
+                self.config["joints"][f"{side}_ank_act_1"]["upper_limit"],
+                self.config["joints"][f"{side}_ank_act_2"]["upper_limit"],
+            ]
+        else:
+            min_bounds = [
+                self.config["joints"][f"{side}_ank_roll"]["lower_limit"],
+                self.config["joints"][f"{side}_ank_pitch"]["lower_limit"],
+            ]
+            max_bounds = [
+                self.config["joints"][f"{side}_ank_roll"]["upper_limit"],
+                self.config["joints"][f"{side}_ank_pitch"]["upper_limit"],
+            ]
+
+        while True:
+            # Generate a random point within the bounding box of the convex hull
+            random_point = list(np.random.uniform(min_bounds, max_bounds))
+
+            # Check if the point is within the convex hull
+            if self.is_valid_ankle_point(random_point, direction, side):
+                return random_point
 
     def joint_state_to_obs_arr(
         self, joint_state_dict: Dict[str, JointState]
@@ -364,12 +475,12 @@ class Robot:
                 joint_angles[joint_name] = motor_pos
             elif transmission == "ankle":
                 if "left" in motor_name:
-                    joint_angles["left_ank_pitch"] = 0.0
                     joint_angles["left_ank_roll"] = 0.0
+                    joint_angles["left_ank_pitch"] = 0.0
                     left_ank_act_pos.append(motor_pos)
                 elif "right" in motor_name:
-                    joint_angles["right_ank_pitch"] = 0.0
                     joint_angles["right_ank_roll"] = 0.0
+                    joint_angles["right_ank_pitch"] = 0.0
                     right_ank_act_pos.append(motor_pos)
             elif transmission == "none":
                 joint_angles[motor_name] = motor_pos
@@ -377,10 +488,10 @@ class Robot:
         joint_angles["waist_roll"], joint_angles["waist_yaw"] = self.waist_fk(
             waist_act_pos
         )
-        joint_angles["left_ank_pitch"], joint_angles["left_ank_roll"] = self.ankle_fk(
+        joint_angles["left_ank_roll"], joint_angles["left_ank_pitch"] = self.ankle_fk(
             left_ank_act_pos, "left"
         )
-        joint_angles["right_ank_pitch"], joint_angles["right_ank_roll"] = self.ankle_fk(
+        joint_angles["right_ank_roll"], joint_angles["right_ank_pitch"] = self.ankle_fk(
             right_ank_act_pos, "right"
         )
 
@@ -430,3 +541,25 @@ class Robot:
         )
 
         return joint_angles
+
+    def sample_motor_angles(self) -> Dict[str, float]:
+        random_motor_angles: Dict[str, float] = {}
+        for motor_name in self.motor_ordering:
+            random_motor_angles[motor_name] = np.random.uniform(
+                self.config["joints"][motor_name]["lower_limit"],
+                self.config["joints"][motor_name]["upper_limit"],
+            )
+
+        random_motor_angles["left_ank_act_1"], random_motor_angles["left_ank_act_2"] = (
+            self.sample_ankle_point(side="left")
+        )
+        (
+            random_motor_angles["right_ank_act_1"],
+            random_motor_angles["right_ank_act_2"],
+        ) = self.sample_ankle_point(side="right")
+
+        random_motor_angles["waist_act_1"], random_motor_angles["waist_act_2"] = (
+            self.sample_waist_point()
+        )
+
+        return random_motor_angles
