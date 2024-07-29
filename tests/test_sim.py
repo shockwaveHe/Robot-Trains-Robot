@@ -31,12 +31,12 @@ def test_mass_properties():
 
 
 def test_kinematics():
+    robot = Robot("toddlerbot")
+
     exp_name: str = "test_kinematics"
     time_str = time.strftime("%Y%m%d_%H%M%S")
     exp_folder_path = f"results/{time_str}_{exp_name}"
     os.makedirs(exp_folder_path, exist_ok=True)
-
-    robot = Robot("toddlerbot")
 
     # from toddlerbot.visualization.vis_plot import plot_ankle_mapping, plot_waist_mapping
 
@@ -59,10 +59,13 @@ def test_kinematics():
         robot_q = np.array(list(random_joint_angles.values()))
 
         sim.set_motor_angles(random_motor_angles)
-        time.sleep(2.0)
+        time.sleep(3.0)
         mujoco_q = sim.get_observation()["q"]
 
         assert arrays_are_close(mujoco_q, robot_q, tol=2e-2)
+
+        sim.set_motor_angles(robot.init_motor_angles)
+        time.sleep(3.0)
 
     sim.save_recording(exp_folder_path)
 

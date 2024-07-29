@@ -268,6 +268,9 @@ class Robot:
                 return random_point
 
     def ankle_ik(self, ankle_pos: List[float], side: str = "left") -> List[float]:
+        if side == "right":
+            ankle_pos = [-ankle_pos[0], ankle_pos[1]]
+
         # Extracting offset values and converting to NumPy arrays
         offsets = self.data_dict["offsets"]
         if "ank_act_zero" in self.data_dict:
@@ -293,38 +296,50 @@ class Robot:
         )
 
         # Combined rotation matrix
-        R = R_pitch @ R_roll
+        R_ankle = R_pitch @ R_roll
 
-        n_hat = R @ offsets["nE"]
+        n_hat = R_ankle @ offsets["nE"]
 
         ank_act_pos: List[float] = []
         for i in range(len(ank_act_zero)):
-            f = R @ offsets["fE"][i]
+            f = R_ankle @ offsets["fE"][i]
             delta = offsets["m"][i] - f
             k = delta - np.dot(n_hat, delta) * n_hat
             d = delta - offsets["r"] * k / np.linalg.norm(k)
-            d_sq = d[0] ** 2 + d[1] ** 2 + d[2] ** 2
-            d_norm = np.sqrt(d_sq)
-            c1 = 2 * offsets["a"] * d_norm
-            c2 = offsets["a"] ** 2 + d_sq - offsets["rod_len"][i] ** 2
-            if c2 < -c1 or c2 > c1:
-                theta = np.nan
+            a = 2 * offsets["a"] * d[0]
+            b = 2 * offsets["a"] * d[2]
+            R = np.sqrt(a**2 + b**2)
+            c = (
+                offsets["a"] ** 2
+                + d[0] ** 2
+                + d[1] ** 2
+                + d[2] ** 2
+                - offsets["rod_len"][i] ** 2
+            )
+            phi = np.arctan2(b, a)
+            if c / R < -1 or c / R > 1:
+                pos: float = np.nan
             else:
-                alpha = np.arccos(d[0] / d_norm)
-                beta = np.arccos(c2 / c1)
-                theta = beta - alpha
+                theta_1 = phi + np.arccos(c / R)
+                theta_2 = phi - np.arccos(c / R)
 
-            if (i == 0 and side == "left") or (i == 1 and side == "right"):
-                pos = theta - ank_act_zero[i]
-            else:
-                pos = -theta - ank_act_zero[i]
+                theta = theta_1 if np.cos(theta_1) > 0 else theta_2
+                if i == 0:
+                    pos = -theta - ank_act_zero[i]
+                else:
+                    pos = theta - ank_act_zero[i]
 
-            lower_limit = self.config["joints"][f"{side}_ank_act_{i+1}"]["lower_limit"]
-            upper_limit = self.config["joints"][f"{side}_ank_act_{i+1}"]["upper_limit"]
-            if pos < lower_limit or pos > upper_limit:
-                pos = np.nan
+                joint_limits = self.config["joints"][f"{side}_ank_act_{i+1}"]
+                if (
+                    pos < joint_limits["lower_limit"]
+                    or pos > joint_limits["upper_limit"]
+                ):
+                    pos = np.nan
 
             ank_act_pos.append(pos)
+
+        if side == "right":
+            ank_act_pos = [-ank_act_pos[0], -ank_act_pos[1]]
 
         return ank_act_pos
 
@@ -336,7 +351,7 @@ class Robot:
         ankle_pos = ankle_pos_arr.tolist()
 
         if side == "right":
-            ankle_pos = [-ankle_pos[0], -ankle_pos[1]]
+            ankle_pos = [-ankle_pos[0], ankle_pos[1]]
 
         return ankle_pos
 
@@ -394,14 +409,22 @@ class Robot:
         else:
             tri = self.ank_pos_tri
 
-        if side == "right":
-            point = [-point[0], -point[1]]
-
         if tri.find_simplex(point) >= 0:
-            if np.isnan(self.ank_fk_lookup_table(point)).any():
-                return False
+            if direction == "forward":
+                ankle_pos = self.ankle_fk(point, side)
+                if np.isnan(ankle_pos).any():
+                    return False
+                else:
+                    ank_act_pos = self.ankle_ik(ankle_pos, side)
+                    if np.allclose(ank_act_pos, point, atol=1e-3):
+                        return True
+                    else:
+                        return False
             else:
-                return True
+                if np.isnan(self.ankle_ik(point, side)).any():
+                    return False
+                else:
+                    return True
         else:
             return False
 

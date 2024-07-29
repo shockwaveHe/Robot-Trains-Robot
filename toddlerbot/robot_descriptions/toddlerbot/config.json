@@ -26,8 +26,8 @@
             "transmission": "gears",
             "group": "upper_body",
             "default_pos": 0.0,
-            "lower_limit": -3.141592653589793,
-            "upper_limit": 3.141592653589793,
+            "lower_limit": -2.2689280275926285,
+            "upper_limit": 2.2689280275926285,
             "damping": 0.099,
             "armature": 0.002,
             "frictionloss": 0.239,
@@ -50,8 +50,8 @@
             "transmission": "gears",
             "group": "upper_body",
             "default_pos": 0.0,
-            "lower_limit": -1.5707963267948966,
-            "upper_limit": 1.5707963267948966,
+            "lower_limit": -1.427996660722633,
+            "upper_limit": 1.427996660722633,
             "damping": 0.099,
             "armature": 0.002,
             "frictionloss": 0.239,
@@ -74,8 +74,8 @@
             "transmission": "waist",
             "group": "upper_body",
             "default_pos": 0.0,
-            "lower_limit": -2.792526803190927,
-            "upper_limit": 2.792526803190927,
+            "lower_limit": -2.7825534678416246,
+            "upper_limit": 2.7825534678416246,
             "damping": 0.099,
             "armature": 0.002,
             "frictionloss": 0.239,
@@ -97,8 +97,8 @@
             "transmission": "waist",
             "group": "upper_body",
             "default_pos": 0.0,
-            "lower_limit": -2.792526803190927,
-            "upper_limit": 2.792526803190927,
+            "lower_limit": -2.7825534678416246,
+            "upper_limit": 2.7825534678416246,
             "damping": 0.099,
             "armature": 0.002,
             "frictionloss": 0.239,
@@ -120,8 +120,8 @@
             "transmission": "gears",
             "group": "lower_body",
             "default_pos": 0.0,
-            "lower_limit": -1.5707963267948966,
-            "upper_limit": 1.5707963267948966,
+            "lower_limit": -1.4211966766239539,
+            "upper_limit": 1.4211966766239539,
             "damping": 0.099,
             "armature": 0.002,
             "frictionloss": 0.239,
@@ -259,8 +259,8 @@
             "transmission": "gears",
             "group": "lower_body",
             "default_pos": 0.0,
-            "lower_limit": -1.5707963267948966,
-            "upper_limit": 1.5707963267948966,
+            "lower_limit": -1.4211966766239539,
+            "upper_limit": 1.4211966766239539,
             "damping": 0.099,
             "armature": 0.002,
             "frictionloss": 0.239,
@@ -510,7 +510,7 @@
             "kd_sim": 0.0,
             "gear_ratio": 1.0
         },
-        "left_wrist_pitch_drive": {
+        "left_wrist_roll_drive": {
             "is_passive": false,
             "transmission": "gears",
             "group": "upper_body",
@@ -534,7 +534,7 @@
             "kd_sim": 0.0,
             "gear_ratio": 1.0
         },
-        "left_wrist_roll": {
+        "left_wrist_pitch": {
             "is_passive": false,
             "transmission": "none",
             "group": "upper_body",
@@ -674,7 +674,7 @@
             "kd_sim": 0.0,
             "gear_ratio": 1.0
         },
-        "right_wrist_pitch_drive": {
+        "right_wrist_roll_drive": {
             "is_passive": false,
             "transmission": "gears",
             "group": "upper_body",
@@ -698,7 +698,7 @@
             "kd_sim": 0.0,
             "gear_ratio": 1.0
         },
-        "right_wrist_roll": {
+        "right_wrist_pitch": {
             "is_passive": false,
             "transmission": "none",
             "group": "upper_body",
@@ -748,8 +748,8 @@
             "transmission": "ankle",
             "group": "lower_body",
             "default_pos": 0.0,
-            "lower_limit": -0.7853981633974483,
-            "upper_limit": 0.9599310885968813,
+            "lower_limit": -1.0471975511965976,
+            "upper_limit": 0.7853981633974483,
             "damping": 0.0,
             "armature": 0.0,
             "frictionloss": 0.0
@@ -875,7 +875,7 @@
             "armature": 0.008,
             "frictionloss": 0.998
         },
-        "left_wrist_pitch_driven": {
+        "left_wrist_roll_driven": {
             "is_passive": true,
             "transmission": "gears",
             "group": "upper_body",
@@ -935,8 +935,8 @@
             "transmission": "ankle",
             "group": "lower_body",
             "default_pos": 0.0,
-            "lower_limit": -0.7853981633974483,
-            "upper_limit": 0.9599310885968813,
+            "lower_limit": -1.0471975511965976,
+            "upper_limit": 0.7853981633974483,
             "damping": 0.0,
             "armature": 0.0,
             "frictionloss": 0.0
@@ -1062,7 +1062,7 @@
             "armature": 0.008,
             "frictionloss": 0.998
         },
-        "right_wrist_pitch_driven": {
+        "right_wrist_roll_driven": {
             "is_passive": true,
             "transmission": "gears",
             "group": "upper_body",

@@ -87,11 +87,11 @@
         "motor": "2XL430",
         "init_pos": 6.134389400482178
     },
-    "left_wrist_pitch_drive": {
+    "left_wrist_roll_drive": {
         "motor": "2XL430",
         "init_pos": 0.8774369955062866
     },
-    "left_wrist_roll": {
+    "left_wrist_pitch": {
         "motor": "2XL430",
         "init_pos": 3.141592653589793
     },
@@ -115,11 +115,11 @@
         "motor": "2XL430",
         "init_pos": 5.801515102386475
     },
-    "right_wrist_pitch_drive": {
+    "right_wrist_roll_drive": {
         "motor": "2XL430",
         "init_pos": 3.011204242706299
     },
-    "right_wrist_roll": {
+    "right_wrist_pitch": {
         "motor": "2XL430",
         "init_pos": 3.141592653589793
     }
