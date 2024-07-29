@@ -84,13 +84,13 @@ def main(robot: Robot):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the contorl frequency test.")
     parser.add_argument(
-        "--robot-name",
+        "--robot",
         type=str,
         default="toddlerbot",
         help="The name of the robot. Need to match the name in robot_descriptions.",
     )
     args = parser.parse_args()
 
-    robot = Robot(args.robot_name)
+    robot = Robot(args.robot)
 
     main(robot)

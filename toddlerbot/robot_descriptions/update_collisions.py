@@ -105,11 +105,11 @@ def update_collisons(robot_name: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Update the collisions.")
     parser.add_argument(
-        "--robot-name",
+        "--robot",
         type=str,
         default="toddlerbot",
         help="The name of the robot. Need to match the name in robot_descriptions.",
     )
     args = parser.parse_args()
 
-    update_collisons(args.robot_name)
+    update_collisons(args.robot)

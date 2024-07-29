@@ -457,7 +457,7 @@ def create_base_scene_xml(mjcf_path: str, is_fixed: bool):
     ET.SubElement(mujoco, "include", attrib={"file": os.path.basename(mjcf_path)})
 
     # Add statistic element
-    center_z = -0.05 if is_fixed else 0.2
+    center_z = -0.05 if is_fixed else 0.25
     ET.SubElement(
         mujoco, "statistic", attrib={"center": f"0 0 {center_z}", "extent": "0.6"}
     )
@@ -620,14 +620,14 @@ def get_mjcf_files(robot_name: str):
 def main():
     parser = argparse.ArgumentParser(description="Process the MJCF.")
     parser.add_argument(
-        "--robot-name",
+        "--robot",
         type=str,
         default="sysID_XC430",
         help="The name of the robot. Need to match the name in robot_descriptions.",
     )
     args = parser.parse_args()
 
-    get_mjcf_files(args.robot_name)
+    get_mjcf_files(args.robot)
 
 
 if __name__ == "__main__":

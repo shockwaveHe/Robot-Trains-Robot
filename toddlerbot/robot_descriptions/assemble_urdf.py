@@ -161,7 +161,7 @@ def assemble_urdf(urdf_config: URDFConfig):
 def main():
     parser = argparse.ArgumentParser(description="Process the urdf.")
     parser.add_argument(
-        "--robot-name",
+        "--robot",
         type=str,
         default="toddlerbot",
         help="The name of the robot. Need to match the name in robot_descriptions.",
@@ -186,9 +186,7 @@ def main():
     )
     args = parser.parse_args()
 
-    assemble_urdf(
-        URDFConfig(args.robot_name, args.body_name, args.arm_name, args.leg_name)
-    )
+    assemble_urdf(URDFConfig(args.robot, args.body_name, args.arm_name, args.leg_name))
 
 
 if __name__ == "__main__":

@@ -266,7 +266,7 @@ def collect_data(
 def main():
     parser = argparse.ArgumentParser(description="Run the SysID data collection.")
     parser.add_argument(
-        "--robot-name",
+        "--robot",
         type=str,
         default="toddlerbot",
         help="The name of the robot. Need to match the name in robot_descriptions.",
@@ -301,10 +301,10 @@ def main():
         exp_folder_path = args.exp_folder_path
     else:
         exp_phrases: List[str] = []
-        if "sysID" in args.robot_name:
-            exp_phrases.append(args.robot_name)
+        if "sysID" in args.robot:
+            exp_phrases.append(args.robot)
         else:
-            exp_phrases.append(f"sysID_{args.robot_name}")
+            exp_phrases.append(f"sysID_{args.robot}")
 
         exp_phrases.extend(args.joint_names)
         exp_name = "_".join(exp_phrases)
@@ -324,7 +324,7 @@ def main():
     ) as json_file:
         json.dump(args_dict, json_file, indent=4)
 
-    robot = Robot(args.robot_name)
+    robot = Robot(args.robot)
 
     ###### Collect data in the real world ######
     real_world_data_file_path = os.path.join(

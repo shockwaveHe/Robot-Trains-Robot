@@ -37,7 +37,7 @@ bash scripts/activate_env.sh "toddlerbot"
 
 # Run the Python program with the specified motor type and experiment folder path
 python toddlerbot/tools/sysID/optimize_parameters.py \
-  --robot-name "sysID_$MOTOR_TYPE" \
+  --robot "sysID_$MOTOR_TYPE" \
   --sim "mujoco" \
   --joint-names "joint_0" \
   --n-iters "500" \

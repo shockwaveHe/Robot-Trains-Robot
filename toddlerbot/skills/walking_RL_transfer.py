@@ -425,9 +425,7 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=False):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Deployment script.")
 
-    parser.add_argument(
-        "--robot-name", type=str, required=True, help="Name of the robot."
-    )
+    parser.add_argument("--robot", type=str, required=True, help="Name of the robot.")
     parser.add_argument(
         "--sim",
         type=str,
@@ -447,7 +445,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    robot = Robot(args.robot_name)
+    robot = Robot(args.robot)
 
     if args.sim == "pybullet":
         from toddlerbot.sim.pybullet_sim import PyBulletSim
@@ -462,7 +460,7 @@ if __name__ == "__main__":
         from toddlerbot.sim.isaac_sim import IsaacSim
 
         custom_parameters = [
-            {"name": "--robot-name", "type": str, "default": args.robot_name},
+            {"name": "--robot", "type": str, "default": args.robot},
             {"name": "--sim", "type": str, "default": "pybullet"},
             {"name": "--load-model", "type": str, "default": args.load_model},
             {"name": "--use-cpu", "type": bool, "default": args.use_cpu},

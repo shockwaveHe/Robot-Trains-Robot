@@ -92,7 +92,9 @@ def test_kinematics():
 
 
 if __name__ == "__main__":
+    # test_mass_properties()
     test_kinematics()
+
     # import pytest
 
     # pytest.main()

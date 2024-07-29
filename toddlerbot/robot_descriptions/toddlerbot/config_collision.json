@@ -112,7 +112,12 @@
     },
     "left_sole_link": {
         "has_collision": true,
-        "type": "mesh"
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
     },
     "ank_motor_arm": {
         "has_collision": false
@@ -185,7 +190,12 @@
     },
     "right_sole_link": {
         "has_collision": true,
-        "type": "mesh"
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
     },
     "ank_motor_arm_3": {
         "has_collision": false

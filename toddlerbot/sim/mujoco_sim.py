@@ -82,10 +82,9 @@ class MuJoCoSim(BaseSim):
 
     def get_joint_state(self):
         joint_state_dict: Dict[str, JointState] = {}
-        time_curr = time.time()
         for name in self.robot.joint_ordering:
             joint_state_dict[name] = JointState(
-                time=time_curr,
+                time=self.data.time,  # type: ignore
                 pos=self.data.joint(name).qpos.item(),  # type: ignore
                 vel=self.data.joint(name).qvel.item(),  # type: ignore
             )
@@ -100,13 +99,14 @@ class MuJoCoSim(BaseSim):
         for k, v in obs_arr.items():
             obs_dict[k] = v
 
-        obs_dict["quaternion"] = np.array(
+        obs_dict["imu_time"] = np.array(self.data.time, copy=True)  # type: ignore
+        obs_dict["imu_quat"] = np.array(
             self.data.sensor("orientation").data,  # type: ignore
             copy=True,
         )
-        obs_dict["euler"] = quaternion_to_euler_array(obs_dict["quaternion"])
-        obs_dict["angular_velocity"] = np.array(
-            self.data.sensor("angular_velocity"),  # type: ignore
+        obs_dict["imu_euler"] = quaternion_to_euler_array(obs_dict["imu_quat"])
+        obs_dict["imu_ang_vel"] = np.array(
+            self.data.sensor("angular_velocity").data,  # type: ignore
             copy=True,
         )
 

@@ -10,7 +10,7 @@ from toddlerbot.sim.robot import Robot
 def main():
     parser = argparse.ArgumentParser(description="Run the walking simulation.")
     parser.add_argument(
-        "--robot-name",
+        "--robot",
         type=str,
         default="toddlerbot",
         help="The name of the robot. Need to match the name in robot_descriptions.",
@@ -24,7 +24,7 @@ def main():
     )
     args = parser.parse_args()
 
-    robot = Robot(args.robot_name)
+    robot = Robot(args.robot)
     if args.sim == "pybullet":
         sim = PyBulletSim(robot, fixed=True)
         controls = {}

@@ -2,9 +2,9 @@ from dataclasses import dataclass
 from typing import List
 
 import numpy as np
-from scipy.interpolate import CubicHermiteSpline
+from scipy.interpolate import CubicHermiteSpline  # type: ignore
 
-from toddlerbot.visualization.vis_plot import plot_footsteps
+# from toddlerbot.visualization.vis_plot import plot_footsteps
 
 
 @dataclass

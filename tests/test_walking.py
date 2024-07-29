@@ -10,7 +10,7 @@ def run_test(task_name: str, robot_name: str):
 
     try:
         result = subprocess.run(
-            ["python", script_path, "--robot-name", robot_name],
+            ["python", script_path, "--robot", robot_name],
             capture_output=True,
             text=True,
             timeout=5,

@@ -33,7 +33,7 @@
     <mesh name="left_ank_rr_link_2_visual" file="../assemblies/left_leg_XM430/meshes/left_ank_rr_link_2_visual.stl" />
     <mesh name="left_ank_motor_rod_short_visual" file="../assemblies/left_leg_XM430/meshes/left_ank_motor_rod_short_visual.stl" />
     <mesh name="left_sole_link_visual" file="../assemblies/left_leg_XM430/meshes/left_sole_link_visual.stl" />
-    <mesh name="left_sole_link_collision" file="../assemblies/left_leg_XM430/meshes/left_sole_link_collision.stl" />
+    <mesh name="left_sole_link_collision" file="collisions/left_sole_link_collision.stl" />
     <mesh name="left_ank_motor_arm_visual" file="../assemblies/left_leg_XM430/meshes/left_ank_motor_arm_visual.stl" />
     <mesh name="left_ank_motor_arm_2_visual" file="../assemblies/left_leg_XM430/meshes/left_ank_motor_arm_2_visual.stl" />
     <mesh name="left_xm430_plate_visual" file="../assemblies/left_leg_XM430/meshes/left_xm430_plate_visual.stl" />
@@ -55,7 +55,7 @@
     <mesh name="right_ank_rr_link_2_visual" file="../assemblies/right_leg_XM430/meshes/right_ank_rr_link_2_visual.stl" />
     <mesh name="right_ank_motor_rod_short_visual" file="../assemblies/right_leg_XM430/meshes/right_ank_motor_rod_short_visual.stl" />
     <mesh name="right_sole_link_visual" file="../assemblies/right_leg_XM430/meshes/right_sole_link_visual.stl" />
-    <mesh name="right_sole_link_collision" file="../assemblies/right_leg_XM430/meshes/right_sole_link_collision.stl" />
+    <mesh name="right_sole_link_collision" file="collisions/right_sole_link_collision.stl" />
     <mesh name="right_ank_motor_arm_visual" file="../assemblies/right_leg_XM430/meshes/right_ank_motor_arm_visual.stl" />
     <mesh name="right_ank_motor_arm_2_visual" file="../assemblies/right_leg_XM430/meshes/right_ank_motor_arm_2_visual.stl" />
     <mesh name="right_xm430_plate_visual" file="../assemblies/right_leg_XM430/meshes/right_xm430_plate_visual.stl" />

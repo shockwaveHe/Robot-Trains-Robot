@@ -54,7 +54,7 @@ read -r -p " > " run_process
 if [ "$run_process" == "y" ]; then
     printf "Processing...\n\n"
     # Construct the command with mandatory arguments
-    cmd="python $REPO_NAME/robot_descriptions/assemble_urdf.py --robot-name $ROBOT_NAME --body-name $BODY_NAME"
+    cmd="python $REPO_NAME/robot_descriptions/assemble_urdf.py --robot $ROBOT_NAME --body-name $BODY_NAME"
     if [ -n "$ARM_NAME" ]; then
         cmd+=" --arm-name $ARM_NAME"
     fi
@@ -77,20 +77,20 @@ if [ -f "$CONFIG_PATH" ]; then
     read -r -p " > " overwrite_config
     if [ "$overwrite_config" == "y" ]; then
         printf "Overwriting the configuration file...\n\n"
-        python $REPO_NAME/robot_descriptions/add_config.py --robot-name $ROBOT_NAME
+        python $REPO_NAME/robot_descriptions/add_config.py --robot $ROBOT_NAME
     else
         printf "Configuration file not written.\n\n"
     fi
 else
     printf "Generating the configuration file...\n\n"
-    python $REPO_NAME/robot_descriptions/add_config.py --robot-name $ROBOT_NAME
+    python $REPO_NAME/robot_descriptions/add_config.py --robot $ROBOT_NAME
 fi
 
 printf "Do you want to update the collision files? If so, make sure you have edited config_collision.json! (y/n)"
 read -r -p " > " update_collision
 if [ "$update_collision" == "y" ]; then
     printf "Generating the collision files...\n\n"
-    python $REPO_NAME/robot_descriptions/update_collisions.py --robot-name $ROBOT_NAME
+    python $REPO_NAME/robot_descriptions/update_collisions.py --robot $ROBOT_NAME
 else
     printf "Collision files not updated.\n\n"
 fi
@@ -102,7 +102,7 @@ fi
 
 # if [ "$run_pybullet" == "y" ]; then
 #     printf "Simulation running...\n\n"
-#     python $REPO_NAME/robot_descriptions/test_urdf.py --robot-name $ROBOT_NAME
+#     python $REPO_NAME/robot_descriptions/test_urdf.py --robot $ROBOT_NAME
 # else
 #     printf "Simulation skipped.\n\n"
 # fi
@@ -116,7 +116,7 @@ if [ "$run_convert" == "y" ]; then
     python -m mujoco.viewer --mjcf=$URDF_PATH
 
     printf "Processing...\n\n"
-    python $REPO_NAME/robot_descriptions/process_mjcf.py --robot-name $ROBOT_NAME
+    python $REPO_NAME/robot_descriptions/process_mjcf.py --robot $ROBOT_NAME
 else
     printf "Process skipped.\n\n"
 fi
@@ -136,7 +136,7 @@ read -r -p " > " run_gym
 
 if [ "$run_gym" == "y" ]; then
     printf "Creating the gym environment...\n\n"
-    python $REPO_NAME/robot_descriptions/create_gym_env.py --robot-name $ROBOT_NAME
+    python $REPO_NAME/robot_descriptions/create_gym_env.py --robot $ROBOT_NAME
 else
     printf "Gym environment creation skipped.\n\n"
 fi

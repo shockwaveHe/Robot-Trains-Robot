@@ -196,12 +196,12 @@ def create_humanoid_gym_env(robot_name):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Update the collisions.")
     parser.add_argument(
-        "--robot-name",
+        "--robot",
         type=str,
         default="toddlerbot",
         help="The name of the robot. Need to match the name in robot_descriptions.",
     )
     args = parser.parse_args()
 
-    create_isaac_urdf(args.robot_name)
-    create_humanoid_gym_env(args.robot_name)
+    create_isaac_urdf(args.robot)
+    create_humanoid_gym_env(args.robot)

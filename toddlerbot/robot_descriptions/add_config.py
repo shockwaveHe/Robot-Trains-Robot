@@ -162,16 +162,16 @@ def get_default_config(
 def main():
     parser = argparse.ArgumentParser(description="Get the config.")
     parser.add_argument(
-        "--robot-name",
+        "--robot",
         type=str,
         default="toddlerbot",
         help="The name of the robot. Need to match the name in robot_descriptions.",
     )
     args = parser.parse_args()
 
-    robot_dir = os.path.join("toddlerbot", "robot_descriptions", args.robot_name)
+    robot_dir = os.path.join("toddlerbot", "robot_descriptions", args.robot)
 
-    if "sysID" in args.robot_name:
+    if "sysID" in args.robot:
         general_config = {
             "is_fixed": True,
             "use_torso_site": False,
@@ -205,14 +205,14 @@ def main():
     if os.path.exists(motor_config_path):
         with open(motor_config_path, "r") as f:
             motor_config = json.load(f)
-    elif "sysID" in args.robot_name:
-        motor_name = args.robot_name.split("_")[-1]
+    elif "sysID" in args.robot:
+        motor_name = args.robot.split("_")[-1]
         motor_config = {"joint_0": {"motor": motor_name, "init_pos": 0.0}}
     else:
         motor_config: Dict[str, Dict[str, Any]] = {}
 
     joint_dyn_config: Dict[str, Dict[str, float]] = {}
-    if "sysID" not in args.robot_name:
+    if "sysID" not in args.robot:
         motor_list = [motor_config["motor"] for motor_config in motor_config.values()]
         for motor_name in motor_list:
             sysID_result_path = os.path.join(
@@ -227,7 +227,7 @@ def main():
                     "joint_0"
                 ][param_name]
 
-    urdf_path = os.path.join(robot_dir, f"{args.robot_name}.urdf")
+    urdf_path = os.path.join(robot_dir, f"{args.robot}.urdf")
     tree = ET.parse(urdf_path)
     root = tree.getroot()
 

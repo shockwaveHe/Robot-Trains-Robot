@@ -675,7 +675,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/left_leg_XM430/meshes/left_sole_link_collision.stl" />
+        <mesh filename="collisions/left_sole_link_collision.stl" />
       </geometry>
     </collision>
     <inertial>
@@ -1159,7 +1159,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/right_leg_XM430/meshes/right_sole_link_collision.stl" />
+        <mesh filename="collisions/right_sole_link_collision.stl" />
       </geometry>
     </collision>
     <inertial>

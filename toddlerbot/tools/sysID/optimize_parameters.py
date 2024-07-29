@@ -23,7 +23,7 @@ from toddlerbot.visualization.vis_plot import plot_joint_angle_tracking
 
 # TODO: Remove the hardcoded custom_parameters
 custom_parameters = [
-    {"name": "--robot-name", "type": str, "default": "toddlerbot_legs"},
+    {"name": "--robot", "type": str, "default": "toddlerbot_legs"},
     {"name": "--sim", "type": str, "default": "mujoco"},
     {"name": "--joint-names", "type": str, "default": "all"},
     {"name": "--n-trials", "type": int, "default": 15},
@@ -644,7 +644,7 @@ def evaluate(
 def main():
     parser = argparse.ArgumentParser(description="Run the SysID data collection.")
     parser.add_argument(
-        "--robot-name",
+        "--robot",
         type=str,
         default="toddlerbot",
         help="The name of the robot. Need to match the name in robot_descriptions.",
@@ -678,7 +678,7 @@ def main():
     if len(args.exp_folder_path) == 0 or not os.path.exists(args.exp_folder_path):
         raise ValueError("Invalid experiment folder path")
 
-    robot = Robot(args.robot_name)
+    robot = Robot(args.robot)
 
     (
         signal_config_train,

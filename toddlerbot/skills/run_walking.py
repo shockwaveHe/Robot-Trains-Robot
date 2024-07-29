@@ -9,13 +9,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
+from toddlerbot.policies.walking_ZMP_configs import walking_configs
+from toddlerbot.policies.walking_ZMP_preview import Walking
 from toddlerbot.sim.robot import Robot
-from toddlerbot.skills.walking_ZMP_configs import walking_configs
-from toddlerbot.skills.walking_ZMP_preview import Walking
 from toddlerbot.utils.math_utils import round_floats
 from toddlerbot.utils.misc_utils import dump_profiling_data, log, precise_sleep, profile
 from toddlerbot.visualization.vis_plot import (
-    plot_footsteps,
+    # plot_footsteps,
     plot_joint_angle_tracking,
     plot_line_graph,
 )
@@ -25,7 +25,7 @@ from toddlerbot.visualization.vis_plot import (
 def main():
     parser = argparse.ArgumentParser(description="Run the walking simulation.")
     parser.add_argument(
-        "--robot-name",
+        "--robot",
         type=str,
         default="sustaina_op",
         help="The name of the robot. Need to match the name in robot_descriptions.",
@@ -38,13 +38,13 @@ def main():
     )
     args = parser.parse_args()
 
-    exp_name = f"walk_{args.robot_name}_{args.sim}"
+    exp_name = f"walk_{args.robot}_{args.sim}"
     time_str = time.strftime("%Y%m%d_%H%M%S")
     exp_folder_path = f"results/{time_str}_{exp_name}"
 
-    config = walking_configs[f"{args.robot_name}_{args.sim}"]
+    config = walking_configs[f"{args.robot}_{args.sim}"]
 
-    robot = Robot(args.robot_name)
+    robot = Robot(args.robot)
 
     walking = Walking(robot, config)
 
@@ -62,7 +62,7 @@ def main():
         from toddlerbot.sim.isaac_sim import IsaacSim
 
         custom_parameters = [
-            {"name": "--robot-name", "type": str, "default": "sustaina_op"},
+            {"name": "--robot", "type": str, "default": "sustaina_op"},
             {"name": "--sim", "type": str, "default": "pybullet"},
         ]
         sim = IsaacSim(robot, custom_parameters=custom_parameters)
