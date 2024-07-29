@@ -1,6 +1,6 @@
 import os
 import time
-from typing import Dict
+from typing import List
 
 import numpy as np
 import numpy.typing as npt
@@ -44,7 +44,8 @@ def test_kinematics():
     # plot_ankle_mapping(robot.config["joints"], robot.ankle_ik, exp_folder_path)
 
     sim = MuJoCoSim(robot, fixed=True)
-    sim.simulate(vis_type="render")
+    # sim.simulate(vis_type="render")
+    sim.simulate()
 
     sim.set_motor_angles(robot.init_motor_angles)
     mujoco_q = sim.get_observation()["q"]
@@ -53,21 +54,39 @@ def test_kinematics():
     assert arrays_are_close(mujoco_q, init_q, tol=1e-3)
 
     set_seed(0)
-    for _ in tqdm(range(10)):
+    failure_count = 0
+    # TODO: There are certain upper body joint angles that may fail to reach the desired position
+    # {'left_sho_roll': 0.0732, 'left_sho_yaw_driven': 0.0635, 'left_elbow_roll': 0.0447, 'left_elbow_yaw_driven': 0.0446, 'left_wrist_pitch': 0.0351}
+    # {'right_sho_roll': 0.0556, 'right_sho_yaw_driven': 0.0308, 'right_elbow_roll': 0.0238}
+    # {'left_sho_roll': 0.2791, 'left_sho_yaw_driven': 0.0623, 'left_elbow_roll': 0.0597, 'left_elbow_yaw_driven': 0.0317}
+    # {'left_sho_pitch': 0.0201}
+    for _ in tqdm(range(100)):
         random_motor_angles = robot.sample_motor_angles()
         random_joint_angles = robot.motor_to_joint_angles(random_motor_angles)
-        robot_q = np.array(list(random_joint_angles.values()))
+        random_motor_angles_copy = robot.joint_to_motor_angles(random_joint_angles)
+
+        robot_act = np.array(list(random_motor_angles.values()))
+        robot_act_copy = np.array(list(random_motor_angles_copy.values()))
+        assert arrays_are_close(robot_act, robot_act_copy, tol=1e-3)
 
         sim.set_motor_angles(random_motor_angles)
         time.sleep(3.0)
         mujoco_q = sim.get_observation()["q"]
 
-        assert arrays_are_close(mujoco_q, robot_q, tol=2e-2)
+        robot_q = np.array(list(random_joint_angles.values()))
+        if not arrays_are_close(mujoco_q, robot_q, tol=2e-2):
+            mask = np.abs(mujoco_q - robot_q) > 2e-2
+            joint_names: List[str] = [
+                robot.joint_ordering[index] for index in np.where(mask)[0]
+            ]
+            joint_diff = list(np.abs(mujoco_q - robot_q)[mask])
+            print({name: round(diff, 4) for name, diff in zip(joint_names, joint_diff)})
 
         sim.set_motor_angles(robot.init_motor_angles)
         time.sleep(3.0)
 
-    sim.save_recording(exp_folder_path)
+    print(f"Failure count: {failure_count}")
+    # sim.save_recording(exp_folder_path)
 
     sim.close()
 

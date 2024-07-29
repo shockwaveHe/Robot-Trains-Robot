@@ -176,7 +176,6 @@ class RealWorld(BaseSim):
                 # ]
                 # if is_closed_loop:
                 #     if joint_name in self.last_state:
-                #         # TODO: Implement ankle and waist IK
                 #         dynamixel_state[motor_id].vel = self._finite_diff_vel(
                 #             dynamixel_state[motor_id].pos,
                 #             self.last_state[joint_name].pos,

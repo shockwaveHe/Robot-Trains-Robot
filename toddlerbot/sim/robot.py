@@ -553,17 +553,17 @@ class Robot:
             elif transmission == "none":
                 motor_angles[joint_name] = joint_pos
 
-        joint_angles["waist_act_1"], joint_angles["waist_act_2"] = self.waist_ik(
+        motor_angles["waist_act_1"], motor_angles["waist_act_2"] = self.waist_ik(
             waist_pos
         )
-        joint_angles["left_ank_act_1"], joint_angles["left_ank_act_2"] = self.ankle_ik(
+        motor_angles["left_ank_act_1"], motor_angles["left_ank_act_2"] = self.ankle_ik(
             left_ankle_pos, "left"
         )
-        joint_angles["right_ank_act_1"], joint_angles["right_ank_act_2"] = (
+        motor_angles["right_ank_act_1"], motor_angles["right_ank_act_2"] = (
             self.ankle_ik(right_ankle_pos, "right")
         )
 
-        return joint_angles
+        return motor_angles
 
     def sample_motor_angles(self) -> Dict[str, float]:
         random_motor_angles: Dict[str, float] = {}
