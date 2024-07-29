@@ -74,7 +74,10 @@ def fetch_state(
         obs_dict = sim.get_observation()
         obs_queue.append(obs_dict)
 
-        time_until_next_step = sim.dt - (time.time() - step_start)
+        step_time = time.time() - step_start
+        print(f"Obs latency: {step_time * 1000:.2f} ms")
+
+        time_until_next_step = sim.dt - step_time
         if time_until_next_step > 0:
             # precise_sleep will block until the time has passed
             time.sleep(time_until_next_step)
@@ -160,6 +163,7 @@ def main():
 
             # Get the latest state from the queue
             obs_dict = obs_queue.pop()
+            print(len(obs_queue))
 
             time_obs_list.append(obs_dict["imu_time"].item())
             euler_obs_list.append(obs_dict["imu_euler"])
@@ -179,11 +183,13 @@ def main():
                 joint_vel_dict[joint_name].append(obs_dict["dq"][i])
 
             action = run_policy(args.policy, obs_dict, action)
-            target_act = default_act
+            target_act = default_act + action
 
             motor_angles: Dict[str, float] = {}
             for name, target_act_pos in zip(robot.motor_ordering, target_act):
                 motor_angles[name] = target_act_pos
+
+            sim.set_motor_angles(motor_angles)
 
             joint_angle_ref = robot.motor_to_joint_angles(motor_angles)
             for joint_name, joint_angle in joint_angle_ref.items():
@@ -193,8 +199,6 @@ def main():
                 joint_angle_ref_dict[joint_name].append(joint_angle)
 
             q_obs_delta = obs_dict["q"] - default_q
-
-            sim.set_motor_angles(motor_angles)
 
             step_idx += 1
             step_time = time.time() - step_start
@@ -225,10 +229,12 @@ def main():
 
                 log(f"Joint angles: {motor_angles}", header=header_name, level="debug")
                 log(
-                    f"Control Frequency: {1 / step_time:.2f} Hz",
+                    f"Control latency: {step_time * 1000:.2f} ms",
                     header=header_name,
                     level="debug",
                 )
+
+            print(f"Control latency: {step_time * 1000:.2f} ms")
 
             time_until_next_step = sim.control_dt - step_time
             if time_until_next_step > 0:
@@ -247,7 +253,7 @@ def main():
 
         os.makedirs(exp_folder_path, exist_ok=True)
 
-        if debug["render"]:
+        if debug["render"] and hasattr(sim, "save_recording"):
             sim.save_recording(exp_folder_path)  # type: ignore
 
         sim.close()

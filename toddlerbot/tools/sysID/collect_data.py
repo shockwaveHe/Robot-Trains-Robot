@@ -105,7 +105,7 @@ def actuate_single_motor(
     #     level="debug",
     # )
 
-    if hasattr(sim, "negated_joint_names") and joint_name in sim.negated_joint_names:
+    if hasattr(sim, "negated_joint_names") and joint_name in sim.negated_motor_names:
         joint_data_dict["pos"] = [-pos for pos in joint_data_dict["pos"]]
 
     return joint_data_dict

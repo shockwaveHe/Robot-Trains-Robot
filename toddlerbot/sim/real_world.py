@@ -1,5 +1,6 @@
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
 import numpy as np
 import numpy.typing as npt
@@ -8,29 +9,26 @@ from toddlerbot.actuation import JointState
 from toddlerbot.sim import BaseSim
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_ports
-from toddlerbot.utils.math_utils import round_floats
-from toddlerbot.utils.misc_utils import log, profile, snake2camel
 
 
 class RealWorld(BaseSim):
-    def __init__(self, robot: Robot, debug: bool = False):
+    def __init__(self, robot: Robot):
         super().__init__()
         self.name = "real_world"
         self.robot = robot
-        self.debug = debug
 
         self.has_imu = self.robot.config["general"]["has_imu"]
         self.has_dynamixel = self.robot.config["general"]["has_dynamixel"]
         self.has_sunny_sky = self.robot.config["general"]["has_sunny_sky"]
 
-        # TODO: Update the negated joint names
-        self.negated_joint_names: List[str] = []
+        self.negated_motor_names: List[str] = []
+        self.last_joint_state_dict: Dict[str, JointState] = {}
 
-        self._initialize()
+        self.initialize_motors()
 
-    def _initialize(self):
-        self.last_state: Dict[str, JointState] = {}
+        self.start_time = time.time()
 
+    def initialize_motors(self):
         self.executor = ThreadPoolExecutor()
 
         future_imu = None
@@ -101,10 +99,10 @@ class RealWorld(BaseSim):
         if future_imu is not None:
             self.imu = future_imu.result()
 
-    def _negate_joint_angles(self, joint_angles: Dict[str, float]) -> Dict[str, float]:
+    def negate_motor_angles(self, joint_angles: Dict[str, float]) -> Dict[str, float]:
         joint_angles_negated: Dict[str, float] = {}
         for name, angle in joint_angles.items():
-            if name in self.negated_joint_names:
+            if name in self.negated_motor_names:
                 joint_angles_negated[name] = -angle
             else:
                 joint_angles_negated[name] = angle
@@ -112,101 +110,40 @@ class RealWorld(BaseSim):
         return joint_angles_negated
 
     # @profile()
-    def set_motor_angles(self, motor_angles: Dict[str, float]):
-        # Directions are tuned to match the assembly of the robot.
-        joint_angles_negated = self._negate_joint_angles(motor_angles)
-
-        left_ankle_pos, right_ankle_pos = self.robot.get_ankle_pos(joint_angles_negated)
-        if len(left_ankle_pos) > 0:
-            left_ank_motor_pos = self.robot.ankle_ik(left_ankle_pos)
-            joint_angles_negated.update(left_ank_motor_pos)
-
-        if len(right_ankle_pos) > 0:
-            right_ank_motor_pos = self.robot.ankle_ik(right_ankle_pos)
-            joint_angles_negated.update(right_ank_motor_pos)
-
-        if self.has_dynamixel:
-            dynamixel_pos = [
-                joint_angles_negated[k]
-                for k in self.robot.get_joint_attrs("type", "dynamixel")
-            ]
-            if self.debug:
-                log(
-                    f"{round_floats(dynamixel_pos, 4)}",
-                    header="Dynamixel",
-                    level="debug",
-                )
-            self.executor.submit(
-                self.dynamixel_controller.set_pos, dynamixel_pos, interp=False
-            )
-
-        if self.has_sunny_sky:
-            sunny_sky_pos = [
-                joint_angles_negated[k]
-                for k in self.robot.get_joint_attrs("type", "sunny_sky")
-            ]
-            if self.debug:
-                log(
-                    f"{round_floats(sunny_sky_pos, 4)}",
-                    header="SunnySky",
-                    level="debug",
-                )
-
-            self.executor.submit(
-                self.sunny_sky_controller.set_pos, sunny_sky_pos, interp=False
-            )
-
-    def _finite_diff_vel(
-        self, pos: float, last_pos: float, time: float, last_time: float
-    ) -> float:
-        return (pos - last_pos) / (time - last_time)
-
-    # @profile()
-    def _process_joint_state(
+    def process_motor_reading(
         self, results: Dict[str, Dict[int, JointState]]
     ) -> Dict[str, JointState]:
-        joint_state_dict: Dict[str, JointState] = {}
+        motor_state_dict: Dict[str, JointState] = {}
 
         if self.has_dynamixel:
             dynamixel_state = results["dynamixel"]
-            for joint_name in self.robot.get_joint_attrs("type", "dynamixel"):
-                motor_id = self.robot.config["joints"][joint_name]["id"]
-                # is_closed_loop = self.robot.config["joints"][joint_name][
-                #     "is_closed_loop"
-                # ]
-                # if is_closed_loop:
-                #     if joint_name in self.last_state:
-                #         dynamixel_state[motor_id].vel = self._finite_diff_vel(
-                #             dynamixel_state[motor_id].pos,
-                #             self.last_state[joint_name].pos,
-                #             dynamixel_state[motor_id].time,
-                #             self.last_state[joint_name].time,
-                #         )
-
-                #     self.last_state[joint_name] = dynamixel_state[motor_id]
-
-                joint_state_dict[joint_name] = dynamixel_state[motor_id]
+            for motor_name in self.robot.get_joint_attrs("type", "dynamixel"):
+                motor_id = self.robot.config["joints"][motor_name]["id"]
+                motor_state_dict[motor_name] = dynamixel_state[motor_id]
 
         if self.has_sunny_sky:
             sunny_sky_state = results["sunny_sky"]
-            for joint_name in self.robot.get_joint_attrs("type", "sunny_sky"):
-                motor_id = self.robot.config["joints"][joint_name]["id"]
-                if joint_name in self.last_state:
-                    sunny_sky_state[motor_id].vel = self._finite_diff_vel(
-                        sunny_sky_state[motor_id].pos,
-                        self.last_state[joint_name].pos,
-                        sunny_sky_state[motor_id].time,
-                        self.last_state[joint_name].time,
-                    )
+            for motor_name in self.robot.get_joint_attrs("type", "sunny_sky"):
+                motor_id = self.robot.config["joints"][motor_name]["id"]
+                motor_state_dict[motor_name] = sunny_sky_state[motor_id]
 
-                self.last_state[joint_name] = sunny_sky_state[motor_id]
-                joint_state_dict[joint_name] = sunny_sky_state[motor_id]
+        for motor_name in motor_state_dict.keys():
+            if motor_name in self.negated_motor_names:
+                motor_state_dict[motor_name].pos *= -1
+                motor_state_dict[motor_name].vel *= -1
 
-        # TODO: Calibrate the direction of the motors
-        for joint_name in joint_state_dict.keys():
-            if joint_name in self.negated_joint_names:
-                joint_state_dict[joint_name].pos *= -1
-                joint_state_dict[joint_name].vel *= -1
+        motor_state_dict = {
+            motor_name: motor_state_dict[motor_name]
+            for motor_name in self.robot.motor_ordering
+        }
+
+        joint_state_dict = self.robot.motor_to_joint_state(
+            motor_state_dict, self.last_joint_state_dict
+        )
+        for joint_name in joint_state_dict:
+            joint_state_dict[joint_name].time -= self.start_time
+
+        self.last_joint_state_dict = joint_state_dict
 
         return joint_state_dict
 
@@ -236,7 +173,7 @@ class RealWorld(BaseSim):
                     # log(f"Time taken for {key}: {end_time - start_times[key]}", header=snake2camel(self.name), level="debug")
                     break
 
-        joint_state_dict = self._process_joint_state(results)
+        joint_state_dict = self.process_motor_reading(results)
 
         return joint_state_dict
 
@@ -268,7 +205,7 @@ class RealWorld(BaseSim):
                     # log(f"Time taken for {key}: {end_time - start_times[key]}", header=snake2camel(self.name), level="debug")
                     break
 
-        joint_state_dict = self._process_joint_state(results)
+        joint_state_dict = self.process_motor_reading(results)
 
         obs_arr = self.robot.joint_state_to_obs_arr(joint_state_dict)
         for k, v in obs_arr.items():
@@ -276,9 +213,34 @@ class RealWorld(BaseSim):
 
         if self.has_imu:
             for key, value in results["imu"].items():
-                obs_dict[key] = value
+                if key == "time":
+                    obs_dict[key] = value - self.start_time
+                else:
+                    obs_dict[key] = value
 
         return obs_dict
+
+    # @profile()
+    def set_motor_angles(self, motor_angles: Dict[str, float]):
+        # Directions are tuned to match the assembly of the robot.
+        motor_angles_negated = self.negate_motor_angles(motor_angles)
+        if self.has_dynamixel:
+            dynamixel_pos = [
+                motor_angles_negated[k]
+                for k in self.robot.get_joint_attrs("type", "dynamixel")
+            ]
+            self.executor.submit(
+                self.dynamixel_controller.set_pos, dynamixel_pos, interp=False
+            )
+
+        if self.has_sunny_sky:
+            sunny_sky_pos = [
+                motor_angles_negated[k]
+                for k in self.robot.get_joint_attrs("type", "sunny_sky")
+            ]
+            self.executor.submit(
+                self.sunny_sky_controller.set_pos, sunny_sky_pos, interp=False
+            )
 
     def close(self):
         if self.has_dynamixel:

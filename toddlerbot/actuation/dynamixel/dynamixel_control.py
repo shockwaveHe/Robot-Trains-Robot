@@ -11,7 +11,7 @@ import numpy.typing as npt
 from toddlerbot.actuation import BaseController, JointState
 from toddlerbot.actuation.dynamixel.dynamixel_client import DynamixelClient
 from toddlerbot.utils.math_utils import interpolate_pos
-from toddlerbot.utils.misc_utils import log, profile
+from toddlerbot.utils.misc_utils import log  # profile
 
 CONTROL_MODE_DICT: Dict[str, int] = {
     "current": 0,
@@ -33,7 +33,6 @@ class DynamixelConfig:
     kD: List[float]
     kFF2: List[float]
     kFF1: List[float]
-    # gear_ratio: List[float]
     init_pos: List[float]
     default_vel: float = np.pi
     interp_method: str = "cubic"
@@ -49,9 +48,9 @@ class DynamixelController(BaseController):
         self.config = config
         self.motor_ids: List[int] = motor_ids
         if len(self.config.init_pos) == 0:
-            self.init_pos = np.zeros(len(motor_ids))
+            self.init_pos = np.zeros(len(motor_ids), dtype=np.float32)
         else:
-            self.init_pos = np.array(config.init_pos)
+            self.init_pos = np.array(config.init_pos, dtype=np.float32)
 
         self.lock = Lock()
 
@@ -148,9 +147,7 @@ class DynamixelController(BaseController):
         delta_t: float = -1,
     ):
         def set_pos_helper(pos_arr: npt.NDArray[np.float32]):
-            pos_arr_drive = (
-                self.init_pos + pos_arr
-            )  # * np.array(self.config.gear_ratio)
+            pos_arr_drive = self.init_pos + pos_arr
             with self.lock:
                 self.client.write_desired_pos(self.motor_ids, pos_arr_drive)  # type: ignore
 
@@ -186,10 +183,8 @@ class DynamixelController(BaseController):
         # log(f"Pos: {np.round(pos_arr, 2)}", header="Dynamixel", level="debug")  # type: ignore
         # log(f"Vel: {np.round(vel_arr, 2)}", header="Dynamixel", level="debug")  # type: ignore
 
-        pos_arr_driven = (
-            pos_arr - self.init_pos
-        )  # / np.array(self.config.gear_ratio) - self.init_pos
-        vel_arr_driven = vel_arr  # / np.array(self.config.gear_ratio)
+        pos_arr_driven = pos_arr - self.init_pos
+        vel_arr_driven = vel_arr
         for i, id in enumerate(self.motor_ids):
             state_dict[id] = JointState(
                 time=time.time(), pos=pos_arr_driven[i], vel=vel_arr_driven[i]

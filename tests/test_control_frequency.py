@@ -9,7 +9,7 @@ from toddlerbot.utils.misc_utils import dump_profiling_data, log, precise_sleep,
 
 # @profile()
 def main(robot: Robot):
-    sim = RealWorld(robot, debug=True)
+    sim = RealWorld(robot)
 
     step_idx = 0
     step_time_list: List[float] = []
@@ -17,8 +17,9 @@ def main(robot: Robot):
         while True:
             step_start = time.time()
 
-            _ = sim.get_joint_state()
-            sim.set_motor_angles({name: 0 for name in robot.config})
+            _ = sim.get_observation()
+            sim.set_motor_angles(robot.init_motor_angles)
+
             step_idx += 1
 
             step_time = time.time() - step_start
