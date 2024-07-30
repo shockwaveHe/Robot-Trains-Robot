@@ -24,11 +24,9 @@ class RealWorld(BaseSim):
         self.negated_motor_names: List[str] = []
         self.last_joint_state_dict: Dict[str, JointState] = {}
 
-        self.initialize_motors()
+        self.initialize()
 
-        self.start_time = time.time()
-
-    def initialize_motors(self):
+    def initialize(self):
         self.executor = ThreadPoolExecutor()
 
         future_imu = None
@@ -98,6 +96,14 @@ class RealWorld(BaseSim):
             self.dynamixel_controller = future_dynamixel.result()
         if future_imu is not None:
             self.imu = future_imu.result()
+
+        # Warm up the simulation
+        self.start_time = 0.0
+
+        for _ in range(10):
+            self.get_observation()
+
+        self.start_time = time.time()
 
     def negate_motor_angles(self, joint_angles: Dict[str, float]) -> Dict[str, float]:
         joint_angles_negated: Dict[str, float] = {}
@@ -212,11 +218,11 @@ class RealWorld(BaseSim):
             obs_dict[k] = v
 
         if self.has_imu:
-            for key, value in results["imu"].items():
-                if key == "time":
-                    obs_dict[key] = value - self.start_time
+            for k, v in results["imu"].items():
+                if "time" in k and self.start_time > 0:
+                    obs_dict[k] = v.copy() - self.start_time
                 else:
-                    obs_dict[key] = value
+                    obs_dict[k] = v.copy()
 
         return obs_dict
 

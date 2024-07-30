@@ -99,7 +99,6 @@ class MuJoCoSim(BaseSim):
         for k, v in obs_arr.items():
             obs_dict[k] = v
 
-        obs_dict["imu_time"] = np.array(self.data.time, copy=True)  # type: ignore
         obs_dict["imu_quat"] = np.array(
             self.data.sensor("orientation").data,  # type: ignore
             copy=True,

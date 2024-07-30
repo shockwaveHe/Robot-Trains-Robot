@@ -11,7 +11,7 @@ from yourdfpy import URDF  # type: ignore
 
 from toddlerbot.actuation import JointState
 from toddlerbot.utils.file_utils import find_robot_file_path
-from toddlerbot.utils.misc_utils import log
+from toddlerbot.utils.misc_utils import log, profile
 
 
 class Robot:
@@ -343,6 +343,7 @@ class Robot:
 
         return ank_act_pos
 
+    # @profile()
     def ankle_fk(self, motor_pos: List[float], side: str = "left") -> List[float]:
         if side == "right":
             motor_pos = [-motor_pos[0], -motor_pos[1]]
@@ -461,20 +462,21 @@ class Robot:
     def joint_state_to_obs_arr(
         self, joint_state_dict: Dict[str, JointState]
     ) -> Dict[str, npt.NDArray[np.float32]]:
-        time_obs: List[float] = []
         q_obs: List[float] = []
         dq_obs: List[float] = []
         for joint_name in joint_state_dict:
-            time_obs.append(joint_state_dict[joint_name].time)
             q_obs.append(joint_state_dict[joint_name].pos)
             dq_obs.append(joint_state_dict[joint_name].vel)
 
         return {
-            "time": np.array(time_obs, dtype=np.float32),
+            "time": np.array(
+                [list(joint_state_dict.values())[0].time], dtype=np.float32
+            ),
             "q": np.array(q_obs, dtype=np.float32),
             "dq": np.array(dq_obs, dtype=np.float32),
         }
 
+    # @profile()
     def motor_to_joint_angles(self, motor_angles: Dict[str, float]) -> Dict[str, float]:
         joint_angles: Dict[str, float] = {}
         joints_config = self.config["joints"]
@@ -550,7 +552,9 @@ class Robot:
                 waist_act_pos.append(motor_state.pos)
             elif transmission == "knee":
                 joint_name: str = motor_name.replace("_act", "_pitch")
-                joint_state_dict[joint_name] = motor_state
+                joint_state_dict[joint_name] = JointState(
+                    time=motor_state.time, pos=motor_state.pos, vel=motor_state.vel
+                )
             elif transmission == "ankle":
                 if "left" in motor_name:
                     joint_state_dict["left_ank_roll"] = JointState(
@@ -569,7 +573,9 @@ class Robot:
                     )
                     right_ank_act_pos.append(motor_state.pos)
             elif transmission == "none":
-                joint_state_dict[motor_name] = motor_state
+                joint_state_dict[motor_name] = JointState(
+                    time=motor_state.time, pos=motor_state.pos, vel=motor_state.vel
+                )
 
         joint_state_dict["waist_roll"].pos, joint_state_dict["waist_yaw"].pos = (
             self.waist_fk(waist_act_pos)

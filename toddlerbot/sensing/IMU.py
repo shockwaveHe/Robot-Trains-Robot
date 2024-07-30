@@ -68,11 +68,7 @@ class IMU:
             dtype=np.float32,
         )
 
-        state = {
-            "imu_time": np.array(time.time(), dtype=np.float32),
-            "imu_euler": euler_relative,
-            "imu_ang_vel": ang_vel_relative,
-        }
+        state = {"imu_euler": euler_relative, "imu_ang_vel": ang_vel_relative}
 
         return state
 
