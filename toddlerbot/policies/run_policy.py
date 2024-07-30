@@ -108,6 +108,7 @@ def plot_results(
         time_seq_ref_dict,
         joint_angle_dict,
         joint_angle_ref_dict,
+        robot.joint_limits,
         save_path=exp_folder_path,
     )
     plot_joint_velocity_tracking(
@@ -118,11 +119,9 @@ def plot_results(
 
 
 def run_policy(
-    policy: BasePolicy,
-    state: Dict[str, npt.NDArray[np.float32]],
-    last_action: npt.NDArray[np.float32],
+    policy: BasePolicy, state: Dict[str, npt.NDArray[np.float32]]
 ) -> npt.NDArray[np.float32]:
-    return policy.run(state, last_action)
+    return policy.run(state)
 
 
 # @profile()
@@ -134,16 +133,15 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
     header_name = snake2camel(f"sim2{sim.name}")
 
     # default_q = np.array(list(robot.init_joint_angles.values()), dtype=np.float32)
-
     default_act = np.array(list(robot.init_motor_angles.values()), dtype=np.float32)
-    action = np.zeros_like(default_act)
-    target_act = default_act + action
 
     obs_dict_list: List[Dict[str, npt.NDArray[np.float32]]] = []
     motor_angles_list: List[Dict[str, float]] = []
 
     step_idx = 0
-    p_bar = tqdm(total=debug["duration"] / policy.control_dt, desc="Running the policy")
+    p_bar = tqdm(
+        total=int(debug["duration"] / policy.control_dt), desc="Running the policy"
+    )
     try:
         while step_idx < debug["duration"] / policy.control_dt:
             step_start = time.time()
@@ -152,7 +150,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
             obs_dict = sim.get_observation()
             # q_obs_delta = obs_dict["q"] - default_q
 
-            action = run_policy(policy, obs_dict, action)
+            action = run_policy(policy, obs_dict)
             target_act = default_act + action
 
             motor_angles: Dict[str, float] = {}
@@ -207,6 +205,8 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
 
         sim.close()
 
+        p_bar.close()
+
         prof_path = os.path.join(exp_folder_path, "profile_output.lprof")
         dump_profiling_data(prof_path)
 
@@ -247,14 +247,20 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    robot = Robot(args.robot)
+    policy = POLICIES[args.policy](robot)
+
+    if hasattr(policy, "time_arr"):
+        duration = policy.time_arr[-1] + policy.control_dt  # type: ignore
+    else:
+        duration = float("inf")
+
     debug: Dict[str, Any] = {
-        "duration": float("inf"),
+        "duration": duration,
         "log": False,
         "plot": True,
         "render": True,
     }
-
-    robot = Robot(args.robot)
 
     if args.sim == "mujoco":
         from toddlerbot.sim.mujoco_sim import MuJoCoSim
@@ -267,7 +273,5 @@ if __name__ == "__main__":
         sim = RealWorld(robot)
     else:
         raise ValueError("Unknown simulator")
-
-    policy = POLICIES[args.policy](robot)
 
     main(robot, sim, policy, debug)

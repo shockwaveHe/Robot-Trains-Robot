@@ -19,25 +19,43 @@ class RotateTorsoPolicy(BasePolicy):
         self.name = "rotate_torso"
 
         set_seed(0)
+
         default_q = np.array(list(robot.init_joint_angles.values()), dtype=np.float32)
+
+        warm_up_duration = 3.0
+        sine_duraion = 3.0
+        reset_duration = 2.0
+        n_sine_signal = 2
+        frequency_range = [0.2, 0.5]
+        amplitude_min = np.pi / 12
 
         time_list: List[npt.NDArray[np.float32]] = []
         action_list: List[npt.NDArray[np.float32]] = []
+
+        warm_up_time, warm_up_pos = self.warm_up(warm_up_duration)
+
+        time_list.append(warm_up_time)
+        action_list.append(warm_up_pos)
+
         for joint_name in ["waist_roll", "waist_yaw"]:
-            lower_limit = robot.config["joints"][joint_name]["lower_limit"]
-            upper_limit = robot.config["joints"][joint_name]["upper_limit"]
             joint_idx = robot.joint_ordering.index(joint_name)
 
-            mean = (lower_limit + upper_limit) / 2
-            amplitude_max = upper_limit - mean
+            mean = (
+                robot.joint_limits[joint_name][0] + robot.joint_limits[joint_name][1]
+            ) / 2
+            amplitude_max = robot.joint_limits[joint_name][1] - mean
 
-            for _ in range(3):
+            for _ in range(n_sine_signal):
                 sine_signal_config = get_random_sine_signal_config(
-                    3.0, self.control_dt, 0.0, [0.5, 2], [np.pi / 12, amplitude_max]
+                    sine_duraion,
+                    self.control_dt,
+                    mean,
+                    frequency_range,
+                    [amplitude_min, amplitude_max],
                 )
-                t, signal = get_sine_signal(sine_signal_config)
+                time, signal = get_sine_signal(sine_signal_config)
                 if len(time_list) > 0:
-                    t += time_list[-1][-1] + self.control_dt
+                    time += time_list[-1][-1] + self.control_dt
 
                 timed_pos = np.tile(default_q.copy(), (signal.shape[0], 1))
                 timed_pos[:, joint_idx] = signal
@@ -49,15 +67,21 @@ class RotateTorsoPolicy(BasePolicy):
                         list(motor_angles.values()), dtype=np.float32
                     )
 
-                time_list.append(t)
+                time_list.append(time)
                 action_list.append(timed_action)
+
+                reset_time, reset_pos = self.reset(
+                    time[-1], timed_action[-1], reset_duration
+                )
+
+                time_list.append(reset_time)
+                action_list.append(reset_pos)
 
         self.time_arr = np.concatenate(time_list)
         self.action_arr = np.concatenate(action_list)
 
     def run(
-        self,
-        obs_dict: Dict[str, npt.NDArray[np.float32]],
-        last_action: npt.NDArray[np.float32],
+        self, obs_dict: Dict[str, npt.NDArray[np.float32]]
     ) -> npt.NDArray[np.float32]:
-        return interpolate_arr(obs_dict["time"].item(), self.time_arr, self.action_arr)  # type: ignore
+        time_curr = obs_dict["time"].item()
+        return np.array(interpolate_arr(time_curr, self.time_arr, self.action_arr))

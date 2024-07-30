@@ -13,8 +13,6 @@ class StandPolicy(BasePolicy):
         self.name = "stand"
 
     def run(
-        self,
-        obs_dict: Dict[str, npt.NDArray[np.float32]],
-        last_action: npt.NDArray[np.float32],
+        self, obs_dict: Dict[str, npt.NDArray[np.float32]]
     ) -> npt.NDArray[np.float32]:
-        return np.zeros_like(last_action)
+        return np.zeros_like(self.robot.action_dim)

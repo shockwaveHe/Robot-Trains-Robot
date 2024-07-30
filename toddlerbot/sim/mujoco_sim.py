@@ -84,7 +84,7 @@ class MuJoCoSim(BaseSim):
         joint_state_dict: Dict[str, JointState] = {}
         for name in self.robot.joint_ordering:
             joint_state_dict[name] = JointState(
-                time=self.data.time,  # type: ignore
+                time=time.time() - self.start_time,
                 pos=self.data.joint(name).qpos.item(),  # type: ignore
                 vel=self.data.joint(name).qvel.item(),  # type: ignore
             )
@@ -199,6 +199,8 @@ class MuJoCoSim(BaseSim):
         self.controller.add_command(motor_angles)
 
     def simulate(self, vis_type: str = "", vis_data: Dict[str, Any] = {}):
+        self.start_time = time.time()
+
         self.thread = threading.Thread(
             target=self._simulate_worker, args=(vis_type, vis_data)
         )

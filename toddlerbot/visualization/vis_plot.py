@@ -17,28 +17,16 @@ COLORS = ["b", "g", "r", "c", "y", "k"]
 
 
 def plot_waist_mapping(
-    joints_config: Dict[str, Dict[str, Any]],
+    joint_limits: Dict[str, List[float]],
     waist_ik: Callable[..., List[float]],
     save_path: str,
     file_name: str = "waist_mapping",
 ):
     # Prepare data for plotting
-    roll_limits = [
-        joints_config["waist_roll"]["lower_limit"],
-        joints_config["waist_roll"]["upper_limit"],
-    ]
-    yaw_limits = [
-        joints_config["waist_yaw"]["lower_limit"],
-        joints_config["waist_yaw"]["upper_limit"],
-    ]
-    act_1_limits = [
-        joints_config["waist_act_1"]["lower_limit"],
-        joints_config["waist_act_1"]["upper_limit"],
-    ]
-    act_2_limits = [
-        joints_config["waist_act_2"]["lower_limit"],
-        joints_config["waist_act_2"]["upper_limit"],
-    ]
+    roll_limits = joint_limits["waist_roll"]
+    yaw_limits = joint_limits["waist_yaw"]
+    act_1_limits = joint_limits["waist_act_1"]
+    act_2_limits = joint_limits["waist_act_2"]
 
     step_rad = 0.02
     tol = 1e-3
@@ -95,28 +83,16 @@ def plot_waist_mapping(
 
 
 def plot_ankle_mapping(
-    joints_config: Dict[str, Dict[str, Any]],
+    joint_limits: Dict[str, List[float]],
     ankle_ik: Callable[..., List[float]],
     save_path: str,
     file_name: str = "ankle_mapping",
 ):
     # Prepare data for plotting
-    roll_limits = [
-        joints_config["left_ank_roll"]["lower_limit"],
-        joints_config["left_ank_roll"]["upper_limit"],
-    ]
-    pitch_limits = [
-        joints_config["left_ank_pitch"]["lower_limit"],
-        joints_config["left_ank_pitch"]["upper_limit"],
-    ]
-    act_1_limits = [
-        joints_config["left_ank_act_1"]["lower_limit"],
-        joints_config["left_ank_act_1"]["upper_limit"],
-    ]
-    act_2_limits = [
-        joints_config["left_ank_act_2"]["lower_limit"],
-        joints_config["left_ank_act_2"]["upper_limit"],
-    ]
+    roll_limits = joint_limits["left_ank_roll"]
+    pitch_limits = joint_limits["left_ank_pitch"]
+    act_1_limits = joint_limits["left_ank_act_1"]
+    act_2_limits = joint_limits["left_ank_act_2"]
 
     step_rad = 0.02
     tol = 1e-3
@@ -261,16 +237,12 @@ def plot_joint_angle_tracking(
     time_seq_ref_dict: Dict[str, List[float]],
     joint_angle_dict: Dict[str, List[float]],
     joint_angle_ref_dict: Dict[str, List[float]],
+    joint_limits: Dict[str, List[float]],
     save_path: str,
     file_name: str = "joint_angle_tracking",
     file_suffix: str = "",
     title_list: List[str] = [],
 ):
-    # all_angles = np.concatenate(
-    #     list(joint_angle_dict.values()) + list(joint_angle_ref_dict.values())
-    # )
-    # global_ymin, global_ymax = np.min(all_angles) - 0.1, np.max(all_angles) + 0.1
-
     x_list: List[List[float]] = []
     y_list: List[List[float]] = []
     legend_labels: List[str] = []
@@ -294,8 +266,8 @@ def plot_joint_angle_tracking(
             ax.set_visible(False)  # type: ignore
             continue
 
-        # ax.set_ylim(global_ymin, global_ymax)
-        # ax.set_facecolor(colors_dict[motor_params[legend_labels[2 * i]].brand])
+        y_min, y_max = joint_limits[legend_labels[2 * i]]
+        ax.set_ylim(y_min - 0.1, y_max + 0.1)  # type: ignore
 
         plot_line_graph(
             y_list[2 * i : 2 * i + 2],
@@ -320,11 +292,6 @@ def plot_joint_velocity_tracking(
     file_suffix: str = "",
     title_list: List[str] = [],
 ):
-    # all_angles = np.concatenate(
-    #     list(joint_angle_dict.values()) + list(joint_angle_ref_dict.values())
-    # )
-    # global_ymin, global_ymax = np.min(all_angles) - 0.1, np.max(all_angles) + 0.1
-
     x_list: List[List[float]] = []
     y_list: List[List[float]] = []
     legend_labels: List[str] = []
@@ -345,8 +312,7 @@ def plot_joint_velocity_tracking(
             ax.set_visible(False)  # type: ignore
             continue
 
-        # ax.set_ylim(global_ymin, global_ymax)
-        # ax.set_facecolor(colors_dict[motor_params[legend_labels[i]].brand])
+        ax.set_ylim(-10, 10)  # type: ignore
 
         plot_line_graph(
             y_list[i],

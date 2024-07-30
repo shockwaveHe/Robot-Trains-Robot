@@ -219,10 +219,7 @@ class RealWorld(BaseSim):
 
         if self.has_imu:
             for k, v in results["imu"].items():
-                if "time" in k and self.start_time > 0:
-                    obs_dict[k] = v.copy() - self.start_time
-                else:
-                    obs_dict[k] = v.copy()
+                obs_dict[k] = v.copy()
 
         return obs_dict
 

@@ -108,7 +108,7 @@ def quaternion_to_euler_array(
 def interpolate(
     p_start: Union[npt.NDArray[np.float32], float],
     p_end: Union[npt.NDArray[np.float32], float],
-    delta_t: float,
+    duration: float,
     t: float,
     interp_type: str = "linear",
 ) -> Union[npt.NDArray[np.float32], float]:
@@ -118,8 +118,8 @@ def interpolate(
     Parameters:
     - p_start: Initial position.
     - p_end: Desired end position.
-    - delta_t: Total duration from start to end.
-    - t: Current time (within 0 to delta_t).
+    - duration: Total duration from start to end.
+    - t: Current time (within 0 to duration).
     - interp_type: Type of interpolation ('linear', 'quadratic', 'cubic').
 
     Returns:
@@ -128,25 +128,25 @@ def interpolate(
     if t <= 0:
         return p_start
 
-    if t >= delta_t:
+    if t >= duration:
         return p_end
 
     if interp_type == "linear":
-        return p_start + (p_end - p_start) * (t / delta_t)
+        return p_start + (p_end - p_start) * (t / duration)
     elif interp_type == "quadratic":
-        a = (-p_end + p_start) / delta_t**2
-        b = (2 * p_end - 2 * p_start) / delta_t
+        a = (-p_end + p_start) / duration**2
+        b = (2 * p_end - 2 * p_start) / duration
         return a * t**2 + b * t + p_start
     elif interp_type == "cubic":
-        a = (2 * p_start - 2 * p_end) / delta_t**3
-        b = (3 * p_end - 3 * p_start) / delta_t**2
+        a = (2 * p_start - 2 * p_end) / duration**3
+        b = (3 * p_end - 3 * p_start) / duration**2
         return a * t**3 + b * t**2 + p_start
     else:
         raise ValueError("Unsupported interpolation type: {}".format(interp_type))
 
 
 def interpolate_arr(
-    t: str,
+    t: float,
     time_arr: npt.NDArray[np.float32],
     action_arr: npt.NDArray[np.float32],
     interp_type: str = "linear",
@@ -161,8 +161,8 @@ def interpolate_arr(
         if time_arr[i] <= t < time_arr[i + 1]:
             p_start = action_arr[i]
             p_end = action_arr[i + 1]
-            delta_t = time_arr[i + 1] - time_arr[i]
-            return interpolate(p_start, p_end, delta_t, t - time_arr[i], interp_type)
+            duration = time_arr[i + 1] - time_arr[i]
+            return interpolate(p_start, p_end, duration, t - time_arr[i], interp_type)
 
     # Fallback (shouldn't be reached)
     return action_arr[-1]
@@ -172,17 +172,17 @@ def interpolate_pos(
     set_pos: Callable[[npt.NDArray[np.float32]], None],
     pos_start: npt.NDArray[np.float32],
     pos: npt.NDArray[np.float32],
-    delta_t: float,
+    duration: float,
     interp_type: str,
     sleep_time: float = 0.0,
 ):
     time_start = time.time()
     time_curr = 0
     counter = 0
-    while time_curr <= delta_t:
+    while time_curr <= duration:
         time_curr = time.time() - time_start
         pos_interp = interpolate(
-            pos_start, pos, delta_t, time_curr, interp_type=interp_type
+            pos_start, pos, duration, time_curr, interp_type=interp_type
         )
         set_pos(pos_interp)  # type: ignore
 
@@ -203,18 +203,18 @@ def resample_trajectory(
     for i in range(len(trajectory) - 1):
         t0, joint_angles_0 = trajectory[i]
         t1, joint_angles_1 = trajectory[i + 1]
-        delta_t = t1 - t0
+        duration = t1 - t0
 
         # Add an epislon to the desired interval to avoid floating point errors
-        if delta_t > desired_interval + 1e-6:
+        if duration > desired_interval + 1e-6:
             # More points needed, interpolate
-            num_steps = int(delta_t / desired_interval)
+            num_steps = int(duration / desired_interval)
             for j in range(num_steps):
                 t = j * desired_interval
                 interpolated_joint_angles: Dict[str, float] = {}
                 for joint_name, p_start in joint_angles_0.items():
                     p_end = joint_angles_1[joint_name]
-                    p_interp = interpolate(p_start, p_end, delta_t, t, interp_type)
+                    p_interp = interpolate(p_start, p_end, duration, t, interp_type)
                     interpolated_joint_angles[joint_name] = p_interp  # type: ignore
                 resampled_trajectory.append((t0 + t, interpolated_joint_angles))
         else:

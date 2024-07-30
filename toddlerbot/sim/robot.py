@@ -151,6 +151,21 @@ class Robot:
     def joint_ordering(self) -> List[str]:
         return list(self.init_joint_angles.keys())
 
+    @property
+    def joint_limits(self) -> Dict[str, List[float]]:
+        joint_limits: Dict[str, List[float]] = {}
+        for joint_name, joint_config in self.config["joints"].items():
+            joint_limits[joint_name] = [
+                joint_config["lower_limit"],
+                joint_config["upper_limit"],
+            ]
+
+        return joint_limits
+
+    @property
+    def action_dim(self) -> int:
+        return len(self.motor_ordering)
+
     def get_joint_attrs(
         self,
         key_name: str,
@@ -217,14 +232,8 @@ class Robot:
         else:
             waist_roll, waist_yaw = point
 
-        roll_limits = [
-            self.config["joints"]["waist_roll"]["lower_limit"],
-            self.config["joints"]["waist_roll"]["upper_limit"],
-        ]
-        yaw_limits = [
-            self.config["joints"]["waist_yaw"]["lower_limit"],
-            self.config["joints"]["waist_yaw"]["upper_limit"],
-        ]
+        roll_limits = self.joint_limits["waist_roll"]
+        yaw_limits = self.joint_limits["waist_yaw"]
         if (
             waist_roll < roll_limits[0]
             or waist_roll > roll_limits[1]
@@ -237,23 +246,13 @@ class Robot:
 
     def sample_waist_point(self, direction: str = "forward") -> List[float]:
         if direction == "forward":
-            min_bounds = [
-                self.config["joints"]["waist_act_1"]["lower_limit"],
-                self.config["joints"]["waist_act_2"]["lower_limit"],
-            ]
-            max_bounds = [
-                self.config["joints"]["waist_act_1"]["upper_limit"],
-                self.config["joints"]["waist_act_2"]["upper_limit"],
-            ]
+            min_bounds, max_bounds = zip(
+                self.joint_limits["waist_act_1"], self.joint_limits["waist_act_2"]
+            )
         else:
-            min_bounds = [
-                self.config["joints"]["waist_roll"]["lower_limit"],
-                self.config["joints"]["waist_yaw"]["lower_limit"],
-            ]
-            max_bounds = [
-                self.config["joints"]["waist_roll"]["upper_limit"],
-                self.config["joints"]["waist_yaw"]["upper_limit"],
-            ]
+            min_bounds, max_bounds = zip(
+                self.joint_limits["waist_roll"], self.joint_limits["waist_yaw"]
+            )
 
         while True:
             # Generate a random point within the bounding box of the convex hull
@@ -325,11 +324,8 @@ class Robot:
                 else:
                     pos = theta - ank_act_zero[i]
 
-                joint_limits = self.config["joints"][f"{side}_ank_act_{i+1}"]
-                if (
-                    pos < joint_limits["lower_limit"]
-                    or pos > joint_limits["upper_limit"]
-                ):
+                joint_limits = self.joint_limits[f"{side}_ank_act_{i+1}"]
+                if pos < joint_limits[0] or pos > joint_limits[1]:
                     pos = np.nan
 
             ank_act_pos.append(pos)
@@ -355,22 +351,10 @@ class Robot:
     # @profile()
     def compute_ankle_fk_lookup(self, step_degree: float = 0.5):
         step_rad = np.deg2rad(step_degree)
-        roll_limits = [
-            self.config["joints"]["left_ank_roll"]["lower_limit"],
-            self.config["joints"]["left_ank_roll"]["upper_limit"],
-        ]
-        pitch_limits = [
-            self.config["joints"]["left_ank_pitch"]["lower_limit"],
-            self.config["joints"]["left_ank_pitch"]["upper_limit"],
-        ]
-        act_1_limits = [
-            self.config["joints"]["left_ank_act_1"]["lower_limit"],
-            self.config["joints"]["left_ank_act_1"]["upper_limit"],
-        ]
-        act_2_limits = [
-            self.config["joints"]["left_ank_act_2"]["lower_limit"],
-            self.config["joints"]["left_ank_act_2"]["upper_limit"],
-        ]
+        roll_limits = self.joint_limits["left_ank_roll"]
+        pitch_limits = self.joint_limits["left_ank_pitch"]
+        act_1_limits = self.joint_limits["left_ank_act_1"]
+        act_2_limits = self.joint_limits["left_ank_act_2"]
 
         roll_range = np.arange(roll_limits[0], roll_limits[1] + step_rad, step_rad)  # type: ignore
         pitch_range = np.arange(pitch_limits[0], pitch_limits[1] + step_rad, step_rad)  # type: ignore
@@ -429,23 +413,15 @@ class Robot:
         self, direction: str = "forward", side: str = "left"
     ) -> List[float]:
         if direction == "forward":
-            min_bounds = [
-                self.config["joints"][f"{side}_ank_act_1"]["lower_limit"],
-                self.config["joints"][f"{side}_ank_act_2"]["lower_limit"],
-            ]
-            max_bounds = [
-                self.config["joints"][f"{side}_ank_act_1"]["upper_limit"],
-                self.config["joints"][f"{side}_ank_act_2"]["upper_limit"],
-            ]
+            min_bounds, max_bounds = zip(
+                self.joint_limits[f"{side}_ank_act_1"],
+                self.joint_limits[f"{side}_ank_act_2"],
+            )
         else:
-            min_bounds = [
-                self.config["joints"][f"{side}_ank_roll"]["lower_limit"],
-                self.config["joints"][f"{side}_ank_pitch"]["lower_limit"],
-            ]
-            max_bounds = [
-                self.config["joints"][f"{side}_ank_roll"]["upper_limit"],
-                self.config["joints"][f"{side}_ank_pitch"]["upper_limit"],
-            ]
+            min_bounds, max_bounds = zip(
+                self.joint_limits[f"{side}_ank_roll"],
+                self.joint_limits[f"{side}_ank_pitch"],
+            )
 
         while True:
             # Generate a random point within the bounding box of the convex hull
@@ -658,8 +634,8 @@ class Robot:
         random_motor_angles: Dict[str, float] = {}
         for motor_name in self.motor_ordering:
             random_motor_angles[motor_name] = np.random.uniform(
-                self.config["joints"][motor_name]["lower_limit"],
-                self.config["joints"][motor_name]["upper_limit"],
+                self.joint_limits[motor_name][0],
+                self.joint_limits[motor_name][1],
             )
 
         random_motor_angles["left_ank_act_1"], random_motor_angles["left_ank_act_2"] = (
