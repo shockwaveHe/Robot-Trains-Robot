@@ -56,6 +56,7 @@ POLICIES = import_all_policies()
 def plot_results(
     obs_dict_list: List[Dict[str, npt.NDArray[np.float32]]],
     motor_angles_list: List[Dict[str, float]],
+    control_dt: float,
     exp_folder_path: str,
 ):
     time_obs_list: List[float] = []
@@ -80,7 +81,7 @@ def plot_results(
 
             # Assume the state fetching is instantaneous
             time_seq_dict[joint_name].append(obs_time)
-            time_seq_ref_dict[joint_name].append(i * sim.control_dt)
+            time_seq_ref_dict[joint_name].append(i * control_dt)
             joint_angle_dict[joint_name].append(obs_dict["q"][j])
             joint_vel_dict[joint_name].append(obs_dict["dq"][j])
 
@@ -142,9 +143,9 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
     motor_angles_list: List[Dict[str, float]] = []
 
     step_idx = 0
-    p_bar = tqdm(total=debug["duration"] / sim.control_dt, desc="Running the policy")
+    p_bar = tqdm(total=debug["duration"] / policy.control_dt, desc="Running the policy")
     try:
-        while step_idx < debug["duration"] / sim.control_dt:
+        while step_idx < debug["duration"] / policy.control_dt:
             step_start = time.time()
 
             # Get the latest state from the queue
@@ -166,7 +167,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
             step_time = time.time() - step_start
             step_idx += 1
 
-            p_bar_steps = int(1 / sim.control_dt)
+            p_bar_steps = int(1 / policy.control_dt)
             if step_idx % p_bar_steps == 0:
                 p_bar.update(p_bar_steps)
 
@@ -187,7 +188,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
                     level="debug",
                 )
 
-            time_until_next_step = sim.control_dt - step_time
+            time_until_next_step = policy.control_dt - step_time
             if time_until_next_step > 0:
                 precise_sleep(time_until_next_step)
 
@@ -219,7 +220,9 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
 
         if debug["plot"]:
             log("Visualizing...", header="Walking")
-            plot_results(obs_dict_list, motor_angles_list, exp_folder_path)
+            plot_results(
+                obs_dict_list, motor_angles_list, policy.control_dt, exp_folder_path
+            )
 
 
 if __name__ == "__main__":
@@ -265,6 +268,6 @@ if __name__ == "__main__":
     else:
         raise ValueError("Unknown simulator")
 
-    policy = POLICIES[args.policy]()
+    policy = POLICIES[args.policy](robot)
 
     main(robot, sim, policy, debug)

@@ -16,8 +16,8 @@ from sklearn.model_selection import train_test_split  # type: ignore
 
 from toddlerbot.sim import BaseSim
 from toddlerbot.sim.robot import Robot
-from toddlerbot.tools.sysID.collect_data import get_sine_signal
 from toddlerbot.utils.file_utils import combine_images, find_robot_file_path
+from toddlerbot.utils.math_utils import get_sine_signal
 from toddlerbot.utils.misc_utils import log
 from toddlerbot.visualization.vis_plot import plot_joint_angle_tracking
 

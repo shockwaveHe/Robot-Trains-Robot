@@ -12,7 +12,6 @@ class BaseSim(ABC):
     def __init__(self):
         self.name = "base"
         self.dt = 0.001
-        self.control_dt = 0.01
         self.visualizer = None
 
     @abstractmethod

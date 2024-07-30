@@ -8,6 +8,43 @@ import numpy.typing as npt
 from toddlerbot.utils.misc_utils import precise_sleep
 
 
+def get_random_sine_signal_config(
+    duration: float,
+    control_dt: float,
+    mean: float,
+    frequency_range: List[float],
+    amplitude_range: List[float],
+):
+    frequency = np.random.uniform(*frequency_range)  # type: ignore
+    amplitude = np.random.uniform(*amplitude_range)  # type: ignore
+
+    sine_signal_config: Dict[str, float] = {
+        "frequency": frequency,
+        "amplitude": amplitude,
+        "duration": duration,
+        "control_dt": control_dt,
+        "mean": mean,
+    }
+
+    return sine_signal_config
+
+
+def get_sine_signal(sine_signal_config: Dict[str, float]):
+    """
+    Generates a sinusoidal signal based on the given parameters.
+    """
+    t = np.linspace(
+        0,
+        sine_signal_config["duration"],
+        int(sine_signal_config["duration"] / sine_signal_config["control_dt"]),
+        endpoint=False,
+    )
+    signal = sine_signal_config["mean"] + sine_signal_config["amplitude"] * np.sin(
+        2 * np.pi * sine_signal_config["frequency"] * t
+    )
+    return t, signal
+
+
 def round_floats(obj: Any, precision: int = 6) -> Any:
     """
     Recursively round floats in a list-like structure to a given precision.
@@ -106,6 +143,29 @@ def interpolate(
         return a * t**3 + b * t**2 + p_start
     else:
         raise ValueError("Unsupported interpolation type: {}".format(interp_type))
+
+
+def interpolate_arr(
+    t: str,
+    time_arr: npt.NDArray[np.float32],
+    action_arr: npt.NDArray[np.float32],
+    interp_type: str = "linear",
+):
+    if t <= time_arr[0]:
+        return action_arr[0]
+    elif t >= time_arr[-1]:
+        return action_arr[-1]
+
+    # Find the segment containing current_time
+    for i in range(len(time_arr) - 1):
+        if time_arr[i] <= t < time_arr[i + 1]:
+            p_start = action_arr[i]
+            p_end = action_arr[i + 1]
+            delta_t = time_arr[i + 1] - time_arr[i]
+            return interpolate(p_start, p_end, delta_t, t - time_arr[i], interp_type)
+
+    # Fallback (shouldn't be reached)
+    return action_arr[-1]
 
 
 def interpolate_pos(

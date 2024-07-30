@@ -100,7 +100,7 @@ class RealWorld(BaseSim):
         # Warm up the simulation
         self.start_time = 0.0
 
-        for _ in range(10):
+        for _ in range(100):
             self.get_observation()
 
         self.start_time = time.time()

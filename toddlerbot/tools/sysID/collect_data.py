@@ -10,45 +10,9 @@ import numpy.typing as npt
 
 from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.sim.robot import Robot
+from toddlerbot.utils.math_utils import get_random_sine_signal_config, get_sine_signal
 from toddlerbot.utils.misc_utils import log, precise_sleep, set_seed
 from toddlerbot.visualization.vis_plot import plot_joint_angle_tracking
-
-
-def get_random_sine_signal_config(
-    duration: float,
-    control_dt: float,
-    mean: float,
-    frequency_range: List[float],
-    amplitude_range: List[float],
-):
-    frequency = np.random.uniform(*frequency_range)  # type: ignore
-    amplitude = np.random.uniform(*amplitude_range)  # type: ignore
-
-    sine_signal_config: Dict[str, float] = {
-        "frequency": frequency,
-        "amplitude": amplitude,
-        "duration": duration,
-        "control_dt": control_dt,
-        "mean": mean,
-    }
-
-    return sine_signal_config
-
-
-def get_sine_signal(sine_signal_config: Dict[str, float]):
-    """
-    Generates a sinusoidal signal based on the given parameters.
-    """
-    t = np.linspace(
-        0,
-        sine_signal_config["duration"],
-        int(sine_signal_config["duration"] / sine_signal_config["control_dt"]),
-        endpoint=False,
-    )
-    signal = sine_signal_config["mean"] + sine_signal_config["amplitude"] * np.sin(
-        2 * np.pi * sine_signal_config["frequency"] * t
-    )
-    return t, signal
 
 
 def actuate_single_motor(
