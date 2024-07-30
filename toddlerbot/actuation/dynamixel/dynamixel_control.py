@@ -115,21 +115,6 @@ class DynamixelController(BaseController):
 
         time.sleep(0.2)
 
-    def calibrate_motors(self, transmission_list: List[str]) -> Dict[int, float]:
-        state_dict = self.get_motor_state(retries=-1)
-        init_pos: Dict[int, float] = {}
-        for transmission, (id, state) in zip(transmission_list, state_dict.items()):
-            if transmission == "none":
-                init_pos[id] = np.pi / 4 * round(state.pos / (np.pi / 4))
-            else:
-                init_pos[id] = state.pos
-
-        log(f"Initial positions: {init_pos}", header="Dynamixel")
-
-        self.init_pos = np.array(list(init_pos.values()))
-
-        return init_pos
-
     def close_motors(self):
         open_clients: List[DynamixelClient] = list(DynamixelClient.OPEN_CLIENTS)  # type: ignore
         for open_client in open_clients:

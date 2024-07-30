@@ -515,8 +515,6 @@ def multiprocessing_optimization(
     for joint_name, opt_params in opt_params_dict.items():
         robot.config["joints"][joint_name].update(opt_params)
 
-    robot.write_robot_config()
-
     update_xml(sim_name, sysID_robot_tree, opt_params_dict)
     sysID_robot_tree.write(sysID_file_path)
 

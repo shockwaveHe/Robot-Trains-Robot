@@ -4,6 +4,8 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, List
 
+import numpy as np
+
 from toddlerbot.actuation.dynamixel.dynamixel_control import (
     DynamixelConfig,
     DynamixelController,
@@ -14,6 +16,7 @@ from toddlerbot.actuation.sunny_sky.sunny_sky_control import (
 )
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_ports
+from toddlerbot.utils.misc_utils import log
 
 
 def calibrate_dynamixel(port: str, robot: Robot, group: str):
@@ -32,9 +35,32 @@ def calibrate_dynamixel(port: str, robot: Robot, group: str):
     )
 
     controller = DynamixelController(dynamixel_config, dynamixel_ids)
-    init_pos: Dict[int, float] = controller.calibrate_motors(
-        robot.get_joint_attrs("type", "dynamixel", "transmission", group)
+
+    transmission_list = robot.get_joint_attrs(
+        "type", "dynamixel", "transmission", group
     )
+    state_dict = controller.get_motor_state(retries=-1)
+    init_pos: Dict[int, float] = {}
+    for transmission, (id, state) in zip(transmission_list, state_dict.items()):
+        if transmission == "none":
+            init_pos[id] = np.pi / 4 * round(state.pos / (np.pi / 4))
+        elif transmission == "ankle":
+            act_ank_zero = robot.data_dict["ank_act_zero"]
+
+            motor_name = robot.get_joint_attrs("id", id)[0]
+            if "act_1" in motor_name:
+                act_pos = act_ank_zero[0]
+            else:
+                act_pos = act_ank_zero[1]
+
+            if "right" in motor_name:
+                act_pos = -act_pos
+
+            init_pos[id] = (
+                np.pi / 4 * round((state.pos - act_pos) / (np.pi / 4)) + act_pos
+            )
+        else:
+            init_pos[id] = state.pos
 
     robot.set_joint_attrs("type", "dynamixel", "init_pos", init_pos, group)
 
@@ -94,16 +120,27 @@ def main(robot: Robot):
     if future_dynamixel is not None:
         future_dynamixel.result()
 
-    robot.write_robot_config()
+    executor.shutdown(wait=True)
 
     motor_names = robot.get_joint_attrs("is_passive", False)
     motor_init_pos = robot.get_joint_attrs("is_passive", False, "init_pos")
-    init_pos_config = {name: pos for name, pos in zip(motor_names, motor_init_pos)}
-    init_pos_config_path = os.path.join(robot.root_path, "config_init_pos.json")
-    with open(init_pos_config_path, "w") as f:
-        json.dump(init_pos_config, f, indent=4)
+    motor_angles = {
+        name: round(pos, 4) for name, pos in zip(motor_names, motor_init_pos)
+    }
+    log(f"Motor angles: {motor_angles}", header="Calibration")
 
-    executor.shutdown(wait=True)
+    motor_config_path = os.path.join(robot.root_path, "config_motors.json")
+    if os.path.exists(motor_config_path):
+        with open(motor_config_path, "r") as f:
+            motor_config = json.load(f)
+
+        for motor_name, init_pos in zip(motor_names, motor_init_pos):
+            motor_config[motor_name]["init_pos"] = float(init_pos)
+
+        with open(motor_config_path, "w") as f:
+            json.dump(motor_config, f, indent=4)
+    else:
+        raise FileNotFoundError(f"Could not find {motor_config_path}")
 
 
 if __name__ == "__main__":

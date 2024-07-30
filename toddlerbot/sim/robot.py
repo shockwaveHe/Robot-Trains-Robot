@@ -11,7 +11,7 @@ from yourdfpy import URDF  # type: ignore
 
 from toddlerbot.actuation import JointState
 from toddlerbot.utils.file_utils import find_robot_file_path
-from toddlerbot.utils.misc_utils import log, profile
+from toddlerbot.utils.misc_utils import log
 
 
 class Robot:
@@ -44,10 +44,6 @@ class Robot:
 
         else:
             raise FileNotFoundError(f"No config file found for robot '{self.name}'.")
-
-    def write_robot_config(self):
-        with open(self.config_file_path, "w") as f:
-            json.dump(self.config, f, indent=4)
 
     def load_robot_data(self):
         if os.path.exists(self.cache_file_path):
