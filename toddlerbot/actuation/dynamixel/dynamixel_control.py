@@ -163,21 +163,19 @@ class DynamixelController(BaseController):
 
         state_dict: Dict[int, JointState] = {}
         with self.lock:
-            pos_arr, vel_arr = self.client.read_pos_vel(retries=retries)
+            # pos_arr, vel_arr = self.client.read_pos_vel(retries=retries)
+            pos_arr = self.client.read_pos(retries=retries)
 
         # log(f"Pos: {np.round(pos_arr, 2)}", header="Dynamixel", level="debug")  # type: ignore
         # log(f"Vel: {np.round(vel_arr, 2)}", header="Dynamixel", level="debug")  # type: ignore
 
-        pos_arr_driven = pos_arr - self.init_pos
-        vel_arr_driven = vel_arr
+        pos_arr -= self.init_pos
         for i, id in enumerate(self.motor_ids):
-            state_dict[id] = JointState(
-                time=time.time(), pos=pos_arr_driven[i], vel=vel_arr_driven[i]
-            )
+            state_dict[id] = JointState(time=time.time(), pos=pos_arr[i], vel=0.0)
 
         if len(self.last_state_dict) > 0 and (
-            np.any(pos_arr_driven > self.config.pos_max)
-            or np.any(pos_arr_driven < self.config.pos_min)
+            np.any(pos_arr > self.config.pos_max)
+            or np.any(pos_arr < self.config.pos_min)
         ):
             log("Position out of range!", header="Dynamixel", level="warning")
             state_dict = self.last_state_dict

@@ -21,7 +21,8 @@ class RealWorld(BaseSim):
         self.has_dynamixel = self.robot.config["general"]["has_dynamixel"]
         self.has_sunny_sky = self.robot.config["general"]["has_sunny_sky"]
 
-        self.negated_motor_names: List[str] = []
+        # TODO: Fix the mate directions in the URDF and remove the negated_motor_names
+        self.negated_motor_names: List[str] = ["left_sho_roll", "right_sho_roll"]
         self.last_joint_state_dict: Dict[str, JointState] = {}
 
         self.initialize()
@@ -184,24 +185,27 @@ class RealWorld(BaseSim):
         return joint_state_dict
 
     # @profile()
-    def get_observation(self) -> Dict[str, npt.NDArray[np.float32]]:
+    def get_observation(self, retries: int = 0) -> Dict[str, npt.NDArray[np.float32]]:
         obs_dict: Dict[str, npt.NDArray[np.float32]] = {}
 
+        results: Dict[str, Any] = {}
         futures: Dict[str, Any] = {}
         if self.has_dynamixel:
+            # results["dynamixel"] = self.dynamixel_controller.get_motor_state(retries)
             futures["dynamixel"] = self.executor.submit(
-                self.dynamixel_controller.get_motor_state
+                self.dynamixel_controller.get_motor_state, retries
             )
 
         if self.has_sunny_sky:
+            # results["sunny_sky"] = self.sunny_sky_controller.get_motor_state()
             futures["sunny_sky"] = self.executor.submit(
                 self.sunny_sky_controller.get_motor_state
             )
 
         if self.has_imu:
+            # results["imu"] = self.imu.get_state()
             futures["imu"] = self.executor.submit(self.imu.get_state)
 
-        results: Dict[str, Any] = {}
         # start_times = {key: time.time() for key in futures.keys()}
         for future in as_completed(futures.values()):
             for key, f in futures.items():

@@ -3,18 +3,13 @@
 ##This is based off of the dynamixel SDK
 import atexit
 import time
-from typing import Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+import dynamixel_sdk  # type: ignore
 import numpy as np
 import numpy.typing as npt
 
-import toddlerbot.actuation.dynamixel.dynamixel_sdk as dynamixel_sdk
-from toddlerbot.actuation.dynamixel.dynamixel_sdk import (
-    GroupBulkRead,
-    GroupSyncRead,
-    GroupSyncWrite,
-)
-from toddlerbot.utils.misc_utils import log, profile
+from toddlerbot.utils.misc_utils import log
 
 PROTOCOL_VERSION = 2.0
 
@@ -126,8 +121,8 @@ class DynamixelClient:
                     )
                 )
 
-        self._sync_readers: Dict[Tuple[int, int], GroupSyncRead] = {}
-        self._sync_writers: Dict[Tuple[int, int], GroupSyncWrite] = {}
+        self._sync_readers: Dict[Tuple[int, int], dynamixel_sdk.GroupSyncRead] = {}
+        self._sync_writers: Dict[Tuple[int, int], dynamixel_sdk.GroupSyncWrite] = {}
 
         self._data_dict = None
 
@@ -399,7 +394,7 @@ class DynamixelClient:
                         )
                     )
 
-        sync_reader: GroupSyncRead = self._sync_readers[key]
+        sync_reader: dynamixel_sdk.GroupSyncRead = self._sync_readers[key]
 
         success = False
         while not success:
@@ -432,7 +427,7 @@ class DynamixelClient:
     def sync_write(
         self,
         motor_ids: Sequence[int],
-        values: Sequence[Union[int, float]],
+        values: Sequence[Any],
         address: int,
         size: int,
     ):

@@ -37,12 +37,13 @@ class RotateTorsoPolicy(BasePolicy):
         warm_up_action[robot.motor_ordering.index("right_sho_roll")] = sho_roll_offset
         time_list: List[npt.NDArray[np.float32]] = []
         action_list: List[npt.NDArray[np.float32]] = []
+
+        warm_up_time, warm_up_pos = self.warm_up(warm_up_action, warm_up_duration)
+
+        time_list.append(warm_up_time)
+        action_list.append(warm_up_pos)
+
         for joint_name in ["waist_roll", "waist_yaw"]:
-            warm_up_time, warm_up_pos = self.warm_up(warm_up_action, warm_up_duration)
-
-            time_list.append(warm_up_time)
-            action_list.append(warm_up_pos)
-
             joint_idx = robot.joint_ordering.index(joint_name)
 
             mean = (

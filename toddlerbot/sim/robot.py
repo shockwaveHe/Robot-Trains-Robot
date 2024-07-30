@@ -561,14 +561,7 @@ class Robot:
             joint_state_dict["right_ank_pitch"].pos,
         ) = self.ankle_fk(right_ank_act_pos, "right")
 
-        for joint_name in [
-            "waist_roll",
-            "waist_yaw",
-            "left_ank_roll",
-            "left_ank_pitch",
-            "right_ank_roll",
-            "right_ank_pitch",
-        ]:
+        for joint_name in joint_state_dict:
             if last_joint_state_dict and joint_name in last_joint_state_dict:
                 time_delta = (
                     joint_state_dict[joint_name].time
@@ -580,8 +573,7 @@ class Robot:
                         - last_joint_state_dict[joint_name].pos
                     ) / time_delta
                 else:
-                    print(joint_state_dict)
-                    print(last_joint_state_dict)
+                    raise ValueError("Time delta must be greater than 0.")
 
         return joint_state_dict
 
