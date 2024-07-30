@@ -22,22 +22,27 @@ class RotateTorsoPolicy(BasePolicy):
 
         default_q = np.array(list(robot.init_joint_angles.values()), dtype=np.float32)
 
-        warm_up_duration = 3.0
+        warm_up_duration = 2.0
         sine_duraion = 3.0
         reset_duration = 2.0
         n_sine_signal = 2
         frequency_range = [0.2, 0.5]
         amplitude_min = np.pi / 12
 
+        sho_roll_offset = -np.pi / 12
+        warm_up_action = np.array(
+            list(robot.init_motor_angles.values()), dtype=np.float32
+        )
+        warm_up_action[robot.motor_ordering.index("left_sho_roll")] = sho_roll_offset
+        warm_up_action[robot.motor_ordering.index("right_sho_roll")] = sho_roll_offset
         time_list: List[npt.NDArray[np.float32]] = []
         action_list: List[npt.NDArray[np.float32]] = []
-
-        warm_up_time, warm_up_pos = self.warm_up(warm_up_duration)
-
-        time_list.append(warm_up_time)
-        action_list.append(warm_up_pos)
-
         for joint_name in ["waist_roll", "waist_yaw"]:
+            warm_up_time, warm_up_pos = self.warm_up(warm_up_action, warm_up_duration)
+
+            time_list.append(warm_up_time)
+            action_list.append(warm_up_pos)
+
             joint_idx = robot.joint_ordering.index(joint_name)
 
             mean = (
@@ -45,7 +50,7 @@ class RotateTorsoPolicy(BasePolicy):
             ) / 2
             amplitude_max = robot.joint_limits[joint_name][1] - mean
 
-            for _ in range(n_sine_signal):
+            for i in range(n_sine_signal):
                 sine_signal_config = get_random_sine_signal_config(
                     sine_duraion,
                     self.control_dt,
@@ -60,18 +65,24 @@ class RotateTorsoPolicy(BasePolicy):
                 timed_pos = np.tile(default_q.copy(), (signal.shape[0], 1))
                 timed_pos[:, joint_idx] = signal
                 timed_action = np.zeros_like(timed_pos)
-                for i, pos in enumerate(timed_pos):
+                for j, pos in enumerate(timed_pos):
                     joint_angles = dict(zip(robot.joint_ordering, pos))
                     motor_angles = robot.joint_to_motor_angles(joint_angles)
-                    timed_action[i] = np.array(
+                    sine_action = np.array(
                         list(motor_angles.values()), dtype=np.float32
                     )
+                    timed_action[j] = sine_action + warm_up_action
 
                 time_list.append(time)
                 action_list.append(timed_action)
 
                 reset_time, reset_pos = self.reset(
-                    time[-1], timed_action[-1], reset_duration
+                    time[-1],
+                    timed_action[-1],
+                    warm_up_action
+                    if i < n_sine_signal - 1
+                    else np.zeros_like(timed_action[-1]),
+                    reset_duration,
                 )
 
                 time_list.append(reset_time)

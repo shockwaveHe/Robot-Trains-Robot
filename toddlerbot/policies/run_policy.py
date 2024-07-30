@@ -18,7 +18,6 @@ from toddlerbot.utils.misc_utils import (
     dump_profiling_data,
     log,
     precise_sleep,
-    profile,
     snake2camel,
 )
 from toddlerbot.visualization.vis_plot import (
@@ -139,11 +138,9 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
     motor_angles_list: List[Dict[str, float]] = []
 
     step_idx = 0
-    p_bar = tqdm(
-        total=int(debug["duration"] / policy.control_dt), desc="Running the policy"
-    )
+    p_bar = tqdm(total=n_steps, desc="Running the policy")
     try:
-        while step_idx < debug["duration"] / policy.control_dt:
+        while step_idx < n_steps:
             step_start = time.time()
 
             # Get the latest state from the queue
@@ -251,12 +248,12 @@ if __name__ == "__main__":
     policy = POLICIES[args.policy](robot)
 
     if hasattr(policy, "time_arr"):
-        duration = policy.time_arr[-1] + policy.control_dt  # type: ignore
+        n_steps: float = round(policy.time_arr[-1] / policy.control_dt) + 1  # type: ignore
     else:
-        duration = float("inf")
+        n_steps = float("inf")
 
     debug: Dict[str, Any] = {
-        "duration": duration,
+        "n_steps": n_steps,
         "log": False,
         "plot": True,
         "render": True,

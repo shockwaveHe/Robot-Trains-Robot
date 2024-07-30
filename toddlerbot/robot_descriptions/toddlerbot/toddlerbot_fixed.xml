@@ -496,12 +496,12 @@
   </actuator>
   <tendon>
     <fixed name="waist_roll_coupling" limited="true" range="0 0.001">
-      <joint joint="waist_act_1" coef="-0.29166667" />
+      <joint joint="waist_act_1" coef="0.29166667" />
       <joint joint="waist_act_2" coef="-0.29166667" />
       <joint joint="waist_roll" coef="1" />
     </fixed>
     <fixed name="waist_yaw_coupling" limited="true" range="0 0.001">
-      <joint joint="waist_act_1" coef="-0.41666667" />
+      <joint joint="waist_act_1" coef="0.41666667" />
       <joint joint="waist_act_2" coef="0.41666667" />
       <joint joint="waist_yaw" coef="1" />
     </fixed>
