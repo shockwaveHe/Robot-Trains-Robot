@@ -23,7 +23,6 @@ class RealWorld(BaseSim):
 
         # TODO: Fix the mate directions in the URDF and remove the negated_motor_names
         self.negated_motor_names: List[str] = ["left_sho_roll", "right_sho_roll"]
-        self.last_joint_state_dict: Dict[str, JointState] = {}
 
         self.initialize()
 
@@ -98,13 +97,16 @@ class RealWorld(BaseSim):
         if future_imu is not None:
             self.imu = future_imu.result()
 
-        # Warm up the simulation
-        self.start_time = 0.0
+        # Warm up the motor readings
+        self.start_time = time.time()
+        self.last_joint_state_dict: Dict[str, JointState] = {}
 
         for _ in range(100):
             self.get_observation()
 
+        # Update the start time to be the policy start time
         self.start_time = time.time()
+        self.last_joint_state_dict: Dict[str, JointState] = {}
 
     def negate_motor_angles(self, joint_angles: Dict[str, float]) -> Dict[str, float]:
         joint_angles_negated: Dict[str, float] = {}
@@ -143,13 +145,12 @@ class RealWorld(BaseSim):
             motor_name: motor_state_dict[motor_name]
             for motor_name in self.robot.motor_ordering
         }
+        for motor_name in motor_state_dict:
+            motor_state_dict[motor_name].time -= self.start_time
 
         joint_state_dict = self.robot.motor_to_joint_state(
             motor_state_dict, self.last_joint_state_dict
         )
-        for joint_name in joint_state_dict:
-            joint_state_dict[joint_name].time -= self.start_time
-
         self.last_joint_state_dict = joint_state_dict
 
         return joint_state_dict
