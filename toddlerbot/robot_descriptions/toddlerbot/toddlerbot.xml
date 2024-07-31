@@ -186,7 +186,7 @@
                     <joint name="left_ank_pitch" pos="0 0 0" axis="0 0 1" limited="true" range="-1.0472 0.785398" damping="0.0" armature="0.0" frictionloss="0.0" />
                     <geom rgba="0.631892 0.726687 0.783564 1" mesh="left_ank_pitch_link_visual" class="visual" />
                     <body name="ank_roll_link" pos="0.0015 0 0" quat="0.707107 0 0.707107 0">
-                      <inertial pos="-1.32686e-07 0.0267964 -0.00105269" quat="0.998249 -0.0591498 1.09707e-07 1.62188e-05" mass="0.0248" diaginertia="1.98469e-05 1.88892e-05 4.97682e-06" />
+                      <inertial pos="-3.78939e-08 0.0278865 -0.000608282" quat="0.998149 -0.0608107 9.18402e-06 1.52358e-05" mass="0.0359" diaginertia="2.62848e-05 2.50898e-05 6.4262e-06" />
                       <joint name="left_ank_roll" pos="0 0 0" axis="0 0 1" limited="true" range="-0.785398 0.785398" damping="0.0" armature="0.0" frictionloss="0.0" />
                       <geom rgba="0.615686 0.811765 0.929412 1" mesh="left_ank_roll_link_visual" class="visual" />
                       <geom pos="0 0.025 -0.0226" quat="0.5 0.5 0.5 -0.5" rgba="0.615686 0.811765 0.929412 1" mesh="left_sole_link_visual" class="visual" />
@@ -282,7 +282,7 @@
                     <joint name="right_ank_pitch" pos="0 0 0" axis="0 0 1" limited="true" range="-1.0472 0.785398" damping="0.0" armature="0.0" frictionloss="0.0" />
                     <geom rgba="0.631892 0.726687 0.783564 1" mesh="right_ank_pitch_link_visual" class="visual" />
                     <body name="ank_roll_link_2" pos="0.0015 0 0" quat="0.707107 0 0.707107 0">
-                      <inertial pos="-4.30767e-08 0.0267963 -0.00105226" quat="0.998249 -0.0591539 -3.75592e-06 -1.25753e-06" mass="0.0248" diaginertia="1.98468e-05 1.88891e-05 4.97681e-06" />
+                      <inertial pos="-3.86526e-08 0.0278865 -0.000606631" quat="0.998149 -0.0608186 1.60539e-05 2.70999e-05" mass="0.0359" diaginertia="2.62867e-05 2.50917e-05 6.42597e-06" />
                       <joint name="right_ank_roll" pos="0 0 0" axis="0 0 1" limited="true" range="-0.785398 0.785398" damping="0.0" armature="0.0" frictionloss="0.0" />
                       <geom rgba="0.615686 0.811765 0.929412 1" mesh="right_ank_roll_link_visual" class="visual" />
                       <geom pos="0 0.025 -0.0226" quat="0.5 0.5 0.5 -0.5" rgba="0.615686 0.811765 0.929412 1" mesh="right_sole_link_visual" class="visual" />

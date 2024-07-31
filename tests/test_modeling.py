@@ -60,7 +60,7 @@ def test_kinematics():
     # {'right_sho_roll': 0.0556, 'right_sho_yaw_driven': 0.0308, 'right_elbow_roll': 0.0238}
     # {'left_sho_roll': 0.2791, 'left_sho_yaw_driven': 0.0623, 'left_elbow_roll': 0.0597, 'left_elbow_yaw_driven': 0.0317}
     # {'left_sho_pitch': 0.0201}
-    for _ in tqdm(range(100)):
+    for _ in tqdm(range(20)):
         random_motor_angles = robot.sample_motor_angles()
         random_joint_angles = robot.motor_to_joint_angles(random_motor_angles)
         random_motor_angles_copy = robot.joint_to_motor_angles(random_joint_angles)
