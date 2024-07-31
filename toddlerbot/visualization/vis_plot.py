@@ -312,7 +312,7 @@ def plot_joint_velocity_tracking(
             ax.set_visible(False)  # type: ignore
             continue
 
-        ax.set_ylim(-10, 10)  # type: ignore
+        ax.set_ylim(-5, 5)  # type: ignore
 
         plot_line_graph(
             y_list[i],

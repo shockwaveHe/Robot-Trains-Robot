@@ -23,11 +23,9 @@ class RotateTorsoPolicy(BasePolicy):
         default_q = np.array(list(robot.init_joint_angles.values()), dtype=np.float32)
 
         warm_up_duration = 2.0
-        sine_duraion = 3.0
+        sine_duraion = 4.0
         reset_duration = 2.0
         n_sine_signal = 2
-        frequency_range = [0.2, 0.5]
-        amplitude_min = np.pi / 12
 
         sho_roll_offset = -np.pi / 12
         warm_up_action = np.array(
@@ -43,13 +41,21 @@ class RotateTorsoPolicy(BasePolicy):
         time_list.append(warm_up_time)
         action_list.append(warm_up_pos)
 
-        for joint_name in ["waist_roll", "waist_yaw"]:
+        for joint_name in ["waist_yaw", "waist_roll"]:
             joint_idx = robot.joint_ordering.index(joint_name)
 
             mean = (
                 robot.joint_limits[joint_name][0] + robot.joint_limits[joint_name][1]
             ) / 2
+            amplitude_min = np.pi / 12
             amplitude_max = robot.joint_limits[joint_name][1] - mean
+
+            if joint_name == "waist_yaw":
+                frequency_range = [0.2, 1.0]
+            else:
+                frequency_range = [0.2, 0.5]
+                amplitude_min = np.pi / 12
+                amplitude_max: float = np.pi / 24
 
             for i in range(n_sine_signal):
                 sine_signal_config = get_random_sine_signal_config(

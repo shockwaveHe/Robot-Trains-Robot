@@ -188,6 +188,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
             time_until_next_step = (
                 sim.start_time + policy.control_dt * step_idx - step_end
             )
+            # print(f"time_until_next_step: {time_until_next_step * 1000:.2f} ms")
             if time_until_next_step > 0:
                 precise_sleep(time_until_next_step)
 

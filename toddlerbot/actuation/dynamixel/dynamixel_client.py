@@ -411,10 +411,13 @@ class DynamixelClient:
         success = False
         while not success:
             # fastSyncRead does not work for 2XL and 2XC
+            # time_1 = time.time()
             comm_result = sync_reader.txPacket()  # type: ignore
             comm_time = time.time()
             if comm_result == self.dxl.COMM_SUCCESS:
                 comm_result = sync_reader.rxPacket()  # type: ignore
+            # time_2 = time.time()
+            # print(f"RTT: {time_2 - time_1}")
 
             success = self.handle_packet_result(comm_result, context="sync_read")  # type: ignore
 

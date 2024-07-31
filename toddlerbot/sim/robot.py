@@ -561,7 +561,14 @@ class Robot:
             joint_state_dict["right_ank_pitch"].pos,
         ) = self.ankle_fk(right_ank_act_pos, "right")
 
-        for joint_name in joint_state_dict:
+        for joint_name in [
+            "waist_roll",
+            "waist_yaw",
+            "left_ank_roll",
+            "left_ank_pitch",
+            "right_ank_roll",
+            "right_ank_pitch",
+        ]:
             if last_joint_state_dict and joint_name in last_joint_state_dict:
                 time_delta = (
                     joint_state_dict[joint_name].time
