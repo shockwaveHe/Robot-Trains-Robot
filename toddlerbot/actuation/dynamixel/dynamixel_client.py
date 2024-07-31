@@ -216,7 +216,10 @@ class DynamixelClient:
 
     def read_pos(self, retries: int = 0) -> npt.NDArray[np.float32]:
         """Returns the current positions and velocities."""
-        return self.bulk_read(["pos"], retries=retries)["pos"].copy()
+        return self.sync_read(
+            ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION, DEFAULT_POS_SCALE
+        )
+        # return self.bulk_read(["pos"], retries=retries)["pos"].copy()
 
     def read_vel(self, retries: int = 0) -> npt.NDArray[np.float32]:
         """Returns the current positions and velocities."""

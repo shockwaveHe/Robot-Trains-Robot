@@ -4,7 +4,7 @@ from typing import List
 
 from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.sim.robot import Robot
-from toddlerbot.utils.misc_utils import dump_profiling_data, log, precise_sleep, profile
+from toddlerbot.utils.misc_utils import log
 
 
 # @profile()

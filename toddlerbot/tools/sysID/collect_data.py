@@ -219,6 +219,7 @@ def collect_data(
         time_seq_ref_dict,
         joint_angle_dict,
         joint_angle_ref_dict,
+        robot.joint_limits,
         save_path=exp_folder_path,
         file_name=f"{joint_name}_real_world_tracking_{exp_suffix}",
         title_list=title_list,

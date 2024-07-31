@@ -247,7 +247,7 @@ if __name__ == "__main__":
     robot = Robot(args.robot)
     policy = POLICIES[args.policy](robot)
 
-    if hasattr(policy, "time_arr"):
+    if "real" not in args.sim and hasattr(policy, "time_arr"):
         n_steps: float = round(policy.time_arr[-1] / policy.control_dt) + 1  # type: ignore
     else:
         n_steps = float("inf")
