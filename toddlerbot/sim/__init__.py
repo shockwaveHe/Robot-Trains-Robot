@@ -12,6 +12,7 @@ class BaseSim(ABC):
     def __init__(self):
         self.name = "base"
         self.dt = 0.001
+        self.start_time = 0.0
         self.visualizer = None
 
     @abstractmethod

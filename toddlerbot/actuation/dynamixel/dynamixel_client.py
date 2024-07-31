@@ -214,28 +214,31 @@ class DynamixelClient:
             time.sleep(retry_interval)
             retries -= 1
 
-    def read_pos(self, retries: int = 0) -> npt.NDArray[np.float32]:
+    def read_pos(self, retries: int = 0) -> Tuple[float, npt.NDArray[np.float32]]:
         """Returns the current positions and velocities."""
         return self.sync_read(
             ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION, DEFAULT_POS_SCALE
         )
-        # return self.bulk_read(["pos"], retries=retries)["pos"].copy()
 
-    def read_vel(self, retries: int = 0) -> npt.NDArray[np.float32]:
+    def read_vel(self, retries: int = 0) -> Tuple[float, npt.NDArray[np.float32]]:
         """Returns the current positions and velocities."""
-        return self.bulk_read(["vel"], retries=retries)["vel"].copy()
+        return self.sync_read(
+            ADDR_PRESENT_VELOCITY, LEN_PRESENT_VELOCITY, DEFAULT_VEL_SCALE
+        )
 
-    def read_cur(self, retries: int = 0) -> npt.NDArray[np.float32]:
+    def read_cur(self, retries: int = 0) -> Tuple[float, npt.NDArray[np.float32]]:
         """Returns the current positions and velocities."""
-        return self.bulk_read(["cur"], retries=retries)["cur"].copy()
+        return self.sync_read(
+            ADDR_PRESENT_CURRENT, LEN_PRESENT_CURRENT, DEFAULT_CUR_SCALE
+        )
 
     # @profile()
     def read_pos_vel(
         self, retries: int = 0
-    ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
+    ) -> Tuple[float, npt.NDArray[np.float32], npt.NDArray[np.float32]]:
         """Returns the current positions and velocities."""
-        data_dict = self.bulk_read(["pos", "vel"], retries=retries)
-        return data_dict["pos"].copy(), data_dict["vel"].copy()
+        comm_time, data_dict = self.bulk_read(["pos", "vel"], retries=retries)
+        return comm_time, data_dict["pos"].copy(), data_dict["vel"].copy()
 
     def write_desired_pos(
         self, motor_ids: Sequence[int], positions: npt.NDArray[np.float32]
@@ -287,7 +290,7 @@ class DynamixelClient:
     # @profile()
     def bulk_read(
         self, attr_list: List[str], retries: int
-    ) -> Dict[str, npt.NDArray[np.float32]]:
+    ) -> Tuple[float, Dict[str, npt.NDArray[np.float32]]]:
         """Reads values from a group of motors.
 
         Args:
@@ -306,10 +309,15 @@ class DynamixelClient:
                 for attr in attr_list
             }
 
+        comm_time = 0.0
         success = False
         while not success:
             # fastSyncRead does not work for 2XL and 2XC
-            comm_result = self._bulk_reader.txRxPacket()  # type: ignore
+            comm_result = self._bulk_reader.txPacket()  # type: ignore
+            comm_time = time.time()
+            if comm_result == self.dxl.COMM_SUCCESS:
+                comm_result = self._bulk_reader.rxPacket()  # type: ignore
+
             success = self.handle_packet_result(comm_result, context="bulk_read")  # type: ignore
 
             if retries == 0:
@@ -318,7 +326,7 @@ class DynamixelClient:
             retries -= 1
 
         if not success:
-            return self._data_dict
+            return comm_time, self._data_dict
 
         errored_ids: List[int] = []
         for i, motor_id in enumerate(self.motor_ids):
@@ -367,11 +375,11 @@ class DynamixelClient:
                 level="error",
             )
 
-        return self._data_dict
+        return comm_time, self._data_dict
 
     def sync_read(
         self, address: int, size: int, scale: float
-    ) -> npt.NDArray[np.float32]:
+    ) -> Tuple[float, npt.NDArray[np.float32]]:
         """Reads values from a group of motors.
 
         Args:
@@ -399,10 +407,15 @@ class DynamixelClient:
 
         sync_reader: dynamixel_sdk.GroupSyncRead = self._sync_readers[key]
 
+        comm_time = 0.0
         success = False
         while not success:
             # fastSyncRead does not work for 2XL and 2XC
-            comm_result = sync_reader.txRxPacket()  # type: ignore
+            comm_result = sync_reader.txPacket()  # type: ignore
+            comm_time = time.time()
+            if comm_result == self.dxl.COMM_SUCCESS:
+                comm_result = sync_reader.rxPacket()  # type: ignore
+
             success = self.handle_packet_result(comm_result, context="sync_read")  # type: ignore
 
         errored_ids: List[int] = []
@@ -425,7 +438,7 @@ class DynamixelClient:
                 level="error",
             )
 
-        return data_arr
+        return comm_time, data_arr
 
     def sync_write(
         self,

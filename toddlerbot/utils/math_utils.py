@@ -1,3 +1,4 @@
+import bisect
 import time
 from dataclasses import is_dataclass
 from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
@@ -156,16 +157,14 @@ def interpolate_arr(
     elif t >= time_arr[-1]:
         return action_arr[-1]
 
-    # Find the segment containing current_time
-    for i in range(len(time_arr) - 1):
-        if time_arr[i] <= t < time_arr[i + 1]:
-            p_start = action_arr[i]
-            p_end = action_arr[i + 1]
-            duration = time_arr[i + 1] - time_arr[i]
-            return interpolate(p_start, p_end, duration, t - time_arr[i], interp_type)
+    # Use binary search to find the segment containing current_time
+    idx = bisect.bisect_left(time_arr, t) - 1
+    idx = max(0, min(idx, len(time_arr) - 2))  # Ensure idx is within valid range
 
-    # Fallback (shouldn't be reached)
-    return action_arr[-1]
+    p_start = action_arr[idx]
+    p_end = action_arr[idx + 1]
+    duration = time_arr[idx + 1] - time_arr[idx]
+    return interpolate(p_start, p_end, duration, t - time_arr[idx], interp_type)
 
 
 def interpolate_pos(

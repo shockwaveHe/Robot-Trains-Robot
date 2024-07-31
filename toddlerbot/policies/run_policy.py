@@ -18,6 +18,7 @@ from toddlerbot.utils.misc_utils import (
     dump_profiling_data,
     log,
     precise_sleep,
+    # profile,
     snake2camel,
 )
 from toddlerbot.visualization.vis_plot import (
@@ -141,7 +142,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
     p_bar = tqdm(total=n_steps, desc="Running the policy")
     try:
         while step_idx < n_steps:
-            step_start = time.time()
+            # step_start = time.time()
 
             # Get the latest state from the queue
             obs_dict = sim.get_observation()
@@ -159,7 +160,6 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
             obs_dict_list.append(obs_dict)
             motor_angles_list.append(motor_angles)
 
-            step_time = time.time() - step_start
             step_idx += 1
 
             p_bar_steps = int(1 / policy.control_dt)
@@ -177,13 +177,17 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
                     header=header_name,
                     level="debug",
                 )
-                log(
-                    f"Control latency: {step_time * 1000:.2f} ms",
-                    header=header_name,
-                    level="debug",
-                )
 
-            time_until_next_step = policy.control_dt - step_time
+            step_end = time.time()
+            # log(
+            #     f"Control latency: {(step_end - step_start) * 1000:.2f} ms",
+            #     header=header_name,
+            #     level="debug",
+            # )
+
+            time_until_next_step = (
+                sim.start_time + policy.control_dt * step_idx - step_end
+            )
             if time_until_next_step > 0:
                 precise_sleep(time_until_next_step)
 
