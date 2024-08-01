@@ -1,6 +1,6 @@
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -130,7 +130,7 @@ class RealWorld(BaseSim):
     # @profile()
     def process_motor_reading(
         self, results: Dict[str, Dict[int, JointState]]
-    ) -> Dict[str, JointState]:
+    ) -> Tuple[Dict[str, JointState], Dict[str, JointState]]:
         motor_state_dict: Dict[str, JointState] = {}
 
         if self.has_dynamixel:
@@ -162,7 +162,7 @@ class RealWorld(BaseSim):
         )
         self.last_joint_state_dict = joint_state_dict
 
-        return joint_state_dict
+        return motor_state_dict, joint_state_dict
 
     def get_torso_pose(self):
         return np.array([0, 0, 0.4]), np.eye(3)
@@ -190,7 +190,7 @@ class RealWorld(BaseSim):
                     # log(f"Time taken for {key}: {end_time - start_times[key]}", header=snake2camel(self.name), level="debug")
                     break
 
-        joint_state_dict = self.process_motor_reading(results)
+        _, joint_state_dict = self.process_motor_reading(results)
 
         return joint_state_dict
 
@@ -225,10 +225,10 @@ class RealWorld(BaseSim):
                     # log(f"Time taken for {key}: {end_time - start_times[key]}", header=snake2camel(self.name), level="debug")
                     break
 
-        joint_state_dict = self.process_motor_reading(results)
+        motor_state_dict, joint_state_dict = self.process_motor_reading(results)
 
-        obs_arr = self.robot.joint_state_to_obs_arr(joint_state_dict)
-        for k, v in obs_arr.items():
+        obs = self.robot.state_to_obs(motor_state_dict, joint_state_dict)
+        for k, v in obs.items():
             obs_dict[k] = v
 
         if self.has_imu:

@@ -431,9 +431,15 @@ class Robot:
             if self.is_valid_ankle_point(random_point, direction, side):
                 return random_point
 
-    def joint_state_to_obs_arr(
-        self, joint_state_dict: Dict[str, JointState]
+    def state_to_obs(
+        self,
+        motor_state_dict: Dict[str, JointState],
+        joint_state_dict: Dict[str, JointState],
     ) -> Dict[str, npt.NDArray[np.float32]]:
+        a_obs: List[float] = []
+        for motor_name in motor_state_dict:
+            a_obs.append(motor_state_dict[motor_name].pos)
+
         q_obs: List[float] = []
         dq_obs: List[float] = []
         for joint_name in joint_state_dict:
@@ -444,6 +450,7 @@ class Robot:
             "time": np.array(
                 [list(joint_state_dict.values())[0].time], dtype=np.float32
             ),
+            "a": np.array(a_obs, dtype=np.float32),
             "q": np.array(q_obs, dtype=np.float32),
             "dq": np.array(dq_obs, dtype=np.float32),
         }

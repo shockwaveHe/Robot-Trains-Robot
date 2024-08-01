@@ -80,6 +80,17 @@ class MuJoCoSim(BaseSim):
         ).reshape(3, 3)
         return torso_pos, torso_mat
 
+    def get_motor_state(self):
+        motor_state_dict: Dict[str, JointState] = {}
+        for name in self.robot.motor_ordering:
+            motor_state_dict[name] = JointState(
+                time=time.time() - self.start_time,
+                pos=self.data.joint(name).qpos.item(),  # type: ignore
+                vel=self.data.joint(name).qvel.item(),  # type: ignore
+            )
+
+        return motor_state_dict
+
     def get_joint_state(self):
         joint_state_dict: Dict[str, JointState] = {}
         for name in self.robot.joint_ordering:
@@ -93,10 +104,11 @@ class MuJoCoSim(BaseSim):
 
     def get_observation(self):
         obs_dict: Dict[str, npt.NDArray[np.float32]] = {}
+        motor_state_dict = self.get_motor_state()
         joint_state_dict = self.get_joint_state()
 
-        obs_arr = self.robot.joint_state_to_obs_arr(joint_state_dict)
-        for k, v in obs_arr.items():
+        obs = self.robot.state_to_obs(motor_state_dict, joint_state_dict)
+        for k, v in obs.items():
             obs_dict[k] = v
 
         obs_dict["imu_quat"] = np.array(

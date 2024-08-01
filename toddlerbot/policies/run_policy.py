@@ -64,6 +64,7 @@ def plot_results(
     ang_vel_obs_list: List[npt.NDArray[np.float32]] = []
     time_seq_dict: Dict[str, List[float]] = {}
     time_seq_ref_dict: Dict[str, List[float]] = {}
+    motor_angle_dict: Dict[str, List[float]] = {}
     joint_angle_dict: Dict[str, List[float]] = {}
     joint_vel_dict: Dict[str, List[float]] = {}
     for i, obs_dict in enumerate(obs_dict_list):
@@ -82,11 +83,18 @@ def plot_results(
             # Assume the state fetching is instantaneous
             time_seq_dict[joint_name].append(obs_time)
             time_seq_ref_dict[joint_name].append(i * control_dt)
+            motor_angle_dict[joint_name].append(obs_dict["a"][j])
             joint_angle_dict[joint_name].append(obs_dict["q"][j])
             joint_vel_dict[joint_name].append(obs_dict["dq"][j])
 
+    motor_angle_ref_dict: Dict[str, List[float]] = {}
     joint_angle_ref_dict: Dict[str, List[float]] = {}
     for motor_angles in motor_angles_list:
+        for motor_name, motor_angle in motor_angles.items():
+            if motor_name not in motor_angle_ref_dict:
+                motor_angle_ref_dict[motor_name] = []
+            motor_angle_ref_dict[motor_name].append(motor_angle)
+
         joint_angle_ref = robot.motor_to_joint_angles(motor_angles)
         for joint_name, joint_angle in joint_angle_ref.items():
             if joint_name not in joint_angle_ref_dict:
@@ -102,6 +110,15 @@ def plot_results(
         time_obs_list,
         ang_vel_obs_list,
         save_path=exp_folder_path,
+    )
+    plot_joint_angle_tracking(
+        time_seq_dict,
+        time_seq_ref_dict,
+        motor_angle_dict,
+        motor_angle_ref_dict,
+        robot.joint_limits,
+        save_path=exp_folder_path,
+        file_name="motor_angle_tracking",
     )
     plot_joint_angle_tracking(
         time_seq_dict,
