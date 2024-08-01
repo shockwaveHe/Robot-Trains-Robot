@@ -33,6 +33,7 @@ class RotateTorsoPolicy(BasePolicy):
         )
         warm_up_action[robot.motor_ordering.index("left_sho_roll")] = sho_roll_offset
         warm_up_action[robot.motor_ordering.index("right_sho_roll")] = sho_roll_offset
+
         time_list: List[npt.NDArray[np.float32]] = []
         action_list: List[npt.NDArray[np.float32]] = []
 
