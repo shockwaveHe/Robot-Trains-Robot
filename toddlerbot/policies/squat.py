@@ -136,24 +136,24 @@ class SquatPolicy(BasePolicy):
         time_curr = obs_dict["time"].item()
         action = np.array(interpolate_arr(time_curr, self.time_arr, self.action_arr))
 
-        left_knee_pitch = obs_dict["q"][
-            self.robot.joint_ordering.index("left_knee_pitch")
-        ]
-        right_knee_pitch = obs_dict["q"][
-            self.robot.joint_ordering.index("right_knee_pitch")
-        ]
-        left_ank_pitch = obs_dict["q"][
-            self.robot.joint_ordering.index("left_ank_pitch")
-        ]
-        right_ank_pitch = obs_dict["q"][
-            self.robot.joint_ordering.index("right_ank_pitch")
-        ]
+        # left_knee_pitch = obs_dict["q"][
+        #     self.robot.joint_ordering.index("left_knee_pitch")
+        # ]
+        # right_knee_pitch = obs_dict["q"][
+        #     self.robot.joint_ordering.index("right_knee_pitch")
+        # ]
+        # left_ank_pitch = obs_dict["q"][
+        #     self.robot.joint_ordering.index("left_ank_pitch")
+        # ]
+        # right_ank_pitch = obs_dict["q"][
+        #     self.robot.joint_ordering.index("right_ank_pitch")
+        # ]
 
-        action[self.robot.motor_ordering.index("left_hip_pitch")] = (
-            -left_ank_pitch - left_knee_pitch
-        )
-        action[self.robot.motor_ordering.index("right_hip_pitch")] = (
-            right_ank_pitch - right_knee_pitch
-        )
+        # action[self.robot.motor_ordering.index("left_hip_pitch")] = (
+        #     -left_ank_pitch - left_knee_pitch
+        # )
+        # action[self.robot.motor_ordering.index("right_hip_pitch")] = (
+        #     right_ank_pitch - right_knee_pitch
+        # )
 
         return action

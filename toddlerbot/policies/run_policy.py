@@ -73,6 +73,12 @@ def plot_results(
         euler_obs_list.append(obs_dict["imu_euler"])
         ang_vel_obs_list.append(obs_dict["imu_ang_vel"])
 
+        for j, motor_name in enumerate(robot.motor_ordering):
+            if motor_name not in motor_angle_dict:
+                motor_angle_dict[motor_name] = []
+
+            motor_angle_dict[motor_name].append(obs_dict["a"][j])
+
         for j, joint_name in enumerate(robot.joint_ordering):
             if joint_name not in time_seq_dict:
                 time_seq_ref_dict[joint_name] = []
@@ -83,9 +89,15 @@ def plot_results(
             # Assume the state fetching is instantaneous
             time_seq_dict[joint_name].append(obs_time)
             time_seq_ref_dict[joint_name].append(i * control_dt)
-            motor_angle_dict[joint_name].append(obs_dict["a"][j])
             joint_angle_dict[joint_name].append(obs_dict["q"][j])
             joint_vel_dict[joint_name].append(obs_dict["dq"][j])
+
+    time_seq_dict_copy: Dict[str, List[float]] = {}
+    time_seq_ref_dict_copy: Dict[str, List[float]] = {}
+    for joint_name, time_seq_ref in time_seq_ref_dict.items():
+        motor_name = robot.motor_ordering[robot.joint_ordering.index(joint_name)]
+        time_seq_dict_copy[motor_name] = time_seq_dict[joint_name]
+        time_seq_ref_dict_copy[motor_name] = time_seq_ref
 
     motor_angle_ref_dict: Dict[str, List[float]] = {}
     joint_angle_ref_dict: Dict[str, List[float]] = {}
@@ -112,8 +124,8 @@ def plot_results(
         save_path=exp_folder_path,
     )
     plot_joint_angle_tracking(
-        time_seq_dict,
-        time_seq_ref_dict,
+        time_seq_dict_copy,
+        time_seq_ref_dict_copy,
         motor_angle_dict,
         motor_angle_ref_dict,
         robot.joint_limits,
@@ -165,8 +177,8 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
             target_act = default_act + action
 
             motor_angles: Dict[str, float] = {}
-            for motor_name, target_act_pos in zip(robot.motor_ordering, target_act):
-                motor_angles[motor_name] = target_act_pos
+            for motor_name, act in zip(robot.motor_ordering, target_act):
+                motor_angles[motor_name] = act
 
             sim.set_motor_angles(motor_angles)
 
