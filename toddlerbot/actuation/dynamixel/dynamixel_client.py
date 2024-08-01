@@ -240,6 +240,21 @@ class DynamixelClient:
         comm_time, data_dict = self.bulk_read(["pos", "vel"], retries=retries)
         return comm_time, data_dict["pos"].copy(), data_dict["vel"].copy()
 
+    def read_pos_vel_cur(
+        self, retries: int = 0
+    ) -> Tuple[
+        float, npt.NDArray[np.float32], npt.NDArray[np.float32], npt.NDArray[np.float32]
+    ]:
+        # NEED to update line 115 and 349 if calling this function
+        """Returns the current positions and velocities."""
+        comm_time, data_dict = self.bulk_read(["pos", "vel", "cur"], retries=retries)
+        return (
+            comm_time,
+            data_dict["pos"].copy(),
+            data_dict["vel"].copy(),
+            data_dict["cur"].copy(),
+        )
+
     def write_desired_pos(
         self, motor_ids: Sequence[int], positions: npt.NDArray[np.float32]
     ):

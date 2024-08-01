@@ -163,11 +163,25 @@ class DynamixelController(BaseController):
 
         state_dict: Dict[int, JointState] = {}
         with self.lock:
-            time, pos_arr, vel_arr = self.client.read_pos_vel(retries=retries)
             # time, pos_arr = self.client.read_pos(retries=retries)
+            time, pos_arr, vel_arr = self.client.read_pos_vel(retries=retries)
+            # time, pos_arr, vel_arr, cur_arr = self.client.read_pos_vel_cur(
+            #     retries=retries
+            # )
 
-        # log(f"Pos: {np.round(pos_arr, 2)}", header="Dynamixel", level="debug")  # type: ignore
-        # log(f"Vel: {np.round(vel_arr, 2)}", header="Dynamixel", level="debug")  # type: ignore
+        # log(f"Pos: {np.round(pos_arr, 4)}", header="Dynamixel", level="debug")  # type: ignore
+        # log(f"Vel: {np.round(vel_arr, 4)}", header="Dynamixel", level="debug")  # type: ignore
+        # log(f"Cur: {np.round(cur_arr, 4)}", header="Dynamixel", level="debug")  # type: ignore
+
+        # self.waist_act_1_max_current = max(
+        #     self.waist_act_1_max_current, abs(cur_arr[2])
+        # )
+        # self.waist_act_2_max_current = max(
+        #     self.waist_act_2_max_current, abs(cur_arr[3])
+        # )
+        # print(
+        #     f"Max current: {self.waist_act_1_max_current:.2f}, {self.waist_act_2_max_current:.2f}"
+        # )
 
         pos_arr -= self.init_pos
         for i, id in enumerate(self.motor_ids):
