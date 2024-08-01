@@ -98,7 +98,7 @@ class Robot:
             - graph.get("left_calf_link")[0][2, 3]  # type: ignore
         )
         # from the knee joint to the ankle roll joint
-        offsets["knee_to_ank_roll_z"] = (
+        offsets["knee_to_ank_pitch_z"] = (
             graph.get("left_calf_link")[0][2, 3] - graph.get("ank_pitch_link")[0][2, 3]  # type: ignore
         )
         # from the hip center to the foot
