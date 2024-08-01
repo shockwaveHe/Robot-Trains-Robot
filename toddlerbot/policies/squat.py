@@ -19,9 +19,10 @@ class SquatPolicy(BasePolicy):
         default_q = np.array(list(robot.init_joint_angles.values()), dtype=np.float32)
 
         warm_up_duration = 2.0
-        squat_duration = 4.0
-        reset_duration = 2.0
-        n_trials = 2
+        squat_duration = 3.0
+        pause_duration = 1.0
+        reset_duration = 3.0
+        n_trials = 3
 
         warm_up_action = np.array(
             list(robot.init_motor_angles.values()), dtype=np.float32
@@ -35,46 +36,59 @@ class SquatPolicy(BasePolicy):
         action_list.append(warm_up_pos)
 
         for i in range(n_trials):
-            time = np.arange(0, squat_duration, self.control_dt, dtype=np.float32)  # type: ignore
-            time += time_list[-1][-1] + self.control_dt
-
             pos_end = default_q.copy()
-            for side in ["left", "right"]:
-                knee_pos = np.random.uniform(
-                    robot.joint_limits[f"{side}_knee_pitch"][0],
-                    robot.joint_limits[f"{side}_knee_pitch"][1],
+            knee_angle = abs(
+                np.random.uniform(
+                    robot.joint_limits["left_knee_pitch"][0],
+                    robot.joint_limits["left_knee_pitch"][1],
                 )
-                c = (
-                    robot.data_dict["offsets"]["knee_to_ank_pitch_z"]
-                    / robot.data_dict["offsets"]["hip_pitch_to_knee_z"]
-                )
-                ank_pitch_pos = np.arctan2(np.sin(knee_pos), np.cos(knee_pos) + c)
-                hip_pitch_pos = knee_pos - ank_pitch_pos
+            )
+            c = (
+                robot.data_dict["offsets"]["knee_to_ank_pitch_z"]
+                / robot.data_dict["offsets"]["hip_pitch_to_knee_z"]
+            )
+            ank_pitch_angle = np.arctan2(np.sin(knee_angle), np.cos(knee_angle) + c)
+            hip_pitch_angle = knee_angle - ank_pitch_angle
 
-                pos_end[robot.joint_ordering.index(f"{side}_hip_pitch")] = hip_pitch_pos
-                pos_end[robot.joint_ordering.index(f"{side}_knee_pitch")] = knee_pos
-                pos_end[robot.joint_ordering.index(f"{side}_ank_pitch")] = ank_pitch_pos
+            pos_end[robot.joint_ordering.index("left_hip_pitch")] = -hip_pitch_angle
+            pos_end[robot.joint_ordering.index("right_hip_pitch")] = hip_pitch_angle
+            pos_end[robot.joint_ordering.index("left_knee_pitch")] = knee_angle
+            pos_end[robot.joint_ordering.index("right_knee_pitch")] = -knee_angle
+            pos_end[robot.joint_ordering.index("left_ank_pitch")] = -ank_pitch_angle
+            pos_end[robot.joint_ordering.index("right_ank_pitch")] = -ank_pitch_angle
 
             joint_angles = dict(zip(robot.joint_ordering, pos_end))
             motor_angles = robot.joint_to_motor_angles(joint_angles)
             action_end = np.array(list(motor_angles.values()), dtype=np.float32)
-            timed_action = np.tile(action_end.copy(), (time.shape[0], 1))
-            for i, t in enumerate(time):
+
+            squat_time = np.arange(0, squat_duration, self.control_dt, dtype=np.float32)  # type: ignore
+            squat_action = np.tile(action_end.copy(), (squat_time.shape[0], 1))
+            for i, t in enumerate(squat_time):
                 action = interpolate(
                     np.zeros_like(action_end),
                     action_end,
                     squat_duration,
                     t,
                 )
-                timed_action[i] = action + warm_up_action
+                squat_action[i] = action + warm_up_action
 
-            time_list.append(time)
-            action_list.append(timed_action)
+            squat_time += time_list[-1][-1] + self.control_dt
+            time_list.append(squat_time)
+            action_list.append(squat_action)
+
+            pause_time = np.arange(0, pause_duration, self.control_dt, dtype=np.float32)  # type: ignore
+            pause_time += time_list[-1][-1] + self.control_dt
+            pause_action = np.tile(action_end.copy(), (pause_time.shape[0], 1))
+
+            time_list.append(pause_time)
+            action_list.append(pause_action)
 
             reset_time, reset_pos = self.reset(
-                time[-1],
-                timed_action[-1],
-                warm_up_action if i < n_trials - 1 else np.zeros_like(timed_action[-1]),
+                time_list[-1][-1],
+                action_list[-1][-1],
+                warm_up_action
+                if i < n_trials - 1
+                else np.zeros_like(action_list[-1][-1]),
                 reset_duration,
             )
 

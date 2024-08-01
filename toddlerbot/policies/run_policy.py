@@ -126,11 +126,7 @@ def run_policy(
 
 # @profile()
 def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
-    exp_name = f"stand_{robot.name}_{sim.name}"
-    time_str = time.strftime("%Y%m%d_%H%M%S")
-    exp_folder_path = f"results/{time_str}_{exp_name}"
-
-    header_name = snake2camel(f"sim2{sim.name}")
+    header_name = snake2camel(sim.name)
 
     # default_q = np.array(list(robot.init_joint_angles.values()), dtype=np.float32)
     default_act = np.array(list(robot.init_motor_angles.values()), dtype=np.float32)
@@ -196,7 +192,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
         log("KeyboardInterrupt recieved. Closing...", header=header_name)
 
     finally:
-        exp_name = f"sim2{sim.name}_{robot.name}"
+        exp_name = f"{policy.name}_{robot.name}_{sim.name}"
         time_str = time.strftime("%Y%m%d_%H%M%S")
         exp_folder_path = f"results/{time_str}_{exp_name}"
 

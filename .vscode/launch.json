@@ -43,22 +43,6 @@
             ]
         },
         {
-            "name": "Python: stand_toddlerbot_real",
-            "type": "python",
-            "request": "launch",
-            "program": "toddlerbot/policies/run_policy.py",
-            "console": "integratedTerminal",
-            "justMyCode": true,
-            "args": [
-                "--robot",
-                "toddlerbot",
-                "--sim",
-                "real",
-                "--policy",
-                "stand",
-            ]
-        },
-        {
             "name": "Python: rotate_torso_toddlerbot_mujoco",
             "type": "python",
             "request": "launch",
@@ -72,6 +56,22 @@
                 "mujoco",
                 "--policy",
                 "rotate_torso",
+            ]
+        },
+        {
+            "name": "Python: squat_toddlerbot_mujoco",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/policies/run_policy.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot",
+                "toddlerbot",
+                "--sim",
+                "mujoco",
+                "--policy",
+                "squat",
             ]
         },
         {

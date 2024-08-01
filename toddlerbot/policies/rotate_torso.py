@@ -25,7 +25,7 @@ class RotateTorsoPolicy(BasePolicy):
         warm_up_duration = 2.0
         sine_duraion = 4.0
         reset_duration = 2.0
-        n_sine_signal = 2
+        n_trials = 3
 
         sho_roll_offset = -np.pi / 12
         warm_up_action = np.array(
@@ -57,7 +57,7 @@ class RotateTorsoPolicy(BasePolicy):
                 amplitude_min = np.pi / 12
                 amplitude_max: float = np.pi / 24
 
-            for i in range(n_sine_signal):
+            for i in range(n_trials):
                 sine_signal_config = get_random_sine_signal_config(
                     sine_duraion,
                     self.control_dt,
@@ -65,30 +65,30 @@ class RotateTorsoPolicy(BasePolicy):
                     frequency_range,
                     [amplitude_min, amplitude_max],
                 )
-                time, signal = get_sine_signal(sine_signal_config)
+                rotate_time, signal = get_sine_signal(sine_signal_config)
                 if len(time_list) > 0:
-                    time += time_list[-1][-1] + self.control_dt
+                    rotate_time += time_list[-1][-1] + self.control_dt
 
-                timed_pos = np.tile(default_q.copy(), (signal.shape[0], 1))
-                timed_pos[:, joint_idx] = signal
-                timed_action = np.zeros_like(timed_pos)
-                for j, pos in enumerate(timed_pos):
+                rotate_pos = np.tile(default_q.copy(), (signal.shape[0], 1))
+                rotate_pos[:, joint_idx] = signal
+                rotate_action = np.zeros_like(rotate_pos)
+                for j, pos in enumerate(rotate_pos):
                     joint_angles = dict(zip(robot.joint_ordering, pos))
                     motor_angles = robot.joint_to_motor_angles(joint_angles)
                     sine_action = np.array(
                         list(motor_angles.values()), dtype=np.float32
                     )
-                    timed_action[j] = sine_action + warm_up_action
+                    rotate_action[j] = sine_action + warm_up_action
 
-                time_list.append(time)
-                action_list.append(timed_action)
+                time_list.append(rotate_time)
+                action_list.append(rotate_action)
 
                 reset_time, reset_pos = self.reset(
-                    time[-1],
-                    timed_action[-1],
+                    time_list[-1][-1],
+                    action_list[-1][-1],
                     warm_up_action
-                    if i < n_sine_signal - 1
-                    else np.zeros_like(timed_action[-1]),
+                    if i < n_trials - 1
+                    else np.zeros_like(action_list[-1][-1]),
                     reset_duration,
                 )
 
