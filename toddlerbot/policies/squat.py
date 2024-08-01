@@ -18,25 +18,35 @@ class SquatPolicy(BasePolicy):
 
         default_q = np.array(list(robot.init_joint_angles.values()), dtype=np.float32)
 
-        warm_up_duration = 2.0
+        prep_duration = 10.0
+        warm_up_duration = 1.0
         squat_duration = 3.0
-        pause_duration = 1.0
+        pause_duration = 2.0
         reset_duration = 3.0
         n_trials = 3
-
-        warm_up_action = np.array(
-            list(robot.init_motor_angles.values()), dtype=np.float32
-        )
-        warm_up_action[robot.motor_ordering.index("left_sho_yaw_drive")] = -np.pi / 2
-        warm_up_action[robot.motor_ordering.index("right_sho_yaw_drive")] = np.pi / 2
 
         time_list: List[npt.NDArray[np.float32]] = []
         action_list: List[npt.NDArray[np.float32]] = []
 
-        warm_up_time, warm_up_pos = self.warm_up(warm_up_action, warm_up_duration)
+        prep_act = np.array(list(robot.init_motor_angles.values()), dtype=np.float32)
+        prep_time, prep_action = self.warm_up(prep_act, prep_duration)
+
+        time_list.append(prep_time)
+        action_list.append(prep_action)
+
+        warm_up_act = np.array(list(robot.init_motor_angles.values()), dtype=np.float32)
+        # warm_up_act[robot.motor_ordering.index("left_sho_pitch")] = -np.pi / 48
+        # warm_up_act[robot.motor_ordering.index("right_sho_pitch")] = np.pi / 48
+        warm_up_act[robot.motor_ordering.index("left_sho_roll")] = -np.pi / 24
+        warm_up_act[robot.motor_ordering.index("right_sho_roll")] = -np.pi / 24
+        # warm_up_act[robot.motor_ordering.index("left_sho_yaw_drive")] = -np.pi / 2
+        # warm_up_act[robot.motor_ordering.index("right_sho_yaw_drive")] = np.pi / 2
+
+        warm_up_time, warm_up_action = self.warm_up(warm_up_act, warm_up_duration)
+        warm_up_time += time_list[-1][-1] + self.control_dt
 
         time_list.append(warm_up_time)
-        action_list.append(warm_up_pos)
+        action_list.append(warm_up_action)
 
         for i in range(n_trials):
             pos_end = default_q.copy()
@@ -60,12 +70,12 @@ class SquatPolicy(BasePolicy):
             pos_end[robot.joint_ordering.index("left_ank_pitch")] = -ank_pitch_angle
             pos_end[robot.joint_ordering.index("right_ank_pitch")] = -ank_pitch_angle
 
-            pos_end[robot.joint_ordering.index("left_sho_pitch")] = np.pi / 6
-            pos_end[robot.joint_ordering.index("right_sho_pitch")] = -np.pi / 6
-            pos_end[robot.joint_ordering.index("left_elbow_roll")] = np.pi / 6
-            pos_end[robot.joint_ordering.index("right_elbow_roll")] = np.pi / 6
-            pos_end[robot.joint_ordering.index("left_wrist_roll_driven")] = -np.pi / 3
-            pos_end[robot.joint_ordering.index("right_wrist_roll_driven")] = np.pi / 3
+            # pos_end[robot.joint_ordering.index("left_sho_pitch")] = np.pi / 8
+            # pos_end[robot.joint_ordering.index("right_sho_pitch")] = -np.pi / 8
+            # pos_end[robot.joint_ordering.index("left_elbow_roll")] = np.pi / 6
+            # pos_end[robot.joint_ordering.index("right_elbow_roll")] = np.pi / 6
+            # pos_end[robot.joint_ordering.index("left_wrist_roll_driven")] = -np.pi / 3
+            # pos_end[robot.joint_ordering.index("right_wrist_roll_driven")] = np.pi / 3
 
             joint_angles = dict(zip(robot.joint_ordering, pos_end))
             motor_angles = robot.joint_to_motor_angles(joint_angles)
@@ -80,21 +90,28 @@ class SquatPolicy(BasePolicy):
                     squat_duration,
                     t,
                 )
-                squat_action[i] = action + warm_up_action
+                squat_action[i] = action + warm_up_act
 
             squat_time += time_list[-1][-1] + self.control_dt
             time_list.append(squat_time)
             action_list.append(squat_action)
 
-            pause_time = np.arange(0, pause_duration, self.control_dt, dtype=np.float32)  # type: ignore
-            pause_time += time_list[-1][-1] + self.control_dt
-            pause_action = np.tile(action_list[-1][-1].copy(), (pause_time.shape[0], 1))
+            pause_action = action_list[-1][-1].copy()
+            pause_action[robot.motor_ordering.index("left_sho_pitch")] = np.pi / 12
+            pause_action[robot.motor_ordering.index("right_sho_pitch")] = -np.pi / 12
+
+            pause_time, pause_action = self.reset(
+                time_list[-1][-1], action_list[-1][-1], pause_action, pause_duration
+            )
 
             time_list.append(pause_time)
             action_list.append(pause_action)
 
             reset_time, reset_pos = self.reset(
-                time_list[-1][-1], action_list[-1][-1], warm_up_action, reset_duration
+                time_list[-1][-1],
+                action_list[-1][-1],
+                warm_up_act,
+                reset_duration,
             )
 
             time_list.append(reset_time)
@@ -104,7 +121,7 @@ class SquatPolicy(BasePolicy):
             time_list[-1][-1],
             action_list[-1][-1],
             np.zeros_like(action_list[-1][-1]),
-            warm_up_duration,
+            reset_duration,
         )
 
         time_list.append(reset_time)
@@ -117,4 +134,26 @@ class SquatPolicy(BasePolicy):
         self, obs_dict: Dict[str, npt.NDArray[np.float32]]
     ) -> npt.NDArray[np.float32]:
         time_curr = obs_dict["time"].item()
-        return np.array(interpolate_arr(time_curr, self.time_arr, self.action_arr))
+        action = np.array(interpolate_arr(time_curr, self.time_arr, self.action_arr))
+
+        left_knee_pitch = obs_dict["q"][
+            self.robot.joint_ordering.index("left_knee_pitch")
+        ]
+        right_knee_pitch = obs_dict["q"][
+            self.robot.joint_ordering.index("right_knee_pitch")
+        ]
+        left_ank_pitch = obs_dict["q"][
+            self.robot.joint_ordering.index("left_ank_pitch")
+        ]
+        right_ank_pitch = obs_dict["q"][
+            self.robot.joint_ordering.index("right_ank_pitch")
+        ]
+
+        action[self.robot.motor_ordering.index("left_hip_pitch")] = (
+            -left_ank_pitch - left_knee_pitch
+        )
+        action[self.robot.motor_ordering.index("right_hip_pitch")] = (
+            right_ank_pitch - right_knee_pitch
+        )
+
+        return action

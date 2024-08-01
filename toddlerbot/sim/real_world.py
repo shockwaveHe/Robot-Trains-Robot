@@ -22,7 +22,16 @@ class RealWorld(BaseSim):
         self.has_sunny_sky = self.robot.config["general"]["has_sunny_sky"]
 
         # TODO: Fix the mate directions in the URDF and remove the negated_motor_names
-        self.negated_motor_names: List[str] = ["left_sho_roll", "right_sho_roll"]
+        self.negated_motor_names: List[str] = [
+            "left_sho_roll",
+            "right_sho_roll",
+            "left_sho_yaw_drive",
+            "right_sho_yaw_drive",
+            "left_elbow_roll",
+            "right_elbow_roll",
+            "left_knee_act",
+            "right_knee_act",
+        ]
 
         self.initialize()
 

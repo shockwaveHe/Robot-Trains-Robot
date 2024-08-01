@@ -22,25 +22,28 @@ class RotateTorsoPolicy(BasePolicy):
 
         default_q = np.array(list(robot.init_joint_angles.values()), dtype=np.float32)
 
+        prep_duration = 10.0
         warm_up_duration = 2.0
         sine_duraion = 4.0
         reset_duration = 2.0
         n_trials = 3
 
-        sho_roll_offset = -np.pi / 12
-        warm_up_action = np.array(
-            list(robot.init_motor_angles.values()), dtype=np.float32
-        )
-        warm_up_action[robot.motor_ordering.index("left_sho_roll")] = sho_roll_offset
-        warm_up_action[robot.motor_ordering.index("right_sho_roll")] = sho_roll_offset
-
         time_list: List[npt.NDArray[np.float32]] = []
         action_list: List[npt.NDArray[np.float32]] = []
 
-        warm_up_time, warm_up_pos = self.warm_up(warm_up_action, warm_up_duration)
+        prep_act = np.array(list(robot.init_motor_angles.values()), dtype=np.float32)
+        prep_time, prep_action = self.warm_up(prep_act, prep_duration)
+
+        time_list.append(prep_time)
+        action_list.append(prep_action)
+
+        warm_up_act = np.array(list(robot.init_motor_angles.values()), dtype=np.float32)
+        warm_up_act[robot.motor_ordering.index("left_sho_roll")] = -np.pi / 12
+        warm_up_act[robot.motor_ordering.index("right_sho_roll")] = -np.pi / 12
+        warm_up_time, warm_up_action = self.warm_up(warm_up_act, warm_up_duration)
 
         time_list.append(warm_up_time)
-        action_list.append(warm_up_pos)
+        action_list.append(warm_up_action)
 
         for joint_name in ["waist_yaw", "waist_roll"]:
             joint_idx = robot.joint_ordering.index(joint_name)
@@ -79,22 +82,22 @@ class RotateTorsoPolicy(BasePolicy):
                     sine_action = np.array(
                         list(motor_angles.values()), dtype=np.float32
                     )
-                    rotate_action[j] = sine_action + warm_up_action
+                    rotate_action[j] = sine_action + warm_up_act
 
                 time_list.append(rotate_time)
                 action_list.append(rotate_action)
 
-                reset_time, reset_pos = self.reset(
+                reset_time, reset_action = self.reset(
                     time_list[-1][-1],
                     action_list[-1][-1],
-                    warm_up_action
+                    warm_up_act
                     if i < n_trials - 1
                     else np.zeros_like(action_list[-1][-1]),
                     reset_duration,
                 )
 
                 time_list.append(reset_time)
-                action_list.append(reset_pos)
+                action_list.append(reset_action)
 
         self.time_arr = np.concatenate(time_list)
         self.action_arr = np.concatenate(action_list)
