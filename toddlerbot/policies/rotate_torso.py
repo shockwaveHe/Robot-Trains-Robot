@@ -89,19 +89,19 @@ class RotateTorsoPolicy(BasePolicy):
                 action_list.append(rotate_action)
 
                 if i == n_trials - 1:
-                    if joint_name == "waist_roll":
-                        reset_pos = default_q.copy()
-                        reset_pos[robot.joint_ordering.index("waist_roll")] = (
-                            -np.pi / 36
-                        )
-                        motor_angles = robot.joint_to_motor_angles(
-                            dict(zip(robot.joint_ordering, reset_pos))
-                        )
-                        reset_act = np.array(
-                            list(motor_angles.values()), dtype=np.float32
-                        )
-                    else:
-                        reset_act = np.zeros_like(warm_up_act)
+                    # if joint_name == "waist_roll":
+                    #     reset_pos = default_q.copy()
+                    #     reset_pos[robot.joint_ordering.index("waist_roll")] = (
+                    #         -np.pi / 36
+                    #     )
+                    #     motor_angles = robot.joint_to_motor_angles(
+                    #         dict(zip(robot.joint_ordering, reset_pos))
+                    #     )
+                    #     reset_act = np.array(
+                    #         list(motor_angles.values()), dtype=np.float32
+                    #     )
+                    # else:
+                    reset_act = np.zeros_like(warm_up_act)
                 else:
                     reset_act = warm_up_act.copy()
 
