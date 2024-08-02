@@ -22,11 +22,11 @@ class RotateTorsoPolicy(BasePolicy):
 
         default_q = np.array(list(robot.init_joint_angles.values()), dtype=np.float32)
 
-        prep_duration = 10.0
+        prep_duration = 20.0
         warm_up_duration = 2.0
-        sine_duraion = 4.0
+        sine_duraion = 6.0
         reset_duration = 2.0
-        n_trials = 3
+        n_trials = 1
 
         time_list: List[npt.NDArray[np.float32]] = []
         action_list: List[npt.NDArray[np.float32]] = []
@@ -41,6 +41,7 @@ class RotateTorsoPolicy(BasePolicy):
         warm_up_act[robot.motor_ordering.index("left_sho_roll")] = -np.pi / 12
         warm_up_act[robot.motor_ordering.index("right_sho_roll")] = -np.pi / 12
         warm_up_time, warm_up_action = self.warm_up(warm_up_act, warm_up_duration)
+        warm_up_time += time_list[-1][-1] + self.control_dt
 
         time_list.append(warm_up_time)
         action_list.append(warm_up_action)
@@ -55,11 +56,11 @@ class RotateTorsoPolicy(BasePolicy):
             amplitude_max = robot.joint_limits[joint_name][1] - mean
 
             if joint_name == "waist_yaw":
-                frequency_range = [0.2, 1.0]
+                frequency_range = [0.2, 0.5]
             else:
                 frequency_range = [0.2, 0.5]
-                amplitude_min = np.pi / 12
-                amplitude_max: float = np.pi / 24
+                amplitude_min = np.pi / 24
+                amplitude_max: float = np.pi / 12
 
             for i in range(n_trials):
                 sine_signal_config = get_random_sine_signal_config(
@@ -87,12 +88,27 @@ class RotateTorsoPolicy(BasePolicy):
                 time_list.append(rotate_time)
                 action_list.append(rotate_action)
 
+                if i == n_trials - 1:
+                    if joint_name == "waist_roll":
+                        reset_pos = default_q.copy()
+                        reset_pos[robot.joint_ordering.index("waist_roll")] = (
+                            -np.pi / 36
+                        )
+                        motor_angles = robot.joint_to_motor_angles(
+                            dict(zip(robot.joint_ordering, reset_pos))
+                        )
+                        reset_act = np.array(
+                            list(motor_angles.values()), dtype=np.float32
+                        )
+                    else:
+                        reset_act = np.zeros_like(warm_up_act)
+                else:
+                    reset_act = warm_up_act.copy()
+
                 reset_time, reset_action = self.reset(
                     time_list[-1][-1],
                     action_list[-1][-1],
-                    warm_up_act
-                    if i < n_trials - 1
-                    else np.zeros_like(action_list[-1][-1]),
+                    reset_act,
                     reset_duration,
                 )
 

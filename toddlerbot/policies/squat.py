@@ -20,9 +20,9 @@ class SquatPolicy(BasePolicy):
 
         prep_duration = 10.0
         warm_up_duration = 1.0
-        squat_duration = 3.0
+        squat_duration = 4.0
         pause_duration = 2.0
-        reset_duration = 3.0
+        reset_duration = 1.0
         n_trials = 3
 
         time_list: List[npt.NDArray[np.float32]] = []
@@ -35,8 +35,6 @@ class SquatPolicy(BasePolicy):
         action_list.append(prep_action)
 
         warm_up_act = np.array(list(robot.init_motor_angles.values()), dtype=np.float32)
-        # warm_up_act[robot.motor_ordering.index("left_sho_pitch")] = -np.pi / 48
-        # warm_up_act[robot.motor_ordering.index("right_sho_pitch")] = np.pi / 48
         warm_up_act[robot.motor_ordering.index("left_sho_roll")] = -np.pi / 24
         warm_up_act[robot.motor_ordering.index("right_sho_roll")] = -np.pi / 24
         # warm_up_act[robot.motor_ordering.index("left_sho_yaw_drive")] = -np.pi / 2
@@ -96,18 +94,31 @@ class SquatPolicy(BasePolicy):
             time_list.append(squat_time)
             action_list.append(squat_action)
 
-            pause_action = action_list[-1][-1].copy()
-            pause_action[robot.motor_ordering.index("left_sho_pitch")] = np.pi / 12
-            pause_action[robot.motor_ordering.index("right_sho_pitch")] = -np.pi / 12
-
             pause_time, pause_action = self.reset(
-                time_list[-1][-1], action_list[-1][-1], pause_action, pause_duration
+                time_list[-1][-1],
+                action_list[-1][-1],
+                action_list[-1][-1],
+                pause_duration,
             )
 
             time_list.append(pause_time)
             action_list.append(pause_action)
 
-            reset_time, reset_pos = self.reset(
+            rise_act = warm_up_act.copy()
+            rise_act[robot.motor_ordering.index("left_sho_pitch")] = np.pi / 12
+            rise_act[robot.motor_ordering.index("right_sho_pitch")] = -np.pi / 12
+
+            rise_time, rise_action = self.reset(
+                time_list[-1][-1],
+                action_list[-1][-1],
+                rise_act,
+                squat_duration,
+            )
+
+            time_list.append(rise_time)
+            action_list.append(rise_action)
+
+            reset_time, reset_action = self.reset(
                 time_list[-1][-1],
                 action_list[-1][-1],
                 warm_up_act,
@@ -115,17 +126,17 @@ class SquatPolicy(BasePolicy):
             )
 
             time_list.append(reset_time)
-            action_list.append(reset_pos)
+            action_list.append(reset_action)
 
-        reset_time, reset_pos = self.reset(
+        rise_time, rise_action = self.reset(
             time_list[-1][-1],
             action_list[-1][-1],
             np.zeros_like(action_list[-1][-1]),
             reset_duration,
         )
 
-        time_list.append(reset_time)
-        action_list.append(reset_pos)
+        time_list.append(rise_time)
+        action_list.append(rise_action)
 
         self.time_arr = np.concatenate(time_list)
         self.action_arr = np.concatenate(action_list)
