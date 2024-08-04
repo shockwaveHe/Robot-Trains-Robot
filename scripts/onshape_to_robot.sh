@@ -95,19 +95,6 @@ else
     printf "Collision files not updated.\n\n"
 fi
 
-# TODO: bring this back
-# # Ask user if they want to run the simulation
-# printf "Do you want to run the pybullet simulation? (y/n)"
-# read -r -p " > " run_pybullet
-
-# if [ "$run_pybullet" == "y" ]; then
-#     printf "Simulation running...\n\n"
-#     python $REPO_NAME/robot_descriptions/test_urdf.py --robot $ROBOT_NAME
-# else
-#     printf "Simulation skipped.\n\n"
-# fi
-
-
 printf "Do you want to convert to MJCF (y/n)"
 
 read -r -p " > " run_convert
