@@ -99,6 +99,18 @@ Run:
 optuna-dashboard postgresql://optuna_user:password@localhost/optuna_db
 ```
 
+#### Install Isaac Sim
+Isaac Sim 4.1
+
+```
+conda activate isaaclab
+./isaaclab.sh -i
+
+# ModuleNotFoundError: No module named 'omni.isaac.kit':
+source _isaac_sim/setup_conda_env.sh
+```
+
+
 #### Install legged_gym
 Follow [these instructions](https://github.com/leggedrobotics/legged_gym).
 
