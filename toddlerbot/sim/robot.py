@@ -31,31 +31,43 @@ class Robot:
         self.name = robot_name
 
         self.root_path = os.path.join("toddlerbot", "robot_descriptions", self.name)
-        self.config_file_path = os.path.join(self.root_path, "config.json")
-        self.cache_file_path = os.path.join(self.root_path, f"{self.name}_data.pkl")
+        self.config_path = os.path.join(self.root_path, "config.json")
+        self.collision_config_path = os.path.join(
+            self.root_path, "config_collision.json"
+        )
+        self.cache_path = os.path.join(self.root_path, f"{self.name}_cache.pkl")
 
         self.load_robot_config()
-        self.load_robot_data()
+        self.load_robot_cache()
 
     def load_robot_config(self):
-        if os.path.exists(self.config_file_path):
-            with open(self.config_file_path, "r") as f:
+        if os.path.exists(self.config_path):
+            with open(self.config_path, "r") as f:
                 self.config = json.load(f)
 
         else:
             raise FileNotFoundError(f"No config file found for robot '{self.name}'.")
 
-    def load_robot_data(self):
-        if os.path.exists(self.cache_file_path):
-            with open(self.cache_file_path, "rb") as f:
+        if os.path.exists(self.collision_config_path):
+            with open(self.collision_config_path, "r") as f:
+                self.collision_config = json.load(f)
+
+        else:
+            raise FileNotFoundError(
+                f"No collision config file found for robot '{self.name}'."
+            )
+
+    def load_robot_cache(self):
+        if os.path.exists(self.cache_path):
+            with open(self.cache_path, "rb") as f:
                 self.data_dict: Dict[str, Any] = pickle.load(f)
                 log("Loaded cached data.", header="Robot")
         else:
             urdf_path = find_robot_file_path(self.name)
             urdf: URDF = URDF.load(urdf_path)  # type: ignore
-            self.compute_data(urdf)
+            self.compute_cache(urdf)
 
-            with open(self.cache_file_path, "wb") as f:
+            with open(self.cache_path, "wb") as f:
                 pickle.dump(self.data_dict, f)
                 log("Computed and cached new data.", header="Robot")
 
@@ -64,7 +76,7 @@ class Robot:
         self.ank_act_pos_tri = Delaunay(points)
         self.ank_pos_tri = Delaunay(values)
 
-    def compute_data(self, urdf: URDF):
+    def compute_cache(self, urdf: URDF):
         self.data_dict: Dict[str, Any] = {}
         self.data_dict["foot_size"] = self.compute_foot_size(urdf)
         self.data_dict["offsets"] = self.compute_offsets(urdf)
@@ -152,6 +164,19 @@ class Robot:
         return list(self.init_joint_angles.keys())
 
     @property
+    def collider_names(self) -> List[str]:
+        collider_names: List[str] = []
+        for link_name, link_config in self.collision_config.items():
+            if link_config["has_collision"]:
+                collider_names.append(link_name)
+
+        return collider_names
+
+    @property
+    def action_dim(self) -> int:
+        return len(self.motor_ordering)
+
+    @property
     def joint_limits(self) -> Dict[str, List[float]]:
         joint_limits: Dict[str, List[float]] = {}
         for joint_name, joint_config in self.config["joints"].items():
@@ -161,10 +186,6 @@ class Robot:
             ]
 
         return joint_limits
-
-    @property
-    def action_dim(self) -> int:
-        return len(self.motor_ordering)
 
     def get_joint_attrs(
         self,

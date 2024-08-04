@@ -11,7 +11,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter  # type: ignore
 
 import wandb
-from toddlerbot.sim.env.vec_env import VecEnv
+from toddlerbot.envs.legged_robot_env import LeggedRobotEnv
 
 from .actor_critic import ActorCritic
 from .ppo import PPO
@@ -20,7 +20,7 @@ from .ppo import PPO
 class OnPolicyRunner:
     def __init__(
         self,
-        env: VecEnv,
+        env: LeggedRobotEnv,
         train_cfg: Dict[str, Any],
         log_dir: str = "",
         device: str = "cpu",
@@ -85,7 +85,7 @@ class OnPolicyRunner:
             )
         obs = self.env.get_observations()
         privileged_obs = self.env.get_privileged_observations()
-        critic_obs = privileged_obs if privileged_obs is not None else obs
+        critic_obs = privileged_obs if privileged_obs else obs
         obs, critic_obs = obs.to(self.device), critic_obs.to(self.device)
         self.alg.actor_critic.train()  # switch to train mode (for dropout for example)
 

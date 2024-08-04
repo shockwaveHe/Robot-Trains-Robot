@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.math_utils import (
-    quaternion_to_euler_array,
+    quat_to_euler_arr,
     resample_trajectory,
     round_floats,
 )
@@ -149,7 +149,7 @@ def fetch_state(sim, cfg, state_queue, obs_stop_event):
         if "euler" in root_state:
             euler_angle_obs = root_state["euler"]
         else:
-            euler_angle_obs = quaternion_to_euler_array(root_state["quaternion"])
+            euler_angle_obs = quat_to_euler_arr(root_state["quaternion"])
 
         state = {
             "q_obs": q_obs,

@@ -14,7 +14,7 @@ from adafruit_bno08x import (  # type: ignore
 from adafruit_bno08x.i2c import BNO08X_I2C  # type: ignore
 from scipy.spatial.transform import Rotation as R  # type: ignore
 
-from toddlerbot.utils.math_utils import quaternion_to_euler_array
+from toddlerbot.utils.math_utils import quat_to_euler_arr
 
 # from toddlerbot.utils.misc_utils import profile
 
@@ -60,7 +60,7 @@ class IMU:
         avg_euler = np.mean(np.array(self.euler_history), axis=0)  # type: ignore
         rotation_relative = self.zero_pose_inv * R.from_euler("xyz", avg_euler)  # type: ignore
         quat_relative = list(rotation_relative.as_quat())  # type: ignore
-        euler_relative = quaternion_to_euler_array(quat_relative, order="xyzw")  # type: ignore
+        euler_relative = quat_to_euler_arr(quat_relative, order="xyzw")  # type: ignore
 
         avg_angular_velocity = np.mean(np.array(self.angular_velocity_history), axis=0)  # type: ignore
         ang_vel_relative = np.array(
@@ -75,9 +75,7 @@ class IMU:
     def _update_buffers(self):
         while not self.stop_event.is_set():
             self.euler_history.append(  # type: ignore
-                quaternion_to_euler_array(
-                    np.array(self.sensor.quaternion), order="xyzw"
-                )
+                quat_to_euler_arr(np.array(self.sensor.quaternion), order="xyzw")
             )
             self.angular_velocity_history.append(np.array(self.sensor.gyro))  # type: ignore
             time.sleep(1 / self.frequency)

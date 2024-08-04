@@ -11,8 +11,11 @@ class BaseSim(ABC):
     @abstractmethod
     def __init__(self):
         self.name = "base"
-        self.dt = 0.001
+
         self.start_time = 0.0
+        self.dt = 0.001
+        self.device_type = "cpu"
+
         self.visualizer = None
 
     @abstractmethod
