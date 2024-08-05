@@ -198,6 +198,7 @@ def main():
                 "ank_long_rod_len": 0.05900847,
                 "ank_short_rod_len": 0.03951266,
                 "ank_rev_r": 0.01,
+                "foot_z": 0.039,
             },
         }
 

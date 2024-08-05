@@ -168,6 +168,10 @@ class Robot:
         return self.config["general"]["foot_name"]
 
     @property
+    def foot_z(self) -> float:
+        return self.config["general"]["offsets"]["foot_z"]
+
+    @property
     def collider_names(self) -> List[str]:
         collider_names: List[str] = []
         for link_name, link_config in self.collision_config.items():

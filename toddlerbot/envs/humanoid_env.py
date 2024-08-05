@@ -214,6 +214,7 @@ class HumanoidEnv:
     def _init_body(self):
         body_names = self.robot.collider_names
         self.num_bodies = len(body_names)
+        self.contact_force_threshold = self.cfg.rewards.contact_force_threshold
 
         # body state
         self.body_state = (
@@ -222,18 +223,24 @@ class HumanoidEnv:
             .tile((self.num_envs, 1))
         )
         self.last_body_state = torch.zeros_like(self.body_state)
+        self.body_mass = torch.zeros(
+            self.num_envs, 1, dtype=torch.float32, device=self.device
+        )
 
         # contact
         self.feet_names = [s for s in body_names if self.robot.foot_name in s]
         penalized_contact_names: List[str] = []
-        for name in body_names:
-            if name not in self.feet_names:
-                penalized_contact_names.append(name)
-
         termination_contact_names: List[str] = []
         for name in body_names:
             if name not in self.feet_names:
+                penalized_contact_names.append(name)
                 termination_contact_names.append(name)
+
+        self.feet_indices = torch.zeros(
+            len(self.feet_names), dtype=torch.long, device=self.device
+        )
+        for i, name in enumerate(self.feet_names):
+            self.feet_indices[i] = self.sim.get_body_idx(name)
 
         self.penalized_contact_indices = torch.zeros(
             len(penalized_contact_names), dtype=torch.long, device=self.device
@@ -265,6 +272,9 @@ class HumanoidEnv:
             torch.from_numpy(self.sim.get_contact_forces())  # type: ignore
             .to(self.device)
             .tile((self.num_envs, 1))
+        )
+        self.env_frictions = torch.zeros(
+            self.num_envs, 1, dtype=torch.float32, device=self.device
         )
 
         # self.measured_heights = 0
@@ -674,6 +684,12 @@ class HumanoidEnv:
         self.projected_gravity[env_ids] = quat_rotate_inverse(
             self.base_quat[env_ids], self.gravity_vec[env_ids]
         )
+
+        for i in range(self.obs_history.maxlen):  # type: ignore
+            self.obs_history[i][env_ids] *= 0  # type: ignore
+
+        for i in range(self.critic_history.maxlen):  # type: ignore
+            self.critic_history[i][env_ids] *= 0  # type: ignore
 
     # def _update_terrain_curriculum(self, env_ids: torch.Tensor):
     #     # don't change on initial reset

@@ -9,13 +9,17 @@ from toddlerbot.envs.humanoid_config import (
 )
 from toddlerbot.envs.ppo_config import AlgorithmConfig, PPOCfg, RunnerConfig
 
-ToddlerbotCfg = HumanoidCfg(
-    env=EnvConfig(num_envs=1),
+toddlerbot_cfg = HumanoidCfg(
+    env=EnvConfig(
+        num_envs=1,
+        num_single_obs=101,
+        num_single_privileged_obs=143,
+    ),
     rewards=RewardsConfig(scales=RewardScales()),
 )
 
 
-ToddlerbotPPOCfg = PPOCfg(
+toddlerbot_ppo_cfg = PPOCfg(
     algorithm=AlgorithmConfig(
         entropy_coef=0.001,
         learning_rate=1e-5,
@@ -29,7 +33,7 @@ ToddlerbotPPOCfg = PPOCfg(
         experiment_name="walk_toddlerbot",
         run_name="v0.2",
         resume=False,  # load and resume
-        load_run=-1,  # -1 = last run
+        load_run="",  # -1 = last run
         checkpoint=-1,  # -1 = last saved model
         resume_path=None,  # updated from load_run and chkpt
     ),

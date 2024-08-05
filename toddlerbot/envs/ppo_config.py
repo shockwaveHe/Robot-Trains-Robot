@@ -40,14 +40,13 @@ class RunnerConfig:
     experiment_name: str = "test"
     run_name: str = ""
     resume: bool = False
-    load_run: int = -1
+    load_run: str = ""
     checkpoint: int = -1
     resume_path: Optional[str] = None
 
 
 @dataclass
 class PPOCfg:
-    seed: int = 0
     runner_class_name: str = "OnPolicyRunner"
     policy: PolicyConfig = PolicyConfig()
     algorithm: AlgorithmConfig = AlgorithmConfig()

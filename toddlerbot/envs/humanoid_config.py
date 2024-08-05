@@ -14,7 +14,7 @@ class EnvConfig:
     frame_stack: int = 15
     c_frame_stack: int = 3
     num_single_obs: int = 47
-    num_single_privileged_obs = 73
+    num_single_privileged_obs: int = 73
     send_timeouts: bool = True
     use_ref_actions: bool = False
 
@@ -69,6 +69,7 @@ class DomainRandConfig:
     max_push_xy_vel: float = 0.2
     max_push_ang_vel: float = 0.4
     max_push_duration: float = 0.2
+    dynamic_randomization: float = 0.02
 
 
 @dataclass
@@ -76,30 +77,26 @@ class RewardScales:
     termination: float = -0.0
     tracking_lin_vel: float = 1.2
     tracking_ang_vel: float = 1.1
+    track_vel_hard = 0.5
     vel_mismatch_exp = 0.5
     low_speed = 0.2
-    track_vel_hard = 0.5
     lin_vel_z: float = -2.0
     ang_vel_xy: float = -0.05
     orientation: float = 1.0
-    torques: float = -1e-5
-    default_dof_pos: float = 0.5  # TODO: change the name of the reward
-    dof_pos: float = 1.6  # TODO: change the name of the reward
+    default_dof_pos: float = 0.5
+    dof_pos: float = 1.6
     dof_vel: float = -5e-4
     dof_acc: float = -1e-7
     base_height: float = 0.2
     base_acc: float = 0.2
-    feet_clearance: float = 1.0
-    feet_contact_number: float = 1.2
     feet_air_time: float = 1.0
-    feet_slip: float = -0.05  # TODO: change the name of the reward
-    feet_stumble: float = -0.0
-    feet_distance: float = 0.2
+    feet_clearance: float = 1.0
     feet_contact_forces: float = -0.01
+    feet_contact_number: float = 1.2
+    feet_distance: float = 0.2
+    feet_slip: float = -0.05  # TODO: change the name of the reward
     collision: float = -1.0
-    action_rate: float = -0.0
     action_smoothness: float = -0.002
-    stand_still: float = -0.0
 
 
 @dataclass
@@ -113,6 +110,7 @@ class RewardsConfig:
     only_positive_rewards: bool = True
     tracking_sigma: float = 5.0
     max_contact_force: float = 50.0
+    contact_force_threshold: float = 5.0
     scales: RewardScales = RewardScales()
 
 

@@ -6,6 +6,7 @@
         "has_dynamixel": true,
         "dynamixel_baudrate": 4000000,
         "has_sunny_sky": false,
+        "foot_name": "ank_roll_link",
         "offsets": {
             "torso_z": 0.3442,
             "waist_roll_coef": 0.29166667,
@@ -14,7 +15,8 @@
             "ank_act_arm_r": 0.02,
             "ank_long_rod_len": 0.05900847,
             "ank_short_rod_len": 0.03951266,
-            "ank_rev_r": 0.01
+            "ank_rev_r": 0.01,
+            "foot_z": 0.039
         },
         "is_waist_closed_loop": true,
         "is_knee_closed_loop": true,
