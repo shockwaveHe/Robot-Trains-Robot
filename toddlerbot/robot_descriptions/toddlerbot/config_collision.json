@@ -96,7 +96,13 @@
         "has_collision": false
     },
     "ank_roll_link": {
-        "has_collision": false
+        "has_collision": true,
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
     },
     "ank_rr_link": {
         "has_collision": false
@@ -109,15 +115,6 @@
     },
     "ank_motor_rod_short": {
         "has_collision": false
-    },
-    "left_sole_link": {
-        "has_collision": true,
-        "type": "box",
-        "scale": [
-            1.0,
-            1.0,
-            1.0
-        ]
     },
     "ank_motor_arm": {
         "has_collision": false
@@ -174,7 +171,13 @@
         "has_collision": false
     },
     "ank_roll_link_2": {
-        "has_collision": false
+        "has_collision": true,
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
     },
     "ank_rr_link_3": {
         "has_collision": false
@@ -187,15 +190,6 @@
     },
     "ank_motor_rod_short_2": {
         "has_collision": false
-    },
-    "right_sole_link": {
-        "has_collision": true,
-        "type": "box",
-        "scale": [
-            1.0,
-            1.0,
-            1.0
-        ]
     },
     "ank_motor_arm_3": {
         "has_collision": false
