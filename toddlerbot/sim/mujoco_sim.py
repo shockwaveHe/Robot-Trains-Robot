@@ -99,10 +99,10 @@ class MuJoCoSim(BaseSim):
     def get_body_state(self):
         dof_state = np.zeros((len(self.robot.collider_names), 13), dtype=np.float32)
         for i, name in enumerate(self.robot.collider_names):
-            dof_state[i, :3] = self.data.body(name).xpos.item()  # type: ignore
-            dof_state[i, 3:7] = self.data.body(name).xquat.item()  # type: ignore
-            dof_state[i, 7:10] = self.data.body(name).cvel[3:].item()  # type: ignore
-            dof_state[i, 10:] = self.data.body(name).cvel[:3].item()  # type: ignore
+            dof_state[i, :3] = self.data.body(name).xpos.copy()  # type: ignore
+            dof_state[i, 3:7] = self.data.body(name).xquat.copy()  # type: ignore
+            dof_state[i, 7:10] = self.data.body(name).cvel[3:].copy()  # type: ignore
+            dof_state[i, 10:] = self.data.body(name).cvel[:3].copy()  # type: ignore
 
         return dof_state
 

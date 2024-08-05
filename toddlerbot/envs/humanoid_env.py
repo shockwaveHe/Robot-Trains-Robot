@@ -168,9 +168,11 @@ class HumanoidEnv:
         self.last_dof_vel = torch.zeros_like(self.dof_vel)
 
         # joint positions offsets and PD gains
-        self.default_dof_pos = (
-            torch.from_numpy(self.robot.init_joint_angles).to(self.device).unsqueeze(0)  # type: ignore
-        )
+        self.default_dof_pos = torch.tensor(
+            list(self.robot.init_joint_angles.values()),
+            dtype=torch.float32,
+            device=self.device,
+        ).unsqueeze(0)
         self.default_joint_pd_target = self.default_dof_pos.clone()
 
         self.p_gains = torch.tensor(

@@ -69,7 +69,7 @@ def round_floats(obj: Any, precision: int = 6) -> Any:
     elif is_dataclass(obj):
         return type(obj)(
             **{
-                field.name: round_floats(getattr(obj, field.name), precision)
+                field.name: round_floats(getattr(obj, field.name), precision)  # type: ignore
                 for field in obj.__dataclass_fields__.values()
             }
         )
@@ -107,10 +107,20 @@ def quat_to_euler_arr(
     return euler_angles
 
 
-def quat_to_euler_tensor(quat: torch.Tensor):
-    euler_angles = quat_to_euler_arr(quat.cpu().numpy())
-    euler_xyz = torch.from_numpy(euler_angles)  # type: ignore
+def quat_to_euler_tensor(quat: torch.Tensor, order: str = "wxyz"):
+    if quat.ndim == 2:
+        euler_angles_array = np.zeros((quat.shape[0], 3), dtype=np.float32)
+        quat_np = quat.cpu().numpy()
+        for i, q in enumerate(quat_np):
+            euler_angles_array[i] = quat_to_euler_arr(q, order=order)  # type: ignore
+    else:
+        # Single quaternion
+        euler_angles_array = quat_to_euler_arr(quat.cpu().numpy(), order=order)  # type: ignore
+
+    # Convert numpy array to torch tensor
+    euler_xyz = torch.from_numpy(euler_angles_array).to(quat.device)  # type: ignore
     euler_xyz[euler_xyz > np.pi] -= 2 * np.pi
+
     return euler_xyz
 
 
