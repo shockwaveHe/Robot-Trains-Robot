@@ -1,3 +1,6 @@
+#  Copyright 2021 ETH Zurich, NVIDIA CORPORATION
+#  SPDX-License-Identifier: BSD-3-Clause
+
 from dataclasses import dataclass, field
 from typing import List, Optional
 

@@ -188,6 +188,7 @@ def main():
             "has_dynamixel": True,
             "dynamixel_baudrate": 4000000,
             "has_sunny_sky": False,
+            "foot_name": "ank_roll_link",
             "offsets": {
                 "torso_z": 0.3442,
                 "waist_roll_coef": 0.29166667,

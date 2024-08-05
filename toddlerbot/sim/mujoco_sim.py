@@ -1,6 +1,5 @@
-import threading
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 import mujoco  # type: ignore
 import mujoco.rollout  # type: ignore
@@ -14,28 +13,29 @@ from toddlerbot.sim.mujoco_utils import MuJoCoController, MuJoCoRenderer, MuJoCo
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.math_utils import quat_to_euler_arr
-from toddlerbot.utils.misc_utils import precise_sleep
 
 
 class MuJoCoSim(BaseSim):
     def __init__(
         self,
         robot: Robot,
-        fixed: bool = False,
+        fixed_base: bool = False,
         xml_path: str = "",
         xml_str: str = "",
         assets: Any = None,
+        vis_type: str = "",
     ):
         """Initialize the MuJoCo simulation environment."""
         super().__init__()
         self.name = "mujoco"
         self.robot = robot
+        self.fixed_base = fixed_base
 
         if len(xml_str) > 0 and assets is not None:
             self.model = mujoco.MjModel.from_xml_string(xml_str, assets)  # type: ignore
         else:
             if len(xml_path) == 0:
-                if fixed:
+                if fixed_base:
                     xml_path = find_robot_file_path(
                         robot.name, suffix="_fixed_scene.xml"
                     )
@@ -48,38 +48,92 @@ class MuJoCoSim(BaseSim):
         self.data = mujoco.MjData(self.model)  # type: ignore
 
         self.controller = MuJoCoController()
+        mujoco.set_mjcb_control(self.controller.process_commands)  # type: ignore
 
-        self.thread = None
-        self.stop_event = threading.Event()
+        # Initialize push state variables
+        self.apply_push_flag = False
+        self.push = np.zeros(6, dtype=np.float32)  # Initial push as zero vector
+        self.push_duration: float = 0.0
+        self.push_count: int = 0
 
-    def get_link_pos(self, link_name: str):
-        mujoco.mj_kinematics(self.model, self.data)  # type: ignore
-        link_pos: npt.NDArray[np.float32] = np.array(
-            self.data.body(link_name).xpos,  # type: ignore
+        self.visualizer = None
+        if vis_type == "render":
+            self.visualizer = MuJoCoRenderer(self.model, self.data)  # type: ignore
+        elif vis_type == "view":
+            self.visualizer = MuJoCoViewer(self.model, self.data)  # type: ignore
+
+        # self.thread = None
+        # self.stop_event = threading.Event()
+
+    def get_root_state(self):
+        root_state = np.zeros(13, dtype=np.float32)
+        root_state[:3] = np.array(
+            self.data.sensor("position").data,  # type: ignore
             copy=True,
         )
-        return link_pos
-
-    def get_link_quat(self, link_name: str):
-        mujoco.mj_kinematics(self.model, self.data)  # type: ignore
-        link_quat: npt.NDArray[np.float32] = np.array(
-            self.data.body(link_name).xquat,  # type: ignore
+        root_state[3:7] = np.array(
+            self.data.sensor("orientation").data,  # type: ignore
             copy=True,
         )
-        return link_quat
-
-    def get_torso_pose(self):
-        mujoco.mj_kinematics(self.model, self.data)  # type: ignore
-        torso_pos: npt.NDArray[np.float32] = np.array(
-            self.data.site("torso").xpos,  # type: ignore
+        root_state[7:10] = np.array(
+            self.data.sensor("linear_velocity").data,  # type: ignore
             copy=True,
         )
-        torso_mat: npt.NDArray[np.float32] = np.array(
-            self.data.site("torso"),  # type: ignore
+        root_state[10:] = np.array(
+            self.data.sensor("angular_velocity").data,  # type: ignore
             copy=True,
-        ).reshape(3, 3)
-        return torso_pos, torso_mat
+        )
+        return root_state
 
+    def get_dof_state(self):
+        dof_state = np.zeros((len(self.robot.motor_ordering), 2), dtype=np.float32)  # type: ignore
+        for i, name in enumerate(self.robot.motor_ordering):
+            dof_state[i, 0] = self.data.joint(name).qpos.item()  # type: ignore
+            dof_state[i, 1] = self.data.joint(name).qvel.item()  # type: ignore
+
+        return dof_state
+
+    def get_body_idx(self, body_name: str) -> int:
+        return self.model.body(body_name).id  # type: ignore
+
+    def get_body_state(self):
+        dof_state = np.zeros((len(self.robot.collider_names), 13), dtype=np.float32)
+        for i, name in enumerate(self.robot.collider_names):
+            dof_state[i, :3] = self.data.body(name).xpos.item()  # type: ignore
+            dof_state[i, 3:7] = self.data.body(name).xquat.item()  # type: ignore
+            dof_state[i, 7:10] = self.data.body(name).cvel[3:].item()  # type: ignore
+            dof_state[i, 10:] = self.data.body(name).cvel[:3].item()  # type: ignore
+
+        return dof_state
+
+    def get_contact_forces(self):
+        # TODO: check if this is the correct way to get contact forces
+        contact_forces = np.zeros((len(self.robot.collider_names), 3), dtype=np.float32)
+        # Access contact information
+        for i in range(self.data.ncon):  # type: ignore
+            contact = self.data.contact[i]  # type: ignore
+            # Check if the contact involves the ground plane
+            geom1_name = str(self.model.geom(contact.geom1).name)  # type: ignore
+            geom2_name = str(self.model.geom(contact.geom2).name)  # type: ignore
+
+            body_name = ""
+            if "ground" in geom1_name:
+                body_name = geom2_name
+            elif "ground" in geom2_name:
+                body_name = geom1_name
+            else:
+                continue
+
+            # Extract the contact forces
+            c_array = np.zeros(6, dtype=np.float32)  # To hold contact forces
+            mujoco.mj_contactForce(self.model, self.data, i, c_array)  # type: ignore
+            contact_forces[self.robot.collider_names.index(body_name)] = c_array[
+                :3
+            ].copy()
+
+        return contact_forces
+
+    # TODO: consider merging these methods
     def get_motor_state(self):
         motor_state_dict: Dict[str, JointState] = {}
         for name in self.robot.motor_ordering:
@@ -128,7 +182,6 @@ class MuJoCoSim(BaseSim):
         return subtree_mass
 
     def get_com(self) -> npt.NDArray[np.float32]:
-        mujoco.mj_fwdPosition(self.model, self.data)  # type: ignore
         subtree_com = np.array(self.data.body(0).subtree_com, dtype=np.float32)  # type: ignore
         return subtree_com
 
@@ -207,50 +260,84 @@ class MuJoCoSim(BaseSim):
     #         self.last_angmom = angmom
     #         self.t_last = t_curr
 
-    def set_motor_angles(self, motor_angles: Dict[str, float]):
+    def start_push(self, push: npt.NDArray[np.float32], push_duration: float = 0.1):
+        self.apply_push_flag = True
+        self.push = push
+        self.push_duration = push_duration
+        self.push_count = 0
+
+    def _apply_push_cb(self):
+        """Applies random pushes to the robot's torso."""
+        # Unpack the random push tensor
+        linear_vel = self.push[:3]  # xy linear velocity
+        angular_vel = self.push[3:]  # xyz angular velocity
+        mass = self.model.body("torso").mass  # type: ignore
+        inertia = self.model.body("torso").inertia  # type: ignore
+        # Apply the forces and torques
+        self.data.body("torso").xfrc_applied[:3] = (  # type: ignore
+            mass * linear_vel
+        ) / self.push_duration
+        self.data.body("torso").xfrc_applied[3:] = (  # type: ignore
+            inertia * angular_vel
+        ) / self.push_duration
+
+    def _reset_push(self):
+        # Reset applied forces and torques
+        self.apply_push_flag = False
+        self.data.body("torso").xfrc_applied[:] = 0  # type: ignore
+
+    def set_root_state(self, root_state: npt.NDArray[np.float32]):
+        # Set position (3) and orientation (quat 4) in qpos
+        self.data.body("torso").qpos[:3] = root_state[:3].copy()  # type: ignore
+        self.data.body("torso").qpos[3:7] = root_state[3:7].copy()  # type: ignore
+        # Set linear velocity (3) and angular velocity (3) in qvel
+        self.data.body("torso").qvel[:3] = root_state[7:10].copy()  # type: ignore
+        self.data.body("torso").qvel[3:6] = root_state[10:13].copy()  # type: ignore
+
+    def set_dof_state(self, dof_state: npt.NDArray[np.float32]):
+        for i, name in enumerate(self.robot.motor_ordering):
+            self.data.joint(name).qpos = dof_state[i, 0].copy()  # type: ignore
+            self.data.joint(name).qvel = dof_state[i, 1].copy()  # type: ignore
+
+    def set_motor_angles(
+        self, motor_angles: Union[Dict[str, float], npt.NDArray[np.float32]]
+    ):
         self.controller.add_command(motor_angles)
 
-    def simulate(self, vis_type: str = "", vis_data: Dict[str, Any] = {}):
-        self.start_time = time.time()
+    def forward(self):
+        mujoco.mj_forward(self.model, self.data)  # type: ignore
 
-        self.thread = threading.Thread(
-            target=self._simulate_worker, args=(vis_type, vis_data)
-        )
-        self.thread.start()
+    def step(self):
+        # step_start = time.time()
+        if self.apply_push_flag and self.push_count < (self.push_duration / self.dt):
+            self._apply_push_cb()
+            self.push_count += 1
+        else:
+            self._reset_push()
 
-    def _simulate_worker(self, vis_type: str = "", vis_data: Dict[str, Any] = {}):
-        mujoco.set_mjcb_control(self.controller.process_commands)  # type: ignore
-
-        self.visualizer = None
-        if vis_type == "render":
-            self.visualizer = MuJoCoRenderer(self.model, self.data)  # type: ignore
-        elif vis_type == "view":
-            self.visualizer = MuJoCoViewer(self.model, self.data)  # type: ignore
-
-        # self.counter = 0
-        while not self.stop_event.is_set():
-            step_start = time.time()
-            mujoco.mj_step(self.model, self.data)  # type: ignore
-
-            # self._compute_dynamics()
-
-            if self.visualizer is not None:
-                self.visualizer.visualize(self.model, self.data, vis_data)  # type: ignore
-
-            time_until_next_step = float(
-                self.model.opt.timestep  # type: ignore
-                - (time.time() - step_start)
-            )
-            if time_until_next_step > 0:
-                precise_sleep(time_until_next_step)
-
-            # log(f"Step {self.counter}", header="MuJoCo", level="debug")
-            # self.counter += 1
-            # step_end = time.time()
-            # log(f"Step Time: {step_end - step_start}", header="MuJoCo", level="debug")
+        mujoco.mj_step(self.model, self.data)  # type: ignore
 
         if self.visualizer is not None:
-            self.visualizer.close()
+            self.visualizer.visualize(self.model, self.data)  # type: ignore
+
+        # time_until_next_step = float(
+        #     self.model.opt.timestep  # type: ignore
+        #     - (time.time() - step_start)
+        # )
+        # if time_until_next_step > 0:
+        #     precise_sleep(time_until_next_step)
+
+    # def _simulate_worker(self, vis_type: str = "", vis_data: Dict[str, Any] = {}):
+    #     while not self.stop_event.is_set():
+    #         self.step()
+
+    # def simulate(self, vis_type: str = "", vis_data: Dict[str, Any] = {}):
+    #     self.start_time = time.time()
+
+    #     self.thread = threading.Thread(
+    #         target=self._simulate_worker, args=(vis_type, vis_data)
+    #     )
+    #     self.thread.start()
 
     def rollout(self, motor_angles_list: List[Dict[str, float]]):
         n_state = mujoco.mj_stateSize(self.model, mujoco.mjtState.mjSTATE_FULLPHYSICS)  # type: ignore
@@ -296,7 +383,10 @@ class MuJoCoSim(BaseSim):
             self.visualizer.save_recording(exp_folder_path)
 
     def close(self):
-        if self.thread is not None and threading.current_thread() is not self.thread:
-            # Wait for the thread to finish if it's not the current thread
-            self.stop_event.set()
-            self.thread.join()
+        if self.visualizer is not None:
+            self.visualizer.close()
+
+        # if self.thread is not None and threading.current_thread() is not self.thread:
+        #     # Wait for the thread to finish if it's not the current thread
+        #     self.stop_event.set()
+        #     self.thread.join()

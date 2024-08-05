@@ -12,7 +12,6 @@ class BaseSim(ABC):
     def __init__(self):
         self.name = "base"
 
-        self.start_time = 0.0
         self.dt = 0.001
         self.device_type = "cpu"
 

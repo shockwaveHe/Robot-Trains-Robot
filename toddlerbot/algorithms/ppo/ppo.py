@@ -80,19 +80,19 @@ class PPO:
     def train_mode(self):
         self.actor_critic.train()
 
-    def act(self, obs: torch.Tensor, critic_obs: torch.Tensor):
+    def act(self, obs: torch.Tensor, critic_obs: torch.Tensor) -> torch.Tensor:
         # Compute the actions and values
         self.transition.actions = self.actor_critic.act(obs).detach()  # type: ignore
         self.transition.values = self.actor_critic.evaluate(critic_obs).detach()  # type: ignore
         self.transition.actions_log_prob = self.actor_critic.get_actions_log_prob(  # type: ignore
-            self.transition.actions
+            self.transition.actions  # type: ignore
         ).detach()
         self.transition.action_mean = self.actor_critic.action_mean.detach()  # type: ignore
         self.transition.action_sigma = self.actor_critic.action_std.detach()  # type: ignore
         # need to record obs and critic_obs before env.step()
         self.transition.observations = obs  # type: ignore
         self.transition.critic_observations = critic_obs  # type: ignore
-        return self.transition.actions
+        return self.transition.actions  # type: ignore
 
     def process_env_step(
         self, rewards: torch.Tensor, dones: Any, infos: Dict[str, Any]

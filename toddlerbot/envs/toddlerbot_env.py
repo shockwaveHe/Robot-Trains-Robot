@@ -1,108 +1,39 @@
-# SPDX-License-Identifier: BSD-3-Clause
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-# 1. Redistributions of source code must retain the above copyright notice, this
-# list of conditions and the following disclaimer.
-#
-# 2. Redistributions in binary form must reproduce the above copyright notice,
-# this list of conditions and the following disclaimer in the documentation
-# and/or other materials provided with the distribution.
-#
-# 3. Neither the name of the copyright holder nor the names of its
-# contributors may be used to endorse or promote products derived from
-# this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
-# Copyright (c) 2024 Beijing RobotEra TECHNOLOGY CO.,LTD. All rights reserved.
+#  Copyright 2021 ETH Zurich, NVIDIA CORPORATION
+#  SPDX-License-Identifier: BSD-3-Clause
 
+from collections import deque
+from dataclasses import asdict
+from typing import Any, Callable, Dict, List
 
+import numpy as np
 import torch
-from humanoid.envs.base.legged_robot import LeggedRobot
-from humanoid.envs.base.legged_robot_config import LeggedRobotCfg
-from humanoid.utils.terrain import HumanoidTerrain
-from isaacgym import gymtorch
-from isaacgym.torch_utils import torch_rand_float
 
-# from collections import deque
+from toddlerbot.envs.humanoid_config import HumanoidCfg
+from toddlerbot.envs.humanoid_env import HumanoidEnv
+from toddlerbot.sim.mujoco_sim import MuJoCoSim
+from toddlerbot.sim.robot import Robot
+from toddlerbot.utils.math_utils import (
+    quat_apply,
+    quat_rotate_inverse,
+    quat_to_euler_tensor,
+    torch_rand_float,
+    wrap_to_pi,
+)
 
 
-class ToddlerbotLegsEnv(LeggedRobot):
-    """
-    ToddlerbotLegsEnv is a class that represents a custom environment for a legged robot.
+class ToddlerbotEnv(HumanoidEnv):
+    def __init__(self, sim: MuJoCoSim, robot: Robot, cfg: HumanoidCfg):
+        super().__init__(sim, robot, cfg)
 
-    Args:
-        cfg (LeggedRobotCfg): Configuration object for the legged robot.
-        sim_params: Parameters for the simulation.
-        physics_engine: Physics engine used in the simulation.
-        sim_device: Device used for the simulation.
-        headless: Flag indicating whether the simulation should be run in headless mode.
-
-    Attributes:
-        last_feet_z (float): The z-coordinate of the last feet position.
-        feet_height (torch.Tensor): Tensor representing the height of the feet.
-        sim (gymtorch.GymSim): The simulation object.
-        terrain (HumanoidTerrain): The terrain object.
-        up_axis_idx (int): The index representing the up axis.
-        command_input (torch.Tensor): Tensor representing the command input.
-        privileged_obs_buf (torch.Tensor): Tensor representing the privileged observations buffer.
-        obs_buf (torch.Tensor): Tensor representing the observations buffer.
-        obs_history (collections.deque): Deque containing the history of observations.
-        critic_history (collections.deque): Deque containing the history of critic observations.
-
-    Methods:
-        _push_robots(): Randomly pushes the robots by setting a randomized base velocity.
-        _get_phase(): Calculates the phase of the gait cycle.
-        _get_gait_phase(): Calculates the gait phase.
-        compute_ref_state(): Computes the reference state.
-        create_sim(): Creates the simulation, terrain, and environments.
-        _get_noise_scale_vec(cfg): Sets a vector used to scale the noise added to the observations.
-        step(actions): Performs a simulation step with the given actions.
-        compute_observations(): Computes the observations.
-        reset_idx(env_ids): Resets the environment for the specified environment IDs.
-    """
-
-    def __init__(
-        self, cfg: LeggedRobotCfg, sim_params, physics_engine, sim_device, headless
-    ):
-        super().__init__(cfg, sim_params, physics_engine, sim_device, headless)
+        # TODO: Clean up this part
         self.feet_z = 0.0395  # 0.05, default feet height
         self.contact_force_threshold = 5.0
         self.last_feet_z = self.feet_z
 
         self.feet_height = torch.zeros((self.num_envs, 2), device=self.device)
+
         self.reset_idx(torch.tensor(range(self.num_envs), device=self.device))
         self.compute_observations()
-
-    def _push_robots(self):
-        """Random pushes the robots. Emulates an impulse by setting a randomized base velocity."""
-        max_vel = self.cfg.domain_rand.max_push_vel_xy
-        max_push_angular = self.cfg.domain_rand.max_push_ang_vel
-        self.rand_push_force[:, :2] = torch_rand_float(
-            -max_vel, max_vel, (self.num_envs, 2), device=self.device
-        )  # lin vel x/y
-        self.root_states[:, 7:9] = self.rand_push_force[:, :2]
-
-        self.rand_push_torque = torch_rand_float(
-            -max_push_angular, max_push_angular, (self.num_envs, 3), device=self.device
-        )
-
-        self.root_states[:, 10:13] = self.rand_push_torque
-
-        self.gym.set_actor_root_state_tensor(
-            self.sim, gymtorch.unwrap_tensor(self.root_states)
-        )
 
     def _get_phase(self):
         cycle_time = self.cfg.rewards.cycle_time
@@ -173,27 +104,6 @@ class ToddlerbotLegsEnv(LeggedRobot):
                 "Terrain mesh type not recognised. Allowed types are [None, plane, heightfield, trimesh]"
             )
         self._create_envs()
-
-    def _get_noise_scale_vec(self, cfg):
-        """Sets a vector used to scale the noise added to the observations.
-            [NOTE]: Must be adapted when changing the observations structure
-
-        Args:
-            cfg (Dict): Environment config file
-
-        Returns:
-            [torch.Tensor]: Vector of scales used to multiply a uniform distribution in [-1, 1]
-        """
-        noise_vec = torch.zeros(self.cfg.env.num_single_obs, device=self.device)
-        self.add_noise = self.cfg.noise.add_noise
-        noise_scales = self.cfg.noise.noise_scales
-        noise_vec[0:5] = 0.0  # commands
-        noise_vec[5:17] = noise_scales.dof_pos * self.obs_scales.dof_pos
-        noise_vec[17:29] = noise_scales.dof_vel * self.obs_scales.dof_vel
-        noise_vec[29:41] = 0.0  # previous actions
-        noise_vec[41:44] = noise_scales.ang_vel * self.obs_scales.ang_vel  # ang vel
-        noise_vec[44:47] = noise_scales.quat * self.obs_scales.quat  # euler x,y
-        return noise_vec
 
     def step(self, actions):
         if self.cfg.env.use_ref_actions:

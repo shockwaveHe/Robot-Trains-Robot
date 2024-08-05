@@ -23,6 +23,7 @@ def arrays_are_close(
 def test_mass_properties():
     robot = Robot("toddlerbot")
     sim = MuJoCoSim(robot)
+    sim.forward()
 
     assert abs(sim.get_mass() - 2.53174268) < 1e-6
     assert arrays_are_close(
@@ -43,7 +44,7 @@ def test_kinematics():
     # plot_waist_mapping(robot.config["joints"], robot.waist_ik, exp_folder_path)
     # plot_ankle_mapping(robot.config["joints"], robot.ankle_ik, exp_folder_path)
 
-    sim = MuJoCoSim(robot, fixed=True)
+    sim = MuJoCoSim(robot, fixed_base=True)
     # sim.simulate(vis_type="render")
     sim.simulate()
 

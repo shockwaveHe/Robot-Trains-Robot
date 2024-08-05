@@ -8,10 +8,10 @@ from datetime import datetime
 from typing import Any, Dict, List
 
 import torch
+import wandb
 from torch.utils.tensorboard import SummaryWriter  # type: ignore
 
-import wandb
-from toddlerbot.envs.legged_robot_env import LeggedRobotEnv
+from toddlerbot.envs.humanoid_env import HumanoidEnv
 
 from .actor_critic import ActorCritic
 from .ppo import PPO
@@ -20,7 +20,7 @@ from .ppo import PPO
 class OnPolicyRunner:
     def __init__(
         self,
-        env: LeggedRobotEnv,
+        env: HumanoidEnv,
         train_cfg: Dict[str, Any],
         log_dir: str = "",
         device: str = "cpu",

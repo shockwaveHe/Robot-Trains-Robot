@@ -164,6 +164,10 @@ class Robot:
         return list(self.init_joint_angles.keys())
 
     @property
+    def foot_name(self) -> str:
+        return self.config["general"]["foot_name"]
+
+    @property
     def collider_names(self) -> List[str]:
         collider_names: List[str] = []
         for link_name, link_config in self.collision_config.items():

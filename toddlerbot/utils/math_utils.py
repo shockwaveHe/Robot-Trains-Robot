@@ -154,6 +154,12 @@ def wrap_to_pi(angles: torch.Tensor):
     return angles
 
 
+def torch_rand_float(
+    lower: float, upper: float, shape: Tuple[int, int], device: torch.device
+):
+    return (upper - lower) * torch.rand(*shape, device=device) + lower
+
+
 def interpolate(
     p_start: Union[npt.NDArray[np.float32], float],
     p_end: Union[npt.NDArray[np.float32], float],
