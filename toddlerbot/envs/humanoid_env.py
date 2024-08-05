@@ -153,6 +153,45 @@ class HumanoidEnv:
             requires_grad=False,
         )
 
+        # Sets environment origins. On rough terrain the origins are defined by the terrain platforms.
+        # Otherwise create a grid.
+
+        # if self.cfg.terrain.mesh_type in ["heightfield", "trimesh"]:
+        #     self.custom_origins = True
+        #     self.env_origins = torch.zeros(self.num_envs, 3, device=self.device)
+        #     # put robots at the origins defined by the terrain
+        #     max_init_level = self.cfg.terrain.max_init_terrain_level
+        #     if not self.cfg.terrain.curriculum:
+        #         max_init_level = self.cfg.terrain.num_rows - 1
+        #     self.terrain_levels = torch.randint(
+        #         0, max_init_level + 1, (self.num_envs,), device=self.device
+        #     )
+        #     self.terrain_types = torch.div(
+        #         torch.arange(self.num_envs, device=self.device),
+        #         (self.num_envs / self.cfg.terrain.num_cols),
+        #         rounding_mode="floor",
+        #     ).to(torch.long)
+        #     self.max_terrain_level = self.cfg.terrain.num_rows
+        #     self.terrain_origins = (
+        #         torch.from_numpy(self.terrain.env_origins)  # type: ignore
+        #         .to(self.device)
+        #         .to(torch.float32)
+        #     )
+        #     self.env_origins[:] = self.terrain_origins[
+        #         self.terrain_levels, self.terrain_types
+        #     ]
+        # else:
+        self.custom_origins = False
+        self.env_origins = torch.zeros(self.num_envs, 3, device=self.device)
+        # create a grid of robots
+        num_cols = np.floor(np.sqrt(self.num_envs))
+        num_rows = np.ceil(self.num_envs / num_cols)
+        xx, yy = torch.meshgrid(torch.arange(num_rows), torch.arange(num_cols))
+        spacing = self.cfg.env.env_spacing
+        self.env_origins[:, 0] = spacing * xx.flatten()[: self.num_envs]
+        self.env_origins[:, 1] = spacing * yy.flatten()[: self.num_envs]
+        self.env_origins[:, 2] = 0.0
+
     def _init_dof(self):
         self.dof_names = self.robot.joint_ordering
         self.num_dof = len(self.dof_names)
@@ -161,30 +200,17 @@ class HumanoidEnv:
         self.dof_state = (
             torch.from_numpy(self.sim.get_dof_state())  # type: ignore
             .to(self.device)
-            .tile((self.num_envs, 1))
+            .tile((self.num_envs, 1, 1))
         )
         self.dof_pos = self.dof_state[..., 0]
         self.dof_vel = self.dof_state[..., 1]
         self.last_dof_vel = torch.zeros_like(self.dof_vel)
-
-        # joint positions offsets and PD gains
+        # default dof pos
         self.default_dof_pos = torch.tensor(
             list(self.robot.init_joint_angles.values()),
             dtype=torch.float32,
             device=self.device,
         ).unsqueeze(0)
-        self.default_joint_pd_target = self.default_dof_pos.clone()
-
-        self.p_gains = torch.tensor(
-            self.robot.get_joint_attrs("is_passive", False, "kp_sim"),
-            dtype=torch.float32,
-            device=self.device,
-        ).tile((self.num_envs, 1))
-        self.d_gains = torch.tensor(
-            self.robot.get_joint_attrs("is_passive", False, "kd_sim"),
-            dtype=torch.float32,
-            device=self.device,
-        ).tile((self.num_envs, 1))
 
     def _init_root(self):
         # root state
@@ -222,7 +248,7 @@ class HumanoidEnv:
         self.body_state = (
             torch.from_numpy(self.sim.get_body_state())  # type: ignore
             .to(self.device)
-            .tile((self.num_envs, 1))
+            .tile((self.num_envs, 1, 1))
         )
         self.last_body_state = torch.zeros_like(self.body_state)
         self.body_mass = torch.zeros(
@@ -230,31 +256,31 @@ class HumanoidEnv:
         )
 
         # contact
-        self.feet_names = [s for s in body_names if self.robot.foot_name in s]
+        self.feet_names: List[str] = []
+        feet_indices: List[int] = []
         penalized_contact_names: List[str] = []
+        penalized_contact_indices: List[int] = []
         termination_contact_names: List[str] = []
-        for name in body_names:
-            if name not in self.feet_names:
+        termination_contact_indices: List[int] = []
+        for i, name in enumerate(body_names):
+            if self.robot.foot_name in name:
+                self.feet_names.append(name)
+                feet_indices.append(i)
+            else:
                 penalized_contact_names.append(name)
+                penalized_contact_indices.append(i)
                 termination_contact_names.append(name)
+                termination_contact_indices.append(i)
 
-        self.feet_indices = torch.zeros(
-            len(self.feet_names), dtype=torch.long, device=self.device
+        self.feet_indices = torch.tensor(
+            feet_indices, dtype=torch.long, device=self.device
         )
-        for i, name in enumerate(self.feet_names):
-            self.feet_indices[i] = self.sim.get_body_idx(name)
-
-        self.penalized_contact_indices = torch.zeros(
-            len(penalized_contact_names), dtype=torch.long, device=self.device
+        self.penalized_contact_indices = torch.tensor(
+            penalized_contact_indices, dtype=torch.long, device=self.device
         )
-        for i, name in enumerate(penalized_contact_names):
-            self.penalized_contact_indices[i] = self.sim.get_body_idx(name)
-
-        self.termination_contact_indices = torch.zeros(
-            len(termination_contact_names), dtype=torch.long, device=self.device
+        self.termination_contact_indices = torch.tensor(
+            termination_contact_indices, dtype=torch.long, device=self.device
         )
-        for i, name in enumerate(termination_contact_names):
-            self.termination_contact_indices[i] = self.sim.get_body_idx(name)
 
         self.feet_air_time = torch.zeros(
             self.num_envs,
@@ -273,7 +299,7 @@ class HumanoidEnv:
         self.contact_forces = (
             torch.from_numpy(self.sim.get_contact_forces())  # type: ignore
             .to(self.device)
-            .tile((self.num_envs, 1))
+            .tile((self.num_envs, 1, 1))
         )
         self.env_frictions = torch.zeros(
             self.num_envs, 1, dtype=torch.float32, device=self.device
@@ -424,7 +450,8 @@ class HumanoidEnv:
         self.actions = torch.clip(actions, -clip_actions, clip_actions).to(self.device)
         # step physics and render each frame
         for _ in range(self.cfg.control.decimation):
-            self.sim.set_motor_angles(self.actions.cpu().numpy())
+            self.sim.set_motor_angles(self.actions.squeeze().cpu().numpy())
+            self.sim.step()
 
         self.post_physics_step()
 
@@ -597,7 +624,7 @@ class HumanoidEnv:
         )
         push_duration = np.random.uniform(0.0, self.cfg.domain_rand.max_push_duration)
 
-        self.sim.start_push(self.rand_push.unsqueeze(0).cpu().numpy(), push_duration)
+        self.sim.start_push(self.rand_push.squeeze().cpu().numpy(), push_duration)
 
     def check_termination(self):
         """Check if environments need to be reset"""
@@ -755,12 +782,12 @@ class HumanoidEnv:
         Args:
             env_ids (List[int]): Environemnt ids
         """
-        self.dof_state[env_ids, 0] = self.default_dof_pos + torch_rand_float(
+        self.dof_state[env_ids, :, 0] = self.default_dof_pos + torch_rand_float(
             -0.1, 0.1, (len(env_ids), self.num_dof), device=self.device
         )
         self.dof_state[env_ids, 1] = 0.0
 
-        self.sim.set_dof_state(self.dof_state.cpu().numpy())
+        self.sim.set_dof_state(self.dof_state.squeeze().cpu().numpy())
 
     def _reset_root_states(self, env_ids: torch.Tensor):
         # base position
@@ -773,13 +800,13 @@ class HumanoidEnv:
         else:
             self.root_states[env_ids] = self.base_init_state
             self.root_states[env_ids, :3] += self.env_origins[env_ids]
-        # base velocities
-        # self.root_states[env_ids, 7:13] = torch_rand_float(-0.05, 0.05, (len(env_ids), 6), device=self.device) # [7:10]: lin vel, [10:13]: ang vel
-        if self.sim.fixed_base:
-            self.root_states[env_ids, 7:13] = 0
-            self.root_states[env_ids, 2] += 1.8  # TODO: Update this number
+            # base velocities
+            # self.root_states[env_ids, 7:13] = torch_rand_float(-0.05, 0.05, (len(env_ids), 6), device=self.device) # [7:10]: lin vel, [10:13]: ang vel
+            if self.sim.fixed_base:
+                self.root_states[env_ids, 7:13] = 0
+                self.root_states[env_ids, 2] += 1.8  # TODO: Update this number
 
-        self.sim.set_root_state(self.root_states.cpu().numpy())
+        self.sim.set_root_state(self.root_states.squeeze().cpu().numpy())
 
     def compute_observations(self):
         pass
@@ -899,43 +926,3 @@ class HumanoidEnv:
     #         .view(self.terrain.tot_rows, self.terrain.tot_cols)
     #         .to(self.device)
     #     )
-
-    def _get_env_origins(self):
-        """Sets environment origins. On rough terrain the origins are defined by the terrain platforms.
-        Otherwise create a grid.
-        """
-        # if self.cfg.terrain.mesh_type in ["heightfield", "trimesh"]:
-        #     self.custom_origins = True
-        #     self.env_origins = torch.zeros(self.num_envs, 3, device=self.device)
-        #     # put robots at the origins defined by the terrain
-        #     max_init_level = self.cfg.terrain.max_init_terrain_level
-        #     if not self.cfg.terrain.curriculum:
-        #         max_init_level = self.cfg.terrain.num_rows - 1
-        #     self.terrain_levels = torch.randint(
-        #         0, max_init_level + 1, (self.num_envs,), device=self.device
-        #     )
-        #     self.terrain_types = torch.div(
-        #         torch.arange(self.num_envs, device=self.device),
-        #         (self.num_envs / self.cfg.terrain.num_cols),
-        #         rounding_mode="floor",
-        #     ).to(torch.long)
-        #     self.max_terrain_level = self.cfg.terrain.num_rows
-        #     self.terrain_origins = (
-        #         torch.from_numpy(self.terrain.env_origins)  # type: ignore
-        #         .to(self.device)
-        #         .to(torch.float32)
-        #     )
-        #     self.env_origins[:] = self.terrain_origins[
-        #         self.terrain_levels, self.terrain_types
-        #     ]
-        # else:
-        self.custom_origins = False
-        self.env_origins = torch.zeros(self.num_envs, 3, device=self.device)
-        # create a grid of robots
-        num_cols = np.floor(np.sqrt(self.num_envs))
-        num_rows = np.ceil(self.num_envs / num_cols)
-        xx, yy = torch.meshgrid(torch.arange(num_rows), torch.arange(num_cols))
-        spacing = self.cfg.env.env_spacing
-        self.env_origins[:, 0] = spacing * xx.flatten()[: self.num_envs]
-        self.env_origins[:, 1] = spacing * yy.flatten()[: self.num_envs]
-        self.env_origins[:, 2] = 0.0

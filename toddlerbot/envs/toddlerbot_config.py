@@ -13,7 +13,7 @@ toddlerbot_cfg = HumanoidCfg(
     env=EnvConfig(
         num_envs=1,
         num_single_obs=101,
-        num_single_privileged_obs=143,
+        num_single_privileged_obs=146,
     ),
     rewards=RewardsConfig(scales=RewardScales()),
 )

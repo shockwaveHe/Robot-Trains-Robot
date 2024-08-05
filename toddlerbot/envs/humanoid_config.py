@@ -80,8 +80,6 @@ class RewardScales:
     track_vel_hard = 0.5
     vel_mismatch_exp = 0.5
     low_speed = 0.2
-    lin_vel_z: float = -2.0
-    ang_vel_xy: float = -0.05
     orientation: float = 1.0
     default_dof_pos: float = 0.5
     dof_pos: float = 1.6

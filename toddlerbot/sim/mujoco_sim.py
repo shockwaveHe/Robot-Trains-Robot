@@ -93,9 +93,6 @@ class MuJoCoSim(BaseSim):
 
         return dof_state
 
-    def get_body_idx(self, body_name: str) -> int:
-        return self.model.body(body_name).id  # type: ignore
-
     def get_body_state(self):
         dof_state = np.zeros((len(self.robot.collider_names), 13), dtype=np.float32)
         for i, name in enumerate(self.robot.collider_names):
@@ -288,11 +285,11 @@ class MuJoCoSim(BaseSim):
 
     def set_root_state(self, root_state: npt.NDArray[np.float32]):
         # Set position (3) and orientation (quat 4) in qpos
-        self.data.body("torso").qpos[:3] = root_state[:3].copy()  # type: ignore
-        self.data.body("torso").qpos[3:7] = root_state[3:7].copy()  # type: ignore
+        self.data.body("torso").xpos = root_state[:3].copy()  # type: ignore
+        self.data.body("torso").xquat = root_state[3:7].copy()  # type: ignore
         # Set linear velocity (3) and angular velocity (3) in qvel
-        self.data.body("torso").qvel[:3] = root_state[7:10].copy()  # type: ignore
-        self.data.body("torso").qvel[3:6] = root_state[10:13].copy()  # type: ignore
+        self.data.body("torso").cvel[:3] = root_state[7:10].copy()  # type: ignore
+        self.data.body("torso").cvel[3:6] = root_state[10:13].copy()  # type: ignore
 
     def set_dof_state(self, dof_state: npt.NDArray[np.float32]):
         for i, name in enumerate(self.robot.motor_ordering):

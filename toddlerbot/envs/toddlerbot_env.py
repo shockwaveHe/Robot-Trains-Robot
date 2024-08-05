@@ -114,15 +114,14 @@ class ToddlerbotEnv(HumanoidEnv):
         self.privileged_obs_buf = torch.cat(
             (
                 self.command_input,  # 2 + 3
-                (self.dof_pos - self.default_joint_pd_target)
-                * self.obs_scales.dof_pos,  # 30
+                (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,  # 30
                 self.dof_vel * self.obs_scales.dof_vel,  # 30
                 self.actions,  # 30
                 diff,  # 30
                 self.base_lin_vel * self.obs_scales.lin_vel,  # 3
                 self.base_ang_vel * self.obs_scales.ang_vel,  # 3
                 self.base_euler_xyz * self.obs_scales.quat,  # 3
-                self.rand_push,  # 3
+                self.rand_push,  # 6
                 self.env_frictions,  # 1
                 self.body_mass / 30.0,  # 1
                 stance_mask,  # 2
@@ -295,7 +294,7 @@ class ToddlerbotEnv(HumanoidEnv):
         Calculates the reward for keeping joint positions close to default positions, with a focus
         on penalizing deviation in yaw and roll directions. Excludes yaw and roll from the main penalty.
         """
-        joint_diff = self.dof_pos - self.default_joint_pd_target
+        joint_diff = self.dof_pos - self.default_dof_pos
         left_yaw_roll = joint_diff[:, :2]
         right_yaw_roll = joint_diff[:, 6:8]
         yaw_roll = torch.norm(left_yaw_roll, dim=1) + torch.norm(right_yaw_roll, dim=1)  # type: ignore
@@ -443,7 +442,7 @@ class ToddlerbotEnv(HumanoidEnv):
         ) / 2
 
     # TODO: check this
-    def _reward_foot_slip(self):
+    def _reward_feet_slip(self):
         """
         Calculates the reward for minimizing foot slip. The reward is based on the contact forces
         and the speed of the feet. A contact threshold is used to determine if the foot is in contact

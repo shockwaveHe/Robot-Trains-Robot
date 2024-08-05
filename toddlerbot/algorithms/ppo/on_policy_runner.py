@@ -3,14 +3,15 @@
 
 import os
 import statistics
+import time
 from collections import deque
 from datetime import datetime
 from typing import Any, Dict, List
 
 import torch
-import wandb
 from torch.utils.tensorboard import SummaryWriter  # type: ignore
 
+import wandb
 from toddlerbot.envs.humanoid_env import HumanoidEnv
 
 from .actor_critic import ActorCritic
@@ -85,7 +86,7 @@ class OnPolicyRunner:
             )
         obs = self.env.get_observations()
         privileged_obs = self.env.get_privileged_observations()
-        critic_obs = privileged_obs if privileged_obs else obs
+        critic_obs = privileged_obs if privileged_obs is not None else obs
         obs, critic_obs = obs.to(self.device), critic_obs.to(self.device)
         self.alg.actor_critic.train()  # switch to train mode (for dropout for example)
 
@@ -101,7 +102,7 @@ class OnPolicyRunner:
 
         tot_iter = self.current_learning_iteration + num_learning_iterations
         for it in range(self.current_learning_iteration, tot_iter):
-            # start = time.time()
+            start = time.time()
             # Rollout
             with torch.inference_mode():
                 for _ in range(self.num_steps_per_env):
@@ -132,16 +133,16 @@ class OnPolicyRunner:
                         cur_reward_sum[new_ids] = 0
                         cur_episode_length[new_ids] = 0
 
-                # stop = time.time()
-                # collection_time = stop - start
+                stop = time.time()
+                collection_time = stop - start  # type: ignore
 
                 # Learning step
-                # start = stop
+                start = stop
                 self.alg.compute_returns(critic_obs)
 
-            _, _ = self.alg.update()
-            # stop = time.time()
-            # learn_time = stop - start
+            mean_value_loss, mean_surrogate_loss = self.alg.update()  # type: ignore
+            stop = time.time()
+            learn_time = stop - start  # type: ignore
             if len(self.log_dir) > 0:
                 self.log(locals())
             if it % self.save_interval == 0:

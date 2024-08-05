@@ -3,6 +3,7 @@ import os
 import time
 from dataclasses import asdict
 
+from toddlerbot.algorithms.ppo.on_policy_runner import OnPolicyRunner
 from toddlerbot.envs.humanoid_config import HumanoidCfg
 from toddlerbot.envs.humanoid_env import HumanoidEnv
 from toddlerbot.envs.ppo_config import PPOCfg
@@ -16,9 +17,8 @@ from toddlerbot.utils.misc_utils import set_seed
 def make_runner(
     env: HumanoidEnv, env_cfg: HumanoidCfg, train_cfg: PPOCfg, exp_folder_path: str
 ):
-    runner_class = eval(train_cfg.runner_class_name)
     all_cfg = {**asdict(env_cfg), **asdict(train_cfg)}
-    runner = runner_class(env, all_cfg, exp_folder_path)
+    runner = OnPolicyRunner(env, all_cfg, exp_folder_path)
 
     # save resume path before creating a new log_dir
     resume = train_cfg.runner.resume
