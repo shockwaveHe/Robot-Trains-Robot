@@ -88,6 +88,8 @@
                 "mujoco",
                 "--env",
                 "walk",
+                "--vis",
+                "render",
             ],
         },
         {

@@ -447,7 +447,7 @@ def add_body_link(root: ET.Element, urdf_path: str, offsets: Dict[str, float]):
         body_link.append(element)
 
 
-def create_base_scene_xml(mjcf_path: str, is_fixed: bool):
+def create_scene_xml(mjcf_path: str, is_fixed: bool):
     robot_name = os.path.basename(mjcf_path).replace(".xml", "")
 
     # Create the root element
@@ -542,7 +542,7 @@ def create_base_scene_xml(mjcf_path: str, is_fixed: bool):
                 "size": "0 0 0.05",
                 "type": "plane",
                 "material": "groundplane",
-                "condim": "1",
+                "condim": "3",
             },
         )
 
@@ -607,14 +607,14 @@ def get_mjcf_files(robot_name: str):
     if robot.config["general"]["is_fixed"]:
         mjcf_path = mjcf_fixed_path
     else:
-        create_base_scene_xml(mjcf_fixed_path, is_fixed=True)
+        create_scene_xml(mjcf_fixed_path, is_fixed=True)
 
         mjcf_path = os.path.join(robot_dir, robot_name + ".xml")
         add_body_link(xml_root, urdf_path, robot.config["general"]["offsets"])
         include_all_contacts(xml_root)
         xml_tree.write(mjcf_path)
 
-    create_base_scene_xml(mjcf_path, robot.config["general"]["is_fixed"])
+    create_scene_xml(mjcf_path, robot.config["general"]["is_fixed"])
 
 
 def main():

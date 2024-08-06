@@ -110,23 +110,25 @@ class MuJoCoSim(BaseSim):
         for i in range(self.data.ncon):  # type: ignore
             contact = self.data.contact[i]  # type: ignore
             # Check if the contact involves the ground plane
-            geom1_name = str(self.model.geom(contact.geom1).name)  # type: ignore
-            geom2_name = str(self.model.geom(contact.geom2).name)  # type: ignore
+            geom1 = self.model.geom(contact.geom[0])  # type: ignore
+            geom2 = self.model.geom(contact.geom[1])  # type: ignore
 
             body_name = ""
-            if "ground" in geom1_name:
-                body_name = geom2_name
-            elif "ground" in geom2_name:
-                body_name = geom1_name
+            if "floor" in geom1.name:  # type: ignore
+                body_name = str(self.model.body(geom2.bodyid).name)  # type: ignore
+            elif "floor" in geom2.name:  # type: ignore
+                body_name = str(self.model.body(geom1.bodyid).name)  # type: ignore
             else:
                 continue
 
             # Extract the contact forces
-            c_array = np.zeros(6, dtype=np.float32)  # To hold contact forces
+            c_array = np.zeros(6)  # To hold contact forces
             mujoco.mj_contactForce(self.model, self.data, i, c_array)  # type: ignore
-            contact_forces[self.robot.collider_names.index(body_name)] = c_array[
-                :3
-            ].copy()
+            contact_force_local = c_array[:3].astype(np.float32)
+            contact_force_global = contact.frame.reshape(-1, 3).T @ contact_force_local  # type: ignore
+            contact_forces[self.robot.collider_names.index(body_name)] = (
+                contact_force_global
+            )
 
         return contact_forces
 
@@ -284,12 +286,13 @@ class MuJoCoSim(BaseSim):
         self.data.body("torso").xfrc_applied[:] = 0  # type: ignore
 
     def set_root_state(self, root_state: npt.NDArray[np.float32]):
-        # Set position (3) and orientation (quat 4) in qpos
-        self.data.body("torso").xpos = root_state[:3].copy()  # type: ignore
-        self.data.body("torso").xquat = root_state[3:7].copy()  # type: ignore
+        # Assume the free joint is the first joint
+        self.data.joint(0).qpos[:3] = root_state[:3].copy()  # type: ignore
+        self.data.joint(0).qpos[3:] = root_state[3:7].copy()  # type: ignore
         # Set linear velocity (3) and angular velocity (3) in qvel
-        self.data.body("torso").cvel[:3] = root_state[7:10].copy()  # type: ignore
-        self.data.body("torso").cvel[3:6] = root_state[10:13].copy()  # type: ignore
+        self.data.joint(0).qvel[:3] = root_state[7:10].copy()  # type: ignore
+        self.data.joint(0).qvel[3:] = root_state[10:13].copy()  # type: ignore
+        # mujoco.mj_resetData(self.model, self.data)  # type: ignore
 
     def set_dof_state(self, dof_state: npt.NDArray[np.float32]):
         for i, name in enumerate(self.robot.motor_ordering):

@@ -24,15 +24,6 @@ class EnvConfig:
 
 
 @dataclass
-class InitStateConfig:
-    pos: List[float] = field(default_factory=lambda: [0.0, 0.0, 0.0])
-    # w, x, y, z
-    quat: List[float] = field(default_factory=lambda: [1.0, 0.0, 0.0, 0.0])
-    lin_vel: List[float] = field(default_factory=lambda: [0.0, 0.0, 0.0])
-    ang_vel: List[float] = field(default_factory=lambda: [0.0, 0.0, 0.0])
-
-
-@dataclass
 class ControlConfig:
     action_scale: float = 0.25
     decimation: int = 10
@@ -64,7 +55,7 @@ class DomainRandConfig:
     friction_range: List[float] = field(default_factory=lambda: [0.1, 2.0])
     randomize_base_mass: bool = True
     added_mass_range: List[float] = field(default_factory=lambda: [-0.1, 0.1])
-    push_robots: bool = True
+    push_robots: bool = False  # TODO: change it back to True
     push_interval_s: int = 4
     max_push_xy_vel: float = 0.2
     max_push_ang_vel: float = 0.4
@@ -151,7 +142,6 @@ class NoiseConfig:
 @dataclass
 class HumanoidCfg:
     env: EnvConfig = EnvConfig()
-    init_state: InitStateConfig = InitStateConfig()
     control: ControlConfig = ControlConfig()
     commands: CommandsConfig = CommandsConfig()
     domain_rand: DomainRandConfig = DomainRandConfig()

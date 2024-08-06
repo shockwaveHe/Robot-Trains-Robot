@@ -39,6 +39,7 @@ class HumanoidEnv:
         self.init_done = False
 
         self.sim.forward()
+
         self._init_env()
         self._init_dof()
         self._init_root()
@@ -214,21 +215,10 @@ class HumanoidEnv:
 
     def _init_root(self):
         # root state
-        # TODO: debug the numbers
-        base_init_state_list = (
-            self.cfg.init_state.pos
-            + self.cfg.init_state.quat
-            + self.cfg.init_state.lin_vel
-            + self.cfg.init_state.ang_vel
+        self.base_init_state = torch.from_numpy(self.sim.get_root_state()).to(  # type: ignore
+            self.device
         )
-        self.base_init_state = torch.tensor(
-            base_init_state_list, dtype=torch.float32, device=self.device
-        )
-        self.root_states = (
-            torch.from_numpy(self.sim.get_root_state())  # type: ignore
-            .to(self.device)
-            .tile((self.num_envs, 1))
-        )
+        self.root_states = self.base_init_state.tile((self.num_envs, 1))
         self.base_quat = self.root_states[..., 3:7]
         self.base_euler_xyz = quat_to_euler_tensor(self.base_quat)
         self.base_lin_vel = quat_rotate_inverse(
@@ -473,6 +463,27 @@ class HumanoidEnv:
         )
 
     def post_physics_step(self):
+        self.dof_state = (
+            torch.from_numpy(self.sim.get_dof_state())  # type: ignore
+            .to(self.device)
+            .tile((self.num_envs, 1, 1))
+        )
+        self.root_states = (
+            torch.from_numpy(self.sim.get_root_state())  # type: ignore
+            .to(self.device)
+            .tile((self.num_envs, 1))
+        )
+        self.body_state = (
+            torch.from_numpy(self.sim.get_body_state())  # type: ignore
+            .to(self.device)
+            .tile((self.num_envs, 1, 1))
+        )
+        self.contact_forces = (
+            torch.from_numpy(self.sim.get_contact_forces())  # type: ignore
+            .to(self.device)
+            .tile((self.num_envs, 1, 1))
+        )
+
         self.episode_length_buf += 1
         self.common_step_counter += 1
 
@@ -493,7 +504,9 @@ class HumanoidEnv:
 
         # compute observations, rewards, resets, ...
         self.check_termination()
+
         self.compute_reward()
+
         env_ids = self.reset_buf.nonzero(as_tuple=False).flatten()
         self.reset_idx(env_ids)
 
@@ -694,6 +707,7 @@ class HumanoidEnv:
                 torch.mean(self.episode_sums[key][env_ids]) / self.max_episode_length_s
             )
             self.episode_sums[key][env_ids] = 0.0
+
         # log additional curriculum info
         # if self.cfg.terrain.mesh_type == "trimesh":
         #     self.extras["episode"]["terrain_level"] = torch.mean(
@@ -703,6 +717,7 @@ class HumanoidEnv:
             self.extras["episode"]["max_command_x"] = self.command_ranges["lin_vel_x"][
                 1
             ]
+
         # send timeout info to the algorithm
         if self.cfg.env.send_timeouts:
             self.extras["time_outs"] = self.time_out_buf
@@ -782,10 +797,12 @@ class HumanoidEnv:
         Args:
             env_ids (List[int]): Environemnt ids
         """
-        self.dof_state[env_ids, :, 0] = self.default_dof_pos + torch_rand_float(
-            -0.1, 0.1, (len(env_ids), self.num_dof), device=self.device
-        )
-        self.dof_state[env_ids, 1] = 0.0
+        self.dof_state[env_ids, :, 0] = self.default_dof_pos
+        # TODO: bring this back
+        # self.dof_state[env_ids, :, 0] += torch_rand_float(
+        #     -0.1, 0.1, (len(env_ids), self.num_dof), device=self.device
+        # )
+        self.dof_state[env_ids, :, 1] = 0.0
 
         self.sim.set_dof_state(self.dof_state.squeeze().cpu().numpy())
 
@@ -804,7 +821,6 @@ class HumanoidEnv:
             # self.root_states[env_ids, 7:13] = torch_rand_float(-0.05, 0.05, (len(env_ids), 6), device=self.device) # [7:10]: lin vel, [10:13]: ang vel
             if self.sim.fixed_base:
                 self.root_states[env_ids, 7:13] = 0
-                self.root_states[env_ids, 2] += 1.8  # TODO: Update this number
 
         self.sim.set_root_state(self.root_states.squeeze().cpu().numpy())
 

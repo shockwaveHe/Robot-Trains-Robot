@@ -7,7 +7,6 @@ from toddlerbot.algorithms.ppo.on_policy_runner import OnPolicyRunner
 from toddlerbot.envs.humanoid_config import HumanoidCfg
 from toddlerbot.envs.humanoid_env import HumanoidEnv
 from toddlerbot.envs.ppo_config import PPOCfg
-from toddlerbot.sim import BaseSim
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import get_load_path
@@ -35,7 +34,7 @@ def make_runner(
     return runner
 
 
-def train(robot: Robot, sim: BaseSim, env_name: str):
+def train(robot: Robot, sim: MuJoCoSim, env_name: str):
     exp_name = f"{env_name}_rl_{robot.name}_{sim.name}"
     time_str = time.strftime("%Y%m%d_%H%M%S")
     exp_folder_path = f"results/{time_str}_{exp_name}"
@@ -48,10 +47,20 @@ def train(robot: Robot, sim: BaseSim, env_name: str):
 
         env = ToddlerbotEnv(sim, robot, toddlerbot_cfg)
         runner = make_runner(env, toddlerbot_cfg, toddlerbot_ppo_cfg, exp_folder_path)
-        runner.learn(
-            num_learning_iterations=toddlerbot_ppo_cfg.runner.max_iterations,
-            init_at_random_ep_len=True,
-        )
+
+        try:
+            runner.learn(
+                num_learning_iterations=toddlerbot_ppo_cfg.runner.max_iterations,
+                init_at_random_ep_len=True,
+            )
+        except KeyboardInterrupt:
+            print("KeyboardInterrupt recieved. Closing...")
+
+        finally:
+            if hasattr(sim, "save_recording"):
+                sim.save_recording(exp_folder_path)  # type: ignore
+
+            sim.close()
 
     else:
         raise ValueError("Unknown env")
@@ -77,6 +86,12 @@ if __name__ == "__main__":
         default="walk",
         help="The name of the env.",
     )
+    parser.add_argument(
+        "--vis",
+        type=str,
+        default="render",
+        help="The name of the env.",
+    )
     args = parser.parse_args()
 
     set_seed(0)
@@ -86,7 +101,7 @@ if __name__ == "__main__":
     if args.sim == "mujoco":
         from toddlerbot.sim.mujoco_sim import MuJoCoSim
 
-        sim = MuJoCoSim(robot)
+        sim = MuJoCoSim(robot, vis_type=args.vis)
     else:
         raise ValueError("Unknown simulator")
 
