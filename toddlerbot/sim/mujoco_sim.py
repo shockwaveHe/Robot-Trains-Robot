@@ -24,6 +24,7 @@ class MuJoCoSim(BaseSim):
         xml_str: str = "",
         assets: Any = None,
         vis_type: str = "",
+        device: str = "cpu",
     ):
         """Initialize the MuJoCo simulation environment."""
         super().__init__()
@@ -32,7 +33,7 @@ class MuJoCoSim(BaseSim):
         self.fixed_base = fixed_base
 
         if len(xml_str) > 0 and assets is not None:
-            self.model = mujoco.MjModel.from_xml_string(xml_str, assets)  # type: ignore
+            model = mujoco.MjModel.from_xml_string(xml_str, assets)  # type: ignore
         else:
             if len(xml_path) == 0:
                 if fixed_base:
@@ -42,11 +43,18 @@ class MuJoCoSim(BaseSim):
                 else:
                     xml_path = find_robot_file_path(robot.name, suffix="_scene.xml")
 
-            self.model = mujoco.MjModel.from_xml_path(xml_path)  # type: ignore
+            model = mujoco.MjModel.from_xml_path(xml_path)  # type: ignore
+
+        if device == "cpu":
+            self.model = model  # type: ignore
+            self.data = mujoco.MjData(model)  # type: ignore
+        else:
+            from mujoco import mjx  # type: ignore
+
+            self.model = mjx.put_model(model)  # type: ignore
+            self.data = mjx.make_data(model)  # type: ignore
 
         self.model.opt.timestep = self.dt  # type: ignore
-        self.data = mujoco.MjData(self.model)  # type: ignore
-
         self.controller = MuJoCoController()
         mujoco.set_mjcb_control(self.controller.process_commands)  # type: ignore
 

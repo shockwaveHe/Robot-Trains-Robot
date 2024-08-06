@@ -564,8 +564,8 @@ def process_mjcf_fixed_file(root: ET.Element, config: Dict[str, Any]):
     update_geom_classes(root, ["type", "contype", "conaffinity", "group", "density"])
     add_actuators_to_mjcf(root, config["joints"])
 
-    if config["general"]["is_waist_closed_loop"]:
-        add_waist_constraints(root, config["general"]["offsets"])
+    # if config["general"]["is_waist_closed_loop"]:
+    #     add_waist_constraints(root, config["general"]["offsets"])
 
     if config["general"]["is_knee_closed_loop"]:
         add_knee_constraints(root)
