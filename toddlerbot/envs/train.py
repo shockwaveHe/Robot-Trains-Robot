@@ -89,7 +89,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--vis",
         type=str,
-        default="render",
+        default="",
         help="The name of the env.",
     )
     args = parser.parse_args()

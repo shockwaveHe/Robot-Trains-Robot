@@ -207,7 +207,7 @@ class HumanoidEnv:
         self.dof_vel = self.dof_state[..., 1]
         self.last_dof_vel = torch.zeros_like(self.dof_vel)
         # default dof pos
-        self.default_dof_pos = self.dof_pos[：1].clone()
+        self.default_dof_pos = self.dof_pos[:1].clone()
 
     def _init_root(self):
         # root state
