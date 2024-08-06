@@ -207,11 +207,7 @@ class HumanoidEnv:
         self.dof_vel = self.dof_state[..., 1]
         self.last_dof_vel = torch.zeros_like(self.dof_vel)
         # default dof pos
-        self.default_dof_pos = torch.tensor(
-            list(self.robot.init_joint_angles.values()),
-            dtype=torch.float32,
-            device=self.device,
-        ).unsqueeze(0)
+        self.default_dof_pos = self.dof_pos[：1].clone()
 
     def _init_root(self):
         # root state
@@ -468,11 +464,15 @@ class HumanoidEnv:
             .to(self.device)
             .tile((self.num_envs, 1, 1))
         )
+        self.dof_pos = self.dof_state[..., 0]
+        self.dof_vel = self.dof_state[..., 1]
+
         self.root_states = (
             torch.from_numpy(self.sim.get_root_state())  # type: ignore
             .to(self.device)
             .tile((self.num_envs, 1))
         )
+        # TODO: should this be in local frame or global frame?
         self.body_state = (
             torch.from_numpy(self.sim.get_body_state())  # type: ignore
             .to(self.device)
@@ -804,7 +804,7 @@ class HumanoidEnv:
         # )
         self.dof_state[env_ids, :, 1] = 0.0
 
-        self.sim.set_dof_state(self.dof_state.squeeze().cpu().numpy())
+        self.sim.reset_dof_state()
 
     def _reset_root_states(self, env_ids: torch.Tensor):
         # base position

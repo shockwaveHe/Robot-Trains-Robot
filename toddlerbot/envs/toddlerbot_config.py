@@ -15,7 +15,28 @@ toddlerbot_cfg = HumanoidCfg(
         num_single_obs=101,
         num_single_privileged_obs=146,
     ),
-    rewards=RewardsConfig(scales=RewardScales()),
+    rewards=RewardsConfig(
+        scales=RewardScales(
+            # tracking_lin_vel=0.0,
+            # tracking_ang_vel=0.0,
+            # low_speed=0.0,
+            # orientation=0.0,
+            default_dof_pos=0.0,
+            dof_pos=0.0,
+            # dof_vel=0.0,
+            # dof_acc=0.0,
+            # base_height=0.0,
+            # base_acc=0.0,
+            feet_air_time=0.0,
+            feet_clearance=0.0,
+            feet_contact_forces=0.0,
+            feet_contact_number=0.0,
+            feet_distance=0.0,
+            feet_slip=0.0,
+            # collision=0.0,
+            # action_smoothness=0.0,
+        ),
+    ),
 )
 
 

@@ -209,40 +209,8 @@ class ToddlerbotEnv(HumanoidEnv):
         Tracks angular velocity commands for yaw rotation.
         Computes a reward based on how closely the robot's angular velocity matches the commanded yaw values.
         """
-
         ang_vel_error = torch.square(self.commands[:, 2] - self.base_ang_vel[:, 2])
         return torch.exp(-ang_vel_error * self.cfg.rewards.tracking_sigma)
-
-    def _reward_track_vel_hard(self) -> torch.Tensor:
-        """
-        Calculates a reward for accurately tracking both linear and angular velocity commands.
-        Penalizes deviations from specified linear and angular velocity targets.
-        """
-        # Tracking of linear velocity commands (xy axes)
-        lin_vel_error = torch.norm(  # type: ignore
-            self.commands[:, :2] - self.base_lin_vel[:, :2], dim=1
-        )
-        lin_vel_error_exp = torch.exp(-lin_vel_error * 10)  # type: ignore
-
-        # Tracking of angular velocity commands (yaw)
-        ang_vel_error = torch.abs(self.commands[:, 2] - self.base_ang_vel[:, 2])
-        ang_vel_error_exp = torch.exp(-ang_vel_error * 10)
-
-        linear_error = 0.2 * (lin_vel_error + ang_vel_error)  # type: ignore
-
-        return (lin_vel_error_exp + ang_vel_error_exp) / 2.0 - linear_error  # type: ignore
-
-    def _reward_vel_mismatch_exp(self):
-        """
-        Computes a reward based on the mismatch in the robot's linear and angular velocities.
-        Encourages the robot to maintain a stable velocity by penalizing large deviations.
-        """
-        lin_mismatch = torch.exp(-torch.square(self.base_lin_vel[:, 2]) * 10)
-        ang_mismatch = torch.exp(-torch.norm(self.base_ang_vel[:, :2], dim=1) * 5.0)  # type: ignore
-
-        c_update = (lin_mismatch + ang_mismatch) / 2.0
-
-        return c_update
 
     def _reward_low_speed(self):
         """
@@ -295,20 +263,16 @@ class ToddlerbotEnv(HumanoidEnv):
         on penalizing deviation in yaw and roll directions. Excludes yaw and roll from the main penalty.
         """
         joint_diff = self.dof_pos - self.default_dof_pos
-        left_yaw_roll = joint_diff[:, :2]
-        right_yaw_roll = joint_diff[:, 6:8]
-        yaw_roll = torch.norm(left_yaw_roll, dim=1) + torch.norm(right_yaw_roll, dim=1)  # type: ignore
-        yaw_roll = torch.clamp(yaw_roll - 0.1, 0, 50)  # type: ignore
-        return torch.exp(-yaw_roll * 100) - 0.01 * torch.norm(joint_diff, dim=1)  # type: ignore
+        return -0.01 * torch.norm(joint_diff, dim=1)  # type: ignore
 
     # TODO: check this
     def _reward_dof_pos(self) -> torch.Tensor:
         """
         Calculates the reward based on the difference between the current joint positions and the target joint positions.
         """
-        joint_pos = self.dof_pos.clone()
+        dof_pos = self.dof_pos.clone()
         pos_target = self.ref_dof_pos.clone()
-        diff = joint_pos - pos_target
+        diff = dof_pos - pos_target
         r = torch.exp(-2 * torch.norm(diff, dim=1)) - 0.2 * torch.norm(  # type: ignore
             diff, dim=1
         ).clamp(0, 0.5)

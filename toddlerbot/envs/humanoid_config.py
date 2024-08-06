@@ -68,9 +68,7 @@ class RewardScales:
     termination: float = -0.0
     tracking_lin_vel: float = 1.2
     tracking_ang_vel: float = 1.1
-    track_vel_hard = 0.5
-    vel_mismatch_exp = 0.5
-    low_speed = 0.2
+    low_speed: float = 0.2
     orientation: float = 1.0
     default_dof_pos: float = 0.5
     dof_pos: float = 1.6
@@ -83,7 +81,7 @@ class RewardScales:
     feet_contact_forces: float = -0.01
     feet_contact_number: float = 1.2
     feet_distance: float = 0.2
-    feet_slip: float = -0.05  # TODO: change the name of the reward
+    feet_slip: float = -0.05
     collision: float = -1.0
     action_smoothness: float = -0.002
 

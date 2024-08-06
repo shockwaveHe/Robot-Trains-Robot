@@ -86,8 +86,8 @@ class MuJoCoSim(BaseSim):
         return root_state
 
     def get_dof_state(self):
-        dof_state = np.zeros((len(self.robot.motor_ordering), 2), dtype=np.float32)  # type: ignore
-        for i, name in enumerate(self.robot.motor_ordering):
+        dof_state = np.zeros((len(self.robot.joint_ordering), 2), dtype=np.float32)  # type: ignore
+        for i, name in enumerate(self.robot.joint_ordering):
             dof_state[i, 0] = self.data.joint(name).qpos.item()  # type: ignore
             dof_state[i, 1] = self.data.joint(name).qvel.item()  # type: ignore
 
@@ -294,10 +294,11 @@ class MuJoCoSim(BaseSim):
         self.data.joint(0).qvel[3:] = root_state[10:13].copy()  # type: ignore
         # mujoco.mj_resetData(self.model, self.data)  # type: ignore
 
-    def set_dof_state(self, dof_state: npt.NDArray[np.float32]):
-        for i, name in enumerate(self.robot.motor_ordering):
-            self.data.joint(name).qpos = dof_state[i, 0].copy()  # type: ignore
-            self.data.joint(name).qvel = dof_state[i, 1].copy()  # type: ignore
+    def reset_dof_state(self):
+        # This resets all the passive joints as well
+        for i in range(1, self.model.njnt):  # type: ignore
+            self.data.joint(i).qpos = 0.0  # type: ignore
+            self.data.joint(i).qvel = 0.0  # type: ignore
 
     def set_motor_angles(
         self, motor_angles: Union[Dict[str, float], npt.NDArray[np.float32]]
