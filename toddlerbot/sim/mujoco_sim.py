@@ -73,6 +73,10 @@ class MuJoCoSim(BaseSim):
         # self.thread = None
         # self.stop_event = threading.Event()
 
+    def update_config(self, cfg: Dict[str, Any]):
+        for key, value in cfg.items():
+            setattr(self.model.opt, key, value)  # type: ignore
+
     def get_root_state(self):
         root_state = np.zeros(13, dtype=np.float32)
         root_state[:3] = np.array(
