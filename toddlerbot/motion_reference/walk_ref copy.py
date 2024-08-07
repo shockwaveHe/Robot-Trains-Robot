@@ -3,11 +3,11 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 
-from toddlerbot.reference_motion.ref_motion import RefMotionGenerator
+from toddlerbot.motion_reference.motion_ref import MotionReference
 from toddlerbot.sim.robot import Robot
 
 
-class WalkRefMotionGenerator(RefMotionGenerator):
+class WalkReference(MotionReference):
     def __init__(self, robot: Robot, joint_pos_ref_scale: float):
         super().__init__("periodic", robot)
 
