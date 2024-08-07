@@ -1,12 +1,12 @@
 import bisect
 import time
 from dataclasses import is_dataclass
-from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Tuple
 
 import numpy as np
 import numpy.typing as npt
-import torch
 
+# import torch
 from toddlerbot.utils.misc_utils import precise_sleep
 
 
@@ -92,7 +92,7 @@ def quat_to_euler_arr(
 
     # Pitch (y-axis rotation)
     t2 = 2.0 * (w * y - z * x)
-    t2 = np.clip(t2, -1.0, 1.0)
+    t2 = np.clip(t2, -1.0, 1.0)  # type: ignore
     pitch_y = np.arcsin(t2)
 
     # Yaw (z-axis rotation)
@@ -107,76 +107,76 @@ def quat_to_euler_arr(
     return euler_angles
 
 
-def quat_to_euler_tensor(quat: torch.Tensor, order: str = "wxyz"):
-    if quat.ndim == 2:
-        euler_angles_array = np.zeros((quat.shape[0], 3), dtype=np.float32)
-        quat_np = quat.cpu().numpy()
-        for i, q in enumerate(quat_np):
-            euler_angles_array[i] = quat_to_euler_arr(q, order=order)  # type: ignore
-    else:
-        # Single quaternion
-        euler_angles_array = quat_to_euler_arr(quat.cpu().numpy(), order=order)  # type: ignore
+# def quat_to_euler_tensor(quat: torch.Tensor, order: str = "wxyz"):
+#     if quat.ndim == 2:
+#         euler_angles_array = np.zeros((quat.shape[0], 3), dtype=np.float32)
+#         quat_np = quat.cpu().numpy()
+#         for i, q in enumerate(quat_np):
+#             euler_angles_array[i] = quat_to_euler_arr(q, order=order)  # type: ignore
+#     else:
+#         # Single quaternion
+#         euler_angles_array = quat_to_euler_arr(quat.cpu().numpy(), order=order)  # type: ignore
 
-    # Convert numpy array to torch tensor
-    euler_xyz = torch.from_numpy(euler_angles_array).to(quat.device)  # type: ignore
-    euler_xyz[euler_xyz > np.pi] -= 2 * np.pi
+#     # Convert numpy array to torch tensor
+#     euler_xyz = torch.from_numpy(euler_angles_array).to(quat.device)  # type: ignore
+#     euler_xyz[euler_xyz > np.pi] -= 2 * np.pi
 
-    return euler_xyz
-
-
-def quat_rotate_inverse(quat: torch.Tensor, v: torch.Tensor):
-    shape = quat.shape
-    q_w = quat[:, -1]
-    q_vec = quat[:, :3]
-    a = v * (2.0 * q_w**2 - 1.0).unsqueeze(-1)
-    b = torch.cross(q_vec, v, dim=-1) * q_w.unsqueeze(-1) * 2.0
-    c = (
-        q_vec
-        * torch.bmm(q_vec.view(shape[0], 1, 3), v.view(shape[0], 3, 1)).squeeze(-1)
-        * 2.0
-    )
-    return a - b + c
+#     return euler_xyz
 
 
-def normalize(x: torch.Tensor, eps: float = 1e-9) -> torch.Tensor:
-    return x / x.norm(p=2, dim=-1).clamp(min=eps, max=None).unsqueeze(-1)  # type: ignore
+# def quat_rotate_inverse(quat: torch.Tensor, v: torch.Tensor):
+#     shape = quat.shape
+#     q_w = quat[:, -1]
+#     q_vec = quat[:, :3]
+#     a = v * (2.0 * q_w**2 - 1.0).unsqueeze(-1)
+#     b = torch.cross(q_vec, v, dim=-1) * q_w.unsqueeze(-1) * 2.0
+#     c = (
+#         q_vec
+#         * torch.bmm(q_vec.view(shape[0], 1, 3), v.view(shape[0], 3, 1)).squeeze(-1)
+#         * 2.0
+#     )
+#     return a - b + c
 
 
-def quat_apply(a: torch.Tensor, b: torch.Tensor):
-    shape = b.shape
-    a = a.reshape(-1, 4)
-    b = b.reshape(-1, 3)
-    xyz = a[:, :3]
-    t = xyz.cross(b, dim=-1) * 2
-    return (b + a[:, 3:] * t + xyz.cross(t, dim=-1)).view(shape)
+# def normalize(x: torch.Tensor, eps: float = 1e-9) -> torch.Tensor:
+#     return x / x.norm(p=2, dim=-1).clamp(min=eps, max=None).unsqueeze(-1)  # type: ignore
 
 
-def quat_apply_yaw(quat: torch.Tensor, vec: torch.Tensor):
-    quat_yaw = quat.clone().view(-1, 4)
-    quat_yaw[:, :2] = 0.0
-    quat_yaw = normalize(quat_yaw)
-    return quat_apply(quat_yaw, vec)
+# def quat_apply(a: torch.Tensor, b: torch.Tensor):
+#     shape = b.shape
+#     a = a.reshape(-1, 4)
+#     b = b.reshape(-1, 3)
+#     xyz = a[:, :3]
+#     t = xyz.cross(b, dim=-1) * 2
+#     return (b + a[:, 3:] * t + xyz.cross(t, dim=-1)).view(shape)
 
 
-def wrap_to_pi(angles: torch.Tensor):
-    angles %= 2 * np.pi
-    angles -= 2 * np.pi * (angles > np.pi)
-    return angles
+# def quat_apply_yaw(quat: torch.Tensor, vec: torch.Tensor):
+#     quat_yaw = quat.clone().view(-1, 4)
+#     quat_yaw[:, :2] = 0.0
+#     quat_yaw = normalize(quat_yaw)
+#     return quat_apply(quat_yaw, vec)
 
 
-def torch_rand_float(
-    lower: float, upper: float, shape: Tuple[int, int], device: torch.device
-):
-    return (upper - lower) * torch.rand(*shape, device=device) + lower
+# def wrap_to_pi(angles: torch.Tensor):
+#     angles %= 2 * np.pi
+#     angles -= 2 * np.pi * (angles > np.pi)
+#     return angles
+
+
+# def torch_rand_float(
+#     lower: float, upper: float, shape: Tuple[int, int], device: torch.device
+# ):
+#     return (upper - lower) * torch.rand(*shape, device=device) + lower
 
 
 def interpolate(
-    p_start: Union[npt.NDArray[np.float32], float],
-    p_end: Union[npt.NDArray[np.float32], float],
+    p_start: npt.NDArray[np.float32] | float,
+    p_end: npt.NDArray[np.float32] | float,
     duration: float,
     t: float,
     interp_type: str = "linear",
-) -> Union[npt.NDArray[np.float32], float]:
+) -> npt.NDArray[np.float32] | float:
     """
     Interpolate position at time t using specified interpolation type.
 

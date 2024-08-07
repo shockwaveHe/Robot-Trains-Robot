@@ -1,7 +1,7 @@
 import os
 import pickle
 import queue
-from typing import Any, Dict, Union
+from typing import Any, Dict
 
 import mediapy as media
 import mujoco  # type: ignore
@@ -160,9 +160,7 @@ class MuJoCoController:
     def __init__(self):
         self.command_queue = queue.Queue()  # type: ignore
 
-    def add_command(
-        self, motor_ctrls: Union[Dict[str, float], npt.NDArray[np.float32]]
-    ):
+    def add_command(self, motor_ctrls: Dict[str, float] | npt.NDArray[np.float32]):
         self.command_queue.put(motor_ctrls)  # type: ignore
 
     def process_commands(self, model: Any, data: Any):

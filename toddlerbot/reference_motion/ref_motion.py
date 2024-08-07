@@ -4,17 +4,22 @@ from typing import Optional, Tuple
 import numpy as np
 import numpy.typing as npt
 
+from toddlerbot.sim.robot import Robot
+
 
 class RefMotionGenerator(ABC):
-    def __init__(self, motion_type: str, init_state: npt.NDArray[np.float32]):
+    def __init__(self, motion_type: str, robot: Robot):
         self.motion_type = motion_type
-        self.init_state = init_state
+        self.robot = robot
+
+    def get_joint_idx(self, joint_name: str) -> int:
+        return self.robot.joint_ordering.index(joint_name)
 
     @abstractmethod
     def get_state(
         self,
         path_frame: npt.NDArray[np.float32],
-        phase: Optional[npt.NDArray[np.float32]] = None,
+        phase: Optional[float] = None,
         command: Optional[npt.NDArray[np.float32]] = None,
     ) -> (
         npt.NDArray[np.float32]

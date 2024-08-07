@@ -1,5 +1,5 @@
 import time
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List
 
 import mujoco  # type: ignore
 import mujoco.rollout  # type: ignore
@@ -313,20 +313,29 @@ class MuJoCoSim(BaseSim):
             self.data.joint(i).qvel = 0.0  # type: ignore
 
     def set_motor_angles(
-        self, motor_angles: Union[Dict[str, float], npt.NDArray[np.float32]]
+        self, motor_angles: Dict[str, float] | npt.NDArray[np.float32]
     ):
         self.controller.add_command(motor_angles)
+
+    def set_joint_angles(
+        self, joint_angles: Dict[str, float] | npt.NDArray[np.float32]
+    ):
+        if isinstance(joint_angles, np.ndarray):
+            joint_angles = dict(zip(self.robot.joint_ordering, joint_angles))
+
+        for name in joint_angles:
+            self.data.joint(name).qpos = joint_angles[name]  # type: ignore
 
     def forward(self):
         mujoco.mj_forward(self.model, self.data)  # type: ignore
 
     def step(self):
         # step_start = time.time()
-        if self.apply_push_flag and self.push_count < (self.push_duration / self.dt):
-            self._apply_push_cb()
-            self.push_count += 1
-        else:
-            self._reset_push()
+        # if self.apply_push_flag and self.push_count < (self.push_duration / self.dt):
+        #     self._apply_push_cb()
+        #     self.push_count += 1
+        # else:
+        #     self._reset_push()
 
         mujoco.mj_step(self.model, self.data)  # type: ignore
 

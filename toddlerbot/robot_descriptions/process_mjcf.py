@@ -492,21 +492,33 @@ def create_scene_xml(mjcf_path: str, is_fixed: bool):
         attrib={"pos": "0 0 1.5", "dir": "0 0 -1", "directional": "true"},
     )
 
-    # Asset settings
-    asset = ET.SubElement(mujoco, "asset")
-    ET.SubElement(
-        asset,
-        "texture",
-        attrib={
-            "type": "skybox",
-            "builtin": "gradient",
-            "rgb1": "0.3 0.5 0.7",
-            "rgb2": "0 0 0",
-            "width": "512",
-            "height": "3072",
-        },
-    )
     if not is_fixed:
+        # Worldbody settings
+        ET.SubElement(
+            worldbody,
+            "geom",
+            attrib={
+                "name": "floor",
+                "size": "0 0 0.05",
+                "type": "plane",
+                "material": "groundplane",
+                "condim": "3",
+            },
+        )
+        # Asset settings
+        asset = ET.SubElement(mujoco, "asset")
+        ET.SubElement(
+            asset,
+            "texture",
+            attrib={
+                "type": "skybox",
+                "builtin": "gradient",
+                "rgb1": "0.3 0.5 0.7",
+                "rgb2": "0 0 0",
+                "width": "512",
+                "height": "3072",
+            },
+        )
         ET.SubElement(
             asset,
             "texture",
@@ -531,18 +543,6 @@ def create_scene_xml(mjcf_path: str, is_fixed: bool):
                 "texuniform": "true",
                 "texrepeat": "5 5",
                 "reflectance": "0.0",
-            },
-        )
-        # Worldbody settings
-        ET.SubElement(
-            worldbody,
-            "geom",
-            attrib={
-                "name": "floor",
-                "size": "0 0 0.05",
-                "type": "plane",
-                "material": "groundplane",
-                "condim": "3",
             },
         )
 
