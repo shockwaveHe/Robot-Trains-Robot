@@ -29,7 +29,7 @@ sudo usermod -a -G gpio $USER
 sudo chown root.gpio /dev/gpiochip0
 sudo chmod 660 /dev/gpiochip0
 
-sudo cp ~/miniforge3/envs/toddlerbot/lib/python3.8/site-packages/Jetson/GPIO/99-gpio.rules /etc/udev/rules.d/
+sudo cp ~/miniforge3/envs/toddlerbot/lib/python3.10/site-packages/Jetson/GPIO/99-gpio.rules /etc/udev/rules.d/
 sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
 
@@ -60,13 +60,8 @@ This allows the user `youruser` to run echo and tee without a password. Ensure y
 Install miniforge: Download `Linux aarch64 (arm64)` from [their website](https://github.com/conda-forge/miniforge). Do NOT run the install script with sudo. Answer `yes` to all the options.
 
 ### Linux Systems
-Install pygraphviz according to [these instructions](https://pygraphviz.github.io/documentation/stable/install.html):
 ```
-sudo apt-get install graphviz graphviz-dev
-```
-
-```
-conda create --name toddlerbot python=3.8
+conda create --name toddlerbot python=3.10
 conda activate toddlerbot
 pip install -e .
 ```
@@ -130,7 +125,7 @@ Run
 pip install tensorboard
 ```
 
-Change `~/anaconda3/envs/toddlerbot/lib/python3.8/site-packages/torch/utils/tensorboard/__init__.py` from
+Change `~/anaconda3/envs/toddlerbot/lib/python3.10/site-packages/torch/utils/tensorboard/__init__.py` from
 ```
 import tensorboard
 from setuptools import distutils
@@ -163,14 +158,9 @@ pip install protobuf==4.25
 
 ### MacOS (Apple Sillicon M1/M2)
 ```
-CONDA_SUBDIR=osx-arm64 conda create -n toddlerbot python=3.8
+CONDA_SUBDIR=osx-arm64 conda create -n toddlerbot python=3.10
 conda activate toddlerbot
 conda config --env --set subdir osx-arm64
-
-brew install graphviz
-export C_INCLUDE_PATH=/opt/homebrew/opt/graphviz/include
-export LIBRARY_PATH=/opt/homebrew/opt/graphviz/lib
-pip install pygraphviz
 pip install -e .
 ```
 
@@ -224,7 +214,7 @@ Then call
 source ~/.bashrc
 ```
 
-Go to `~/anaconda3/envs/toddlerbot/lib/python3.8/site-packages/onshape_to_robot/config.py`
+Go to `~/anaconda3/envs/toddlerbot/lib/python3.10/site-packages/onshape_to_robot/config.py`
 Change line 144 from
 ```
 if not os.path.exists('/usr/bin/meshlabserver') != 0:
@@ -327,7 +317,7 @@ Press `E` and then `Esc` to check if the menu shows up.
 ### Dynamixel
 
 According to the doc [here](https://emanual.robotis.com/docs/en/software/dynamixel/dynamixel_sdk/faq/#how-to-change-an-usb-latency-in-dynamixel-sdk),
-Set `LATENCY_TIMER = 1` in `/path_to_env/toddlerbot/lib/python3.8/site-packages/dynamixel_sdk/port_handler.py`.
+Set `LATENCY_TIMER = 1` in `/path_to_env/toddlerbot/lib/python3.10/site-packages/dynamixel_sdk/port_handler.py`.
 
 MacOS users:
 

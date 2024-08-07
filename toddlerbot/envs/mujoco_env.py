@@ -80,17 +80,20 @@ class MuJoCoEnv(PipelineEnv):
 
     def reset(self, rng: jnp.ndarray) -> State:
         """Resets the environment to an initial state."""
-        rng, rng1, rng2 = jax.random.split(rng, 3)
+        rng, rng1, rng2 = jax.random.split(rng, 3)  # type:ignore
 
-        low, hi = -self._reset_noise_scale, self._reset_noise_scale
-        qpos = self.sys.qpos0 + jax.random.uniform(
-            rng1, (self.sys.nq,), minval=low, maxval=hi
-        )
-        qvel = jax.random.uniform(rng2, (self.sys.nv,), minval=low, maxval=hi)
+        # low, hi = -self._reset_noise_scale, self._reset_noise_scale
+        qpos = self.sys.qpos0
+        # TODO: Bring them back
+        # jax.random.uniform(
+        #     rng1, (self.sys.nq,), minval=low, maxval=hi
+        # )
+        qvel = jnp.zeros(self.sys.nv)  # type:ignore
+        # jax.random.uniform(rng2, (self.sys.nv,), minval=low, maxval=hi)
 
         data = self.pipeline_init(qpos, qvel)
 
-        obs = self._get_obs(data, jnp.zeros(self.sys.nu))
+        obs = self._get_obs(data, jnp.zeros(self.sys.nu))  # type:ignore
         reward, done, zero = jnp.zeros(3)
         metrics = {
             "forward_reward": zero,
