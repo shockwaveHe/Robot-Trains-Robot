@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Optional, Tuple
 
-import jax.numpy as jnp
-from jax import jit  # type: ignore
+import numpy as np
+import numpy.typing as npt
 
 from toddlerbot.sim.robot import Robot
 
@@ -16,13 +16,12 @@ class MotionReference(ABC):
         return self.robot.joint_ordering.index(joint_name)
 
     @abstractmethod
-    @jit
     def get_state(
         self,
-        path_frame: jnp.ndarray,
+        path_frame: npt.NDArray[np.float32],
         phase: Optional[float] = None,
-        command: Optional[jnp.ndarray] = None,
-    ) -> jnp.ndarray | Tuple[jnp.ndarray, float]:
+        command: Optional[npt.NDArray[np.float32]] = None,
+    ) -> npt.NDArray[np.float32] | Tuple[npt.NDArray[np.float32], float]:
         # pos: 3
         # quat: 4
         # linear_vel: 3

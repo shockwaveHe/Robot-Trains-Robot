@@ -4,3 +4,6 @@
 [submodule "toddlerbot/sim/humanoid_gym"]
 	path = toddlerbot/sim/humanoid_gym
 	url = git@github.com:hshi74/humanoid-gym.git
+[submodule "toddlerbot/brax"]
+	path = toddlerbot/brax
+	url = git@github.com:hshi74/brax.git

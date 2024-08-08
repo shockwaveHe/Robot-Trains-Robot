@@ -2,7 +2,6 @@ import os
 import time
 
 import numpy as np
-from jax import numpy as jnp
 from tqdm import tqdm
 
 from toddlerbot.motion_reference.walk_ref import WalkReference
@@ -24,7 +23,7 @@ def test_ref_motion():
 
     duration = 10
     for phase in tqdm(np.arange(0, duration, sim.dt), desc="Running Ref Motion"):  # type: ignore
-        state = walk_ref.get_state(jnp.zeros(7), phase=phase, command=jnp.zeros(6))  # type: ignore
+        state = walk_ref.get_state(np.zeros(7), phase=phase, command=np.zeros(6))  # type: ignore
         sim.set_joint_angles(np.asarray(state[13 : 13 + len(robot.joint_ordering)]))  # type: ignore
         sim.step()
 
