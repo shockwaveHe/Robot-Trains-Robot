@@ -8,15 +8,20 @@ from toddlerbot.sim.robot import Robot
 
 
 class WalkReference(MotionReference):
-    def __init__(self, robot: Robot, joint_pos_ref_scale: float):
+    def __init__(
+        self,
+        robot: Robot,
+        joint_pos_ref_scale: float = 1.0,
+        double_support_phase: float = 0.1,
+    ):
         super().__init__("periodic", robot)
 
         self.joint_pos_ref_scale = joint_pos_ref_scale
+        self.double_support_phase = double_support_phase
         self.shin_thigh_ratio = (
             self.robot.data_dict["offsets"]["knee_to_ank_pitch_z"]
             / self.robot.data_dict["offsets"]["hip_pitch_to_knee_z"]
         )
-        self.double_support_phase = 0.1
 
     def get_state(
         self,

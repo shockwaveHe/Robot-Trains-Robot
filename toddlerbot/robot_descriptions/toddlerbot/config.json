@@ -71,13 +71,13 @@
             "kd_sim": 0.0,
             "gear_ratio": 1.1
         },
-        "waist_roll": {
+        "waist_act_1": {
             "is_passive": false,
             "transmission": "waist",
             "group": "upper_body",
             "default_pos": 0.0,
-            "lower_limit": -0.5235987755982988,
-            "upper_limit": 0.5235987755982988,
+            "lower_limit": -2.7825534678416246,
+            "upper_limit": 2.7825534678416246,
             "damping": 0.099,
             "armature": 0.002,
             "frictionloss": 0.239,
@@ -94,13 +94,13 @@
             "kp_sim": 18.75,
             "kd_sim": 0.0
         },
-        "waist_yaw": {
+        "waist_act_2": {
             "is_passive": false,
             "transmission": "waist",
             "group": "upper_body",
             "default_pos": 0.0,
-            "lower_limit": -1.5707963267948966,
-            "upper_limit": 1.5707963267948966,
+            "lower_limit": -2.7825534678416246,
+            "upper_limit": 2.7825534678416246,
             "damping": 0.099,
             "armature": 0.002,
             "frictionloss": 0.239,
@@ -1074,6 +1074,28 @@
             "damping": 0.153,
             "armature": 0.008,
             "frictionloss": 0.998
+        },
+        "waist_roll": {
+            "is_passive": true,
+            "transmission": "waist",
+            "group": "upper_body",
+            "default_pos": 0.0,
+            "lower_limit": -0.5235987755982988,
+            "upper_limit": 0.5235987755982988,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0
+        },
+        "waist_yaw": {
+            "is_passive": true,
+            "transmission": "waist",
+            "group": "upper_body",
+            "default_pos": 0.0,
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0
         }
     }
 }

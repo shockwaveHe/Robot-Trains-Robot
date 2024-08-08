@@ -252,13 +252,7 @@
         "has_collision": false
     },
     "2xl430_gears_3": {
-        "has_collision": true,
-        "type": "box",
-        "scale": [
-            0.5,
-            1.0,
-            1.0
-        ]
+        "has_collision": false
     },
     "spur_1m_24t_drive_3": {
         "has_collision": false
@@ -268,7 +262,12 @@
     },
     "hand": {
         "has_collision": true,
-        "type": "mesh"
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
     },
     "xc430_2": {
         "has_collision": false
@@ -316,13 +315,7 @@
         "has_collision": false
     },
     "2xl430_gears_6": {
-        "has_collision": true,
-        "type": "box",
-        "scale": [
-            0.5,
-            1.0,
-            1.0
-        ]
+        "has_collision": false
     },
     "spur_1m_24t_drive_6": {
         "has_collision": false
@@ -332,6 +325,11 @@
     },
     "hand_2": {
         "has_collision": true,
-        "type": "mesh"
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
     }
 }

@@ -9,11 +9,11 @@
         "init_pos": 3.321068286895752,
         "gear_ratio": 1.1
     },
-    "waist_roll": {
+    "waist_act_1": {
         "motor": "XC330",
         "init_pos": 4.933282375335693
     },
-    "waist_yaw": {
+    "waist_act_2": {
         "motor": "XC330",
         "init_pos": 1.006291389465332
     },

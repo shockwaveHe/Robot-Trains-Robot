@@ -1,80 +1,97 @@
+import argparse
 import functools
-from datetime import datetime
+from typing import Any, Dict, List
 
 import jax
-from brax.training.agents.ppo import train as ppo
-from matplotlib import pyplot as plt
+import mediapy as media
+from brax.base import State  # type: ignore
+from brax.training.agents.ppo import train as ppo  # type: ignore
+from jax import numpy as jnp
 
+from toddlerbot.envs.mujoco_config import MuJoCoConfig
 from toddlerbot.envs.mujoco_env import MuJoCoEnv
-
-env = MuJoCoEnv()
-
-# define the jit reset/step functions
-jit_reset = jax.jit(env.reset)
-jit_step = jax.jit(env.step)
-
-# # initialize the state
-# state = jit_reset(jax.random.PRNGKey(0))
-# rollout = [state.pipeline_state]
-
-# # grab a trajectory
-# for i in range(10):
-#     ctrl = -0.1 * jp.ones(env.sys.nu)
-#     state = jit_step(state, ctrl)
-#     rollout.append(state.pipeline_state)
+from toddlerbot.motion_reference.motion_ref import MotionReference
+from toddlerbot.sim.robot import Robot
+from toddlerbot.utils.misc_utils import set_seed
 
 
-# media.write_video("test.mp4", env.render(rollout, camera="side"), fps=1.0 / env.dt)
+def train(robot: Robot, motion_ref: MotionReference):
+    cfg = MuJoCoConfig()
+    env = MuJoCoEnv(robot, motion_ref, cfg)
 
-train_fn = functools.partial(
-    ppo.train,
-    num_timesteps=30_000_000,
-    num_evals=5,
-    reward_scaling=0.1,
-    episode_length=1000,
-    normalize_observations=True,
-    action_repeat=1,
-    unroll_length=10,
-    num_minibatches=32,
-    num_updates_per_batch=8,
-    discounting=0.97,
-    learning_rate=3e-4,
-    entropy_cost=1e-3,
-    num_envs=2048,
-    batch_size=1024,
-    seed=0,
-)
+    # define the jit reset/step functions
+    jit_reset = jax.jit(env.reset)  # type: ignore
+    jit_step = jax.jit(env.step)  # type: ignore
 
+    # initialize the state
+    state = jit_reset(jax.random.PRNGKey(0))  # type: ignore
+    rollout: List[State] = [state.pipeline_state]  # type: ignore
 
-x_data = []
-y_data = []
-ydataerr = []
-times = [datetime.now()]
+    # grab a trajectory
+    for _ in range(10):
+        ctrl = -0.1 * jnp.ones(env.sys.nu)  # type: ignore
+        state = jit_step(state, ctrl)  # type: ignore
+        rollout.append(state.pipeline_state)  # type: ignore
 
-max_y, min_y = 13000, 0
+    media.write_video("test.mp4", env.render(rollout, camera="side"), fps=1.0 / env.dt)  # type: ignore
 
+    train_fn = functools.partial(
+        ppo.train,
+        num_timesteps=30_000_000,
+        num_evals=5,
+        reward_scaling=0.1,
+        episode_length=1000,
+        normalize_observations=True,
+        action_repeat=1,
+        unroll_length=10,
+        num_minibatches=32,
+        num_updates_per_batch=8,
+        discounting=0.97,
+        learning_rate=3e-4,
+        entropy_cost=1e-3,
+        num_envs=2048,
+        batch_size=1024,
+        seed=0,
+    )
 
-def progress(num_steps, metrics):
-    times.append(datetime.now())
-    x_data.append(num_steps)
-    y_data.append(metrics["eval/episode_reward"])
-    ydataerr.append(metrics["eval/episode_reward_std"])
+    def progress(num_steps: int, metrics: Dict[str, Any]):
+        print(f"step: {num_steps}, reward: {metrics['eval/episode_reward']:.3f}")
+        # plt.show()
 
-    plt.xlim([0, train_fn.keywords["num_timesteps"] * 1.25])
-    plt.ylim([min_y, max_y])
-
-    plt.xlabel("# environment steps")
-    plt.ylabel("reward per episode")
-    plt.title(f"y={y_data[-1]:.3f}")
-
-    plt.errorbar(x_data, y_data, yerr=ydataerr)
-    print(f"step: {num_steps}, reward: {metrics['eval/episode_reward']:.3f}")
-    # plt.show()
+    make_inference_fn, params, _ = train_fn(environment=env, progress_fn=progress)
 
 
-make_inference_fn, params, _ = train_fn(environment=env, progress_fn=progress)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run the walking simulation.")
+    parser.add_argument(
+        "--robot",
+        type=str,
+        default="toddlerbot",
+        help="The name of the robot. Need to match the name in robot_descriptions.",
+    )
+    parser.add_argument(
+        "--env",
+        type=str,
+        default="walk",
+        help="The name of the env.",
+    )
+    parser.add_argument(
+        "--vis",
+        type=str,
+        default="",
+        help="The name of the env.",
+    )
+    args = parser.parse_args()
 
-print(f"time to jit: {times[1] - times[0]}")
-print(f"time to train: {times[-1] - times[1]}")
+    set_seed(0)
 
-plt.show()
+    robot = Robot(args.robot)
+
+    if args.env == "walk":
+        from toddlerbot.motion_reference.walk_ref import WalkReference
+
+        motion_ref = WalkReference(robot)
+    else:
+        raise ValueError(f"Unknown env {args.env}")
+
+    train(robot, motion_ref)

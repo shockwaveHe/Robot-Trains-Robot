@@ -145,7 +145,7 @@ def update_joint_params(root: ET.Element, joints_config: Dict[str, Any]):
         joint_name = joint.get("name")
         if joint_name in joints_config:
             for attr_name in joints_config[joint_name]:
-                if attr_name in ["damping", "armature", "frictionloss"]:
+                if attr_name in ["damping", "armature"]:  # , "frictionloss"]:
                     joint.set(attr_name, str(joints_config[joint_name][attr_name]))
 
 
@@ -564,8 +564,8 @@ def process_mjcf_fixed_file(root: ET.Element, config: Dict[str, Any]):
     update_geom_classes(root, ["type", "contype", "conaffinity", "group", "density"])
     add_actuators_to_mjcf(root, config["joints"])
 
-    # if config["general"]["is_waist_closed_loop"]:
-    #     add_waist_constraints(root, config["general"]["offsets"])
+    if config["general"]["is_waist_closed_loop"]:
+        add_waist_constraints(root, config["general"]["offsets"])
 
     if config["general"]["is_knee_closed_loop"]:
         add_knee_constraints(root)

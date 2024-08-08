@@ -1,17 +1,20 @@
 from dataclasses import asdict
-from typing import Callable, List
+from typing import Any, Callable, List, Tuple
 
 import jax
-from brax.envs.base import PipelineEnv, State  # type: ignore
+import mujoco
+import numpy as np
+from brax.base import State  # type: ignore
+from brax.envs.base import PipelineEnv  # type: ignore
+from brax.envs.base import State as EnvState  # type: ignore
 from brax.io import mjcf  # type: ignore
-from jax import jit  # type: ignore
 from jax import numpy as jnp
 from mujoco import mjx  # type: ignore
 
 from toddlerbot.envs.mujoco_config import MuJoCoConfig
 from toddlerbot.motion_reference.motion_ref import MotionReference
-from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.robot import Robot
+from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.jax_utils import quat_apply, quat_mult, wrap_to_pi
 
 
@@ -19,26 +22,34 @@ class MuJoCoEnv(PipelineEnv):
     def __init__(
         self,
         robot: Robot,
-        sim: MuJoCoSim,
         motion_ref: MotionReference,
         cfg: MuJoCoConfig,
-        forward_reward_weight=1.25,
-        ctrl_cost_weight=0.1,
-        healthy_reward=5.0,
-        terminate_when_unhealthy=True,
-        healthy_z_range=(1.0, 2.0),
-        reset_noise_scale=1e-2,
-        exclude_current_positions_from_observation=True,
-        **kwargs,
+        fixed_base: bool = False,
+        # forward_reward_weight=1.25,
+        # ctrl_cost_weight=0.1,
+        # healthy_reward=5.0,
+        # terminate_when_unhealthy=True,
+        # healthy_z_range=(1.0, 2.0),
+        # reset_noise_scale=1e-2,
+        # exclude_current_positions_from_observation=True,
+        **kwargs: Any,
     ):
         self.robot = robot
-        self.sim = sim
+        self.fixed_base = fixed_base
         self.motion_ref = motion_ref
         self.cfg = cfg
 
-        sim.update_config(asdict(cfg.mj))
+        if fixed_base:
+            xml_path = find_robot_file_path(robot.name, suffix="_fixed_scene.xml")
+        else:
+            xml_path = find_robot_file_path(robot.name, suffix="_scene.xml")
 
-        sys = mjcf.load_model(sim.model)  # type: ignore
+        mj_model = mujoco.MjModel.from_xml_path(xml_path)  # type: ignore
+        mj_model.opt.solver = mujoco.mjtSolver.mjSOL_CG  # type: ignore
+        mj_model.opt.iterations = 6  # type: ignore
+        mj_model.opt.ls_iterations = 6  # type: ignore
+
+        sys = mjcf.load_model(mj_model)  # type: ignore
 
         kwargs["n_frames"] = cfg.control.decimation
         kwargs["backend"] = "mjx"
@@ -47,15 +58,17 @@ class MuJoCoEnv(PipelineEnv):
 
         self._init_env()
 
-        self._forward_reward_weight = forward_reward_weight
-        self._ctrl_cost_weight = ctrl_cost_weight
-        self._healthy_reward = healthy_reward
-        self._terminate_when_unhealthy = terminate_when_unhealthy
-        self._healthy_z_range = healthy_z_range
-        self._reset_noise_scale = reset_noise_scale
-        self._exclude_current_positions_from_observation = (
-            exclude_current_positions_from_observation
-        )
+        self._init_reward()
+
+        # self._forward_reward_weight = forward_reward_weight
+        # self._ctrl_cost_weight = ctrl_cost_weight
+        # self._healthy_reward = healthy_reward
+        # self._terminate_when_unhealthy = terminate_when_unhealthy
+        # self._healthy_z_range = healthy_z_range
+        # self._reset_noise_scale = reset_noise_scale
+        # self._exclude_current_positions_from_observation = (
+        #     exclude_current_positions_from_observation
+        # )
 
     def _init_env(self):
         # self.num_envs = self.cfg.env.num_envs
@@ -85,6 +98,7 @@ class MuJoCoEnv(PipelineEnv):
         # self.pos_reward_buf = torch.zeros(
         #     self.num_envs, device=self.device, dtype=torch.float
         # )
+        self.only_positive_rewards = self.cfg.rewards.only_positive_rewards
 
         self.cycle_time = self.cfg.rewards.cycle_time
 
@@ -92,7 +106,7 @@ class MuJoCoEnv(PipelineEnv):
         self.episode_step = 0
 
         self.path_frame = jnp.zeros(7)  # type:ignore
-        self.path_frame[3] = 1.0
+        self.path_frame = self.path_frame.at[3].set(1.0)  # type:ignore
 
         # self.time_out_buf = torch.zeros(
         #     self.num_envs, device=self.device, dtype=torch.bool
@@ -192,16 +206,16 @@ class MuJoCoEnv(PipelineEnv):
         #         self.terrain_levels, self.terrain_types
         #     ]
         # else:
-        self.custom_origins = False
-        self.env_origins = torch.zeros(self.num_envs, 3, device=self.device)
-        # create a grid of robots
-        num_cols = np.floor(np.sqrt(self.num_envs))
-        num_rows = np.ceil(self.num_envs / num_cols)
-        xx, yy = torch.meshgrid(torch.arange(num_rows), torch.arange(num_cols))
-        spacing = self.cfg.env.env_spacing
-        self.env_origins[:, 0] = spacing * xx.flatten()[: self.num_envs]
-        self.env_origins[:, 1] = spacing * yy.flatten()[: self.num_envs]
-        self.env_origins[:, 2] = 0.0
+        # self.custom_origins = False
+        # self.env_origins = torch.zeros(self.num_envs, 3, device=self.device)
+        # # create a grid of robots
+        # num_cols = np.floor(np.sqrt(self.num_envs))
+        # num_rows = np.ceil(self.num_envs / num_cols)
+        # xx, yy = torch.meshgrid(torch.arange(num_rows), torch.arange(num_cols))
+        # spacing = self.cfg.env.env_spacing
+        # self.env_origins[:, 0] = spacing * xx.flatten()[: self.num_envs]
+        # self.env_origins[:, 1] = spacing * yy.flatten()[: self.num_envs]
+        # self.env_origins[:, 2] = 0.0
 
     def _init_dof(self):
         self.dof_names = self.robot.joint_ordering
@@ -356,12 +370,9 @@ class MuJoCoEnv(PipelineEnv):
             self.reward_functions.append(getattr(self, reward_function_name))
 
         # reward episode sums
-        self.episode_sums = {
-            name: jnp.zeros(self.num_envs)  # type:ignore
-            for name in self.reward_scales.keys()
-        }
+        self.episode_sums = {name: 0.0 for name in self.reward_scales.keys()}
 
-    def reset(self, rng: jnp.ndarray) -> State:
+    def reset(self, rng: jnp.ndarray) -> EnvState:
         """Resets the environment to an initial state."""
         rng, rng1, rng2 = jax.random.split(rng, 3)  # type:ignore
 
@@ -376,46 +387,46 @@ class MuJoCoEnv(PipelineEnv):
 
         data = self.pipeline_init(qpos, qvel)
 
-        obs: jax.Array = self._get_obs(data, jnp.zeros(self.sys.nu))  # type:ignore
-        reward, done, zero = jnp.zeros(3)
-        metrics = {
-            "forward_reward": zero,
-            "reward_linvel": zero,
-            "reward_quadctrl": zero,
-            "reward_alive": zero,
-            "x_position": zero,
-            "y_position": zero,
-            "distance_from_origin": zero,
-            "x_velocity": zero,
-            "y_velocity": zero,
-        }
-        return State(data, obs, reward, done, metrics)
+        obs, privileged_obs = self._get_obs(data, jnp.zeros(self.sys.nu))  # type:ignore
+        reward, done, zero = jnp.zeros(3)  # type:ignore
+        metrics = dict(zip(self.reward_names, [zero] * len(self.reward_names)))
+        metrics["x_position"] = zero
+        metrics["y_position"] = zero
+        metrics["distance_from_origin"] = zero
+        metrics["x_velocity"] = zero
+        metrics["y_velocity"] = zero
+        return EnvState(data, obs, privileged_obs, reward, done, metrics)
 
-    def step(self, state: State, action: jnp.ndarray) -> State:
+    def step(self, env_state: EnvState, action: jnp.ndarray) -> EnvState:
         """Runs one timestep of the environment's dynamics."""
 
-        data0 = state.pipeline_state
-        data = self.pipeline_step(data0, action)
+        state_0 = env_state.pipeline_state
+        state = self.pipeline_step(state_0, action)
 
-        self._integrate_path_frame(data)
+        self._post_physics_step(state, action)
 
-        com_before = data0.subtree_com[1]
-        com_after = data.subtree_com[1]
-        velocity = (com_after - com_before) / self.dt
-        forward_reward = self._forward_reward_weight * velocity[0]
+        # com_before = data0.subtree_com[1]
+        # com_after = data.subtree_com[1]
+        # velocity = (com_after - com_before) / self.dt
+        # forward_reward = self._forward_reward_weight * velocity[0]
 
-        min_z, max_z = self._healthy_z_range
-        is_healthy = jnp.where(data.q[2] < min_z, 0.0, 1.0)
-        is_healthy = jnp.where(data.q[2] > max_z, 0.0, is_healthy)
-        if self._terminate_when_unhealthy:
-            healthy_reward = self._healthy_reward
-        else:
-            healthy_reward = self._healthy_reward * is_healthy
+        # min_z, max_z = self._healthy_z_range
+        # is_healthy = jnp.where(data.q[2] < min_z, 0.0, 1.0)
+        # is_healthy = jnp.where(data.q[2] > max_z, 0.0, is_healthy)
+        # if self._terminate_when_unhealthy:
+        #     healthy_reward = self._healthy_reward
+        # else:
+        #     healthy_reward = self._healthy_reward * is_healthy
 
-        ctrl_cost = self._ctrl_cost_weight * jnp.sum(jnp.square(action))
+        # ctrl_cost = self._ctrl_cost_weight * jnp.sum(jnp.square(action))
+        # reward = forward_reward + healthy_reward - ctrl_cost
 
-        obs = self._get_obs(data, action)
-        reward = forward_reward + healthy_reward - ctrl_cost
+        self._check_termination()
+
+        reward = self._compute_reward(state)
+
+        obs, privileged_obs = self._get_obs(state, action)
+
         done = 1.0 - is_healthy if self._terminate_when_unhealthy else 0.0
         state.metrics.update(
             forward_reward=forward_reward,
@@ -429,36 +440,24 @@ class MuJoCoEnv(PipelineEnv):
             y_velocity=velocity[1],
         )
 
-        return state.replace(pipeline_state=data, obs=obs, reward=reward, done=done)
-
-    def _get_obs(self, data: mjx.Data, action: jnp.ndarray) -> jnp.ndarray:
-        """Observes humanoid body position, velocities, and angles."""
-        phase = self.episode_step * self.dt / self.cycle_time
-        state_ref = self.motion_ref.get_state(self.path_frame, phase, self.command_buf)
-
-        position = data.qpos
-        if self._exclude_current_positions_from_observation:
-            position = position[2:]
-
-        # external_contact_forces are excluded
-        return jnp.concatenate(
-            [
-                position,
-                data.qvel,
-                data.cinert[1:].ravel(),
-                data.cvel[1:].ravel(),
-                data.qfrc_actuator,
-            ]
+        return state.replace(
+            pipeline_state=state,
+            obs=obs,
+            privileged_obs=privileged_obs,
+            reward=reward,
+            done=done,
         )
 
-    @jit
-    def _integrate_path_frame(self, data: mjx.Data):
+    def _post_physics_step(self, data: State, action: jnp.ndarray):
+        self._integrate_path_frame(data)
+
+    def _integrate_path_frame(self, data: State):
         pos, quat = self.path_frame[:3], self.path_frame[3:]
         x_vel = self.command_buf[0]
         y_vel = self.command_buf[1]
 
         if self.heading_command:
-            forward = quat_apply(data.qpos[:3], self.forward_vec)  # type:ignore
+            forward = quat_apply(data.q[3:7], self.forward_vec)  # type:ignore
             heading = jnp.atan2(forward[1], forward[0])  # type:ignore
             self.command_bwrap_to_piuf[2] = jnp.clip(  # type:ignore
                 0.5 * wrap_to_pi(self.commands[3] - heading),  # type:ignore
@@ -482,18 +481,226 @@ class MuJoCoEnv(PipelineEnv):
 
         self.path_frame = jnp.concatenate([pos, quat])  # type:ignore
 
-    def compute_reward(self):
+    def _get_obs(
+        self, data: mjx.Data, action: jnp.ndarray
+    ) -> Tuple[jnp.ndarray, jnp.ndarray]:
+        """Observes humanoid body position, velocities, and angles."""
+        phase = self.episode_step * self.dt / self.cycle_time
+        state_ref = self.motion_ref.get_state(
+            np.asarray(self.path_frame), phase, np.asarray(self.command_buf)
+        )
+        state_ref_jax = jax.device_put(state_ref)
+        joint_pos_diff = data.qpos - state_ref_jax[13 : 13 + self.action_size]
+        contact_mask = state_ref_jax[-2:]
+
+        # position = data.qpos
+        # if self._exclude_current_positions_from_observation:
+        #     position = position[2:]
+
+        obs = jnp.concatenate(
+            [
+                jnp.sin(2 * np.pi * phase),
+                jnp.cos(2 * np.pi * phase),
+                self.command_buf[:3],
+                data.qpos,
+                data.qvel,
+                data.ctrl.ravel(),
+            ]
+        )
+        # jnp.concatenate(
+        #     [
+        #         position,
+        #         data.qvel,
+        #         data.cinert[1:].ravel(),
+        #         data.cvel[1:].ravel(),
+        #         data.qfrc_actuator,
+        #     ]
+        # )
+
+        # TODO: check each field. Add scales, push, friction
+        privileged_obs = jnp.concatenate(
+            [
+                jnp.sin(2 * np.pi * phase),
+                jnp.cos(2 * np.pi * phase),
+                self.command_buf[:3],
+                data.qpos,
+                data.qvel,
+                data.cinert[1:].ravel(),
+                data.cvel[1:].ravel(),
+                data.qfrc_actuator,
+                joint_pos_diff,
+                contact_mask,
+            ]
+        )
+
+        # external_contact_forces are excluded
+        return obs, privileged_obs
+
+    def _check_termination(self):
+        """Check if environments need to be reset"""
+        termination_contact = self.contact_forces[
+            :, self.termination_contact_indices, :
+        ]
+        self.reset_buf = torch.any(
+            torch.norm(termination_contact, dim=-1) > 1.0,  # type: ignore
+            dim=1,
+        )
+        self.time_out_buf = (
+            self.episode_length_buf > self.max_episode_length
+        )  # no terminal reward for time-outs
+        self.reset_buf |= self.time_out_buf
+
+    def _compute_reward(self):
         """Compute rewards
         Calls each reward function which had a non-zero scale (processed in self._prepare_reward_function())
         adds each terms to the episode sums and to the total reward
         """
-        self.rew_buf[:] = 0.0
+        reward = 0.0
 
         for i in range(len(self.reward_functions)):
-            name = self.reward_names[i]
-            rew = self.reward_functions[i]() * self.reward_scales[name]
-            self.rew_buf += rew
+            rew = self.reward_functions[i]() * self.reward_scales[self.reward_names[i]]
+            reward += rew
             self.episode_sums[name] += rew
 
-        if self.cfg.rewards.only_positive_rewards:
-            self.rew_buf[:] = torch.clip(self.rew_buf[:], min=0.0)
+        if self.only_positive_rewards:
+            reward = jnp.clip(reward, min=0.0)
+
+        return reward
+
+    def _reward_torso_pos(self):
+        """Reward for track torso position"""
+        torso_pos = self.body_state[:, 0, :3]
+        torso_pos_ref = self.privileged_obs_buf[:, 2:5]
+        error = jnp.linalg.norm(torso_pos - torso_pos_ref, axis=-1)
+        return jnp.exp(-(error**2) / self.cfg.rewards.sigma)
+
+    def _reward_torso_quat(self):
+        """Reward for track torso orientation"""
+        torso_quat = self.body_state[:, 0, 3:]
+        torso_quat_ref = self.privileged_obs_buf[:, 5:]
+        error = jnp.linalg.norm(torso_quat - torso_quat_ref, axis=-1)
+        return jnp.exp(-(error**2) / self.cfg.rewards.sigma)
+
+    def _reward_lin_vel_xy(self):
+        """Reward for track linear velocity"""
+        lin_vel_xy = self.base_lin_vel[:, :2]
+        lin_vel_xy_ref = self.privileged_obs_buf[:, 0:2]
+        error = jnp.linalg.norm(lin_vel_xy - lin_vel_xy_ref, axis=-1)
+        return jnp.exp(-(error**2) / self.cfg.rewards.sigma)
+
+    def _reward_lin_vel_z(self):
+        """Reward for track linear velocity"""
+        lin_vel_xy = self.base_lin_vel[:, :2]
+        lin_vel_xy_ref = self.privileged_obs_buf[:, 0:2]
+        error = jnp.linalg.norm(lin_vel_xy - lin_vel_xy_ref, axis=-1)
+        return jnp.exp(-(error**2) / self.cfg.rewards.sigma)
+
+    def _reward_ang_vel_xy(self):
+        """Reward for track angular velocity"""
+        ang_vel = self.base_ang_vel
+        ang_vel_ref = self.privileged_obs_buf[:, 2]
+        error = jnp.linalg.norm(ang_vel - ang_vel_ref, axis=-1)
+        return jnp.exp(-(error**2) / self.cfg.rewards.sigma)
+
+    def _reward_ang_vel_z(self):
+        """Reward for track angular velocity"""
+        ang_vel = self.base_ang_vel
+        ang_vel_ref = self.privileged_obs_buf[:, 2]
+        error = jnp.linalg.norm(ang_vel - ang_vel_ref, axis=-1)
+        return jnp.exp(-(error**2) / self.cfg.rewards.sigma)
+
+    def _reward_leg_joint_pos(self):
+        """Reward for track leg joint position"""
+        joint_pos = self.dof_pos
+        joint_pos_ref = self.privileged_obs_buf[:, 8:]
+        error = jnp.linalg.norm(joint_pos - joint_pos_ref, axis=-1)
+        return jnp.exp(-(error**2) / self.cfg.rewards.sigma)
+
+    def _reward_leg_joint_vel(self):
+        """Reward for track leg joint velocity"""
+        joint_vel = self.dof_vel
+        joint_vel_ref = self.privileged_obs_buf[:, 8:]
+        error = jnp.linalg.norm(joint_vel - joint_vel_ref, axis=-1)
+        return jnp.exp(-(error**2) / self.cfg.rewards.sigma)
+
+    def _reward_arm_joint_pos(self):
+        """Reward for track arm joint position"""
+        joint_pos = self.dof_pos
+        joint_pos_ref = self.privileged_obs_buf[:, 8:]
+        error = jnp.linalg.norm(joint_pos - joint_pos_ref, axis=-1)
+        return jnp.exp(-(error**2) / self.cfg.rewards.sigma)
+
+    def _reward_arm_joint_vel(self):
+        """Reward for track arm joint velocity"""
+        joint_vel = self.dof_vel
+        joint_vel_ref = self.privileged_obs_buf[:, 8:]
+        error = jnp.linalg.norm(joint_vel - joint_vel_ref, axis=-1)
+        return jnp.exp(-(error**2) / self.cfg.rewards.sigma)
+
+    def _reward_neck_joint_pos(self):
+        """Reward for track neck joint position"""
+        joint_pos = self.dof_pos
+        joint_pos_ref = self.privileged_obs_buf[:, 8:]
+        error = jnp.linalg.norm(joint_pos - joint_pos_ref, axis=-1)
+        return jnp.exp(-(error**2) / self.cfg.rewards.sigma)
+
+    def _reward_neck_joint_vel(self):
+        """Reward for track neck joint velocity"""
+        joint_vel = self.dof_vel
+        joint_vel_ref = self.privileged_obs_buf[:, 8:]
+        error = jnp.linalg.norm(joint_vel - joint_vel_ref, axis=-1)
+        return jnp.exp(-(error**2) / self.cfg.rewards.sigma)
+
+    def _reward_waist_joint_pos(self):
+        joint_pos = self.dof_pos
+        joint_pos_ref = self.privileged_obs_buf[:, 8:]
+        error = jnp.linalg.norm(joint_pos - joint_pos_ref, axis=-1)
+        return jnp.exp(-(error**2) / self.cfg.rewards.sigma)
+
+    def _reward_waist_joint_vel(self):
+        joint_vel = self.dof_vel
+        joint_vel_ref = self.privileged_obs_buf[:, 8:]
+        error = jnp.linalg.norm(joint_vel - joint_vel_ref, axis=-1)
+        return jnp.exp(-(error**2) / self.cfg.rewards.sigma)
+
+    def _reward_contact(self):
+        """Reward for contact"""
+        contact_forces = self.contact_forces[:, self.feet_indices, :]
+        contact_forces = torch.norm(contact_forces, dim=-1)
+        contact_forces = torch.sum(contact_forces, dim=-1)
+        return torch.exp(-contact_forces / self.cfg.rewards.sigma)
+
+    ##### Regularization rewards #####
+
+    def _reward_joint_torque(self):
+        return -jnp.sum(jnp.square(self.dof_state[:, 2]))
+
+    def _reward_joint_acc(self):
+        return -jnp.sum(jnp.square(self.dof_state[:, 3]))
+
+    def _reward_leg_action_rate(self):
+        pass
+
+    def _reward_leg_action_acc(self):
+        pass
+
+    def _reward_arm_action_rate(self):
+        pass
+
+    def _reward_arm_action_acc(self):
+        pass
+
+    def _reward_neck_action_rate(self):
+        pass
+
+    def _reward_neck_action_acc(self):
+        pass
+
+    def _reward_waist_action_rate(self):
+        pass
+
+    def _reward_waist_action_acc(self):
+        pass
+
+    def _reward_survival(self):
+        return 1.0

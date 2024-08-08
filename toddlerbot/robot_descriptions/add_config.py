@@ -50,9 +50,8 @@ def get_default_config(
         if "waist" in joint_name:
             is_waist_closed_loop = True
             transmission = "waist"
-            # TODO: Direct drive the waist
-            # if "act" not in joint_name:
-            #     is_passive = True
+            if "act" not in joint_name:
+                is_passive = True
 
         if "knee" in joint_name:
             is_knee_closed_loop = True
