@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Tuple
+from typing import Optional
 
+import jax
 import numpy as np
 import numpy.typing as npt
 
@@ -8,26 +9,19 @@ from toddlerbot.sim.robot import Robot
 
 
 class MotionReference(ABC):
-    def __init__(self, motion_type: str, robot: Robot):
+    def __init__(self, motion_type: str, robot: Robot, use_jax: bool):
         self.motion_type = motion_type
         self.robot = robot
+        self.use_jax = use_jax
 
     def get_joint_idx(self, joint_name: str) -> int:
         return self.robot.joint_ordering.index(joint_name)
 
     @abstractmethod
-    def get_state(
+    def get_state_ref(
         self,
-        path_frame: npt.NDArray[np.float32],
-        phase: Optional[float] = None,
-        command: Optional[npt.NDArray[np.float32]] = None,
-    ) -> npt.NDArray[np.float32] | Tuple[npt.NDArray[np.float32], float]:
-        # pos: 3
-        # quat: 4
-        # linear_vel: 3
-        # angular_vel: 3
-        # joint_pos: 30
-        # joint_vel: 30
-        # left_contact: 1
-        # right_contact: 1
+        path_frame: npt.NDArray[np.float32] | jax.Array,
+        phase: Optional[float | npt.NDArray[np.float32] | jax.Array] = None,
+        command: Optional[npt.NDArray[np.float32] | jax.Array] = None,
+    ) -> npt.NDArray[np.float32] | jax.Array:
         pass

@@ -185,6 +185,14 @@ class Robot:
         return len(self.motor_ordering)
 
     @property
+    def joint_group(self) -> Dict[str, str]:
+        joint_group: Dict[str, str] = {}
+        for joint_name, joint_config in self.config["joints"].items():
+            joint_group[joint_name] = joint_config["group"]
+
+        return joint_group
+
+    @property
     def joint_limits(self) -> Dict[str, List[float]]:
         joint_limits: Dict[str, List[float]] = {}
         for joint_name, joint_config in self.config["joints"].items():

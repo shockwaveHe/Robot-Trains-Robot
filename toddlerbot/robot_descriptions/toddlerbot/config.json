@@ -26,7 +26,7 @@
         "neck_yaw_drive": {
             "is_passive": false,
             "transmission": "gears",
-            "group": "upper_body",
+            "group": "neck",
             "default_pos": 0.0,
             "lower_limit": -2.2689280275926285,
             "upper_limit": 2.2689280275926285,
@@ -50,7 +50,7 @@
         "neck_pitch_drive": {
             "is_passive": false,
             "transmission": "gears",
-            "group": "upper_body",
+            "group": "neck",
             "default_pos": 0.0,
             "lower_limit": -1.427996660722633,
             "upper_limit": 1.427996660722633,
@@ -74,7 +74,7 @@
         "waist_act_1": {
             "is_passive": false,
             "transmission": "waist",
-            "group": "upper_body",
+            "group": "waist",
             "default_pos": 0.0,
             "lower_limit": -2.7825534678416246,
             "upper_limit": 2.7825534678416246,
@@ -97,7 +97,7 @@
         "waist_act_2": {
             "is_passive": false,
             "transmission": "waist",
-            "group": "upper_body",
+            "group": "waist",
             "default_pos": 0.0,
             "lower_limit": -2.7825534678416246,
             "upper_limit": 2.7825534678416246,
@@ -120,7 +120,7 @@
         "left_hip_yaw_drive": {
             "is_passive": false,
             "transmission": "gears",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -1.4211966766239539,
             "upper_limit": 1.4211966766239539,
@@ -144,7 +144,7 @@
         "left_hip_roll": {
             "is_passive": false,
             "transmission": "none",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -0.7853981633974483,
             "upper_limit": 1.5707963267948966,
@@ -167,7 +167,7 @@
         "left_hip_pitch": {
             "is_passive": false,
             "transmission": "none",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -190,7 +190,7 @@
         "left_knee_act": {
             "is_passive": false,
             "transmission": "knee",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": 0.0,
             "upper_limit": 1.9198621771937625,
@@ -213,7 +213,7 @@
         "left_ank_act_1": {
             "is_passive": false,
             "transmission": "ankle",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -1.3089969389957472,
             "upper_limit": 1.3089969389957472,
@@ -236,7 +236,7 @@
         "left_ank_act_2": {
             "is_passive": false,
             "transmission": "ankle",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -1.3089969389957472,
             "upper_limit": 1.3089969389957472,
@@ -259,7 +259,7 @@
         "right_hip_yaw_drive": {
             "is_passive": false,
             "transmission": "gears",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -1.4211966766239539,
             "upper_limit": 1.4211966766239539,
@@ -283,7 +283,7 @@
         "right_hip_roll": {
             "is_passive": false,
             "transmission": "none",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -0.7853981633974483,
             "upper_limit": 1.5707963267948966,
@@ -306,7 +306,7 @@
         "right_hip_pitch": {
             "is_passive": false,
             "transmission": "none",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -329,7 +329,7 @@
         "right_knee_act": {
             "is_passive": false,
             "transmission": "knee",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -1.9198621771937625,
             "upper_limit": 0.0,
@@ -352,7 +352,7 @@
         "right_ank_act_1": {
             "is_passive": false,
             "transmission": "ankle",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -1.3089969389957472,
             "upper_limit": 1.3089969389957472,
@@ -375,7 +375,7 @@
         "right_ank_act_2": {
             "is_passive": false,
             "transmission": "ankle",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -1.3089969389957472,
             "upper_limit": 1.3089969389957472,
@@ -398,7 +398,7 @@
         "left_sho_pitch": {
             "is_passive": false,
             "transmission": "none",
-            "group": "upper_body",
+            "group": "arm",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -421,7 +421,7 @@
         "left_sho_roll": {
             "is_passive": false,
             "transmission": "none",
-            "group": "upper_body",
+            "group": "arm",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 0.0,
@@ -444,7 +444,7 @@
         "left_sho_yaw_drive": {
             "is_passive": false,
             "transmission": "gears",
-            "group": "upper_body",
+            "group": "arm",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -468,7 +468,7 @@
         "left_elbow_roll": {
             "is_passive": false,
             "transmission": "none",
-            "group": "upper_body",
+            "group": "arm",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -491,7 +491,7 @@
         "left_elbow_yaw_drive": {
             "is_passive": false,
             "transmission": "gears",
-            "group": "upper_body",
+            "group": "arm",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -515,7 +515,7 @@
         "left_wrist_roll_drive": {
             "is_passive": false,
             "transmission": "gears",
-            "group": "upper_body",
+            "group": "arm",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -539,7 +539,7 @@
         "left_wrist_pitch": {
             "is_passive": false,
             "transmission": "none",
-            "group": "upper_body",
+            "group": "arm",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -562,7 +562,7 @@
         "right_sho_pitch": {
             "is_passive": false,
             "transmission": "none",
-            "group": "upper_body",
+            "group": "arm",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -585,7 +585,7 @@
         "right_sho_roll": {
             "is_passive": false,
             "transmission": "none",
-            "group": "upper_body",
+            "group": "arm",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 0.0,
@@ -608,7 +608,7 @@
         "right_sho_yaw_drive": {
             "is_passive": false,
             "transmission": "gears",
-            "group": "upper_body",
+            "group": "arm",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -632,7 +632,7 @@
         "right_elbow_roll": {
             "is_passive": false,
             "transmission": "none",
-            "group": "upper_body",
+            "group": "arm",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -655,7 +655,7 @@
         "right_elbow_yaw_drive": {
             "is_passive": false,
             "transmission": "gears",
-            "group": "upper_body",
+            "group": "arm",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -679,7 +679,7 @@
         "right_wrist_roll_drive": {
             "is_passive": false,
             "transmission": "gears",
-            "group": "upper_body",
+            "group": "arm",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -703,7 +703,7 @@
         "right_wrist_pitch": {
             "is_passive": false,
             "transmission": "none",
-            "group": "upper_body",
+            "group": "arm",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -726,7 +726,7 @@
         "left_ank_long_rev_1": {
             "is_passive": true,
             "transmission": "ankle",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -737,7 +737,7 @@
         "left_ank_long_rev_2": {
             "is_passive": true,
             "transmission": "ankle",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -748,7 +748,7 @@
         "left_ank_pitch": {
             "is_passive": true,
             "transmission": "ankle",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -1.0471975511965976,
             "upper_limit": 0.7853981633974483,
@@ -759,7 +759,7 @@
         "left_ank_roll": {
             "is_passive": true,
             "transmission": "ankle",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -0.7853981633974483,
             "upper_limit": 0.7853981633974483,
@@ -770,7 +770,7 @@
         "left_ank_short_rev_1": {
             "is_passive": true,
             "transmission": "ankle",
-            "group": "lower_body",
+            "group": "arm",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -781,7 +781,7 @@
         "left_ank_short_rev_2": {
             "is_passive": true,
             "transmission": "ankle",
-            "group": "lower_body",
+            "group": "arm",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -792,7 +792,7 @@
         "left_elbow_yaw_driven": {
             "is_passive": true,
             "transmission": "gears",
-            "group": "upper_body",
+            "group": "arm",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -803,7 +803,7 @@
         "left_hip_yaw_driven": {
             "is_passive": true,
             "transmission": "gears",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -814,7 +814,7 @@
         "left_knee_back_rev_1": {
             "is_passive": true,
             "transmission": "knee",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -6.283185307179586,
             "upper_limit": 6.283185307179586,
@@ -825,7 +825,7 @@
         "left_knee_back_rev_2": {
             "is_passive": true,
             "transmission": "knee",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -6.283185307179586,
             "upper_limit": 6.283185307179586,
@@ -836,7 +836,7 @@
         "left_knee_front_rev_1": {
             "is_passive": true,
             "transmission": "knee",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -6.283185307179586,
             "upper_limit": 6.283185307179586,
@@ -847,7 +847,7 @@
         "left_knee_front_rev_2": {
             "is_passive": true,
             "transmission": "knee",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -6.283185307179586,
             "upper_limit": 6.283185307179586,
@@ -858,7 +858,7 @@
         "left_knee_pitch": {
             "is_passive": true,
             "transmission": "knee",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": 0.0,
             "upper_limit": 1.9198621771937625,
@@ -869,7 +869,7 @@
         "left_sho_yaw_driven": {
             "is_passive": true,
             "transmission": "gears",
-            "group": "upper_body",
+            "group": "arm",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -880,7 +880,7 @@
         "left_wrist_roll_driven": {
             "is_passive": true,
             "transmission": "gears",
-            "group": "upper_body",
+            "group": "arm",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -891,7 +891,7 @@
         "neck_pitch_driven": {
             "is_passive": true,
             "transmission": "gears",
-            "group": "upper_body",
+            "group": "neck",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -902,7 +902,7 @@
         "neck_yaw_driven": {
             "is_passive": true,
             "transmission": "gears",
-            "group": "upper_body",
+            "group": "neck",
             "default_pos": 0.0,
             "lower_limit": -3.141592653589793,
             "upper_limit": 3.141592653589793,
@@ -913,7 +913,7 @@
         "right_ank_long_rev_1": {
             "is_passive": true,
             "transmission": "ankle",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -924,7 +924,7 @@
         "right_ank_long_rev_2": {
             "is_passive": true,
             "transmission": "ankle",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -935,7 +935,7 @@
         "right_ank_pitch": {
             "is_passive": true,
             "transmission": "ankle",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -1.0471975511965976,
             "upper_limit": 0.7853981633974483,
@@ -946,7 +946,7 @@
         "right_ank_roll": {
             "is_passive": true,
             "transmission": "ankle",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -0.7853981633974483,
             "upper_limit": 0.7853981633974483,
@@ -957,7 +957,7 @@
         "right_ank_short_rev_1": {
             "is_passive": true,
             "transmission": "ankle",
-            "group": "lower_body",
+            "group": "arm",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -968,7 +968,7 @@
         "right_ank_short_rev_2": {
             "is_passive": true,
             "transmission": "ankle",
-            "group": "lower_body",
+            "group": "arm",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -979,7 +979,7 @@
         "right_elbow_yaw_driven": {
             "is_passive": true,
             "transmission": "gears",
-            "group": "upper_body",
+            "group": "arm",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -990,7 +990,7 @@
         "right_hip_yaw_driven": {
             "is_passive": true,
             "transmission": "gears",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -1001,7 +1001,7 @@
         "right_knee_back_rev_1": {
             "is_passive": true,
             "transmission": "knee",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -6.283185307179586,
             "upper_limit": 6.283185307179586,
@@ -1012,7 +1012,7 @@
         "right_knee_back_rev_2": {
             "is_passive": true,
             "transmission": "knee",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -6.283185307179586,
             "upper_limit": 6.283185307179586,
@@ -1023,7 +1023,7 @@
         "right_knee_front_rev_1": {
             "is_passive": true,
             "transmission": "knee",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -6.283185307179586,
             "upper_limit": 6.283185307179586,
@@ -1034,7 +1034,7 @@
         "right_knee_front_rev_2": {
             "is_passive": true,
             "transmission": "knee",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -6.283185307179586,
             "upper_limit": 6.283185307179586,
@@ -1045,7 +1045,7 @@
         "right_knee_pitch": {
             "is_passive": true,
             "transmission": "knee",
-            "group": "lower_body",
+            "group": "leg",
             "default_pos": 0.0,
             "lower_limit": -1.9198621771937625,
             "upper_limit": 0.0,
@@ -1056,7 +1056,7 @@
         "right_sho_yaw_driven": {
             "is_passive": true,
             "transmission": "gears",
-            "group": "upper_body",
+            "group": "arm",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -1067,7 +1067,7 @@
         "right_wrist_roll_driven": {
             "is_passive": true,
             "transmission": "gears",
-            "group": "upper_body",
+            "group": "arm",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -1078,7 +1078,7 @@
         "waist_roll": {
             "is_passive": true,
             "transmission": "waist",
-            "group": "upper_body",
+            "group": "waist",
             "default_pos": 0.0,
             "lower_limit": -0.5235987755982988,
             "upper_limit": 0.5235987755982988,
@@ -1089,7 +1089,7 @@
         "waist_yaw": {
             "is_passive": true,
             "transmission": "waist",
-            "group": "upper_body",
+            "group": "waist",
             "default_pos": 0.0,
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,

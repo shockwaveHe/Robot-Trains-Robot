@@ -1,9 +1,10 @@
+import jax
 import jax.numpy as jnp
 from jax import jit  # type: ignore
 
 
 @jit
-def quat_apply(quaternion: jnp.ndarray, vector: jnp.ndarray) -> jnp.ndarray:
+def quat_apply(quaternion: jax.Array, vector: jax.Array) -> jax.Array:
     """Apply a quaternion rotation to a vector."""
     q = quaternion
     # Extend vector to a quaternion
@@ -18,7 +19,7 @@ def quat_apply(quaternion: jnp.ndarray, vector: jnp.ndarray) -> jnp.ndarray:
 
 
 @jit
-def quat_mult(q1: jnp.ndarray, q2: jnp.ndarray) -> jnp.ndarray:
+def quat_mult(q1: jax.Array, q2: jax.Array) -> jax.Array:
     """Multiply two quaternions."""
     w1, x1, y1, z1 = q1
     w2, x2, y2, z2 = q2
@@ -33,6 +34,6 @@ def quat_mult(q1: jnp.ndarray, q2: jnp.ndarray) -> jnp.ndarray:
 
 
 @jit
-def wrap_to_pi(angle: jnp.ndarray) -> jnp.ndarray:
+def wrap_to_pi(angle: jax.Array) -> jax.Array:
     """Wrap angles to the range [-pi, pi]."""
     return (angle + jnp.pi) % (2 * jnp.pi) - jnp.pi

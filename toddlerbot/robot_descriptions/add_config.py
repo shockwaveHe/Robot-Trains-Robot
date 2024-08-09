@@ -65,16 +65,16 @@ def get_default_config(
             if "act" not in joint_name:
                 is_passive = True
 
-        group = "default"
-        upper_body_keywords = ["neck", "waist", "sho", "elbow", "wrist", "gripper"]
-        lower_body_keywords = ["hip", "knee", "ank"]
-        for keyword in upper_body_keywords:
-            if keyword in joint_name:
-                group = "upper_body"
-                break
-        for keyword in lower_body_keywords:
-            if keyword in joint_name:
-                group = "lower_body"
+        group = "none"
+        group_keywords = {
+            "neck": ["neck"],
+            "waist": ["waist"],
+            "arm": ["sho", "elbow", "wrist", "gripper"],
+            "leg": ["hip", "knee", "ank"],
+        }
+        for name, keywords in group_keywords.items():
+            if any(keyword in joint_name for keyword in keywords):
+                group = name
                 break
 
         joint_dict = {

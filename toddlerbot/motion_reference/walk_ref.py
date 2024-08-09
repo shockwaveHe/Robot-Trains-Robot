@@ -1,7 +1,9 @@
-from typing import Optional
+from typing import Any, Optional
 
+import jax
 import numpy as np
 import numpy.typing as npt
+from jax import numpy as jnp
 
 from toddlerbot.motion_reference.motion_ref import MotionReference
 from toddlerbot.sim.robot import Robot
@@ -11,11 +13,13 @@ class WalkReference(MotionReference):
     def __init__(
         self,
         robot: Robot,
+        use_jax: bool = False,
         joint_pos_ref_scale: float = 1.0,
         double_support_phase: float = 0.1,
     ):
-        super().__init__("periodic", robot)
+        super().__init__("periodic", robot, use_jax)
 
+        self.num_joints = len(self.robot.joint_ordering)
         self.joint_pos_ref_scale = joint_pos_ref_scale
         self.double_support_phase = double_support_phase
         self.shin_thigh_ratio = (
@@ -23,78 +27,81 @@ class WalkReference(MotionReference):
             / self.robot.data_dict["offsets"]["hip_pitch_to_knee_z"]
         )
 
-    def get_state(
+    def get_state_ref(
         self,
-        path_frame: npt.NDArray[np.float32],
-        phase: Optional[float] = None,
-        command: Optional[npt.NDArray[np.float32]] = None,
-    ) -> npt.NDArray[np.float32]:
+        path_frame: npt.NDArray[np.float32] | jax.Array,
+        phase: Optional[float | npt.NDArray[np.float32] | jax.Array] = None,
+        command: Optional[npt.NDArray[np.float32] | jax.Array] = None,
+    ) -> npt.NDArray[np.float32] | jax.Array:
         if phase is None:
             raise ValueError(f"phase is required for {self.motion_type} motion")
 
         if command is None:
             raise ValueError(f"command is required for {self.motion_type} motion")
 
+        backend = jnp if self.use_jax else np
+
         pos = path_frame[:3]
         quat = path_frame[3:]
 
-        linear_vel = command[:3]
-        angular_vel = command[3:]
+        linear_vel = backend.array([command[0], command[1], 0.0], dtype=backend.float32)  # type: ignore
+        angular_vel = backend.array([0.0, 0.0, command[2]], dtype=backend.float32)  # type: ignore
 
-        sin_phase_signal = np.sin(2 * np.pi * phase)
-        # When sin_phase_signal < 0, left foot is in stance phase
-        # When sin_phase_signal > 0, right foot is in stance phase
-        signal_left = np.clip(sin_phase_signal, 0, None)  # type: ignore
-        signal_right = np.clip(sin_phase_signal, None, 0)  # type: ignore
+        sin_phase_signal = backend.sin(2 * backend.pi * phase)  # type: ignore
+        signal_left = backend.clip(sin_phase_signal, 0, None)  # type: ignore
+        signal_right = backend.clip(sin_phase_signal, None, 0)  # type: ignore
 
-        # Initialize joint positions and velocities
-        num_joints = len(self.robot.joint_ordering)
-        joint_pos = np.zeros(num_joints, dtype=np.float32)
-        joint_vel = np.zeros(num_joints, dtype=np.float32)
+        joint_pos = backend.zeros(self.num_joints, dtype=backend.float32)  # type: ignore
+        joint_vel = backend.zeros(self.num_joints, dtype=backend.float32)  # type: ignore
 
-        # Define stance angles for each leg
+        left_leg_angles = self.calculate_leg_angles(signal_left, True, backend)  # type: ignore
+        right_leg_angles = self.calculate_leg_angles(signal_right, False, backend)  # type: ignore
 
-        # Calculate joint angles for both legs
-        left_hip_pitch, left_knee_pitch, left_ank_pitch = self.calculate_leg_angles(
-            signal_left, is_left=True
-        )
-        right_hip_pitch, right_knee_pitch, right_ank_pitch = self.calculate_leg_angles(
-            signal_right, is_left=False
-        )
+        leg_angles = {**left_leg_angles, **right_leg_angles}
 
-        # Set joint positions
-        joint_pos[self.get_joint_idx("left_hip_pitch")] = left_hip_pitch
-        joint_pos[self.get_joint_idx("left_knee_pitch")] = left_knee_pitch
-        joint_pos[self.get_joint_idx("left_ank_pitch")] = left_ank_pitch
+        for name, angle in leg_angles.items():
+            joint_idx = self.get_joint_idx(name)
+            if self.use_jax:
+                joint_pos = joint_pos.at[joint_idx].set(angle)  # type: ignore
+            else:
+                joint_pos[joint_idx] = angle
 
-        joint_pos[self.get_joint_idx("right_hip_pitch")] = right_hip_pitch
-        joint_pos[self.get_joint_idx("right_knee_pitch")] = right_knee_pitch
-        joint_pos[self.get_joint_idx("right_ank_pitch")] = right_ank_pitch
+        double_support_mask = backend.abs(sin_phase_signal) < self.double_support_phase  # type: ignore
+        stance_mask = backend.zeros(2, dtype=backend.float32)  # type: ignore
 
-        # Double support phase handling
-        double_support_mask = np.abs(sin_phase_signal) < self.double_support_phase
-        joint_pos[double_support_mask] = 0
+        if self.use_jax:
+            joint_pos = backend.where(double_support_mask, 0, joint_pos)  # type: ignore
+            stance_mask = stance_mask.at[0].set(backend.any(sin_phase_signal >= 0))  # type: ignore
+            stance_mask = stance_mask.at[1].set(backend.any(sin_phase_signal < 0))  # type: ignore
+            stance_mask = backend.where(double_support_mask, 1, stance_mask)  # type: ignore
+        else:
+            joint_pos[double_support_mask] = 0
+            stance_mask[0] = backend.any(sin_phase_signal >= 0)  # type: ignore
+            stance_mask[1] = backend.any(sin_phase_signal < 0)  # type: ignore
+            stance_mask[double_support_mask] = 1
 
-        # Stance mask for determining support leg
-        stance_mask = np.zeros(2, dtype=np.float32)
-        stance_mask[0] = np.any(sin_phase_signal >= 0)  # type: ignore
-        stance_mask[1] = np.any(sin_phase_signal < 0)  # type: ignore
-        stance_mask[double_support_mask] = 1
-
-        return np.concatenate(  # type: ignore
-            (pos, quat, linear_vel, angular_vel, joint_pos, joint_vel, stance_mask)
+        return backend.concatenate(  # type: ignore
+            (pos, quat, linear_vel, angular_vel, joint_pos, joint_vel, stance_mask)  # type: ignore
         )
 
     def calculate_leg_angles(
-        self, signal: npt.NDArray[np.float32], is_left: bool = True
+        self, signal: npt.NDArray[np.float32] | jax.Array, is_left: bool, backend: Any
     ):
-        knee_angle = np.abs(signal * self.joint_pos_ref_scale)
-        ank_pitch_angle = np.arctan2(
-            np.sin(knee_angle), np.cos(knee_angle) + self.shin_thigh_ratio
+        knee_angle = backend.abs(signal * self.joint_pos_ref_scale)
+        ank_pitch_angle = backend.arctan2(
+            backend.sin(knee_angle), backend.cos(knee_angle) + self.shin_thigh_ratio
         )
         hip_pitch_angle = knee_angle - ank_pitch_angle
 
         if is_left:
-            return -hip_pitch_angle, knee_angle, -ank_pitch_angle
+            return {
+                "left_hip_pitch": -hip_pitch_angle,
+                "left_knee_pitch": knee_angle,
+                "left_ank_pitch": -ank_pitch_angle,
+            }
         else:
-            return hip_pitch_angle, -knee_angle, -ank_pitch_angle
+            return {
+                "right_hip_pitch": hip_pitch_angle,
+                "right_knee_pitch": -knee_angle,
+                "right_ank_pitch": -ank_pitch_angle,
+            }
