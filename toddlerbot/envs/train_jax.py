@@ -1,5 +1,9 @@
 import argparse
+import cProfile
 import functools
+import pstats
+import time
+from pstats import SortKey
 from typing import Any, Dict, List
 
 import jax
@@ -16,6 +20,8 @@ from toddlerbot.utils.misc_utils import set_seed
 
 
 def train(robot: Robot, motion_ref: MotionReference):
+    time_start = time.time()
+
     cfg = MuJoCoConfig()
     env = MuJoCoEnv(robot, motion_ref, cfg)
 
@@ -23,17 +29,30 @@ def train(robot: Robot, motion_ref: MotionReference):
     # jit_reset = jax.jit(env.reset)  # type: ignore
     # jit_step = jax.jit(env.step)  # type: ignore
     jit_reset = env.reset
-    jit_step = env.step
+    # jit_step = env.step
+
+    # Start profiling
+    profiler = cProfile.Profile()
+    profiler.enable()
 
     # initialize the state
     state = jit_reset(jax.random.PRNGKey(0))  # type: ignore
     rollout: List[State] = [state.pipeline_state]  # type: ignore
 
-    # grab a trajectory
-    for _ in range(10):
-        ctrl = -0.1 * jnp.ones(env.sys.nu)  # type: ignore
-        state = jit_step(state, ctrl)  # type: ignore
-        rollout.append(state.pipeline_state)  # type: ignore
+    profiler.disable()
+
+    stats = pstats.Stats(profiler).sort_stats(SortKey.TIME)
+    stats.print_stats(10)  # Print
+
+    # # grab a trajectory
+    # for _ in range(10):
+    #     ctrl = -0.1 * jnp.ones(env.sys.nu)  # type: ignore
+    #     state = jit_step(state, ctrl)  # type: ignore
+    #     rollout.append(state.pipeline_state)  # type: ignore
+
+    time_end = time.time()
+
+    print(f"Time elapsed: {time_end - time_start}")
 
     media.write_video("test.mp4", env.render(rollout, camera="side"), fps=1.0 / env.dt)  # type: ignore
 

@@ -59,12 +59,14 @@ class WalkReference(MotionReference):
 
         leg_angles = {**left_leg_angles, **right_leg_angles}
 
-        for name, angle in leg_angles.items():
-            joint_idx = self.get_joint_idx(name)
-            if self.use_jax:
-                joint_pos = joint_pos.at[joint_idx].set(angle)  # type: ignore
-            else:
-                joint_pos[joint_idx] = angle
+        if self.use_jax:
+            indices = np.array([self.get_joint_idx(name) for name in leg_angles])
+            indices = jnp.array(indices)  # type: ignore
+            angles = jnp.array(list(leg_angles.values()))  # type: ignore
+            joint_pos = joint_pos.at[indices].set(angles)  # type: ignore
+        else:
+            for name, angle in leg_angles.items():
+                joint_pos[self.get_joint_idx(name)] = angle
 
         double_support_mask = backend.abs(sin_phase_signal) < self.double_support_phase  # type: ignore
         stance_mask = backend.zeros(2, dtype=backend.float32)  # type: ignore

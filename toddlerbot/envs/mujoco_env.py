@@ -96,7 +96,6 @@ class MuJoCoEnv(PipelineEnv):
         # self.pos_reward_buf = torch.zeros(
         #     self.num_envs, device=self.device, dtype=torch.float
         # )
-        self.only_positive_rewards = self.cfg.rewards.only_positive_rewards
 
         self.cycle_time = self.cfg.rewards.cycle_time
 
@@ -183,23 +182,19 @@ class MuJoCoEnv(PipelineEnv):
 
         self.forward_vec = jnp.array([1.0, 0.0, 0.0])  # type:ignore
 
-        self.contact_forces = jnp.zeros((len(self.robot.collider_names), 3))  # type:ignore
-        self.contact_mask = jnp.zeros(2)  # type:ignore
+        collider_names = np.array(self.robot.collider_names)
+        foot_mask = np.char.find(collider_names, self.robot.foot_name) >= 0
+        foot_mask = jnp.array(foot_mask)  # type:ignore
+        indices = jnp.arange(len(self.robot.collider_names))  # type:ignore
+
+        self.feet_indices = indices[foot_mask]
+        self.termination_contact_indices = indices[~foot_mask]
 
         self.contact_force_threshold = self.cfg.rewards.contact_force_threshold
-        # contact
-        feet_indices: List[int] = []
-        termination_contact_indices: List[int] = []
-        for i, name in enumerate(self.robot.collider_names):
-            if self.robot.foot_name in name:
-                feet_indices.append(i)
-            else:
-                termination_contact_indices.append(i)
+        self.contact_forces = jnp.zeros((len(self.robot.collider_names), 3))  # type:ignore
+        self.contact_mask = jnp.zeros(self.feet_indices.shape[0])  # type:ignore
 
-        self.feet_indices = jnp.array(feet_indices, dtype=jnp.int32)  # type:ignore
-        self.termination_contact_indices = jnp.array(  # type:ignore
-            termination_contact_indices, dtype=jnp.int32
-        )
+        # contact
         # Sets environment origins. On rough terrain the origins are defined by the terrain platforms.
         # Otherwise create a grid.
 
@@ -327,28 +322,20 @@ class MuJoCoEnv(PipelineEnv):
     #     )
 
     def _init_joint_indices(self):
-        self.joint_indices = jnp.zeros(len(self.robot.joint_ordering), dtype=jnp.int32)  # type:ignore
-        leg_joint_indices: List[int] = []
-        arm_joint_indices: List[int] = []
-        neck_joint_indices: List[int] = []
-        waist_joint_indices: List[int] = []
-        for i, name in enumerate(self.robot.joint_ordering):
-            joint_idx: int = int(self.sys.mj_model.joint(name).id)  # type:ignore
-            self.joint_indices = self.joint_indices.at[i].set(joint_idx)  # type:ignore
-            joint_group = self.robot.joint_group[name]
-            if joint_group == "leg":
-                leg_joint_indices.append(joint_idx)
-            elif joint_group == "arm":
-                arm_joint_indices.append(joint_idx)
-            elif joint_group == "neck":
-                neck_joint_indices.append(joint_idx)
-            elif joint_group == "waist":
-                waist_joint_indices.append(joint_idx)
-
-        self.leg_joint_indices = jnp.array(leg_joint_indices, dtype=jnp.int32)  # type:ignore
-        self.arm_joint_indices = jnp.array(arm_joint_indices, dtype=jnp.int32)  # type:ignore
-        self.neck_joint_indices = jnp.array(neck_joint_indices, dtype=jnp.int32)  # type:ignore
-        self.waist_joint_indices = jnp.array(waist_joint_indices, dtype=jnp.int32)  # type:ignore
+        joint_ordering = np.array(self.robot.joint_ordering)
+        joint_indices = np.array(  # type:ignore
+            [self.sys.mj_model.joint(name).id for name in joint_ordering]  # type:ignore
+        )
+        # Convert the results to JAX arrays for further numerical processing
+        self.joint_indices = jnp.array(joint_indices)  # type:ignore
+        joint_groups = np.array(
+            [self.robot.joint_group[name] for name in joint_ordering]
+        )
+        # Filter indices for each joint group
+        self.leg_joint_indices = self.joint_indices[joint_groups == "leg"]
+        self.arm_joint_indices = self.joint_indices[joint_groups == "arm"]
+        self.neck_joint_indices = self.joint_indices[joint_groups == "neck"]
+        self.waist_joint_indices = self.joint_indices[joint_groups == "waist"]
 
     def _init_reward(self):
         """Prepares a list of reward functions, which will be called to compute the total reward.
@@ -371,8 +358,7 @@ class MuJoCoEnv(PipelineEnv):
             if name == "termination":
                 continue
             self.reward_names.append(name)
-            reward_function_name = "_reward_" + name
-            self.reward_functions.append(getattr(self, reward_function_name))
+            self.reward_functions.append(getattr(self, "_reward_" + name))
 
         # reward episode sums
         self.reward_values = {name: jnp.zeros(1) for name in self.reward_names}  # type:ignore
@@ -433,7 +419,7 @@ class MuJoCoEnv(PipelineEnv):
         done = self._check_termination()
         # done = 1.0 - is_healthy if self._terminate_when_unhealthy else 0.0
 
-        state.metrics.update(**self.reward_values)
+        state.metrics.update(**self.reward_values)  # type:ignore
         state.metrics["x_position"] = com_after[0]
         state.metrics["y_position"] = com_after[1]
         state.metrics["distance_from_origin"] = jnp.linalg.norm(com_after)  # type:ignore
@@ -463,15 +449,17 @@ class MuJoCoEnv(PipelineEnv):
         y_vel = self.command_buf[1]
 
         if self.heading_command:
-            forward = quat_apply(data.q[3:7], self.forward_vec)  # type:ignore
+            forward = quat_apply(data.qpos[3:7], self.forward_vec)  # type:ignore
             heading = jnp.atan2(forward[1], forward[0])  # type:ignore
-            self.command_buf[2] = jnp.clip(  # type:ignore
-                0.5 * wrap_to_pi(self.commands[3] - heading),  # type:ignore
-                -1.0,
-                1.0,
+            self.command_buf.at[2].set(  # type:ignore
+                jnp.clip(  # type:ignore
+                    0.5 * wrap_to_pi(self.command_buf[3] - heading),  # type:ignore
+                    -1.0,
+                    1.0,
+                )
             )
 
-        yaw_vel = self.command_buf[:, 2]
+        yaw_vel = self.command_buf[2]
 
         # Update position
         pos += jnp.array([x_vel, y_vel, 0.0]) * self.dt  # type:ignore
@@ -499,35 +487,60 @@ class MuJoCoEnv(PipelineEnv):
         )
 
     def _get_contact_forces(self, data: mjx.Data):
-        # Access contact information
-        for i in range(data.ncon):  # type: ignore
-            contact = data.contact[i]  # type: ignore
-            # Check if the contact involves the ground plane
-            geom1 = self.sys.mj_model.geom(contact.geom[0])  # type: ignore
-            geom2 = self.sys.mj_model.geom(contact.geom[1])  # type: ignore
+        c_array = jnp.zeros((data.ncon, 6), dtype=jnp.float32)  # type:ignore
+        geom_ids = jnp.array(  # type:ignore
+            [
+                [data.contact[i].geom[0], data.contact[i].geom[1]]  # type:ignore
+                for i in range(data.ncon)
+            ]
+        )
+        floor_mask = jax.vmap(
+            lambda g1, g2: "floor" in self.sys.mj_model.geom(g1).name  # type:ignore
+            or "floor" in self.sys.mj_model.geom(g2).name  # type:ignore
+        )(geom_ids[:, 0], geom_ids[:, 1])
+        filtered_geom_ids = geom_ids[floor_mask]
+        filtered_indices = jnp.arange(data.ncon)[floor_mask]  # type:ignore
 
-            body_name = ""
-            if "floor" in geom1.name:  # type: ignore
-                body_name = str(self.sys.mj_model.body(geom2.bodyid).name)  # type: ignore
-            elif "floor" in geom2.name:  # type: ignore
-                body_name = str(self.sys.mj_model.body(geom1.bodyid).name)  # type: ignore
+        def get_body_name(g1: int, g2: int) -> str:
+            if "floor" in self.sys.mj_model.geom(g1).name:  # type:ignore
+                body_id = self.sys.mj_model.geom(g2).bodyid  # type:ignore
             else:
-                continue
+                body_id = self.sys.mj_model.geom(g1).bodyid  # type:ignore
 
-            body_idx = self.robot.collider_names.index(body_name)
-            # Extract the contact forces
-            c_array = np.zeros(6)  # To hold contact forces
+            return self.sys.mj_model.body(body_id).name  # type:ignore
 
-            mujoco.mj_contactForce(self.sys.mj_model, data, i, c_array)  # type: ignore
-            contact_force_local = c_array[:3].astype(np.float32)
-            contact_force_global = contact.frame.reshape(-1, 3).T @ contact_force_local  # type: ignore
+        body_names = jax.vmap(get_body_name)(  # type:ignore
+            filtered_geom_ids[:, 0],  # type:ignore
+            filtered_geom_ids[:, 1],  # type:ignore
+        )
+        body_indices = jax.vmap(lambda name: self.robot.collider_names.index(name))(  # type:ignore
+            body_names
+        )
 
-            self.contact_forces = self.contact_forces.at[body_idx].set(  # type:ignore
-                contact_force_global
+        def update_contact_force(idx: int) -> jax.Array:
+            mujoco.mj_contactForce(  # type:ignore
+                self.sys.mj_model,  # type:ignore
+                data,
+                filtered_indices[idx],
+                c_array[idx],
             )
+            contact_force_local = c_array[idx, :3]
+            contact = data.contact[filtered_indices[idx]]  # type:ignore
+            contact_force_global = jnp.dot(  # type:ignore
+                contact.frame.reshape(-1, 3).T,  # type:ignore
+                contact_force_local,
+            )
+            return self.contact_forces.at[body_indices[idx]].set(contact_force_global)  # type:ignore
 
-        self.contact_mask = (
-            self.contact_forces[:, self.feet_indices, 2] > self.contact_force_threshold
+        self.contact_forces = jax.lax.fori_loop(  # type:ignore
+            0,
+            len(filtered_indices),
+            update_contact_force,
+            self.contact_forces,  # type:ignore
+        )
+        self.contact_mask = jnp.any(  # type:ignore
+            self.contact_forces[:, self.feet_indices, 2] > self.contact_force_threshold,  # type:ignore
+            axis=0,
         )
 
     def _get_obs(
@@ -576,7 +589,7 @@ class MuJoCoEnv(PipelineEnv):
 
     def _check_termination(self):
         """Check if environments need to be reset"""
-        termination_contact = self.contact_forces[self.termination_contact_indices, :]
+        termination_contact = self.contact_forces[self.termination_contact_indices, :]  # type:ignore
         termination = jnp.any(  # type: ignore
             jnp.linalg.norm(termination_contact, axis=-1) > 1.0,  # type: ignore
             axis=0,
@@ -588,15 +601,15 @@ class MuJoCoEnv(PipelineEnv):
         Calls each reward function which had a non-zero scale (processed in self._prepare_reward_function())
         adds each terms to the episode sums and to the total reward
         """
-        reward = jnp.zeros(1)  # type:ignore
-        for i in range(len(self.reward_functions)):
-            name = self.reward_names[i]
-            rew = self.reward_functions[i](data) * self.reward_scales[name]
-            reward += rew
-            self.reward_values[name] = rew
+        indices = jnp.arange(len(self.reward_functions))  # type:ignore
+        rewards = jax.vmap(  # type:ignore
+            lambda i, data: self.reward_functions[i](data)  # type:ignore
+            * self.reward_scales[self.reward_names[i]],
+            in_axes=(0, None),
+        )(indices, data)
 
-        if self.only_positive_rewards:
-            reward = jnp.clip(reward, min=0.0)  # type:ignore
+        self.reward_values = dict(zip(self.reward_names, rewards))  # type:ignore
+        reward = jnp.sum(rewards)  # type:ignore
 
         return reward
 
