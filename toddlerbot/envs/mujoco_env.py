@@ -43,7 +43,7 @@ class MuJoCoEnv(PipelineEnv):
             xml_path = find_robot_file_path(robot.name, suffix="_scene.xml")
 
         mj_model = mujoco.MjModel.from_xml_path(xml_path)  # type: ignore
-        mj_model.opt.solver = mujoco.mjtSolver.mjSOL_CG  # type: ignore
+
         mj_model.opt.iterations = 6  # type: ignore
         mj_model.opt.ls_iterations = 6  # type: ignore
 
@@ -379,13 +379,16 @@ class MuJoCoEnv(PipelineEnv):
         data = self.pipeline_init(qpos, qvel)
 
         obs, privileged_obs = self._get_obs(data, jnp.zeros(self.sys.nu))  # type:ignore
+        # obs = privileged_obs = jnp.zeros(1)  # type:ignore
         reward, done, zero = jnp.zeros(3)  # type:ignore
+
         metrics = dict(zip(self.reward_names, [zero] * len(self.reward_names)))
         metrics["x_position"] = zero
         metrics["y_position"] = zero
         metrics["distance_from_origin"] = zero
         metrics["x_velocity"] = zero
         metrics["y_velocity"] = zero
+
         return State(data, obs, privileged_obs, reward, done, metrics)
 
     def step(self, state: State, action: jax.Array) -> State:

@@ -1,4 +1,7 @@
+import cProfile
+import pstats
 import time
+from pstats import SortKey
 
 import jax
 import mediapy as media
@@ -129,23 +132,34 @@ class Humanoid(PipelineEnv):
         )
 
 
+profiler = cProfile.Profile()
+profiler.enable()
+
 time_start = time.time()
 env = Humanoid()
 
 # define the jit reset/step functions
-jit_reset = jax.jit(env.reset)
-jit_step = jax.jit(env.step)
+# jit_reset = jax.jit(env.reset)
+# jit_step = jax.jit(env.step)
+jit_reset = env.reset
+# jit_step = env.step
 # initialize the state
 state = jit_reset(jax.random.PRNGKey(0))
 rollout = [state.pipeline_state]
 
-# grab a trajectory
-for i in range(10):
-    ctrl = -0.1 * jp.ones(env.sys.nu)
-    state = jit_step(state, ctrl)
-    rollout.append(state.pipeline_state)
 
-media.show_video(env.render(rollout, camera="side"), fps=1.0 / env.dt)
+profiler.disable()
+stats = pstats.Stats(profiler).sort_stats(SortKey.TIME)
+stats.print_stats(10)  # Print
+
+
+# grab a trajectory
+# for i in range(10):
+#     ctrl = -0.1 * jp.ones(env.sys.nu)
+#     state = jit_step(state, ctrl)
+#     rollout.append(state.pipeline_state)
+
+# media.show_video(env.render(rollout, camera="side"), fps=1.0 / env.dt)
 
 time_end = time.time()
 print(f"Time elapsed: {time_end - time_start:.2f}s")

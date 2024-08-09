@@ -41,6 +41,16 @@ def update_compiler_settings(root: ET.Element):
     compiler.set("autolimits", "true")
 
 
+def add_option_settings(root: ET.Element):
+    option = root.find("option")
+    if option is not None:
+        root.remove(option)
+
+    option = ET.SubElement(root, "option")
+
+    ET.SubElement(option, "flag", {"eulerdamp": "disable"})
+
+
 def add_torso_site(root: ET.Element):
     worldbody = root.find("worldbody")
     if worldbody is None:
@@ -553,6 +563,7 @@ def create_scene_xml(mjcf_path: str, is_fixed: bool):
 
 def process_mjcf_fixed_file(root: ET.Element, config: Dict[str, Any]):
     update_compiler_settings(root)
+    add_option_settings(root)
 
     if config["general"]["use_torso_site"]:
         add_torso_site(root)

@@ -452,6 +452,9 @@
       </body>
     </body>
   </worldbody>
+  <option>
+    <flag eulerdamp="disable" />
+  </option>
   <sensor>
     <framequat name="orientation" objtype="site" noise="0.001" objname="imu" />
     <framepos name="position" objtype="site" noise="0.001" objname="imu" />

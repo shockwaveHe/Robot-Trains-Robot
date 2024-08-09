@@ -16,7 +16,6 @@ from toddlerbot.envs.mujoco_config import MuJoCoConfig
 from toddlerbot.envs.mujoco_env import MuJoCoEnv
 from toddlerbot.motion_reference.motion_ref import MotionReference
 from toddlerbot.sim.robot import Robot
-from toddlerbot.utils.misc_utils import set_seed
 
 
 def train(robot: Robot, motion_ref: MotionReference):
@@ -29,7 +28,7 @@ def train(robot: Robot, motion_ref: MotionReference):
     # jit_reset = jax.jit(env.reset)  # type: ignore
     # jit_step = jax.jit(env.step)  # type: ignore
     jit_reset = env.reset
-    # jit_step = env.step
+    jit_step = env.step
 
     # Start profiling
     profiler = cProfile.Profile()
@@ -39,16 +38,16 @@ def train(robot: Robot, motion_ref: MotionReference):
     state = jit_reset(jax.random.PRNGKey(0))  # type: ignore
     rollout: List[State] = [state.pipeline_state]  # type: ignore
 
-    profiler.disable()
-
-    stats = pstats.Stats(profiler).sort_stats(SortKey.TIME)
-    stats.print_stats(10)  # Print
-
     # # grab a trajectory
     # for _ in range(10):
     #     ctrl = -0.1 * jnp.ones(env.sys.nu)  # type: ignore
     #     state = jit_step(state, ctrl)  # type: ignore
     #     rollout.append(state.pipeline_state)  # type: ignore
+
+    profiler.disable()
+
+    stats = pstats.Stats(profiler).sort_stats(SortKey.TIME)
+    stats.print_stats(10)  # Print
 
     time_end = time.time()
 
@@ -103,8 +102,6 @@ if __name__ == "__main__":
         help="The name of the env.",
     )
     args = parser.parse_args()
-
-    set_seed(0)
 
     robot = Robot(args.robot)
 
