@@ -1,6 +1,210 @@
 {
     "torso": {
         "has_collision": true,
+        "contact_pairs": [
+            "floor",
+            "2xl430_gears_2",
+            "hand",
+            "2xl430_gears_5",
+            "hand_2"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "neck_pitch_link": {
+        "has_collision": true,
+        "contact_pairs": [],
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "waist_link": {
+        "has_collision": true,
+        "contact_pairs": [
+            "hand",
+            "hand_2"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            0.5,
+            1.0
+        ]
+    },
+    "hip_roll_link": {
+        "has_collision": true,
+        "contact_pairs": [
+            "hand"
+        ],
+        "type": "box",
+        "scale": [
+            0.5,
+            1.0,
+            1.0
+        ]
+    },
+    "left_hip_pitch_link_xm430": {
+        "has_collision": true,
+        "contact_pairs": [
+            "hand"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            0.5,
+            1.0
+        ]
+    },
+    "left_calf_link": {
+        "has_collision": true,
+        "contact_pairs": [],
+        "type": "box",
+        "scale": [
+            1.0,
+            0.5,
+            1.0
+        ]
+    },
+    "ank_roll_link": {
+        "has_collision": true,
+        "contact_pairs": [
+            "floor"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "hip_roll_link_2": {
+        "has_collision": true,
+        "contact_pairs": [
+            "hand_2"
+        ],
+        "type": "box",
+        "scale": [
+            0.5,
+            1.0,
+            1.0
+        ]
+    },
+    "right_hip_pitch_link_xm430": {
+        "has_collision": true,
+        "contact_pairs": [
+            "hand_2"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            0.5,
+            1.0
+        ]
+    },
+    "right_calf_link": {
+        "has_collision": true,
+        "type": "box",
+        "contact_pairs": [],
+        "scale": [
+            1.0,
+            0.5,
+            1.0
+        ]
+    },
+    "ank_roll_link_2": {
+        "has_collision": true,
+        "contact_pairs": [
+            "floor"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "2xl430_gears": {
+        "has_collision": true,
+        "contact_pairs": [
+            "floor"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "2xl430_gears_2": {
+        "has_collision": true,
+        "contact_pairs": [
+            "floor",
+            "torso"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "hand": {
+        "has_collision": true,
+        "contact_pairs": [
+            "floor",
+            "torso",
+            "waist_link",
+            "hip_roll_link",
+            "left_hip_pitch_link_xm430"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "2xl430_gears_4": {
+        "has_collision": true,
+        "contact_pairs": [
+            "floor"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "2xl430_gears_5": {
+        "has_collision": true,
+        "contact_pairs": [
+            "floor",
+            "torso"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "hand_2": {
+        "has_collision": true,
+        "contact_pairs": [
+            "floor",
+            "torso",
+            "waist_link",
+            "hip_roll_link_2",
+            "right_hip_pitch_link_xm430"
+        ],
         "type": "box",
         "scale": [
             1.0,
@@ -14,29 +218,11 @@
     "neck_yaw_link": {
         "has_collision": false
     },
-    "neck_pitch_link": {
-        "has_collision": true,
-        "type": "box",
-        "scale": [
-            1.0,
-            1.0,
-            1.0
-        ]
-    },
     "spur_gear_(13_teeth)": {
         "has_collision": false
     },
     "waist_gears": {
         "has_collision": false
-    },
-    "waist_link": {
-        "has_collision": true,
-        "type": "box",
-        "scale": [
-            1.0,
-            0.5,
-            1.0
-        ]
     },
     "spiral_bevel_1m_14t_30deg": {
         "has_collision": false
@@ -59,33 +245,6 @@
     "hip_yaw_link": {
         "has_collision": false
     },
-    "hip_roll_link": {
-        "has_collision": true,
-        "type": "box",
-        "scale": [
-            0.5,
-            1.0,
-            1.0
-        ]
-    },
-    "left_hip_pitch_link_xm430": {
-        "has_collision": true,
-        "type": "box",
-        "scale": [
-            1.0,
-            0.5,
-            1.0
-        ]
-    },
-    "left_calf_link": {
-        "has_collision": true,
-        "type": "box",
-        "scale": [
-            1.0,
-            0.5,
-            1.0
-        ]
-    },
     "bearing_683": {
         "has_collision": false
     },
@@ -94,15 +253,6 @@
     },
     "ank_pitch_link": {
         "has_collision": false
-    },
-    "ank_roll_link": {
-        "has_collision": true,
-        "type": "box",
-        "scale": [
-            1.0,
-            1.0,
-            1.0
-        ]
     },
     "ank_rr_link": {
         "has_collision": false
@@ -134,33 +284,6 @@
     "hip_yaw_link_2": {
         "has_collision": false
     },
-    "hip_roll_link_2": {
-        "has_collision": true,
-        "type": "box",
-        "scale": [
-            0.5,
-            1.0,
-            1.0
-        ]
-    },
-    "right_hip_pitch_link_xm430": {
-        "has_collision": true,
-        "type": "box",
-        "scale": [
-            1.0,
-            0.5,
-            1.0
-        ]
-    },
-    "right_calf_link": {
-        "has_collision": true,
-        "type": "box",
-        "scale": [
-            1.0,
-            0.5,
-            1.0
-        ]
-    },
     "bearing_683_3": {
         "has_collision": false
     },
@@ -169,15 +292,6 @@
     },
     "ank_pitch_link_2": {
         "has_collision": false
-    },
-    "ank_roll_link_2": {
-        "has_collision": true,
-        "type": "box",
-        "scale": [
-            1.0,
-            1.0,
-            1.0
-        ]
     },
     "ank_rr_link_3": {
         "has_collision": false
@@ -212,15 +326,6 @@
     "sho_pitch_link": {
         "has_collision": false
     },
-    "2xl430_gears": {
-        "has_collision": true,
-        "type": "box",
-        "scale": [
-            1.0,
-            1.0,
-            1.0
-        ]
-    },
     "spur_1m_24t_drive": {
         "has_collision": false
     },
@@ -229,15 +334,6 @@
     },
     "sho_yaw_link": {
         "has_collision": false
-    },
-    "2xl430_gears_2": {
-        "has_collision": true,
-        "type": "box",
-        "scale": [
-            1.0,
-            1.0,
-            1.0
-        ]
     },
     "spur_1m_24t_drive_2": {
         "has_collision": false
@@ -260,29 +356,11 @@
     "wrist_bearing_plate": {
         "has_collision": false
     },
-    "hand": {
-        "has_collision": true,
-        "type": "box",
-        "scale": [
-            1.0,
-            1.0,
-            1.0
-        ]
-    },
     "xc430_2": {
         "has_collision": false
     },
     "sho_pitch_link_2": {
         "has_collision": false
-    },
-    "2xl430_gears_4": {
-        "has_collision": true,
-        "type": "box",
-        "scale": [
-            1.0,
-            1.0,
-            1.0
-        ]
     },
     "spur_1m_24t_drive_4": {
         "has_collision": false
@@ -292,15 +370,6 @@
     },
     "sho_yaw_link_2": {
         "has_collision": false
-    },
-    "2xl430_gears_5": {
-        "has_collision": true,
-        "type": "box",
-        "scale": [
-            1.0,
-            1.0,
-            1.0
-        ]
     },
     "spur_1m_24t_drive_5": {
         "has_collision": false
@@ -322,14 +391,5 @@
     },
     "wrist_bearing_plate_2": {
         "has_collision": false
-    },
-    "hand_2": {
-        "has_collision": true,
-        "type": "box",
-        "scale": [
-            1.0,
-            1.0,
-            1.0
-        ]
     }
 }

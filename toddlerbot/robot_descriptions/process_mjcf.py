@@ -220,6 +220,12 @@ def add_default_settings(root: ET.Element):
     ET.SubElement(collision_default, "geom", {"group": "3"})
 
 
+def include_all_contacts(root: ET.Element):
+    contact = root.find("contact")
+    if contact is not None:
+        root.remove(contact)
+
+
 def exclude_all_contacts(root: ET.Element):
     contact = root.find("contact")
     if contact is not None:
@@ -239,13 +245,7 @@ def exclude_all_contacts(root: ET.Element):
                 ET.SubElement(contact, "exclude", body1=body1_name, body2=body2_name)
 
 
-def include_all_contacts(root: ET.Element):
-    contact = root.find("contact")
-    if contact is not None:
-        root.remove(contact)
-
-
-def add_contact_exclusion_to_mjcf(root: ET.Element):
+def add_contacts(root: ET.Element, collision_config: Dict[str, Dict[str, Any]]):
     # Ensure there is a <contact> element
     contact = root.find("contact")
     if contact is not None:
@@ -253,20 +253,51 @@ def add_contact_exclusion_to_mjcf(root: ET.Element):
 
     contact = ET.SubElement(root, "contact")
 
-    # Iterate through all bodies
+    collision_bodies: Dict[str, ET.Element] = {}
     for body in root.findall(".//body"):
-        parent_name = body.get("name")
-        # Ensure the parent has a 'collision' class geom as a direct child
-        if parent_name and body.find("./geom[@class='collision']") is not None:
-            # Iterate over direct children bodies of the current body
-            for child in body.findall("./body"):
-                child_name = child.get("name")
-                # Ensure the child has a 'collision' class geom as a direct child
-                if child_name and child.find("./geom[@class='collision']") is not None:
-                    # Add exclusion since both parent and child meet the criteria
-                    ET.SubElement(
-                        contact, "exclude", body1=parent_name, body2=child_name
-                    )
+        body_name = body.get("name")
+        geom = body.find("./geom[@class='collision']")
+        if body_name and geom is not None:
+            collision_bodies[body_name] = geom
+
+    pairs: List[Tuple[str, str]] = []
+    excludes: List[Tuple[str, str]] = []
+
+    collision_body_names = list(collision_bodies.keys())
+    for body_name in collision_body_names:
+        if "floor" in collision_config[body_name]["contact_pairs"]:
+            pairs.append((body_name, "floor"))
+
+    for i in range(len(collision_bodies) - 1):
+        for j in range(i + 1, len(collision_body_names)):
+            body1_name = collision_body_names[i]
+            body2_name = collision_body_names[j]
+
+            paired_1 = body2_name in collision_config[body1_name]["contact_pairs"]
+            paired_2 = body1_name in collision_config[body2_name]["contact_pairs"]
+            if paired_1 and paired_2:
+                pairs.append((body1_name, body2_name))
+            else:
+                excludes.append((body1_name, body2_name))
+
+    # Add all <pair> elements first
+    for body1_name, body2_name in pairs:
+        geom1_name = collision_bodies[body1_name].get("name")
+        if body2_name == "floor":
+            geom2_name = "floor"
+        else:
+            geom2_name = collision_bodies[body2_name].get("name")
+
+        if geom1_name is None or geom2_name is None:
+            raise ValueError(
+                f"Could not find geom name for {body1_name} or {body2_name}"
+            )
+
+        ET.SubElement(contact, "pair", geom1=geom1_name, geom2=geom2_name)
+
+    # Add all <exclude> elements after
+    for body1_name, body2_name in excludes:
+        ET.SubElement(contact, "exclude", body1=body1_name, body2=body2_name)
 
 
 def add_waist_constraints(root: ET.Element, offsets: Dict[str, float]):
@@ -561,31 +592,31 @@ def create_scene_xml(mjcf_path: str, is_fixed: bool):
     tree.write(os.path.join(os.path.dirname(mjcf_path), f"{robot_name}_scene.xml"))
 
 
-def process_mjcf_fixed_file(root: ET.Element, config: Dict[str, Any]):
+def process_mjcf_fixed_file(root: ET.Element, robot: Robot):
     update_compiler_settings(root)
     add_option_settings(root)
 
-    if config["general"]["use_torso_site"]:
+    if robot.config["general"]["use_torso_site"]:
         add_torso_site(root)
 
-    if config["general"]["has_imu"]:
+    if robot.config["general"]["has_imu"]:
         add_imu_sensor(root)
 
-    update_joint_params(root, config["joints"])
+    update_joint_params(root, robot.config["joints"])
     update_geom_classes(root, ["type", "contype", "conaffinity", "group", "density"])
-    add_actuators_to_mjcf(root, config["joints"])
+    add_actuators_to_mjcf(root, robot.config["joints"])
 
-    if config["general"]["is_waist_closed_loop"]:
-        add_waist_constraints(root, config["general"]["offsets"])
+    if robot.config["general"]["is_waist_closed_loop"]:
+        add_waist_constraints(root, robot.config["general"]["offsets"])
 
-    if config["general"]["is_knee_closed_loop"]:
+    if robot.config["general"]["is_knee_closed_loop"]:
         add_knee_constraints(root)
 
-    if config["general"]["is_ankle_closed_loop"]:
-        add_ankle_constraints(root, config["general"]["offsets"])
+    if robot.config["general"]["is_ankle_closed_loop"]:
+        add_ankle_constraints(root, robot.config["general"]["offsets"])
 
     add_default_settings(root)
-    # add_contact_exclusion_to_mjcf(root)
+    # include_all_contacts(root)
     exclude_all_contacts(root)
 
 
@@ -612,7 +643,7 @@ def get_mjcf_files(robot_name: str):
     xml_tree = ET.parse(mjcf_fixed_path)
     xml_root = xml_tree.getroot()
 
-    process_mjcf_fixed_file(xml_root, robot.config)
+    process_mjcf_fixed_file(xml_root, robot)
     xml_tree.write(mjcf_fixed_path)
 
     if robot.config["general"]["is_fixed"]:
@@ -622,7 +653,7 @@ def get_mjcf_files(robot_name: str):
 
         mjcf_path = os.path.join(robot_dir, robot_name + ".xml")
         add_body_link(xml_root, urdf_path, robot.config["general"]["offsets"])
-        include_all_contacts(xml_root)
+        add_contacts(xml_root, robot.collision_config)
         xml_tree.write(mjcf_path)
 
     create_scene_xml(mjcf_path, robot.config["general"]["is_fixed"])

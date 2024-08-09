@@ -74,13 +74,17 @@ def update_collisons(robot_name: str):
                         mesh_filename,
                         collision_config[link_name]["scale"],
                     )
+                    collision_name = os.path.basename(collision_filename).split(".")[0]
                     collision = link.find("collision")
                     if collision is None:
                         # If no collision tag exists, create one
-                        collision = ET.SubElement(link, "collision")
+                        collision = ET.SubElement(
+                            link, "collision", {"name": collision_name}
+                        )
                         geometry = ET.SubElement(collision, "geometry")
                         mesh = ET.SubElement(geometry, "mesh")
                     else:
+                        collision.set("name", collision_name)
                         geometry = collision.find("geometry")
                         mesh = geometry.find("mesh") if geometry is not None else None
 

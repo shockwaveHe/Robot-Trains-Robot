@@ -103,7 +103,7 @@
       <site name="imu" size="0.01" pos="0.0 0 0.0" />
       <site name="torso" fromto="0.01 0 0.4 -0.01 0 0.4" type="cylinder" size="0.005 0.005 1" group="3" />
       <geom rgba="0.58594 0.732003 0.846222 1" mesh="torso_visual" class="visual" />
-      <geom rgba="0.58594 0.732003 0.846222 1" mesh="torso_collision" class="collision" />
+      <geom name="torso_collision" rgba="0.58594 0.732003 0.846222 1" mesh="torso_collision" class="collision" />
       <body name="spur_1m_20t" pos="-0.005 0 0.121487" quat="1 0 0 0">
         <inertial pos="0 0 0.0033746" quat="0.5 0.5 -0.5 0.5" mass="0.0015535" diaginertia="7.95589e-08 4.47265e-08 4.47265e-08" />
         <joint name="neck_yaw_drive" pos="0 0 0" axis="0 0 1" range="-2.26893 2.26893" actuatorfrcrange="-1 1" damping="0.099" armature="0.002" />
@@ -117,7 +117,7 @@
           <inertial pos="-0.00343705 0.0328768 -0.000364765" quat="0.985226 -0.157163 0.0224975 -0.064217" mass="0.112116" diaginertia="7.73792e-05 6.73704e-05 2.43788e-05" />
           <joint name="neck_pitch_driven" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" actuatorfrcrange="-1 1" damping="0.11979000000000002" armature="0.0024200000000000003" />
           <geom rgba="0.749111 0.800028 0.874413 1" mesh="neck_pitch_link_visual" class="visual" />
-          <geom rgba="0.749111 0.800028 0.874413 1" mesh="neck_pitch_link_collision" class="collision" />
+          <geom name="neck_pitch_link_collision" rgba="0.749111 0.800028 0.874413 1" mesh="neck_pitch_link_collision" class="collision" />
           <body name="spur_gear_(13_teeth)" pos="0 0.01565 -0.0088" quat="0.707107 0 0 -0.707107">
             <inertial pos="9.15216e-10 -5.48726e-10 0.00927515" mass="0.000814694" diaginertia="2.02448e-08 2.02448e-08 1.89055e-08" />
             <joint name="neck_pitch_drive" pos="0 0 0" axis="0 0 1" range="-1.428 1.428" actuatorfrcrange="-1 1" damping="0.099" armature="0.002" />
@@ -133,7 +133,7 @@
           <inertial pos="-9.10862e-07 0.0262045 -0.0301904" quat="0.531459 0.467704 0.510522 0.488028" mass="0.16632" diaginertia="0.000200893 0.000157531 6.84712e-05" />
           <joint name="waist_roll" pos="0 0 0" axis="0 0 1" range="-0.523599 0.523599" actuatorfrcrange="-1 1" damping="0.0" armature="0.0" />
           <geom rgba="0.634012 0.682047 0.669102 1" mesh="waist_link_visual" class="visual" />
-          <geom rgba="0.634012 0.682047 0.669102 1" mesh="waist_link_collision" class="collision" />
+          <geom name="waist_link_collision" rgba="0.634012 0.682047 0.669102 1" mesh="waist_link_collision" class="collision" />
           <body name="spiral_bevel_1m_14t_30deg" pos="0 0.0196 -0.01275" quat="0.5 0.5 0.5 -0.5">
             <inertial pos="8.26411e-10 3.40558e-10 0.00686126" quat="0.5 0.5 -0.5 0.5" mass="0.000679976" diaginertia="1.31787e-08 1.21746e-08 1.21746e-08" />
             <joint name="waist_act_1" pos="0 0 0" axis="0 0 1" range="-2.78255 2.78255" actuatorfrcrange="-1 1" damping="0.099" armature="0.002" />
@@ -158,17 +158,17 @@
               <inertial pos="-0.0119998 -0.000495981 -0.0185041" quat="-0.273471 0.652073 -0.267709 0.654482" mass="0.1106" diaginertia="3.14464e-05 3.02975e-05 2.28182e-05" />
               <joint name="left_hip_roll" pos="0 0 0" axis="0 0 1" range="-0.785398 1.5708" actuatorfrcrange="-1 1" damping="0.218" armature="0.002" />
               <geom rgba="0.516987 0.503478 0.490506 1" mesh="left_hip_roll_link_visual" class="visual" />
-              <geom rgba="0.516987 0.503478 0.490506 1" mesh="left_hip_roll_link_collision" class="collision" />
+              <geom name="left_hip_roll_link_collision" rgba="0.516987 0.503478 0.490506 1" mesh="left_hip_roll_link_collision" class="collision" />
               <body name="left_hip_pitch_link_xm430" pos="-0.024 -0.019 -0.019" quat="0.5 0.5 0.5 -0.5">
                 <inertial pos="-0.000757292 -0.0507148 -0.0126562" quat="0.719538 0.693946 0.0141894 -0.0224076" mass="0.114801" diaginertia="6.60879e-05 6.2263e-05 2.35772e-05" />
                 <joint name="left_hip_pitch" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" actuatorfrcrange="-1 1" damping="0.218" armature="0.002" />
                 <geom rgba="0.870722 0.72641 0.247852 1" mesh="left_hip_pitch_link_xm430_visual" class="visual" />
-                <geom rgba="0.870722 0.72641 0.247852 1" mesh="left_hip_pitch_link_xm430_collision" class="collision" />
+                <geom name="left_hip_pitch_link_xm430_collision" rgba="0.870722 0.72641 0.247852 1" mesh="left_hip_pitch_link_xm430_collision" class="collision" />
                 <body name="left_calf_link" pos="0 -0.096 -0.0092" quat="1 0 0 0">
                   <inertial pos="0.00163306 -0.0500455 -0.00990794" quat="0.51098 0.554671 -0.432284 0.494338" mass="0.0868" diaginertia="5.32087e-05 4.98403e-05 1.51303e-05" />
                   <joint name="left_knee_pitch" pos="0 0 0" axis="0 0 1" range="0 1.91986" actuatorfrcrange="-1 1" damping="0.0" armature="0.0" />
                   <geom rgba="0.616548 0.717575 0.743727 1" mesh="left_calf_link_visual" class="visual" />
-                  <geom rgba="0.616548 0.717575 0.743727 1" mesh="left_calf_link_collision" class="collision" />
+                  <geom name="left_calf_link_collision" rgba="0.616548 0.717575 0.743727 1" mesh="left_calf_link_collision" class="collision" />
                   <body name="bearing_683" pos="-0.00574025 0.0138582 -0.0262" quat="0.705076 0 0 0.709132">
                     <inertial pos="0 0 -0.00155" quat="0.5 0.5 -0.5 0.5" mass="0.000486947" diaginertia="3.53036e-09 2.15515e-09 2.15515e-09" />
                     <joint name="left_knee_front_rev_2" pos="0 0 0" axis="0 0 1" range="-6.28319 6.28319" actuatorfrcrange="-1 1" damping="0.0" armature="0.0" />
@@ -187,7 +187,7 @@
                       <inertial pos="-4.19816e-07 0.0301847 0.00114994" quat="0.99889 -0.0470974 7.07694e-05 0.000269543" mass="0.0195" diaginertia="1.51504e-05 1.4939e-05 3.04775e-06" />
                       <joint name="left_ank_roll" pos="0 0 0" axis="0 0 1" range="-0.785398 0.785398" actuatorfrcrange="-1 1" damping="0.0" armature="0.0" />
                       <geom rgba="0.615686 0.811765 0.929412 1" mesh="left_ank_roll_link_visual" class="visual" />
-                      <geom rgba="0.615686 0.811765 0.929412 1" mesh="left_ank_roll_link_collision" class="collision" />
+                      <geom name="left_ank_roll_link_collision" rgba="0.615686 0.811765 0.929412 1" mesh="left_ank_roll_link_collision" class="collision" />
                       <body name="ank_rr_link" pos="-0.018 0.016 -0.0206" quat="0.00911142 0 0 0.999958">
                         <inertial pos="-4.52496e-05 0.00630964 0" quat="0.473509 0.525157 -0.473509 0.525157" mass="0.00145" diaginertia="4.29219e-08 2.97647e-08 2.74049e-08" />
                         <joint name="left_ank_long_rev_1" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" actuatorfrcrange="-1 1" damping="0.0" armature="0.0" />
@@ -253,17 +253,17 @@
               <inertial pos="-0.0119998 -0.000495981 -0.0185041" quat="-0.273471 0.652073 -0.267709 0.654482" mass="0.1106" diaginertia="3.14464e-05 3.02975e-05 2.28182e-05" />
               <joint name="right_hip_roll" pos="0 0 0" axis="0 0 1" range="-0.785398 1.5708" actuatorfrcrange="-1 1" damping="0.218" armature="0.002" />
               <geom rgba="0.516987 0.503478 0.490506 1" mesh="right_hip_roll_link_visual" class="visual" />
-              <geom rgba="0.516987 0.503478 0.490506 1" mesh="right_hip_roll_link_collision" class="collision" />
+              <geom name="right_hip_roll_link_collision" rgba="0.516987 0.503478 0.490506 1" mesh="right_hip_roll_link_collision" class="collision" />
               <body name="right_hip_pitch_link_xm430" pos="-0.024 -0.019 -0.019" quat="0.5 0.5 0.5 -0.5">
                 <inertial pos="0.000757159 -0.0507148 -0.0126562" quat="0.719539 0.693946 -0.0141939 0.0224005" mass="0.114801" diaginertia="6.60879e-05 6.22631e-05 2.35772e-05" />
                 <joint name="right_hip_pitch" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" actuatorfrcrange="-1 1" damping="0.218" armature="0.002" />
                 <geom rgba="0.870722 0.72641 0.247852 1" mesh="right_hip_pitch_link_xm430_visual" class="visual" />
-                <geom rgba="0.870722 0.72641 0.247852 1" mesh="right_hip_pitch_link_xm430_collision" class="collision" />
+                <geom name="right_hip_pitch_link_xm430_collision" rgba="0.870722 0.72641 0.247852 1" mesh="right_hip_pitch_link_xm430_collision" class="collision" />
                 <body name="right_calf_link" pos="0 -0.096 -0.0092" quat="0 0 0 1">
                   <inertial pos="0.00163306 0.0500455 -0.00990794" quat="0.554666 0.510951 -0.494335 0.432328" mass="0.0868" diaginertia="5.32182e-05 4.98499e-05 1.51305e-05" />
                   <joint name="right_knee_pitch" pos="0 0 0" axis="0 0 1" range="-1.91986 0" actuatorfrcrange="-1 1" damping="0.0" armature="0.0" />
                   <geom rgba="0.616548 0.717575 0.743727 1" mesh="right_calf_link_visual" class="visual" />
-                  <geom rgba="0.616548 0.717575 0.743727 1" mesh="right_calf_link_collision" class="collision" />
+                  <geom name="right_calf_link_collision" rgba="0.616548 0.717575 0.743727 1" mesh="right_calf_link_collision" class="collision" />
                   <body name="bearing_683_3" pos="-0.00574025 -0.0138582 -0.0262" quat="0.0028127 0 0 0.999996">
                     <inertial pos="0 0 -0.00155" quat="0.5 0.5 -0.5 0.5" mass="0.000486947" diaginertia="3.53036e-09 2.15515e-09 2.15515e-09" />
                     <joint name="right_knee_front_rev_2" pos="0 0 0" axis="0 0 1" range="-6.28319 6.28319" actuatorfrcrange="-1 1" damping="0.0" armature="0.0" />
@@ -282,7 +282,7 @@
                       <inertial pos="-4.19816e-07 0.0301847 0.00114994" quat="0.99889 -0.0470974 7.07694e-05 0.000269543" mass="0.0195" diaginertia="1.51504e-05 1.4939e-05 3.04775e-06" />
                       <joint name="right_ank_roll" pos="0 0 0" axis="0 0 1" range="-0.785398 0.785398" actuatorfrcrange="-1 1" damping="0.0" armature="0.0" />
                       <geom rgba="0.615686 0.811765 0.929412 1" mesh="right_ank_roll_link_visual" class="visual" />
-                      <geom rgba="0.615686 0.811765 0.929412 1" mesh="right_ank_roll_link_collision" class="collision" />
+                      <geom name="right_ank_roll_link_collision" rgba="0.615686 0.811765 0.929412 1" mesh="right_ank_roll_link_collision" class="collision" />
                       <body name="ank_rr_link_3" pos="0.018 0.016 -0.0206" quat="0.999958 0 0 0.00911142">
                         <inertial pos="-4.52496e-05 -0.00630964 0" quat="0.525157 0.473509 -0.525157 0.473509" mass="0.00145" diaginertia="4.29219e-08 2.97647e-08 2.74049e-08" />
                         <joint name="right_ank_long_rev_1" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" actuatorfrcrange="-1 1" damping="0.0" armature="0.0" />
@@ -344,7 +344,7 @@
           <inertial pos="-0.0115794 -0.00242258 -0.0185511" quat="-0.0158908 0.69769 -0.13596 0.703201" mass="0.118" diaginertia="3.59112e-05 3.27863e-05 2.73235e-05" />
           <joint name="left_sho_roll" pos="0 0 0" axis="0 0 1" range="-1.5708 0" actuatorfrcrange="-1 1" damping="0.153" armature="0.008" />
           <geom rgba="0.75606 0.858047 0.913203 1" mesh="left_2xl430_gears_visual" class="visual" />
-          <geom rgba="0.75606 0.858047 0.913203 1" mesh="left_2xl430_gears_collision" class="collision" />
+          <geom name="left_2xl430_gears_collision" rgba="0.75606 0.858047 0.913203 1" mesh="left_2xl430_gears_collision" class="collision" />
           <body name="spur_1m_24t_drive" pos="-0.024 -0.019 -0.019" quat="0.707107 0.707107 0 0">
             <inertial pos="0 0 0.00479491" quat="0.5 0.5 -0.5 0.5" mass="0.0032" diaginertia="2.38389e-07 1.40193e-07 1.40193e-07" />
             <joint name="left_sho_yaw_drive" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" actuatorfrcrange="-1 1" damping="0.153" armature="0.008" />
@@ -359,7 +359,7 @@
               <inertial pos="-0.0115794 -0.00242258 -0.0185511" quat="-0.0158908 0.69769 -0.13596 0.703201" mass="0.118" diaginertia="3.59112e-05 3.27863e-05 2.73235e-05" />
               <joint name="left_elbow_roll" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" actuatorfrcrange="-1 1" damping="0.153" armature="0.008" />
               <geom rgba="0.75606 0.858047 0.913203 1" mesh="left_2xl430_gears_2_visual" class="visual" />
-              <geom rgba="0.75606 0.858047 0.913203 1" mesh="left_2xl430_gears_2_collision" class="collision" />
+              <geom name="left_2xl430_gears_2_collision" rgba="0.75606 0.858047 0.913203 1" mesh="left_2xl430_gears_2_collision" class="collision" />
               <body name="spur_1m_24t_drive_2" pos="-0.024 -0.019 -0.019" quat="0.707107 0.707107 0 0">
                 <inertial pos="0 0 0.00479491" quat="0.5 0.5 -0.5 0.5" mass="0.0032" diaginertia="2.38389e-07 1.40193e-07 1.40193e-07" />
                 <joint name="left_elbow_yaw_drive" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" actuatorfrcrange="-1 1" damping="0.153" armature="0.008" />
@@ -385,7 +385,7 @@
                     <inertial pos="-4.30384e-08 -0.0497238 -0.0179336" quat="0.739676 0.672963 4.83075e-07 -2.50564e-06" mass="0.017" diaginertia="9.49214e-06 6.68579e-06 4.0511e-06" />
                     <joint name="left_wrist_pitch" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" actuatorfrcrange="-1 1" damping="0.153" armature="0.008" />
                     <geom rgba="0.615686 0.811765 0.929412 1" mesh="left_hand_visual" class="visual" />
-                    <geom rgba="0.615686 0.811765 0.929412 1" mesh="left_hand_collision" class="collision" />
+                    <geom name="left_hand_collision" rgba="0.615686 0.811765 0.929412 1" mesh="left_hand_collision" class="collision" />
                   </body>
                 </body>
               </body>
@@ -401,7 +401,7 @@
           <inertial pos="-0.0115794 -0.00242258 -0.0185511" quat="-0.0158908 0.69769 -0.13596 0.703201" mass="0.118" diaginertia="3.59112e-05 3.27863e-05 2.73235e-05" />
           <joint name="right_sho_roll" pos="0 0 0" axis="0 0 1" range="-1.5708 0" actuatorfrcrange="-1 1" damping="0.153" armature="0.008" />
           <geom rgba="0.75606 0.858047 0.913203 1" mesh="right_2xl430_gears_visual" class="visual" />
-          <geom rgba="0.75606 0.858047 0.913203 1" mesh="right_2xl430_gears_collision" class="collision" />
+          <geom name="right_2xl430_gears_collision" rgba="0.75606 0.858047 0.913203 1" mesh="right_2xl430_gears_collision" class="collision" />
           <body name="spur_1m_24t_drive_4" pos="-0.024 -0.019 -0.019" quat="0.707107 0.707107 0 0">
             <inertial pos="0 0 0.00479491" quat="0.5 0.5 -0.5 0.5" mass="0.0032" diaginertia="2.38389e-07 1.40193e-07 1.40193e-07" />
             <joint name="right_sho_yaw_drive" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" actuatorfrcrange="-1 1" damping="0.153" armature="0.008" />
@@ -416,7 +416,7 @@
               <inertial pos="-0.0115794 -0.00242258 -0.0185511" quat="-0.0158908 0.69769 -0.13596 0.703201" mass="0.118" diaginertia="3.59112e-05 3.27863e-05 2.73235e-05" />
               <joint name="right_elbow_roll" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" actuatorfrcrange="-1 1" damping="0.153" armature="0.008" />
               <geom rgba="0.75606 0.858047 0.913203 1" mesh="right_2xl430_gears_2_visual" class="visual" />
-              <geom rgba="0.75606 0.858047 0.913203 1" mesh="right_2xl430_gears_2_collision" class="collision" />
+              <geom name="right_2xl430_gears_2_collision" rgba="0.75606 0.858047 0.913203 1" mesh="right_2xl430_gears_2_collision" class="collision" />
               <body name="spur_1m_24t_drive_5" pos="-0.024 -0.019 -0.019" quat="0.707107 0.707107 0 0">
                 <inertial pos="0 0 0.00479491" quat="0.5 0.5 -0.5 0.5" mass="0.0032" diaginertia="2.38389e-07 1.40193e-07 1.40193e-07" />
                 <joint name="right_elbow_yaw_drive" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" actuatorfrcrange="-1 1" damping="0.153" armature="0.008" />
@@ -442,7 +442,7 @@
                     <inertial pos="-4.30384e-08 0.0497238 -0.0200664" quat="0.739676 0.672963 -4.83075e-07 2.50564e-06" mass="0.017" diaginertia="9.49214e-06 6.68579e-06 4.0511e-06" />
                     <joint name="right_wrist_pitch" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" actuatorfrcrange="-1 1" damping="0.153" armature="0.008" />
                     <geom rgba="0.615686 0.811765 0.929412 1" mesh="right_hand_visual" class="visual" />
-                    <geom rgba="0.615686 0.811765 0.929412 1" mesh="right_hand_collision" class="collision" />
+                    <geom name="right_hand_collision" rgba="0.615686 0.811765 0.929412 1" mesh="right_hand_collision" class="collision" />
                   </body>
                 </body>
               </body>
@@ -544,4 +544,151 @@
       <geom group="3" />
     </default>
   </default>
+  <contact>
+    <pair geom1="torso_collision" geom2="floor" />
+    <pair geom1="left_ank_roll_link_collision" geom2="floor" />
+    <pair geom1="right_ank_roll_link_collision" geom2="floor" />
+    <pair geom1="left_2xl430_gears_collision" geom2="floor" />
+    <pair geom1="left_2xl430_gears_2_collision" geom2="floor" />
+    <pair geom1="left_hand_collision" geom2="floor" />
+    <pair geom1="right_2xl430_gears_collision" geom2="floor" />
+    <pair geom1="right_2xl430_gears_2_collision" geom2="floor" />
+    <pair geom1="right_hand_collision" geom2="floor" />
+    <pair geom1="torso_collision" geom2="left_2xl430_gears_2_collision" />
+    <pair geom1="torso_collision" geom2="left_hand_collision" />
+    <pair geom1="torso_collision" geom2="right_2xl430_gears_2_collision" />
+    <pair geom1="torso_collision" geom2="right_hand_collision" />
+    <pair geom1="waist_link_collision" geom2="left_hand_collision" />
+    <pair geom1="waist_link_collision" geom2="right_hand_collision" />
+    <pair geom1="left_hip_roll_link_collision" geom2="left_hand_collision" />
+    <pair geom1="left_hip_pitch_link_xm430_collision" geom2="left_hand_collision" />
+    <pair geom1="right_hip_roll_link_collision" geom2="right_hand_collision" />
+    <pair geom1="right_hip_pitch_link_xm430_collision" geom2="right_hand_collision" />
+    <exclude body1="torso" body2="neck_pitch_link" />
+    <exclude body1="torso" body2="waist_link" />
+    <exclude body1="torso" body2="hip_roll_link" />
+    <exclude body1="torso" body2="left_hip_pitch_link_xm430" />
+    <exclude body1="torso" body2="left_calf_link" />
+    <exclude body1="torso" body2="ank_roll_link" />
+    <exclude body1="torso" body2="hip_roll_link_2" />
+    <exclude body1="torso" body2="right_hip_pitch_link_xm430" />
+    <exclude body1="torso" body2="right_calf_link" />
+    <exclude body1="torso" body2="ank_roll_link_2" />
+    <exclude body1="torso" body2="2xl430_gears" />
+    <exclude body1="torso" body2="2xl430_gears_4" />
+    <exclude body1="neck_pitch_link" body2="waist_link" />
+    <exclude body1="neck_pitch_link" body2="hip_roll_link" />
+    <exclude body1="neck_pitch_link" body2="left_hip_pitch_link_xm430" />
+    <exclude body1="neck_pitch_link" body2="left_calf_link" />
+    <exclude body1="neck_pitch_link" body2="ank_roll_link" />
+    <exclude body1="neck_pitch_link" body2="hip_roll_link_2" />
+    <exclude body1="neck_pitch_link" body2="right_hip_pitch_link_xm430" />
+    <exclude body1="neck_pitch_link" body2="right_calf_link" />
+    <exclude body1="neck_pitch_link" body2="ank_roll_link_2" />
+    <exclude body1="neck_pitch_link" body2="2xl430_gears" />
+    <exclude body1="neck_pitch_link" body2="2xl430_gears_2" />
+    <exclude body1="neck_pitch_link" body2="hand" />
+    <exclude body1="neck_pitch_link" body2="2xl430_gears_4" />
+    <exclude body1="neck_pitch_link" body2="2xl430_gears_5" />
+    <exclude body1="neck_pitch_link" body2="hand_2" />
+    <exclude body1="waist_link" body2="hip_roll_link" />
+    <exclude body1="waist_link" body2="left_hip_pitch_link_xm430" />
+    <exclude body1="waist_link" body2="left_calf_link" />
+    <exclude body1="waist_link" body2="ank_roll_link" />
+    <exclude body1="waist_link" body2="hip_roll_link_2" />
+    <exclude body1="waist_link" body2="right_hip_pitch_link_xm430" />
+    <exclude body1="waist_link" body2="right_calf_link" />
+    <exclude body1="waist_link" body2="ank_roll_link_2" />
+    <exclude body1="waist_link" body2="2xl430_gears" />
+    <exclude body1="waist_link" body2="2xl430_gears_2" />
+    <exclude body1="waist_link" body2="2xl430_gears_4" />
+    <exclude body1="waist_link" body2="2xl430_gears_5" />
+    <exclude body1="hip_roll_link" body2="left_hip_pitch_link_xm430" />
+    <exclude body1="hip_roll_link" body2="left_calf_link" />
+    <exclude body1="hip_roll_link" body2="ank_roll_link" />
+    <exclude body1="hip_roll_link" body2="hip_roll_link_2" />
+    <exclude body1="hip_roll_link" body2="right_hip_pitch_link_xm430" />
+    <exclude body1="hip_roll_link" body2="right_calf_link" />
+    <exclude body1="hip_roll_link" body2="ank_roll_link_2" />
+    <exclude body1="hip_roll_link" body2="2xl430_gears" />
+    <exclude body1="hip_roll_link" body2="2xl430_gears_2" />
+    <exclude body1="hip_roll_link" body2="2xl430_gears_4" />
+    <exclude body1="hip_roll_link" body2="2xl430_gears_5" />
+    <exclude body1="hip_roll_link" body2="hand_2" />
+    <exclude body1="left_hip_pitch_link_xm430" body2="left_calf_link" />
+    <exclude body1="left_hip_pitch_link_xm430" body2="ank_roll_link" />
+    <exclude body1="left_hip_pitch_link_xm430" body2="hip_roll_link_2" />
+    <exclude body1="left_hip_pitch_link_xm430" body2="right_hip_pitch_link_xm430" />
+    <exclude body1="left_hip_pitch_link_xm430" body2="right_calf_link" />
+    <exclude body1="left_hip_pitch_link_xm430" body2="ank_roll_link_2" />
+    <exclude body1="left_hip_pitch_link_xm430" body2="2xl430_gears" />
+    <exclude body1="left_hip_pitch_link_xm430" body2="2xl430_gears_2" />
+    <exclude body1="left_hip_pitch_link_xm430" body2="2xl430_gears_4" />
+    <exclude body1="left_hip_pitch_link_xm430" body2="2xl430_gears_5" />
+    <exclude body1="left_hip_pitch_link_xm430" body2="hand_2" />
+    <exclude body1="left_calf_link" body2="ank_roll_link" />
+    <exclude body1="left_calf_link" body2="hip_roll_link_2" />
+    <exclude body1="left_calf_link" body2="right_hip_pitch_link_xm430" />
+    <exclude body1="left_calf_link" body2="right_calf_link" />
+    <exclude body1="left_calf_link" body2="ank_roll_link_2" />
+    <exclude body1="left_calf_link" body2="2xl430_gears" />
+    <exclude body1="left_calf_link" body2="2xl430_gears_2" />
+    <exclude body1="left_calf_link" body2="hand" />
+    <exclude body1="left_calf_link" body2="2xl430_gears_4" />
+    <exclude body1="left_calf_link" body2="2xl430_gears_5" />
+    <exclude body1="left_calf_link" body2="hand_2" />
+    <exclude body1="ank_roll_link" body2="hip_roll_link_2" />
+    <exclude body1="ank_roll_link" body2="right_hip_pitch_link_xm430" />
+    <exclude body1="ank_roll_link" body2="right_calf_link" />
+    <exclude body1="ank_roll_link" body2="ank_roll_link_2" />
+    <exclude body1="ank_roll_link" body2="2xl430_gears" />
+    <exclude body1="ank_roll_link" body2="2xl430_gears_2" />
+    <exclude body1="ank_roll_link" body2="hand" />
+    <exclude body1="ank_roll_link" body2="2xl430_gears_4" />
+    <exclude body1="ank_roll_link" body2="2xl430_gears_5" />
+    <exclude body1="ank_roll_link" body2="hand_2" />
+    <exclude body1="hip_roll_link_2" body2="right_hip_pitch_link_xm430" />
+    <exclude body1="hip_roll_link_2" body2="right_calf_link" />
+    <exclude body1="hip_roll_link_2" body2="ank_roll_link_2" />
+    <exclude body1="hip_roll_link_2" body2="2xl430_gears" />
+    <exclude body1="hip_roll_link_2" body2="2xl430_gears_2" />
+    <exclude body1="hip_roll_link_2" body2="hand" />
+    <exclude body1="hip_roll_link_2" body2="2xl430_gears_4" />
+    <exclude body1="hip_roll_link_2" body2="2xl430_gears_5" />
+    <exclude body1="right_hip_pitch_link_xm430" body2="right_calf_link" />
+    <exclude body1="right_hip_pitch_link_xm430" body2="ank_roll_link_2" />
+    <exclude body1="right_hip_pitch_link_xm430" body2="2xl430_gears" />
+    <exclude body1="right_hip_pitch_link_xm430" body2="2xl430_gears_2" />
+    <exclude body1="right_hip_pitch_link_xm430" body2="hand" />
+    <exclude body1="right_hip_pitch_link_xm430" body2="2xl430_gears_4" />
+    <exclude body1="right_hip_pitch_link_xm430" body2="2xl430_gears_5" />
+    <exclude body1="right_calf_link" body2="ank_roll_link_2" />
+    <exclude body1="right_calf_link" body2="2xl430_gears" />
+    <exclude body1="right_calf_link" body2="2xl430_gears_2" />
+    <exclude body1="right_calf_link" body2="hand" />
+    <exclude body1="right_calf_link" body2="2xl430_gears_4" />
+    <exclude body1="right_calf_link" body2="2xl430_gears_5" />
+    <exclude body1="right_calf_link" body2="hand_2" />
+    <exclude body1="ank_roll_link_2" body2="2xl430_gears" />
+    <exclude body1="ank_roll_link_2" body2="2xl430_gears_2" />
+    <exclude body1="ank_roll_link_2" body2="hand" />
+    <exclude body1="ank_roll_link_2" body2="2xl430_gears_4" />
+    <exclude body1="ank_roll_link_2" body2="2xl430_gears_5" />
+    <exclude body1="ank_roll_link_2" body2="hand_2" />
+    <exclude body1="2xl430_gears" body2="2xl430_gears_2" />
+    <exclude body1="2xl430_gears" body2="hand" />
+    <exclude body1="2xl430_gears" body2="2xl430_gears_4" />
+    <exclude body1="2xl430_gears" body2="2xl430_gears_5" />
+    <exclude body1="2xl430_gears" body2="hand_2" />
+    <exclude body1="2xl430_gears_2" body2="hand" />
+    <exclude body1="2xl430_gears_2" body2="2xl430_gears_4" />
+    <exclude body1="2xl430_gears_2" body2="2xl430_gears_5" />
+    <exclude body1="2xl430_gears_2" body2="hand_2" />
+    <exclude body1="hand" body2="2xl430_gears_4" />
+    <exclude body1="hand" body2="2xl430_gears_5" />
+    <exclude body1="hand" body2="hand_2" />
+    <exclude body1="2xl430_gears_4" body2="2xl430_gears_5" />
+    <exclude body1="2xl430_gears_4" body2="hand_2" />
+    <exclude body1="2xl430_gears_5" body2="hand_2" />
+  </contact>
 </mujoco>
