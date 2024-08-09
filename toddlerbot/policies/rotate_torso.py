@@ -22,7 +22,7 @@ class RotateTorsoPolicy(BasePolicy):
 
         default_q = np.array(list(robot.init_joint_angles.values()), dtype=np.float32)
 
-        prep_duration = 20.0
+        prep_duration = 10.0
         warm_up_duration = 2.0
         sine_duraion = 6.0
         reset_duration = 2.0
