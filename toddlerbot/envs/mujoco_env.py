@@ -1,5 +1,5 @@
 from dataclasses import asdict
-from typing import Any, Callable, List, Tuple
+from typing import Any, Callable, Dict, List, Tuple
 
 import jax
 import mujoco  # type: ignore
@@ -193,6 +193,12 @@ class MuJoCoEnv(PipelineEnv):
         self.contact_force_threshold = self.cfg.rewards.contact_force_threshold
         self.contact_forces = jnp.zeros((len(self.robot.collider_names), 3))  # type:ignore
         self.contact_mask = jnp.zeros(self.feet_indices.shape[0])  # type:ignore
+        self.floor_id = jnp.array(self.sys.mj_model.geom("floor").id)  # type:ignore
+
+        self.body_id_to_collider_index: Dict[int, int] = {
+            self.sys.mj_model.body(body_name).id: idx  # type:ignore
+            for idx, body_name in enumerate(collider_names)
+        }
 
         # contact
         # Sets environment origins. On rough terrain the origins are defined by the terrain platforms.
@@ -491,34 +497,23 @@ class MuJoCoEnv(PipelineEnv):
 
     def _get_contact_forces(self, data: mjx.Data):
         c_array = jnp.zeros((data.ncon, 6), dtype=jnp.float32)  # type:ignore
-        geom_ids = jnp.array(  # type:ignore
-            [
-                [data.contact[i].geom[0], data.contact[i].geom[1]]  # type:ignore
-                for i in range(data.ncon)
-            ]
-        )
-        floor_mask = jax.vmap(
-            lambda g1, g2: "floor" in self.sys.mj_model.geom(g1).name  # type:ignore
-            or "floor" in self.sys.mj_model.geom(g2).name  # type:ignore
+        geom_ids = jnp.stack((data.contact.geom1, data.contact.geom2), axis=-1)  # type:ignore
+        floor_mask = jax.vmap(  # type:ignore
+            lambda g1, g2: jnp.logical_or(g1 == self.floor_id, g2 == self.floor_id)  # type:ignore
         )(geom_ids[:, 0], geom_ids[:, 1])
+
         filtered_geom_ids = geom_ids[floor_mask]
         filtered_indices = jnp.arange(data.ncon)[floor_mask]  # type:ignore
 
-        def get_body_name(g1: int, g2: int) -> str:
-            if "floor" in self.sys.mj_model.geom(g1).name:  # type:ignore
-                body_id = self.sys.mj_model.geom(g2).bodyid  # type:ignore
-            else:
-                body_id = self.sys.mj_model.geom(g1).bodyid  # type:ignore
-
-            return self.sys.mj_model.body(body_id).name  # type:ignore
-
-        body_names = jax.vmap(get_body_name)(  # type:ignore
-            filtered_geom_ids[:, 0],  # type:ignore
-            filtered_geom_ids[:, 1],  # type:ignore
-        )
-        body_indices = jax.vmap(lambda name: self.robot.collider_names.index(name))(  # type:ignore
-            body_names
-        )
+        body_indices = jax.vmap(  # type:ignore
+            lambda g1, g2: self.body_id_to_collider_index[  # type:ignore
+                jnp.where(  # type:ignore
+                    g1 == self.floor_id,  # type:ignore
+                    self.sys.mj_model.geom(g2.item()).bodyid,  # type:ignore
+                    self.sys.mj_model.geom(g1.item()).bodyid,  # type:ignore
+                )
+            ]
+        )(filtered_geom_ids[:, 0], filtered_geom_ids[:, 1])
 
         def update_contact_force(idx: int) -> jax.Array:
             mujoco.mj_contactForce(  # type:ignore

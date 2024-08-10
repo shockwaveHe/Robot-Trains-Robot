@@ -38,11 +38,11 @@ def train(robot: Robot, motion_ref: MotionReference):
     state = jit_reset(jax.random.PRNGKey(0))  # type: ignore
     rollout: List[State] = [state.pipeline_state]  # type: ignore
 
-    # # grab a trajectory
-    # for _ in range(10):
-    #     ctrl = -0.1 * jnp.ones(env.sys.nu)  # type: ignore
-    #     state = jit_step(state, ctrl)  # type: ignore
-    #     rollout.append(state.pipeline_state)  # type: ignore
+    # grab a trajectory
+    for _ in range(10):
+        ctrl = -0.1 * jnp.ones(env.sys.nu)  # type: ignore
+        state = jit_step(state, ctrl)  # type: ignore
+        rollout.append(state.pipeline_state)  # type: ignore
 
     profiler.disable()
 
