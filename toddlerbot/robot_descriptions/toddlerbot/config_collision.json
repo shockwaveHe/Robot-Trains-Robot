@@ -15,16 +15,6 @@
             1.0
         ]
     },
-    "neck_pitch_link": {
-        "has_collision": true,
-        "contact_pairs": [],
-        "type": "box",
-        "scale": [
-            1.0,
-            1.0,
-            1.0
-        ]
-    },
     "waist_link": {
         "has_collision": true,
         "contact_pairs": [
@@ -45,7 +35,7 @@
         ],
         "type": "box",
         "scale": [
-            0.5,
+            1.0,
             1.0,
             1.0
         ]
@@ -58,17 +48,7 @@
         "type": "box",
         "scale": [
             1.0,
-            0.5,
-            1.0
-        ]
-    },
-    "left_calf_link": {
-        "has_collision": true,
-        "contact_pairs": [],
-        "type": "box",
-        "scale": [
             1.0,
-            0.5,
             1.0
         ]
     },
@@ -91,7 +71,7 @@
         ],
         "type": "box",
         "scale": [
-            0.5,
+            1.0,
             1.0,
             1.0
         ]
@@ -104,17 +84,7 @@
         "type": "box",
         "scale": [
             1.0,
-            0.5,
-            1.0
-        ]
-    },
-    "right_calf_link": {
-        "has_collision": true,
-        "type": "box",
-        "contact_pairs": [],
-        "scale": [
             1.0,
-            0.5,
             1.0
         ]
     },
@@ -135,11 +105,9 @@
         "contact_pairs": [
             "floor"
         ],
-        "type": "box",
+        "type": "sphere",
         "scale": [
-            1.0,
-            1.0,
-            1.0
+            0.9
         ]
     },
     "2xl430_gears_2": {
@@ -148,11 +116,9 @@
             "floor",
             "torso"
         ],
-        "type": "box",
+        "type": "sphere",
         "scale": [
-            1.0,
-            1.0,
-            1.0
+            0.9
         ]
     },
     "hand": {
@@ -176,11 +142,9 @@
         "contact_pairs": [
             "floor"
         ],
-        "type": "box",
+        "type": "sphere",
         "scale": [
-            1.0,
-            1.0,
-            1.0
+            0.9
         ]
     },
     "2xl430_gears_5": {
@@ -189,11 +153,9 @@
             "floor",
             "torso"
         ],
-        "type": "box",
+        "type": "sphere",
         "scale": [
-            1.0,
-            1.0,
-            1.0
+            0.9
         ]
     },
     "hand_2": {
@@ -219,6 +181,9 @@
         "has_collision": false
     },
     "spur_gear_(13_teeth)": {
+        "has_collision": false
+    },
+    "neck_pitch_link": {
         "has_collision": false
     },
     "waist_gears": {
@@ -281,6 +246,9 @@
     "knee_rod_2": {
         "has_collision": false
     },
+    "left_calf_link": {
+        "has_collision": false
+    },
     "hip_yaw_link_2": {
         "has_collision": false
     },
@@ -318,6 +286,9 @@
         "has_collision": false
     },
     "knee_rod_4": {
+        "has_collision": false
+    },
+    "right_calf_link": {
         "has_collision": false
     },
     "xc430": {

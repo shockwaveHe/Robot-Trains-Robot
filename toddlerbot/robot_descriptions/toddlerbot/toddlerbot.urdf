@@ -13,9 +13,9 @@
       </material>
     </visual>
     <collision name="torso_collision">
-      <origin xyz="0 0 0" rpy="0 -0 0" />
+      <origin xyz="-0.023500001057982445 -2.4996697902679443e-05 0.06019909796305001" rpy="0 0 0" />
       <geometry>
-        <mesh filename="collisions/torso_collision.stl" />
+        <box size="0.13100000098347664 0.12759999930858612 0.12457482283934951" />
       </geometry>
     </collision>
     <inertial>
@@ -78,12 +78,6 @@
         <color rgba="0.74911126277760042846 0.80002799398726853752 0.87441258869524285391 1.0" />
       </material>
     </visual>
-    <collision name="neck_pitch_link_collision">
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="collisions/neck_pitch_link_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="-0.003437049761571782814 0.032876793988991216688 -0.00036476492134650940037" rpy="0 0 0" />
       <mass value="0.11211553874797881847" />
@@ -163,9 +157,9 @@
       </material>
     </visual>
     <collision name="waist_link_collision">
-      <origin xyz="0 0 0" rpy="0 -0 0" />
+      <origin xyz="0.0 0.0176000006031245 -0.030499995686113834" rpy="0 0 0" />
       <geometry>
-        <mesh filename="collisions/waist_link_collision.stl" />
+        <box size="0.10000000149011612 0.024500000523403287 0.06900000385940075" />
       </geometry>
     </collision>
     <inertial>
@@ -413,10 +407,10 @@
         <color rgba="0.51698661238356036218 0.50347815951093488618 0.49050589017722012741 1.0" />
       </material>
     </visual>
-    <collision name="left_hip_roll_link_collision">
-      <origin xyz="0 0 0" rpy="0 -0 0" />
+    <collision name="hip_roll_link_collision">
+      <origin xyz="-0.012000000104308128 -0.00045000016689300537 -0.018550000328104943" rpy="0 0 0" />
       <geometry>
-        <mesh filename="collisions/left_hip_roll_link_collision.stl" />
+        <box size="0.04650000110268593 0.04089999943971634 0.04090000095311552" />
       </geometry>
     </collision>
     <inertial>
@@ -437,9 +431,9 @@
       </material>
     </visual>
     <collision name="left_hip_pitch_link_xm430_collision">
-      <origin xyz="0 0 0" rpy="0 -0 0" />
+      <origin xyz="0.0 -0.05550000141374767 -0.01720000198110938" rpy="0 0 0" />
       <geometry>
-        <mesh filename="collisions/left_hip_pitch_link_xm430_collision.stl" />
+        <box size="0.03999999910593033 0.1190000013448298 0.049600002355873585" />
       </geometry>
     </collision>
     <inertial>
@@ -459,12 +453,6 @@
         <color rgba="0.616547745550632742 0.7175754134247219751 0.74372657889541438081 1.0" />
       </material>
     </visual>
-    <collision name="left_calf_link_collision">
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="collisions/left_calf_link_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="0.001633055673955551533 -0.050045528174708642233 -0.0099079425125447578154" rpy="0 0 0" />
       <mass value="0.086799999986183581924" />
@@ -551,10 +539,10 @@
         <color rgba="0.61568627450980395466 0.81176470588235294379 0.9294117647058824927 1.0" />
       </material>
     </visual>
-    <collision name="left_ank_roll_link_collision">
-      <origin xyz="0 0 0" rpy="0 -0 0" />
+    <collision name="ank_roll_link_collision">
+      <origin xyz="0.0 0.016500000609084964 0.0074000004678964615" rpy="0 0 0" />
       <geometry>
-        <mesh filename="collisions/left_ank_roll_link_collision.stl" />
+        <box size="0.041999999433755875 0.04500000039115548 0.12000000104308128" />
       </geometry>
     </collision>
     <inertial>
@@ -871,10 +859,10 @@
         <color rgba="0.51698661238356036218 0.50347815951093488618 0.49050589017722012741 1.0" />
       </material>
     </visual>
-    <collision name="right_hip_roll_link_collision">
-      <origin xyz="0 0 0" rpy="0 -0 0" />
+    <collision name="hip_roll_link_2_collision">
+      <origin xyz="-0.012000000104308128 -0.00045000016689300537 -0.018550000328104943" rpy="0 0 0" />
       <geometry>
-        <mesh filename="collisions/right_hip_roll_link_collision.stl" />
+        <box size="0.04650000110268593 0.04089999943971634 0.04090000095311552" />
       </geometry>
     </collision>
     <inertial>
@@ -895,9 +883,9 @@
       </material>
     </visual>
     <collision name="right_hip_pitch_link_xm430_collision">
-      <origin xyz="0 0 0" rpy="0 -0 0" />
+      <origin xyz="0.0 -0.05550000141374767 -0.01720000011846423" rpy="0 0 0" />
       <geometry>
-        <mesh filename="collisions/right_hip_pitch_link_xm430_collision.stl" />
+        <box size="0.03999999910593033 0.1190000013448298 0.049599998630583286" />
       </geometry>
     </collision>
     <inertial>
@@ -917,12 +905,6 @@
         <color rgba="0.616547745550632742 0.7175754134247219751 0.74372657889541438081 1.0" />
       </material>
     </visual>
-    <collision name="right_calf_link_collision">
-      <origin xyz="0 0 0" rpy="0 -0 0" />
-      <geometry>
-        <mesh filename="collisions/right_calf_link_collision.stl" />
-      </geometry>
-    </collision>
     <inertial>
       <origin xyz="0.0016330560292394449839 0.050045526484800137434 -0.0099079425237753124961" rpy="0 0 0" />
       <mass value="0.086799999986183581924" />
@@ -1009,10 +991,10 @@
         <color rgba="0.61568627450980395466 0.81176470588235294379 0.9294117647058824927 1.0" />
       </material>
     </visual>
-    <collision name="right_ank_roll_link_collision">
-      <origin xyz="0 0 0" rpy="0 -0 0" />
+    <collision name="ank_roll_link_2_collision">
+      <origin xyz="0.0 0.016500000609084964 0.0074000004678964615" rpy="0 0 0" />
       <geometry>
-        <mesh filename="collisions/right_ank_roll_link_collision.stl" />
+        <box size="0.041999999433755875 0.04500000039115548 0.12000000104308128" />
       </geometry>
     </collision>
     <inertial>
@@ -1329,10 +1311,10 @@
         <color rgba="0.7560598568794409946 0.85804695962693022793 0.91320266199377464478 1.0" />
       </material>
     </visual>
-    <collision name="left_2xl430_gears_collision">
-      <origin xyz="0 0 0" rpy="0 -0 0" />
+    <collision name="2xl430_gears_collision">
+      <origin xyz="-0.011729227542882519 -0.00263178599243445 -0.019868514647476635" rpy="0 0 0" />
       <geometry>
-        <mesh filename="collisions/left_2xl430_gears_collision.stl" />
+        <sphere radius="0.031146449113064925" />
       </geometry>
     </collision>
     <inertial>
@@ -1412,10 +1394,10 @@
         <color rgba="0.7560598568794409946 0.85804695962693022793 0.91320266199377464478 1.0" />
       </material>
     </visual>
-    <collision name="left_2xl430_gears_2_collision">
-      <origin xyz="0 0 0" rpy="0 -0 0" />
+    <collision name="2xl430_gears_2_collision">
+      <origin xyz="-0.01172926490277352 -0.0026313111550378644 -0.01986880592248789" rpy="0 0 0" />
       <geometry>
-        <mesh filename="collisions/left_2xl430_gears_2_collision.stl" />
+        <sphere radius="0.031146338948323835" />
       </geometry>
     </collision>
     <inertial>
@@ -1555,10 +1537,10 @@
         <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0" />
       </material>
     </visual>
-    <collision name="left_hand_collision">
-      <origin xyz="0 0 0" rpy="0 -0 0" />
+    <collision name="hand_collision">
+      <origin xyz="0.0 -0.03788831038400531 -0.017851115437224507" rpy="0 0 0" />
       <geometry>
-        <mesh filename="collisions/left_hand_collision.stl" />
+        <box size="0.020999999716877937 0.09677662048488855 0.04629777139052749" />
       </geometry>
     </collision>
     <inertial>
@@ -1703,10 +1685,10 @@
         <color rgba="0.7560598568794409946 0.85804695962693022793 0.91320266199377464478 1.0" />
       </material>
     </visual>
-    <collision name="right_2xl430_gears_collision">
-      <origin xyz="0 0 0" rpy="0 -0 0" />
+    <collision name="2xl430_gears_4_collision">
+      <origin xyz="-0.01172922754288252 -0.0026317859924344525 -0.01986851464747664" rpy="0 0 0" />
       <geometry>
-        <mesh filename="collisions/right_2xl430_gears_collision.stl" />
+        <sphere radius="0.031146449113064925" />
       </geometry>
     </collision>
     <inertial>
@@ -1786,10 +1768,10 @@
         <color rgba="0.7560598568794409946 0.85804695962693022793 0.91320266199377464478 1.0" />
       </material>
     </visual>
-    <collision name="right_2xl430_gears_2_collision">
-      <origin xyz="0 0 0" rpy="0 -0 0" />
+    <collision name="2xl430_gears_5_collision">
+      <origin xyz="-0.011728300376999724 -0.0026313420087187875 -0.01986915673057754" rpy="0 0 0" />
       <geometry>
-        <mesh filename="collisions/right_2xl430_gears_2_collision.stl" />
+        <sphere radius="0.03114710642898145" />
       </geometry>
     </collision>
     <inertial>
@@ -1929,10 +1911,10 @@
         <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0" />
       </material>
     </visual>
-    <collision name="right_hand_collision">
-      <origin xyz="0 0 0" rpy="0 -0 0" />
+    <collision name="hand_2_collision">
+      <origin xyz="0.0 0.03788831038400531 -0.020148885785602033" rpy="0 0 0" />
       <geometry>
-        <mesh filename="collisions/right_hand_collision.stl" />
+        <box size="0.020999999716877937 0.09677662048488855 0.04629777115769684" />
       </geometry>
     </collision>
     <inertial>

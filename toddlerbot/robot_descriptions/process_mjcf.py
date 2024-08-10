@@ -162,17 +162,29 @@ def update_joint_params(root: ET.Element, joints_config: Dict[str, Any]):
 def update_geom_classes(root: ET.Element, geom_keys: List[str]):
     for geom in root.findall(".//geom[@mesh]"):
         mesh_name = geom.get("mesh")
-
         if mesh_name is None:
             continue
 
         # Determine the class based on the mesh name
         if "visual" in mesh_name:
             geom.set("class", "visual")
-        elif "collision" in mesh_name:
+        else:
+            raise ValueError(f"Not visual class for mesh: {mesh_name}")
+
+        for attr in geom_keys:
+            if attr in geom.attrib:
+                del geom.attrib[attr]
+
+    for geom in root.findall(".//geom[@name]"):
+        name = geom.get("name")
+        if name is None:
+            continue
+
+        # Determine the class based on the mesh name
+        if "collision" in name:
             geom.set("class", "collision")
         else:
-            raise ValueError(f"Unknown class for mesh: {mesh_name}")
+            raise ValueError(f"Not collision class for name: {name}")
 
         for attr in geom_keys:
             if attr in geom.attrib:
@@ -206,18 +218,20 @@ def add_default_settings(root: ET.Element):
     ET.SubElement(XC330_default, "position", {"forcerange": "-1 1"})
 
     # Set <geom> settings
-    ET.SubElement(default, "geom", {"type": "mesh", "solref": ".004 1"})
+    # ET.SubElement(default, "geom", {"type": "mesh", "solref": ".004 1"})
 
     # Add <default class="visual"> settings
     visual_default = ET.SubElement(default, "default", {"class": "visual"})
     ET.SubElement(
-        visual_default, "geom", {"contype": "0", "conaffinity": "0", "group": "2"}
+        visual_default,
+        "geom",
+        {"type": "mesh", "contype": "0", "conaffinity": "0", "group": "2"},
     )
 
     # Add <default class="collision"> settings
     collision_default = ET.SubElement(default, "default", {"class": "collision"})
     # Group 3's visualization is diabled by default
-    ET.SubElement(collision_default, "geom", {"group": "3"})
+    ET.SubElement(collision_default, "geom", {"type": "sphere", "group": "3"})
 
 
 def include_all_contacts(root: ET.Element):
@@ -603,7 +617,7 @@ def process_mjcf_fixed_file(root: ET.Element, robot: Robot):
         add_imu_sensor(root)
 
     update_joint_params(root, robot.config["joints"])
-    update_geom_classes(root, ["type", "contype", "conaffinity", "group", "density"])
+    update_geom_classes(root, ["contype", "conaffinity", "group", "density"])
     add_actuators_to_mjcf(root, robot.config["joints"])
 
     if robot.config["general"]["is_waist_closed_loop"]:
