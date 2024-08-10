@@ -509,8 +509,8 @@ class MuJoCoEnv(PipelineEnv):
             lambda g1, g2: self.body_id_to_collider_index[  # type:ignore
                 jnp.where(  # type:ignore
                     g1 == self.floor_id,  # type:ignore
-                    self.sys.mj_model.geom(g2.item()).bodyid,  # type:ignore
-                    self.sys.mj_model.geom(g1.item()).bodyid,  # type:ignore
+                    self.sys.mj_model.geom(g2).bodyid,  # type:ignore
+                    self.sys.mj_model.geom(g1).bodyid,  # type:ignore
                 )
             ]
         )(filtered_geom_ids[:, 0], filtered_geom_ids[:, 1])
