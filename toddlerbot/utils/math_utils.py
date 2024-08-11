@@ -1,4 +1,5 @@
 import bisect
+import math
 import time
 from dataclasses import is_dataclass
 from typing import Any, Callable, Dict, Iterable, List, Tuple
@@ -75,6 +76,12 @@ def round_floats(obj: Any, precision: int = 6) -> Any:
         )
 
     return obj
+
+
+def round_to_sig_digits(x: float, digits: int):
+    if x == 0.0:
+        return 0.0  # Zero is zero in any significant figure
+    return round(x, digits - int(math.floor(math.log10(abs(x)))) - 1)
 
 
 def quat_to_euler_arr(

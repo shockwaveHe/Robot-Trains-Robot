@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Tuple
 from transforms3d.euler import euler2quat  # type: ignore
 
 from toddlerbot.sim.robot import Robot
+from toddlerbot.utils.math_utils import round_to_sig_digits
 
 # TODO: Implement the actuator model of MuJoCo in IsaacGym. How should I do frictionloss?
 # What's the activation parameter? Damping and armature are known.
@@ -156,7 +157,10 @@ def update_joint_params(root: ET.Element, joints_config: Dict[str, Any]):
         if joint_name in joints_config:
             for attr_name in joints_config[joint_name]:
                 if attr_name in ["damping", "armature"]:  # , "frictionloss"]:
-                    joint.set(attr_name, str(joints_config[joint_name][attr_name]))
+                    attr_value = round_to_sig_digits(
+                        joints_config[joint_name][attr_name], 6
+                    )
+                    joint.set(attr_name, str(attr_value))
 
 
 def update_geom_classes(root: ET.Element, geom_keys: List[str]):
@@ -322,28 +326,23 @@ def add_waist_constraints(root: ET.Element, offsets: Dict[str, float]):
 
     tendon = ET.SubElement(root, "tendon")
 
+    waist_roll_coef = round_to_sig_digits(offsets["waist_roll_coef"], 6)
+    waist_yaw_coef = round_to_sig_digits(offsets["waist_yaw_coef"], 6)
+
     # waist roll
     fixed_roll = ET.SubElement(
         tendon, "fixed", name="waist_roll_coupling", limited="true", range="0 0.001"
     )
-    ET.SubElement(
-        fixed_roll, "joint", joint="waist_act_1", coef=f"{offsets['waist_roll_coef']}"
-    )
-    ET.SubElement(
-        fixed_roll, "joint", joint="waist_act_2", coef=f"{-offsets['waist_roll_coef']}"
-    )
+    ET.SubElement(fixed_roll, "joint", joint="waist_act_1", coef=f"{waist_roll_coef}")
+    ET.SubElement(fixed_roll, "joint", joint="waist_act_2", coef=f"{-waist_roll_coef}")
     ET.SubElement(fixed_roll, "joint", joint="waist_roll", coef="1")
 
     # waist roll
     fixed_yaw = ET.SubElement(
         tendon, "fixed", name="waist_yaw_coupling", limited="true", range="0 0.001"
     )
-    ET.SubElement(
-        fixed_yaw, "joint", joint="waist_act_1", coef=f"{offsets['waist_yaw_coef']}"
-    )
-    ET.SubElement(
-        fixed_yaw, "joint", joint="waist_act_2", coef=f"{offsets['waist_yaw_coef']}"
-    )
+    ET.SubElement(fixed_yaw, "joint", joint="waist_act_1", coef=f"{waist_yaw_coef}")
+    ET.SubElement(fixed_yaw, "joint", joint="waist_act_2", coef=f"{waist_yaw_coef}")
     ET.SubElement(fixed_yaw, "joint", joint="waist_yaw", coef="1")
 
 
@@ -423,7 +422,11 @@ def add_actuators_to_mjcf(root: ET.Element, joints_config: Dict[str, Any]):
                     name=joint_name,
                     joint=joint_driven_name,
                     kp=str(joints_config[joint_name]["kp_sim"]),
-                    gear=str(1 / joints_config[joint_name]["gear_ratio"]),
+                    gear=str(
+                        round_to_sig_digits(
+                            1 / joints_config[joint_name]["gear_ratio"], 6
+                        )
+                    ),
                     ctrlrange=joint_driven.get("range", "-3.141592 3.141592"),
                 )
             else:
@@ -545,6 +548,16 @@ def create_scene_xml(mjcf_path: str, is_fixed: bool):
         worldbody,
         "light",
         attrib={"pos": "0 0 1.5", "dir": "0 0 -1", "directional": "true"},
+    )
+    ET.SubElement(
+        worldbody,
+        "camera",
+        attrib={
+            "name": "side",
+            "pos": "0 -3 1",
+            "xyaxes": "1 0 0 0 1 2",
+            "mode": "trackcom",
+        },
     )
 
     if not is_fixed:

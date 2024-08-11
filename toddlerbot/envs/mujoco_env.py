@@ -8,6 +8,7 @@ from brax.envs.base import PipelineEnv, State  # type: ignore
 from brax.io import mjcf  # type: ignore
 from jax import numpy as jnp
 from mujoco import mjx  # type: ignore
+from mujoco.mjx._src import support  # type: ignore
 
 from toddlerbot.envs.mujoco_config import MuJoCoConfig
 from toddlerbot.motion_reference.motion_ref import MotionReference
@@ -182,23 +183,43 @@ class MuJoCoEnv(PipelineEnv):
 
         self.forward_vec = jnp.array([1.0, 0.0, 0.0])  # type:ignore
 
-        collider_names = np.array(self.robot.collider_names)
+        # add "floor" to the collider names
+        collider_names = np.array(["floor"] + self.robot.collider_names)
+        indices = jnp.arange(len(collider_names))  # type:ignore
+
         foot_mask = np.char.find(collider_names, self.robot.foot_name) >= 0
         foot_mask = jnp.array(foot_mask)  # type:ignore
-        indices = jnp.arange(len(self.robot.collider_names))  # type:ignore
-
         self.feet_indices = indices[foot_mask]
         self.termination_contact_indices = indices[~foot_mask]
 
         self.contact_force_threshold = self.cfg.rewards.contact_force_threshold
-        self.contact_forces = jnp.zeros((len(self.robot.collider_names), 3))  # type:ignore
-        self.contact_mask = jnp.zeros(self.feet_indices.shape[0])  # type:ignore
-        self.floor_id = jnp.array(self.sys.mj_model.geom("floor").id)  # type:ignore
+        self.contact_forces = jnp.zeros(  # type:ignore
+            (len(collider_names), len(collider_names) - 1, 3)
+        )
+        self.stance_mask = jnp.zeros(self.feet_indices.shape[0])  # type:ignore
+        self.floor_id = jnp.array(  # type:ignore
+            support.name2id(self.sys, mujoco.mjtObj.mjOBJ_GEOM, "floor")  # type:ignore
+        )
 
-        self.body_id_to_collider_index: Dict[int, int] = {
-            self.sys.mj_model.body(body_name).id: idx  # type:ignore
-            for idx, body_name in enumerate(collider_names)
+        body_id_to_collider_idx: Dict[int, int] = {
+            support.name2id(self.sys, mujoco.mjtObj.mjOBJ_BODY, body_name): idx  # type:ignore
+            for idx, body_name in enumerate(collider_names[1:])
         }
+
+        self.collider_geom_ids = jnp.zeros(len(collider_names), dtype=jnp.int32)  # type:ignore
+        for geom_id in range(self.sys.ngeom):  # type:ignore
+            geom_name = support.id2name(self.sys, mujoco.mjtObj.mjOBJ_GEOM, geom_id)  # type:ignore
+            if geom_name is None:
+                continue
+
+            if "floor" in geom_name:
+                self.collider_geom_ids = self.collider_geom_ids.at[0].set(geom_id)  # type:ignore
+            else:
+                body_id = self.sys.geom_bodyid[geom_id]  # type:ignore
+                if "collision" in geom_name and body_id in body_id_to_collider_idx:
+                    self.collider_geom_ids = self.collider_geom_ids.at[
+                        body_id_to_collider_idx[body_id]
+                    ].set(geom_id)  # type:ignore
 
         # contact
         # Sets environment origins. On rough terrain the origins are defined by the terrain platforms.
@@ -330,7 +351,10 @@ class MuJoCoEnv(PipelineEnv):
     def _init_joint_indices(self):
         joint_ordering = np.array(self.robot.joint_ordering)
         joint_indices = np.array(  # type:ignore
-            [self.sys.mj_model.joint(name).id for name in joint_ordering]  # type:ignore
+            [
+                support.name2id(self.sys, mujoco.mjtObj.mjOBJ_JOINT, name)  # type:ignore
+                for name in joint_ordering
+            ]
         )
         # Convert the results to JAX arrays for further numerical processing
         self.joint_indices = jnp.array(joint_indices)  # type:ignore
@@ -348,26 +372,21 @@ class MuJoCoEnv(PipelineEnv):
         Looks for self._reward_<REWARD_NAME>, where <REWARD_NAME> are names of all non zero reward scales in the cfg.
         """
 
-        self.reward_scales = asdict(self.cfg.rewards.scales)
-        # remove zero scales + multiply non-zero ones by dt
-        for key in list(self.reward_scales.keys()):
-            scale = self.reward_scales[key]
-            if scale == 0:
-                self.reward_scales.pop(key)
-            else:
-                self.reward_scales[key] *= self.dt
+        reward_scale_dict = asdict(self.cfg.rewards.scales)
+        # Remove zero scales and multiply non-zero ones by dt
+        for key, value in reward_scale_dict.items():
+            if value == 0:
+                reward_scale_dict.pop(key)
 
         # prepare list of functions
         self.reward_functions: List[Callable[..., jax.Array]] = []
-        self.reward_names: List[str] = []
-        for name, scale in self.reward_scales.items():
-            if name == "termination":
-                continue
-            self.reward_names.append(name)
+        self.reward_scales = jnp.zeros(len(reward_scale_dict))  # type:ignore
+        self.reward_values: Dict[str, jax.Array] = {}
+        for i, (name, scale) in enumerate(reward_scale_dict.items()):
             self.reward_functions.append(getattr(self, "_reward_" + name))
-
-        # reward episode sums
-        self.reward_values = {name: jnp.zeros(1) for name in self.reward_names}  # type:ignore
+            # TODO: times dt?
+            self.reward_scales.at[i].set(scale)  # type:ignore
+            self.reward_values[name] = jnp.zeros(1)  # type:ignore
 
     def reset(self, rng: jax.Array) -> State:
         """Resets the environment to an initial state."""
@@ -388,7 +407,7 @@ class MuJoCoEnv(PipelineEnv):
         # obs = privileged_obs = jnp.zeros(1)  # type:ignore
         reward, done, zero = jnp.zeros(3)  # type:ignore
 
-        metrics = dict(zip(self.reward_names, [zero] * len(self.reward_names)))
+        metrics = self.reward_values.copy()  # type:ignore
         metrics["x_position"] = zero
         metrics["y_position"] = zero
         metrics["distance_from_origin"] = zero
@@ -399,34 +418,20 @@ class MuJoCoEnv(PipelineEnv):
 
     def step(self, state: State, action: jax.Array) -> State:
         """Runs one timestep of the environment's dynamics."""
-
         data0 = state.pipeline_state
         data = self.pipeline_step(data0, action)
 
         self._post_physics_step(data, action)  # type:ignore
-
-        com_before = data0.subtree_com[1]  # type:ignore
-        com_after = data.subtree_com[1]  # type:ignore
-        velocity = (com_after - com_before) / self.dt  # type:ignore
-        # forward_reward = self._forward_reward_weight * velocity[0]
-
-        # min_z, max_z = self._healthy_z_range
-        # is_healthy = jnp.where(data.q[2] < min_z, 0.0, 1.0)
-        # is_healthy = jnp.where(data.q[2] > max_z, 0.0, is_healthy)
-        # if self._terminate_when_unhealthy:
-        #     healthy_reward = self._healthy_reward
-        # else:
-        #     healthy_reward = self._healthy_reward * is_healthy
-
-        # ctrl_cost = self._ctrl_cost_weight * jnp.sum(jnp.square(action))
-        # reward = forward_reward + healthy_reward - ctrl_cost
 
         obs, privileged_obs = self._get_obs(data, action)  # type:ignore
 
         reward = self._compute_reward(data)  # type:ignore
 
         done = self._check_termination()
-        # done = 1.0 - is_healthy if self._terminate_when_unhealthy else 0.0
+
+        com_before = data0.subtree_com[1]  # type:ignore
+        com_after = data.subtree_com[1]  # type:ignore
+        velocity = (com_after - com_before) / self.dt  # type:ignore
 
         state.metrics.update(**self.reward_values)  # type:ignore
         state.metrics["x_position"] = com_after[0]
@@ -496,50 +501,36 @@ class MuJoCoEnv(PipelineEnv):
         )
 
     def _get_contact_forces(self, data: mjx.Data):
-        c_array = jnp.zeros((data.ncon, 6), dtype=jnp.float32)  # type:ignore
-        geom_ids = jnp.stack((data.contact.geom1, data.contact.geom2), axis=-1)  # type:ignore
-        floor_mask = jax.vmap(  # type:ignore
-            lambda g1, g2: jnp.logical_or(g1 == self.floor_id, g2 == self.floor_id)  # type:ignore
-        )(geom_ids[:, 0], geom_ids[:, 1])
+        # Extract geom1 and geom2 directly
+        geom1 = data.contact.geom1
+        geom2 = data.contact.geom2
 
-        filtered_geom_ids = geom_ids[floor_mask]
-        filtered_indices = jnp.arange(data.ncon)[floor_mask]  # type:ignore
+        def get_body_index(geom_id: jax.Array) -> jax.Array:
+            return jnp.argmax(self.collider_geom_ids == geom_id)  # type:ignore
 
-        body_indices = jax.vmap(  # type:ignore
-            lambda g1, g2: self.body_id_to_collider_index[  # type:ignore
-                jnp.where(  # type:ignore
-                    g1 == self.floor_id,  # type:ignore
-                    self.sys.mj_model.geom(g2).bodyid,  # type:ignore
-                    self.sys.mj_model.geom(g1).bodyid,  # type:ignore
-                )
-            ]
-        )(filtered_geom_ids[:, 0], filtered_geom_ids[:, 1])
+        # Vectorized computation of body indices for geom1 and geom2
+        body_indices_1 = jax.vmap(get_body_index)(geom1)
+        body_indices_2 = jax.vmap(get_body_index)(geom2)
 
-        def update_contact_force(idx: int) -> jax.Array:
-            mujoco.mj_contactForce(  # type:ignore
-                self.sys.mj_model,  # type:ignore
-                data,
-                filtered_indices[idx],
-                c_array[idx],
-            )
-            contact_force_local = c_array[idx, :3]
-            contact = data.contact[filtered_indices[idx]]  # type:ignore
-            contact_force_global = jnp.dot(  # type:ignore
-                contact.frame.reshape(-1, 3).T,  # type:ignore
-                contact_force_local,
-            )
-            return self.contact_forces.at[body_indices[idx]].set(contact_force_global)  # type:ignore
+        # Vectorized computation of contact forces
+        contact_forces_global = jnp.zeros((data.ncon, 3))  # type:ignore
+        for i in range(data.ncon):
+            contact_force = support.contact_force(self.sys, data, i, True)[:3]
+            contact_forces_global = contact_forces_global.at[i].set(contact_force)  # type:ignore
+            # Efficiently update the contact forces in the 3D array
 
-        self.contact_forces = jax.lax.fori_loop(  # type:ignore
-            0,
-            len(filtered_indices),
-            update_contact_force,
-            self.contact_forces,  # type:ignore
-        )
-        self.contact_mask = jnp.any(  # type:ignore
-            self.contact_forces[:, self.feet_indices, 2] > self.contact_force_threshold,  # type:ignore
-            axis=0,
-        )
+        self.contact_forces = self.contact_forces.at[
+            body_indices_1, body_indices_2
+        ].set(contact_forces_global)  # type:ignore
+
+        self.contact_forces = self.contact_forces.at[
+            body_indices_2, body_indices_1
+        ].set(contact_forces_global)  # type:ignore
+
+        # Vectorized update of the stance mask
+        self.stance_mask = (
+            self.contact_forces[0, self.feet_indices, 2] > self.contact_force_threshold
+        ).astype(jnp.float32)  # type:ignore
 
     def _get_obs(
         self, data: mjx.Data, action: jax.Array
@@ -577,7 +568,7 @@ class MuJoCoEnv(PipelineEnv):
                 data.cinert[1:].ravel(),
                 data.cvel[1:].ravel(),
                 joint_pos_diff,
-                self.contact_mask,
+                self.stance_mask,
                 self.state_ref_buf[-2:],
             ]
         )
@@ -599,17 +590,21 @@ class MuJoCoEnv(PipelineEnv):
         Calls each reward function which had a non-zero scale (processed in self._prepare_reward_function())
         adds each terms to the episode sums and to the total reward
         """
+        # Create an array of indices to map over
         indices = jnp.arange(len(self.reward_functions))  # type:ignore
-        rewards = jax.vmap(  # type:ignore
-            lambda i, data: self.reward_functions[i](data)  # type:ignore
-            * self.reward_scales[self.reward_names[i]],
-            in_axes=(0, None),
-        )(indices, data)
+        # Use jax.lax.map to compute rewards
+        rewards = jax.lax.map(  # type:ignore
+            lambda i: jax.lax.switch(i, self.reward_functions, data)  # type:ignore
+            * self.reward_scales[i],
+            indices,
+        )
 
-        self.reward_values = dict(zip(self.reward_names, rewards))  # type:ignore
-        reward = jnp.sum(rewards)  # type:ignore
+        for i, (name, _) in enumerate(self.reward_values.items()):
+            self.reward_values[name] = rewards[i]
 
-        return reward
+        total_reward = jnp.sum(rewards)  # type:ignore
+
+        return total_reward
 
     def _reward_torso_pos(self, data: mjx.Data):
         """Reward for track torso position"""
@@ -644,7 +639,7 @@ class MuJoCoEnv(PipelineEnv):
         """Reward for track linear velocity in z"""
         lin_vel_z = data.qvel[2]
         lin_vel_z_ref = self.state_ref_buf[9]
-        error = jnp.linalg.norm(lin_vel_z - lin_vel_z_ref, axis=-1)  # type:ignore
+        error = lin_vel_z - lin_vel_z_ref
         reward = jnp.exp(-8.0 * error**2)  # type:ignore
         return reward
 
@@ -660,7 +655,7 @@ class MuJoCoEnv(PipelineEnv):
         """Reward for track angular velocity in z"""
         ang_vel_z = data.qvel[5]
         ang_vel_z_ref = self.state_ref_buf[12]
-        error = jnp.linalg.norm(ang_vel_z - ang_vel_z_ref, axis=-1)  # type:ignore
+        error = ang_vel_z - ang_vel_z_ref
         reward = jnp.exp(-2.0 * error**2)  # type:ignore
         return reward
 
@@ -738,7 +733,9 @@ class MuJoCoEnv(PipelineEnv):
 
     def _reward_contact(self, data: mjx.Data):
         """Reward for contact"""
-        reward = jnp.sum(self.contact_mask == self.state_ref_buf[-2:])  # type:ignore
+        reward = jnp.sum(self.stance_mask == self.state_ref_buf[-2:]).astype(  # type:ignore
+            jnp.float32
+        )
         return reward
 
     ##### Regularization rewards #####

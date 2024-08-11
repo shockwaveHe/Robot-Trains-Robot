@@ -11,6 +11,7 @@ import mediapy as media
 from brax.base import State  # type: ignore
 from brax.training.agents.ppo import train as ppo  # type: ignore
 from jax import numpy as jnp
+from tqdm import tqdm
 
 from toddlerbot.envs.mujoco_config import MuJoCoConfig
 from toddlerbot.envs.mujoco_env import MuJoCoEnv
@@ -39,7 +40,7 @@ def train(robot: Robot, motion_ref: MotionReference):
     rollout: List[State] = [state.pipeline_state]  # type: ignore
 
     # grab a trajectory
-    for _ in range(10):
+    for _ in tqdm(range(10), desc="Simulating"):
         ctrl = -0.1 * jnp.ones(env.sys.nu)  # type: ignore
         state = jit_step(state, ctrl)  # type: ignore
         rollout.append(state.pipeline_state)  # type: ignore
