@@ -19,8 +19,8 @@ class EnvConfig:
     episode_length_s: int = 24
     frame_stack: int = 15
     c_frame_stack: int = 3
-    num_single_obs: int = 47
-    num_single_privileged_obs: int = 73
+    num_single_obs: int = 95
+    num_single_privileged_obs: int = 135
     send_timeouts: bool = True
     use_ref_actions: bool = False
 
@@ -50,7 +50,7 @@ class CommandsConfig:
     curriculum: bool = False
     max_curriculum: float = 8.0  # time before command are changed[s]
     num_commands: int = 4
-    resampling_time: float = 10.0
+    resample_time: float = 10.0
     heading_command: bool = True  # if true: compute ang vel command from heading error
     ranges: CommandRanges = CommandRanges()
 

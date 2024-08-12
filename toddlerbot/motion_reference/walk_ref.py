@@ -29,7 +29,8 @@ class WalkReference(MotionReference):
 
     def get_state_ref(
         self,
-        path_frame: npt.NDArray[np.float32] | jax.Array,
+        path_pos: npt.NDArray[np.float32] | jax.Array,
+        path_quat: npt.NDArray[np.float32] | jax.Array,
         phase: Optional[float | npt.NDArray[np.float32] | jax.Array] = None,
         command: Optional[npt.NDArray[np.float32] | jax.Array] = None,
     ) -> npt.NDArray[np.float32] | jax.Array:
@@ -40,9 +41,6 @@ class WalkReference(MotionReference):
             raise ValueError(f"command is required for {self.motion_type} motion")
 
         backend = jnp if self.use_jax else np
-
-        pos = path_frame[:3]
-        quat = path_frame[3:]
 
         linear_vel = backend.array([command[0], command[1], 0.0], dtype=backend.float32)  # type: ignore
         angular_vel = backend.array([0.0, 0.0, command[2]], dtype=backend.float32)  # type: ignore
@@ -83,7 +81,15 @@ class WalkReference(MotionReference):
             stance_mask[double_support_mask] = 1
 
         return backend.concatenate(  # type: ignore
-            (pos, quat, linear_vel, angular_vel, joint_pos, joint_vel, stance_mask)  # type: ignore
+            (
+                path_pos,
+                path_quat,
+                linear_vel,
+                angular_vel,
+                joint_pos,
+                joint_vel,
+                stance_mask,
+            )  # type: ignore
         )
 
     def calculate_leg_angles(

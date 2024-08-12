@@ -554,7 +554,7 @@ def create_scene_xml(mjcf_path: str, is_fixed: bool):
         "camera",
         attrib={
             "name": "side",
-            "pos": "0 -3 1",
+            "pos": "0 -1 1",
             "xyaxes": "1 0 0 0 1 2",
             "mode": "trackcom",
         },

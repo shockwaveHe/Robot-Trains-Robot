@@ -8,7 +8,7 @@
     </visual>
     <worldbody>
         <light pos="0 0 1.5" dir="0 0 -1" directional="true" />
-        <camera name="side" pos="0 -3 1" xyaxes="1 0 0 0 1 2" mode="trackcom" />
+        <camera name="side" pos="0 -1 1" xyaxes="1 0 0 0 1 2" mode="trackcom" />
         <geom name="floor" size="0 0 0.05" type="plane" material="groundplane" condim="3" />
     </worldbody>
     <asset>

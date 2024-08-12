@@ -26,29 +26,29 @@ def train(robot: Robot, motion_ref: MotionReference):
     env = MuJoCoEnv(robot, motion_ref, cfg)
 
     # # define the jit reset/step functions
-    # jit_reset = jax.jit(env.reset)  # type: ignore
-    # jit_step = jax.jit(env.step)  # type: ignore
-    jit_reset = env.reset
-    jit_step = env.step
+    jit_reset = jax.jit(env.reset)  # type: ignore
+    jit_step = jax.jit(env.step)  # type: ignore
+    # jit_reset = env.reset
+    # jit_step = env.step
 
     # Start profiling
-    profiler = cProfile.Profile()
-    profiler.enable()
+    # profiler = cProfile.Profile()
+    # profiler.enable()
 
     # initialize the state
     state = jit_reset(jax.random.PRNGKey(0))  # type: ignore
     rollout: List[State] = [state.pipeline_state]  # type: ignore
 
     # grab a trajectory
-    for _ in tqdm(range(10), desc="Simulating"):
+    for _ in tqdm(range(100), desc="Simulating"):
         ctrl = -0.1 * jnp.ones(env.sys.nu)  # type: ignore
         state = jit_step(state, ctrl)  # type: ignore
         rollout.append(state.pipeline_state)  # type: ignore
 
-    profiler.disable()
+    # profiler.disable()
 
-    stats = pstats.Stats(profiler).sort_stats(SortKey.TIME)
-    stats.print_stats(10)  # Print
+    # stats = pstats.Stats(profiler).sort_stats(SortKey.TIME)
+    # stats.print_stats(10)  # Print
 
     time_end = time.time()
 

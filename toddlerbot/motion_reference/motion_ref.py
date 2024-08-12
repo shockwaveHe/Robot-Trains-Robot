@@ -20,7 +20,8 @@ class MotionReference(ABC):
     @abstractmethod
     def get_state_ref(
         self,
-        path_frame: npt.NDArray[np.float32] | jax.Array,
+        path_pos: npt.NDArray[np.float32] | jax.Array,
+        path_quat: npt.NDArray[np.float32] | jax.Array,
         phase: Optional[float | npt.NDArray[np.float32] | jax.Array] = None,
         command: Optional[npt.NDArray[np.float32] | jax.Array] = None,
     ) -> npt.NDArray[np.float32] | jax.Array:
