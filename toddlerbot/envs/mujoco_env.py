@@ -212,11 +212,9 @@ class MuJoCoEnv(PipelineEnv):
             "step": 0,
         }
 
-        obs_history = jnp.zeros(  # type:ignore
-            (self.num_obs_history, self.obs_size)
-        )
+        obs_history = jnp.zeros(self.num_obs_history * self.obs_size)  # type:ignore
         privileged_obs_history = jnp.zeros(  # type:ignore
-            (self.num_privileged_obs_history, self.privileged_obs_size)
+            self.num_privileged_obs_history * self.privileged_obs_size
         )
         obs, privileged_obs = self._get_obs(
             pipeline_state,
@@ -372,7 +370,7 @@ class MuJoCoEnv(PipelineEnv):
             obs=obs,
             privileged_obs=privileged_obs,
             reward=reward,
-            done=done,
+            done=done.astype(jnp.float32),  # type:ignore
         )
 
     def _integrate_path_frame(
