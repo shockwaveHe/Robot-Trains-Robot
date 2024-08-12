@@ -9,7 +9,8 @@ from toddlerbot.sim.robot import Robot
 
 
 class MotionReference(ABC):
-    def __init__(self, motion_type: str, robot: Robot, use_jax: bool):
+    def __init__(self, name: str, motion_type: str, robot: Robot, use_jax: bool):
+        self.name = name
         self.motion_type = motion_type
         self.robot = robot
         self.use_jax = use_jax

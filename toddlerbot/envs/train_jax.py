@@ -2,20 +2,21 @@ import argparse
 import functools
 import os
 import time
-from typing import Any, List
+from typing import Any
 
 from brax.training.agents.ppo import networks as ppo_networks  # type: ignore
 from brax.training.agents.ppo import train as ppo  # type: ignore
 from flax.training import orbax_utils
 from orbax import checkpoint as ocp  # type: ignore
 
+import wandb
 from toddlerbot.envs.mujoco_config import MuJoCoConfig
 from toddlerbot.envs.mujoco_env import MuJoCoEnv
-from toddlerbot.motion_reference.motion_ref import MotionReference
+from toddlerbot.envs.ppo_config import PPOConfig
 from toddlerbot.sim.robot import Robot
 
 
-def train(robot: Robot, motion_ref: MotionReference):
+def train(env: MuJoCoEnv, train_cfg: PPOConfig, exp_folder_path: str):
     # # define the jit reset/step functions
     # jit_reset = jax.jit(env.reset)  # type: ignore
     # jit_step = jax.jit(env.step)  # type: ignore
@@ -43,11 +44,6 @@ def train(robot: Robot, motion_ref: MotionReference):
 
     # media.write_video("test.mp4", env.render(rollout, camera="side"), fps=1.0 / env.dt)  # type: ignore
 
-    exp_name: str = "test_ref_motion"
-    time_str = time.strftime("%Y%m%d_%H%M%S")
-    exp_folder_path = os.path.abspath(f"results/{time_str}_{exp_name}")
-    os.makedirs(exp_folder_path, exist_ok=True)
-
     def policy_params_fn(current_step: int, make_policy: Any, params: Any):
         # save checkpoints
         orbax_checkpointer = ocp.PyTreeCheckpointer()
@@ -63,58 +59,32 @@ def train(robot: Robot, motion_ref: MotionReference):
 
     train_fn = functools.partial(  # type: ignore
         ppo.train,
-        num_timesteps=10_000_000,
-        num_evals=10,
-        reward_scaling=1,
-        episode_length=1000,
-        action_repeat=1,
-        unroll_length=20,
-        num_minibatches=16,
-        num_updates_per_batch=4,
-        discounting=0.97,
-        learning_rate=3.0e-4,
-        entropy_cost=1e-2,
-        num_envs=1024,
-        batch_size=64,
         network_factory=make_networks_factory,  # type: ignore
         # randomization_fn=domain_randomize,
         policy_params_fn=policy_params_fn,
-        seed=0,
+        **train_cfg.__dict__,
     )
 
-    x_data: List[int] = []
-    y_data: List[float] = []
-    ydataerr: List[float] = []
     times = [time.time()]
-
-    cfg = MuJoCoConfig()
-    env = MuJoCoEnv(robot, motion_ref, cfg)
 
     def progress(num_steps: int, metrics: Any):
         print(f"Step: {num_steps}, Reward: {metrics['eval/episode_reward']:.3f}")
 
         times.append(time.time())
-        x_data.append(num_steps)
-        y_data.append(metrics["eval/episode_reward"])
-        ydataerr.append(metrics["eval/episode_reward_std"])
-        # plt.show()
+
+        # Log metrics to wandb
+        wandb.log(  # type: ignore
+            {
+                **metrics,
+                "num_steps": num_steps,
+                "time_elapsed": times[-1] - times[0],
+            }
+        )
 
     train_fn(environment=env, progress_fn=progress)
 
     print(f"time to jit: {times[1] - times[0]}")
     print(f"time to train: {times[-1] - times[1]}")
-
-    import matplotlib.pyplot as plt
-
-    plt.xlim([0, train_fn.keywords["num_timesteps"] * 1.25])  # type: ignore
-    plt.ylim([0, 13000])  # type: ignore
-
-    plt.xlabel("# environment steps")  # type: ignore
-    plt.ylabel("reward per episode")  # type: ignore
-    plt.title(f"y={y_data[-1]:.3f}")  # type: ignore
-
-    plt.errorbar(x_data, y_data, yerr=ydataerr)  # type: ignore
-    plt.savefig(f"{exp_folder_path}/reward.png")  # type: ignore
 
 
 if __name__ == "__main__":
@@ -148,4 +118,21 @@ if __name__ == "__main__":
     else:
         raise ValueError(f"Unknown env {args.env}")
 
-    train(robot, motion_ref)
+    cfg = MuJoCoConfig()
+
+    env = MuJoCoEnv(robot, motion_ref, cfg)
+    train_cfg = PPOConfig()
+
+    time_str = time.strftime("%Y%m%d_%H%M%S")
+    run_name: str = f"{robot.name}_{motion_ref.name}_ppo_{time_str}"
+    exp_folder_path = os.path.abspath(os.path.join("results", run_name))
+    os.makedirs(exp_folder_path, exist_ok=True)
+
+    wandb.init(  # type: ignore
+        project="ToddlerBot",
+        sync_tensorboard=True,
+        name=run_name,
+        config=train_cfg.__dict__,
+    )
+
+    train(env, train_cfg, exp_folder_path)

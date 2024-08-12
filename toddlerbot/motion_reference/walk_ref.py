@@ -17,7 +17,7 @@ class WalkReference(MotionReference):
         joint_pos_ref_scale: float = 1.0,
         double_support_phase: float = 0.1,
     ):
-        super().__init__("periodic", robot, use_jax)
+        super().__init__("walking", "periodic", robot, use_jax)
 
         self.num_joints = len(self.robot.joint_ordering)
         self.joint_pos_ref_scale = joint_pos_ref_scale
