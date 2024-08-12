@@ -45,7 +45,7 @@ def train(robot: Robot, motion_ref: MotionReference):
 
     exp_name: str = "test_ref_motion"
     time_str = time.strftime("%Y%m%d_%H%M%S")
-    exp_folder_path = f"results/{time_str}_{exp_name}"
+    exp_folder_path = os.path.abspath(f"results/{time_str}_{exp_name}")
     os.makedirs(exp_folder_path, exist_ok=True)
 
     def policy_params_fn(current_step: int, make_policy: Any, params: Any):
@@ -67,16 +67,15 @@ def train(robot: Robot, motion_ref: MotionReference):
         num_evals=10,
         reward_scaling=1,
         episode_length=1000,
-        normalize_observations=True,
         action_repeat=1,
         unroll_length=20,
-        num_minibatches=32,
+        num_minibatches=16,
         num_updates_per_batch=4,
         discounting=0.97,
         learning_rate=3.0e-4,
         entropy_cost=1e-2,
-        num_envs=8192,
-        batch_size=256,
+        num_envs=1024,
+        batch_size=64,
         network_factory=make_networks_factory,  # type: ignore
         # randomization_fn=domain_randomize,
         policy_params_fn=policy_params_fn,
