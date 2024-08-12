@@ -4,10 +4,15 @@ import os
 import time
 from typing import Any
 
+import jax
+import jax.numpy as jnp
+import mediapy as media
+from brax.io import model  # type: ignore
 from brax.training.agents.ppo import networks as ppo_networks  # type: ignore
 from brax.training.agents.ppo import train as ppo  # type: ignore
 from flax.training import orbax_utils
 from orbax import checkpoint as ocp  # type: ignore
+from tqdm import tqdm
 
 import wandb
 from toddlerbot.envs.mujoco_config import MuJoCoConfig
@@ -16,39 +21,24 @@ from toddlerbot.envs.ppo_config import PPOConfig
 from toddlerbot.sim.robot import Robot
 
 
-def train(env: MuJoCoEnv, train_cfg: PPOConfig, exp_folder_path: str):
-    # # define the jit reset/step functions
-    # jit_reset = jax.jit(env.reset)  # type: ignore
-    # jit_step = jax.jit(env.step)  # type: ignore
-    # jit_reset = env.reset
-    # jit_step = env.step
+def train(env: MuJoCoEnv, train_cfg: PPOConfig, run_name: str):
+    time_str = time.strftime("%Y%m%d_%H%M%S")
+    run_name_with_time = f"{run_name}_{time_str}"
+    exp_folder_path = os.path.join("results", run_name_with_time)
+    os.makedirs(exp_folder_path, exist_ok=True)
 
-    # Start profiling
-    # profiler = cProfile.Profile()
-    # profiler.enable()
-
-    # initialize the state
-    # state = jit_reset(jax.random.PRNGKey(0))  # type: ignore
-    # rollout: List[State] = [state.pipeline_state]  # type: ignore
-
-    # grab a trajectory
-    # for _ in tqdm(range(1000), desc="Simulating"):
-    #     ctrl = -0.1 * jnp.ones(env.sys.nu)  # type: ignore
-    #     state = jit_step(state, ctrl)  # type: ignore
-    #     rollout.append(state.pipeline_state)  # type: ignore
-
-    # profiler.disable()
-
-    # stats = pstats.Stats(profiler).sort_stats(SortKey.TIME)
-    # stats.print_stats(10)  # Print
-
-    # media.write_video("test.mp4", env.render(rollout, camera="side"), fps=1.0 / env.dt)  # type: ignore
+    wandb.init(  # type: ignore
+        project="ToddlerBot",
+        sync_tensorboard=True,
+        name=run_name_with_time,
+        config=train_cfg.__dict__,
+    )
 
     def policy_params_fn(current_step: int, make_policy: Any, params: Any):
         # save checkpoints
         orbax_checkpointer = ocp.PyTreeCheckpointer()
         save_args = orbax_utils.save_args_from_target(params)
-        path = os.path.join(exp_folder_path, f"{current_step}")
+        path = os.path.abspath(os.path.join(exp_folder_path, f"{current_step}"))
         orbax_checkpointer.save(path, params, force=True, save_args=save_args)  # type: ignore
 
     make_networks_factory = functools.partial(
@@ -87,6 +77,50 @@ def train(env: MuJoCoEnv, train_cfg: PPOConfig, exp_folder_path: str):
     print(f"time to train: {times[-1] - times[1]}")
 
 
+def evaluate(env: MuJoCoEnv, exp_folder_path: str):
+    # Save and reload params.
+    orbax_checkpointer = ocp.PyTreeCheckpointer()
+    params = orbax_checkpointer.restore(os.path.abspath(exp_folder_path))  # type: ignore
+
+    jit_reset = jax.jit(env.reset)  # type: ignore
+    jit_step = jax.jit(env.step)  # type: ignore
+
+    rng = jax.random.PRNGKey(0)  # type: ignore
+    state = jit_reset(rng)  # type: ignore
+
+    ppo_network = ppo_networks.make_ppo_networks(
+        state.obs.shape[-1],  # type: ignore
+        state.privileged_obs.shape[-1],  # type: ignore
+        env.action_size,
+    )
+    make_policy = ppo_networks.make_inference_fn(ppo_network)  # type: ignore
+
+    inference_fn = make_policy(params)
+    jit_inference_fn = jax.jit(inference_fn)  # type: ignore
+
+    command = jnp.array([1.0, 0.0, 0.0])  # type: ignore
+
+    # initialize the state
+    state.info["command"] = command  # type: ignore
+    rollout = [state.pipeline_state]  # type: ignore
+
+    # grab a trajectory
+    n_steps = 500
+    render_every = 2
+
+    for _ in tqdm(range(n_steps), desc="Evaluating"):
+        act_rng, rng = jax.random.split(rng)  # type: ignore
+        ctrl, _ = jit_inference_fn(state.obs, act_rng)  # type: ignore
+        state = jit_step(state, ctrl)  # type: ignore
+        rollout.append(state.pipeline_state)  # type: ignore
+
+    media.write_video(
+        os.path.join(exp_folder_path, "eval.mp4"),
+        env.render(rollout[::render_every], camera="side"),  # type: ignore
+        fps=1.0 / env.dt / render_every,
+    )
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the walking simulation.")
     parser.add_argument(
@@ -123,16 +157,8 @@ if __name__ == "__main__":
     env = MuJoCoEnv(robot, motion_ref, cfg)
     train_cfg = PPOConfig()
 
-    time_str = time.strftime("%Y%m%d_%H%M%S")
-    run_name: str = f"{robot.name}_{motion_ref.name}_ppo_{time_str}"
-    exp_folder_path = os.path.abspath(os.path.join("results", run_name))
-    os.makedirs(exp_folder_path, exist_ok=True)
+    run_name = f"{robot.name}_{motion_ref.name}_ppo"
 
-    wandb.init(  # type: ignore
-        project="ToddlerBot",
-        sync_tensorboard=True,
-        name=run_name,
-        config=train_cfg.__dict__,
-    )
+    # train(env, train_cfg, run_name)
 
-    train(env, train_cfg, exp_folder_path)
+    evaluate(env, "results/toddlerbot_walking_ppo_20240812_112809/10137600")
