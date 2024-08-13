@@ -2,7 +2,7 @@ import argparse
 import functools
 import os
 import time
-from typing import Any
+from typing import Any, Dict
 
 import jax
 import jax.numpy as jnp
@@ -19,6 +19,53 @@ from toddlerbot.envs.mujoco_config import MuJoCoConfig
 from toddlerbot.envs.mujoco_env import MuJoCoEnv
 from toddlerbot.envs.ppo_config import PPOConfig
 from toddlerbot.sim.robot import Robot
+
+
+def log(
+    metrics: Dict[str, Any],
+    num_total_steps: int,
+    num_steps: int,
+    time_elapsed: float,
+    width: int = 80,
+    pad: int = 35,
+):
+    log_data: Dict[str, Any] = {"num_steps": num_steps, "time_elapsed": time_elapsed}
+    title = f" \033[1m Learning steps {num_steps}/{num_total_steps } \033[0m "
+    log_string = f"""{'#' * width}\n"""
+    log_string += f"""{title.center(width, ' ')}\n"""
+
+    for key, value in metrics.items():
+        if "std" in key:
+            continue
+
+        words = key.split("/")
+        if words[0].startswith("eval"):
+            if words[1].startswith("episode") and "reward" not in words[1]:
+                metric_name = "rew_" + words[1].replace("episode_", "")
+            else:
+                metric_name = words[1]
+        else:
+            metric_name = "_".join(words)
+
+        log_data[metric_name] = value
+        log_string += f"""{f'{metric_name}:':>{pad}} {value:.4f}\n"""
+
+    log_string += (
+        f"""{'Mean reward:':>{pad}} {metrics['eval/episode_reward']:.3f}\n"""
+        f"""{'Mean episode length:':>{pad}} {metrics['eval/avg_episode_length']:.3f}\n"""
+    )
+    log_string += (
+        f"""{'-' * width}\n""" f"""{'Time elapsed:':>{pad}} {time_elapsed:.1f}\n"""
+    )
+    if num_steps > 0:
+        log_string += (
+            f"""{'Computation:':>{pad}} {(num_steps / time_elapsed ):.1f} steps/s\n"""
+            f"""{'ETA:':>{pad}} {(time_elapsed / num_steps) * (num_total_steps - num_steps):.1f}s\n"""
+        )
+
+    print(log_string)
+
+    return log_data
 
 
 def train(env: MuJoCoEnv, train_cfg: PPOConfig, run_name: str):
@@ -56,19 +103,15 @@ def train(env: MuJoCoEnv, train_cfg: PPOConfig, run_name: str):
 
     times = [time.time()]
 
-    def progress(num_steps: int, metrics: Any):
-        print(f"Step: {num_steps}, Reward: {metrics['eval/episode_reward']:.3f}")
-
+    def progress(num_steps: int, metrics: Dict[str, Any]):
         times.append(time.time())
 
-        # Log metrics to wandb
-        wandb.log(  # type: ignore
-            {
-                **metrics,
-                "num_steps": num_steps,
-                "time_elapsed": times[-1] - times[0],
-            }
+        log_data = log(
+            metrics, train_cfg.num_timesteps, num_steps, times[-1] - times[0]
         )
+
+        # Log metrics to wandb
+        wandb.log(log_data)  # type: ignore
 
     _, params, _ = train_fn(environment=env, progress_fn=progress)  # type: ignore
 
@@ -160,10 +203,12 @@ if __name__ == "__main__":
     cfg = MuJoCoConfig()
 
     env = MuJoCoEnv(robot, motion_ref, cfg)
-    train_cfg = PPOConfig(num_timesteps=10_000_000)
+
+    train_cfg = PPOConfig()
+    # train_cfg = PPOConfig(num_timesteps=1_000_000)
 
     time_str = time.strftime("%Y%m%d_%H%M%S")
-    # time_str = "20240812_162202"
+    # time_str = "20240812_184307"
     run_name = f"{robot.name}_{motion_ref.name}_ppo_{time_str}"
 
     train(env, train_cfg, run_name)

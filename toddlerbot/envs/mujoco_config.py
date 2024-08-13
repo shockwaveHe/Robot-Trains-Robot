@@ -71,17 +71,6 @@ class DomainRandConfig:
 
 @dataclass
 class RewardScales:
-    # termination: float = -0.0
-    # tracking_lin_vel: float = 1.2
-    # tracking_ang_vel: float = 1.1
-    # low_speed: float = 0.2
-    # orientation: float = 1.0
-    # default_dof_pos: float = 0.5
-    # dof_pos: float = 1.6
-    # dof_vel: float = -5e-4
-    # dof_acc: float = -1e-7
-    # base_height: float = 0.2
-    # base_acc: float = 0.2
     # feet_air_time: float = 1.0
     # feet_clearance: float = 1.0
     # feet_contact_forces: float = -0.01
@@ -89,33 +78,32 @@ class RewardScales:
     # feet_distance: float = 0.2
     # feet_slip: float = -0.05
     # collision: float = -1.0
-    # action_smoothness: float = -0.002
     torso_pos: float = 1.0
     torso_quat: float = 1.0
     lin_vel_xy: float = 1.0
     lin_vel_z: float = 1.0
     ang_vel_xy: float = 0.5
     ang_vel_z: float = 0.5
-    leg_joint_pos: float = 15.0
-    leg_joint_vel: float = 1e-3
-    arm_joint_pos: float = 100.0
-    arm_joint_vel: float = 1.0
-    neck_joint_pos: float = 100.0
-    neck_joint_vel: float = 1.0
-    waist_joint_pos: float = 100.0
-    waist_joint_vel: float = 1.0
+    leg_joint_pos: float = 0.015
+    leg_joint_vel: float = 1e-4
+    arm_joint_pos: float = 0.1
+    arm_joint_vel: float = 1e-3
+    neck_joint_pos: float = 0.1
+    neck_joint_vel: float = 1e-3
+    waist_joint_pos: float = 0.1
+    waist_joint_vel: float = 1e-3
     contact: float = 1.0
-    joint_torque: float = 1e-3
+    joint_torque: float = 1e-2
     joint_acc: float = 2.5e-6
-    leg_action_rate: float = 1.5
-    leg_action_acc: float = 0.45
-    arm_action_rate: float = 5.0
-    arm_action_acc: float = 5.0
-    neck_action_rate: float = 5.0
-    neck_action_acc: float = 5.0
-    waist_action_rate: float = 5.0
-    waist_action_acc: float = 5.0
-    survival: float = 20.0
+    leg_action_rate: float = 1.5e-3
+    leg_action_acc: float = 5e-4
+    arm_action_rate: float = 5e-3
+    arm_action_acc: float = 5e-3
+    neck_action_rate: float = 5e-3
+    neck_action_acc: float = 5e-3
+    waist_action_rate: float = 5e-3
+    waist_action_acc: float = 5e-3
+    survival: float = 1.0
 
 
 @dataclass
