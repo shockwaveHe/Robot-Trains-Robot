@@ -65,7 +65,7 @@ class MuJoCoEnv(PipelineEnv):
         # self.push_interval = np.ceil(self.cfg.domain_rand.push_interval_s / self.dt)
 
         # colliders
-        collider_names = np.array(["floor"] + self.robot.collider_names)
+        collider_names = ["floor"] + self.robot.collider_names
         self.num_colliders = len(collider_names)
         indices = jnp.arange(self.num_colliders)  # type:ignore
 
@@ -75,10 +75,6 @@ class MuJoCoEnv(PipelineEnv):
         self.feet_indices = indices[foot_mask]
         self.termination_contact_indices = indices[~foot_mask]
 
-        body_id_to_collider_idx: Dict[int, int] = {
-            support.name2id(self.sys, mujoco.mjtObj.mjOBJ_BODY, body_name): idx  # type:ignore
-            for idx, body_name in enumerate(collider_names[1:])
-        }
         self.collider_geom_ids = jnp.zeros(self.num_colliders, dtype=jnp.int32)  # type:ignore
         for geom_id in range(self.sys.ngeom):  # type:ignore
             geom_name = support.id2name(self.sys, mujoco.mjtObj.mjOBJ_GEOM, geom_id)  # type:ignore
@@ -86,13 +82,17 @@ class MuJoCoEnv(PipelineEnv):
                 continue
 
             if "floor" in geom_name:
-                self.collider_geom_ids = self.collider_geom_ids.at[0].set(geom_id)  # type:ignore
-            else:
+                body_name = "floor"
+            elif "collision" in geom_name:
                 body_id = self.sys.geom_bodyid[geom_id]  # type:ignore
-                if "collision" in geom_name and body_id in body_id_to_collider_idx:
-                    self.collider_geom_ids = self.collider_geom_ids.at[
-                        body_id_to_collider_idx[body_id]
-                    ].set(geom_id)  # type:ignore
+                body_name = support.id2name(self.sys, mujoco.mjtObj.mjOBJ_BODY, body_id)  # type:ignore
+            else:
+                continue
+
+            if body_name in collider_names:
+                self.collider_geom_ids = self.collider_geom_ids.at[
+                    collider_names.index(body_name)
+                ].set(geom_id)  # type:ignore
 
         self.contact_force_threshold = self.cfg.rewards.contact_force_threshold
 
@@ -184,7 +184,7 @@ class MuJoCoEnv(PipelineEnv):
         self.reward_scales = jnp.zeros(len(reward_scale_dict))  # type:ignore
         for i, (name, scale) in enumerate(reward_scale_dict.items()):
             self.reward_functions.append(getattr(self, "_reward_" + name))
-            self.reward_scales.at[i].set(scale)  # type:ignore
+            self.reward_scales = self.reward_scales.at[i].set(scale)  # type:ignore
 
     def reset(self, rng: jax.Array) -> State:
         """Resets the environment to an initial state."""
@@ -266,7 +266,7 @@ class MuJoCoEnv(PipelineEnv):
             )
 
             forward = quat_apply(pipeline_state.q[3:7], self.forward_vec)  # type:ignore
-            heading.at[0].set(jnp.atan2(forward[1], forward[0]))  # type:ignore
+            heading = heading.at[0].set(jnp.atan2(forward[1], forward[0]))  # type:ignore
             ang_vel_yaw_raw = 0.5 * wrap_to_pi(command_heading - heading)  # type:ignore
             ang_vel_yaw = jnp.clip(ang_vel_yaw_raw, -1.0, 1.0)  # type:ignore
         else:
@@ -331,12 +331,17 @@ class MuJoCoEnv(PipelineEnv):
         )
 
         reward_dict = self._compute_reward(pipeline_state, state.info, action)  # type:ignore
-        reward = jnp.clip(sum(reward_dict.values()) * self.dt, 0.0, 10000.0)  # type:ignore
+        reward = sum(reward_dict.values()) * self.dt  # type:ignore
+        # reward = jnp.clip(reward, 0.0)  # type:ignore
 
         done_contact = state.info["contact_forces"][
             0, self.termination_contact_indices, :
         ]
         done = jnp.any(jnp.linalg.norm(done_contact, axis=-1) > 1.0, axis=0)  # type:ignore
+
+        # jax.debug.print("reward: {}", reward)  # type:ignore
+        # jax.debug.print("stance_mask: {}", stance_mask)  # type:ignore
+        # jax.debug.print("done: {}", done)  # type:ignore
 
         state.info["rng"] = rng
         state.info["last_last_act"] = state.info["last_act"].copy()
@@ -412,13 +417,18 @@ class MuJoCoEnv(PipelineEnv):
             (self.num_colliders, self.num_colliders - 1, 3)
         )
         for i in range(data.ncon):
-            contact_force = support.contact_force(self.sys, data, i, True)[:3]
+            contact_force = jax.jit(  # type:ignore
+                support.contact_force, static_argnums=(2, 3)
+            )(self.sys, data, i, True)[:3]
+
+            # Update the contact forces for both body_indices_1 and body_indices_2
+            # Add instead of set to accumulate forces from multiple contacts
             contact_forces_global = contact_forces_global.at[
                 body_indices_1[i], body_indices_2[i]
-            ].set(contact_force)  # type:ignore
+            ].add(contact_force)  # type:ignore
             contact_forces_global = contact_forces_global.at[
                 body_indices_2[i], body_indices_1[i]
-            ].set(contact_force)  # type:ignore
+            ].add(contact_force)  # type:ignore
 
         stance_mask = (
             contact_forces_global[0, self.feet_indices, 2]

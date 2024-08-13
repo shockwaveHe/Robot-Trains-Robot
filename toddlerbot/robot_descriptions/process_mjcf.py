@@ -460,9 +460,9 @@ def parse_urdf_body_link(root: ET.Element, root_link_name: str):
             float(x) for x in [inertia["ixx"], inertia["iyy"], inertia["izz"]]
         ]
         properties = {
-            "pos": " ".join([f"{x:.6f}" for x in pos]),
-            "quat": " ".join([f"{x:.6f}" for x in quat]),
-            "mass": f"{float(mass):.8f}",
+            "pos": " ".join([f"{round_to_sig_digits(x, 6)}" for x in pos]),
+            "quat": " ".join([f"{round_to_sig_digits(x, 6)}" for x in quat]),
+            "mass": f"{round_to_sig_digits(float(mass), 6)}",
             "diaginertia": " ".join(f"{x:.5e}" for x in diaginertia),
         }
         return properties
