@@ -129,17 +129,17 @@ def evaluate(
     )
     params = model.load_params(os.path.join("results", run_name, "policy"))
     inference_fn = make_inference_fn(params)
-    jit_inference_fn = jax.jit(inference_fn)  # type: ignore
-
-    command = jnp.array([1.0, 0.0, 0.0, 0.0])  # type: ignore
 
     # initialize the state
     # jit_reset = env.reset
     # jit_step = env.step
+    # jit_inference_fn = inference_fn
     jit_reset = jax.jit(env.reset)  # type: ignore
     jit_step = jax.jit(env.step)  # type: ignore
+    jit_inference_fn = jax.jit(inference_fn)  # type: ignore
 
     rng = jax.random.PRNGKey(0)  # type: ignore
+    command = jnp.array([1.0, 0.0, 0.0, 0.0])  # type: ignore
     state = jit_reset(rng)  # type: ignore
     state.info["command"] = command  # type: ignore
     rollout = [state.pipeline_state]  # type: ignore
@@ -200,7 +200,7 @@ if __name__ == "__main__":
     # train_cfg = PPOConfig(num_timesteps=100_000_000, num_evals=100)
 
     time_str = time.strftime("%Y%m%d_%H%M%S")
-    # time_str = "20240813_115835"
+    # time_str = "20240813_130046"
     run_name = f"{robot.name}_{motion_ref.name}_ppo_{time_str}"
 
     make_networks_factory = functools.partial(
