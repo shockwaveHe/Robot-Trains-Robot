@@ -121,14 +121,12 @@ def train(
 def evaluate(
     env: MuJoCoEnv, make_networks_factory: Any, train_cfg: PPOConfig, run_name: str
 ):
-    train_cfg.num_timesteps = 0
-    make_inference_fn, _, _ = ppo.train(  # type: ignore
-        environment=env,
-        network_factory=make_networks_factory,  # type: ignore
-        **train_cfg.__dict__,
+    ppo_network = make_networks_factory(
+        env.obs_size, env.privileged_obs_size, env.action_size
     )
+    make_policy = ppo_networks.make_inference_fn(ppo_network)
     params = model.load_params(os.path.join("results", run_name, "policy"))
-    inference_fn = make_inference_fn(params)
+    inference_fn = make_policy(params)
 
     # initialize the state
     # jit_reset = env.reset

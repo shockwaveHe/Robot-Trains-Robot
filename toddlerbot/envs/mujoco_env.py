@@ -95,6 +95,9 @@ class MuJoCoEnv(PipelineEnv):
                 ].set(geom_id)  # type:ignore
 
         self.contact_force_threshold = self.cfg.rewards.contact_force_threshold
+        # This leads to CPU memory leak
+        # self.jit_contact_force = jax.jit(support.contact_force, static_argnums=(2, 3))  # type:ignore
+        self.jit_contact_force = support.contact_force
 
         # joint indices
         joint_indices = np.array(  # type:ignore
@@ -148,6 +151,7 @@ class MuJoCoEnv(PipelineEnv):
         self.num_privileged_obs_history = self.cfg.env.c_frame_stack
         self.obs_size = self.cfg.env.num_single_obs
         self.privileged_obs_size = self.cfg.env.num_single_privileged_obs
+        self.obs_scales = self.cfg.normalization.scales
 
         # actions
         self.action_scale = self.cfg.control.action_scale
@@ -429,10 +433,7 @@ class MuJoCoEnv(PipelineEnv):
             (self.num_colliders, self.num_colliders - 1, 3)
         )
         for i in range(data.ncon):
-            contact_force = jax.jit(  # type:ignore
-                support.contact_force, static_argnums=(2, 3)
-            )(self.sys, data, i, True)[:3]
-
+            contact_force = self.jit_contact_force(self.sys, data, i, True)[:3]  # type:ignore
             # Update the contact forces for both body_indices_1 and body_indices_2
             # Add instead of set to accumulate forces from multiple contacts
             contact_forces_global = contact_forces_global.at[
@@ -463,20 +464,27 @@ class MuJoCoEnv(PipelineEnv):
         joint_pos_diff = joint_pos - info["state_ref"][7 + 6 : 7 + 6 + self.sys.nu]
 
         obs = jnp.concatenate(  # type:ignore
-            [info["phase_signal"], info["command"][:3], joint_pos, joint_vel, action]
+            [
+                info["phase_signal"],
+                info["command"][:3],
+                joint_pos * self.obs_scales.dof_pos,
+                joint_vel * self.obs_scales.dof_vel,
+                action,
+            ]
         )
         # TODO: check each field. Multiply scales, Add push, friction
         privileged_obs = jnp.concatenate(  # type:ignore
             [
                 info["phase_signal"],
                 info["command"][:3],
-                joint_pos,
-                joint_vel,
+                joint_pos * self.obs_scales.dof_pos,
+                joint_vel * self.obs_scales.dof_vel,
                 action,
                 # pipeline_state.cinert[1:].ravel(),  # type:ignore
                 # pipeline_state.cvel[1:].ravel(),  # type:ignore
                 joint_pos_diff,
-                pipeline_state.qd[:6],
+                pipeline_state.qd[:3] * self.obs_scales.lin_vel,
+                pipeline_state.qd[3:6] * self.obs_scales.ang_vel,
                 info["stance_mask"],
                 info["state_ref"][-2:],
             ]
