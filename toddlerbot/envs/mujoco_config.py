@@ -32,7 +32,7 @@ class EnvConfig:
 @dataclass
 class ControlConfig:
     action_scale: float = 0.25
-    decimation: int = 10
+    decimation: int = 5
 
 
 @dataclass
@@ -78,14 +78,14 @@ class RewardScales:
     # feet_distance: float = 0.2
     # feet_slip: float = -0.05
     # collision: float = -1.0
-    torso_pos: float = 1.0
-    torso_quat: float = 1.0
+    torso_pos: float = 0.0  # 1.0
+    torso_quat: float = 0.0  # 1.0
     lin_vel_xy: float = 1.0
     lin_vel_z: float = 1.0
     ang_vel_xy: float = 0.5
     ang_vel_z: float = 0.5
     leg_joint_pos: float = 0.015
-    leg_joint_vel: float = 1e-4
+    leg_joint_vel: float = 0.0  # 1e-4
     arm_joint_pos: float = 0.1
     arm_joint_vel: float = 1e-3
     neck_joint_pos: float = 0.1
@@ -103,7 +103,7 @@ class RewardScales:
     neck_action_acc: float = 5e-3
     waist_action_rate: float = 5e-3
     waist_action_acc: float = 5e-3
-    survival: float = 1.0
+    survival: float = 0.0  # 1.0
 
 
 @dataclass

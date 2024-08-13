@@ -451,15 +451,15 @@
     <position name="left_hip_yaw_drive" joint="left_hip_yaw_driven" kp="18.75" gear="0.904762" ctrlrange="-1.5708 1.5708" class="XC330" />
     <position name="left_hip_roll" joint="left_hip_roll" kp="18.75" ctrlrange="-0.785398 1.5708" class="2XC430" />
     <position name="left_hip_pitch" joint="left_hip_pitch" kp="18.75" ctrlrange="-1.5708 1.5708" class="2XC430" />
+    <position name="left_knee_act" joint="left_knee_act" kp="18.75" ctrlrange="0 1.91986" class="XM430" />
     <position name="left_ank_act_1" joint="left_ank_act_1" kp="18.75" ctrlrange="-1.309 1.309" class="XC330" />
     <position name="left_ank_act_2" joint="left_ank_act_2" kp="18.75" ctrlrange="-1.309 1.309" class="XC330" />
-    <position name="left_knee_act" joint="left_knee_act" kp="18.75" ctrlrange="0 1.91986" class="XM430" />
     <position name="right_hip_yaw_drive" joint="right_hip_yaw_driven" kp="18.75" gear="0.904762" ctrlrange="-1.5708 1.5708" class="XC330" />
     <position name="right_hip_roll" joint="right_hip_roll" kp="18.75" ctrlrange="-0.785398 1.5708" class="2XC430" />
     <position name="right_hip_pitch" joint="right_hip_pitch" kp="18.75" ctrlrange="-1.5708 1.5708" class="2XC430" />
+    <position name="right_knee_act" joint="right_knee_act" kp="18.75" ctrlrange="-1.91986 0" class="XM430" />
     <position name="right_ank_act_1" joint="right_ank_act_1" kp="18.75" ctrlrange="-1.309 1.309" class="XC330" />
     <position name="right_ank_act_2" joint="right_ank_act_2" kp="18.75" ctrlrange="-1.309 1.309" class="XC330" />
-    <position name="right_knee_act" joint="right_knee_act" kp="18.75" ctrlrange="-1.91986 0" class="XM430" />
     <position name="left_sho_pitch" joint="left_sho_pitch" kp="18.75" ctrlrange="-1.5708 1.5708" class="XC430" />
     <position name="left_sho_roll" joint="left_sho_roll" kp="18.75" ctrlrange="-1.5708 0" class="2XL430" />
     <position name="left_sho_yaw_drive" joint="left_sho_yaw_driven" kp="18.75" gear="1.0" ctrlrange="-1.5708 1.5708" class="2XL430" />
@@ -523,6 +523,9 @@
       <geom type="sphere" group="3" />
     </default>
   </default>
+  <keyframe>
+    <key name="home" qpos="0 0 0.3442 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -0.5111485 1 -1 -1 -0.4888515 0 0 0.469 0 -0.467 -0.476807 0.483937 1 -1 -1 0 0 0 0.5111485 -1 1 1 -0.4888515 0 0 -0.469 0 0.467 0.476807 -0.483937 -1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0" />
+  </keyframe>
   <contact>
     <pair geom1="torso_collision" geom2="floor" />
     <pair geom1="ank_roll_link_collision" geom2="floor" />

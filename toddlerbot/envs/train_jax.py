@@ -68,7 +68,9 @@ def log(
     return log_data
 
 
-def train(env: MuJoCoEnv, train_cfg: PPOConfig, run_name: str):
+def train(
+    env: MuJoCoEnv, make_networks_factory: Any, train_cfg: PPOConfig, run_name: str
+):
     exp_folder_path = os.path.join("results", run_name)
     os.makedirs(exp_folder_path, exist_ok=True)
 
@@ -86,12 +88,6 @@ def train(env: MuJoCoEnv, train_cfg: PPOConfig, run_name: str):
         save_args = orbax_utils.save_args_from_target(params)
         path = os.path.abspath(os.path.join(exp_folder_path, f"{current_step}"))
         orbax_checkpointer.save(path, params, force=True, save_args=save_args)  # type: ignore
-
-    make_networks_factory = functools.partial(
-        ppo_networks.make_ppo_networks,
-        policy_hidden_layer_sizes=(512, 512, 512),
-        value_hidden_layer_sizes=(512, 512, 512),
-    )
 
     train_fn = functools.partial(  # type: ignore
         ppo.train,
@@ -122,13 +118,9 @@ def train(env: MuJoCoEnv, train_cfg: PPOConfig, run_name: str):
     print(f"time to train: {times[-1] - times[1]}")
 
 
-def evaluate(env: MuJoCoEnv, train_cfg: PPOConfig, run_name: str):
-    make_networks_factory = functools.partial(
-        ppo_networks.make_ppo_networks,
-        policy_hidden_layer_sizes=(512, 512, 512),
-        value_hidden_layer_sizes=(512, 512, 512),
-    )
-
+def evaluate(
+    env: MuJoCoEnv, make_networks_factory: Any, train_cfg: PPOConfig, run_name: str
+):
     train_cfg.num_timesteps = 0
     make_inference_fn, _, _ = ppo.train(  # type: ignore
         environment=env,
@@ -153,8 +145,8 @@ def evaluate(env: MuJoCoEnv, train_cfg: PPOConfig, run_name: str):
     rollout = [state.pipeline_state]  # type: ignore
 
     # grab a trajectory
-    n_steps = 200
-    render_every = 1
+    n_steps = 500
+    render_every = 2
 
     for _ in tqdm(range(n_steps), desc="Evaluating"):
         act_rng, rng = jax.random.split(rng)  # type: ignore
@@ -205,12 +197,18 @@ if __name__ == "__main__":
     env = MuJoCoEnv(robot, motion_ref, cfg)
 
     train_cfg = PPOConfig()
-    # train_cfg = PPOConfig(num_timesteps=1_000_000)
+    # train_cfg = PPOConfig(num_timesteps=100_000_000, num_evals=100)
 
     time_str = time.strftime("%Y%m%d_%H%M%S")
-    # time_str = "20240812_184307"
+    # time_str = "20240812_230209"
     run_name = f"{robot.name}_{motion_ref.name}_ppo_{time_str}"
 
-    train(env, train_cfg, run_name)
+    make_networks_factory = functools.partial(
+        ppo_networks.make_ppo_networks,
+        policy_hidden_layer_sizes=(512, 512, 512),
+        value_hidden_layer_sizes=(512, 512, 512),
+    )
 
-    evaluate(env, train_cfg, run_name)
+    # train(env, make_networks_factory,train_cfg, run_name)
+
+    evaluate(env, make_networks_factory, train_cfg, run_name)

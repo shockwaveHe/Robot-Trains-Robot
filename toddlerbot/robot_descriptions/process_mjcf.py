@@ -195,6 +195,33 @@ def update_geom_classes(root: ET.Element, geom_keys: List[str]):
                 del geom.attrib[attr]
 
 
+def add_keyframes(root: ET.Element, offsets: Dict[str, float], is_fixed: bool):
+    # Create or find the <default> element
+    keyframe = root.find("keyframe")
+    if keyframe is not None:
+        root.remove(keyframe)
+
+    keyframe = ET.SubElement(root, "keyframe")
+
+    if is_fixed:
+        qpos_str = ""
+    else:
+        qpos_str = f"0 0 {offsets['torso_z']} 1 0 0 0 "
+
+    ET.SubElement(
+        keyframe,
+        "key",
+        {
+            "name": "home",
+            "qpos": qpos_str
+            + "0 0 0 0 0 0 0 0 "
+            + "0 0 0 -0.5111485 1 -1 -1 -0.4888515 0 0 0.469 0 -0.467 -0.476807 0.483937 1 -1 -1 "
+            + "0 0 0 0.5111485 -1 1 1 -0.4888515 0 0 -0.469 0 0.467 0.476807 -0.483937 -1 1 1 "
+            + "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0",
+        },
+    )
+
+
 def add_default_settings(root: ET.Element):
     # Create or find the <default> element
     default = root.find("default")
@@ -405,41 +432,44 @@ def add_actuators_to_mjcf(root: ET.Element, joints_config: Dict[str, Any]):
 
     actuator = ET.SubElement(root, "actuator")
 
-    for joint in root.findall(".//joint"):
-        joint_name = joint.get("name")
-        if joint_name in joints_config and "spec" in joints_config[joint_name]:
-            if "_drive" in joint_name:
-                joint_driven_name = joint_name.replace("_drive", "_driven")
-                joint_driven = root.find(f".//joint[@name='{joint_driven_name}']")
-                if joint_driven is None:
-                    raise ValueError(
-                        f"The driven joint {joint_driven_name} is not found"
-                    )
+    for joint_name, joint_config in joints_config.items():
+        if "spec" not in joint_config:
+            continue
 
-                position = ET.SubElement(
-                    actuator,
-                    "position",
-                    name=joint_name,
-                    joint=joint_driven_name,
-                    kp=str(joints_config[joint_name]["kp_sim"]),
-                    gear=str(
-                        round_to_sig_digits(
-                            1 / joints_config[joint_name]["gear_ratio"], 6
-                        )
-                    ),
-                    ctrlrange=joint_driven.get("range", "-3.141592 3.141592"),
-                )
-            else:
-                position = ET.SubElement(
-                    actuator,
-                    "position",
-                    name=joint_name,
-                    joint=joint_name,
-                    kp=str(joints_config[joint_name]["kp_sim"]),
-                    ctrlrange=joint.get("range", "-3.141592 3.141592"),
-                )
+        if "_drive" in joint_name:
+            joint_driven_name = joint_name.replace("_drive", "_driven")
+            joint_driven: ET.Element | None = root.find(
+                f".//joint[@name='{joint_driven_name}']"
+            )
+            if joint_driven is None:
+                raise ValueError(f"The driven joint {joint_driven_name} is not found")
 
-            position.set("class", joints_config[joint_name]["spec"])
+            position = ET.SubElement(
+                actuator,
+                "position",
+                name=joint_name,
+                joint=joint_driven_name,
+                kp=str(joints_config[joint_name]["kp_sim"]),
+                gear=str(
+                    round_to_sig_digits(1 / joints_config[joint_name]["gear_ratio"], 6)
+                ),
+                ctrlrange=joint_driven.get("range", "-3.141592 3.141592"),
+            )
+        else:
+            joint: ET.Element | None = root.find(f".//joint[@name='{joint_name}']")
+            if joint is None:
+                raise ValueError(f"The joint {joint_name} is not found")
+
+            position = ET.SubElement(
+                actuator,
+                "position",
+                name=joint_name,
+                joint=joint_name,
+                kp=str(joints_config[joint_name]["kp_sim"]),
+                ctrlrange=joint.get("range", "-3.141592 3.141592"),
+            )
+
+        position.set("class", joints_config[joint_name]["spec"])
 
 
 def parse_urdf_body_link(root: ET.Element, root_link_name: str):
@@ -642,7 +672,10 @@ def process_mjcf_fixed_file(root: ET.Element, robot: Robot):
     if robot.config["general"]["is_ankle_closed_loop"]:
         add_ankle_constraints(root, robot.config["general"]["offsets"])
 
+    add_keyframes(root, robot.config["general"]["offsets"], True)
+
     add_default_settings(root)
+
     # include_all_contacts(root)
     exclude_all_contacts(root)
 
@@ -680,6 +713,7 @@ def get_mjcf_files(robot_name: str):
 
         mjcf_path = os.path.join(robot_dir, robot_name + ".xml")
         add_body_link(xml_root, urdf_path, robot.config["general"]["offsets"])
+        add_keyframes(xml_root, robot.config["general"]["offsets"], False)
         add_contacts(xml_root, robot.collision_config)
         xml_tree.write(mjcf_path)
 
@@ -691,7 +725,7 @@ def main():
     parser.add_argument(
         "--robot",
         type=str,
-        default="sysID_XC430",
+        default="toddlerbot",
         help="The name of the robot. Need to match the name in robot_descriptions.",
     )
     args = parser.parse_args()
