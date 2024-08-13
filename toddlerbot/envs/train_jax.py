@@ -200,7 +200,7 @@ if __name__ == "__main__":
     # train_cfg = PPOConfig(num_timesteps=100_000_000, num_evals=100)
 
     time_str = time.strftime("%Y%m%d_%H%M%S")
-    # time_str = "20240812_230209"
+    # time_str = "20240813_115835"
     run_name = f"{robot.name}_{motion_ref.name}_ppo_{time_str}"
 
     make_networks_factory = functools.partial(
@@ -209,6 +209,6 @@ if __name__ == "__main__":
         value_hidden_layer_sizes=(512, 512, 512),
     )
 
-    # train(env, make_networks_factory,train_cfg, run_name)
+    train(env, make_networks_factory, train_cfg, run_name)
 
     evaluate(env, make_networks_factory, train_cfg, run_name)

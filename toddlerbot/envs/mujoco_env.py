@@ -129,15 +129,10 @@ class MuJoCoEnv(PipelineEnv):
         self.waist_motor_indices = self.motor_indices[motor_groups == "waist"]
 
         # default qpos
-        default_qpos = self.sys.mj_model.keyframe("home").qpos  # type:ignore
-        self.default_qpos = jnp.array(default_qpos)  # type:ignore
+        self.default_qpos = jnp.array(self.sys.mj_model.keyframe("home").qpos)  # type:ignore
 
         # default action
-        joint_angles: Dict[str, float] = dict(
-            zip(self.robot.joint_ordering, default_qpos[7 + joint_indices].tolist())  # type:ignore
-        )  # type:ignore
-        motor_angles = self.robot.joint_to_motor_angles(joint_angles)
-        self.default_action = jnp.array(list(motor_angles.values()))  # type:ignore
+        self.default_action = jnp.array(self.sys.mj_model.keyframe("home").ctrl)  # type:ignore
 
         # commands
         self.heading_command = self.cfg.commands.heading_command
@@ -378,14 +373,14 @@ class MuJoCoEnv(PipelineEnv):
         )
 
         state.metrics.update(reward_dict)  # type:ignore
-        com_before = state.pipeline_state.subtree_com[1]  # type:ignore
-        com_after = pipeline_state.subtree_com[1]  # type:ignore
-        velocity = (com_after - com_before) / self.dt  # type:ignore
-        state.metrics["x_position"] = com_after[0]
-        state.metrics["y_position"] = com_after[1]
-        state.metrics["distance_from_origin"] = jnp.linalg.norm(com_after)  # type:ignore
-        state.metrics["x_velocity"] = velocity[0]
-        state.metrics["y_velocity"] = velocity[1]
+        # com_before = state.pipeline_state.subtree_com[1]  # type:ignore
+        # com_after = pipeline_state.subtree_com[1]  # type:ignore
+        # velocity = (com_after - com_before) / self.dt  # type:ignore
+        # state.metrics["x_position"] = com_after[0]
+        # state.metrics["y_position"] = com_after[1]
+        # state.metrics["distance_from_origin"] = jnp.linalg.norm(com_after)  # type:ignore
+        # state.metrics["x_velocity"] = velocity[0]
+        # state.metrics["y_velocity"] = velocity[1]
 
         return state.replace(  # type:ignore
             pipeline_state=pipeline_state,

@@ -93,16 +93,16 @@ class RewardScales:
     waist_joint_pos: float = 0.1
     waist_joint_vel: float = 1e-3
     contact: float = 1.0
-    joint_torque: float = 1e-2
-    joint_acc: float = 2.5e-6
-    leg_action_rate: float = 1.5e-3
-    leg_action_acc: float = 5e-4
-    arm_action_rate: float = 5e-3
-    arm_action_acc: float = 5e-3
-    neck_action_rate: float = 5e-3
-    neck_action_acc: float = 5e-3
-    waist_action_rate: float = 5e-3
-    waist_action_acc: float = 5e-3
+    joint_torque: float = 0.0  # 1e-2
+    joint_acc: float = 0.0  # 2.5e-7
+    leg_action_rate: float = 10.0  # .5e-3
+    leg_action_acc: float = 0.0  # 5e-4
+    arm_action_rate: float = 0.0  # 5e-3
+    arm_action_acc: float = 0.0  # 5e-3
+    neck_action_rate: float = 0.0  # 5e-3
+    neck_action_acc: float = 0.0  # 5e-3
+    waist_action_rate: float = 0.0  # 5e-3
+    waist_action_acc: float = 0.0  # 5e-3
     survival: float = 0.0  # 1.0
 
 
