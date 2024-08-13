@@ -39,12 +39,14 @@ class MuJoCoEnv(PipelineEnv):
 
         mj_model = mujoco.MjModel.from_xml_path(xml_path)  # type: ignore
 
-        mj_model.opt.iterations = 6  # type: ignore
-        mj_model.opt.ls_iterations = 6  # type: ignore
+        mj_model.opt.timestep = cfg.mj.timestep  # type: ignore
+        mj_model.opt.solver = cfg.mj.solver  # type: ignore
+        mj_model.opt.iterations = cfg.mj.iterations  # type: ignore
+        mj_model.opt.ls_iterations = cfg.mj.ls_iterations  # type: ignore
 
         sys = mjcf.load_model(mj_model)  # type: ignore
 
-        kwargs["n_frames"] = cfg.control.decimation
+        kwargs["n_frames"] = cfg.action.n_frames
         kwargs["backend"] = "mjx"
 
         super().__init__(sys, **kwargs)  # type: ignore
@@ -138,7 +140,7 @@ class MuJoCoEnv(PipelineEnv):
         self.default_action = jnp.array(self.sys.mj_model.keyframe("home").ctrl)  # type:ignore
 
         # commands
-        self.heading_command = self.cfg.commands.heading_command
+        self.has_heading_command = self.cfg.commands.has_heading_command
         # x vel, y vel, yaw vel, heading
         self.num_commands = self.cfg.commands.num_commands
         self.command_ranges = asdict(self.cfg.commands.ranges)
@@ -147,15 +149,14 @@ class MuJoCoEnv(PipelineEnv):
 
         # observation
         self.state_ref_size = 7 + 6 + 2 * self.sys.nu + 2
-        self.num_obs_history = self.cfg.env.frame_stack
-        self.num_privileged_obs_history = self.cfg.env.c_frame_stack
-        self.obs_size = self.cfg.env.num_single_obs
-        self.privileged_obs_size = self.cfg.env.num_single_privileged_obs
-        self.obs_scales = self.cfg.normalization.scales
+        self.num_obs_history = self.cfg.obs.frame_stack
+        self.num_privileged_obs_history = self.cfg.obs.c_frame_stack
+        self.obs_size = self.cfg.obs.num_single_obs
+        self.privileged_obs_size = self.cfg.obs.num_single_privileged_obs
+        self.obs_scales = self.cfg.obs.scales
 
         # actions
-        self.action_scale = self.cfg.control.action_scale
-        self.clip_actions = self.cfg.normalization.clip_actions
+        self.action_scale = self.cfg.action.action_scale
         self.cycle_time = self.cfg.rewards.cycle_time
 
         # self.feet_air_time = torch.zeros(
@@ -273,7 +274,7 @@ class MuJoCoEnv(PipelineEnv):
         )
         # Determine whether to use heading or angular velocity command
         heading = jnp.zeros(1)  # type:ignore
-        if self.heading_command:
+        if self.has_heading_command:
             command_heading = jax.random.uniform(  # type:ignore
                 rng_3,
                 (1,),
@@ -314,12 +315,18 @@ class MuJoCoEnv(PipelineEnv):
         # qvel = qvel.at[:2].set(kick * self._kick_vel + qvel[:2])
         # state = state.tree_replace({"pipeline_state.qd": qvel})
 
-        # TODO: check the action scaling
-        target_action = self.default_action + action * self.action_scale
-        # TODO: action clipping should be based on the motor limits
-        target_action = jnp.clip(target_action, -self.clip_actions, self.clip_actions)  # type:ignore
+        # TODO: Refactor this part to allow the input of manipulation policy
+        zero_action = jnp.zeros_like(action)  # type:ignore
+        action = action.at[self.neck_motor_indices].set(  # type:ignore
+            zero_action[self.neck_motor_indices]
+        )
+        action = action.at[self.arm_motor_indices].set(  # type:ignore
+            zero_action[self.arm_motor_indices]
+        )
 
-        pipeline_state = self.pipeline_step(state.pipeline_state, target_action)
+        motor_target = self.default_action + action * self.action_scale
+
+        pipeline_state = self.pipeline_step(state.pipeline_state, motor_target)
 
         phase = state.info["step"] * self.dt / self.cycle_time
         phase_signal = jnp.array(  # type:ignore
@@ -681,6 +688,41 @@ class MuJoCoEnv(PipelineEnv):
             jnp.float32
         )
         return reward
+
+    # def _reward_feet_air_time(
+    #     self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
+    # ) -> jax.Array:
+    #     # Reward air time.
+    #     rew_air_time = jnp.sum((air_time - 0.1) * first_contact)
+    #     rew_air_time *= (
+    #         math.normalize(commands[:2])[1] > 0.05
+    #     )  # no reward for zero command
+    #     return rew_air_time
+
+    # def _reward_stand_still(
+    #     self,
+    #     commands: jax.Array,
+    #     joint_angles: jax.Array,
+    # ) -> jax.Array:
+    #     # Penalize motion at zero commands
+    #     return jp.sum(jp.abs(joint_angles - self._default_pose)) * (
+    #         math.normalize(commands[:2])[1] < 0.1
+    #     )
+
+    # def _reward_foot_slip(
+    #     self, pipeline_state: base.State, contact_filt: jax.Array
+    # ) -> jax.Array:
+    #     # get velocities at feet which are offset from lower legs
+    #     # pytype: disable=attribute-error
+    #     pos = pipeline_state.site_xpos[self._feet_site_id]  # feet position
+    #     feet_offset = pos - pipeline_state.xpos[self._lower_leg_body_id]
+    #     # pytype: enable=attribute-error
+    #     offset = base.Transform.create(pos=feet_offset)
+    #     foot_indices = self._lower_leg_body_id - 1  # we got rid of the world body
+    #     foot_vel = offset.vmap().do(pipeline_state.xd.take(foot_indices)).vel
+
+    #     # Penalize large feet velocity for feet that are in contact with the ground.
+    #     return jp.sum(jp.square(foot_vel[:, :2]) * contact_filt.reshape((-1, 1)))
 
     ##### Regularization rewards #####
 
