@@ -95,7 +95,7 @@ class RewardScales:
     contact: float = 1.0
     joint_torque: float = 0.0  # 1e-2
     joint_acc: float = 0.0  # 2.5e-7
-    leg_action_rate: float = 10.0  # .5e-3
+    leg_action_rate: float = 0.0  # .5e-3
     leg_action_acc: float = 0.0  # 5e-4
     arm_action_rate: float = 0.0  # 5e-3
     arm_action_acc: float = 0.0  # 5e-3
