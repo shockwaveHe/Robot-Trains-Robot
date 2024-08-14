@@ -19,11 +19,25 @@ def test_ref_motion():
 
     sim = MuJoCoSim(robot, fixed_base=True, vis_type="render")
     # sim.simulate(vis_type="render")
-    walk_ref = WalkReference(robot, joint_pos_ref_scale=1.0)
+
+    default_ctrl = sim.model.keyframe("home").ctrl  # type: ignore
+    default_joint_angles = robot.motor_to_joint_angles(
+        dict(zip(robot.motor_ordering, default_ctrl))  # type: ignore
+    )
+
+    walk_ref = WalkReference(
+        robot,
+        default_joint_pos=np.array(list(default_joint_angles.values())),  # type: ignore
+    )
 
     duration = 10
     for phase in tqdm(np.arange(0, duration, sim.dt), desc="Running Ref Motion"):  # type: ignore
-        state = walk_ref.get_state_ref(np.zeros(7), phase=phase, command=np.zeros(6))  # type: ignore
+        state = walk_ref.get_state_ref(
+            np.zeros(3),  # type: ignore
+            np.array([1, 0, 0, 0]),
+            phase=phase,
+            command=np.zeros(6),  # type: ignore
+        )
         sim.set_joint_angles(np.asarray(state[13 : 13 + len(robot.joint_ordering)]))  # type: ignore
         sim.step()
 

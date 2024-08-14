@@ -336,8 +336,8 @@ class Robot:
         for i in range(len(ank_act_zero)):
             f = R_ankle @ offsets["fE"][i]
             delta = offsets["m"][i] - f
-            k = delta - np.dot(n_hat, delta) * n_hat
-            d = delta - offsets["r"] * k / np.linalg.norm(k)
+            k = delta - np.dot(n_hat, delta) * n_hat  # type: ignore
+            d = delta - offsets["r"] * k / np.linalg.norm(k)  # type: ignore
             a = 2 * offsets["a"] * d[0]
             b = 2 * offsets["a"] * d[2]
             R = np.sqrt(a**2 + b**2)
@@ -413,8 +413,8 @@ class Robot:
         )
 
         # Filter out valid data points
-        points = np.column_stack((act_1_grid[valid_mask], act_2_grid[valid_mask]))
-        values = np.column_stack((roll_grid[valid_mask], pitch_grid[valid_mask]))
+        points = np.column_stack((act_1_grid[valid_mask], act_2_grid[valid_mask]))  # type: ignore
+        values = np.column_stack((roll_grid[valid_mask], pitch_grid[valid_mask]))  # type: ignore
 
         return points, values
 
@@ -427,14 +427,14 @@ class Robot:
         else:
             tri = self.ank_pos_tri
 
-        if tri.find_simplex(point) >= 0:
+        if tri.find_simplex(point) >= 0:  # type: ignore
             if direction == "forward":
                 ankle_pos = self.ankle_fk(point, side)
                 if np.isnan(ankle_pos).any():
                     return False
                 else:
                     ank_act_pos = self.ankle_ik(ankle_pos, side)
-                    if np.allclose(ank_act_pos, point, atol=1e-3):
+                    if np.allclose(ank_act_pos, point, atol=1e-3):  # type: ignore
                         return True
                     else:
                         return False

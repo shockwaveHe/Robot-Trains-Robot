@@ -4,7 +4,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import jax
 import mujoco  # type: ignore
 import numpy as np
-from brax import base  # type: ignore
+from brax import base, math  # type: ignore
 from brax.envs.base import PipelineEnv, State  # type: ignore
 from brax.io import mjcf  # type: ignore
 from jax import numpy as jnp
@@ -12,7 +12,6 @@ from mujoco import mjx  # type: ignore
 from mujoco.mjx._src import support  # type: ignore
 
 from toddlerbot.envs.mujoco_config import MuJoCoConfig
-from toddlerbot.motion_reference.motion_ref import MotionReference
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.jax_utils import quat_apply, quat_mult, wrap_to_pi
@@ -21,16 +20,16 @@ from toddlerbot.utils.jax_utils import quat_apply, quat_mult, wrap_to_pi
 class MuJoCoEnv(PipelineEnv):
     def __init__(
         self,
-        robot: Robot,
-        motion_ref: MotionReference,
+        env_name: str,
         cfg: MuJoCoConfig,
+        robot: Robot,
         fixed_base: bool = False,
         **kwargs: Any,
     ):
+        self.env_name = env_name
+        self.cfg = cfg
         self.robot = robot
         self.fixed_base = fixed_base
-        self.motion_ref = motion_ref
-        self.cfg = cfg
 
         if fixed_base:
             xml_path = find_robot_file_path(robot.name, suffix="_fixed_scene.xml")
@@ -75,15 +74,16 @@ class MuJoCoEnv(PipelineEnv):
             np.char.find(collider_names, self.robot.foot_name) >= 0
         )
         self.feet_indices = indices[foot_mask]
-        self.termination_contact_indices = indices[~foot_mask]
+        self.collision_contact_indices = indices[~foot_mask]
 
-        self.collider_body_ids = jnp.zeros(self.num_colliders, dtype=jnp.int32)  # type:ignore
-        for body_id in range(self.sys.nbody):  # type:ignore
-            body_name = support.id2name(self.sys, mujoco.mjtObj.mjOBJ_BODY, body_id)  # type:ignore
-            if body_name in collider_names:
-                self.collider_body_ids = self.collider_body_ids.at[
-                    collider_names.index(body_name)
-                ].set(body_id)  # type:ignore
+        self.collider_link_ids = jnp.zeros(self.num_colliders, dtype=jnp.int32)  # type:ignore
+        for link_id, link_name in enumerate(self.sys.link_names):  # type:ignore
+            if link_name in collider_names:
+                self.collider_link_ids = self.collider_link_ids.at[
+                    collider_names.index(link_name)
+                ].set(link_id)  # type:ignore
+
+        self.feet_link_ids = self.collider_link_ids[self.feet_indices]
 
         self.collider_geom_ids = jnp.zeros(self.num_colliders, dtype=jnp.int32)  # type:ignore
         for geom_id in range(self.sys.ngeom):  # type:ignore
@@ -94,8 +94,8 @@ class MuJoCoEnv(PipelineEnv):
             if "floor" in geom_name:
                 body_name = "floor"
             elif "collision" in geom_name:
-                body_id = self.sys.geom_bodyid[geom_id]  # type:ignore
-                body_name = support.id2name(self.sys, mujoco.mjtObj.mjOBJ_BODY, body_id)  # type:ignore
+                link_id = self.sys.geom_bodyid[geom_id]  # type:ignore
+                body_name = support.id2name(self.sys, mujoco.mjtObj.mjOBJ_BODY, link_id)  # type:ignore
             else:
                 continue
 
@@ -104,7 +104,7 @@ class MuJoCoEnv(PipelineEnv):
                     collider_names.index(body_name)
                 ].set(geom_id)  # type:ignore
 
-        self.contact_force_threshold = self.cfg.rewards.contact_force_threshold
+        self.contact_force_threshold = self.cfg.action.contact_force_threshold
         # This leads to CPU memory leak
         # self.jit_contact_force = jax.jit(support.contact_force, static_argnums=(2, 3))  # type:ignore
         self.jit_contact_force = support.contact_force
@@ -147,6 +147,19 @@ class MuJoCoEnv(PipelineEnv):
         # default action
         self.default_action = jnp.array(self.sys.mj_model.keyframe("home").ctrl)  # type:ignore
 
+        default_joint_angles = self.robot.motor_to_joint_angles(
+            dict(zip(self.robot.motor_ordering, self.default_action.tolist()))
+        )
+        default_joint_pos = jnp.array(list(default_joint_angles.values()))  # type:ignore
+        if self.env_name == "walk":
+            from toddlerbot.motion_reference.walk_ref import WalkReference
+
+            self.motion_ref = WalkReference(
+                self.robot, use_jax=True, default_joint_pos=default_joint_pos
+            )
+        else:
+            raise ValueError(f"Unknown env {self.env_name}")
+
         # commands
         self.has_heading_command = self.cfg.commands.has_heading_command
         # x vel, y vel, yaw vel, heading
@@ -165,7 +178,7 @@ class MuJoCoEnv(PipelineEnv):
 
         # actions
         self.action_scale = self.cfg.action.action_scale
-        self.cycle_time = self.cfg.rewards.cycle_time
+        self.cycle_time = self.cfg.action.cycle_time
 
         # self.feet_air_time = torch.zeros(
         #     self.num_envs,
@@ -218,6 +231,9 @@ class MuJoCoEnv(PipelineEnv):
             self.reward_functions.append(getattr(self, "_reward_" + name))
             self.reward_scales = self.reward_scales.at[i].set(scale)  # type:ignore
 
+        self.min_feet_distance = self.cfg.rewards.min_feet_distance
+        self.max_feet_distance = self.cfg.rewards.max_feet_distance
+
     def reset(self, rng: jax.Array) -> State:
         """Resets the environment to an initial state."""
         rng, key = jax.random.split(rng)  # type:ignore
@@ -234,7 +250,7 @@ class MuJoCoEnv(PipelineEnv):
             "phase_signal": jnp.zeros(2),  # type:ignore
             "state_ref": jnp.zeros(self.state_ref_size),  # type:ignore
             "contact_forces": jnp.zeros(  # type:ignore
-                (self.num_colliders, self.num_colliders - 1, 3)
+                (self.num_colliders, self.num_colliders, 3)
             ),
             "stance_mask": jnp.zeros(2),  # type:ignore
             "last_stance_mask": jnp.zeros(2),  # type:ignore
@@ -327,11 +343,14 @@ class MuJoCoEnv(PipelineEnv):
 
         # TODO: Refactor this part to allow the input of manipulation policy
         zero_action = jnp.zeros_like(action)  # type:ignore
+        action = action.at[self.arm_motor_indices].set(  # type:ignore
+            zero_action[self.arm_motor_indices]
+        )
         action = action.at[self.neck_motor_indices].set(  # type:ignore
             zero_action[self.neck_motor_indices]
         )
-        action = action.at[self.arm_motor_indices].set(  # type:ignore
-            zero_action[self.arm_motor_indices]
+        action = action.at[self.waist_motor_indices[-1]].set(  # type:ignore
+            zero_action[self.waist_motor_indices[-1]]
         )
 
         motor_target = self.default_action + action * self.action_scale
@@ -357,7 +376,6 @@ class MuJoCoEnv(PipelineEnv):
         state.info["state_ref"] = state_ref
         state.info["contact_forces"] = contact_forces
         state.info["stance_mask"] = stance_mask
-        state.info["feet_air_time"] += self.dt
 
         obs, privileged_obs = self._get_obs(
             pipeline_state, state.info, action, state.obs, state.privileged_obs
@@ -368,7 +386,7 @@ class MuJoCoEnv(PipelineEnv):
         # reward = jnp.clip(reward, 0.0)  # type:ignore
 
         done_contact = state.info["contact_forces"][
-            0, self.termination_contact_indices, :
+            0, self.collision_contact_indices, :
         ]
         done = jnp.any(jnp.linalg.norm(done_contact, axis=-1) > 1.0, axis=0)  # type:ignore
 
@@ -379,6 +397,7 @@ class MuJoCoEnv(PipelineEnv):
         state.info["last_last_act"] = state.info["last_act"].copy()
         state.info["last_act"] = action.copy()
         state.info["last_stance_mask"] = stance_mask.copy()
+        state.info["feet_air_time"] += self.dt
         state.info["feet_air_time"] *= 1.0 - stance_mask
         state.info["rewards"] = reward_dict
         state.info["step"] += 1
@@ -449,7 +468,7 @@ class MuJoCoEnv(PipelineEnv):
         body_indices_2 = jax.vmap(get_body_index)(geom2)
 
         contact_forces_global = jnp.zeros(  # type:ignore
-            (self.num_colliders, self.num_colliders - 1, 3)
+            (self.num_colliders, self.num_colliders, 3)
         )
         for i in range(data.ncon):
             contact_force = self.jit_contact_force(self.sys, data, i, True)[:3]  # type:ignore
@@ -480,7 +499,7 @@ class MuJoCoEnv(PipelineEnv):
         """Observes humanoid body position, velocities, and angles."""
         joint_pos = pipeline_state.q[7 + self.joint_indices]
         joint_vel = pipeline_state.qd[6 + self.joint_indices]
-        joint_pos_diff = joint_pos - info["state_ref"][7 + 6 : 7 + 6 + self.sys.nu]
+        joint_pos_diff = joint_pos - info["state_ref"][13 : 13 + self.sys.nu]
 
         obs = jnp.concatenate(  # type:ignore
             [
@@ -502,8 +521,8 @@ class MuJoCoEnv(PipelineEnv):
                 # pipeline_state.cinert[1:].ravel(),  # type:ignore
                 # pipeline_state.cvel[1:].ravel(),  # type:ignore
                 joint_pos_diff,
-                pipeline_state.qd[:3] * self.obs_scales.lin_vel,
-                pipeline_state.qd[3:6] * self.obs_scales.ang_vel,
+                pipeline_state.xd.vel[0] * self.obs_scales.lin_vel,
+                pipeline_state.xd.ang[0] * self.obs_scales.ang_vel,
                 info["stance_mask"],
                 info["state_ref"][-2:],
             ]
@@ -576,7 +595,10 @@ class MuJoCoEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ):
         """Reward for track linear velocity in xy"""
-        lin_vel_xy = pipeline_state.qd[:2]
+        local_vel = math.rotate(
+            pipeline_state.xd.vel[0], math.quat_inv(pipeline_state.x.rot[0])
+        )
+        lin_vel_xy = local_vel[:2]
         lin_vel_xy_ref = info["state_ref"][7:9]
         error = jnp.linalg.norm(lin_vel_xy - lin_vel_xy_ref, axis=-1)  # type:ignore
         reward = jnp.exp(-8.0 * error**2)  # type:ignore
@@ -586,7 +608,10 @@ class MuJoCoEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ):
         """Reward for track linear velocity in z"""
-        lin_vel_z = pipeline_state.qd[2]
+        local_vel = math.rotate(
+            pipeline_state.xd.vel[0], math.quat_inv(pipeline_state.x.rot[0])
+        )
+        lin_vel_z = local_vel[2]
         lin_vel_z_ref = info["state_ref"][9]
         error = lin_vel_z - lin_vel_z_ref
         reward = jnp.exp(-8.0 * error**2)  # type:ignore
@@ -596,7 +621,10 @@ class MuJoCoEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ):
         """Reward for track angular velocity in xy"""
-        ang_vel_xy = pipeline_state.qd[3:5]
+        local_vel = math.rotate(
+            pipeline_state.xd.ang[0], math.quat_inv(pipeline_state.x.rot[0])
+        )
+        ang_vel_xy = local_vel[:2]
         ang_vel_xy_ref = info["state_ref"][10:12]
         error = jnp.linalg.norm(ang_vel_xy - ang_vel_xy_ref, axis=-1)  # type:ignore
         reward = jnp.exp(-2.0 * error**2)  # type:ignore
@@ -606,7 +634,10 @@ class MuJoCoEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ):
         """Reward for track angular velocity in z"""
-        ang_vel_z = pipeline_state.qd[5]
+        local_vel = math.rotate(
+            pipeline_state.xd.ang[0], math.quat_inv(pipeline_state.x.rot[0])
+        )
+        ang_vel_z = local_vel[2]
         ang_vel_z_ref = info["state_ref"][12]
         error = ang_vel_z - ang_vel_z_ref
         reward = jnp.exp(-2.0 * error**2)  # type:ignore
@@ -615,82 +646,82 @@ class MuJoCoEnv(PipelineEnv):
     def _reward_leg_joint_pos(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
-        """Reward for track leg joint positions"""
+        """Reward for tracking leg joint positions"""
         joint_pos = pipeline_state.q[7 + self.leg_joint_indices]
-        joint_pos_ref = info["state_ref"][13 + self.leg_joint_indices]
-        error = jnp.linalg.norm(joint_pos - joint_pos_ref, axis=-1)  # type:ignore
-        reward = -(error**2)  # type:ignore
-        return reward  # type:ignore
+        joint_pos_ref = info["state_ref"][13 + self.leg_motor_indices]
+        error = joint_pos - joint_pos_ref
+        reward = -jnp.mean(error**2)  # type:ignore
+        return reward
 
     def _reward_leg_joint_vel(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
-        """Reward for track leg joint velocities"""
+        """Reward for tracking leg joint velocities"""
         joint_vel = pipeline_state.qd[6 + self.leg_joint_indices]
-        joint_vel_ref = info["state_ref"][13 + self.sys.nu + self.leg_joint_indices]
-        error = jnp.linalg.norm(joint_vel - joint_vel_ref, axis=-1)  # type:ignore
-        reward = -(error**2)  # type:ignore
-        return reward  # type:ignore
+        joint_vel_ref = info["state_ref"][13 + self.sys.nu + self.leg_motor_indices]
+        error = joint_vel - joint_vel_ref
+        reward = -jnp.mean(error**2)  # type:ignore
+        return reward
 
     def _reward_arm_joint_pos(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
         """Reward for tracking arm joint positions"""
         joint_pos = pipeline_state.q[7 + self.arm_joint_indices]
-        joint_pos_ref = info["state_ref"][13 + self.arm_joint_indices]
-        error = jnp.linalg.norm(joint_pos - joint_pos_ref, axis=-1)  # type:ignore
-        reward = -(error**2)  # type:ignore
-        return reward  # type:ignore
+        joint_pos_ref = info["state_ref"][13 + self.arm_motor_indices]
+        error = joint_pos - joint_pos_ref
+        reward = -jnp.mean(error**2)  # type:ignore
+        return reward
 
     def _reward_arm_joint_vel(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
         """Reward for tracking arm joint velocities"""
         joint_vel = pipeline_state.qd[6 + self.arm_joint_indices]
-        joint_vel_ref = info["state_ref"][13 + self.sys.nu + self.arm_joint_indices]
-        error = jnp.linalg.norm(joint_vel - joint_vel_ref, axis=-1)  # type:ignore
-        reward = -(error**2)  # type:ignore
-        return reward  # type:ignore
+        joint_vel_ref = info["state_ref"][13 + self.sys.nu + self.arm_motor_indices]
+        error = joint_vel - joint_vel_ref
+        reward = -jnp.mean(error**2)  # type:ignore
+        return reward
 
     def _reward_neck_joint_pos(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
-        """Reward for track neck joint positions"""
+        """Reward for tracking neck joint positions"""
         joint_pos = pipeline_state.q[7 + self.neck_joint_indices]
-        joint_pos_ref = info["state_ref"][13 + self.neck_joint_indices]
-        error = jnp.linalg.norm(joint_pos - joint_pos_ref, axis=-1)  # type:ignore
-        reward = -(error**2)  # type:ignore
-        return reward  # type:ignore
+        joint_pos_ref = info["state_ref"][13 + self.neck_motor_indices]
+        error = joint_pos - joint_pos_ref
+        reward = -jnp.mean(error**2)  # type:ignore
+        return reward
 
     def _reward_neck_joint_vel(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
-        """Reward for track neck joint velocities"""
+        """Reward for tracking neck joint velocities"""
         joint_vel = pipeline_state.qd[6 + self.neck_joint_indices]
-        joint_vel_ref = info["state_ref"][13 + self.sys.nu + self.neck_joint_indices]
-        error = jnp.linalg.norm(joint_vel - joint_vel_ref, axis=-1)  # type:ignore
-        reward = -(error**2)  # type:ignore
-        return reward  # type:ignore
+        joint_vel_ref = info["state_ref"][13 + self.sys.nu + self.neck_motor_indices]
+        error = joint_vel - joint_vel_ref
+        reward = -jnp.mean(error**2)  # type:ignore
+        return reward
 
     def _reward_waist_joint_pos(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
         """Reward for tracking waist joint positions"""
         joint_pos = pipeline_state.q[7 + self.waist_joint_indices]
-        joint_pos_ref = info["state_ref"][13 + self.waist_joint_indices]
-        error = jnp.linalg.norm(joint_pos - joint_pos_ref, axis=-1)  # type:ignore
-        reward = -(error**2)  # type:ignore
-        return reward  # type:ignore
+        joint_pos_ref = info["state_ref"][13 + self.waist_motor_indices]
+        error = joint_pos - joint_pos_ref
+        reward = -jnp.mean(error**2)  # type:ignore
+        return reward
 
     def _reward_waist_joint_vel(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
         """Reward for tracking waist joint velocities"""
         joint_vel = pipeline_state.qd[6 + self.waist_joint_indices]
-        joint_vel_ref = info["state_ref"][13 + self.sys.nu + self.waist_joint_indices]
-        error = jnp.linalg.norm(joint_vel - joint_vel_ref, axis=-1)  # type:ignore
-        reward = -(error**2)  # type:ignore
-        return reward  # type:ignore
+        joint_vel_ref = info["state_ref"][13 + self.sys.nu + self.waist_motor_indices]
+        error = joint_vel - joint_vel_ref
+        reward = -jnp.mean(error**2)  # type:ignore
+        return reward
 
     def _reward_feet_contact(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
@@ -707,7 +738,7 @@ class MuJoCoEnv(PipelineEnv):
         # Reward air time.
         contact_filter = jnp.logical_or(info["stance_mask"], info["last_stance_mask"])  # type:ignore
         first_contact = (info["feet_air_time"] > 0) * contact_filter
-        reward = jnp.sum((info["feet_air_time"] - 0.1) * first_contact)  # type:ignore
+        reward = jnp.sum(info["feet_air_time"] * first_contact)  # type:ignore
         # no reward for zero command
         reward *= jnp.linalg.norm(info["command"][:2]) > 0.05  # type:ignore
         return reward  # type:ignore
@@ -715,6 +746,7 @@ class MuJoCoEnv(PipelineEnv):
     def _reward_stand_still(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
+        # TODO
         # Penalize motion at zero commands
         qpos_diff = jnp.sum(  # type:ignore
             jnp.abs(  # type:ignore
@@ -729,53 +761,34 @@ class MuJoCoEnv(PipelineEnv):
     def _reward_feet_slip(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
-        feet_speed = pipeline_state.xd.vel[self.collider_body_ids[self.feet_indices]]  # type:ignore
+        feet_speed = pipeline_state.xd.vel[self.feet_link_ids]  # type:ignore
         feet_speed_square = jnp.square(feet_speed[:, :2])  # type:ignore
         reward = -jnp.sum(feet_speed_square * info["stance_mask"])  # type:ignore
         # Penalize large feet velocity for feet that are in contact with the ground.
         return reward  # type:ignore
 
-    # def _reward_feet_clearance(
-    #     self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
-    # ):
-    #     # Calculates reward based on the clearance of the swing leg from the ground during movement.
-    #     # Encourages appropriate lift of the feet during the swing phase of the gait.
-    #     # Compute feet contact mask
-    #     # Get the z-position of the feet and compute the change in z-position
-    #     feet_z = self.rigid_state[:, self.feet_indices, 2] - 0.05
-    #     delta_z = feet_z - self.last_feet_z
-    #     self.feet_height += delta_z
-    #     self.last_feet_z = feet_z
+    def _reward_feet_distance(
+        self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
+    ):
+        # Calculates the reward based on the distance between the feet.
+        # Penalize feet get close to each other or too far away.
+        feet_pos = pipeline_state.x.pos[self.feet_link_ids]
+        feet_dist = jnp.linalg.norm(feet_pos[0] - feet_pos[1])  # type:ignore
+        d_min = jnp.clip(feet_dist - self.min_feet_distance, max=0.0)  # type:ignore
+        d_max = jnp.clip(feet_dist - self.max_feet_distance, min=0.0)  # type:ignore
+        reward = (jnp.exp(-jnp.abs(d_min) * 100) + jnp.exp(-jnp.abs(d_max) * 100)) / 2  # type:ignore
+        return reward
 
-    #     # Compute swing mask
-    #     swing_mask = 1 - self._get_gait_phase()
-
-    #     # feet height should be closed to target feet height at the peak
-    #     rew_pos = (
-    #         torch.abs(self.feet_height - self.cfg.rewards.target_feet_height) < 0.01
-    #     )
-    #     rew_pos = torch.sum(rew_pos * swing_mask, dim=1)
-    #     self.feet_height *= ~contact
-    #     return rew_pos
-
-    # def _reward_feet_distance(self):
-    #     """
-    #     Calculates the reward based on the distance between the feet. Penalize feet get close to each other or too far away.
-    #     """
-    #     foot_pos = self.rigid_state[:, self.feet_indices, :2]
-    #     foot_dist = torch.norm(foot_pos[:, 0, :] - foot_pos[:, 1, :], dim=1)
-    #     fd = self.cfg.rewards.min_dist
-    #     max_df = self.cfg.rewards.max_dist
-    #     d_min = torch.clamp(foot_dist - fd, -0.5, 0.0)
-    #     d_max = torch.clamp(foot_dist - max_df, 0, 0.5)
-    #     return (
-    #         torch.exp(-torch.abs(d_min) * 100) + torch.exp(-torch.abs(d_max) * 100)
-    #     ) / 2
-
-    # def _reward_collision(self):
-    #     pass
-
-    ##### Regularization rewards #####
+    def _reward_collision(
+        self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
+    ):
+        collision_forces = jnp.linalg.norm(  # type:ignore
+            info["contact_forces"][1:, 1:],  # exclude the floor
+            axis=-1,
+        )
+        collision_contact = collision_forces > 0.1  # type:ignore
+        reward = -jnp.sum(collision_contact.astype(jnp.float32))  # type:ignore
+        return reward
 
     def _reward_joint_torque(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array

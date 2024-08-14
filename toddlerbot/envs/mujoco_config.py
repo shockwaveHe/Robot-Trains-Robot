@@ -34,32 +34,32 @@ class ObsConfig:
 @dataclass
 class ActionConfig:
     action_scale: float = 0.25
+    contact_force_threshold: float = 5.0
+    cycle_time: float = 0.64
     n_frames: int = 5
 
 
 @dataclass
 class RewardScales:
-    # feet_clearance: float = 1.0
-    # feet_distance: float = 0.2
-    # collision: float = -1.0
     torso_pos: float = 0.0  # 1.0
     torso_quat: float = 0.0  # 1.0
     lin_vel_xy: float = 1.0
-    lin_vel_z: float = 1.0
+    lin_vel_z: float = 0.5
     ang_vel_xy: float = 0.5
     ang_vel_z: float = 0.5
-    leg_joint_pos: float = 0.015
+    leg_joint_pos: float = 0.15
     leg_joint_vel: float = 0.0  # 1e-4
-    arm_joint_pos: float = 0.1
-    arm_joint_vel: float = 1e-3
-    neck_joint_pos: float = 0.1
-    neck_joint_vel: float = 1e-3
-    waist_joint_pos: float = 0.1
-    waist_joint_vel: float = 1e-3
-    feet_contact: float = 1.0
+    arm_joint_pos: float = 0.0  # 0.1
+    arm_joint_vel: float = 0.0  # 1e-3
+    neck_joint_pos: float = 0.0  # 0.1
+    neck_joint_vel: float = 0.0  # 1e-3
+    waist_joint_pos: float = 1.0
+    waist_joint_vel: float = 0.0  # 1e-3
+    feet_contact: float = 0.5
     feet_air_time: float = 1.0
-    stand_still: float = 1.0
-    feet_slip: float = 0.05
+    stand_still: float = 0.0  # 1.0
+    feet_slip: float = 1.0
+    feet_distance: float = 0.5
     joint_torque: float = 0.0  # 1e-2
     joint_acc: float = 0.0  # 2.5e-7
     leg_action_rate: float = 0.0  # .5e-3
@@ -70,14 +70,14 @@ class RewardScales:
     neck_action_acc: float = 0.0  # 5e-3
     waist_action_rate: float = 0.0  # 5e-3
     waist_action_acc: float = 0.0  # 5e-3
+    collision: float = 1.0
     survival: float = 0.0  # 1.0
 
 
 @dataclass
 class RewardsConfig:
-    # target_feet_height: float = 0.04
-    cycle_time: float = 0.64
-    contact_force_threshold: float = 5.0
+    min_feet_distance: float = 0.05
+    max_feet_distance: float = 0.15
     scales: RewardScales = RewardScales()
 
 

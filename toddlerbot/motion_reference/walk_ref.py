@@ -14,14 +14,25 @@ class WalkReference(MotionReference):
         self,
         robot: Robot,
         use_jax: bool = False,
-        joint_pos_ref_scale: float = 1.0,
+        default_joint_pos: Optional[npt.NDArray[np.float32] | jax.Array] = None,
+        default_joint_vel: Optional[npt.NDArray[np.float32] | jax.Array] = None,
+        max_knee_pitch: float = np.pi / 3,
         double_support_phase: float = 0.1,
     ):
-        super().__init__("walking", "periodic", robot, use_jax)
+        super().__init__("walk", "periodic", robot, use_jax)
+
+        self.default_joint_pos = default_joint_pos
+        self.default_joint_vel = default_joint_vel
+        if self.default_joint_pos is None:
+            self.knee_pitch_default = 0.0
+        else:
+            self.knee_pitch_default = self.default_joint_pos[
+                self.get_joint_idx("left_knee_pitch")
+            ]
+        self.max_knee_pitch = max_knee_pitch
+        self.double_support_phase = double_support_phase
 
         self.num_joints = len(self.robot.joint_ordering)
-        self.joint_pos_ref_scale = joint_pos_ref_scale
-        self.double_support_phase = double_support_phase
         self.shin_thigh_ratio = (
             self.robot.data_dict["offsets"]["knee_to_ank_pitch_z"]
             / self.robot.data_dict["offsets"]["hip_pitch_to_knee_z"]
@@ -49,8 +60,15 @@ class WalkReference(MotionReference):
         signal_left = backend.clip(sin_phase_signal, 0, None)  # type: ignore
         signal_right = backend.clip(sin_phase_signal, None, 0)  # type: ignore
 
-        joint_pos = backend.zeros(self.num_joints, dtype=backend.float32)  # type: ignore
-        joint_vel = backend.zeros(self.num_joints, dtype=backend.float32)  # type: ignore
+        if self.default_joint_pos is None:
+            joint_pos = backend.zeros(self.num_joints, dtype=backend.float32)  # type: ignore
+        else:
+            joint_pos = self.default_joint_pos.copy()  # type: ignore
+
+        if self.default_joint_vel is None:
+            joint_vel = backend.zeros(self.num_joints, dtype=backend.float32)  # type: ignore
+        else:
+            joint_vel = self.default_joint_vel.copy()  # type: ignore
 
         left_leg_angles = self.calculate_leg_angles(signal_left, True, backend)  # type: ignore
         right_leg_angles = self.calculate_leg_angles(signal_right, False, backend)  # type: ignore
@@ -58,8 +76,7 @@ class WalkReference(MotionReference):
         leg_angles = {**left_leg_angles, **right_leg_angles}
 
         if self.use_jax:
-            indices = np.array([self.get_joint_idx(name) for name in leg_angles])
-            indices = jnp.array(indices)  # type: ignore
+            indices = jnp.array([self.get_joint_idx(name) for name in leg_angles])  # type: ignore
             angles = jnp.array(list(leg_angles.values()))  # type: ignore
             joint_pos = joint_pos.at[indices].set(angles)  # type: ignore
         else:
@@ -67,15 +84,16 @@ class WalkReference(MotionReference):
                 joint_pos[self.get_joint_idx(name)] = angle
 
         double_support_mask = backend.abs(sin_phase_signal) < self.double_support_phase  # type: ignore
-        stance_mask = backend.zeros(2, dtype=backend.float32)  # type: ignore
+        joint_pos = backend.where(  # type: ignore
+            double_support_mask, self.default_joint_pos, joint_pos
+        )
 
+        stance_mask = backend.zeros(2, dtype=backend.float32)  # type: ignore
         if self.use_jax:
-            joint_pos = backend.where(double_support_mask, 0, joint_pos)  # type: ignore
             stance_mask = stance_mask.at[0].set(backend.any(sin_phase_signal >= 0))  # type: ignore
             stance_mask = stance_mask.at[1].set(backend.any(sin_phase_signal < 0))  # type: ignore
             stance_mask = backend.where(double_support_mask, 1, stance_mask)  # type: ignore
         else:
-            joint_pos[double_support_mask] = 0
             stance_mask[0] = backend.any(sin_phase_signal >= 0)  # type: ignore
             stance_mask[1] = backend.any(sin_phase_signal < 0)  # type: ignore
             stance_mask[double_support_mask] = 1
@@ -95,7 +113,10 @@ class WalkReference(MotionReference):
     def calculate_leg_angles(
         self, signal: npt.NDArray[np.float32] | jax.Array, is_left: bool, backend: Any
     ):
-        knee_angle = backend.abs(signal * self.joint_pos_ref_scale)
+        knee_angle = backend.abs(
+            signal * (self.max_knee_pitch - self.knee_pitch_default)
+            + (2 * int(is_left) - 1) * self.knee_pitch_default
+        )
         ank_pitch_angle = backend.arctan2(
             backend.sin(knee_angle), backend.cos(knee_angle) + self.shin_thigh_ratio
         )
@@ -113,3 +134,16 @@ class WalkReference(MotionReference):
                 "right_knee_pitch": -knee_angle,
                 "right_ank_pitch": -ank_pitch_angle,
             }
+
+
+if __name__ == "__main__":
+    from toddlerbot.utils.math_utils import round_to_sig_digits
+
+    robot = Robot("toddlerbot")
+    walk_ref = WalkReference(robot, max_knee_pitch=0.523599)
+    left_leg_angles = walk_ref.calculate_leg_angles(
+        np.ones(1, dtype=np.float32), True, np
+    )
+    left_ank_act = robot.ankle_ik([0.0, left_leg_angles["left_ank_pitch"].item()])
+    print(left_leg_angles)
+    print([round_to_sig_digits(x, 6) for x in left_ank_act])

@@ -23,16 +23,18 @@ from toddlerbot.sim.robot import Robot
 
 def log(
     metrics: Dict[str, Any],
-    num_total_steps: int,
-    num_steps: int,
     time_elapsed: float,
+    num_steps: int = -1,
+    num_total_steps: int = -1,
     width: int = 80,
     pad: int = 35,
 ):
-    log_data: Dict[str, Any] = {"num_steps": num_steps, "time_elapsed": time_elapsed}
-    title = f" \033[1m Learning steps {num_steps}/{num_total_steps } \033[0m "
+    log_data: Dict[str, Any] = {"time_elapsed": time_elapsed}
     log_string = f"""{'#' * width}\n"""
-    log_string += f"""{title.center(width, ' ')}\n"""
+    if num_steps >= 0 and num_total_steps > 0:
+        log_data["num_steps"] = num_steps
+        title = f" \033[1m Learning steps {num_steps}/{num_total_steps } \033[0m "
+        log_string += f"""{title.center(width, ' ')}\n"""
 
     for key, value in metrics.items():
         if "std" in key:
@@ -48,16 +50,23 @@ def log(
             metric_name = "_".join(words)
 
         log_data[metric_name] = value
-        log_string += f"""{f'{metric_name}:':>{pad}} {value:.4f}\n"""
+        if (
+            "episode_reward" not in metric_name
+            and "avg_episode_length" not in metric_name
+        ):
+            log_string += f"""{f'{metric_name}:':>{pad}} {value:.4f}\n"""
 
-    log_string += (
-        f"""{'Mean reward:':>{pad}} {metrics['eval/episode_reward']:.3f}\n"""
-        f"""{'Mean episode length:':>{pad}} {metrics['eval/avg_episode_length']:.3f}\n"""
-    )
     log_string += (
         f"""{'-' * width}\n""" f"""{'Time elapsed:':>{pad}} {time_elapsed:.1f}\n"""
     )
-    if num_steps > 0:
+    if "eval/episode_reward" in metrics:
+        log_string += (
+            f"""{'Mean reward:':>{pad}} {metrics['eval/episode_reward']:.3f}\n"""
+        )
+    if "eval/avg_episode_length" in metrics:
+        log_string += f"""{'Mean episode length:':>{pad}} {metrics['eval/avg_episode_length']:.3f}\n"""
+
+    if num_steps > 0 and num_total_steps > 0:
         log_string += (
             f"""{'Computation:':>{pad}} {(num_steps / time_elapsed ):.1f} steps/s\n"""
             f"""{'ETA:':>{pad}} {(time_elapsed / num_steps) * (num_total_steps - num_steps):.1f}s\n"""
@@ -103,7 +112,7 @@ def train(
         times.append(time.time())
 
         log_data = log(
-            metrics, train_cfg.num_timesteps, num_steps, times[-1] - times[0]
+            metrics, times[-1] - times[0], num_steps, train_cfg.num_timesteps
         )
 
         # Log metrics to wandb
@@ -137,7 +146,7 @@ def evaluate(
     jit_inference_fn = jax.jit(inference_fn)  # type: ignore
 
     rng = jax.random.PRNGKey(0)  # type: ignore
-    command = jnp.array([1.0, 0.0, 0.0, 0.0])  # type: ignore
+    command = jnp.array([0.5, 0.0, 0.0, 0.0])  # type: ignore
     state = jit_reset(rng)  # type: ignore
     state.info["command"] = command  # type: ignore
     rollout = [state.pipeline_state]  # type: ignore
@@ -146,15 +155,18 @@ def evaluate(
     n_steps = 500
     render_every = 2
 
+    times = [time.time()]
     for _ in tqdm(range(n_steps), desc="Evaluating"):
         act_rng, rng = jax.random.split(rng)  # type: ignore
         ctrl, _ = jit_inference_fn(state.obs, act_rng)  # type: ignore
         state = jit_step(state, ctrl)  # type: ignore
+        times.append(time.time())
         rollout.append(state.pipeline_state)  # type: ignore
+        log(state.metrics, times[-1] - times[0])  # type: ignore
 
     media.write_video(
         os.path.join("results", run_name, "eval.mp4"),
-        env.render(rollout[::render_every], camera="side"),  # type: ignore
+        env.render(rollout[::render_every], height=720, width=1280, camera="side"),  # type: ignore
         fps=1.0 / env.dt / render_every,
     )
 
@@ -181,25 +193,16 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    robot = Robot(args.robot)
-
-    if args.env == "walk":
-        from toddlerbot.motion_reference.walk_ref import WalkReference
-
-        motion_ref = WalkReference(robot, use_jax=True)
-    else:
-        raise ValueError(f"Unknown env {args.env}")
-
     cfg = MuJoCoConfig()
-
-    env = MuJoCoEnv(robot, motion_ref, cfg)
+    robot = Robot(args.robot)
+    env = MuJoCoEnv(args.env, cfg, robot)
 
     train_cfg = PPOConfig()
-    # train_cfg = PPOConfig(num_timesteps=100_000_000, num_evals=100)
+    train_cfg = PPOConfig(num_timesteps=20_000_000, num_evals=20)
 
     time_str = time.strftime("%Y%m%d_%H%M%S")
-    # time_str = "20240813_130046"
-    run_name = f"{robot.name}_{motion_ref.name}_ppo_{time_str}"
+    # time_str = "20240814_121810"
+    run_name = f"{robot.name}_{args.env}_ppo_{time_str}"
 
     make_networks_factory = functools.partial(
         ppo_networks.make_ppo_networks,
