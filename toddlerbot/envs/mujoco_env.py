@@ -709,7 +709,7 @@ class MuJoCoEnv(PipelineEnv):
         first_contact = (info["feet_air_time"] > 0) * contact_filter
         reward = jnp.sum((info["feet_air_time"] - 0.1) * first_contact)  # type:ignore
         # no reward for zero command
-        reward *= jnp.linalg.norm(info["command"][:2])[1] > 0.05  # type:ignore
+        reward *= jnp.linalg.norm(info["command"][:2]) > 0.05  # type:ignore
         return reward  # type:ignore
 
     def _reward_stand_still(
@@ -723,15 +723,15 @@ class MuJoCoEnv(PipelineEnv):
             )
         )
         reward = -(qpos_diff**2)  # type:ignore
-        reward *= jnp.linalg.norm(info["command"][:2])[1] < 0.1  # type:ignore
+        reward *= jnp.linalg.norm(info["command"][:2]) < 0.1  # type:ignore
         return reward  # type:ignore
 
     def _reward_feet_slip(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
-        feet_speed = pipeline_state.xd[self.collider_body_ids[self.feet_indices]]  # type:ignore
-        feet_speed_norm = jnp.linalg.norm(feet_speed)  # type:ignore
-        reward = -(feet_speed_norm**2) * info["stance_mask"]  # type:ignore
+        feet_speed = pipeline_state.xd.vel[self.collider_body_ids[self.feet_indices]]  # type:ignore
+        feet_speed_square = jnp.square(feet_speed[:, :2])  # type:ignore
+        reward = -jnp.sum(feet_speed_square * info["stance_mask"])  # type:ignore
         # Penalize large feet velocity for feet that are in contact with the ground.
         return reward  # type:ignore
 
@@ -771,6 +771,9 @@ class MuJoCoEnv(PipelineEnv):
     #     return (
     #         torch.exp(-torch.abs(d_min) * 100) + torch.exp(-torch.abs(d_max) * 100)
     #     ) / 2
+
+    # def _reward_collision(self):
+    #     pass
 
     ##### Regularization rewards #####
 

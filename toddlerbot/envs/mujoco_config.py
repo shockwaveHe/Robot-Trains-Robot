@@ -39,12 +39,8 @@ class ActionConfig:
 
 @dataclass
 class RewardScales:
-    # feet_air_time: float = 1.0
     # feet_clearance: float = 1.0
-    # feet_contact_forces: float = -0.01
-    # feet_contact_number: float = 1.2
     # feet_distance: float = 0.2
-    # feet_slip: float = -0.05
     # collision: float = -1.0
     torso_pos: float = 0.0  # 1.0
     torso_quat: float = 0.0  # 1.0
@@ -61,6 +57,9 @@ class RewardScales:
     waist_joint_pos: float = 0.1
     waist_joint_vel: float = 1e-3
     feet_contact: float = 1.0
+    feet_air_time: float = 1.0
+    stand_still: float = 1.0
+    feet_slip: float = 0.05
     joint_torque: float = 0.0  # 1e-2
     joint_acc: float = 0.0  # 2.5e-7
     leg_action_rate: float = 0.0  # .5e-3

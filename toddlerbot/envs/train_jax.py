@@ -124,7 +124,7 @@ def evaluate(
     ppo_network = make_networks_factory(
         env.obs_size, env.privileged_obs_size, env.action_size
     )
-    make_policy = ppo_networks.make_inference_fn(ppo_network)
+    make_policy = ppo_networks.make_inference_fn(ppo_network)  # type: ignore
     params = model.load_params(os.path.join("results", run_name, "policy"))
     inference_fn = make_policy(params)
 
