@@ -77,6 +77,14 @@ class MuJoCoEnv(PipelineEnv):
         self.feet_indices = indices[foot_mask]
         self.termination_contact_indices = indices[~foot_mask]
 
+        self.collider_body_ids = jnp.zeros(self.num_colliders, dtype=jnp.int32)  # type:ignore
+        for body_id in range(self.sys.nbody):  # type:ignore
+            body_name = support.id2name(self.sys, mujoco.mjtObj.mjOBJ_BODY, body_id)  # type:ignore
+            if body_name in collider_names:
+                self.collider_body_ids = self.collider_body_ids.at[
+                    collider_names.index(body_name)
+                ].set(body_id)  # type:ignore
+
         self.collider_geom_ids = jnp.zeros(self.num_colliders, dtype=jnp.int32)  # type:ignore
         for geom_id in range(self.sys.ngeom):  # type:ignore
             geom_name = support.id2name(self.sys, mujoco.mjtObj.mjOBJ_GEOM, geom_id)  # type:ignore
@@ -229,6 +237,8 @@ class MuJoCoEnv(PipelineEnv):
                 (self.num_colliders, self.num_colliders - 1, 3)
             ),
             "stance_mask": jnp.zeros(2),  # type:ignore
+            "last_stance_mask": jnp.zeros(2),  # type:ignore
+            "feet_air_time": jnp.zeros(2),  # type:ignore
             "last_last_act": jnp.zeros(self.sys.nu),  # type:ignore
             "last_act": jnp.zeros(self.sys.nu),  # type:ignore
             "rewards": {k: 0.0 for k in self.reward_names},
@@ -340,7 +350,6 @@ class MuJoCoEnv(PipelineEnv):
             pipeline_state  # type:ignore
         )
 
-        state.info["rng"] = rng
         state.info["path_pos"] = path_pos
         state.info["path_quat"] = path_quat
         state.info["phase"] = phase
@@ -348,6 +357,7 @@ class MuJoCoEnv(PipelineEnv):
         state.info["state_ref"] = state_ref
         state.info["contact_forces"] = contact_forces
         state.info["stance_mask"] = stance_mask
+        state.info["feet_air_time"] += self.dt
 
         obs, privileged_obs = self._get_obs(
             pipeline_state, state.info, action, state.obs, state.privileged_obs
@@ -366,11 +376,13 @@ class MuJoCoEnv(PipelineEnv):
         # jax.debug.print("stance_mask: {}", stance_mask)  # type:ignore
         # jax.debug.print("done: {}", done)  # type:ignore
 
-        state.info["rng"] = rng
         state.info["last_last_act"] = state.info["last_act"].copy()
         state.info["last_act"] = action.copy()
+        state.info["last_stance_mask"] = stance_mask.copy()
+        state.info["feet_air_time"] *= 1.0 - stance_mask
         state.info["rewards"] = reward_dict
         state.info["step"] += 1
+        state.info["rng"] = rng
 
         # sample new command if more than 500 timesteps achieved
         state.info["command"] = jnp.where(  # type:ignore
@@ -680,7 +692,7 @@ class MuJoCoEnv(PipelineEnv):
         reward = -(error**2)  # type:ignore
         return reward  # type:ignore
 
-    def _reward_contact(
+    def _reward_feet_contact(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ):
         """Reward for contact"""
@@ -689,40 +701,76 @@ class MuJoCoEnv(PipelineEnv):
         )
         return reward
 
-    # def _reward_feet_air_time(
+    def _reward_feet_air_time(
+        self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
+    ) -> jax.Array:
+        # Reward air time.
+        contact_filter = jnp.logical_or(info["stance_mask"], info["last_stance_mask"])  # type:ignore
+        first_contact = (info["feet_air_time"] > 0) * contact_filter
+        reward = jnp.sum((info["feet_air_time"] - 0.1) * first_contact)  # type:ignore
+        # no reward for zero command
+        reward *= jnp.linalg.norm(info["command"][:2])[1] > 0.05  # type:ignore
+        return reward  # type:ignore
+
+    def _reward_stand_still(
+        self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
+    ) -> jax.Array:
+        # Penalize motion at zero commands
+        qpos_diff = jnp.sum(  # type:ignore
+            jnp.abs(  # type:ignore
+                pipeline_state.q[7 + self.leg_joint_indices]
+                - self.default_qpos[7 + self.leg_joint_indices]
+            )
+        )
+        reward = -(qpos_diff**2)  # type:ignore
+        reward *= jnp.linalg.norm(info["command"][:2])[1] < 0.1  # type:ignore
+        return reward  # type:ignore
+
+    def _reward_feet_slip(
+        self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
+    ) -> jax.Array:
+        feet_speed = pipeline_state.xd[self.collider_body_ids[self.feet_indices]]  # type:ignore
+        feet_speed_norm = jnp.linalg.norm(feet_speed)  # type:ignore
+        reward = -(feet_speed_norm**2) * info["stance_mask"]  # type:ignore
+        # Penalize large feet velocity for feet that are in contact with the ground.
+        return reward  # type:ignore
+
+    # def _reward_feet_clearance(
     #     self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
-    # ) -> jax.Array:
-    #     # Reward air time.
-    #     rew_air_time = jnp.sum((air_time - 0.1) * first_contact)
-    #     rew_air_time *= (
-    #         math.normalize(commands[:2])[1] > 0.05
-    #     )  # no reward for zero command
-    #     return rew_air_time
+    # ):
+    #     # Calculates reward based on the clearance of the swing leg from the ground during movement.
+    #     # Encourages appropriate lift of the feet during the swing phase of the gait.
+    #     # Compute feet contact mask
+    #     # Get the z-position of the feet and compute the change in z-position
+    #     feet_z = self.rigid_state[:, self.feet_indices, 2] - 0.05
+    #     delta_z = feet_z - self.last_feet_z
+    #     self.feet_height += delta_z
+    #     self.last_feet_z = feet_z
 
-    # def _reward_stand_still(
-    #     self,
-    #     commands: jax.Array,
-    #     joint_angles: jax.Array,
-    # ) -> jax.Array:
-    #     # Penalize motion at zero commands
-    #     return jp.sum(jp.abs(joint_angles - self._default_pose)) * (
-    #         math.normalize(commands[:2])[1] < 0.1
+    #     # Compute swing mask
+    #     swing_mask = 1 - self._get_gait_phase()
+
+    #     # feet height should be closed to target feet height at the peak
+    #     rew_pos = (
+    #         torch.abs(self.feet_height - self.cfg.rewards.target_feet_height) < 0.01
     #     )
+    #     rew_pos = torch.sum(rew_pos * swing_mask, dim=1)
+    #     self.feet_height *= ~contact
+    #     return rew_pos
 
-    # def _reward_foot_slip(
-    #     self, pipeline_state: base.State, contact_filt: jax.Array
-    # ) -> jax.Array:
-    #     # get velocities at feet which are offset from lower legs
-    #     # pytype: disable=attribute-error
-    #     pos = pipeline_state.site_xpos[self._feet_site_id]  # feet position
-    #     feet_offset = pos - pipeline_state.xpos[self._lower_leg_body_id]
-    #     # pytype: enable=attribute-error
-    #     offset = base.Transform.create(pos=feet_offset)
-    #     foot_indices = self._lower_leg_body_id - 1  # we got rid of the world body
-    #     foot_vel = offset.vmap().do(pipeline_state.xd.take(foot_indices)).vel
-
-    #     # Penalize large feet velocity for feet that are in contact with the ground.
-    #     return jp.sum(jp.square(foot_vel[:, :2]) * contact_filt.reshape((-1, 1)))
+    # def _reward_feet_distance(self):
+    #     """
+    #     Calculates the reward based on the distance between the feet. Penalize feet get close to each other or too far away.
+    #     """
+    #     foot_pos = self.rigid_state[:, self.feet_indices, :2]
+    #     foot_dist = torch.norm(foot_pos[:, 0, :] - foot_pos[:, 1, :], dim=1)
+    #     fd = self.cfg.rewards.min_dist
+    #     max_df = self.cfg.rewards.max_dist
+    #     d_min = torch.clamp(foot_dist - fd, -0.5, 0.0)
+    #     d_max = torch.clamp(foot_dist - max_df, 0, 0.5)
+    #     return (
+    #         torch.exp(-torch.abs(d_min) * 100) + torch.exp(-torch.abs(d_max) * 100)
+    #     ) / 2
 
     ##### Regularization rewards #####
 
