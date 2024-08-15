@@ -200,10 +200,10 @@ if __name__ == "__main__":
     env = MuJoCoEnv(args.env, cfg, robot)  # , fixed_base=True)
 
     train_cfg = PPOConfig()
-    train_cfg = PPOConfig(num_timesteps=50_000_000, num_evals=1000)
+    train_cfg = PPOConfig(num_timesteps=50_000_000, num_evals=500)
 
     time_str = time.strftime("%Y%m%d_%H%M%S")
-    # time_str = "20240814_214917"
+    # time_str = "20240814_231138"
     run_name = f"{robot.name}_{args.env}_ppo_{time_str}"
 
     make_networks_factory = functools.partial(

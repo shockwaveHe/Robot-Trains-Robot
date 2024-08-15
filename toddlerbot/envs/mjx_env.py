@@ -743,9 +743,9 @@ class MuJoCoEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ):
         # Calculates the reward based on the distance between the feet.
-        # Penalize feet get close to each other or too far away.
+        # Penalize feet get close to each other or too far away on the y axis
         feet_pos = pipeline_state.x.pos[self.feet_link_ids]
-        feet_dist = jnp.linalg.norm(feet_pos[0] - feet_pos[1])  # type:ignore
+        feet_dist = jnp.abs(feet_pos[0, 1] - feet_pos[1, 1])  # type:ignore
         d_min = jnp.clip(feet_dist - self.min_feet_distance, max=0.0)  # type:ignore
         d_max = jnp.clip(feet_dist - self.max_feet_distance, min=0.0)  # type:ignore
         reward = (jnp.exp(-jnp.abs(d_min) * 100) + jnp.exp(-jnp.abs(d_max) * 100)) / 2  # type:ignore
@@ -767,8 +767,8 @@ class MuJoCoEnv(PipelineEnv):
     ) -> jax.Array:
         """Reward for minimizing joint torques"""
         torque = pipeline_state.qfrc_actuator[self.motor_indices]  # type:ignore
-        error = jnp.linalg.norm(torque, axis=-1)  # type:ignore
-        reward = -(error**2)  # type:ignore
+        error = jnp.square(torque)  # type:ignore
+        reward = -jnp.mean(error)  # type:ignore
         return reward  # type:ignore
 
     def _reward_joint_acc(
@@ -776,8 +776,8 @@ class MuJoCoEnv(PipelineEnv):
     ) -> jax.Array:
         """Reward for minimizing joint accelerations"""
         joint_acc = pipeline_state.qacc[self.qd_start_idx + self.joint_indices]  # type:ignore
-        error = jnp.linalg.norm(joint_acc, axis=-1)  # type:ignore
-        reward = -(error**2)  # type:ignore
+        error = jnp.square(joint_acc)  # type:ignore
+        reward = -jnp.mean(error)  # type:ignore
         return reward  # type:ignore
 
     def _reward_leg_action_rate(
@@ -786,8 +786,8 @@ class MuJoCoEnv(PipelineEnv):
         """Reward for tracking leg action rates"""
         leg_action = action[self.leg_motor_indices]
         last_leg_action = info["last_act"][self.leg_motor_indices]
-        error = jnp.linalg.norm(leg_action - last_leg_action, axis=-1)  # type:ignore
-        reward = -(error**2)  # type:ignore
+        error = jnp.square(leg_action - last_leg_action)  # type:ignore
+        reward = -jnp.mean(error)  # type:ignore
         return reward  # type:ignore
 
     def _reward_leg_action_acc(
@@ -797,10 +797,10 @@ class MuJoCoEnv(PipelineEnv):
         leg_action = action[self.leg_motor_indices]
         last_leg_action = info["last_act"][self.leg_motor_indices]
         last_last_leg_action = info["last_last_act"][self.leg_motor_indices]
-        error = jnp.linalg.norm(  # type:ignore
-            leg_action - 2 * last_leg_action + last_last_leg_action, axis=-1
+        error = jnp.square(  # type:ignore
+            leg_action - 2 * last_leg_action + last_last_leg_action
         )
-        reward = -(error**2)  # type:ignore
+        reward = -jnp.mean(error)  # type:ignore
         return reward  # type:ignore
 
     def _reward_arm_action_rate(
@@ -809,8 +809,8 @@ class MuJoCoEnv(PipelineEnv):
         """Reward for tracking arm action rates"""
         arm_action = action[self.arm_motor_indices]
         last_arm_action = info["last_act"][self.arm_motor_indices]
-        error = jnp.linalg.norm(arm_action - last_arm_action, axis=-1)  # type:ignore
-        reward = -(error**2)  # type:ignore
+        error = jnp.square(arm_action - last_arm_action)  # type:ignore
+        reward = -jnp.mean(error)  # type:ignore
         return reward  # type:ignore
 
     def _reward_arm_action_acc(
@@ -820,10 +820,10 @@ class MuJoCoEnv(PipelineEnv):
         arm_action = action[self.arm_motor_indices]
         last_arm_action = info["last_act"][self.arm_motor_indices]
         last_last_arm_action = info["last_last_act"][self.arm_motor_indices]
-        error = jnp.linalg.norm(  # type:ignore
-            arm_action - 2 * last_arm_action + last_last_arm_action, axis=-1
+        error = jnp.square(  # type:ignore
+            arm_action - 2 * last_arm_action + last_last_arm_action
         )
-        reward = -(error**2)  # type:ignore
+        reward = -jnp.mean(error)  # type:ignore
         return reward  # type:ignore
 
     def _reward_neck_action_rate(
@@ -832,8 +832,8 @@ class MuJoCoEnv(PipelineEnv):
         """Reward for tracking neck action rates"""
         neck_action = action[self.neck_motor_indices]
         last_neck_action = info["last_act"][self.neck_motor_indices]
-        error = jnp.linalg.norm(neck_action - last_neck_action, axis=-1)  # type:ignore
-        reward = -(error**2)  # type:ignore
+        error = jnp.square(neck_action - last_neck_action)  # type:ignore
+        reward = -jnp.mean(error)  # type:ignore
         return reward  # type:ignore
 
     def _reward_neck_action_acc(
@@ -843,10 +843,10 @@ class MuJoCoEnv(PipelineEnv):
         neck_action = action[self.neck_motor_indices]
         last_neck_action = info["last_act"][self.neck_motor_indices]
         last_last_neck_action = info["last_last_act"][self.neck_motor_indices]
-        error = jnp.linalg.norm(  # type:ignore
-            neck_action - 2 * last_neck_action + last_last_neck_action, axis=-1
+        error = jnp.square(  # type:ignore
+            neck_action - 2 * last_neck_action + last_last_neck_action
         )
-        reward = -(error**2)  # type:ignore
+        reward = -jnp.mean(error)  # type:ignore
         return reward  # type:ignore
 
     def _reward_waist_action_rate(
@@ -855,8 +855,8 @@ class MuJoCoEnv(PipelineEnv):
         """Reward for tracking waist action rates"""
         waist_action = action[self.waist_motor_indices]
         last_waist_action = info["last_act"][self.waist_motor_indices]
-        error = jnp.linalg.norm(waist_action - last_waist_action, axis=-1)  # type:ignore
-        reward = -(error**2)  # type:ignore
+        error = jnp.square(waist_action - last_waist_action)  # type:ignore
+        reward = -jnp.mean(error)  # type:ignore
         return reward  # type:ignore
 
     def _reward_waist_action_acc(
@@ -866,10 +866,10 @@ class MuJoCoEnv(PipelineEnv):
         waist_action = action[self.waist_motor_indices]
         last_waist_action = info["last_act"][self.waist_motor_indices]
         last_last_waist_action = info["last_last_act"][self.waist_motor_indices]
-        error = jnp.linalg.norm(  # type:ignore
-            waist_action - 2 * last_waist_action + last_last_waist_action, axis=-1
+        error = jnp.square(  # type:ignore
+            waist_action - 2 * last_waist_action + last_last_waist_action
         )
-        reward = -(error**2)  # type:ignore
+        reward = -jnp.mean(error)  # type:ignore
         return reward  # type:ignore
 
     def _reward_survival(
