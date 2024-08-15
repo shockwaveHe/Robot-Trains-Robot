@@ -208,9 +208,10 @@ class MuJoCoEnv(PipelineEnv):
             self.reward_functions.append(getattr(self, "_reward_" + name))
             self.reward_scales = self.reward_scales.at[i].set(scale)  # type:ignore
 
+        self.healthy_z_range = self.cfg.rewards.healthy_z_range
         self.min_feet_distance = self.cfg.rewards.min_feet_distance
         self.max_feet_distance = self.cfg.rewards.max_feet_distance
-        self.healthy_z_range = self.cfg.rewards.healthy_z_range
+        self.target_feet_z_delta = self.cfg.rewards.target_feet_z_delta
 
     def reset(self, rng: jax.Array) -> State:
         """Resets the environment to an initial state."""
@@ -233,6 +234,7 @@ class MuJoCoEnv(PipelineEnv):
             "stance_mask": jnp.zeros(2),  # type:ignore
             "last_stance_mask": jnp.zeros(2),  # type:ignore
             "feet_air_time": jnp.zeros(2),  # type:ignore
+            "init_feet_height": pipeline_state.x.pos[self.feet_link_ids, 2],
             "last_last_act": jnp.zeros(self.sys.nu),  # type:ignore
             "last_act": jnp.zeros(self.sys.nu),  # type:ignore
             "rewards": {k: 0.0 for k in self.reward_names},
@@ -490,7 +492,7 @@ class MuJoCoEnv(PipelineEnv):
                 torso_euler * self.obs_scales.euler,
             ]
         )
-        # TODO: check each field. Multiply scales, Add push, friction
+        # TODO: check each field. Add push, friction
         privileged_obs = jnp.concatenate(  # type:ignore
             [
                 info["phase_signal"],
@@ -702,15 +704,6 @@ class MuJoCoEnv(PipelineEnv):
         reward = -jnp.mean(error**2)  # type:ignore
         return reward
 
-    def _reward_feet_contact(
-        self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
-    ):
-        """Reward for contact"""
-        reward = jnp.sum(info["stance_mask"] == info["state_ref"][-2:]).astype(  # type:ignore
-            jnp.float32
-        )
-        return reward
-
     def _reward_feet_air_time(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
@@ -720,6 +713,46 @@ class MuJoCoEnv(PipelineEnv):
         reward = jnp.sum(info["feet_air_time"] * first_contact)  # type:ignore
         # no reward for zero command
         reward *= jnp.linalg.norm(info["command"][:2]) > 0.05  # type:ignore
+        return reward  # type:ignore
+
+    def _reward_feet_clearance(
+        self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
+    ) -> jax.Array:
+        # Penalize feet get too close to the ground
+        feet_height = pipeline_state.x.pos[self.feet_link_ids, 2]
+        feet_z_delta = feet_height - info["init_feet_height"]
+        is_close = jnp.abs(feet_z_delta - self.target_feet_z_delta) < 0.01  # type:ignore
+        reward = jnp.sum(is_close * (1 - info["stance_mask"]))  # type:ignore
+        return reward  # type:ignore
+
+    def _reward_feet_contact(
+        self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
+    ):
+        """Reward for contact"""
+        reward = jnp.sum(info["stance_mask"] == info["state_ref"][-2:]).astype(  # type:ignore
+            jnp.float32
+        )
+        return reward
+
+    def _reward_feet_distance(
+        self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
+    ):
+        # Calculates the reward based on the distance between the feet.
+        # Penalize feet get close to each other or too far away on the y axis
+        feet_pos = pipeline_state.x.pos[self.feet_link_ids, 1]
+        feet_dist = jnp.abs(feet_pos[0] - feet_pos[1])  # type:ignore
+        d_min = jnp.clip(feet_dist - self.min_feet_distance, max=0.0)  # type:ignore
+        d_max = jnp.clip(feet_dist - self.max_feet_distance, min=0.0)  # type:ignore
+        reward = (jnp.exp(-jnp.abs(d_min) * 100) + jnp.exp(-jnp.abs(d_max) * 100)) / 2  # type:ignore
+        return reward
+
+    def _reward_feet_slip(
+        self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
+    ) -> jax.Array:
+        feet_speed = pipeline_state.xd.vel[self.feet_link_ids]  # type:ignore
+        feet_speed_square = jnp.square(feet_speed[:, :2])  # type:ignore
+        reward = -jnp.sum(feet_speed_square * info["stance_mask"])  # type:ignore
+        # Penalize large feet velocity for feet that are in contact with the ground.
         return reward  # type:ignore
 
     def _reward_stand_still(
@@ -736,27 +769,6 @@ class MuJoCoEnv(PipelineEnv):
         reward = -(qpos_diff**2)  # type:ignore
         reward *= jnp.linalg.norm(info["command"][:2]) < 0.1  # type:ignore
         return reward  # type:ignore
-
-    def _reward_feet_slip(
-        self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
-    ) -> jax.Array:
-        feet_speed = pipeline_state.xd.vel[self.feet_link_ids]  # type:ignore
-        feet_speed_square = jnp.square(feet_speed[:, :2])  # type:ignore
-        reward = -jnp.sum(feet_speed_square * info["stance_mask"])  # type:ignore
-        # Penalize large feet velocity for feet that are in contact with the ground.
-        return reward  # type:ignore
-
-    def _reward_feet_distance(
-        self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
-    ):
-        # Calculates the reward based on the distance between the feet.
-        # Penalize feet get close to each other or too far away on the y axis
-        feet_pos = pipeline_state.x.pos[self.feet_link_ids]
-        feet_dist = jnp.abs(feet_pos[0, 1] - feet_pos[1, 1])  # type:ignore
-        d_min = jnp.clip(feet_dist - self.min_feet_distance, max=0.0)  # type:ignore
-        d_max = jnp.clip(feet_dist - self.max_feet_distance, min=0.0)  # type:ignore
-        reward = (jnp.exp(-jnp.abs(d_min) * 100) + jnp.exp(-jnp.abs(d_max) * 100)) / 2  # type:ignore
-        return reward
 
     def _reward_collision(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array

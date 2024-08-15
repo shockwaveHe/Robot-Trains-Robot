@@ -55,11 +55,12 @@ class RewardScales:
     neck_joint_vel: float = 0.0  # 1e-3
     waist_joint_pos: float = 50.0
     waist_joint_vel: float = 0.0  # 1e-3
-    feet_contact: float = 0.5
     feet_air_time: float = 10.0
-    stand_still: float = 0.0  # 1.0
-    feet_slip: float = 1.0
+    feet_clearance: float = 1.0
+    feet_contact: float = 0.5
     feet_distance: float = 0.5
+    feet_slip: float = 1.0
+    stand_still: float = 0.0  # 1.0
     joint_torque: float = 5e-2
     joint_acc: float = 5e-7
     leg_action_rate: float = 1e-2
@@ -79,6 +80,7 @@ class RewardsConfig:
     healthy_z_range: List[float] = field(default_factory=lambda: [0.2, 0.4])
     min_feet_distance: float = 0.05
     max_feet_distance: float = 0.15
+    target_feet_z_delta: float = 0.03
     scales: RewardScales = RewardScales()
 
 
