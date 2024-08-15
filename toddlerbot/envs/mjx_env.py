@@ -210,6 +210,7 @@ class MuJoCoEnv(PipelineEnv):
 
         self.min_feet_distance = self.cfg.rewards.min_feet_distance
         self.max_feet_distance = self.cfg.rewards.max_feet_distance
+        self.healthy_z_range = self.cfg.rewards.healthy_z_range
 
     def reset(self, rng: jax.Array) -> State:
         """Resets the environment to an initial state."""
@@ -364,8 +365,14 @@ class MuJoCoEnv(PipelineEnv):
         reward = sum(reward_dict.values()) * self.dt  # type:ignore
         # reward = jnp.clip(reward, 0.0)  # type:ignore
 
-        done_contact = state.info["contact_forces"][0, self.collision_contact_indices]
-        done = jnp.any(jnp.linalg.norm(done_contact, axis=-1) > 1.0, axis=0)  # type:ignore
+        # done_contact = state.info["contact_forces"][0, self.collision_contact_indices]
+        # done = jnp.any(jnp.linalg.norm(done_contact, axis=-1) > 1.0, axis=0)  # type:ignore
+
+        torso_height = pipeline_state.x.pos[0, 2]
+        done = jnp.logical_or(  # type:ignore
+            torso_height < self.healthy_z_range[0],  # type:ignore
+            torso_height > self.healthy_z_range[1],  # type:ignore
+        )
 
         state.info["last_last_act"] = state.info["last_act"].copy()
         state.info["last_act"] = action.copy()

@@ -1,6 +1,6 @@
 {
     "torso": {
-        "has_collision": true,
+        "has_collision": false,
         "contact_pairs": [
             "floor",
             "2xl430_gears_2",
@@ -16,7 +16,7 @@
         ]
     },
     "waist_link": {
-        "has_collision": true,
+        "has_collision": false,
         "contact_pairs": [
             "hand",
             "hand_2"
@@ -29,7 +29,7 @@
         ]
     },
     "hip_roll_link": {
-        "has_collision": true,
+        "has_collision": false,
         "contact_pairs": [
             "hand"
         ],
@@ -41,7 +41,7 @@
         ]
     },
     "left_hip_pitch_link_xm430": {
-        "has_collision": true,
+        "has_collision": false,
         "contact_pairs": [
             "hand"
         ],
@@ -55,7 +55,8 @@
     "ank_roll_link": {
         "has_collision": true,
         "contact_pairs": [
-            "floor"
+            "floor",
+            "ank_roll_link_2"
         ],
         "type": "box",
         "scale": [
@@ -65,7 +66,7 @@
         ]
     },
     "hip_roll_link_2": {
-        "has_collision": true,
+        "has_collision": false,
         "contact_pairs": [
             "hand_2"
         ],
@@ -77,7 +78,7 @@
         ]
     },
     "right_hip_pitch_link_xm430": {
-        "has_collision": true,
+        "has_collision": false,
         "contact_pairs": [
             "hand_2"
         ],
@@ -91,7 +92,8 @@
     "ank_roll_link_2": {
         "has_collision": true,
         "contact_pairs": [
-            "floor"
+            "floor",
+            "ank_roll_link"
         ],
         "type": "box",
         "scale": [
@@ -101,7 +103,7 @@
         ]
     },
     "2xl430_gears": {
-        "has_collision": true,
+        "has_collision": false,
         "contact_pairs": [
             "floor"
         ],
@@ -111,7 +113,7 @@
         ]
     },
     "2xl430_gears_2": {
-        "has_collision": true,
+        "has_collision": false,
         "contact_pairs": [
             "floor",
             "torso"
@@ -122,7 +124,7 @@
         ]
     },
     "hand": {
-        "has_collision": true,
+        "has_collision": false,
         "contact_pairs": [
             "floor",
             "torso",
@@ -138,7 +140,7 @@
         ]
     },
     "2xl430_gears_4": {
-        "has_collision": true,
+        "has_collision": false,
         "contact_pairs": [
             "floor"
         ],
@@ -148,7 +150,7 @@
         ]
     },
     "2xl430_gears_5": {
-        "has_collision": true,
+        "has_collision": false,
         "contact_pairs": [
             "floor",
             "torso"
@@ -159,7 +161,7 @@
         ]
     },
     "hand_2": {
-        "has_collision": true,
+        "has_collision": false,
         "contact_pairs": [
             "floor",
             "torso",

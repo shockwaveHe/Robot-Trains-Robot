@@ -203,7 +203,7 @@ if __name__ == "__main__":
     train_cfg = PPOConfig(num_timesteps=50_000_000, num_evals=500)
 
     time_str = time.strftime("%Y%m%d_%H%M%S")
-    # time_str = "20240814_231138"
+    # time_str = "20240815_083256"
     run_name = f"{robot.name}_{args.env}_ppo_{time_str}"
 
     make_networks_factory = functools.partial(

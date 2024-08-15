@@ -314,7 +314,10 @@ def add_contacts(root: ET.Element, collision_config: Dict[str, Dict[str, Any]]):
 
     collision_body_names = list(collision_bodies.keys())
     for body_name in collision_body_names:
-        if "floor" in collision_config[body_name]["contact_pairs"]:
+        if (
+            "floor" in collision_config[body_name]["contact_pairs"]
+            and "ank_roll_link" in body_name
+        ):
             pairs.append((body_name, "floor"))
 
     for i in range(len(collision_bodies) - 1):
@@ -324,7 +327,9 @@ def add_contacts(root: ET.Element, collision_config: Dict[str, Dict[str, Any]]):
 
             paired_1 = body2_name in collision_config[body1_name]["contact_pairs"]
             paired_2 = body1_name in collision_config[body2_name]["contact_pairs"]
-            if paired_1 and paired_2:
+            if (paired_1 and paired_2) and (
+                "ank_roll_link" in body1_name or "ank_roll_link" in body2_name
+            ):
                 pairs.append((body1_name, body2_name))
             else:
                 excludes.append((body1_name, body2_name))

@@ -2,7 +2,6 @@
 
 Adafruit-Blinka==8.39.1
 adafruit-circuitpython-bno08x==1.2.6
-brax==0.10.5
 colorama==0.4.6
 control==0.9.4
 dynamixel-sdk==3.7.31
