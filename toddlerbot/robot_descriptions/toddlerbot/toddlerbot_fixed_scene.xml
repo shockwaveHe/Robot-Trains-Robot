@@ -8,6 +8,6 @@
     </visual>
     <worldbody>
         <light pos="0 0 1.5" dir="0 0 -1" directional="true" />
-        <camera name="side" pos="0 -1 1" xyaxes="1 0 0 0 1 2" mode="trackcom" />
+        <camera name="track" pos="0.5 -0.5 0.5" xyaxes="1 1 0 -1 1 2" mode="trackcom" />
     </worldbody>
 </mujoco>

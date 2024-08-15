@@ -1,30 +1,39 @@
-import control
+from typing import List
+
+import control  # type: ignore
 import numpy as np
-from scipy.interpolate import PPoly
-from scipy.linalg import expm
+import numpy.typing as npt
+from scipy.interpolate import PPoly  # type: ignore
+from scipy.linalg import expm  # type: ignore
 
 from toddlerbot.utils.constants import GRAVITY
 
 
 class ExponentialPlusPiecewisePolynomial:
-    def __init__(self, K, A, alpha, ppoly):
+    def __init__(
+        self,
+        K: npt.NDArray[np.float32],
+        A: npt.NDArray[np.float32],
+        alpha: npt.NDArray[np.float32],
+        ppoly: PPoly,
+    ):
         self.K = K
         self.A = A
         self.alpha = alpha
         self.ppoly = ppoly
 
-    def value(self, t):
+    def value(self, t: float):
         # Evaluate the polynomial part at time t
         result = self.ppoly(t)
 
         # Determine the index of the segment that contains the time t
-        segment_index = np.searchsorted(self.ppoly.x, t, side="right") - 1
+        segment_index = np.searchsorted(self.ppoly.x, t, side="right") - 1  # type: ignore
         # Ensure the index is within the valid range
         segment_index = max(0, min(segment_index, len(self.ppoly.x) - 2))
         # Calculate the time offset from the beginning of the segment
         tj = self.ppoly.x[segment_index]
         # Compute the exponential part
-        exponential = expm(self.A * (t - tj))
+        exponential = expm(self.A * (t - tj))  # type: ignore
         # Compute result combining the polynomial and exponential parts
         result += (
             self.K @ exponential @ self.alpha[:, segment_index : segment_index + 1]
@@ -32,14 +41,17 @@ class ExponentialPlusPiecewisePolynomial:
 
         return result
 
-    def derivative(self, order):
+    def derivative(self, order: int):
         K_new = self.K
         for _ in range(order):
             K_new = K_new @ self.A
 
         # Derivative for exponential part needs special handling if it involves differentiation w.r.t time
         return ExponentialPlusPiecewisePolynomial(
-            K_new, self.A, self.alpha, self.ppoly.derivative(order)
+            K_new,
+            self.A,
+            self.alpha,
+            self.ppoly.derivative(order),  # type: ignore
         )
 
 
@@ -47,7 +59,15 @@ class ZMPFeedbackPlanner:
     def __init__(self):
         self.planned = False
 
-    def plan(self, time_steps, zmp_d, x0, com_z, Qy, R):
+    def plan(
+        self,
+        time_steps: List[float],
+        zmp_d: List[npt.NDArray[np.float32]],
+        x0,
+        com_z,
+        Qy,
+        R,
+    ):
         self.time_steps = time_steps
         self.zmp_d = zmp_d
 

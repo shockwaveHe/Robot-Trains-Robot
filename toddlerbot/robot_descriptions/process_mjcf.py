@@ -583,13 +583,16 @@ def create_scene_xml(mjcf_path: str, is_fixed: bool):
         "light",
         attrib={"pos": "0 0 1.5", "dir": "0 0 -1", "directional": "true"},
     )
+
+    pos_str = "0.5 -0.5 0.5" if is_fixed else "0 -1 1"
+    xy_axes_str = "1 1 0 -1 1 2" if is_fixed else "1 0 0 0 1 2"
     ET.SubElement(
         worldbody,
         "camera",
         attrib={
-            "name": "side",
-            "pos": "0 -1 1",
-            "xyaxes": "1 0 0 0 1 2",
+            "name": "track",
+            "pos": pos_str,
+            "xyaxes": xy_axes_str,
             "mode": "trackcom",
         },
     )

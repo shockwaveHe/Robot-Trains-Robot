@@ -154,19 +154,21 @@ def evaluate(
     # grab a trajectory
     n_steps = 500
     render_every = 2
+    log_every = 100
 
     times = [time.time()]
-    for _ in tqdm(range(n_steps), desc="Evaluating"):
+    for i in tqdm(range(n_steps), desc="Evaluating"):
         act_rng, rng = jax.random.split(rng)  # type: ignore
         ctrl, _ = jit_inference_fn(state.obs, act_rng)  # type: ignore
         state = jit_step(state, ctrl)  # type: ignore
         times.append(time.time())
         rollout.append(state.pipeline_state)  # type: ignore
-        log(state.metrics, times[-1] - times[0])  # type: ignore
+        if i % log_every == 0:
+            log(state.metrics, times[-1] - times[0])  # type: ignore
 
     media.write_video(
         os.path.join("results", run_name, "eval.mp4"),
-        env.render(rollout[::render_every], height=720, width=1280, camera="side"),  # type: ignore
+        env.render(rollout[::render_every], height=720, width=1280, camera="track"),  # type: ignore
         fps=1.0 / env.dt / render_every,
     )
 
@@ -195,21 +197,21 @@ if __name__ == "__main__":
 
     cfg = MuJoCoConfig()
     robot = Robot(args.robot)
-    env = MuJoCoEnv(args.env, cfg, robot)
+    env = MuJoCoEnv(args.env, cfg, robot)  # , fixed_base=True)
 
     train_cfg = PPOConfig()
-    # train_cfg = PPOConfig(num_timesteps=20_000_000, num_evals=20)
+    train_cfg = PPOConfig(num_timesteps=50_000_000, num_evals=1000)
 
     time_str = time.strftime("%Y%m%d_%H%M%S")
-    time_str = "20240814_162113"
+    # time_str = "20240814_214917"
     run_name = f"{robot.name}_{args.env}_ppo_{time_str}"
 
     make_networks_factory = functools.partial(
         ppo_networks.make_ppo_networks,
-        policy_hidden_layer_sizes=(512, 512, 512),
-        value_hidden_layer_sizes=(512, 512, 512),
+        policy_hidden_layer_sizes=(128,) * 4,
+        value_hidden_layer_sizes=(128,) * 4,
     )
 
-    # train(env, make_networks_factory, train_cfg, run_name)
+    train(env, make_networks_factory, train_cfg, run_name)
 
     evaluate(env, make_networks_factory, train_cfg, run_name)

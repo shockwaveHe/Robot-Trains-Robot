@@ -8,8 +8,8 @@ import mujoco  # type: ignore
 class MJConfig:
     timestep: float = 0.002
     solver: Any = mujoco.mjtSolver.mjSOL_NEWTON  # type: ignore
-    iterations: int = 6
-    ls_iterations: int = 6
+    iterations: int = 1
+    ls_iterations: int = 4
 
 
 @dataclass
@@ -18,16 +18,16 @@ class ObsScales:
     ang_vel: float = 1.0
     dof_pos: float = 1.0
     dof_vel: float = 0.05
-    # quat: float = 1.0
+    euler: float = 1.0
     # height_measurements: float = 5.0
 
 
 @dataclass
 class ObsConfig:
     frame_stack: int = 15
-    c_frame_stack: int = 3
-    num_single_obs: int = 95
-    num_single_privileged_obs: int = 135
+    c_frame_stack: int = 15  # 3
+    num_single_obs: int = 101
+    num_single_privileged_obs: int = 138
     scales: ObsScales = ObsScales()
 
 
@@ -41,8 +41,8 @@ class ActionConfig:
 
 @dataclass
 class RewardScales:
-    torso_pos: float = 0.0  # 1.0
-    torso_quat: float = 0.0  # 1.0
+    torso_pos: float = 1.0
+    torso_quat: float = 1.0
     lin_vel_xy: float = 1.0
     lin_vel_z: float = 0.5
     ang_vel_xy: float = 0.5

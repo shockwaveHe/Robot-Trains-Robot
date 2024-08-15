@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from toddlerbot.planning.zmp_feedback_planner import ZMPFeedbackPlanner
+from toddlerbot.motion_reference.zmp_feedback_planner import ZMPFeedbackPlanner
 
 
 def plot_results(data_dict, suffix=""):
