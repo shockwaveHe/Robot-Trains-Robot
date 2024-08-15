@@ -11,7 +11,7 @@ from jax import numpy as jnp
 from mujoco import mjx  # type: ignore
 from mujoco.mjx._src import support  # type: ignore
 
-from toddlerbot.envs.mujoco_config import MuJoCoConfig
+from toddlerbot.envs.mjx_config import MuJoCoConfig
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.jax_utils import quat_apply, quat_mult, wrap_to_pi

@@ -93,10 +93,10 @@
             ],
         },
         {
-            "name": "Python: walk_rl_toddlerbot_train_jax",
+            "name": "Python: walk_rl_toddlerbot_train_mjx",
             "type": "python",
             "request": "launch",
-            "program": "toddlerbot/envs/train_jax.py",
+            "program": "toddlerbot/envs/train_mjx.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [

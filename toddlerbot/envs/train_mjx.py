@@ -15,8 +15,8 @@ from orbax import checkpoint as ocp  # type: ignore
 from tqdm import tqdm
 
 import wandb
-from toddlerbot.envs.mujoco_config import MuJoCoConfig
-from toddlerbot.envs.mujoco_env import MuJoCoEnv
+from toddlerbot.envs.mjx_config import MuJoCoConfig
+from toddlerbot.envs.mjx_env import MuJoCoEnv
 from toddlerbot.envs.ppo_config import PPOConfig
 from toddlerbot.sim.robot import Robot
 
@@ -146,7 +146,7 @@ def evaluate(
     jit_inference_fn = jax.jit(inference_fn)  # type: ignore
 
     rng = jax.random.PRNGKey(0)  # type: ignore
-    command = jnp.array([0.5, 0.0, 0.0, 0.0])  # type: ignore
+    command = jnp.array([0.3, 0.0, 0.0, 0.0])  # type: ignore
     state = jit_reset(rng)  # type: ignore
     state.info["command"] = command  # type: ignore
     rollout = [state.pipeline_state]  # type: ignore
@@ -198,10 +198,10 @@ if __name__ == "__main__":
     env = MuJoCoEnv(args.env, cfg, robot)
 
     train_cfg = PPOConfig()
-    train_cfg = PPOConfig(num_timesteps=20_000_000, num_evals=20)
+    # train_cfg = PPOConfig(num_timesteps=20_000_000, num_evals=20)
 
     time_str = time.strftime("%Y%m%d_%H%M%S")
-    # time_str = "20240814_121810"
+    time_str = "20240814_162113"
     run_name = f"{robot.name}_{args.env}_ppo_{time_str}"
 
     make_networks_factory = functools.partial(
@@ -210,6 +210,6 @@ if __name__ == "__main__":
         value_hidden_layer_sizes=(512, 512, 512),
     )
 
-    train(env, make_networks_factory, train_cfg, run_name)
+    # train(env, make_networks_factory, train_cfg, run_name)
 
     evaluate(env, make_networks_factory, train_cfg, run_name)
