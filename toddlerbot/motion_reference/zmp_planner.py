@@ -55,7 +55,7 @@ class ExponentialPlusPiecewisePolynomial:
         )
 
 
-class ZMPFeedbackPlanner:
+class ZMPPlanner:
     def __init__(self):
         self.planned = False
 
@@ -63,22 +63,22 @@ class ZMPFeedbackPlanner:
         self,
         time_steps: List[float],
         zmp_d: List[npt.NDArray[np.float32]],
-        x0,
-        com_z,
-        Qy,
-        R,
+        x0: npt.NDArray[np.float32],
+        com_z: float,
+        Qy: npt.NDArray[np.float32],
+        R: npt.NDArray[np.float32],
     ):
         self.time_steps = time_steps
         self.zmp_d = zmp_d
 
         # Eq. 1 and 2 in [1]
-        A = np.zeros((4, 4))
-        A[:2, 2:] = np.eye(2)
-        B = np.zeros((4, 2))
-        B[2:, :] = np.eye(2)
-        self.C = np.zeros((2, 4))
-        self.C[:, :2] = np.eye(2)
-        self.D = -com_z / GRAVITY * np.eye(2)
+        A = np.zeros((4, 4), dtype=np.float32)
+        A[:2, 2:] = np.eye(2, dtype=np.float32)
+        B = np.zeros((4, 2), dtype=np.float32)
+        B[2:, :] = np.eye(2, dtype=np.float32)
+        self.C = np.zeros((2, 4), dtype=np.float32)
+        self.C[:, :2] = np.eye(2, dtype=np.float32)
+        self.D = -com_z / GRAVITY * np.eye(2, dtype=np.float32)
 
         # Eq. 9 - 14 in [1]
         Q1 = self.C.T @ Qy @ self.C
@@ -86,7 +86,7 @@ class ZMPFeedbackPlanner:
         N = self.C.T @ Qy @ self.D
         R1_inv = np.linalg.inv(R1)
 
-        K, S, _ = control.lqr(A, B, Q1, R1, N)
+        K, S, _ = control.lqr(A, B, Q1, R1, N)  # type: ignore
         self.K = -K
 
         # Computes the time varying linear and constant term in the value function
@@ -99,13 +99,13 @@ class ZMPFeedbackPlanner:
 
         # Last desired ZMP
         zmp_ref_last = zmp_d[-1]
-        vec4 = np.zeros(4)
+        vec4 = np.zeros(4, dtype=np.float32)
 
         n_segments = len(zmp_d) - 1
-        alpha = np.zeros((4, n_segments))
-        beta = [np.zeros((4, 1)) for _ in range(n_segments)]
-        gamma = [np.zeros((2, 1)) for _ in range(n_segments)]
-        c = [np.zeros((2, 1)) for _ in range(n_segments)]
+        alpha = np.zeros((4, n_segments), dtype=np.float32)
+        beta = [np.zeros((4, 1), dtype=np.float32) for _ in range(n_segments)]
+        gamma = [np.zeros((2, 1), dtype=np.float32) for _ in range(n_segments)]
+        c = [np.zeros((2, 1), dtype=np.float32) for _ in range(n_segments)]
 
         # Algorithm 1 in [1] to solve for parameters of s2 and k2
         for t in range(n_segments - 1, -1, -1):
@@ -119,22 +119,24 @@ class ZMPFeedbackPlanner:
             )
 
             dt = time_steps[t + 1] - time_steps[t]
-            A2exp = expm(A2 * dt)
+            A2exp = expm(A2 * dt)  # type: ignore
 
             if t == n_segments - 1:
                 vec4 = -beta[t]
             else:
                 vec4 = alpha[:, t + 1 : t + 2] + beta[t + 1] - beta[t]
 
-            alpha[:, t] = (np.linalg.inv(A2exp) @ vec4).squeeze()
+            alpha[:, t] = (np.linalg.inv(A2exp) @ vec4).squeeze()  # type: ignore
 
         # (degree+1, num_vars, num_segments)
-        all_beta_coeffs = np.transpose(np.stack(beta, axis=1), (2, 1, 0))
-        all_gamma_coeffs = np.transpose(np.stack(gamma, axis=1), (2, 1, 0))
+        all_beta_coeffs = np.transpose(np.stack(beta, axis=1), (2, 1, 0))  # type: ignore
+        all_gamma_coeffs = np.transpose(np.stack(gamma, axis=1), (2, 1, 0))  # type: ignore
 
         # Eq. 25 in [1]
         beta_traj = PPoly(all_beta_coeffs, time_steps)
-        self.s2 = ExponentialPlusPiecewisePolynomial(np.eye(4), A2, alpha, beta_traj)
+        self.s2 = ExponentialPlusPiecewisePolynomial(
+            np.eye(4, dtype=np.float32), A2, alpha, beta_traj
+        )
 
         # Eq. 28 in [1]
         gamma_traj = PPoly(all_gamma_coeffs, time_steps)
@@ -150,21 +152,21 @@ class ZMPFeedbackPlanner:
 
         # Computes the nominal CoM trajectory. Also known as the forward pass.
         # Eq. 35, 36 in [1]
-        Az = np.zeros((8, 8))
+        Az = np.zeros((8, 8), dtype=np.float32)
         Az[:4, :4] = A + B @ self.K
         Az[:4, 4:] = -0.5 * B @ R1_inv @ B.T
         Az[4:, 4:] = A2
         Azi = np.linalg.inv(Az)
-        Bz = np.zeros((8, 2))
+        Bz = np.zeros((8, 2), dtype=np.float32)
         Bz[:4, :] = B @ R1_inv @ self.D @ Qy
         Bz[4:, :] = B2
 
-        a = np.zeros((8, n_segments))
+        a = np.zeros((8, n_segments), dtype=np.float32)
         a[4:, :] = alpha
 
-        b = [np.zeros((4, 1)) for _ in range(n_segments)]
-        I48 = np.zeros((4, 8))
-        I48[:, :4] = np.eye(4)
+        b = [np.zeros((4, 1), dtype=np.float32) for _ in range(n_segments)]
+        I48 = np.zeros((4, 8), dtype=np.float32)
+        I48[:, :4] = np.eye(4, dtype=np.float32)
 
         x = x0.copy()
         x[:2] -= zmp_ref_last
@@ -176,14 +178,14 @@ class ZMPFeedbackPlanner:
 
             a[:4, t] = x - b[t][:, 0]
 
-            Az_exp = expm(Az * dt)
+            Az_exp = expm(Az * dt)  # type: ignore
             x = I48 @ Az_exp @ a[:, t] + b[t].squeeze()
 
             b[t][:2, 0] += zmp_ref_last  # Map CoM position back to world frame
 
-        mat28 = np.zeros((2, 8))
-        mat28[:, :2] = np.eye(2)
-        all_b_coeffs = np.transpose(np.stack(b, axis=1), (2, 1, 0))
+        mat28 = np.zeros((2, 8), dtype=np.float32)
+        mat28[:, :2] = np.eye(2, dtype=np.float32)
+        all_b_coeffs = np.transpose(np.stack(b, axis=1), (2, 1, 0))  # type: ignore
         b_traj = PPoly(all_b_coeffs[..., :2], time_steps)
 
         self.com_pos = ExponentialPlusPiecewisePolynomial(mat28, Az, a, b_traj)
@@ -198,7 +200,7 @@ class ZMPFeedbackPlanner:
 
         self.planned = True
 
-    def compute_optimal_com_acc(self, time, x):
+    def compute_optimal_com_acc(self, time: float, x: npt.NDArray[np.float32]):
         if not self.planned:
             raise ValueError("Plan must be called first.")
 
@@ -208,7 +210,7 @@ class ZMPFeedbackPlanner:
         x_bar[:2] -= yf
         return self.K @ x_bar + self.k2.value(time)
 
-    def com_acc_to_cop(self, x, u):
+    def com_acc_to_cop(self, x: npt.NDArray[np.float32], u: npt.NDArray[np.float32]):
         if not self.planned:
             raise ValueError("Plan must be called first.")
         return self.C @ x + self.D @ u
@@ -219,25 +221,25 @@ class ZMPFeedbackPlanner:
 
         return self.time_steps, self.zmp_d
 
-    def get_desired_zmp(self, time):
+    def get_desired_zmp(self, time: float):
         if not self.planned:
             raise ValueError("Plan must be called first.")
 
-        return self.zmp_d[np.searchsorted(self.time_steps, time, side="right") - 1]
+        return self.zmp_d[np.searchsorted(self.time_steps, time, side="right") - 1]  # type: ignore
 
-    def get_nominal_com(self, time):
+    def get_nominal_com(self, time: float):
         if not self.planned:
             raise ValueError("Plan must be called first.")
 
         return self.com_pos.value(time)
 
-    def get_nominal_com_vel(self, time):
+    def get_nominal_com_vel(self, time: float):
         if not self.planned:
             raise ValueError("Plan must be called first.")
 
         return self.com_vel.value(time)
 
-    def get_nominal_com_acc(self, time):
+    def get_nominal_com_acc(self, time: float):
         if not self.planned:
             raise ValueError("Plan must be called first.")
 

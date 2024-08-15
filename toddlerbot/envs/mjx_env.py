@@ -145,9 +145,9 @@ class MuJoCoEnv(PipelineEnv):
         )
         default_joint_pos = jnp.array(list(default_joint_angles.values()))  # type:ignore
         if self.env_name == "walk":
-            from toddlerbot.motion_reference.walk_ref import WalkReference
+            from toddlerbot.motion_reference.walk_simple_ref import WalkSimpleReference
 
-            self.motion_ref = WalkReference(
+            self.motion_ref = WalkSimpleReference(
                 self.robot, use_jax=True, default_joint_pos=default_joint_pos
             )
         else:

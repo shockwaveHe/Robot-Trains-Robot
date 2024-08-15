@@ -4,7 +4,7 @@ import time
 import numpy as np
 from tqdm import tqdm
 
-from toddlerbot.motion_reference.walk_ref import WalkReference
+from toddlerbot.motion_reference.walk_simple_ref import WalkSimpleReference
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.robot import Robot
 
@@ -25,7 +25,7 @@ def test_ref_motion():
         dict(zip(robot.motor_ordering, default_ctrl))  # type: ignore
     )
 
-    walk_ref = WalkReference(
+    walk_ref = WalkSimpleReference(
         robot,
         default_joint_pos=np.array(list(default_joint_angles.values())),  # type: ignore
     )

@@ -9,7 +9,7 @@ from toddlerbot.motion_reference.motion_ref import MotionReference
 from toddlerbot.sim.robot import Robot
 
 
-class WalkReference(MotionReference):
+class WalkSimpleReference(MotionReference):
     def __init__(
         self,
         robot: Robot,
@@ -140,7 +140,7 @@ if __name__ == "__main__":
     from toddlerbot.utils.math_utils import round_to_sig_digits
 
     robot = Robot("toddlerbot")
-    walk_ref = WalkReference(robot, max_knee_pitch=0.523599)
+    walk_ref = WalkSimpleReference(robot, max_knee_pitch=0.523599)
     left_leg_angles = walk_ref.calculate_leg_angles(
         np.ones(1, dtype=np.float32), True, np
     )

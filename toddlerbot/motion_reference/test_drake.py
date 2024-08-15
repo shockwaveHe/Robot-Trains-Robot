@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from toddlerbot.motion_reference.zmp_feedback_planner import ZMPFeedbackPlanner
+from toddlerbot.motion_reference.zmp_planner import ZMPPlanner
 
 
 def plot_results(data_dict, suffix=""):
@@ -165,7 +165,7 @@ def main():
 
     x0 = np.array([0, 0, 0, 0], dtype=float)
     com_z = 1
-    zmp_planner = ZMPFeedbackPlanner()
+    zmp_planner = ZMPPlanner()
     zmp_planner.plan(time_steps, zmp_d, x0, com_z, Qy=np.eye(2), R=np.eye(2) * 0.1)
 
     sample_dt = 0.01
