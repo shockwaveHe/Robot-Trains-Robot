@@ -718,7 +718,6 @@ class MuJoCoEnv(PipelineEnv):
     def _reward_feet_clearance(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
-        # Penalize feet get too close to the ground
         feet_height = pipeline_state.x.pos[self.feet_link_ids, 2]
         feet_z_delta = feet_height - info["init_feet_height"]
         is_close = jnp.abs(feet_z_delta - self.target_feet_z_delta) < 0.01  # type:ignore

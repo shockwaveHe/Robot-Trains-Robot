@@ -56,7 +56,7 @@ class RewardScales:
     waist_joint_pos: float = 0.0  # 50.0
     waist_joint_vel: float = 0.0  # 1e-3
     feet_air_time: float = 10.0
-    feet_clearance: float = 1.0
+    feet_clearance: float = 0.0  # 1.0 # Doesn't help
     feet_contact: float = 0.5
     feet_distance: float = 0.5
     feet_slip: float = 1.0

@@ -21,7 +21,7 @@ from toddlerbot.envs.ppo_config import PPOConfig
 from toddlerbot.sim.robot import Robot
 
 
-def log(
+def log_metrics(
     metrics: Dict[str, Any],
     time_elapsed: float,
     num_steps: int = -1,
@@ -111,7 +111,7 @@ def train(
     def progress(num_steps: int, metrics: Dict[str, Any]):
         times.append(time.time())
 
-        log_data = log(
+        log_data = log_metrics(
             metrics, times[-1] - times[0], num_steps, train_cfg.num_timesteps
         )
 
@@ -164,13 +164,16 @@ def evaluate(
         times.append(time.time())
         rollout.append(state.pipeline_state)  # type: ignore
         if i % log_every == 0:
-            log(state.metrics, times[-1] - times[0])  # type: ignore
+            log_metrics(state.metrics, times[-1] - times[0])  # type: ignore
 
-    media.write_video(
-        os.path.join("results", run_name, "eval.mp4"),
-        env.render(rollout[::render_every], height=720, width=1280, camera="track"),  # type: ignore
-        fps=1.0 / env.dt / render_every,
-    )
+    try:
+        media.write_video(
+            os.path.join("results", run_name, "eval.mp4"),
+            env.render(rollout[::render_every], height=720, width=1280, camera="track"),  # type: ignore
+            fps=1.0 / env.dt / render_every,
+        )
+    except AttributeError:
+        print("Failed to render the video. Skipped.")
 
 
 if __name__ == "__main__":
@@ -203,7 +206,7 @@ if __name__ == "__main__":
     train_cfg = PPOConfig(num_timesteps=50_000_000, num_evals=500)
 
     time_str = time.strftime("%Y%m%d_%H%M%S")
-    # time_str = "20240815_083256"
+    # time_str = "20240815_133901"
     run_name = f"{robot.name}_{args.env}_ppo_{time_str}"
 
     make_networks_factory = functools.partial(
