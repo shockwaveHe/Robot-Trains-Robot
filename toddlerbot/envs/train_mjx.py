@@ -78,7 +78,11 @@ def log_metrics(
 
 
 def train(
-    env: MuJoCoEnv, make_networks_factory: Any, train_cfg: PPOConfig, run_name: str
+    env: MuJoCoEnv,
+    make_networks_factory: Any,
+    train_cfg: PPOConfig,
+    run_name: str,
+    restore_path: str,
 ):
     exp_folder_path = os.path.join("results", run_name)
     os.makedirs(exp_folder_path, exist_ok=True)
@@ -97,12 +101,14 @@ def train(
         save_args = orbax_utils.save_args_from_target(params)
         path = os.path.abspath(os.path.join(exp_folder_path, f"{current_step}"))
         orbax_checkpointer.save(path, params, force=True, save_args=save_args)  # type: ignore
+        model.save_params(path, params)
 
     train_fn = functools.partial(  # type: ignore
         ppo.train,
         network_factory=make_networks_factory,  # type: ignore
         # randomization_fn=domain_randomize,
         policy_params_fn=policy_params_fn,
+        restore_checkpoint_path=os.path.abspath(restore_path),
         **train_cfg.__dict__,
     )
 
@@ -191,10 +197,16 @@ if __name__ == "__main__":
         help="The name of the env.",
     )
     parser.add_argument(
-        "--vis",
+        "--eval",
         type=str,
         default="",
-        help="The name of the env.",
+        help="Provide the time string of the run to evaluate.",
+    )
+    parser.add_argument(
+        "--restore",
+        type=str,
+        default="",
+        help="Path to the checkpoint folder.",
     )
     args = parser.parse_args()
 
@@ -203,11 +215,7 @@ if __name__ == "__main__":
     env = MuJoCoEnv(args.env, cfg, robot)  # , fixed_base=True)
 
     train_cfg = PPOConfig()
-    train_cfg = PPOConfig(num_timesteps=50_000_000, num_evals=500)
-
-    time_str = time.strftime("%Y%m%d_%H%M%S")
-    # time_str = "20240815_171035"
-    run_name = f"{robot.name}_{args.env}_ppo_{time_str}"
+    train_cfg = PPOConfig(num_timesteps=100_000_000, num_evals=1000)
 
     make_networks_factory = functools.partial(
         ppo_networks.make_ppo_networks,
@@ -215,6 +223,19 @@ if __name__ == "__main__":
         value_hidden_layer_sizes=(128,) * 4,
     )
 
-    train(env, make_networks_factory, train_cfg, run_name)
+    if len(args.eval) > 0:
+        time_str = args.eval
+    else:
+        time_str = time.strftime("%Y%m%d_%H%M%S")
 
-    evaluate(env, make_networks_factory, train_cfg, run_name)
+    run_name = f"{robot.name}_{args.env}_ppo_{time_str}"
+
+    if len(args.eval) > 0:
+        if os.path.exists(os.path.join("results", run_name)):
+            evaluate(env, make_networks_factory, train_cfg, run_name)
+        else:
+            raise FileNotFoundError(f"Run {args.eval} not found.")
+    else:
+        train(env, make_networks_factory, train_cfg, run_name, args.restore)
+
+        evaluate(env, make_networks_factory, train_cfg, run_name)
