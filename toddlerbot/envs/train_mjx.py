@@ -101,7 +101,7 @@ def train(
         save_args = orbax_utils.save_args_from_target(params)
         path = os.path.abspath(os.path.join(exp_folder_path, f"{current_step}"))
         orbax_checkpointer.save(path, params, force=True, save_args=save_args)  # type: ignore
-        model.save_params(path, params)
+        model.save_params(os.path.join(path, "policy"), params)
 
     train_fn = functools.partial(  # type: ignore
         ppo.train,
