@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from toddlerbot.motion_reference.zmp_planner import ZMPPlanner
+from toddlerbot.motion_reference.zmp_planner_np import ZMPPlanner
 
 
 def plot_results(data_dict, suffix=""):
@@ -164,7 +164,7 @@ def main():
     time_steps, zmp_d = generate_desired_zmp_trajs(footsteps, 0.5, 1)
 
     x0 = np.array([0, 0, 0, 0], dtype=float)
-    com_z = 1
+    com_z = 0.3442
     zmp_planner = ZMPPlanner()
     zmp_planner.plan(time_steps, zmp_d, x0, com_z, Qy=np.eye(2), R=np.eye(2) * 0.1)
 

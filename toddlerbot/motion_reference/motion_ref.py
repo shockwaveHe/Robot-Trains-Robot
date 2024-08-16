@@ -2,8 +2,6 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 import jax
-import numpy as np
-import numpy.typing as npt
 
 from toddlerbot.sim.robot import Robot
 
@@ -21,9 +19,9 @@ class MotionReference(ABC):
     @abstractmethod
     def get_state_ref(
         self,
-        path_pos: npt.NDArray[np.float32] | jax.Array,
-        path_quat: npt.NDArray[np.float32] | jax.Array,
-        phase: Optional[float | npt.NDArray[np.float32] | jax.Array] = None,
-        command: Optional[npt.NDArray[np.float32] | jax.Array] = None,
-    ) -> npt.NDArray[np.float32] | jax.Array:
+        path_pos: jax.Array,
+        path_quat: jax.Array,
+        phase: Optional[float | jax.Array] = None,
+        command: Optional[jax.Array] = None,
+    ) -> jax.Array:
         pass

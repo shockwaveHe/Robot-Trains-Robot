@@ -152,7 +152,7 @@ def evaluate(
     rollout = [state.pipeline_state]  # type: ignore
 
     # grab a trajectory
-    n_steps = 500
+    n_steps = 1000
     render_every = 2
     log_every = 100
 
@@ -206,7 +206,7 @@ if __name__ == "__main__":
     train_cfg = PPOConfig(num_timesteps=50_000_000, num_evals=500)
 
     time_str = time.strftime("%Y%m%d_%H%M%S")
-    # time_str = "20240815_133901"
+    # time_str = "20240815_171035"
     run_name = f"{robot.name}_{args.env}_ppo_{time_str}"
 
     make_networks_factory = functools.partial(
