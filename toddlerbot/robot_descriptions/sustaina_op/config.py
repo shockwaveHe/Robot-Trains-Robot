@@ -129,7 +129,7 @@ sustaina_op_config = RobotConfig(
         "hip_pitch_to_knee_z": 0.1,
         "z_offset_knee": 0.057,
         "knee_to_ank_roll_z": 0.1,
-        "y_offset_com_to_foot": 0.044,
+        "foot_to_com_y": 0.044,
     },
     compute_leg_angles=compute_leg_angles,
 )

@@ -225,7 +225,7 @@ robotis_op3_config = RobotConfig(
         "hip_pitch_to_knee_z": 0.11,  # from the hip pitch joint to the knee joint
         "z_offset_knee": 0.0,
         "knee_to_ank_roll_z": 0.11,  # from the knee joint to the ankle pitch joint
-        "y_offset_com_to_foot": 0.0475,
+        "foot_to_com_y": 0.0475,
     },
     compute_leg_angles=compute_leg_angles,
 )

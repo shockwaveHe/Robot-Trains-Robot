@@ -193,7 +193,7 @@ def plot_footsteps(
     foot_pos_list: npt.NDArray[np.float32],
     support_leg_list: List[str],
     foot_size: Tuple[float, float],
-    y_offset_com_to_foot: float,
+    foot_to_com_y: float,
     fig_size: Tuple[int, int] = (10, 6),
     title: str = "",
     x_label: str = "",
@@ -214,8 +214,8 @@ def plot_footsteps(
         # Draw each footstep
         for foot_pos, support_leg in zip(foot_pos_list, support_leg_list):
             if support_leg == "both":
-                dx = -y_offset_com_to_foot * np.sin(foot_pos[2])
-                dy = y_offset_com_to_foot * np.cos(foot_pos[2])
+                dx = -foot_to_com_y * np.sin(foot_pos[2])
+                dy = foot_to_com_y * np.cos(foot_pos[2])
 
                 left_foot_pos = [foot_pos[0] + dx, foot_pos[1] + dy]
                 plot_one_footstep(

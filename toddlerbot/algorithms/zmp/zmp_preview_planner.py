@@ -16,7 +16,7 @@ class ZMPPreviewPlanner:
         t_filter: float,
         Q_val: float,
         R_val: float,
-        x_offset_com_to_foot: float,
+        foot_to_com_x: float,
         y_disp_zmp: float,
     ):
         """
@@ -28,7 +28,7 @@ class ZMPPreviewPlanner:
         self.t_filter = t_filter
         self.Q_val = Q_val
         self.R_val = R_val
-        self.x_offset_com_to_foot = x_offset_com_to_foot
+        self.foot_to_com_x = foot_to_com_x
         self.y_disp_zmp = y_disp_zmp
 
         self._setup()
@@ -94,7 +94,7 @@ class ZMPPreviewPlanner:
 
     def compute_zmp_ref_traj(self, foot_steps: List[FootStep]) -> List:
         # Prepare the timing and positions matrix for all foot steps in advance
-        x_offset = self.x_offset_com_to_foot
+        x_offset = self.foot_to_com_x
         y_offset = self.y_disp_zmp
 
         dt = self.dt

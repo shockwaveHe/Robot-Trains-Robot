@@ -17,8 +17,8 @@ class Walking:
         self.robot = robot
         self.config = config
         self.fs_steps = round(config.plan_t_step / config.control_dt)
-        self.x_offset_com_to_foot = robot.com[0]
-        self.y_offset_com_to_foot = robot.offsets["y_offset_com_to_foot"]
+        self.foot_to_com_x = robot.com[0]
+        self.foot_to_com_y = robot.offsets["foot_to_com_y"]
 
         zero_joint_angles, self.initial_joint_angles = robot.initialize_joint_angles()
         self.joint_angles = self.initial_joint_angles
@@ -28,7 +28,7 @@ class Walking:
         plan_params = FootStepPlanParameters(
             max_stride=np.array(config.plan_max_stride),
             t_step=config.plan_t_step,
-            y_offset_com_to_foot=self.y_offset_com_to_foot,
+            foot_to_com_y=self.foot_to_com_y,
         )
         self.fsp = FootStepPlanner(plan_params)
 
@@ -39,8 +39,8 @@ class Walking:
             t_filter=config.control_t_filter,
             Q_val=config.zmp_control_cost_Q,
             R_val=config.zmp_control_cost_R,
-            x_offset_com_to_foot=self.x_offset_com_to_foot,
-            y_disp_zmp=config.y_offset_zmp - self.y_offset_com_to_foot,
+            foot_to_com_x=self.foot_to_com_x,
+            y_disp_zmp=config.y_offset_zmp - self.foot_to_com_y,
         )
         # self.lqr_controller = LQRFullBodyController(
         #     nq=len(self.initial_joint_angles),
@@ -62,8 +62,8 @@ class Walking:
         self.left_up = self.right_up = 0.0
         # Assume the initial state is the canonical pose
         self.theta_curr = 0.0
-        self.left_pos = np.array([0.0, self.y_offset_com_to_foot, 0.0])
-        self.right_pos = np.array([0.0, -self.y_offset_com_to_foot, 0.0])
+        self.left_pos = np.array([0.0, self.foot_to_com_y, 0.0])
+        self.right_pos = np.array([0.0, -self.foot_to_com_y, 0.0])
 
     def plan(self, curr_pose=None, target_pose=None):
         if self.curr_pose is not None:
@@ -121,9 +121,9 @@ class Walking:
                     self.right_pos_target = np.array(
                         [
                             fs_next.position[0]
-                            + np.sin(fs_next.position[2]) * self.y_offset_com_to_foot,
+                            + np.sin(fs_next.position[2]) * self.foot_to_com_y,
                             fs_next.position[1]
-                            - np.cos(fs_next.position[2]) * self.y_offset_com_to_foot,
+                            - np.cos(fs_next.position[2]) * self.foot_to_com_y,
                             fs_next.position[2],
                         ]
                     )
@@ -138,9 +138,9 @@ class Walking:
                     self.left_pos_target = np.array(
                         [
                             fs_next.position[0]
-                            - np.sin(fs_next.position[2]) * self.y_offset_com_to_foot,
+                            - np.sin(fs_next.position[2]) * self.foot_to_com_y,
                             fs_next.position[1]
-                            + np.cos(fs_next.position[2]) * self.y_offset_com_to_foot,
+                            + np.cos(fs_next.position[2]) * self.foot_to_com_y,
                             fs_next.position[2],
                         ]
                     )
@@ -196,24 +196,20 @@ class Walking:
                     self.theta_curr += self.theta_delta
 
         left_hip_pos = [
-            com_pos[0] - self.x_offset_com_to_foot,
-            com_pos[1] + self.y_offset_com_to_foot,
+            com_pos[0] - self.foot_to_com_x,
+            com_pos[1] + self.foot_to_com_y,
         ]
         right_hip_pos = [
-            com_pos[0] - self.x_offset_com_to_foot,
-            com_pos[1] - self.y_offset_com_to_foot,
+            com_pos[0] - self.foot_to_com_x,
+            com_pos[1] - self.foot_to_com_y,
         ]
 
         if support_leg == "left":
-            right_hip_pos[0] += self.y_offset_com_to_foot * 2 * np.sin(self.theta_curr)
-            right_hip_pos[1] += (
-                self.y_offset_com_to_foot * 2 * (1 - np.cos(self.theta_curr))
-            )
+            right_hip_pos[0] += self.foot_to_com_y * 2 * np.sin(self.theta_curr)
+            right_hip_pos[1] += self.foot_to_com_y * 2 * (1 - np.cos(self.theta_curr))
         elif support_leg == "right":
-            left_hip_pos[0] += self.y_offset_com_to_foot * 2 * np.sin(self.theta_curr)
-            left_hip_pos[1] += (
-                self.y_offset_com_to_foot * 2 * (1 - np.cos(self.theta_curr))
-            )
+            left_hip_pos[0] += self.foot_to_com_y * 2 * np.sin(self.theta_curr)
+            left_hip_pos[1] += self.foot_to_com_y * 2 * (1 - np.cos(self.theta_curr))
 
         # target end effector positions in the hip frame
         left_offset_x = self.left_pos[0] - left_hip_pos[0]
