@@ -90,12 +90,12 @@ class WalkZMPReference(MotionReference):
             R=jnp.eye(2, dtype=jnp.float32) * 0.1,  # type: ignore
         )
 
-        # TODO: tested up to here
-
-        # Perturb the initial state a bit.
-        x0 = jnp.array([0, 0, 0.2, -0.1])  # type: ignore
+        x0 = jnp.array([path_pos[0], path_pos[1], command[0], command[1]])  # type: ignore
 
         N = int((time_steps[-1] - time_steps[0]) / dt)
+
+        time = time_steps[0] + jnp.arange(N) * dt
+        com_pos = jax.vmap(self.zmp_planner.get_nominal_com)(time)
 
         traj = {
             "time": jnp.zeros(N, dtype=jnp.float32),  # type: ignore
@@ -118,9 +118,7 @@ class WalkZMPReference(MotionReference):
                 traj["u"]
                 .at[i, :]
                 .set(
-                    self.zmp_planner.compute_optimal_com_acc(
-                        traj["time"][i], traj["x"][i, :]
-                    )
+                    self.zmp_planner.get_optim_com_acc(traj["time"][i], traj["x"][i, :])
                 )
             )
 

@@ -201,12 +201,6 @@ class ZMPPlanner:
             gamma_traj,
         )
 
-        # for v in [0, 2, 4, 6, 8, 10]:
-        #     print(f"beta: {beta_traj(v)}")
-        #     print(f"gamma: {gamma_traj(v)}")
-        #     print(f"s2: {self.s2.value(v)}")
-        #     print(f"k2: {self.k2.value(v)}")
-
         # Computes the nominal CoM trajectory. Also known as the forward pass.
         # Eq. 35, 36 in [1]
         Az = jnp.zeros((8, 8), dtype=jnp.float32)  # type: ignore
@@ -248,7 +242,7 @@ class ZMPPlanner:
 
         self.planned = True
 
-    def compute_optimal_com_acc(self, time: float | jax.Array, x: jax.Array):
+    def get_optim_com_acc(self, time: float | jax.Array, x: jax.Array):
         if not self.planned:
             raise ValueError("Plan must be called first.")
 

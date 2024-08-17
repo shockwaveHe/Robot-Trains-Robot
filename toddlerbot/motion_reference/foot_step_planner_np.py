@@ -4,7 +4,7 @@ from typing import List
 import numpy as np
 from scipy.interpolate import CubicHermiteSpline  # type: ignore
 
-# from toddlerbot.visualization.vis_plot import plot_footsteps
+from toddlerbot.visualization.vis_plot import plot_footsteps
 
 
 @dataclass
@@ -142,8 +142,6 @@ class FootStepPlanner:
 if __name__ == "__main__":
     import random
 
-    random.seed(0)
-
     planner_params = FootStepPlanParameters(
         max_stride=np.array(([0.05, 0.05, np.pi / 8])),
         t_step=0.75,
@@ -151,29 +149,22 @@ if __name__ == "__main__":
     )
     planner = FootStepPlanner(planner_params)
 
-    for i in range(3):
-        target_pose = np.array(
-            [
-                random.uniform(-1, 1),
-                random.uniform(-1, 1),
-                random.uniform(0.0, np.pi),
-            ]
-        )
-        path, foot_steps = planner.compute_steps(
-            curr_pose=np.array([0, 0, 0]),
-            target_pose=target_pose,
-        )
+    target_pose = np.array([0.5, -0.5, np.pi / 2])  # type: ignore
+    path, foot_steps = planner.compute_steps(
+        curr_pose=np.array([0, 0, 0]),
+        target_pose=target_pose,
+    )
 
-        plot_footsteps(
-            path,
-            foot_steps,
-            [0.1, 0.05],
-            planner_params.y_offset_com_to_foot,
-            fig_size=(8, 8),
-            title=f"Footsteps Planning: {target_pose[0]:.2f} {target_pose[1]:.2f} {target_pose[2]:.2f}",
-            x_label="Position X",
-            y_label="Position Y",
-            save_config=True,
-            save_path="results/plots",
-            file_suffix=f"{i}",
-        )()
+    plot_footsteps(
+        path,
+        foot_steps,
+        [0.1, 0.05],
+        planner_params.y_offset_com_to_foot,
+        fig_size=(8, 8),
+        title=f"Footsteps Planning: {target_pose[0]:.2f} {target_pose[1]:.2f} {target_pose[2]:.2f}",
+        x_label="Position X",
+        y_label="Position Y",
+        save_config=True,
+        save_path="results/plots",
+        file_suffix=f"{i}",
+    )()
