@@ -2,7 +2,7 @@ import argparse
 import functools
 import os
 import time
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import jax
 import jax.numpy as jnp
@@ -11,6 +11,7 @@ from brax.io import model  # type: ignore
 from brax.training.agents.ppo import networks as ppo_networks  # type: ignore
 from brax.training.agents.ppo import train as ppo  # type: ignore
 from flax.training import orbax_utils
+from moviepy.editor import VideoFileClip, clips_array  # type: ignore
 from orbax import checkpoint as ocp  # type: ignore
 from tqdm import tqdm
 
@@ -19,6 +20,37 @@ from toddlerbot.envs.mjx_config import MuJoCoConfig
 from toddlerbot.envs.mjx_env import MuJoCoEnv
 from toddlerbot.envs.ppo_config import PPOConfig
 from toddlerbot.sim.robot import Robot
+
+
+def render_video(
+    env: MuJoCoEnv,
+    rollout: List[Any],
+    run_name: str,
+    render_every: int = 2,
+    height: int = 360,
+    width: int = 640,
+):
+    # Define paths for each camera's video
+    video_paths: List[str] = []
+
+    # Render and save videos for each camera
+    for camera in ["perspective", "side", "top", "front"]:
+        video_path = os.path.join("results", run_name, f"eval_{camera}.mp4")
+        media.write_video(
+            video_path,
+            env.render(  # type: ignore
+                rollout[::render_every], height=height, width=width, camera=camera
+            ),
+            fps=1.0 / env.dt / render_every,
+        )
+        video_paths.append(video_path)
+
+    # Load the video clips using moviepy
+    clips = [VideoFileClip(path) for path in video_paths]
+    # Arrange the clips in a 2x2 grid
+    final_video = clips_array([[clips[0], clips[1]], [clips[2], clips[3]]])
+    # Save the final concatenated video
+    final_video.write_videofile(os.path.join("results", run_name, "eval.mp4"))
 
 
 def log_metrics(
@@ -87,6 +119,10 @@ def train(
     exp_folder_path = os.path.join("results", run_name)
     os.makedirs(exp_folder_path, exist_ok=True)
 
+    restore_checkpoint_path = (
+        os.path.abspath(restore_path) if len(restore_path) > 0 else None
+    )
+
     wandb.init(  # type: ignore
         project="ToddlerBot",
         sync_tensorboard=True,
@@ -108,7 +144,7 @@ def train(
         network_factory=make_networks_factory,  # type: ignore
         # randomization_fn=domain_randomize,
         policy_params_fn=policy_params_fn,
-        restore_checkpoint_path=os.path.abspath(restore_path),
+        restore_checkpoint_path=restore_checkpoint_path,
         **train_cfg.__dict__,
     )
 
@@ -155,11 +191,10 @@ def evaluate(
     command = jnp.array([0.3, 0.0, 0.0, 0.0])  # type: ignore
     state = jit_reset(rng)  # type: ignore
     state.info["command"] = command  # type: ignore
-    rollout = [state.pipeline_state]  # type: ignore
+    rollout: List[Any] = [state.pipeline_state]  # type: ignore
 
     # grab a trajectory
     n_steps = 1000
-    render_every = 2
     log_every = 100
 
     times = [time.time()]
@@ -173,11 +208,7 @@ def evaluate(
             log_metrics(state.metrics, times[-1] - times[0])  # type: ignore
 
     try:
-        media.write_video(
-            os.path.join("results", run_name, "eval.mp4"),
-            env.render(rollout[::render_every], height=720, width=1280, camera="track"),  # type: ignore
-            fps=1.0 / env.dt / render_every,
-        )
+        render_video(env, rollout, run_name)
     except AttributeError:
         print("Failed to render the video. Skipped.")
 

@@ -589,18 +589,31 @@ def create_scene_xml(mjcf_path: str, is_fixed: bool):
         attrib={"pos": "0 0 1.5", "dir": "0 0 -1", "directional": "true"},
     )
 
-    pos_str = "0.5 -0.5 0.5" if is_fixed else "0 -1 1"
-    xy_axes_str = "1 1 0 -1 1 2" if is_fixed else "1 0 0 0 1 2"
-    ET.SubElement(
-        worldbody,
-        "camera",
-        attrib={
-            "name": "track",
-            "pos": pos_str,
-            "xyaxes": xy_axes_str,
-            "mode": "trackcom",
-        },
-    )
+    camera_settings = {
+        "perspective": {"pos": [1, -1, 0.6], "xy_axes": [1, 1, 0, -1, 1, 3]},
+        "side": {"pos": [0, -1, 0.6], "xy_axes": [1, 0, 0, 0, 1, 3]},
+        "top": {"pos": [0, 0, 2], "xy_axes": [0, 1, 0, -1, 0, 0]},
+        "front": {"pos": [1, 0, 0.6], "xy_axes": [0, 1, 0, 1, 0, 3]},
+    }
+
+    for camera, settings in camera_settings.items():
+        pos_list = settings["pos"]
+        if is_fixed:
+            pos_list = [pos_list[0], pos_list[1], pos_list[2] - 0.35]
+
+        pos_str = " ".join(map(str, pos_list))
+        xy_axes_str = " ".join(map(str, settings["xy_axes"]))
+
+        ET.SubElement(
+            worldbody,
+            "camera",
+            attrib={
+                "name": camera,
+                "pos": pos_str,
+                "xyaxes": xy_axes_str,
+                "mode": "trackcom",
+            },
+        )
 
     if not is_fixed:
         # Worldbody settings
