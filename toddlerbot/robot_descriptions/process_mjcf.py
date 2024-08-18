@@ -590,10 +590,10 @@ def create_scene_xml(mjcf_path: str, is_fixed: bool):
     )
 
     camera_settings = {
-        "perspective": {"pos": [1, -1, 0.6], "xy_axes": [1, 1, 0, -1, 1, 3]},
+        "perspective": {"pos": [0.7, -0.7, 0.7], "xy_axes": [1, 1, 0, -1, 1, 3]},
         "side": {"pos": [0, -1, 0.6], "xy_axes": [1, 0, 0, 0, 1, 3]},
-        "top": {"pos": [0, 0, 2], "xy_axes": [0, 1, 0, -1, 0, 0]},
-        "front": {"pos": [1, 0, 0.6], "xy_axes": [0, 1, 0, 1, 0, 3]},
+        "top": {"pos": [0, 0, 1], "xy_axes": [0, 1, 0, -1, 0, 0]},
+        "front": {"pos": [1, 0, 0.6], "xy_axes": [0, 1, 0, -1, 0, 3]},
     }
 
     for camera, settings in camera_settings.items():
