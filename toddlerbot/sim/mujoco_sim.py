@@ -12,7 +12,7 @@ from toddlerbot.sim import BaseSim
 from toddlerbot.sim.mujoco_utils import MuJoCoController, MuJoCoRenderer, MuJoCoViewer
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
-from toddlerbot.utils.math_utils import quat_to_euler_arr
+from toddlerbot.utils.math_utils import quat2euler
 
 
 class MuJoCoSim(BaseSim):
@@ -28,6 +28,7 @@ class MuJoCoSim(BaseSim):
     ):
         """Initialize the MuJoCo simulation environment."""
         super().__init__()
+
         self.name = "mujoco"
         self.robot = robot
         self.fixed_base = fixed_base
@@ -180,7 +181,7 @@ class MuJoCoSim(BaseSim):
             self.data.sensor("orientation").data,  # type: ignore
             copy=True,
         )
-        obs_dict["imu_euler"] = quat_to_euler_arr(obs_dict["imu_quat"])
+        obs_dict["imu_euler"] = np.asarray(quat2euler(obs_dict["imu_quat"]))
         obs_dict["imu_ang_vel"] = np.array(
             self.data.sensor("angular_velocity").data,  # type: ignore
             copy=True,

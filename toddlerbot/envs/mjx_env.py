@@ -14,7 +14,8 @@ from mujoco.mjx._src import support  # type: ignore
 from toddlerbot.envs.mjx_config import MuJoCoConfig
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
-from toddlerbot.utils.jax_utils import quat_apply, quat_mult, wrap_to_pi
+from toddlerbot.utils.jax_utils import quat_apply, quat_mult
+from toddlerbot.utils.math_utils import wrap_to_pi
 
 
 class MuJoCoEnv(PipelineEnv):

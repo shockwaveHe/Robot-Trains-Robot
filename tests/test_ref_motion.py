@@ -72,16 +72,15 @@ def test_walk_zmp_ref():
     walk_ref = WalkZMPReference(
         robot,
         default_joint_pos=jnp.array(list(default_joint_angles.values())),  # type: ignore
-        zmp_y_offset=0.1,
-        num_steps=6,
     )
 
     with jax.disable_jit():
-        walk_ref.get_zmp_ref(
+        walk_ref.plan(
             jnp.zeros(3, dtype=np.float32),  # type: ignore
             jnp.array([1, 0, 0, 0], dtype=np.float32),  # type: ignore
             0,
-            jnp.zeros(3, dtype=np.float32),  # type: ignore
+            jnp.array([0.3, 0.0, np.pi / 12], dtype=np.float32),  # type: ignore
+            duration=10,
         )
 
     duration = 10

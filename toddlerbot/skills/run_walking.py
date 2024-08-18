@@ -157,8 +157,8 @@ def main():
             # print(f"torso_pos: {torso_pos}, torso_theta: {torso_theta}")
 
             com_pos = [
-                torso_pos[0] + np.cos(torso_theta) * walking.x_offset_com_to_foot,
-                torso_pos[1] + np.sin(torso_theta) * walking.x_offset_com_to_foot,
+                torso_pos[0] + np.cos(torso_theta) * walking.foot_to_com_x,
+                torso_pos[1] + np.sin(torso_theta) * walking.foot_to_com_x,
             ]
             com_traj.append(com_pos)
             # zmp_pos = sim.get_zmp(com_pos)
@@ -246,7 +246,7 @@ def main():
             path,
             foot_steps,
             robot.foot_size[:2],
-            robot.offsets["y_offset_com_to_foot"],
+            robot.offsets["foot_to_com_y"],
             title="Footsteps Planning",
             save_path=exp_folder_path,
             file_suffix=file_suffix,

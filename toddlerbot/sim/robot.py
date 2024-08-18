@@ -114,7 +114,8 @@ class Robot:
             graph.get("left_calf_link")[0][2, 3] - graph.get("ank_pitch_link")[0][2, 3]  # type: ignore
         )
         # from the hip center to the foot
-        offsets["y_offset_com_to_foot"] = graph.get("ank_pitch_link")[0][1, 3]  # type: ignore
+        offsets["foot_to_com_x"] = graph.get("ank_pitch_link")[0][0, 3]  # type: ignore
+        offsets["foot_to_com_y"] = graph.get("ank_pitch_link")[0][1, 3]  # type: ignore
 
         ##### Below are for the ankle IK #####
         ank_origin: npt.NDArray[np.float32] = np.array(
@@ -144,6 +145,7 @@ class Robot:
 
     @property
     def init_motor_angles(self) -> Dict[str, float]:
+        # TODO: Update the default pos in config.json
         motor_angles: Dict[str, float] = {}
         for joint_name, joint_config in self.config["joints"].items():
             if not joint_config["is_passive"]:
