@@ -50,7 +50,7 @@ def plot_waist_mapping(
     )
 
     # Create a color array based on the valid_mask
-    colors = np.where(valid_mask.flatten(), "red", "white")
+    colors = np.where(valid_mask.flatten(), "red", "white")  # type: ignore
 
     n_rows = 1
     n_cols = 2
@@ -116,7 +116,7 @@ def plot_ankle_mapping(
     )
 
     # Create a color array based on the valid_mask
-    colors = np.where(valid_mask.flatten(), "red", "white")
+    colors = np.where(valid_mask.flatten(), "red", "white")  # type: ignore
 
     n_rows = 1
     n_cols = 2
@@ -153,7 +153,7 @@ def plot_one_footstep(
     center: npt.NDArray[np.float32],
     size: Tuple[float, float],
     angle: float,
-    side: str,
+    side: int,
 ) -> None:
     length, width = size
     # Calculate the corner points
@@ -182,7 +182,7 @@ def plot_one_footstep(
     polygon = Polygon(
         corners,  # type: ignore
         closed=True,
-        edgecolor="b" if side == "left" else "g",
+        edgecolor="b" if side == 0 else "g",
         fill=False,
     )
     ax.add_patch(polygon)
@@ -191,7 +191,7 @@ def plot_one_footstep(
 def plot_footsteps(
     path: npt.NDArray[np.float32],
     foot_pos_list: npt.NDArray[np.float32],
-    support_leg_list: List[str],
+    support_leg_list: List[int],
     foot_size: Tuple[float, float],
     foot_to_com_y: float,
     fig_size: Tuple[int, int] = (10, 6),
@@ -213,17 +213,17 @@ def plot_footsteps(
 
         # Draw each footstep
         for foot_pos, support_leg in zip(foot_pos_list, support_leg_list):
-            if support_leg == "both":
+            if support_leg == 2:
                 dx = -foot_to_com_y * np.sin(foot_pos[2])
                 dy = foot_to_com_y * np.cos(foot_pos[2])
 
                 left_foot_pos = [foot_pos[0] + dx, foot_pos[1] + dy]
                 plot_one_footstep(
-                    ax, np.array(left_foot_pos), foot_size, foot_pos[2], "left"
+                    ax, np.array(left_foot_pos), foot_size, foot_pos[2], 0
                 )
                 right_foot_pos = [foot_pos[0] - dx, foot_pos[1] - dy]
                 plot_one_footstep(
-                    ax, np.array(right_foot_pos), foot_size, foot_pos[2], "right"
+                    ax, np.array(right_foot_pos), foot_size, foot_pos[2], 1
                 )
             else:
                 plot_one_footstep(ax, foot_pos[:2], foot_size, foot_pos[2], support_leg)

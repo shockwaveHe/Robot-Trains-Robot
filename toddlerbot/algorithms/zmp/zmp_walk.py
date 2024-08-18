@@ -1,10 +1,7 @@
 import copy
 from typing import Dict, List, Tuple
 
-from toddlerbot.algorithms.zmp.foot_step_planner import (
-    FootStepPlanner,
-    FootStepPlanParameters,
-)
+from toddlerbot.algorithms.zmp.footstep_planner import FootStepPlanner
 from toddlerbot.algorithms.zmp.zmp_planner import ZMPPlanner
 from toddlerbot.algorithms.zmp.zmp_walk_configs import ZMPWalkConfig
 from toddlerbot.sim.robot import Robot
@@ -28,11 +25,9 @@ class ZMPWalking:
         self.joint_angles_traj = [self.joint_angles]
 
         self.fsp = FootStepPlanner(
-            FootStepPlanParameters(
-                max_stride=np.array(config.plan_max_stride),  # type: ignore
-                t_step=config.plan_t_step,
-                foot_to_com_y=self.foot_to_com_y,
-            )
+            np.array(config.plan_max_stride),  # type: ignore
+            config.plan_t_step,
+            self.foot_to_com_y,
         )
         self.zmp_planner = ZMPPlanner()
 

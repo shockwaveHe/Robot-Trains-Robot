@@ -1,22 +1,7 @@
-from dataclasses import dataclass
 from typing import List, Tuple
 
 from toddlerbot.utils.array_utils import ArrayType, inplace_update
 from toddlerbot.utils.array_utils import array_lib as np
-
-
-@dataclass
-class FootStepPlanParameters:
-    max_stride: ArrayType  # x, y, theta
-    t_step: float
-    foot_to_com_y: float
-
-
-@dataclass
-class FootStep:
-    time: float
-    position: ArrayType  # x, y, theta
-    support_leg: str = ""
 
 
 def cubic_hermite_spline(
@@ -68,20 +53,17 @@ def generate_hermite_spline(
 
 
 class FootStepPlanner:
-    def __init__(self, params: FootStepPlanParameters):
-        self.params = params
+    def __init__(self, max_stride: ArrayType, foot_to_com_y: float):
+        self.max_stride = max_stride
+        self.foot_to_com_y = foot_to_com_y
 
     def compute_steps(
-        self,
-        curr_pose: ArrayType,
-        target_pose: ArrayType,
-    ) -> Tuple[ArrayType, List[FootStep]]:
-        y_offset = self.params.foot_to_com_y
-        foot_steps: List[FootStep] = []
-        time = 0.0
+        self, curr_pose: ArrayType, target_pose: ArrayType
+    ) -> Tuple[ArrayType, List[ArrayType]]:
+        y_offset = self.foot_to_com_y
+        footsteps: List[ArrayType] = []
 
-        foot_steps.append(FootStep(time, curr_pose, "both"))
-        time += self.params.t_step
+        footsteps.append(np.array([*curr_pose, 2]))  # type: ignore
 
         sampled_spline_x, sampled_spline_y = self.generate_and_sample_path(
             curr_pose, target_pose
@@ -117,32 +99,26 @@ class FootStepPlanner:
                 [right_foot_x[1] - right_foot_x[0], right_foot_y[1] - right_foot_y[0]]
             )
         )
-        support_leg = (
-            "left" if left_first_step_length > right_first_step_length else "right"
-        )
+        support_leg = 0 if left_first_step_length > right_first_step_length else 1
 
         for i in range(len(left_foot_x)):
-            if support_leg == "left":
-                position = np.array(  # type: ignore
-                    [left_foot_x[i], left_foot_y[i], np.arctan2(-nx[i], ny[i])]  # type: ignore
-                )
-            else:
-                position = np.array(  # type: ignore
-                    [right_foot_x[i], right_foot_y[i], np.arctan2(-nx[i], ny[i])]  # type: ignore
-                )
+            theta = np.arctan2(-nx[i], ny[i])  # type: ignore
+            position = (
+                [left_foot_x[i], left_foot_y[i], theta]
+                if support_leg == 0
+                else [right_foot_x[i], right_foot_y[i], theta]
+            )
+            footsteps.append(np.array([*position, support_leg]))  # type: ignore
 
-            foot_steps.append(FootStep(time, position, support_leg))
-
-            time += self.params.t_step
-            support_leg = "left" if support_leg == "right" else "right"
+            support_leg = 1 - support_leg  # Toggle between 0 and 1
 
         # Add the final step(s) with the foot together or stopped position
-        foot_steps.append(FootStep(time, target_pose, "both"))
-        # Add another step for the robot to stabilize
-        time += self.params.t_step
-        foot_steps.append(FootStep(time, target_pose, "both"))
+        footsteps.append(np.array([*target_pose, 2]))  # type: ignore
 
-        return path, foot_steps
+        # Add another step for the robot to stabilize
+        # footsteps.append(np.array([*target_pose, 2]))  # type: ignore
+
+        return path, footsteps
 
     def generate_and_sample_path(
         self,
@@ -176,7 +152,7 @@ class FootStepPlanner:
             )
 
             if (
-                np.any(l1_distance >= self.params.max_stride)  # type: ignore
+                np.any(l1_distance >= self.max_stride)  # type: ignore
                 or i == len(sampled_spline_x) - 1
             ):
                 sampled_path_x.append(sampled_spline_x[i])
@@ -191,32 +167,25 @@ class FootStepPlanner:
 
 
 if __name__ == "__main__":
-    from toddlerbot.visualization.vis_plot import plot_footsteps
+    planner = FootStepPlanner(np.array(([0.1, 0.05, np.pi / 8])), 0.0364)  # type: ignore
 
-    planner_params = FootStepPlanParameters(
-        max_stride=np.array(([0.05, 0.05, np.pi / 8])),  # type: ignore
-        t_step=0.75,
-        foot_to_com_y=0.04,
-    )
-    planner = FootStepPlanner(planner_params)
-
-    target_pose = np.array([0.5, -0.5, np.pi / 2])  # type: ignore
-    path, foot_steps = planner.compute_steps(
+    target_pose = np.array([3, 0, 2.6179938])  # type: ignore
+    path, footsteps = planner.compute_steps(
         curr_pose=np.array([0, 0, 0]),  # type: ignore
         target_pose=target_pose,
     )
 
     import numpy
 
+    from toddlerbot.visualization.vis_plot import plot_footsteps
+
     # You can plot the footsteps with your existing plotting utility here
     plot_footsteps(
         numpy.asarray(path, dtype=numpy.float32),
-        numpy.array(
-            [numpy.asarray(fs.position) for fs in foot_steps], dtype=numpy.float32
-        ),
-        [fs.support_leg for fs in foot_steps],
+        numpy.array([numpy.asarray(fs[1:4]) for fs in footsteps], dtype=numpy.float32),
+        [int(fs[-1]) for fs in footsteps],
         (0.1, 0.05),
-        planner_params.foot_to_com_y,
+        planner.foot_to_com_y,
         fig_size=(8, 8),
         title=f"Footsteps Planning: {target_pose[0]:.2f} {target_pose[1]:.2f} {target_pose[2]:.2f}",
         x_label="Position X",
