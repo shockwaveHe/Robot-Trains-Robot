@@ -187,7 +187,7 @@ def train(
     train_fn = functools.partial(  # type: ignore
         ppo.train,
         network_factory=make_networks_factory,  # type: ignore
-        # randomization_fn=domain_randomize,
+        randomization_fn=domain_randomize,
         policy_params_fn=policy_params_fn,
         restore_checkpoint_path=restore_checkpoint_path,
         **train_cfg.__dict__,
@@ -288,6 +288,7 @@ if __name__ == "__main__":
 
     cfg = MuJoCoConfig()
     robot = Robot(args.robot)
+    # Need to a separate env for evaluation, otherwise the domain randomization will cause tracer leak errors.
     env = MuJoCoEnv(args.env, cfg, robot)  # , fixed_base=True)
     eval_env = MuJoCoEnv(args.env, cfg, robot)  # , fixed_base=True)
 
