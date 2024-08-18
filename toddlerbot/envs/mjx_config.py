@@ -120,21 +120,13 @@ class DomainRandConfig:
 
 
 @dataclass
-class NoiseScales:
-    dof_pos: float = 0.05
-    dof_vel: float = 0.5
-    lin_vel: float = 0.05
-    ang_vel: float = 0.1
-    quat: float = 0.03
-    gravity: float = 0.05
-    height_measurements: float = 0.1
-
-
-@dataclass
 class NoiseConfig:
     add_noise: bool = True
-    noise_level: float = 0.6
-    scales: NoiseScales = NoiseScales()
+    noise_scale: float = 0.05
+    dof_pos: float = 1.0
+    dof_vel: float = 10.0
+    ang_vel: float = 0.2
+    euler: float = 1.0
 
 
 # Top-level configuration dataclass

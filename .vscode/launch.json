@@ -104,8 +104,6 @@
                 "toddlerbot",
                 "--env",
                 "walk",
-                "--vis",
-                "",
             ],
         },
         {

@@ -21,13 +21,13 @@ from toddlerbot.utils.math_utils import wrap_to_pi
 class MuJoCoEnv(PipelineEnv):
     def __init__(
         self,
-        env_name: str,
+        name: str,
         cfg: MuJoCoConfig,
         robot: Robot,
         fixed_base: bool = False,
         **kwargs: Any,
     ):
-        self.env_name = env_name
+        self.name = name
         self.cfg = cfg
         self.robot = robot
         self.fixed_base = fixed_base
@@ -37,14 +37,15 @@ class MuJoCoEnv(PipelineEnv):
         else:
             xml_path = find_robot_file_path(robot.name, suffix="_scene.xml")
 
-        mj_model = mujoco.MjModel.from_xml_path(xml_path)  # type: ignore
-
-        mj_model.opt.timestep = cfg.mj.timestep  # type: ignore
-        mj_model.opt.solver = cfg.mj.solver  # type: ignore
-        mj_model.opt.iterations = cfg.mj.iterations  # type: ignore
-        mj_model.opt.ls_iterations = cfg.mj.ls_iterations  # type: ignore
-
-        sys = mjcf.load_model(mj_model)  # type: ignore
+        sys = mjcf.load(xml_path)  # type: ignore
+        sys = sys.tree_replace(  # type: ignore
+            {
+                "opt.timestep": cfg.mj.timestep,
+                "opt.solver": cfg.mj.solver,
+                "opt.iterations": cfg.mj.iterations,
+                "opt.ls_iterations": cfg.mj.ls_iterations,
+            }
+        )
 
         kwargs["n_frames"] = cfg.action.n_frames
         kwargs["backend"] = "mjx"
@@ -55,7 +56,8 @@ class MuJoCoEnv(PipelineEnv):
         self._init_reward()
 
     def _init_env(self):
-        # self.push_interval = np.ceil(self.cfg.domain_rand.push_interval_s / self.dt)
+        self.nu = self.sys.nu  # type:ignore
+        self.nv = self.sys.nv  # type:ignore
 
         # colliders
         collider_names = ["floor"] + self.robot.collider_names
@@ -145,14 +147,14 @@ class MuJoCoEnv(PipelineEnv):
             dict(zip(self.robot.motor_ordering, self.default_action.tolist()))
         )
         default_joint_pos = jnp.array(list(default_joint_angles.values()))  # type:ignore
-        if self.env_name == "walk":
+        if self.name == "walk":
             from toddlerbot.motion_reference.walk_simple_ref import WalkSimpleReference
 
             self.motion_ref = WalkSimpleReference(
                 self.robot, use_jax=True, default_joint_pos=default_joint_pos
             )
         else:
-            raise ValueError(f"Unknown env {self.env_name}")
+            raise ValueError(f"Unknown env {self.name}")
 
         # commands
         self.has_heading_command = self.cfg.commands.has_heading_command
@@ -163,7 +165,7 @@ class MuJoCoEnv(PipelineEnv):
         self.forward_vec = jnp.array([1.0, 0.0, 0.0])  # type:ignore
 
         # observation
-        self.state_ref_size = 7 + 6 + 2 * self.sys.nu + 2
+        self.state_ref_size = 7 + 6 + 2 * self.nu + 2
         self.num_obs_history = self.cfg.obs.frame_stack
         self.num_privileged_obs_history = self.cfg.obs.c_frame_stack
         self.obs_size = self.cfg.obs.num_single_obs
@@ -177,6 +179,20 @@ class MuJoCoEnv(PipelineEnv):
         self.action_scale = self.cfg.action.action_scale
         self.cycle_time = self.cfg.action.cycle_time
 
+        # noise
+        self.add_noise = self.cfg.noise.add_noise
+        self.noise_scale = self.cfg.noise.noise_scale * jnp.concatenate(  # type:ignore
+            [
+                jnp.zeros(5),  # type:ignore
+                jnp.ones_like(self.joint_indices) * self.cfg.noise.dof_pos,  # type:ignore
+                jnp.ones_like(self.joint_indices) * self.cfg.noise.dof_vel,  # type:ignore
+                jnp.zeros_like(self.motor_indices),  # type:ignore
+                jnp.ones(3) * self.cfg.noise.ang_vel,  # type:ignore
+                jnp.ones(3) * self.cfg.noise.euler,  # type:ignore
+            ]
+        )
+
+        # self.push_interval = np.ceil(self.cfg.domain_rand.push_interval_s / self.dt)
         # self.env_frictions = torch.zeros(
         #     self.num_envs, 1, dtype=torch.float32, device=self.device
         # )
@@ -218,7 +234,7 @@ class MuJoCoEnv(PipelineEnv):
         """Resets the environment to an initial state."""
         rng, key = jax.random.split(rng)  # type:ignore
 
-        qvel = jnp.zeros(self.sys.nv)  # type:ignore
+        qvel = jnp.zeros(self.nv)  # type:ignore
         pipeline_state = self.pipeline_init(self.default_qpos, qvel)
 
         state_info = {
@@ -236,8 +252,8 @@ class MuJoCoEnv(PipelineEnv):
             "last_stance_mask": jnp.zeros(2),  # type:ignore
             "feet_air_time": jnp.zeros(2),  # type:ignore
             "init_feet_height": pipeline_state.x.pos[self.feet_link_ids, 2],
-            "last_last_act": jnp.zeros(self.sys.nu),  # type:ignore
-            "last_act": jnp.zeros(self.sys.nu),  # type:ignore
+            "last_last_act": jnp.zeros(self.nu),  # type:ignore
+            "last_act": jnp.zeros(self.nu),  # type:ignore
             "rewards": {k: 0.0 for k in self.reward_names},
             "step": 0,
         }
@@ -252,7 +268,6 @@ class MuJoCoEnv(PipelineEnv):
             obs_history,
             privileged_obs_history,
         )
-        # obs = privileged_obs = jnp.zeros(1)  # type:ignore
         reward, done, zero = jnp.zeros(3)  # type:ignore
 
         metrics: Dict[str, Any] = {}
@@ -475,7 +490,7 @@ class MuJoCoEnv(PipelineEnv):
         joint_pos_delta = (
             joint_pos - self.default_qpos[self.q_start_idx + self.joint_indices]
         )
-        joint_pos_error = joint_pos - info["state_ref"][13 : 13 + self.sys.nu]
+        joint_pos_error = joint_pos - info["state_ref"][13 : 13 + self.nu]
         joint_vel = pipeline_state.qd[self.qd_start_idx + self.joint_indices]
 
         torso_lin_vel = pipeline_state.xd.vel[0]
@@ -493,7 +508,7 @@ class MuJoCoEnv(PipelineEnv):
                 torso_euler * self.obs_scales.euler,
             ]
         )
-        # TODO: check each field. Add push, friction
+        # TODO: Add push, friction
         privileged_obs = jnp.concatenate(  # type:ignore
             [
                 info["phase_signal"],
@@ -511,11 +526,16 @@ class MuJoCoEnv(PipelineEnv):
         )
 
         # clip, noise
-        # obs = jp.clip(obs, -100.0, 100.0) + self._obs_noise * jax.random.uniform(
-        #     state_info["rng"], obs.shape, minval=-1, maxval=1
-        # )
+        obs = jnp.clip(obs, -100.0, 100.0)  # type:ignore
+
+        if self.add_noise:
+            obs += self.noise_scale * jax.random.uniform(  # type:ignore
+                info["rng"], obs.shape, minval=-1, maxval=1
+            )
+
         # stack observations through time
         obs = jnp.roll(obs_history, obs.size).at[: obs.size].set(obs)  # type:ignore
+
         privileged_obs = (
             jnp.roll(privileged_obs_history, privileged_obs.size)  # type:ignore
             .at[: privileged_obs.size]
@@ -640,7 +660,7 @@ class MuJoCoEnv(PipelineEnv):
     ) -> jax.Array:
         """Reward for tracking leg joint velocities"""
         joint_vel = pipeline_state.qd[self.qd_start_idx + self.leg_joint_indices]
-        joint_vel_ref = info["state_ref"][13 + self.sys.nu + self.leg_motor_indices]
+        joint_vel_ref = info["state_ref"][13 + self.nu + self.leg_motor_indices]
         error = joint_vel - joint_vel_ref
         reward = -jnp.mean(error**2)  # type:ignore
         return reward
@@ -660,7 +680,7 @@ class MuJoCoEnv(PipelineEnv):
     ) -> jax.Array:
         """Reward for tracking arm joint velocities"""
         joint_vel = pipeline_state.qd[self.qd_start_idx + self.arm_joint_indices]
-        joint_vel_ref = info["state_ref"][13 + self.sys.nu + self.arm_motor_indices]
+        joint_vel_ref = info["state_ref"][13 + self.nu + self.arm_motor_indices]
         error = joint_vel - joint_vel_ref
         reward = -jnp.mean(error**2)  # type:ignore
         return reward
@@ -680,7 +700,7 @@ class MuJoCoEnv(PipelineEnv):
     ) -> jax.Array:
         """Reward for tracking neck joint velocities"""
         joint_vel = pipeline_state.qd[self.qd_start_idx + self.neck_joint_indices]
-        joint_vel_ref = info["state_ref"][13 + self.sys.nu + self.neck_motor_indices]
+        joint_vel_ref = info["state_ref"][13 + self.nu + self.neck_motor_indices]
         error = joint_vel - joint_vel_ref
         reward = -jnp.mean(error**2)  # type:ignore
         return reward
@@ -700,7 +720,7 @@ class MuJoCoEnv(PipelineEnv):
     ) -> jax.Array:
         """Reward for tracking waist joint velocities"""
         joint_vel = pipeline_state.qd[self.qd_start_idx + self.waist_joint_indices]
-        joint_vel_ref = info["state_ref"][13 + self.sys.nu + self.waist_motor_indices]
+        joint_vel_ref = info["state_ref"][13 + self.nu + self.waist_motor_indices]
         error = joint_vel - joint_vel_ref
         reward = -jnp.mean(error**2)  # type:ignore
         return reward
@@ -719,6 +739,7 @@ class MuJoCoEnv(PipelineEnv):
     def _reward_feet_clearance(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
+        # TODO: Fix this
         feet_height = pipeline_state.x.pos[self.feet_link_ids, 2]
         feet_z_delta = feet_height - info["init_feet_height"]
         is_close = jnp.abs(feet_z_delta - self.target_feet_z_delta) < 0.01  # type:ignore
@@ -758,7 +779,7 @@ class MuJoCoEnv(PipelineEnv):
     def _reward_stand_still(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
-        # TODO
+        # TODO: Fix this
         # Penalize motion at zero commands
         qpos_diff = jnp.sum(  # type:ignore
             jnp.abs(  # type:ignore

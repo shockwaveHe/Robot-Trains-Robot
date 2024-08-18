@@ -2,11 +2,12 @@ import argparse
 import functools
 import os
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import jax
 import jax.numpy as jnp
 import mediapy as media
+from brax import base  # type: ignore
 from brax.io import model  # type: ignore
 from brax.training.agents.ppo import networks as ppo_networks  # type: ignore
 from brax.training.agents.ppo import train as ppo  # type: ignore
@@ -109,8 +110,52 @@ def log_metrics(
     return log_data
 
 
+def domain_randomize(
+    sys: base.System, rng: jax.Array
+) -> Tuple[base.System, base.System]:
+    @jax.vmap
+    def rand(rng: jax.Array) -> Tuple[jax.Array, jax.Array, jax.Array]:
+        _, key = jax.random.split(rng, 2)  # type: ignore
+        # Friction
+        friction = jax.random.uniform(key, (1,), minval=0.6, maxval=1.4)  # type: ignore
+        friction = sys.geom_friction.at[:, 0].set(friction)  # type: ignore
+
+        # Actuator
+        _, key = jax.random.split(key, 2)  # type: ignore
+        gain_range = (-5, 5)
+        param = (
+            jax.random.uniform(key, (1,), minval=gain_range[0], maxval=gain_range[1])  # type: ignore
+            + sys.actuator_gainprm[:, 0]
+        )
+        gain = sys.actuator_gainprm.at[:, 0].set(param)  # type: ignore
+        bias = sys.actuator_biasprm.at[:, 1].set(-param)  # type: ignore
+        return friction, gain, bias
+
+    friction, gain, bias = rand(rng)
+
+    in_axes = jax.tree.map(lambda x: None, sys)  # type: ignore
+    in_axes = in_axes.tree_replace(
+        {
+            "geom_friction": 0,
+            "actuator_gainprm": 0,
+            "actuator_biasprm": 0,
+        }
+    )
+
+    sys = sys.tree_replace(  # type: ignore
+        {
+            "geom_friction": friction,
+            "actuator_gainprm": gain,
+            "actuator_biasprm": bias,
+        }
+    )
+
+    return sys, in_axes
+
+
 def train(
     env: MuJoCoEnv,
+    eval_env: MuJoCoEnv,
     make_networks_factory: Any,
     train_cfg: PPOConfig,
     run_name: str,
@@ -160,7 +205,7 @@ def train(
         # Log metrics to wandb
         wandb.log(log_data)  # type: ignore
 
-    _, params, _ = train_fn(environment=env, progress_fn=progress)  # type: ignore
+    _, params, _ = train_fn(environment=env, eval_env=eval_env, progress_fn=progress)  # type: ignore
 
     model_path = os.path.join(exp_folder_path, "policy")
     model.save_params(model_path, params)
@@ -244,6 +289,7 @@ if __name__ == "__main__":
     cfg = MuJoCoConfig()
     robot = Robot(args.robot)
     env = MuJoCoEnv(args.env, cfg, robot)  # , fixed_base=True)
+    eval_env = MuJoCoEnv(args.env, cfg, robot)  # , fixed_base=True)
 
     train_cfg = PPOConfig()
     train_cfg = PPOConfig(num_timesteps=100_000_000, num_evals=1000)
@@ -267,6 +313,6 @@ if __name__ == "__main__":
         else:
             raise FileNotFoundError(f"Run {args.eval} not found.")
     else:
-        train(env, make_networks_factory, train_cfg, run_name, args.restore)
+        train(env, eval_env, make_networks_factory, train_cfg, run_name, args.restore)
 
         evaluate(env, make_networks_factory, train_cfg, run_name)
