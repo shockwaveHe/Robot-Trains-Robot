@@ -530,7 +530,7 @@ class MuJoCoEnv(PipelineEnv):
                 info["rng"], obs.shape, minval=-1, maxval=1
             )
 
-        obs = jnp.clip(obs, -100.0, 100.0)  # type:ignore
+        # obs = jnp.clip(obs, -100.0, 100.0)  # type:ignore
         # stack observations through time
         obs = jnp.roll(obs_history, obs.size).at[: obs.size].set(obs)  # type:ignore
 
