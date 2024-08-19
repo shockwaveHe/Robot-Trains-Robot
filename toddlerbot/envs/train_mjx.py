@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Tuple
 import jax
 import jax.numpy as jnp
 import mediapy as media
+import wandb
 from brax import base  # type: ignore
 from brax.io import model  # type: ignore
 from brax.training.agents.ppo import networks as ppo_networks  # type: ignore
@@ -16,7 +17,6 @@ from moviepy.editor import VideoFileClip, clips_array  # type: ignore
 from orbax import checkpoint as ocp  # type: ignore
 from tqdm import tqdm
 
-import wandb
 from toddlerbot.envs.mjx_config import MuJoCoConfig, RewardScales, RewardsConfig
 from toddlerbot.envs.mjx_env import MuJoCoEnv
 from toddlerbot.envs.ppo_config import PPOConfig
@@ -214,9 +214,7 @@ def train(
     print(f"time to train: {times[-1] - times[1]}")
 
 
-def evaluate(
-    env: MuJoCoEnv, make_networks_factory: Any, train_cfg: PPOConfig, run_name: str
-):
+def evaluate(env: MuJoCoEnv, make_networks_factory: Any, run_name: str):
     ppo_network = make_networks_factory(
         env.obs_size, env.privileged_obs_size, env.action_size
     )
@@ -339,10 +337,10 @@ if __name__ == "__main__":
 
     if len(args.eval) > 0:
         if os.path.exists(os.path.join("results", run_name)):
-            evaluate(test_env, make_networks_factory, train_cfg, run_name)
+            evaluate(test_env, make_networks_factory, run_name)
         else:
             raise FileNotFoundError(f"Run {args.eval} not found.")
     else:
         train(env, eval_env, make_networks_factory, train_cfg, run_name, args.restore)
 
-        evaluate(test_env, make_networks_factory, train_cfg, run_name)
+        evaluate(test_env, make_networks_factory, run_name)
