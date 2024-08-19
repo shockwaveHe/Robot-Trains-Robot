@@ -17,7 +17,7 @@ from orbax import checkpoint as ocp  # type: ignore
 from tqdm import tqdm
 
 import wandb
-from toddlerbot.envs.mjx_config import MuJoCoConfig
+from toddlerbot.envs.mjx_config import MuJoCoConfig, RewardScales, RewardsConfig
 from toddlerbot.envs.mjx_env import MuJoCoEnv
 from toddlerbot.envs.ppo_config import PPOConfig
 from toddlerbot.sim.robot import Robot
@@ -286,14 +286,40 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    cfg = MuJoCoConfig()
-    robot = Robot(args.robot)
-    # Need to a separate env for evaluation, otherwise the domain randomization will cause tracer leak errors.
-    env = MuJoCoEnv(args.env, cfg, robot)  # , fixed_base=True)
-    eval_env = MuJoCoEnv(args.env, cfg, robot)  # , fixed_base=True)
+    if args.env == "walk":
+        cfg = MuJoCoConfig()
+        robot = Robot(args.robot)
+        # Need to a separate env for evaluation, otherwise the domain randomization will cause tracer leak errors.
+        env = MuJoCoEnv(args.env, cfg, robot)
+        eval_env = MuJoCoEnv(args.env, cfg, robot)
+    elif args.env == "walk_fixed":
+        cfg = MuJoCoConfig(
+            rewards=RewardsConfig(
+                healthy_z_range=[-0.2, 0.2],
+                scales=RewardScales(
+                    torso_pos=0.0,
+                    torso_quat=0.0,
+                    lin_vel_xy=0.0,
+                    lin_vel_z=0.0,
+                    ang_vel_xy=0.0,
+                    ang_vel_z=0.0,
+                    leg_joint_pos=5.0,
+                    feet_air_time=0.0,
+                    feet_clearance=0.0,
+                    feet_contact=0.0,
+                    feet_distance=0.0,
+                    feet_slip=0.0,
+                    stand_still=0.0,
+                ),
+            )
+        )
+        robot = Robot(args.robot)
+        env = MuJoCoEnv(args.env, cfg, robot, fixed_base=True)
+        eval_env = MuJoCoEnv(args.env, cfg, robot, fixed_base=True)
+    else:
+        raise ValueError(f"Unknown env: {args.env}")
 
     train_cfg = PPOConfig()
-    train_cfg = PPOConfig(num_timesteps=100_000_000, num_evals=1000)
 
     make_networks_factory = functools.partial(
         ppo_networks.make_ppo_networks,

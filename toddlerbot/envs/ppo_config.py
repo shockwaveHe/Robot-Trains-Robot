@@ -3,8 +3,8 @@ from dataclasses import dataclass
 
 @dataclass
 class PPOConfig:
-    num_timesteps: int = 10_000_000
-    num_evals: int = 10
+    num_timesteps: int = 200_000_000
+    num_evals: int = 1000
     reward_scaling: float = 1.0
     episode_length: int = 1000
     action_repeat: int = 1

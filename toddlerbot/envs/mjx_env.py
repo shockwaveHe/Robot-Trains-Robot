@@ -147,7 +147,7 @@ class MuJoCoEnv(PipelineEnv):
             dict(zip(self.robot.motor_ordering, self.default_action.tolist()))
         )
         default_joint_pos = jnp.array(list(default_joint_angles.values()))  # type:ignore
-        if self.name == "walk":
+        if "walk" in self.name:
             from toddlerbot.motion_reference.walk_simple_ref import WalkSimpleReference
 
             self.motion_ref = WalkSimpleReference(
