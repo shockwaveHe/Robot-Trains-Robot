@@ -1,4 +1,3 @@
-import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Tuple
 
@@ -106,15 +105,11 @@ class RealWorld(BaseSim):
         if future_imu is not None:
             self.imu = future_imu.result()
 
-        # Warm up the motor readings
-        self.start_time = time.time()
         self.last_joint_state_dict: Dict[str, JointState] = {}
 
         for _ in range(100):
             self.get_observation()
 
-        # Update the start time to be the policy start time
-        self.start_time = time.time()
         self.last_joint_state_dict: Dict[str, JointState] = {}
 
     def negate_motor_angles(self, joint_angles: Dict[str, float]) -> Dict[str, float]:
@@ -154,8 +149,6 @@ class RealWorld(BaseSim):
             motor_name: motor_state_dict[motor_name]
             for motor_name in self.robot.motor_ordering
         }
-        for motor_name in motor_state_dict:
-            motor_state_dict[motor_name].time -= self.start_time
 
         joint_state_dict = self.robot.motor_to_joint_state(
             motor_state_dict, self.last_joint_state_dict
@@ -181,7 +174,6 @@ class RealWorld(BaseSim):
             )
 
         results: Dict[str, Dict[int, JointState]] = {}
-        # start_times = {key: time.time() for key in futures.keys()}
         for future in as_completed(futures.values()):
             for key, f in futures.items():
                 if f is future:
@@ -193,6 +185,9 @@ class RealWorld(BaseSim):
         _, joint_state_dict = self.process_motor_reading(results)
 
         return joint_state_dict
+
+    def step(self):
+        pass
 
     # @profile()
     def get_observation(self, retries: int = 0) -> Dict[str, npt.NDArray[np.float32]]:

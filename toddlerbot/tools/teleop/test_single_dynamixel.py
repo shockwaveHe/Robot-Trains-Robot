@@ -1,24 +1,33 @@
 import time
+
 import numpy as np
 import serial
-from toddlerbot.actuation.dynamixel.dynamixel_control import DynamixelConfig, DynamixelController
+
+from toddlerbot.actuation.dynamixel.dynamixel_control import (
+    DynamixelConfig,
+    DynamixelController,
+)
 
 # Create a controller object
 config = DynamixelConfig(
-    port="/dev/tty.usbserial-FT8ISUJY",
+    port="/dev/ttyUSB0",
     baudrate=3000000,
-    control_mode=["position"],
+    control_mode=["extended_position"],
     kP=[2400],
     kI=[0.0],
     kD=[2400],
     kFF2=[0.0],
     kFF1=[0.0],
-    init_pos=[0.0],
+    init_pos=[-3.14 / 3],
+    pos_max=-1.0,
+    pos_min=-400 / 360 * 2 * np.pi,
+    default_vel=10.0,
+    interp_method="linear",
 )
-controller = DynamixelController(config, motor_ids=[1])
+controller = DynamixelController(config, motor_ids=[17])
 
 # Configure the serial connection
-serial_port = '/dev/tty.usbmodem21301'
+serial_port = "/dev/ttyACM0"
 baud_rate = 115200  # Baud rate for the serial communication
 
 # Open the serial port
@@ -33,11 +42,11 @@ except serial.SerialException as e:
 try:
     while True:
         if ser.in_waiting > 0:
-            data = ser.readline().decode('utf-8').rstrip()
+            data = ser.readline().decode("utf-8").rstrip()
             print(f"Received: {data}")
             # convert to float
             pos = float(data)
-            controller.set_pos(pos=[pos])
+            controller.set_pos(pos=[-2 * pos - 1])
             # time.sleep(0.01)
 except KeyboardInterrupt:
     print("Stopping the serial reading.")
@@ -45,8 +54,6 @@ except KeyboardInterrupt:
 # Close the serial port
 ser.close()
 print(f"Closed connection to {serial_port}.")
-
-
 
 
 # for i in range(1000):

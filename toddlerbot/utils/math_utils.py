@@ -1,14 +1,11 @@
-import bisect
 import math
-import time
 from dataclasses import is_dataclass
-from typing import Any, Callable, Dict, Iterable, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 from toddlerbot.utils.array_utils import ArrayType
 from toddlerbot.utils.array_utils import array_lib as np
 
 # import torch
-from toddlerbot.utils.misc_utils import precise_sleep
 
 
 def get_random_sine_signal_config(
@@ -36,13 +33,14 @@ def get_sine_signal(sine_signal_config: Dict[str, float]):
     """
     Generates a sinusoidal signal based on the given parameters.
     """
-    t = np.linspace(
+    t = np.linspace(  # type: ignore
         0,
         sine_signal_config["duration"],
         int(sine_signal_config["duration"] / sine_signal_config["control_dt"]),
         endpoint=False,
+        dtype=np.float32,
     )
-    signal = sine_signal_config["mean"] + sine_signal_config["amplitude"] * np.sin(
+    signal = sine_signal_config["mean"] + sine_signal_config["amplitude"] * np.sin(  # type: ignore
         2 * np.pi * sine_signal_config["frequency"] * t
     )
     return t, signal
@@ -156,25 +154,41 @@ def interpolate(
         raise ValueError("Unsupported interpolation type: {}".format(interp_type))
 
 
-# def interpolate_arr(
-#     t: float,
-#     time_arr: npt.NDArray[np.float32],
-#     action_arr: npt.NDArray[np.float32],
-#     interp_type: str = "linear",
-# ):
-#     if t <= time_arr[0]:
-#         return action_arr[0]
-#     elif t >= time_arr[-1]:
-#         return action_arr[-1]
+def binary_search(arr: ArrayType, t: float) -> int:
+    # Implement binary search using either NumPy or JAX.
+    low, high = 0, len(arr) - 1
+    while low <= high:
+        mid = (low + high) // 2
+        if arr[mid] < t:
+            low = mid + 1
+        elif arr[mid] > t:
+            high = mid - 1
+        else:
+            return mid
+    return low - 1
 
-#     # Use binary search to find the segment containing current_time
-#     idx = bisect.bisect_left(time_arr, t) - 1
-#     idx = max(0, min(idx, len(time_arr) - 2))  # Ensure idx is within valid range
 
-#     p_start = action_arr[idx]
-#     p_end = action_arr[idx + 1]
-#     duration = time_arr[idx + 1] - time_arr[idx]
-#     return interpolate(p_start, p_end, duration, t - time_arr[idx], interp_type)
+def interpolate_action(
+    t: float,
+    time_arr: ArrayType,
+    action_arr: ArrayType,
+    interp_type: str = "linear",
+):
+    if t <= time_arr[0]:
+        return action_arr[0]
+    elif t >= time_arr[-1]:
+        return action_arr[-1]
+
+    # Use binary search to find the segment containing current_time
+    idx = binary_search(time_arr, t)
+    idx = max(0, min(idx, len(time_arr) - 2))  # Ensure idx is within valid range
+
+    p_start = action_arr[idx]
+    p_end = action_arr[idx + 1]
+    duration = time_arr[idx + 1] - time_arr[idx]
+    return interpolate(
+        p_start, p_end, float(duration), float(t - time_arr[idx]), interp_type
+    )
 
 
 # def interpolate_pos(

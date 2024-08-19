@@ -8,7 +8,7 @@ from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.math_utils import (
     get_random_sine_signal_config,
     get_sine_signal,
-    interpolate_arr,
+    interpolate_action,
 )
 from toddlerbot.utils.misc_utils import set_seed
 
@@ -71,6 +71,8 @@ class RotateTorsoPolicy(BasePolicy):
                     [amplitude_min, amplitude_max],
                 )
                 rotate_time, signal = get_sine_signal(sine_signal_config)
+                rotate_time = np.asarray(rotate_time)
+                signal = np.asarray(signal)
                 if len(time_list) > 0:
                     rotate_time += time_list[-1][-1] + self.control_dt
 
@@ -122,4 +124,4 @@ class RotateTorsoPolicy(BasePolicy):
         self, obs_dict: Dict[str, npt.NDArray[np.float32]]
     ) -> npt.NDArray[np.float32]:
         time_curr = obs_dict["time"].item()
-        return np.array(interpolate_arr(time_curr, self.time_arr, self.action_arr))
+        return np.asarray(interpolate_action(time_curr, self.time_arr, self.action_arr))

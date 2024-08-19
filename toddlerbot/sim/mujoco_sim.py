@@ -46,24 +46,17 @@ class MuJoCoSim(BaseSim):
 
             model = mujoco.MjModel.from_xml_path(xml_path)  # type: ignore
 
-        if device == "cpu":
-            self.model = model  # type: ignore
-            self.data = mujoco.MjData(model)  # type: ignore
-        else:
-            from mujoco import mjx  # type: ignore
+        self.model = model  # type: ignore
+        self.data = mujoco.MjData(model)  # type: ignore
 
-            self.model = mjx.put_model(model)  # type: ignore
-            self.data = mjx.make_data(model)  # type: ignore
+        self.default_qpos = np.array(model.keyframe("home").qpos, dtype=np.float32)  # type:ignore
+        self.default_action = np.array(model.keyframe("home").ctrl, dtype=np.float32)  # type:ignore
 
         self.model.opt.timestep = self.dt  # type: ignore
         self.controller = MuJoCoController()
         mujoco.set_mjcb_control(self.controller.process_commands)  # type: ignore
 
-        # Initialize push state variables
-        self.apply_push_flag = False
-        self.push = np.zeros(6, dtype=np.float32)  # Initial push as zero vector
-        self.push_duration: float = 0.0
-        self.push_count: int = 0
+        self.initialize()
 
         self.visualizer = None
         if vis_type == "render":
@@ -71,12 +64,11 @@ class MuJoCoSim(BaseSim):
         elif vis_type == "view":
             self.visualizer = MuJoCoViewer(self.model, self.data)  # type: ignore
 
-        # self.thread = None
-        # self.stop_event = threading.Event()
-
-    def update_config(self, cfg: Dict[str, Any]):
-        for key, value in cfg.items():
-            setattr(self.model.opt, key, value)  # type: ignore
+    def initialize(self):
+        for _ in range(100):
+            self.set_joint_angles(self.default_qpos)
+            self.set_motor_angles(self.default_action)
+            self.step()
 
     def get_root_state(self):
         root_state = np.zeros(13, dtype=np.float32)
@@ -116,41 +108,11 @@ class MuJoCoSim(BaseSim):
 
         return dof_state
 
-    def get_contact_forces(self):
-        # TODO: check if this is the correct way to get contact forces
-        contact_forces = np.zeros((len(self.robot.collider_names), 3), dtype=np.float32)
-        # Access contact information
-        for i in range(self.data.ncon):  # type: ignore
-            contact = self.data.contact[i]  # type: ignore
-            # Check if the contact involves the ground plane
-            geom1 = self.model.geom(contact.geom[0])  # type: ignore
-            geom2 = self.model.geom(contact.geom[1])  # type: ignore
-
-            body_name = ""
-            if "floor" in geom1.name:  # type: ignore
-                body_name = str(self.model.body(geom2.bodyid).name)  # type: ignore
-            elif "floor" in geom2.name:  # type: ignore
-                body_name = str(self.model.body(geom1.bodyid).name)  # type: ignore
-            else:
-                continue
-
-            # Extract the contact forces
-            c_array = np.zeros(6)  # To hold contact forces
-            mujoco.mj_contactForce(self.model, self.data, i, c_array)  # type: ignore
-            contact_force_local = c_array[:3].astype(np.float32)
-            contact_force_global = contact.frame.reshape(-1, 3).T @ contact_force_local  # type: ignore
-            contact_forces[self.robot.collider_names.index(body_name)] = (
-                contact_force_global
-            )
-
-        return contact_forces
-
-    # TODO: consider merging these methods
     def get_motor_state(self):
         motor_state_dict: Dict[str, JointState] = {}
         for name in self.robot.motor_ordering:
             motor_state_dict[name] = JointState(
-                time=time.time() - self.start_time,
+                time=time.time(),
                 pos=self.data.joint(name).qpos.item(),  # type: ignore
                 vel=self.data.joint(name).qvel.item(),  # type: ignore
             )
@@ -161,7 +123,7 @@ class MuJoCoSim(BaseSim):
         joint_state_dict: Dict[str, JointState] = {}
         for name in self.robot.joint_ordering:
             joint_state_dict[name] = JointState(
-                time=time.time() - self.start_time,
+                time=time.time(),
                 pos=self.data.joint(name).qpos.item(),  # type: ignore
                 vel=self.data.joint(name).qvel.item(),  # type: ignore
             )
@@ -169,13 +131,10 @@ class MuJoCoSim(BaseSim):
         return joint_state_dict
 
     def get_observation(self):
-        obs_dict: Dict[str, npt.NDArray[np.float32]] = {}
         motor_state_dict = self.get_motor_state()
         joint_state_dict = self.get_joint_state()
 
-        obs = self.robot.state_to_obs(motor_state_dict, joint_state_dict)
-        for k, v in obs.items():
-            obs_dict[k] = v
+        obs_dict = self.robot.state_to_obs(motor_state_dict, joint_state_dict)
 
         obs_dict["imu_quat"] = np.array(
             self.data.sensor("orientation").data,  # type: ignore
@@ -197,122 +156,6 @@ class MuJoCoSim(BaseSim):
         subtree_com = np.array(self.data.body(0).subtree_com, dtype=np.float32)  # type: ignore
         return subtree_com
 
-    # def get_zmp(self, com_pos, pz=0.0):
-    #     M = self.model.body(0).subtreemass
-    #     cx, cy = com_pos
-    #     # print(f"dP: {self.dP}, dL: {self.dL}")
-    #     # Eq. 3.73-3.74 on p.96 in "Introduction to Humanoid Robotics" by Shuuji Kajita
-    #     px_zmp = (M * GRAVITY * cx + pz * self.dP[0] - self.dL[1]) / (
-    #         M * GRAVITY + self.dP[2]
-    #     )
-    #     py_zmp = (M * GRAVITY * cy + pz * self.dP[1] + self.dL[0]) / (
-    #         M * GRAVITY + self.dP[2]
-    #     )
-    #     zmp = [px_zmp.item(), py_zmp.item()]
-    #     return zmp
-
-    # def _compute_dynamics(self):
-    #     """Compute dynamics properties for active joints including the filtered mass matrix and bias forces."""
-    #     # Compute the full mass matrix
-    #     full_mass_matrix = np.zeros((self.model.nv, self.model.nv))
-    #     mujoco.mj_fullM(self.model, full_mass_matrix, self.data.qM)
-
-    #     # Copy the full bias forces from the simulation
-    #     full_bias_forces = self.data.qfrc_bias.copy()
-
-    #     # Identify active joint indices
-    #     active_indices = []
-    #     for name in self.robot.config["joints"]:
-    #         joint_id = self.model.joint(name).id
-    #         active_indices.append(joint_id)
-
-    #     # Filter the mass matrix and bias forces for active joints
-    #     self.mass_matrix = full_mass_matrix[np.ix_(active_indices, active_indices)]
-    #     self.bias_forces = full_bias_forces[active_indices]
-
-    # def _compute_dmom(self):
-    #     if not hasattr(self, "t_last"):
-    #         self.last_mom = np.zeros(3)
-    #         self.last_angmom = np.zeros(3)
-    #         self.t_last = self.data.time
-    #     else:
-    #         # Calculate current momentum and angular momentum
-    #         mom = np.zeros(3)
-    #         angmom = np.zeros(3)
-    #         for i in range(self.model.nbody):
-    #             body_name = self.model.body(i).name
-    #             if body_name == "world":
-    #                 continue
-
-    #             body_mass = self.model.body(i).mass
-    #             body_inertia = self.model.body(i).inertia
-    #             body_pos = self.data.body(i).xipos  # Position
-    #             body_xmat = self.data.body(i).xmat.reshape(3, 3)  # Rotation matrix
-    #             # the translation component comes after the rotation component
-    #             body_vel = self.data.body(i).cvel[3:]  # Linear Velocity
-    #             body_ang_vel = self.data.body(i).cvel[:3]  # Angular velocity
-
-    #             # Eq. 3.63-3.66 on p.94 in "Introduction to Humanoid Robotics"
-    #             P = body_mass * body_vel
-    #             L = (
-    #                 np.cross(body_pos, P)
-    #                 + body_xmat @ np.diag(body_inertia) @ body_xmat.T @ body_ang_vel
-    #             )
-    #             mom += P
-    #             angmom += L
-
-    #         t_curr = self.data.time
-    #         dt = t_curr - self.t_last
-
-    #         self.dP = (mom - self.last_mom) / dt
-    #         self.dL = (angmom - self.last_angmom) / dt
-
-    #         # Update last states
-    #         self.last_mom = mom
-    #         self.last_angmom = angmom
-    #         self.t_last = t_curr
-
-    def start_push(self, push: npt.NDArray[np.float32], push_duration: float = 0.1):
-        self.apply_push_flag = True
-        self.push = push
-        self.push_duration = push_duration
-        self.push_count = 0
-
-    def _apply_push_cb(self):
-        """Applies random pushes to the robot's torso."""
-        # Unpack the random push tensor
-        linear_vel = self.push[:3]  # xy linear velocity
-        angular_vel = self.push[3:]  # xyz angular velocity
-        mass = self.model.body("torso").mass  # type: ignore
-        inertia = self.model.body("torso").inertia  # type: ignore
-        # Apply the forces and torques
-        self.data.body("torso").xfrc_applied[:3] = (  # type: ignore
-            mass * linear_vel
-        ) / self.push_duration
-        self.data.body("torso").xfrc_applied[3:] = (  # type: ignore
-            inertia * angular_vel
-        ) / self.push_duration
-
-    def _reset_push(self):
-        # Reset applied forces and torques
-        self.apply_push_flag = False
-        self.data.body("torso").xfrc_applied[:] = 0  # type: ignore
-
-    def set_root_state(self, root_state: npt.NDArray[np.float32]):
-        # Assume the free joint is the first joint
-        self.data.joint(0).qpos[:3] = root_state[:3].copy()  # type: ignore
-        self.data.joint(0).qpos[3:] = root_state[3:7].copy()  # type: ignore
-        # Set linear velocity (3) and angular velocity (3) in qvel
-        self.data.joint(0).qvel[:3] = root_state[7:10].copy()  # type: ignore
-        self.data.joint(0).qvel[3:] = root_state[10:13].copy()  # type: ignore
-        # mujoco.mj_resetData(self.model, self.data)  # type: ignore
-
-    def reset_dof_state(self):
-        # This resets all the passive joints as well
-        for i in range(1, self.model.njnt):  # type: ignore
-            self.data.joint(i).qpos = 0.0  # type: ignore
-            self.data.joint(i).qvel = 0.0  # type: ignore
-
     def set_motor_angles(
         self, motor_angles: Dict[str, float] | npt.NDArray[np.float32]
     ):
@@ -322,45 +165,19 @@ class MuJoCoSim(BaseSim):
         self, joint_angles: Dict[str, float] | npt.NDArray[np.float32]
     ):
         if isinstance(joint_angles, np.ndarray):
-            joint_angles = dict(zip(self.robot.joint_ordering, joint_angles))
-
-        for name in joint_angles:
-            self.data.joint(name).qpos = joint_angles[name]  # type: ignore
+            self.data.qpos = joint_angles.copy()  # type: ignore
+        else:
+            for name in joint_angles:
+                self.data.joint(name).qpos = joint_angles[name]  # type: ignore
 
     def forward(self):
         mujoco.mj_forward(self.model, self.data)  # type: ignore
 
     def step(self):
-        # step_start = time.time()
-        # if self.apply_push_flag and self.push_count < (self.push_duration / self.dt):
-        #     self._apply_push_cb()
-        #     self.push_count += 1
-        # else:
-        #     self._reset_push()
-
         mujoco.mj_step(self.model, self.data)  # type: ignore
 
         if self.visualizer is not None:
             self.visualizer.visualize(self.model, self.data)  # type: ignore
-
-        # time_until_next_step = float(
-        #     self.model.opt.timestep  # type: ignore
-        #     - (time.time() - step_start)
-        # )
-        # if time_until_next_step > 0:
-        #     precise_sleep(time_until_next_step)
-
-    # def _simulate_worker(self, vis_type: str = "", vis_data: Dict[str, Any] = {}):
-    #     while not self.stop_event.is_set():
-    #         self.step()
-
-    # def simulate(self, vis_type: str = "", vis_data: Dict[str, Any] = {}):
-    #     self.start_time = time.time()
-
-    #     self.thread = threading.Thread(
-    #         target=self._simulate_worker, args=(vis_type, vis_data)
-    #     )
-    #     self.thread.start()
 
     def rollout(self, motor_angles_list: List[Dict[str, float]]):
         n_state = mujoco.mj_stateSize(self.model, mujoco.mjtState.mjSTATE_FULLPHYSICS)  # type: ignore
@@ -408,8 +225,3 @@ class MuJoCoSim(BaseSim):
     def close(self):
         if self.visualizer is not None:
             self.visualizer.close()
-
-        # if self.thread is not None and threading.current_thread() is not self.thread:
-        #     # Wait for the thread to finish if it's not the current thread
-        #     self.stop_event.set()
-        #     self.thread.join()

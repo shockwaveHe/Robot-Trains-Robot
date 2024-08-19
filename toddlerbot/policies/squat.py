@@ -5,7 +5,7 @@ import numpy.typing as npt
 
 from toddlerbot.policies import BasePolicy
 from toddlerbot.sim.robot import Robot
-from toddlerbot.utils.math_utils import interpolate, interpolate_arr
+from toddlerbot.utils.math_utils import interpolate, interpolate_action
 from toddlerbot.utils.misc_utils import set_seed
 
 
@@ -152,7 +152,7 @@ class SquatPolicy(BasePolicy):
         self, obs_dict: Dict[str, npt.NDArray[np.float32]]
     ) -> npt.NDArray[np.float32]:
         time_curr = obs_dict["time"].item()
-        action = np.array(interpolate_arr(time_curr, self.time_arr, self.action_arr))
+        action = np.array(interpolate_action(time_curr, self.time_arr, self.action_arr))
 
         left_knee_pitch = obs_dict["q"][
             self.robot.joint_ordering.index("left_knee_pitch")

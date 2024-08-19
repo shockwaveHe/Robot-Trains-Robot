@@ -145,7 +145,15 @@ class Robot:
 
     @property
     def init_motor_angles(self) -> Dict[str, float]:
-        # TODO: Update the default pos in config.json
+        motor_angles: Dict[str, float] = {}
+        for joint_name, joint_config in self.config["joints"].items():
+            if not joint_config["is_passive"]:
+                motor_angles[joint_name] = 0.0
+
+        return motor_angles
+
+    @property
+    def default_motor_angles(self) -> Dict[str, float]:
         motor_angles: Dict[str, float] = {}
         for joint_name, joint_config in self.config["joints"].items():
             if not joint_config["is_passive"]:
@@ -156,6 +164,10 @@ class Robot:
     @property
     def init_joint_angles(self) -> Dict[str, float]:
         return self.motor_to_joint_angles(self.init_motor_angles)
+
+    @property
+    def default_joint_angles(self) -> Dict[str, float]:
+        return self.motor_to_joint_angles(self.default_motor_angles)
 
     @property
     def motor_ordering(self) -> List[str]:

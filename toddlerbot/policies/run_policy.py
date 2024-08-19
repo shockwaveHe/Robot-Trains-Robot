@@ -163,6 +163,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
     obs_dict_list: List[Dict[str, npt.NDArray[np.float32]]] = []
     motor_angles_list: List[Dict[str, float]] = []
 
+    start_time = time.time()
     step_idx = 0
     p_bar = tqdm(total=n_steps, desc="Running the policy")
     try:
@@ -171,6 +172,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
 
             # Get the latest state from the queue
             obs_dict = sim.get_observation()
+            obs_dict["time"] -= start_time
             # q_obs_delta = obs_dict["q"] - default_q
 
             action = run_policy(policy, obs_dict)
@@ -181,6 +183,8 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
                 motor_angles[motor_name] = act
 
             sim.set_motor_angles(motor_angles)
+
+            sim.step()
 
             obs_dict_list.append(obs_dict)
             motor_angles_list.append(motor_angles)
@@ -210,9 +214,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
             #     level="debug",
             # )
 
-            time_until_next_step = (
-                sim.start_time + policy.control_dt * step_idx - step_end
-            )
+            time_until_next_step = start_time + policy.control_dt * step_idx - step_end
             # print(f"time_until_next_step: {time_until_next_step * 1000:.2f} ms")
             if time_until_next_step > 0:
                 precise_sleep(time_until_next_step)
@@ -221,9 +223,9 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
         log("KeyboardInterrupt recieved. Closing...", header=header_name)
 
     finally:
-        exp_name = f"{policy.name}_{robot.name}_{sim.name}"
+        exp_name = f"{robot.name}_{policy.name}_{sim.name}"
         time_str = time.strftime("%Y%m%d_%H%M%S")
-        exp_folder_path = f"results/{time_str}_{exp_name}"
+        exp_folder_path = f"results/{exp_name}_{time_str}"
 
         os.makedirs(exp_folder_path, exist_ok=True)
 
@@ -292,8 +294,7 @@ if __name__ == "__main__":
     if args.sim == "mujoco":
         from toddlerbot.sim.mujoco_sim import MuJoCoSim
 
-        sim = MuJoCoSim(robot)
-        sim.simulate(vis_type="render" if debug["render"] else "none")
+        sim = MuJoCoSim(robot, vis_type="render", fixed_base=True)
     elif args.sim == "real":
         from toddlerbot.sim.real_world import RealWorld
 

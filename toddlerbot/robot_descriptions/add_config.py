@@ -81,7 +81,6 @@ def get_default_config(
             "is_passive": is_passive,
             "transmission": transmission,
             "group": group,
-            "default_pos": 0.0,
             "lower_limit": lower_limit,
             "upper_limit": upper_limit,
             "damping": 0.0,
@@ -118,6 +117,11 @@ def get_default_config(
             joint_dict["init_pos"] = (
                 motor_config[joint_name]["init_pos"]
                 if "init_pos" in motor_config[joint_name]
+                else 0.0
+            )
+            joint_dict["default_pos"] = (
+                motor_config[joint_name]["default_pos"]
+                if "default_pos" in motor_config[joint_name]
                 else 0.0
             )
             joint_dict["kp_real"] = kp

@@ -26,6 +26,10 @@ class BaseSim(ABC):
         pass
 
     @abstractmethod
+    def step(self):
+        pass
+
+    @abstractmethod
     def get_observation(
         self,
     ) -> Dict[str, npt.NDArray[np.float32]]:
