@@ -1,5 +1,9 @@
 from typing import Any, List, Optional, Tuple
 
+from jax import Array
+from numpy import dtype, floating, ndarray
+from numpy._typing import _32Bit
+
 from toddlerbot.algorithms.zmp.footstep_planner import FootStepPlanner
 from toddlerbot.algorithms.zmp.zmp_planner import ZMPPlanner
 from toddlerbot.motion_reference.motion_ref import MotionReference
@@ -127,7 +131,6 @@ class WalkZMPReference(MotionReference):
         )
         time_steps = np.cumsum(time_list)  # type: ignore
         desired_zmps = [step[:2] for step in footsteps for _ in range(2)]
-        desired_theta = [step[2:3] for step in footsteps for _ in range(2)]
 
         self.zmp_planner.plan(
             time_steps,
@@ -168,7 +171,7 @@ class WalkZMPReference(MotionReference):
         )
         x_traj = loop_update(update_step, x_traj, u_traj, (1, N))
 
-        feet_pose_traj = self.get_feet_pose(time_steps, desired_zmps, desired_theta)
+        feet_pose_traj = self.get_feet_pose(time_steps, np.repeat(footsteps, 2, axis=0))  # type: ignore
 
         joint_pos_traj = self.solve_ik(feet_pose_traj, x_traj)
 
@@ -235,8 +238,7 @@ class WalkZMPReference(MotionReference):
     def get_feet_pose(
         self,
         time_steps: ArrayType,
-        desired_zmps: List[ArrayType],
-        desired_theta: List[ArrayType],
+        footsteps: ArrayType,
     ):
         feet_pose_list: List[ArrayType] = []
         offset = np.array(  # type: ignore
@@ -245,110 +247,81 @@ class WalkZMPReference(MotionReference):
                 np.cos(footsteps[0][2]) * self.foot_to_com_y,  # type: ignore
             ]
         )
-        last_pos = np.stack([footsteps[0][:2] + offset, footsteps[0][:2] - offset])  # type: ignore
+        last_pos = np.concatenate(  # type: ignore
+            [
+                footsteps[0][:2] + offset,
+                np.zeros(1, dtype=np.float32),  # type: ignore
+                footsteps[0][:2] - offset,
+                np.zeros(1, dtype=np.float32),  # type: ignore
+            ]
+        )
+        last_ori = np.array(  # type: ignore
+            [0.0, 0.0, footsteps[0][2], 0.0, 0.0, footsteps[0][2]], dtype=np.float32
+        )
 
-        for i in range(len(footsteps) - 1):
+        for i in range(len(time_steps) - 1):
             num_steps = int((time_steps[i + 1] - time_steps[i]) / self.control_dt)
-            fs_curr, fs_next = footsteps[i], footsteps[i + 1]
-            support_leg = int(fs_curr[-1])
-            next_support_leg = int(fs_next[-1])
-
-            if support_leg == 2:  # Initial double support
-                current_pos = last_pos
+            if i % 2 == 0:  # Double support
+                feet_pose_traj = np.tile(  # type: ignore
+                    np.concatenate([last_pos, last_ori], axis=-1),  # type: ignore
+                    (num_steps, 1),
+                )
             else:
-                current_pos = inplace_update(last_pos, support_leg, fs_curr[:2])
+                support_leg_curr = int(footsteps[i][-1])
+                support_leg_next = int(footsteps[i + 1][-1])
+                if support_leg_curr == 2:
+                    current_pos = last_pos.copy()
+                else:
+                    current_pos = inplace_update(
+                        last_pos,
+                        slice(support_leg_curr * 3, support_leg_curr * 3 + 2),
+                        footsteps[i][:2],
+                    )
 
-            if next_support_leg == 2:  # Support leg switches
-                offset = np.array(  # type: ignore
-                    [
-                        -np.sin(fs_next[2]) * self.foot_to_com_y,  # type: ignore
-                        np.cos(fs_next[2]) * self.foot_to_com_y,  # type: ignore
-                        0.0,
-                    ]
-                ) * (-1 if support_leg == 1 else 1)
-                # Flip the offset direction based on which leg is the support leg
+                if support_leg_next == 2:
+                    offset = np.array(  # type: ignore
+                        [
+                            -np.sin(footsteps[i][2]) * self.foot_to_com_y,  # type: ignore
+                            np.cos(footsteps[i][2]) * self.foot_to_com_y,  # type: ignore
+                        ]
+                    ) * (-1 if support_leg_curr == 1 else 1)
+                else:
+                    offset = np.zeros(2, dtype=np.float32)  # type: ignore
+
                 target_pos = inplace_update(
-                    current_pos, next_support_leg, fs_next[:2] + offset
+                    current_pos,
+                    slice(support_leg_next * 3, support_leg_next * 3 + 2),
+                    footsteps[i + 1][:2] + offset,
                 )
-            else:  # Double support
-                target_pos = inplace_update(current_pos, next_support_leg, fs_next[:2])
-
-            last_pos = target_pos.copy()
-
-            move_start_idx, move_end_idx = round(num_steps / 4), round(num_steps / 2)  # type: ignore
-            move_period = move_end_idx - move_start_idx  # type: ignore
-            idx_range = np.arange(num_steps)[:, None]  # type: ignore
-
-            target_pos = target_pos.flatten()
-            current_pos = current_pos.flatten()
-            pos_xy_delta = (target_pos - current_pos) / num_steps
-            pos_z_delta = self.footstep_height / move_period  # type: ignore
-            side_idx = (
-                0 if np.any(pos_xy_delta[:3]) else 1 if np.any(pos_xy_delta[3:]) else -1  # type: ignore
-            )
-
-            feet_pose_traj = np.zeros((num_steps, 12), dtype=np.float32)  # type: ignore
-            if side_idx >= 0:  # type: ignore
-                pos_z_traj = np.zeros(num_steps, dtype=np.float32)  # type: ignore
-                pos_z_traj[move_start_idx : move_end_idx + 1] = pos_z_delta * np.arange(  # type: ignore
-                    move_period + 1
+                current_ori = inplace_update(
+                    last_ori,
+                    support_leg_curr * 3 - 1,
+                    footsteps[i][2],
                 )
-                pos_z_traj[move_end_idx + 1 :] = np.maximum(  # type: ignore
-                    pos_z_traj[move_end_idx]
-                    - pos_z_delta * np.arange(1, num_steps - move_end_idx),  # type: ignore
-                    0,
+                target_ori = inplace_update(
+                    current_ori,
+                    support_leg_next * 3 - 1,
+                    footsteps[i + 1][2],
+                )
+                last_pos = target_pos.copy()
+                last_ori = target_ori.copy()
+
+                pos_delta = (target_pos - current_pos) / num_steps
+                pos_traj = current_pos + pos_delta * np.arange(num_steps)[:, None]  # type: ignore
+
+                up_delta = self.footstep_height / num_steps
+                up_traj = up_delta * np.concatenate(  # type: ignore
+                    np.arange(num_steps // 2 + 1),
+                    np.arange(num_steps // 2 + 1, -1, -1),  # type: ignore
+                )
+                pos_traj = inplace_update(
+                    pos_traj, (slice(None), support_leg_next * 3 + 2), up_traj
                 )
 
-                pos_xy_delta = pos_xy_delta.reshape(-1, 2)  # type: ignore
-                xy_adjustment = np.concatenate(
-                    [  # type: ignore
-                        pos_xy_delta[:move_end_idx]
-                        * (1 + np.arange(1, move_end_idx + 1)[:, None] / move_period),  # type: ignore
-                        pos_xy_delta[move_end_idx:]
-                        * np.maximum(
-                            1
-                            - np.arange(1, num_steps - move_end_idx + 1)[:, None]
-                            / move_period,
-                            0,
-                        ),  # type: ignore
-                    ]
-                )  # type: ignore
-                pos_xy_adjustment = np.pad(
-                    xy_adjustment,
-                    ((move_start_idx, num_steps - len(xy_adjustment)), (0, 0)),
-                )  # type: ignore
-                pos_xy_traj[:, :2] += pos_xy_adjustment  # type: ignore
+                ori_delta = (target_ori - current_ori) / num_steps
+                ori_traj = current_ori + ori_delta * np.arange(num_steps)[:, None]  # type: ignore
 
-            theta_delta = (
-                (fs_next[2] - fs_curr[2]) / (num_steps / 2) if side_idx >= 0 else 0.0
-            )  # type: ignore
-            theta_traj = np.zeros(num_steps, dtype=np.float32)  # type: ignore
-            if side_idx >= 0:  # type: ignore
-                theta_adjustment = theta_delta * np.concatenate(
-                    [  # type: ignore
-                        np.arange(1, move_period + 1),  # type: ignore
-                        np.maximum(
-                            move_period - np.arange(1, num_steps - move_end_idx + 1), 0
-                        ),  # type: ignore
-                    ]
-                )  # type: ignore
-                theta_adjustment = np.pad(
-                    theta_adjustment,
-                    (move_start_idx, num_steps - len(theta_adjustment)),
-                )  # type: ignore
-                theta_traj += theta_adjustment  # type: ignore
-
-            feet_pose_traj = np.concatenate(
-                [  # type: ignore
-                    pos_xy_traj[:, :2],  # type: ignore
-                    pos_z_traj[:, :1],  # type: ignore
-                    pos_xy_traj[:, 2:],  # type: ignore
-                    pos_z_traj[:, 1:],  # type: ignore
-                    np.zeros((num_steps, 2), dtype=np.float32),  # type: ignore
-                    theta_traj[:, None],  # type: ignore
-                ],
-                axis=-1,
-            )  # type: ignore
+                feet_pose_traj = np.concatenate([pos_traj, ori_traj], axis=-1)  # type: ignore
 
             feet_pose_list.append(feet_pose_traj)
 
