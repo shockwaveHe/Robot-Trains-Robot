@@ -292,6 +292,7 @@ if __name__ == "__main__":
         # Need to a separate env for evaluation, otherwise the domain randomization will cause tracer leak errors.
         env = MuJoCoEnv(args.env, cfg, robot)
         eval_env = MuJoCoEnv(args.env, cfg, robot)
+        train_cfg = PPOConfig()
     elif args.env == "walk_fixed":
         cfg = MuJoCoConfig(
             rewards=RewardsConfig(
@@ -313,13 +314,13 @@ if __name__ == "__main__":
                 ),
             )
         )
+        cfg.action.cycle_time = 1.2
         robot = Robot(args.robot)
         env = MuJoCoEnv(args.env, cfg, robot, fixed_base=True)
         eval_env = MuJoCoEnv(args.env, cfg, robot, fixed_base=True)
+        train_cfg = PPOConfig(num_timesteps=40_000_000, num_evals=200)
     else:
         raise ValueError(f"Unknown env: {args.env}")
-
-    train_cfg = PPOConfig()
 
     make_networks_factory = functools.partial(
         ppo_networks.make_ppo_networks,
@@ -336,10 +337,10 @@ if __name__ == "__main__":
 
     if len(args.eval) > 0:
         if os.path.exists(os.path.join("results", run_name)):
-            evaluate(env, make_networks_factory, train_cfg, run_name)
+            evaluate(eval_env, make_networks_factory, train_cfg, run_name)
         else:
             raise FileNotFoundError(f"Run {args.eval} not found.")
     else:
         train(env, eval_env, make_networks_factory, train_cfg, run_name, args.restore)
 
-        evaluate(env, make_networks_factory, train_cfg, run_name)
+        evaluate(eval_env, make_networks_factory, train_cfg, run_name)
