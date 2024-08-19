@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Variables
-TIME_STR="20240815_233905"
+TIME_STR="20240818_132048"
 REMOTE_USER="hshi74"
 REMOTE_HOST="scdt.stanford.edu"
 REMOTE_REPO_PATH="/move/u/${REMOTE_USER}/projects/toddlerbot"

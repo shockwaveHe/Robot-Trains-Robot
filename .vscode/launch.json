@@ -122,6 +122,16 @@
             // "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
         },
         {
+            "name": "Python: test_reference_motion",
+            "type": "python",
+            "request": "launch",
+            "program": "tests/test_ref_motion.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [],
+            // "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
+        },
+        {
             "name": "Python: walk_toddlerbot_real",
             "type": "python",
             "request": "launch",

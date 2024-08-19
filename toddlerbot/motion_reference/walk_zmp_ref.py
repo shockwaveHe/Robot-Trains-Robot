@@ -51,10 +51,9 @@ class WalkZMPReference(MotionReference):
         self.foot_to_com_x = robot.data_dict["offsets"]["foot_to_com_x"]
         self.foot_to_com_y = robot.data_dict["offsets"]["foot_to_com_y"]
 
-        self.init_joint_angles = robot.init_joint_angles
-        self.joint_angles = self.init_joint_angles
-        # (time, joint_angles)
-        self.joint_angles_list = [self.joint_angles]
+        self.init_joint_pos = np.array(  # type: ignore
+            list(robot.init_joint_angles.values()), dtype=np.float32
+        )
 
         self.fsp = FootStepPlanner(
             np.array(plan_max_stride, dtype=np.float32),  # type: ignore
@@ -103,7 +102,7 @@ class WalkZMPReference(MotionReference):
         # plot_footsteps(
         #     numpy.asarray(path, dtype=numpy.float32),
         #     numpy.array(
-        #         [numpy.asarray(fs[1:4]) for fs in footsteps], dtype=numpy.float32
+        #         [numpy.asarray(fs[:3]) for fs in footsteps], dtype=numpy.float32
         #     ),
         #     [int(fs[-1]) for fs in footsteps],
         #     (0.1, 0.05),
@@ -168,73 +167,26 @@ class WalkZMPReference(MotionReference):
         )
         x_traj = loop_update(update_step, x_traj, u_traj, (1, N))
 
-        traj = {
-            "time": np.zeros(N, dtype=np.float32),  # type: ignore
-            "x": np.zeros((N, 4), dtype=np.float32),  # type: ignore
-            "u": np.zeros((N, 2), dtype=np.float32),  # type: ignore
-            "cop": np.zeros((N, 2), dtype=np.float32),  # type: ignore
-            "desired_zmp": np.zeros((N, 2), dtype=np.float32),  # type: ignore
-            "nominal_com": np.zeros((N, 6), dtype=np.float32),  # type: ignore
-        }
+        feet_pose_traj = self.get_feet_pose(time_steps, footsteps)
 
-        for i in range(N):
-            # Update traj["time"]
-            traj["time"] = inplace_update(
-                traj["time"], i, time_steps[0] + i * self.control_dt
-            )
-            if i == 0:
-                # Set the initial state for traj["x"]
-                traj["x"] = inplace_update(traj["x"], i, x0)
-            else:
-                # Compute the state derivative xd
-                xd = np.hstack((traj["x"][i - 1, 2:], traj["u"][i - 1, :]))  # type: ignore
-                traj["x"] = inplace_update(
-                    traj["x"], i, traj["x"][i - 1, :] + xd * self.control_dt
-                )
+        joint_pos_traj = self.solve_ik(feet_pose_traj, x_traj)
 
-            # Update traj["u"] using the ZMP planner
-            traj["u"] = inplace_update(
-                traj["u"],
-                i,
-                self.zmp_planner.get_optim_com_acc(traj["time"][i], traj["x"][i, :]),
-            )
+        self.joint_angles_list.append((t + 0.5, self.init_joint_pos))
 
-        print()
+        joint_angles_list = resample_trajectory(
+            self.joint_angles_list,
+            desired_interval=self.config.control_dt,
+            interp_type="cubic",
+        )
 
-        # zmp_ref_traj = self.zmp_planner.compute_zmp_ref_traj(self.foot_steps)
-        # zmp_traj, self.com_ref_traj = self.zmp_planner.compute_com_traj(
-        #     self.com_init, zmp_ref_traj
-        # )
-
-        # foot_steps_copy = copy.deepcopy(self.foot_steps)
-        # com_ref_traj_copy = copy.deepcopy(self.com_ref_traj)
-
-        # self.joint_angles_list.append((0.5, self.init_joint_angles))
-        # while len(self.com_ref_traj) > 0:
-        #     if self.idx == 0:
-        #         t = self.config.squat_time + 0.5
-        #     else:
-        #         t = self.joint_angles_list[-1][0] + self.config.control_dt
-
-        #     joint_angles = self.solve_joint_angles()
-        #     self.joint_angles_list.append((t, joint_angles))
-
-        # self.joint_angles_list.append((t + 0.5, self.init_joint_angles))
-
-        # joint_angles_list = resample_trajectory(
-        #     self.joint_angles_list,
-        #     desired_interval=self.config.control_dt,
-        #     interp_type="cubic",
-        # )
-
-        # return (
-        #     path,
-        #     foot_steps_copy,
-        #     zmp_ref_traj,
-        #     zmp_traj,
-        #     com_ref_traj_copy,
-        #     joint_angles_list,
-        # )
+        return (
+            path,
+            foot_steps_copy,
+            zmp_ref_traj,
+            zmp_traj,
+            com_ref_traj_copy,
+            joint_angles_list,
+        )
 
     def integrate_motion(
         self,
@@ -279,135 +231,85 @@ class WalkZMPReference(MotionReference):
         )
         return final_pose
 
-    def _compute_foot_pos(self, com_pos):
-        # Need to update here
-        idx_curr = self.idx % self.num_footsteps
-        up_start_idx = round(self.num_footsteps / 4)
-        up_end_idx = round(self.num_footsteps / 2)
-        up_period = up_end_idx - up_start_idx
-
-        up_delta = self.config.foot_step_height / up_period
-        support_leg = self.foot_steps[0].support_leg
-
-        # Up or down foot movement
-        if up_start_idx < idx_curr <= up_end_idx:
-            if support_leg == "right":
-                self.left_up += up_delta
-            elif support_leg == "left":
-                self.right_up += up_delta
-        else:
-            if support_leg == "right":
-                self.left_up = max(self.left_up - up_delta, 0.0)
-            elif support_leg == "left":
-                self.right_up = max(self.right_up - up_delta, 0.0)
-
-        # Move foot in the axes of x, y, theta
-        if idx_curr > up_start_idx + up_period * 2:
-            if support_leg == "right":
-                self.left_pos = self.left_pos_target.copy()
-            elif support_leg == "left":
-                self.right_pos = self.right_pos_target.copy()
-        elif idx_curr > up_start_idx:
-            if support_leg == "right":
-                self.left_pos += self.left_pos_delta
-                self.theta_curr += self.theta_delta
-            elif support_leg == "left":
-                self.right_pos += self.right_pos_delta
-                self.theta_curr += self.theta_delta
-
-        left_hip_pos = [
-            com_pos[0] - self.foot_to_com_x,
-            com_pos[1] + self.foot_to_com_y,
-        ]
-        right_hip_pos = [
-            com_pos[0] - self.foot_to_com_x,
-            com_pos[1] - self.foot_to_com_y,
-        ]
-
-        if support_leg == "left":
-            right_hip_pos[0] += self.foot_to_com_y * 2 * np.sin(self.theta_curr)
-            right_hip_pos[1] += self.foot_to_com_y * 2 * (1 - np.cos(self.theta_curr))
-        elif support_leg == "right":
-            left_hip_pos[0] += self.foot_to_com_y * 2 * np.sin(self.theta_curr)
-            left_hip_pos[1] += self.foot_to_com_y * 2 * (1 - np.cos(self.theta_curr))
-
-        # target end effector positions in the hip frame
-        left_offset_x = self.left_pos[0] - left_hip_pos[0]
-        left_offset_y = self.left_pos[1] - left_hip_pos[1]
-        right_offset_x = self.right_pos[0] - right_hip_pos[0]
-        right_offset_y = self.right_pos[1] - right_hip_pos[1]
-
-        left_foot_pos = [
-            left_offset_x * np.cos(self.left_pos[2])
-            + left_offset_y * np.sin(self.left_pos[2]),
-            -left_offset_x * np.sin(self.left_pos[2])
-            + left_offset_y * np.cos(self.left_pos[2]),
-            self.config.squat_height + self.left_up,
-        ]
-        right_foot_pos = [
-            right_offset_x * np.cos(self.right_pos[2])
-            + right_offset_y * np.sin(self.right_pos[2]),
-            -right_offset_x * np.sin(self.right_pos[2])
-            + right_offset_y * np.cos(self.right_pos[2]),
-            self.config.squat_height + self.right_up,
-        ]
-
-        left_foot_ori = [0, 0, self.theta_curr - self.left_pos[2]]
-        right_foot_ori = [0, 0, self.theta_curr - self.right_pos[2]]
-
-        return left_foot_pos, left_foot_ori, right_foot_pos, right_foot_ori
-
-    def solve_joint_angles(self):
-        if abs(self.idx * self.config.control_dt - self.foot_steps[1].time) < 1e-6:
-            self.foot_steps.pop(0)
-
-            fs_curr = self.foot_steps[0]
-            fs_next = self.foot_steps[1]
-            self.theta_delta = (fs_next.position[2] - fs_curr.position[2]) / (
-                self.num_footsteps / 2
-            )
-            if fs_curr.support_leg == "left":
-                if fs_next.support_leg == "right":
-                    self.right_pos_target = fs_next.position
-                else:
-                    self.right_pos_target = np.array(
-                        [
-                            fs_next.position[0]
-                            + np.sin(fs_next.position[2]) * self.foot_to_com_y,
-                            fs_next.position[1]
-                            - np.cos(fs_next.position[2]) * self.foot_to_com_y,
-                            fs_next.position[2],
-                        ]
-                    )
-
-                self.right_pos_delta = (self.right_pos_target - self.right_pos) / (
-                    self.num_footsteps / 2
-                )
-            elif fs_curr.support_leg == "right":
-                if fs_next.support_leg == "left":
-                    self.left_pos_target = fs_next.position
-                else:
-                    self.left_pos_target = np.array(
-                        [
-                            fs_next.position[0]
-                            - np.sin(fs_next.position[2]) * self.foot_to_com_y,
-                            fs_next.position[1]
-                            + np.cos(fs_next.position[2]) * self.foot_to_com_y,
-                            fs_next.position[2],
-                        ]
-                    )
-
-                self.left_pos_delta = (self.left_pos_target - self.left_pos) / (
-                    self.num_footsteps / 2
-                )
-
-        com_pos_ref = self.com_ref_traj.pop(0)
-        self.joint_angles = self.robot.solve_ik(
-            *self._compute_foot_pos(com_pos_ref), self.joint_angles
+    def get_feet_pose(self, time_steps: ArrayType, footsteps: List[ArrayType]):
+        feet_pose_list: List[ArrayType] = []
+        offset = np.array(  # type: ignore
+            [
+                -np.sin(footsteps[0][2]) * self.foot_to_com_y,  # type: ignore
+                np.cos(footsteps[0][2]) * self.foot_to_com_y,  # type: ignore
+                0.0,
+            ]
         )
-        self.idx += 1
+        last_pos = np.stack([footsteps[0][:3] + offset, footsteps[0][:3] - offset])  # type: ignore
 
-        return self.joint_angles
+        for i in range(len(footsteps) - 1):
+            num_steps = int((time_steps[i + 1] - time_steps[i]) / self.control_dt)
+            fs_curr, fs_next = footsteps[i], footsteps[i + 1]
+            support_leg = int(fs_curr[-1])
+            next_support_leg = int(fs_next[-1])
+            theta_delta = (fs_next[2] - fs_curr[2]) / (num_steps / 2)
+
+            if support_leg == 2:  # Initial double support
+                current_pos = last_pos
+            else:
+                current_pos = inplace_update(last_pos, support_leg, fs_curr[:3])
+
+            if next_support_leg == 2:  # Support leg switches
+                offset = np.array(  # type: ignore
+                    [
+                        -np.sin(fs_next[2]) * self.foot_to_com_y,  # type: ignore
+                        np.cos(fs_next[2]) * self.foot_to_com_y,  # type: ignore
+                        0.0,
+                    ]
+                ) * (-1 if support_leg == 1 else 1)
+                # Flip the offset direction based on which leg is the support leg
+                target_pos = inplace_update(
+                    current_pos, next_support_leg, fs_next[:3] + offset
+                )
+            else:  # Double support
+                target_pos = inplace_update(current_pos, next_support_leg, fs_next[:3])
+
+            last_pos = target_pos
+
+            # Create a sequence of feet poses
+            up_start_idx, up_end_idx = round(num_steps / 4), round(num_steps / 2)
+            up_period = up_end_idx - up_start_idx
+            up_delta: float = self.footstep_height / up_period
+
+            idx = np.arange(num_steps)[:, None]  # type: ignore
+            pos_delta = (target_pos - current_pos) / num_steps
+            pos_traj = current_pos + idx * pos_delta  # type: ignore
+
+            # Generate height trajectory
+            up_heights = np.zeros(num_steps)  # type: ignore
+            up_heights[up_start_idx : up_end_idx + 1] = up_delta * np.arange(  # type: ignore
+                1, up_period + 1
+            )
+            up_heights[up_end_idx + 1 :] = np.maximum(  # type: ignore
+                up_heights[up_end_idx]
+                - up_delta * np.arange(1, num_steps - up_end_idx),  # type: ignore
+                0,
+            )
+            # Generate theta trajectory
+            theta_traj = theta_delta * np.clip(idx - up_start_idx, 0, num_steps // 2)  # type: ignore
+
+            # Combine position and orientation into the final trajectory
+            foot_traj = np.zeros((num_steps, 6), dtype=np.float32)  # type: ignore
+            foot_traj = inplace_update(
+                foot_traj, (slice(None), slice(None, 3)), pos_traj
+            )
+            foot_traj = inplace_update(foot_traj, (slice(None), -1), theta_traj)
+
+            feet_pose_list.append(foot_traj)
+
+        feet_pose_traj: ArrayType = np.concatenate(feet_pose_list, axis=0)  # type: ignore
+
+        return feet_pose_traj
+
+    def solve_ik(self, footsteps: List[ArrayType], x_traj: ArrayType):
+        joint_pos_traj = self.robot.solve_ik(footsteps, x_traj)
+
+        return joint_pos_traj
 
     def get_state_ref(
         self,
