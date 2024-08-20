@@ -9,7 +9,6 @@ from brax.io import model  # type: ignore
 from brax.training.agents.ppo import networks as ppo_networks  # type: ignore
 
 from toddlerbot.envs.mjx_config import MuJoCoConfig
-from toddlerbot.envs.mjx_env import MuJoCoEnv
 from toddlerbot.policies import BasePolicy
 from toddlerbot.sim.robot import Robot
 
@@ -25,19 +24,6 @@ class WalkFixedPolicy(BasePolicy):
             policy_hidden_layer_sizes=(128,) * 4,
             value_hidden_layer_sizes=(128,) * 4,
         )
-
-        ppo_network = make_networks_factory(
-            cfg.obs.num_single_obs,
-            cfg.obs.num_single_privileged_obs,
-            len(robot.motor_ordering),
-        )
-        make_policy = ppo_networks.make_inference_fn(ppo_network)  # type: ignore
-        policy_path = "tests/policy"
-        params = model.load_params(policy_path)
-        inference_fn = make_policy(params)
-        # jit_inference_fn = inference_fn
-        self.jit_inference_fn = jax.jit(inference_fn)  # type: ignore
-        self.rng = jax.random.PRNGKey(0)  # type: ignore
 
         # joint indices
         motor_indices = np.arange(len(robot.motor_ordering))  # type:ignore
@@ -61,8 +47,21 @@ class WalkFixedPolicy(BasePolicy):
         self.last_action = jnp.zeros(len(robot.motor_ordering), dtype=jnp.float32)  # type:ignore
         self.obs_history = jnp.zeros(cfg.obs.frame_stack * cfg.obs.num_single_obs)  # type:ignore
         self.cycle_time = 1.2
-        self.control_dt = 0.01
         self.step = 0
+
+        ppo_network = make_networks_factory(  # type: ignore
+            cfg.obs.num_single_obs,
+            cfg.obs.num_single_privileged_obs,
+            len(robot.motor_ordering),
+        )
+        make_policy = ppo_networks.make_inference_fn(ppo_network)  # type: ignore
+        policy_path = "results/toddlerbot_walk_fixed_ppo_20240819_111111/policy"
+        params = model.load_params(policy_path)
+        inference_fn = make_policy(params)
+        # jit_inference_fn = inference_fn
+        self.jit_inference_fn = jax.jit(inference_fn)  # type: ignore
+        self.rng = jax.random.PRNGKey(0)  # type: ignore
+        self.jit_inference_fn(self.obs_history, self.rng)[0].block_until_ready()  # type: ignore
 
     def run(
         self, obs_dict: Dict[str, npt.NDArray[np.float32]]
