@@ -60,7 +60,7 @@ class MuJoCoSim(BaseSim):
 
         self.visualizer = None
         if vis_type == "render":
-            self.visualizer = MuJoCoRenderer(self.model, self.data)  # type: ignore
+            self.visualizer = MuJoCoRenderer(self.model)  # type: ignore
         elif vis_type == "view":
             self.visualizer = MuJoCoViewer(self.model, self.data)  # type: ignore
 
@@ -139,15 +139,15 @@ class MuJoCoSim(BaseSim):
             quat2euler(
                 np.array(
                     # TODO: Tune the IMU data
-                    self.data.body("torso").xquat,  # type: ignore
-                    # self.data.sensor("orientation").data,  # type: ignore
+                    # self.data.body("torso").xquat,  # type: ignore
+                    self.data.sensor("orientation").data,  # type: ignore
                     copy=True,
                 )
             )
         )
         obs.imu_ang_vel = np.array(
-            self.data.body("torso").cvel[3:],  # type: ignore
-            # self.data.sensor("angular_velocity").data,  # type: ignore
+            # self.data.body("torso").cvel[3:],  # type: ignore
+            self.data.sensor("angular_velocity").data,  # type: ignore
             copy=True,
         )
 
@@ -182,7 +182,7 @@ class MuJoCoSim(BaseSim):
         mujoco.mj_step(self.model, self.data)  # type: ignore
 
         if self.visualizer is not None:
-            self.visualizer.visualize(self.model, self.data)  # type: ignore
+            self.visualizer.visualize(self.data)  # type: ignore
 
     def rollout(self, motor_angles_list: List[Dict[str, float]]):
         n_state = mujoco.mj_stateSize(self.model, mujoco.mjtState.mjSTATE_FULLPHYSICS)  # type: ignore

@@ -1,7 +1,7 @@
 import os
 import pickle
 import queue
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import mediapy as media
 import mujoco  # type: ignore
@@ -9,13 +9,15 @@ import mujoco.rollout  # type: ignore
 import mujoco.viewer  # type: ignore
 import numpy as np
 import numpy.typing as npt
+from moviepy.editor import VideoFileClip, clips_array  # type: ignore
 
 
 class MuJoCoViewer:
     def __init__(self, model: Any, data: Any):
         self.viewer = mujoco.viewer.launch_passive(model, data)  # type: ignore
+        self.model = model
 
-    def visualize(self, model: Any, data: Any, vis_data: Dict[str, Any] = {}):
+    def visualize(self, data: Any, vis_data: Dict[str, Any] = {}):
         # with self.viewer.lock():
         #     self.viewer.user_scn.ngeom = 0  # type: ignore
         #     if "foot_steps" in vis_data:
@@ -112,16 +114,17 @@ class MuJoCoViewer:
 
 
 class MuJoCoRenderer:
-    def __init__(self, model: Any, data: Any, height: int = 720, width: int = 1280):
+    def __init__(self, model: Any, height: int = 360, width: int = 640):
+        self.model = model
         self.renderer = mujoco.Renderer(model, height=height, width=width)
         self.anim_data: Dict[str, Any] = {}
-        self.video_frames: list[npt.NDArray[np.float32]] = []
+        self.qpos_data: List[Any] = []
+        self.qvel_data: List[Any] = []
 
-    def visualize(self, model: Any, data: Any, vis_data: Dict[str, Any] = {}):
-        self.anim_pose_callback(model, data)
-
-        self.renderer.update_scene(data)  # type: ignore
-        self.video_frames.append(self.renderer.render())  # type: ignore
+    def visualize(self, data: Any, vis_data: Dict[str, Any] = {}):
+        self.anim_pose_callback(data)
+        self.qpos_data.append(data.qpos.copy())
+        self.qvel_data.append(data.qvel.copy())
 
     def save_recording(
         self,
@@ -134,14 +137,34 @@ class MuJoCoRenderer:
         with open(anim_data_path, "wb") as f:
             pickle.dump(self.anim_data, f)
 
-        video_path = os.path.join(exp_folder_path, name)
-        media.write_video(
-            video_path, self.video_frames[::render_every], fps=1 / dt / render_every
-        )
+        # Define paths for each camera's video
+        video_paths: List[str] = []
+        # Render and save videos for each camera
+        for camera in ["perspective", "side", "top", "front"]:
+            video_path = os.path.join(exp_folder_path, f"{camera}.mp4")
+            video_frames: List[npt.NDArray[np.float32]] = []
+            for qpos, qvel in zip(
+                self.qpos_data[::render_every], self.qvel_data[::render_every]
+            ):
+                d = mujoco.MjData(self.model)  # type: ignore
+                d.qpos, d.qvel = qpos, qvel
+                mujoco.mj_forward(self.model, d)  # type: ignore
+                self.renderer.update_scene(d, camera=camera)  # type: ignore
+                video_frames.append(self.renderer.render())  # type: ignore
 
-    def anim_pose_callback(self, model: Any, data: Any):
-        for i in range(model.nbody):
-            body_name = model.body(i).name
+            media.write_video(video_path, video_frames, fps=1.0 / dt / render_every)
+            video_paths.append(video_path)
+
+        # Load the video clips using moviepy
+        clips = [VideoFileClip(path) for path in video_paths]
+        # Arrange the clips in a 2x2 grid
+        final_video = clips_array([[clips[0], clips[1]], [clips[2], clips[3]]])
+        # Save the final concatenated video
+        final_video.write_videofile(os.path.join(exp_folder_path, name))
+
+    def anim_pose_callback(self, data: Any):
+        for i in range(self.model.nbody):
+            body_name = data.body(i).name
             pos = data.body(i).xpos.copy()
             quat = data.body(i).xquat.copy()
 

@@ -1,4 +1,5 @@
 import functools
+import os
 
 import jax
 import jax.numpy as jnp
@@ -16,8 +17,8 @@ from toddlerbot.sim.robot import Robot
 # from toddlerbot.utils.misc_utils import profile
 
 
-class WalkFixedPolicy(BasePolicy):
-    def __init__(self, robot: Robot):
+class WalkPolicy(BasePolicy):
+    def __init__(self, robot: Robot, run_name: str):
         super().__init__(robot)
         self.name = "walk"
 
@@ -62,7 +63,7 @@ class WalkFixedPolicy(BasePolicy):
         )
         make_policy = ppo_networks.make_inference_fn(ppo_network)  # type: ignore
 
-        policy_path = "results/toddlerbot_walk_ppo_20240818_212752/policy"
+        policy_path = os.path.join("results", run_name, "policy")
         params = model.load_params(policy_path)
         inference_fn = make_policy(params)
         # jit_inference_fn = inference_fn

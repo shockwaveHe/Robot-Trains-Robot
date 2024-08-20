@@ -1,10 +1,8 @@
 import argparse
-import importlib
 import os
 import pickle
-import pkgutil
 import time
-from typing import Any, Dict, List, Type
+from typing import Any, Dict, List
 
 import numpy as np
 import numpy.typing as npt
@@ -27,30 +25,6 @@ from toddlerbot.visualization.vis_plot import (
     plot_joint_velocity_tracking,
     plot_orientation_tracking,
 )
-
-
-def import_all_policies():
-    policies: Dict[str, Type[BasePolicy]] = {}
-    package_path = os.path.join("toddlerbot", "policies")
-    package_name = "policies"
-
-    # Iterate over all Python files in the package directory
-    for _, module_name, _ in pkgutil.iter_modules([package_path]):
-        module = importlib.import_module(f"toddlerbot.{package_name}.{module_name}")
-        for attribute_name in dir(module):
-            attribute = getattr(module, attribute_name)
-            if (
-                isinstance(attribute, type)
-                and issubclass(attribute, BasePolicy)
-                and attribute != BasePolicy
-            ):
-                policies[module_name] = attribute
-                break
-
-    return policies
-
-
-POLICIES = import_all_policies()
 
 
 def plot_results(
@@ -266,10 +240,45 @@ if __name__ == "__main__":
         default="stand",
         help="The name of the task.",
     )
+    parser.add_argument(
+        "--ckpt",
+        type=str,
+        default="",
+        help="The policy checkpoint to load.",
+    )
     args = parser.parse_args()
 
     robot = Robot(args.robot)
-    policy = POLICIES[args.policy](robot)
+
+    if args.policy == "stand":
+        from toddlerbot.policies.stand import StandPolicy
+
+        policy: BasePolicy = StandPolicy(robot)
+
+    elif args.policy == "rotate_torso":
+        from toddlerbot.policies.rotate_torso import RotateTorsoPolicy
+
+        policy = RotateTorsoPolicy(robot)
+
+    elif args.policy == "squat":
+        from toddlerbot.policies.squat import SquatPolicy
+
+        policy = SquatPolicy(robot)
+
+    elif args.policy == "walk_fixed":
+        from toddlerbot.policies.walk_fixed import WalkFixedPolicy
+
+        run_name = f"{args.robot}_{args.policy}_ppo_{args.ckpt}"
+        policy = WalkFixedPolicy(robot, run_name)
+
+    elif args.policy == "walk":
+        from toddlerbot.policies.walk import WalkPolicy
+
+        run_name = f"{args.robot}_{args.policy}_ppo_{args.ckpt}"
+        policy = WalkPolicy(robot, run_name)
+
+    else:
+        raise ValueError("Unknown policy")
 
     if "real" not in args.sim and hasattr(policy, "time_arr"):
         n_steps: float = round(policy.time_arr[-1] / policy.control_dt) + 1  # type: ignore
