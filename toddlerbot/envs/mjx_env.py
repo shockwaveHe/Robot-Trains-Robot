@@ -243,7 +243,7 @@ class MuJoCoEnv(PipelineEnv):
             "path_pos": jnp.zeros(3),  # type:ignore
             "path_quat": jnp.array([1.0, 0.0, 0.0, 0.0]),  # type:ignore
             "phase": 0.0,
-            "phase_signal": jnp.zeros(2),  # type:ignore
+            "phase_signal": jnp.array([0.0, 1.0]),  # type:ignore
             "state_ref": jnp.zeros(self.state_ref_size),  # type:ignore
             "contact_forces": jnp.zeros(  # type:ignore
                 (self.num_colliders, self.num_colliders, 3)
@@ -340,16 +340,9 @@ class MuJoCoEnv(PipelineEnv):
         # state = state.tree_replace({"pipeline_state.qd": qvel})
 
         # TODO: Refactor this part to allow the input of manipulation policy
-        zero_action = jnp.zeros_like(action)  # type:ignore
-        action = action.at[self.arm_motor_indices].set(  # type:ignore
-            zero_action[self.arm_motor_indices]
-        )
-        action = action.at[self.neck_motor_indices].set(  # type:ignore
-            zero_action[self.neck_motor_indices]
-        )
-        action = action.at[self.waist_motor_indices[-1]].set(  # type:ignore
-            zero_action[self.waist_motor_indices[-1]]
-        )
+        action = action.at[self.arm_motor_indices].set(0)  # type:ignore
+        action = action.at[self.neck_motor_indices].set(0)  # type:ignore
+        action = action.at[self.waist_motor_indices[-1]].set(0)  # type:ignore
 
         motor_target = self.default_action + action * self.action_scale
 
@@ -357,7 +350,7 @@ class MuJoCoEnv(PipelineEnv):
 
         phase = state.info["step"] * self.dt / self.cycle_time
         phase_signal = jnp.array(  # type:ignore
-            [jnp.sin(2 * np.pi * phase), jnp.cos(2 * np.pi * phase)]  # type:ignore
+            [jnp.sin(2 * jnp.pi * phase), jnp.cos(2 * jnp.pi * phase)]  # type:ignore
         )
         path_pos, path_quat = self._integrate_path_frame(state.info)
         state_ref = self.motion_ref.get_state_ref(

@@ -112,33 +112,32 @@ class MuJoCoViewer:
 
 
 class MuJoCoRenderer:
-    def __init__(
-        self,
-        model: Any,
-        data: Any,
-        height: int = 720,
-        width: int = 1280,
-        frame_rate: int = 24,
-    ):
+    def __init__(self, model: Any, data: Any, height: int = 720, width: int = 1280):
         self.renderer = mujoco.Renderer(model, height=height, width=width)
-        self.frame_rate = frame_rate
         self.anim_data: Dict[str, Any] = {}
         self.video_frames: list[npt.NDArray[np.float32]] = []
 
     def visualize(self, model: Any, data: Any, vis_data: Dict[str, Any] = {}):
-        if len(self.video_frames) < data.time * self.frame_rate:
-            self.anim_pose_callback(model, data)
+        self.anim_pose_callback(model, data)
 
-            self.renderer.update_scene(data)  # type: ignore
-            self.video_frames.append(self.renderer.render())  # type: ignore
+        self.renderer.update_scene(data)  # type: ignore
+        self.video_frames.append(self.renderer.render())  # type: ignore
 
-    def save_recording(self, exp_folder_path: str):
+    def save_recording(
+        self,
+        exp_folder_path: str,
+        dt: float,
+        render_every: int,
+        name: str = "mujoco.mp4",
+    ):
         anim_data_path = os.path.join(exp_folder_path, "anim_data.pkl")
         with open(anim_data_path, "wb") as f:
             pickle.dump(self.anim_data, f)
 
-        video_path = os.path.join(exp_folder_path, "mujoco.mp4")
-        media.write_video(video_path, self.video_frames, fps=self.frame_rate)
+        video_path = os.path.join(exp_folder_path, name)
+        media.write_video(
+            video_path, self.video_frames[::render_every], fps=1 / dt / render_every
+        )
 
     def anim_pose_callback(self, model: Any, data: Any):
         for i in range(model.nbody):

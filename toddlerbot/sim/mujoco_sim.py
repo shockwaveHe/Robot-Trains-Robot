@@ -8,7 +8,7 @@ import numpy as np
 import numpy.typing as npt
 
 from toddlerbot.actuation import JointState
-from toddlerbot.sim import BaseSim
+from toddlerbot.sim import BaseSim, state_to_obs
 from toddlerbot.sim.mujoco_utils import MuJoCoController, MuJoCoRenderer, MuJoCoViewer
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
@@ -65,10 +65,9 @@ class MuJoCoSim(BaseSim):
             self.visualizer = MuJoCoViewer(self.model, self.data)  # type: ignore
 
     def initialize(self):
-        for _ in range(100):
-            self.set_joint_angles(self.default_qpos)
-            self.set_motor_angles(self.default_action)
-            self.step()
+        self.data.qpos = self.default_qpos.copy()  # type: ignore
+        self.data.qvel = np.zeros(self.model.nv, dtype=np.float32)  # type: ignore
+        self.forward()
 
     def get_root_state(self):
         root_state = np.zeros(13, dtype=np.float32)
@@ -134,19 +133,22 @@ class MuJoCoSim(BaseSim):
         motor_state_dict = self.get_motor_state()
         joint_state_dict = self.get_joint_state()
 
-        obs_dict = self.robot.state_to_obs(motor_state_dict, joint_state_dict)
+        obs = state_to_obs(motor_state_dict, joint_state_dict)
 
-        obs_dict["imu_quat"] = np.array(
-            self.data.sensor("orientation").data,  # type: ignore
-            copy=True,
+        obs.imu_euler = np.asarray(
+            quat2euler(
+                np.array(
+                    self.data.sensor("orientation").data,  # type: ignore
+                    copy=True,
+                )
+            )
         )
-        obs_dict["imu_euler"] = np.asarray(quat2euler(obs_dict["imu_quat"]))
-        obs_dict["imu_ang_vel"] = np.array(
+        obs.imu_ang_vel = np.array(
             self.data.sensor("angular_velocity").data,  # type: ignore
             copy=True,
         )
 
-        return obs_dict
+        return obs
 
     def get_mass(self) -> float:
         subtree_mass = float(self.model.body(0).subtreemass)  # type: ignore
@@ -218,9 +220,15 @@ class MuJoCoSim(BaseSim):
 
         return joint_state_list
 
-    def save_recording(self, exp_folder_path: str):
+    def save_recording(
+        self,
+        exp_folder_path: str,
+        dt: float,
+        render_every: int,
+        name: str = "mujoco.mp4",
+    ):
         if isinstance(self.visualizer, MuJoCoRenderer):
-            self.visualizer.save_recording(exp_folder_path)
+            self.visualizer.save_recording(exp_folder_path, dt, render_every, name)
 
     def close(self):
         if self.visualizer is not None:

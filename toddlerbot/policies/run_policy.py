@@ -11,7 +11,7 @@ import numpy.typing as npt
 from tqdm import tqdm
 
 from toddlerbot.policies import BasePolicy
-from toddlerbot.sim import BaseSim
+from toddlerbot.sim import BaseSim, Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.math_utils import round_floats
 from toddlerbot.utils.misc_utils import (
@@ -54,7 +54,7 @@ POLICIES = import_all_policies()
 
 
 def plot_results(
-    obs_dict_list: List[Dict[str, npt.NDArray[np.float32]]],
+    obs_list: List[Obs],
     motor_angles_list: List[Dict[str, float]],
     control_dt: float,
     exp_folder_path: str,
@@ -67,17 +67,16 @@ def plot_results(
     motor_angle_dict: Dict[str, List[float]] = {}
     joint_angle_dict: Dict[str, List[float]] = {}
     joint_vel_dict: Dict[str, List[float]] = {}
-    for i, obs_dict in enumerate(obs_dict_list):
-        obs_time = obs_dict["time"].item()
-        time_obs_list.append(obs_time)
-        euler_obs_list.append(obs_dict["imu_euler"])
-        ang_vel_obs_list.append(obs_dict["imu_ang_vel"])
+    for i, obs in enumerate(obs_list):
+        time_obs_list.append(obs.time)
+        euler_obs_list.append(obs.imu_euler)
+        ang_vel_obs_list.append(obs.imu_ang_vel)
 
         for j, motor_name in enumerate(robot.motor_ordering):
             if motor_name not in motor_angle_dict:
                 motor_angle_dict[motor_name] = []
 
-            motor_angle_dict[motor_name].append(obs_dict["a"][j])
+            motor_angle_dict[motor_name].append(obs.a[j])
 
         for j, joint_name in enumerate(robot.joint_ordering):
             if joint_name not in time_seq_dict:
@@ -87,10 +86,10 @@ def plot_results(
                 joint_vel_dict[joint_name] = []
 
             # Assume the state fetching is instantaneous
-            time_seq_dict[joint_name].append(obs_time)
+            time_seq_dict[joint_name].append(float(obs.time))
             time_seq_ref_dict[joint_name].append(i * control_dt)
-            joint_angle_dict[joint_name].append(obs_dict["q"][j])
-            joint_vel_dict[joint_name].append(obs_dict["dq"][j])
+            joint_angle_dict[joint_name].append(obs.q[j])
+            joint_vel_dict[joint_name].append(obs.dq[j])
 
     time_seq_dict_copy: Dict[str, List[float]] = {}
     time_seq_ref_dict_copy: Dict[str, List[float]] = {}
@@ -147,20 +146,15 @@ def plot_results(
     )
 
 
-def run_policy(
-    policy: BasePolicy, state: Dict[str, npt.NDArray[np.float32]]
-) -> npt.NDArray[np.float32]:
-    return policy.run(state)
+def run_policy(policy: BasePolicy, obs: Obs) -> npt.NDArray[np.float32]:
+    return policy.run(obs)
 
 
 # @profile()
 def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
     header_name = snake2camel(sim.name)
 
-    # default_q = np.array(list(robot.init_joint_angles.values()), dtype=np.float32)
-    default_act = np.array(list(robot.init_motor_angles.values()), dtype=np.float32)
-
-    obs_dict_list: List[Dict[str, npt.NDArray[np.float32]]] = []
+    obs_list: List[Obs] = []
     motor_angles_list: List[Dict[str, float]] = []
 
     start_time = time.time()
@@ -171,22 +165,20 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
             # step_start = time.time()
 
             # Get the latest state from the queue
-            obs_dict = sim.get_observation()
-            obs_dict["time"] -= start_time
-            # q_obs_delta = obs_dict["q"] - default_q
+            obs = sim.get_observation()
+            obs.time -= start_time
 
-            action = run_policy(policy, obs_dict)
-            target_act = default_act + action
+            action = run_policy(policy, obs)
 
             motor_angles: Dict[str, float] = {}
-            for motor_name, act in zip(robot.motor_ordering, target_act):
+            for motor_name, act in zip(robot.motor_ordering, action):
                 motor_angles[motor_name] = act
 
             sim.set_motor_angles(motor_angles)
 
             sim.step()
 
-            obs_dict_list.append(obs_dict)
+            obs_list.append(obs)
             motor_angles_list.append(motor_angles)
 
             step_idx += 1
@@ -197,7 +189,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
 
             if debug["log"]:
                 log(
-                    f"obs_dict: {round_floats(obs_dict, 4)}",
+                    f"obs: {round_floats(obs.__dict__, 4)}",
                     header=header_name,
                     level="debug",
                 )
@@ -229,8 +221,8 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
 
         os.makedirs(exp_folder_path, exist_ok=True)
 
-        if debug["render"] and hasattr(sim, "save_recording"):
-            sim.save_recording(exp_folder_path)  # type: ignore
+        if debug["render"] and isinstance(sim, MuJoCoSim):
+            sim.save_recording(exp_folder_path, policy.control_dt, 2)
 
         sim.close()
 
@@ -240,7 +232,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
         dump_profiling_data(prof_path)
 
         log_data_dict = {
-            "obs_dict_list": obs_dict_list,
+            "obs_list": obs_list,
             "motor_angles_list": motor_angles_list,
         }
         log_data_path = os.path.join(exp_folder_path, "log_data.pkl")
@@ -250,7 +242,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
         if debug["plot"]:
             log("Visualizing...", header="Walking")
             plot_results(
-                obs_dict_list, motor_angles_list, policy.control_dt, exp_folder_path
+                obs_list, motor_angles_list, policy.control_dt, exp_folder_path
             )
 
 

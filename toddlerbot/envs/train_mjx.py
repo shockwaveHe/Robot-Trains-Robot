@@ -7,7 +7,6 @@ from typing import Any, Dict, List, Tuple
 import jax
 import jax.numpy as jnp
 import mediapy as media
-import wandb
 from brax import base  # type: ignore
 from brax.io import model  # type: ignore
 from brax.training.agents.ppo import networks as ppo_networks  # type: ignore
@@ -17,6 +16,7 @@ from moviepy.editor import VideoFileClip, clips_array  # type: ignore
 from orbax import checkpoint as ocp  # type: ignore
 from tqdm import tqdm
 
+import wandb
 from toddlerbot.envs.mjx_config import MuJoCoConfig, RewardScales, RewardsConfig
 from toddlerbot.envs.mjx_env import MuJoCoEnv
 from toddlerbot.envs.ppo_config import PPOConfig
@@ -214,7 +214,9 @@ def train(
     print(f"time to train: {times[-1] - times[1]}")
 
 
-def evaluate(env: MuJoCoEnv, make_networks_factory: Any, run_name: str):
+def evaluate(
+    env: MuJoCoEnv, make_networks_factory: Any, command: jax.Array, run_name: str
+):
     ppo_network = make_networks_factory(
         env.obs_size, env.privileged_obs_size, env.action_size
     )
@@ -231,7 +233,6 @@ def evaluate(env: MuJoCoEnv, make_networks_factory: Any, run_name: str):
     jit_inference_fn = jax.jit(inference_fn)  # type: ignore
 
     rng = jax.random.PRNGKey(0)  # type: ignore
-    command = jnp.array([0.3, 0.0, 0.0, 0.0])  # type: ignore
     state = jit_reset(rng)  # type: ignore
     state.info["command"] = command  # type: ignore
     rollout: List[Any] = [state.pipeline_state]  # type: ignore
@@ -290,8 +291,10 @@ if __name__ == "__main__":
         # Need to a separate env for evaluation, otherwise the domain randomization will cause tracer leak errors.
         env = MuJoCoEnv(args.env, cfg, robot)
         eval_env = MuJoCoEnv(args.env, cfg, robot)
-        test_env = MuJoCoEnv(args.env, cfg, robot)
         train_cfg = PPOConfig()
+
+        test_env = MuJoCoEnv(args.env, cfg, robot)
+        command = jnp.array([0.3, 0.0, 0.0, 0.0])  # type:ignore
     elif args.env == "walk_fixed":
         cfg = MuJoCoConfig(
             rewards=RewardsConfig(
@@ -317,8 +320,11 @@ if __name__ == "__main__":
         robot = Robot(args.robot)
         env = MuJoCoEnv(args.env, cfg, robot, fixed_base=True)
         eval_env = MuJoCoEnv(args.env, cfg, robot, fixed_base=True)
-        test_env = MuJoCoEnv(args.env, cfg, robot, fixed_base=True)
         train_cfg = PPOConfig(num_timesteps=40_000_000, num_evals=200)
+
+        test_env = MuJoCoEnv(args.env, cfg, robot, fixed_base=True)
+        test_env.add_noise = False
+        command = jnp.array([0.0, 0.0, 0.0, 0.0])  # type:ignore
     else:
         raise ValueError(f"Unknown env: {args.env}")
 
@@ -337,10 +343,10 @@ if __name__ == "__main__":
 
     if len(args.eval) > 0:
         if os.path.exists(os.path.join("results", run_name)):
-            evaluate(test_env, make_networks_factory, run_name)
+            evaluate(test_env, make_networks_factory, command, run_name)
         else:
             raise FileNotFoundError(f"Run {args.eval} not found.")
     else:
         train(env, eval_env, make_networks_factory, train_cfg, run_name, args.restore)
 
-        evaluate(test_env, make_networks_factory, run_name)
+        evaluate(test_env, make_networks_factory, command, run_name)

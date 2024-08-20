@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import Dict
 
 import numpy as np
 import numpy.typing as npt
 
+from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.math_utils import interpolate
 
@@ -16,9 +16,7 @@ class BasePolicy(ABC):
         self.control_dt = 0.01
 
     @abstractmethod
-    def run(
-        self, obs_dict: Dict[str, npt.NDArray[np.float32]]
-    ) -> npt.NDArray[np.float32]:
+    def run(self, obs: Obs) -> npt.NDArray[np.float32]:
         pass
 
     def warm_up(

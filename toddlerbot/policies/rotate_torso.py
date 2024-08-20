@@ -1,9 +1,10 @@
-from typing import Dict, List
+from typing import List
 
 import numpy as np
 import numpy.typing as npt
 
 from toddlerbot.policies import BasePolicy
+from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.math_utils import (
     get_random_sine_signal_config,
@@ -76,7 +77,7 @@ class RotateTorsoPolicy(BasePolicy):
                 if len(time_list) > 0:
                     rotate_time += time_list[-1][-1] + self.control_dt
 
-                rotate_pos = np.tile(default_q.copy(), (signal.shape[0], 1))
+                rotate_pos = np.tile(default_q.copy(), (signal.shape[0], 1))  # type: ignore
                 rotate_pos[:, joint_idx] = signal
                 rotate_action = np.zeros_like(rotate_pos)
                 for j, pos in enumerate(rotate_pos):
@@ -117,11 +118,8 @@ class RotateTorsoPolicy(BasePolicy):
                 time_list.append(reset_time)
                 action_list.append(reset_action)
 
-        self.time_arr = np.concatenate(time_list)
-        self.action_arr = np.concatenate(action_list)
+        self.time_arr = np.concatenate(time_list)  # type: ignore
+        self.action_arr = np.concatenate(action_list)  # type: ignore
 
-    def run(
-        self, obs_dict: Dict[str, npt.NDArray[np.float32]]
-    ) -> npt.NDArray[np.float32]:
-        time_curr = obs_dict["time"].item()
-        return np.asarray(interpolate_action(time_curr, self.time_arr, self.action_arr))
+    def run(self, obs: Obs) -> npt.NDArray[np.float32]:
+        return np.asarray(interpolate_action(obs.time, self.time_arr, self.action_arr))

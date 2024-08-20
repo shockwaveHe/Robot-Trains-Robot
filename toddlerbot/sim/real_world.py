@@ -2,10 +2,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
-import numpy.typing as npt
 
 from toddlerbot.actuation import JointState
-from toddlerbot.sim import BaseSim
+from toddlerbot.sim import BaseSim, state_to_obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_ports
 
@@ -190,9 +189,7 @@ class RealWorld(BaseSim):
         pass
 
     # @profile()
-    def get_observation(self, retries: int = 0) -> Dict[str, npt.NDArray[np.float32]]:
-        obs_dict: Dict[str, npt.NDArray[np.float32]] = {}
-
+    def get_observation(self, retries: int = 0):
         results: Dict[str, Any] = {}
         futures: Dict[str, Any] = {}
         if self.has_dynamixel:
@@ -222,15 +219,13 @@ class RealWorld(BaseSim):
 
         motor_state_dict, joint_state_dict = self.process_motor_reading(results)
 
-        obs = self.robot.state_to_obs(motor_state_dict, joint_state_dict)
-        for k, v in obs.items():
-            obs_dict[k] = v
+        obs = state_to_obs(motor_state_dict, joint_state_dict)
 
         if self.has_imu:
             for k, v in results["imu"].items():
-                obs_dict[k] = v.copy()
+                setattr(obs, k, v.copy())
 
-        return obs_dict
+        return obs
 
     # @profile()
     def set_motor_angles(self, motor_angles: Dict[str, float]):

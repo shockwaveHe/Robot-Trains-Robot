@@ -1,9 +1,10 @@
-from typing import Dict, List
+from typing import List
 
 import numpy as np
 import numpy.typing as npt
 
 from toddlerbot.policies import BasePolicy
+from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.math_utils import interpolate, interpolate_action
 from toddlerbot.utils.misc_utils import set_seed
@@ -87,7 +88,7 @@ class SquatPolicy(BasePolicy):
             action_end = np.array(list(motor_angles.values()), dtype=np.float32)
 
             squat_time = np.arange(0, squat_duration, self.control_dt, dtype=np.float32)  # type: ignore
-            squat_action = np.tile(action_end.copy(), (squat_time.shape[0], 1))
+            squat_action = np.tile(action_end.copy(), (squat_time.shape[0], 1))  # type: ignore
             for i, t in enumerate(squat_time):
                 action = interpolate(
                     np.zeros_like(action_end),
@@ -145,27 +146,16 @@ class SquatPolicy(BasePolicy):
         time_list.append(rise_time)
         action_list.append(rise_action)
 
-        self.time_arr = np.concatenate(time_list)
-        self.action_arr = np.concatenate(action_list)
+        self.time_arr = np.concatenate(time_list)  # type: ignore
+        self.action_arr = np.concatenate(action_list)  # type: ignore
 
-    def run(
-        self, obs_dict: Dict[str, npt.NDArray[np.float32]]
-    ) -> npt.NDArray[np.float32]:
-        time_curr = obs_dict["time"].item()
-        action = np.array(interpolate_action(time_curr, self.time_arr, self.action_arr))
+    def run(self, obs: Obs) -> npt.NDArray[np.float32]:
+        action = np.array(interpolate_action(obs.time, self.time_arr, self.action_arr))
 
-        left_knee_pitch = obs_dict["q"][
-            self.robot.joint_ordering.index("left_knee_pitch")
-        ]
-        right_knee_pitch = obs_dict["q"][
-            self.robot.joint_ordering.index("right_knee_pitch")
-        ]
-        left_ank_pitch = obs_dict["q"][
-            self.robot.joint_ordering.index("left_ank_pitch")
-        ]
-        right_ank_pitch = obs_dict["q"][
-            self.robot.joint_ordering.index("right_ank_pitch")
-        ]
+        left_knee_pitch = obs.q[self.robot.joint_ordering.index("left_knee_pitch")]
+        right_knee_pitch = obs.q[self.robot.joint_ordering.index("right_knee_pitch")]
+        left_ank_pitch = obs.q[self.robot.joint_ordering.index("left_ank_pitch")]
+        right_ank_pitch = obs.q[self.robot.joint_ordering.index("right_ank_pitch")]
 
         action[self.robot.motor_ordering.index("left_hip_pitch")] = (
             -left_ank_pitch - left_knee_pitch
