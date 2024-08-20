@@ -18,7 +18,7 @@ from toddlerbot.sim.robot import Robot
 class WalkFixedPolicy(BasePolicy):
     def __init__(self, robot: Robot):
         super().__init__(robot)
-        self.name = "walk_fixed"
+        self.name = "walk"
 
         cfg = MuJoCoConfig()
         make_networks_factory = functools.partial(
@@ -50,7 +50,7 @@ class WalkFixedPolicy(BasePolicy):
         self.obs_history = np.zeros(
             cfg.obs.frame_stack * cfg.obs.num_single_obs, dtype=np.float32
         )
-        self.cycle_time = 1.2
+        self.cycle_time = cfg.action.cycle_time
         self.step = 0
 
         ppo_network = make_networks_factory(  # type: ignore
@@ -60,7 +60,7 @@ class WalkFixedPolicy(BasePolicy):
         )
         make_policy = ppo_networks.make_inference_fn(ppo_network)  # type: ignore
 
-        policy_path = "results/toddlerbot_walk_fixed_ppo_20240819_094948/policy"
+        policy_path = "results/toddlerbot_walk_ppo_20240818_212752/policy"
         params = model.load_params(policy_path)
         inference_fn = make_policy(params)
         # jit_inference_fn = inference_fn
@@ -78,7 +78,7 @@ class WalkFixedPolicy(BasePolicy):
         obs_arr = np.concatenate(  # type:ignore
             [
                 phase_signal,
-                np.array([0.0, 0.0, 0.0]),  # type:ignore
+                np.array([0.3, 0.0, 0.0]),  # type:ignore
                 joint_pos_delta * self.obs_scales.dof_pos,
                 obs.dq * self.obs_scales.dof_vel,
                 self.last_action,

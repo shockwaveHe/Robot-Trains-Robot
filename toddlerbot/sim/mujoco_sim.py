@@ -138,13 +138,16 @@ class MuJoCoSim(BaseSim):
         obs.imu_euler = np.asarray(
             quat2euler(
                 np.array(
-                    self.data.sensor("orientation").data,  # type: ignore
+                    # TODO: Tune the IMU data
+                    self.data.body("torso").xquat,  # type: ignore
+                    # self.data.sensor("orientation").data,  # type: ignore
                     copy=True,
                 )
             )
         )
         obs.imu_ang_vel = np.array(
-            self.data.sensor("angular_velocity").data,  # type: ignore
+            self.data.body("torso").cvel[3:],  # type: ignore
+            # self.data.sensor("angular_velocity").data,  # type: ignore
             copy=True,
         )
 

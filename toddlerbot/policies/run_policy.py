@@ -286,7 +286,7 @@ if __name__ == "__main__":
     if args.sim == "mujoco":
         from toddlerbot.sim.mujoco_sim import MuJoCoSim
 
-        sim = MuJoCoSim(robot, vis_type="render", fixed_base=True)
+        sim = MuJoCoSim(robot, vis_type="render", fixed_base="fixed" in args.policy)
     elif args.sim == "real":
         from toddlerbot.sim.real_world import RealWorld
 

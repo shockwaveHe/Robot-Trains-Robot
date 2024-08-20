@@ -195,7 +195,7 @@ def update_geom_classes(root: ET.Element, geom_keys: List[str]):
                 del geom.attrib[attr]
 
 
-def add_keyframes(root: ET.Element, offsets: Dict[str, float], is_fixed: bool):
+def add_keyframes(root: ET.Element, is_fixed: bool):
     # Create or find the <default> element
     keyframe = root.find("keyframe")
     if keyframe is not None:
@@ -206,7 +206,7 @@ def add_keyframes(root: ET.Element, offsets: Dict[str, float], is_fixed: bool):
     if is_fixed:
         qpos_str = ""
     else:
-        qpos_str = f"0 0 {offsets['torso_z']} 1 0 0 0 "
+        qpos_str = "0 0 0.336 1 0 0 0 "
 
     ET.SubElement(
         keyframe,
@@ -697,7 +697,7 @@ def process_mjcf_fixed_file(root: ET.Element, robot: Robot):
     if robot.config["general"]["is_ankle_closed_loop"]:
         add_ankle_constraints(root, robot.config["general"]["offsets"])
 
-    add_keyframes(root, robot.config["general"]["offsets"], True)
+    add_keyframes(root, True)
 
     add_default_settings(root)
 
@@ -738,7 +738,7 @@ def get_mjcf_files(robot_name: str):
 
         mjcf_path = os.path.join(robot_dir, robot_name + ".xml")
         add_body_link(xml_root, urdf_path, robot.config["general"]["offsets"])
-        add_keyframes(xml_root, robot.config["general"]["offsets"], False)
+        add_keyframes(xml_root, False)
         add_contacts(xml_root, robot.collision_config)
         xml_tree.write(mjcf_path)
 
