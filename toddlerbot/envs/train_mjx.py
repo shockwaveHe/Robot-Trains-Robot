@@ -337,7 +337,7 @@ if __name__ == "__main__":
         robot = Robot(args.robot)
         env = MuJoCoEnv(args.env, cfg, robot, fixed_base=True)
         eval_env = MuJoCoEnv(args.env, cfg, robot, fixed_base=True)
-        train_cfg = PPOConfig(num_timesteps=40_000_000, num_evals=200)
+        train_cfg = PPOConfig(num_timesteps=20_000_000, num_evals=200)
 
         test_env = MuJoCoEnv(args.env, cfg, robot, fixed_base=True)
         test_env.add_noise = False
