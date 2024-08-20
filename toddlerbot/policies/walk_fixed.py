@@ -8,6 +8,7 @@ from brax.io import model  # type: ignore
 from brax.training.agents.ppo import networks as ppo_networks  # type: ignore
 
 from toddlerbot.envs.mjx_config import MuJoCoConfig
+from toddlerbot.envs.ppo_config import PPOConfig
 from toddlerbot.policies import BasePolicy
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
@@ -21,10 +22,11 @@ class WalkFixedPolicy(BasePolicy):
         self.name = "walk_fixed"
 
         cfg = MuJoCoConfig()
+        train_cfg = PPOConfig()
         make_networks_factory = functools.partial(
             ppo_networks.make_ppo_networks,
-            policy_hidden_layer_sizes=(128,) * 4,
-            value_hidden_layer_sizes=(128,) * 4,
+            policy_hidden_layer_sizes=train_cfg.policy_hidden_layer_sizes,
+            value_hidden_layer_sizes=train_cfg.value_hidden_layer_sizes,
         )
 
         # joint indices

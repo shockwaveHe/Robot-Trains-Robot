@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Tuple
 import jax
 import jax.numpy as jnp
 import mediapy as media
+import optax  # type: ignore
 from brax import base  # type: ignore
 from brax.io import model  # type: ignore
 from brax.training.agents.ppo import networks as ppo_networks  # type: ignore
@@ -182,15 +183,32 @@ def train(
         save_args = orbax_utils.save_args_from_target(params)
         path = os.path.abspath(os.path.join(exp_folder_path, f"{current_step}"))
         orbax_checkpointer.save(path, params, force=True, save_args=save_args)  # type: ignore
-        model.save_params(os.path.join(path, "policy"), params)
+
+    learning_rate_schedule_fn = optax.linear_schedule(  # type: ignore
+        init_value=train_cfg.learning_rate,
+        end_value=train_cfg.min_learning_rate,
+        transition_steps=train_cfg.num_timesteps,
+    )
 
     train_fn = functools.partial(  # type: ignore
         ppo.train,
+        num_timesteps=train_cfg.num_timesteps,
+        num_evals=train_cfg.num_evals,
+        episode_length=train_cfg.episode_length,
+        unroll_length=train_cfg.unroll_length,
+        num_minibatches=train_cfg.num_minibatches,
+        num_updates_per_batch=train_cfg.num_updates_per_batch,
+        discounting=train_cfg.discounting,
+        learning_rate=train_cfg.learning_rate,
+        learning_rate_schedule_fn=learning_rate_schedule_fn,
+        entropy_cost=train_cfg.entropy_cost,
+        num_envs=train_cfg.num_envs,
+        batch_size=train_cfg.batch_size,
+        seed=train_cfg.seed,
         network_factory=make_networks_factory,  # type: ignore
         randomization_fn=domain_randomize,
         policy_params_fn=policy_params_fn,
         restore_checkpoint_path=restore_checkpoint_path,
-        **train_cfg.__dict__,
     )
 
     times = [time.time()]
@@ -316,7 +334,6 @@ if __name__ == "__main__":
                 ),
             )
         )
-        cfg.action.cycle_time = 1.2
         robot = Robot(args.robot)
         env = MuJoCoEnv(args.env, cfg, robot, fixed_base=True)
         eval_env = MuJoCoEnv(args.env, cfg, robot, fixed_base=True)
@@ -330,8 +347,8 @@ if __name__ == "__main__":
 
     make_networks_factory = functools.partial(
         ppo_networks.make_ppo_networks,
-        policy_hidden_layer_sizes=(128,) * 4,
-        value_hidden_layer_sizes=(128,) * 4,
+        policy_hidden_layer_sizes=train_cfg.policy_hidden_layer_sizes,
+        value_hidden_layer_sizes=train_cfg.value_hidden_layer_sizes,
     )
 
     if len(args.eval) > 0:
