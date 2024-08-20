@@ -35,7 +35,7 @@ class ObsConfig:
 class ActionConfig:
     action_scale: float = 0.25
     contact_force_threshold: float = 5.0
-    cycle_time: float = 0.64
+    cycle_time: float = 1.2
     n_frames: int = 5
 
 
@@ -59,7 +59,7 @@ class RewardScales:
     feet_clearance: float = 0.0  # 1.0 # Doesn't help
     feet_contact: float = 0.5
     feet_distance: float = 0.5
-    feet_slip: float = 1.0
+    feet_slip: float = 0.1
     stand_still: float = 0.0  # 1.0
     joint_torque: float = 5e-2
     joint_acc: float = 5e-7
@@ -124,7 +124,7 @@ class NoiseConfig:
     add_noise: bool = True
     noise_scale: float = 0.05
     dof_pos: float = 1.0
-    dof_vel: float = 10.0
+    dof_vel: float = 1.0
     ang_vel: float = 0.2
     euler: float = 1.0
 
