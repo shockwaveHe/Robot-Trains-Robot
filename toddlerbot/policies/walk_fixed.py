@@ -78,6 +78,10 @@ class WalkFixedPolicy(BasePolicy):
             [np.sin(2 * np.pi * phase), np.cos(2 * np.pi * phase)]  # type:ignore
         )
         joint_pos_delta = obs.q - self.default_joint_pos
+
+        obs.imu_ang_vel = np.zeros(3, dtype=np.float32)
+        obs.imu_euler = np.zeros(3, dtype=np.float32)
+
         obs_arr = np.concatenate(  # type:ignore
             [
                 phase_signal,

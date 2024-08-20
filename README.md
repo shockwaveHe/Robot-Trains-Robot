@@ -29,6 +29,7 @@ sudo usermod -a -G gpio $USER
 sudo chown root.gpio /dev/gpiochip0
 sudo chmod 660 /dev/gpiochip0
 
+python -m pip install Jetson.GPIO
 sudo cp ~/miniforge3/envs/toddlerbot/lib/python3.10/site-packages/Jetson/GPIO/99-gpio.rules /etc/udev/rules.d/
 sudo udevadm control --reload-rules && sudo udevadm trigger
 ```

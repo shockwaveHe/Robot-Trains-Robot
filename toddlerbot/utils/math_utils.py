@@ -82,7 +82,7 @@ def round_to_sig_digits(x: float, digits: int):
     return round(x, digits - int(math.floor(math.log10(abs(x)))) - 1)
 
 
-def quat2euler(quat: ArrayType) -> ArrayType:
+def quat2euler(quat: ArrayType, order: str = "wxyz") -> ArrayType:
     """
     Convert a quaternion to Euler angles (roll, pitch, yaw).
 
@@ -92,7 +92,10 @@ def quat2euler(quat: ArrayType) -> ArrayType:
     Returns:
         Euler angles as [roll, pitch, yaw].
     """
-    w, x, y, z = quat if quat.shape[0] == 4 else quat[-4:]
+    if order == "xyzw":
+        x, y, z, w = quat
+    else:
+        w, x, y, z = quat
 
     t0 = 2.0 * (w * x + y * z)
     t1 = 1.0 - 2.0 * (x * x + y * y)

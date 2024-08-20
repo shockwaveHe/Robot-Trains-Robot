@@ -195,7 +195,8 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
 
         os.makedirs(exp_folder_path, exist_ok=True)
 
-        if debug["render"] and isinstance(sim, MuJoCoSim):
+        if debug["render"] and hasattr(sim, "save_recording"):
+            assert isinstance(sim, MuJoCoSim)
             sim.save_recording(exp_folder_path, policy.control_dt, 2)
 
         sim.close()
