@@ -154,6 +154,12 @@ def update_joint_params(root: ET.Element, joints_config: Dict[str, Any]):
     # Iterate over all joints in the XML
     for joint in root.findall(".//joint"):
         joint_name = joint.get("name")
+
+        # Check if the "actuatorfrcrange" attribute exists
+        if "actuatorfrcrange" in joint.attrib:
+            # Remove the attribute using the `del` keyword
+            del joint.attrib["actuatorfrcrange"]
+
         if joint_name in joints_config:
             for attr_name in joints_config[joint_name]:
                 if attr_name in ["damping", "armature"]:  # , "frictionloss"]:

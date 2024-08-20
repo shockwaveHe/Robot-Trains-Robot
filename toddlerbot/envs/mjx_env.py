@@ -348,6 +348,8 @@ class MuJoCoEnv(PipelineEnv):
 
         pipeline_state = self.pipeline_step(state.pipeline_state, motor_target)
 
+        # jax.debug.print("{}", pipeline_state.qfrc_actuator[6 + self.leg_joint_indices])
+
         phase = state.info["step"] * self.dt / self.cycle_time
         phase_signal = jnp.array(  # type:ignore
             [jnp.sin(2 * jnp.pi * phase), jnp.cos(2 * jnp.pi * phase)]  # type:ignore
