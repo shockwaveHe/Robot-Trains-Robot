@@ -11,7 +11,7 @@ from yourdfpy import URDF  # type: ignore
 
 from toddlerbot.actuation import JointState
 from toddlerbot.utils.file_utils import find_robot_file_path
-from toddlerbot.utils.misc_utils import log
+from toddlerbot.utils.misc_utils import log  # , profile
 
 
 class Robot:
@@ -72,6 +72,7 @@ class Robot:
                 log("Computed and cached new data.", header="Robot")
 
         points, values = self.data_dict["ank_fk_lookup_table"]
+        # TODO: Look up the speed
         self.ank_fk_lookup_table = LinearNDInterpolator(points, values)
         self.ank_act_pos_tri = Delaunay(points)
         self.ank_pos_tri = Delaunay(values)
@@ -528,6 +529,7 @@ class Robot:
 
         return joint_angles
 
+    # @profile()
     def motor_to_joint_state(
         self,
         motor_state_dict: Dict[str, JointState],

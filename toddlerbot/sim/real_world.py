@@ -8,6 +8,8 @@ from toddlerbot.sim import BaseSim, state_to_obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_ports
 
+# from toddlerbot.utils.misc_utils import profile
+
 
 class RealWorld(BaseSim):
     def __init__(self, robot: Robot):

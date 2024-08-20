@@ -242,6 +242,21 @@ def plot_footsteps(
     return vis_function
 
 
+def plot_loop_time(
+    loop_time_dict: Dict[str, List[float]], save_path: str, file_name: str = "loop_time"
+):
+    plot_line_graph(
+        list(loop_time_dict.values()),
+        legend_labels=list(loop_time_dict.keys()),
+        title="Loop Time",
+        x_label="Iterations",
+        y_label="Time (ms)",
+        save_config=True,
+        save_path=save_path,
+        file_name=file_name,
+    )()
+
+
 def plot_joint_angle_tracking(
     time_seq_dict: Dict[str, List[float]],
     time_seq_ref_dict: Dict[str, List[float]],

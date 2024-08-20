@@ -23,16 +23,44 @@ from toddlerbot.visualization.vis_plot import (
     plot_angular_velocity_tracking,
     plot_joint_angle_tracking,
     plot_joint_velocity_tracking,
+    plot_loop_time,
     plot_orientation_tracking,
 )
 
 
 def plot_results(
+    loop_time_list: List[List[float]],
     obs_list: List[Obs],
     motor_angles_list: List[Dict[str, float]],
     control_dt: float,
     exp_folder_path: str,
 ):
+    loop_time_dict: Dict[str, List[float]] = {
+        "obs_time": [],
+        "inference_time": [],
+        "set_action_time": [],
+        "sim_step_time": [],
+        "log_time": [],
+        # "total_time": [],
+    }
+    for i, loop_time in enumerate(loop_time_list):
+        (
+            step_start,
+            obs_time,
+            inference_time,
+            set_action_time,
+            sim_step_time,
+            step_end,
+        ) = loop_time
+        loop_time_dict["obs_time"].append((obs_time - step_start) * 1000)
+        loop_time_dict["inference_time"].append((inference_time - obs_time) * 1000)
+        loop_time_dict["set_action_time"].append(
+            (set_action_time - inference_time) * 1000
+        )
+        loop_time_dict["sim_step_time"].append((sim_step_time - set_action_time) * 1000)
+        loop_time_dict["log_time"].append((step_end - sim_step_time) * 1000)
+        # loop_time_dict["total_time"].append((step_end - step_start) * 1000)
+
     time_obs_list: List[float] = []
     euler_obs_list: List[npt.NDArray[np.float32]] = []
     ang_vel_obs_list: List[npt.NDArray[np.float32]] = []
@@ -86,6 +114,8 @@ def plot_results(
                 joint_angle_ref_dict[joint_name] = []
             joint_angle_ref_dict[joint_name].append(joint_angle)
 
+    plot_loop_time(loop_time_dict, exp_folder_path)
+
     plot_orientation_tracking(
         time_obs_list,
         euler_obs_list,
@@ -128,6 +158,7 @@ def run_policy(policy: BasePolicy, obs: Obs) -> npt.NDArray[np.float32]:
 def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
     header_name = snake2camel(sim.name)
 
+    loop_time_list: List[List[float]] = []
     obs_list: List[Obs] = []
     motor_angles_list: List[Dict[str, float]] = []
 
@@ -136,21 +167,25 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
     p_bar = tqdm(total=n_steps, desc="Running the policy")
     try:
         while step_idx < n_steps:
-            # step_start = time.time()
+            step_start = time.time()
 
             # Get the latest state from the queue
             obs = sim.get_observation()
-            obs.time -= start_time
+            obs_time = time.time()
 
+            obs.time -= start_time
             action = run_policy(policy, obs)
+            inference_time = time.time()
 
             motor_angles: Dict[str, float] = {}
             for motor_name, act in zip(robot.motor_ordering, action):
                 motor_angles[motor_name] = act
 
             sim.set_motor_angles(motor_angles)
+            set_action_time = time.time()
 
             sim.step()
+            sim_step_time = time.time()
 
             obs_list.append(obs)
             motor_angles_list.append(motor_angles)
@@ -174,11 +209,17 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
                 )
 
             step_end = time.time()
-            # log(
-            #     f"Control latency: {(step_end - step_start) * 1000:.2f} ms",
-            #     header=header_name,
-            #     level="debug",
-            # )
+
+            loop_time_list.append(
+                [
+                    step_start,
+                    obs_time,
+                    inference_time,
+                    set_action_time,
+                    sim_step_time,
+                    step_end,
+                ]
+            )
 
             time_until_next_step = start_time + policy.control_dt * step_idx - step_end
             # print(f"time_until_next_step: {time_until_next_step * 1000:.2f} ms")
@@ -217,7 +258,11 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
         if debug["plot"]:
             log("Visualizing...", header="Walking")
             plot_results(
-                obs_list, motor_angles_list, policy.control_dt, exp_folder_path
+                loop_time_list,
+                obs_list,
+                motor_angles_list,
+                policy.control_dt,
+                exp_folder_path,
             )
 
 
@@ -297,10 +342,14 @@ if __name__ == "__main__":
         from toddlerbot.sim.mujoco_sim import MuJoCoSim
 
         sim = MuJoCoSim(robot, vis_type="render", fixed_base="fixed" in args.policy)
+
     elif args.sim == "real":
         from toddlerbot.sim.real_world import RealWorld
 
         sim = RealWorld(robot)
+        # TODO: Debug IMU
+        sim.has_imu = False
+
     else:
         raise ValueError("Unknown simulator")
 
