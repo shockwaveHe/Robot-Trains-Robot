@@ -195,7 +195,7 @@ class Robot:
         return collider_names
 
     @property
-    def action_dim(self) -> int:
+    def action_size(self) -> int:
         return len(self.motor_ordering)
 
     @property

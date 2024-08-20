@@ -21,6 +21,10 @@ class RotateTorsoPolicy(BasePolicy):
 
         set_seed(0)
 
+        self.default_action = np.array(
+            list(robot.default_motor_angles.values()), dtype=np.float32
+        )
+
         default_q = np.array(list(robot.init_joint_angles.values()), dtype=np.float32)
 
         prep_duration = 10.0
@@ -122,4 +126,8 @@ class RotateTorsoPolicy(BasePolicy):
         self.action_arr = np.concatenate(action_list)  # type: ignore
 
     def run(self, obs: Obs) -> npt.NDArray[np.float32]:
-        return np.asarray(interpolate_action(obs.time, self.time_arr, self.action_arr))
+        action = self.default_action + np.asarray(
+            interpolate_action(obs.time, self.time_arr, self.action_arr)
+        )
+
+        return action

@@ -1,9 +1,8 @@
-from typing import Dict
-
 import numpy as np
 import numpy.typing as npt
 
 from toddlerbot.policies import BasePolicy
+from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 
 
@@ -12,7 +11,9 @@ class StandPolicy(BasePolicy):
         super().__init__(robot)
         self.name = "stand"
 
-    def run(
-        self, obs_dict: Dict[str, npt.NDArray[np.float32]]
-    ) -> npt.NDArray[np.float32]:
-        return np.zeros_like(self.robot.action_dim)
+        self.default_action = np.array(
+            list(robot.default_motor_angles.values()), dtype=np.float32
+        )
+
+    def run(self, obs: Obs) -> npt.NDArray[np.float32]:
+        return self.default_action
