@@ -23,6 +23,8 @@ from toddlerbot.envs.mjx_env import MuJoCoEnv
 from toddlerbot.envs.ppo_config import PPOConfig
 from toddlerbot.sim.robot import Robot
 
+os.environ["XLA_FLAGS"] = "--xla_gpu_triton_gemm_any=true"
+
 
 def render_video(
     env: MuJoCoEnv,
