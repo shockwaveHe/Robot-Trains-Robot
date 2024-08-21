@@ -350,7 +350,7 @@ class MuJoCoEnv(PipelineEnv):
 
         motor_target = self.default_action + action * self.action_scale
 
-        # jax.debug.breakpoint()
+        jax.debug.breakpoint()
 
         pipeline_state = self.pipeline_step(state.pipeline_state, motor_target)
 
@@ -530,6 +530,8 @@ class MuJoCoEnv(PipelineEnv):
             obs += self.noise_scale * jax.random.uniform(  # type:ignore
                 info["rng"], obs.shape, minval=-1, maxval=1
             )
+
+        # jax.debug.breakpoint()
 
         # obs = jnp.clip(obs, -100.0, 100.0)  # type:ignore
         # stack observations through time

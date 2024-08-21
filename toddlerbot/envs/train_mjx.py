@@ -317,6 +317,8 @@ if __name__ == "__main__":
             robot,
             fixed_command=jnp.array([0.3, 0.0, 0.0, 0.0]),  # type:ignore
         )
+        test_env.add_noise = False
+
     elif args.env == "walk_fixed":
         cfg = MuJoCoConfig(
             rewards=RewardsConfig(

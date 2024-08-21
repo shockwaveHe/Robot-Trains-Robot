@@ -176,21 +176,3 @@ class MuJoCoRenderer:
 
     def close(self):
         self.renderer.close()
-
-
-class MuJoCoController:
-    def __init__(self):
-        self.command_queue = queue.Queue()  # type: ignore
-
-    def add_command(self, motor_ctrls: Dict[str, float] | npt.NDArray[np.float32]):
-        self.command_queue.put(motor_ctrls)  # type: ignore
-
-    def process_commands(self, model: Any, data: Any):
-        while not self.command_queue.empty():  # type: ignore
-            motor_ctrls = self.command_queue.get()  # type: ignore
-            if isinstance(motor_ctrls, dict):
-                for name, ctrl in motor_ctrls.items():  # type: ignore
-                    data.actuator(name).ctrl = ctrl
-            else:
-                for i, ctrl in enumerate(motor_ctrls):  # type: ignore
-                    data.actuator(i).ctrl = ctrl
