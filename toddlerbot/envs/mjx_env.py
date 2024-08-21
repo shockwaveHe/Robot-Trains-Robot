@@ -25,12 +25,14 @@ class MuJoCoEnv(PipelineEnv):
         cfg: MuJoCoConfig,
         robot: Robot,
         fixed_base: bool = False,
+        fixed_command: Optional[jax.Array] = None,
         **kwargs: Any,
     ):
         self.name = name
         self.cfg = cfg
         self.robot = robot
         self.fixed_base = fixed_base
+        self.fixed_command = fixed_command
 
         if fixed_base:
             xml_path = find_robot_file_path(robot.name, suffix="_fixed_scene.xml")
@@ -239,7 +241,9 @@ class MuJoCoEnv(PipelineEnv):
 
         state_info = {
             "rng": rng,
-            "command": self._sample_command(pipeline_state, key),
+            "command": self._sample_command(pipeline_state, key)
+            if self.fixed_command is None
+            else self.fixed_command,
             "path_pos": jnp.zeros(3),  # type:ignore
             "path_quat": jnp.array([1.0, 0.0, 0.0, 0.0]),  # type:ignore
             "phase": 0.0,
@@ -306,7 +310,7 @@ class MuJoCoEnv(PipelineEnv):
                 maxval=self.command_ranges["heading"][1],
             )
 
-            forward = quat_apply(pipeline_state.q[3:7], self.forward_vec)  # type:ignore
+            forward = quat_apply(pipeline_state.x.rot[0], self.forward_vec)  # type:ignore
             heading = heading.at[0].set(jnp.atan2(forward[1], forward[0]))  # type:ignore
             ang_vel_yaw_raw = 0.5 * wrap_to_pi(command_heading - heading)  # type:ignore
             ang_vel_yaw = jnp.clip(ang_vel_yaw_raw, -1.0, 1.0)  # type:ignore
@@ -345,6 +349,8 @@ class MuJoCoEnv(PipelineEnv):
         action = action.at[self.waist_motor_indices[-1]].set(0)  # type:ignore
 
         motor_target = self.default_action + action * self.action_scale
+
+        # jax.debug.breakpoint()
 
         pipeline_state = self.pipeline_step(state.pipeline_state, motor_target)
 

@@ -37,7 +37,7 @@ def render_video(
 
     # Render and save videos for each camera
     for camera in ["perspective", "side", "top", "front"]:
-        video_path = os.path.join("results", run_name, f"eval_{camera}.mp4")
+        video_path = os.path.join("results", run_name, f"{camera}.mp4")
         media.write_video(
             video_path,
             env.render(  # type: ignore
@@ -233,7 +233,11 @@ def train(
 
 
 def evaluate(
-    env: MuJoCoEnv, make_networks_factory: Any, command: jax.Array, run_name: str
+    env: MuJoCoEnv,
+    make_networks_factory: Any,
+    run_name: str,
+    num_steps: int = 1000,
+    log_every: int = 100,
 ):
     ppo_network = make_networks_factory(
         env.obs_size, env.privileged_obs_size, env.action_size
@@ -252,15 +256,11 @@ def evaluate(
 
     rng = jax.random.PRNGKey(0)  # type: ignore
     state = jit_reset(rng)  # type: ignore
-    state.info["command"] = command  # type: ignore
+
     rollout: List[Any] = [state.pipeline_state]  # type: ignore
 
-    # grab a trajectory
-    n_steps = 1000
-    log_every = 100
-
     times = [time.time()]
-    for i in tqdm(range(n_steps), desc="Evaluating"):
+    for i in tqdm(range(num_steps), desc="Evaluating"):
         act_rng, rng = jax.random.split(rng)  # type: ignore
         ctrl, _ = jit_inference_fn(state.obs, act_rng)  # type: ignore
         state = jit_step(state, ctrl)  # type: ignore
@@ -311,8 +311,12 @@ if __name__ == "__main__":
         eval_env = MuJoCoEnv(args.env, cfg, robot)
         train_cfg = PPOConfig()
 
-        test_env = MuJoCoEnv(args.env, cfg, robot)
-        command = jnp.array([0.3, 0.0, 0.0, 0.0])  # type:ignore
+        test_env = MuJoCoEnv(
+            args.env,
+            cfg,
+            robot,
+            fixed_command=jnp.array([0.3, 0.0, 0.0, 0.0]),  # type:ignore
+        )
     elif args.env == "walk_fixed":
         cfg = MuJoCoConfig(
             rewards=RewardsConfig(
@@ -339,9 +343,14 @@ if __name__ == "__main__":
         eval_env = MuJoCoEnv(args.env, cfg, robot, fixed_base=True)
         train_cfg = PPOConfig(num_timesteps=20_000_000, num_evals=200)
 
-        test_env = MuJoCoEnv(args.env, cfg, robot, fixed_base=True)
+        test_env = MuJoCoEnv(
+            args.env,
+            cfg,
+            robot,
+            fixed_command=jnp.array([0.0, 0.0, 0.0, 0.0]),  # type:ignore
+            fixed_base=True,
+        )
         test_env.add_noise = False
-        command = jnp.array([0.0, 0.0, 0.0, 0.0])  # type:ignore
     else:
         raise ValueError(f"Unknown env: {args.env}")
 
@@ -360,10 +369,10 @@ if __name__ == "__main__":
 
     if len(args.eval) > 0:
         if os.path.exists(os.path.join("results", run_name)):
-            evaluate(test_env, make_networks_factory, command, run_name)
+            evaluate(test_env, make_networks_factory, run_name)
         else:
             raise FileNotFoundError(f"Run {args.eval} not found.")
     else:
         train(env, eval_env, make_networks_factory, train_cfg, run_name, args.restore)
 
-        evaluate(test_env, make_networks_factory, command, run_name)
+        evaluate(test_env, make_networks_factory, run_name)
