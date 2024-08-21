@@ -323,6 +323,11 @@ if __name__ == "__main__":
         run_name = f"{args.robot}_{args.policy}_ppo_{args.ckpt}"
         policy = WalkPolicy(robot, run_name)
 
+    elif args.policy == "sysID":
+        from toddlerbot.policies.sysID import SysIDPolicy
+
+        policy = SysIDPolicy(robot)
+
     else:
         raise ValueError("Unknown policy")
 
