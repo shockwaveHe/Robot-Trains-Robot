@@ -1,6 +1,5 @@
 import os
 import pickle
-import queue
 from typing import Any, Dict, List
 
 import mediapy as media

@@ -33,8 +33,8 @@ class ObsConfig:
 class ActionConfig:
     action_scale: float = 0.25
     contact_force_threshold: float = 5.0
-    cycle_time: float = 1.2
-    n_frames: int = 5
+    cycle_time: float = 0.8
+    n_frames: int = 6
 
 
 @dataclass
@@ -53,10 +53,10 @@ class RewardScales:
     neck_joint_vel: float = 0.0  # 1e-3
     waist_joint_pos: float = 0.0  # 50.0
     waist_joint_vel: float = 0.0  # 1e-3
-    feet_air_time: float = 0.0  # 10.0
+    feet_air_time: float = 10.0
     feet_clearance: float = 0.0  # 1.0 # Doesn't help
-    feet_contact: float = 0.0  # 0.5
-    feet_distance: float = 0.0  # 0.5
+    feet_contact: float = 0.5
+    feet_distance: float = 0.5
     feet_slip: float = 0.0  # 0.1
     stand_still: float = 0.0  # 1.0
     joint_torque: float = 0.0  # 5e-2
@@ -70,7 +70,7 @@ class RewardScales:
     waist_action_rate: float = 0.0  # 1e-2
     waist_action_acc: float = 0.0  # 1e-2
     collision: float = 0.0  # 1.0
-    survival: float = 0.0  # 1.0
+    survival: float = 1.0
 
 
 @dataclass
@@ -97,7 +97,7 @@ class CommandsConfig:
     # curriculum: bool = False
     # max_curriculum: float = 8.0  # time before command are changed[s]
     num_commands: int = 4
-    resample_time: float = 10.0
+    resample_time: float = 5.0
     # if true: compute ang vel command from heading error
     has_heading_command: bool = True
     ranges: CommandRanges = CommandRanges()

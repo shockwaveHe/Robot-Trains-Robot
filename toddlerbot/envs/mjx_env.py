@@ -241,9 +241,7 @@ class MuJoCoEnv(PipelineEnv):
 
         state_info = {
             "rng": rng,
-            "command": self._sample_command(pipeline_state, key)
-            if self.fixed_command is None
-            else self.fixed_command,
+            "command": self._sample_command(pipeline_state, key),
             "path_pos": jnp.zeros(3),  # type:ignore
             "path_quat": jnp.array([1.0, 0.0, 0.0, 0.0]),  # type:ignore
             "phase": 0.0,
@@ -286,6 +284,9 @@ class MuJoCoEnv(PipelineEnv):
         # Generate random commands for lin_vel_x and lin_vel_y
         if self.fixed_base:
             return jnp.zeros(self.num_commands)  # type:ignore
+
+        if self.fixed_command is not None:
+            return self.fixed_command
 
         rng, rng_1, rng_2, rng_3 = jax.random.split(rng, 4)  # type:ignore
         lin_vel_x = jax.random.uniform(  # type:ignore
@@ -354,7 +355,16 @@ class MuJoCoEnv(PipelineEnv):
 
         pipeline_state = self.pipeline_step(state.pipeline_state, motor_target)
 
-        # jax.debug.print("{}", pipeline_state.qfrc_actuator[6 + self.leg_joint_indices])
+        # jax.debug.print(
+        #     "qpos: {}", pipeline_state.q[self.q_start_idx + self.leg_joint_indices]
+        # )
+        # jax.debug.print(
+        #     "qvel: {}", pipeline_state.qd[self.qd_start_idx + self.leg_joint_indices]
+        # )
+        # jax.debug.print(
+        #     "qfrc: {}",
+        #     pipeline_state.qfrc_actuator[self.qd_start_idx + self.leg_joint_indices],
+        # )
 
         phase = state.info["step"] * self.dt / self.cycle_time
         phase_signal = jnp.array(  # type:ignore
@@ -368,6 +378,12 @@ class MuJoCoEnv(PipelineEnv):
             pipeline_state  # type:ignore
         )
 
+        torso_height = pipeline_state.x.pos[0, 2]
+        done = jnp.logical_or(  # type:ignore
+            torso_height < self.healthy_z_range[0],  # type:ignore
+            torso_height > self.healthy_z_range[1],  # type:ignore
+        )
+
         state.info["path_pos"] = path_pos
         state.info["path_quat"] = path_quat
         state.info["phase"] = phase
@@ -375,6 +391,7 @@ class MuJoCoEnv(PipelineEnv):
         state.info["state_ref"] = state_ref
         state.info["contact_forces"] = contact_forces
         state.info["stance_mask"] = stance_mask
+        state.info["done"] = done
 
         obs, privileged_obs = self._get_obs(
             pipeline_state, state.info, state.obs, state.privileged_obs
@@ -384,23 +401,14 @@ class MuJoCoEnv(PipelineEnv):
         reward = sum(reward_dict.values()) * self.dt  # type:ignore
         # reward = jnp.clip(reward, 0.0)  # type:ignore
 
-        # done_contact = state.info["contact_forces"][0, self.collision_contact_indices]
-        # done = jnp.any(jnp.linalg.norm(done_contact, axis=-1) > 1.0, axis=0)  # type:ignore
-
-        torso_height = pipeline_state.x.pos[0, 2]
-        done = jnp.logical_or(  # type:ignore
-            torso_height < self.healthy_z_range[0],  # type:ignore
-            torso_height > self.healthy_z_range[1],  # type:ignore
-        )
-
         state.info["last_last_act"] = state.info["last_act"].copy()
         state.info["last_act"] = action.copy()
         state.info["last_stance_mask"] = stance_mask.copy()
         state.info["feet_air_time"] += self.dt
         state.info["feet_air_time"] *= 1.0 - stance_mask
         state.info["rewards"] = reward_dict
-        state.info["step"] += 1
         state.info["rng"] = rng
+        state.info["step"] += 1
 
         # sample new command if more than 500 timesteps achieved
         state.info["command"] = jnp.where(  # type:ignore
@@ -412,7 +420,6 @@ class MuJoCoEnv(PipelineEnv):
         state.info["step"] = jnp.where(  # type:ignore
             done | (state.info["step"] > self.resample_steps), 0, state.info["step"]
         )
-
         state.metrics.update(reward_dict)
 
         return state.replace(  # type:ignore
@@ -915,5 +922,7 @@ class MuJoCoEnv(PipelineEnv):
 
     def _reward_survival(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
-    ):
-        return 1.0  # Constant survival reward
+    ) -> jax.Array:
+        return -(info["done"] & (info["step"] < self.resample_steps)).astype(
+            jnp.float32
+        )

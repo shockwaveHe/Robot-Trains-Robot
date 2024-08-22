@@ -53,7 +53,7 @@ class WalkFixedPolicy(BasePolicy):
         self.obs_history = np.zeros(
             cfg.obs.frame_stack * cfg.obs.num_single_obs, dtype=np.float32
         )
-        self.cycle_time = 1.2
+        self.cycle_time = cfg.action.cycle_time
         self.step = 0
 
         ppo_network = make_networks_factory(  # type: ignore

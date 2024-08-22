@@ -141,7 +141,7 @@ def set_seed(seed: int):
     import random
 
     import numpy as np
-    import torch
+    # import torch
 
     if seed == -1:
         seed = np.random.randint(0, 10000)  # type: ignore
@@ -150,7 +150,7 @@ def set_seed(seed: int):
 
     random.seed(seed)
     np.random.seed(seed)
-    torch.manual_seed(seed)  # type: ignore
+    # torch.manual_seed(seed)  # type: ignore
     os.environ["PYTHONHASHSEED"] = str(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
+    # torch.cuda.manual_seed(seed)
+    # torch.cuda.manual_seed_all(seed)
