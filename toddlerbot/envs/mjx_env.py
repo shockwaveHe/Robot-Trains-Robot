@@ -257,7 +257,7 @@ class MuJoCoEnv(PipelineEnv):
             "last_last_act": jnp.zeros(self.nu),  # type:ignore
             "last_act": jnp.zeros(self.nu),  # type:ignore
             "rewards": {k: 0.0 for k in self.reward_names},
-            "done": 0,
+            "done": False,
             "step": 0,
         }
 
