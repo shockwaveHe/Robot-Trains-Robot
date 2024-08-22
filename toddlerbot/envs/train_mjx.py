@@ -1,7 +1,9 @@
 import argparse
 import functools
+import json
 import os
 import time
+from dataclasses import asdict
 from typing import Any, Dict, List, Tuple
 
 import jax
@@ -171,11 +173,17 @@ def train(
         os.path.abspath(restore_path) if len(restore_path) > 0 else None
     )
 
+    with open(os.path.join(exp_folder_path, "train_config.json"), "w") as f:
+        json.dump(asdict(train_cfg), f, indent=4)
+
+    with open(os.path.join(exp_folder_path, "env_config.json"), "w") as f:
+        json.dump(asdict(env.cfg), f, indent=4)
+
     wandb.init(  # type: ignore
         project="ToddlerBot",
         sync_tensorboard=True,
         name=run_name,
-        config=train_cfg.__dict__,
+        config=asdict(train_cfg),
     )
 
     orbax_checkpointer = ocp.PyTreeCheckpointer()
@@ -185,6 +193,8 @@ def train(
         save_args = orbax_utils.save_args_from_target(params)
         path = os.path.abspath(os.path.join(exp_folder_path, f"{current_step}"))
         orbax_checkpointer.save(path, params, force=True, save_args=save_args)  # type: ignore
+        policy_path = os.path.join(path, "policy")
+        model.save_params(policy_path, (params[0], params[1].policy))
 
     learning_rate_schedule_fn = optax.linear_schedule(  # type: ignore
         init_value=train_cfg.learning_rate,

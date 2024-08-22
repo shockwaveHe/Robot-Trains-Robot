@@ -350,7 +350,7 @@ class MuJoCoEnv(PipelineEnv):
 
         motor_target = self.default_action + action * self.action_scale
 
-        jax.debug.breakpoint()
+        # jax.debug.breakpoint()
 
         pipeline_state = self.pipeline_step(state.pipeline_state, motor_target)
 

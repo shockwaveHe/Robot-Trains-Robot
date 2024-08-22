@@ -1,13 +1,11 @@
 from dataclasses import dataclass, field
-from typing import Any, List
-
-import mujoco  # type: ignore
+from typing import List
 
 
 @dataclass
 class MJConfig:
     timestep: float = 0.002
-    solver: Any = mujoco.mjtSolver.mjSOL_NEWTON  # type: ignore
+    solver: int = 2  # Newton
     iterations: int = 1
     ls_iterations: int = 4
 
@@ -41,7 +39,7 @@ class ActionConfig:
 
 @dataclass
 class RewardScales:
-    torso_pos: float = 1.0
+    torso_pos: float = 0.0  # 1.0
     torso_quat: float = 1.0
     lin_vel_xy: float = 1.0
     lin_vel_z: float = 0.5
@@ -55,23 +53,23 @@ class RewardScales:
     neck_joint_vel: float = 0.0  # 1e-3
     waist_joint_pos: float = 0.0  # 50.0
     waist_joint_vel: float = 0.0  # 1e-3
-    feet_air_time: float = 10.0
+    feet_air_time: float = 0.0  # 10.0
     feet_clearance: float = 0.0  # 1.0 # Doesn't help
-    feet_contact: float = 0.5
-    feet_distance: float = 0.5
-    feet_slip: float = 0.1
+    feet_contact: float = 0.0  # 0.5
+    feet_distance: float = 0.0  # 0.5
+    feet_slip: float = 0.0  # 0.1
     stand_still: float = 0.0  # 1.0
-    joint_torque: float = 5e-2
-    joint_acc: float = 5e-7
-    leg_action_rate: float = 1e-2
-    leg_action_acc: float = 1e-2
-    arm_action_rate: float = 1e-2
-    arm_action_acc: float = 1e-2
-    neck_action_rate: float = 1e-2
-    neck_action_acc: float = 1e-2
-    waist_action_rate: float = 1e-2
-    waist_action_acc: float = 1e-2
-    collision: float = 1.0
+    joint_torque: float = 0.0  # 5e-2
+    joint_acc: float = 0.0  # 5e-7
+    leg_action_rate: float = 0.0  # 1e-2
+    leg_action_acc: float = 0.0  # 1e-2
+    arm_action_rate: float = 0.0  # 1e-2
+    arm_action_acc: float = 0.0  # 1e-2
+    neck_action_rate: float = 0.0  # 1e-2
+    neck_action_acc: float = 0.0  # 1e-2
+    waist_action_rate: float = 0.0  # 1e-2
+    waist_action_acc: float = 0.0  # 1e-2
+    collision: float = 0.0  # 1.0
     survival: float = 0.0  # 1.0
 
 
