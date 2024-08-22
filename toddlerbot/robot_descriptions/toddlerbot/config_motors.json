@@ -1,29 +1,29 @@
 {
     "neck_yaw_drive": {
         "motor": "XC330",
-        "init_pos": 0.139592245221138,
+        "init_pos": 0.480135977268219,
         "default_pos": 0,
         "gear_ratio": 1.3846153846153846
     },
     "neck_pitch_drive": {
         "motor": "XC330",
-        "init_pos": 3.321068286895752,
+        "init_pos": 3.256641149520874,
         "default_pos": 0,
         "gear_ratio": 1.1
     },
     "waist_act_1": {
         "motor": "XC330",
-        "init_pos": 4.933282375335693,
+        "init_pos": 5.017651081085205,
         "default_pos": 0
     },
     "waist_act_2": {
         "motor": "XC330",
-        "init_pos": 1.006291389465332,
+        "init_pos": 4.956292152404785,
         "default_pos": 0
     },
     "left_hip_yaw_drive": {
         "motor": "XC330",
-        "init_pos": 5.5898261070251465,
+        "init_pos": 5.605165958404541,
         "default_pos": 0,
         "gear_ratio": 1.105263157894737
     },
@@ -54,7 +54,7 @@
     },
     "right_hip_yaw_drive": {
         "motor": "XC330",
-        "init_pos": 1.9650293588638306,
+        "init_pos": 1.9358837604522705,
         "default_pos": 0,
         "gear_ratio": 1.105263157894737
     },

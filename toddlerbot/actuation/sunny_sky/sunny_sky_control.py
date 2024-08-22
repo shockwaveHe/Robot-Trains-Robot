@@ -17,8 +17,7 @@ import numpy.typing as npt
 import serial
 
 from toddlerbot.actuation import BaseController, JointState
-from toddlerbot.utils.math_utils import interpolate_pos
-from toddlerbot.utils.misc_utils import log, profile
+from toddlerbot.utils.misc_utils import log
 
 
 @dataclass
@@ -233,25 +232,25 @@ class SunnySkyController(BaseController):
 
         pos_arr: npt.NDArray[np.float32] = np.array(pos)
 
-        if interp:
-            pos_arr_start: npt.NDArray[np.float32] = np.array(
-                [state.pos for state in self.get_motor_state().values()]
-            )
+        # if interp:
+        #     pos_arr_start: npt.NDArray[np.float32] = np.array(
+        #         [state.pos for state in self.get_motor_state().values()]
+        #     )
 
-            if len(vel) == 0 and delta_t < 0:
-                delta_t = max(np.abs(pos_arr - pos_arr_start) / self.config.default_vel)
-            elif delta_t < 0:
-                delta_t = max(np.abs(pos_arr - pos_arr_start) / np.array(vel))
+        #     if len(vel) == 0 and delta_t < 0:
+        #         delta_t = max(np.abs(pos_arr - pos_arr_start) / self.config.default_vel)
+        #     elif delta_t < 0:
+        #         delta_t = max(np.abs(pos_arr - pos_arr_start) / np.array(vel))
 
-            interpolate_pos(
-                set_pos_helper,
-                pos_arr_start,
-                pos_arr,
-                delta_t,
-                self.config.interp_method,
-            )
-        else:
-            set_pos_helper(pos_arr)
+        #     interpolate_pos(
+        #         set_pos_helper,
+        #         pos_arr_start,
+        #         pos_arr,
+        #         delta_t,
+        #         self.config.interp_method,
+        #     )
+        # else:
+        set_pos_helper(pos_arr)
 
     # @profile()
     def get_motor_state(self) -> Dict[int, JointState]:
