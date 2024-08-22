@@ -315,21 +315,12 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    robot = Robot(args.robot)
+
     if args.env == "walk":
         cfg = MuJoCoConfig()
-        robot = Robot(args.robot)
-        # Need to a separate env for evaluation, otherwise the domain randomization will cause tracer leak errors.
-        env = MuJoCoEnv(args.env, cfg, robot)
-        eval_env = MuJoCoEnv(args.env, cfg, robot)
         train_cfg = PPOConfig()
-
-        test_env = MuJoCoEnv(
-            args.env,
-            cfg,
-            robot,
-            fixed_command=jnp.array([0.3, 0.0, 0.0, 0.0]),  # type:ignore
-        )
-        test_env.add_noise = False
+        test_command = jnp.array([0.3, 0.0, 0.0, 0.0])  # type:ignore
 
     elif args.env == "walk_fixed":
         cfg = MuJoCoConfig(
@@ -352,21 +343,24 @@ if __name__ == "__main__":
                 ),
             )
         )
-        robot = Robot(args.robot)
-        env = MuJoCoEnv(args.env, cfg, robot, fixed_base=True)
-        eval_env = MuJoCoEnv(args.env, cfg, robot, fixed_base=True)
         train_cfg = PPOConfig(num_timesteps=20_000_000, num_evals=200)
+        test_command = jnp.array([0.0, 0.0, 0.0, 0.0])  # type:ignore
 
-        test_env = MuJoCoEnv(
-            args.env,
-            cfg,
-            robot,
-            fixed_command=jnp.array([0.0, 0.0, 0.0, 0.0]),  # type:ignore
-            fixed_base=True,
-        )
-        test_env.add_noise = False
     else:
         raise ValueError(f"Unknown env: {args.env}")
+
+    # Need to a separate env for evaluation, otherwise the domain randomization will cause tracer leak errors.
+    env = MuJoCoEnv(args.env, cfg, robot, fixed_base="fixed" in args.env)
+    eval_env = MuJoCoEnv(args.env, cfg, robot, fixed_base="fixed" in args.env)
+
+    test_env = MuJoCoEnv(
+        args.env,
+        cfg,
+        robot,
+        fixed_command=test_command,
+        fixed_base="fixed" in args.env,
+    )
+    test_env.add_noise = False
 
     make_networks_factory = functools.partial(
         ppo_networks.make_ppo_networks,

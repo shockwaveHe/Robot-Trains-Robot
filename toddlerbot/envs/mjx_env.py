@@ -348,7 +348,7 @@ class MuJoCoEnv(PipelineEnv):
         # TODO: Refactor this part to allow the input of manipulation policy
         action = action.at[self.arm_motor_indices].set(0)  # type:ignore
         action = action.at[self.neck_motor_indices].set(0)  # type:ignore
-        action = action.at[self.waist_motor_indices[-1]].set(0)  # type:ignore
+        # action = action.at[self.waist_motor_indices[-1]].set(0)  # type:ignore
 
         motor_target = self.default_action + action * self.action_scale
 
