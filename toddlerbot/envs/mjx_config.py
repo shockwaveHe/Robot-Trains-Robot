@@ -70,7 +70,7 @@ class RewardScales:
     waist_action_rate: float = 0.0  # 1e-2
     waist_action_acc: float = 0.0  # 1e-2
     collision: float = 0.0  # 1.0
-    survival: float = 1.0
+    survival: float = 10.0
 
 
 @dataclass
