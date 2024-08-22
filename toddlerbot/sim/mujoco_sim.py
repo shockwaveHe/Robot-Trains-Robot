@@ -139,21 +139,16 @@ class MuJoCoSim(BaseSim):
 
         obs = state_to_obs(motor_state_dict, joint_state_dict)
 
-        obs.imu_euler = np.asarray(
-            quat2euler(
-                np.array(
-                    # TODO: Tune the IMU data
-                    self.data.body("torso").xquat,  # type: ignore
-                    # self.data.sensor("orientation").data,  # type: ignore
-                    copy=True,
-                )
-            )
-        )
-        obs.imu_ang_vel = np.array(
-            self.data.body("torso").cvel[:3],  # type: ignore
-            # self.data.sensor("angular_velocity").data,  # type: ignore
-            copy=True,
-        )
+        # TODO: Tune the IMU data
+        if self.fixed_base:
+            quat = self.data.body("torso").xquat  # type: ignore
+            ang_vel = self.data.body("torso").cvel[:3]  # type: ignore
+        else:
+            quat = self.data.sensor("orientation").data  # type: ignore
+            ang_vel = self.data.sensor("angular_velocity").data  # type: ignore
+
+        obs.imu_euler = np.asarray(quat2euler(np.array(quat, copy=True)))  # type: ignore
+        obs.imu_ang_vel = np.array(ang_vel, copy=True)  # type: ignore
 
         return obs
 

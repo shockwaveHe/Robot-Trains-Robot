@@ -165,12 +165,16 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
     start_time = time.time()
     step_idx = 0
     p_bar = tqdm(total=n_steps, desc="Running the policy")
+    time_until_next_step = 0
     try:
         while step_idx < n_steps:
             step_start = time.time()
 
             # Get the latest state from the queue
             obs = sim.get_observation()
+            if "real" not in sim.name:
+                obs.time += time_until_next_step
+
             obs_time = time.time()
 
             obs.time -= start_time
@@ -223,7 +227,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
 
             time_until_next_step = start_time + policy.control_dt * step_idx - step_end
             # print(f"time_until_next_step: {time_until_next_step * 1000:.2f} ms")
-            if time_until_next_step > 0:
+            if "real" in sim.name and time_until_next_step > 0:
                 precise_sleep(time_until_next_step)
 
     except KeyboardInterrupt:
@@ -323,10 +327,10 @@ if __name__ == "__main__":
         run_name = f"{args.robot}_{args.policy}_ppo_{args.ckpt}"
         policy = WalkPolicy(robot, run_name)
 
-    elif args.policy == "sysID":
-        from toddlerbot.policies.sysID import SysIDPolicy
+    elif args.policy == "sysID_fixed":
+        from toddlerbot.policies.sysID_fixed import SysIDFixedPolicy
 
-        policy = SysIDPolicy(robot)
+        policy = SysIDFixedPolicy(robot)
 
     else:
         raise ValueError("Unknown policy")

@@ -1,0 +1,243 @@
+from dataclasses import dataclass, field
+from typing import Dict, List
+
+import numpy as np
+import numpy.typing as npt
+
+from toddlerbot.policies import BasePolicy
+from toddlerbot.sim import Obs
+from toddlerbot.sim.robot import Robot
+from toddlerbot.utils.math_utils import (
+    get_random_sine_signal_config,
+    get_sine_signal,
+    interpolate_action,
+)
+from toddlerbot.utils.misc_utils import set_seed
+
+
+@dataclass
+class SysIDSpecs:
+    amplitude_min: float = np.pi / 12
+    amplitude_max: float = 0
+    frequency_range: List[float] = field(default_factory=lambda: [0.2, 0.5])
+    warm_up_angles: Dict[str, float] = field(default_factory=lambda: {})
+    direction: float = 1
+
+
+class SysIDFixedPolicy(BasePolicy):
+    def __init__(self, robot: Robot):
+        super().__init__(robot)
+        self.name = "sysID"
+
+        set_seed(0)
+
+        self.default_action = np.array(
+            list(robot.default_motor_angles.values()), dtype=np.float32
+        )
+        init_joint_pos = np.array(
+            list(robot.init_joint_angles.values()), dtype=np.float32
+        )
+
+        prep_duration = 2.0
+        warm_up_duration = 2.0
+        sine_duraion = 6.0
+        reset_duration = 2.0
+        n_trials = 1
+
+        joint_sysID_specs = {
+            "neck_yaw_driven": SysIDSpecs(amplitude_max=np.pi / 2),
+            "neck_pitch_driven": SysIDSpecs(),
+            "waist_roll": SysIDSpecs(
+                warm_up_angles={
+                    "left_sho_roll": -np.pi / 12,
+                    "right_sho_roll": -np.pi / 12,
+                }
+            ),
+            "waist_yaw": SysIDSpecs(
+                warm_up_angles={
+                    "left_sho_roll": -np.pi / 12,
+                    "right_sho_roll": -np.pi / 12,
+                }
+            ),
+            "hip_yaw_driven": SysIDSpecs(
+                amplitude_max=np.pi / 4,
+                warm_up_angles={
+                    "left_sho_roll": -np.pi / 12,
+                    "right_sho_roll": -np.pi / 12,
+                },
+            ),
+            "hip_roll": SysIDSpecs(
+                amplitude_max=np.pi / 6,
+                warm_up_angles={
+                    "left_sho_roll": -np.pi / 12,
+                    "right_sho_roll": -np.pi / 12,
+                },
+                direction=-1,
+            ),
+            "hip_pitch": SysIDSpecs(
+                amplitude_max=np.pi / 6,
+                warm_up_angles={
+                    "left_sho_roll": -np.pi / 12,
+                    "right_sho_roll": -np.pi / 12,
+                },
+            ),
+            "knee_pitch": SysIDSpecs(
+                amplitude_max=np.pi / 6,
+                warm_up_angles={
+                    "left_sho_roll": -np.pi / 12,
+                    "right_sho_roll": -np.pi / 12,
+                },
+                direction=-1,
+            ),
+            "sho_yaw_driven": SysIDSpecs(
+                amplitude_max=np.pi / 4,
+                warm_up_angles={
+                    "left_sho_roll": -np.pi / 12,
+                    "right_sho_roll": -np.pi / 12,
+                },
+                direction=-1,
+            ),
+            "elbow_yaw_driven": SysIDSpecs(
+                amplitude_max=np.pi / 4,
+                warm_up_angles={
+                    "left_sho_roll": -np.pi / 12,
+                    "right_sho_roll": -np.pi / 12,
+                },
+                direction=-1,
+            ),
+            "wrist_pitch": SysIDSpecs(
+                warm_up_angles={
+                    "left_sho_roll": -np.pi / 12,
+                    "right_sho_roll": -np.pi / 12,
+                },
+            ),
+            "elbow_roll": SysIDSpecs(
+                warm_up_angles={
+                    "left_sho_roll": -np.pi / 12,
+                    "right_sho_roll": -np.pi / 12,
+                    "left_sho_yaw_driven": -np.pi / 2,
+                    "right_sho_yaw_driven": -np.pi / 2,
+                },
+            ),
+            "wrist_roll_driven": SysIDSpecs(
+                warm_up_angles={
+                    "left_sho_roll": -np.pi / 12,
+                    "right_sho_roll": -np.pi / 12,
+                    "left_sho_yaw_driven": -np.pi / 2,
+                    "right_sho_yaw_driven": -np.pi / 2,
+                },
+            ),
+            "ank_roll": SysIDSpecs(),
+            "ank_pitch": SysIDSpecs(),
+            "sho_pitch": SysIDSpecs(amplitude_max=np.pi / 4),
+            "sho_roll": SysIDSpecs(amplitude_max=np.pi / 4),
+        }
+
+        time_list: List[npt.NDArray[np.float32]] = []
+        action_list: List[npt.NDArray[np.float32]] = []
+
+        prep_act = np.zeros_like(self.default_action)
+        prep_time, prep_action = self.reset(
+            -self.control_dt, prep_act, self.default_action, prep_duration
+        )
+
+        time_list.append(prep_time)
+        action_list.append(prep_action)
+
+        for name, sysID_specs in joint_sysID_specs.items():
+            if name in robot.joint_ordering:
+                joint_name = name
+                joint_idx = robot.joint_ordering.index(joint_name)
+            else:
+                joint_name = f"left_{name}"
+                joint_idx = [
+                    robot.joint_ordering.index(joint_name),
+                    robot.joint_ordering.index(f"right_{name}"),
+                ]
+
+            mean = (
+                robot.joint_limits[joint_name][0] + robot.joint_limits[joint_name][1]
+            ) / 2
+            amplitude_min = sysID_specs.amplitude_min
+            if sysID_specs.amplitude_max:
+                amplitude_max = sysID_specs.amplitude_max
+            else:
+                amplitude_max = robot.joint_limits[joint_name][1] - mean
+
+            frequency_range = sysID_specs.frequency_range
+
+            warm_up_act = self.default_action.copy()
+            if isinstance(joint_idx, int):
+                warm_up_act[joint_idx] = mean
+            else:
+                warm_up_act[joint_idx[0]] = mean
+                warm_up_act[joint_idx[1]] = mean * sysID_specs.direction
+
+            if len(sysID_specs.warm_up_angles) > 0:
+                for joint_name, angle in sysID_specs.warm_up_angles.items():
+                    warm_up_act[robot.joint_ordering.index(joint_name)] = angle
+
+            if not np.allclose(warm_up_act, action_list[-1][-1], 1e-6):
+                warm_up_time, warm_up_action = self.reset(
+                    time_list[-1][-1],
+                    action_list[-1][-1],
+                    warm_up_act,
+                    warm_up_duration,
+                )
+
+                time_list.append(warm_up_time)
+                action_list.append(warm_up_action)
+
+            for _ in range(n_trials):
+                sine_signal_config = get_random_sine_signal_config(
+                    sine_duraion,
+                    self.control_dt,
+                    mean,
+                    frequency_range,
+                    [amplitude_min, amplitude_max],
+                )
+                rotate_time, signal = get_sine_signal(sine_signal_config)
+                rotate_time = np.asarray(rotate_time)
+                signal = np.asarray(signal)
+
+                rotate_time += time_list[-1][-1] + self.control_dt
+
+                rotate_pos = np.tile(init_joint_pos.copy(), (signal.shape[0], 1))  # type: ignore
+
+                if isinstance(joint_idx, int):
+                    rotate_pos[:, joint_idx] = signal
+                else:
+                    rotate_pos[:, joint_idx[0]] = signal
+                    rotate_pos[:, joint_idx[1]] = signal * sysID_specs.direction
+
+                rotate_action = np.zeros_like(rotate_pos)
+                for j, pos in enumerate(rotate_pos):
+                    joint_angles = dict(zip(robot.joint_ordering, pos))
+                    motor_angles = robot.joint_to_motor_angles(joint_angles)
+                    sine_action = np.array(
+                        list(motor_angles.values()), dtype=np.float32
+                    )
+                    rotate_action[j] = sine_action + warm_up_act
+
+                time_list.append(rotate_time)
+                action_list.append(rotate_action)
+
+                reset_time, reset_action = self.reset(
+                    time_list[-1][-1],
+                    action_list[-1][-1],
+                    warm_up_act,
+                    reset_duration,
+                    end_time=0.5,
+                )
+
+                time_list.append(reset_time)
+                action_list.append(reset_action)
+
+        self.time_arr = np.concatenate(time_list)  # type: ignore
+        self.action_arr = np.concatenate(action_list)  # type: ignore
+
+    def run(self, obs: Obs) -> npt.NDArray[np.float32]:
+        action = np.asarray(
+            interpolate_action(obs.time, self.time_arr, self.action_arr)
+        )
+        return action

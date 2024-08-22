@@ -132,10 +132,12 @@ class MuJoCoRenderer:
         dt: float,
         render_every: int,
         name: str = "mujoco.mp4",
+        dump_data: bool = False,
     ):
-        anim_data_path = os.path.join(exp_folder_path, "anim_data.pkl")
-        with open(anim_data_path, "wb") as f:
-            pickle.dump(self.anim_data, f)
+        if dump_data:
+            anim_data_path = os.path.join(exp_folder_path, "anim_data.pkl")
+            with open(anim_data_path, "wb") as f:
+                pickle.dump(self.anim_data, f)
 
         # Define paths for each camera's video
         video_paths: List[str] = []

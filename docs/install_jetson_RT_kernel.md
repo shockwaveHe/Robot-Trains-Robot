@@ -2,6 +2,7 @@
 
 We use `Jetson Linux 35.5.0` for our system, and there are no guarantees the following steps work for other versions.
 
+# TODO: We updated to JetPack 6.0 and Jetson Linux 36.3
 
 ### Flashing Jetson Linux
 Important: Make sure your system will not sleep in the process below, or the steps might fail due to disconnection.

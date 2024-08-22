@@ -109,6 +109,22 @@
             ]
         },
         {
+            "name": "Python: sysid_toddlerbot_mujoco",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/policies/run_policy.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot",
+                "toddlerbot",
+                "--sim",
+                "mujoco",
+                "--policy",
+                "sysID_fixed"
+            ]
+        },
+        {
             "name": "Python: walk_rl_toddlerbot_train",
             "type": "python",
             "request": "launch",

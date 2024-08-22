@@ -31,7 +31,7 @@ class WalkPolicy(BasePolicy):
         )
 
         # joint indices
-        motor_indices = np.arange(len(robot.motor_ordering))  # type:ignore
+        motor_indices = np.arange(robot.action_size)  # type:ignore
         motor_groups = np.array(
             [robot.joint_group[name] for name in robot.motor_ordering]
         )
@@ -49,7 +49,7 @@ class WalkPolicy(BasePolicy):
             list(robot.default_joint_angles.values()), dtype=np.float32
         )
 
-        self.last_action = np.zeros(len(robot.motor_ordering), dtype=np.float32)
+        self.last_action = np.zeros(robot.action_size, dtype=np.float32)
         self.obs_history = np.zeros(
             cfg.obs.frame_stack * cfg.obs.num_single_obs, dtype=np.float32
         )
@@ -59,7 +59,7 @@ class WalkPolicy(BasePolicy):
         ppo_network = make_networks_factory(  # type: ignore
             cfg.obs.num_single_obs,
             cfg.obs.num_single_privileged_obs,
-            len(robot.motor_ordering),
+            robot.action_size,
         )
         make_policy = ppo_networks.make_inference_fn(ppo_network)  # type: ignore
 

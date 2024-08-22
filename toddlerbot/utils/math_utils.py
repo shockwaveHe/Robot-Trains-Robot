@@ -43,7 +43,7 @@ def get_sine_signal(sine_signal_config: Dict[str, float]):
     signal = sine_signal_config["mean"] + sine_signal_config["amplitude"] * np.sin(  # type: ignore
         2 * np.pi * sine_signal_config["frequency"] * t
     )
-    return t, signal
+    return t, signal.astype(np.float32)  # type: ignore
 
 
 def round_floats(obj: Any, precision: int = 6) -> Any:
