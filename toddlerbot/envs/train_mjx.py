@@ -283,7 +283,7 @@ def evaluate(
 
     try:
         render_video(env, rollout, run_name)
-    except AttributeError:
+    except Exception:
         print("Failed to render the video. Skipped.")
 
 
