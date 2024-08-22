@@ -133,7 +133,7 @@
           <geom pos="0 0 0.005" quat="0 1 0 0" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="left_hip_yaw_link_visual" class="visual" />
           <body name="hip_roll_link" pos="0.019 0 0.031" quat="-0.707107 0 -0.707107 0">
             <inertial pos="-0.0119998 -0.000495981 -0.0185041" quat="-0.273471 0.652073 -0.267709 0.654482" mass="0.1106" diaginertia="3.14464e-05 3.02975e-05 2.28182e-05" />
-            <joint name="left_hip_roll" pos="0 0 0" axis="0 0 1" range="-0.785398 1.5708" damping="0.218" armature="0.002" />
+            <joint name="left_hip_roll" pos="0 0 0" axis="0 0 1" range="-0.785398 0.785398" damping="0.218" armature="0.002" />
             <geom type="mesh" rgba="0.516987 0.503478 0.490506 1" mesh="left_hip_roll_link_visual" class="visual" />
             <body name="left_hip_pitch_link_xm430" pos="-0.024 -0.019 -0.019" quat="0.5 0.5 0.5 -0.5">
               <inertial pos="-0.000757292 -0.0507148 -0.0126562" quat="0.719538 0.693946 0.0141894 -0.0224076" mass="0.114801" diaginertia="6.60879e-05 6.2263e-05 2.35772e-05" />
@@ -225,7 +225,7 @@
           <geom pos="0 0 0.005" quat="0 -1 0 0" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="right_hip_yaw_link_visual" class="visual" />
           <body name="hip_roll_link_2" pos="-0.019 0 0.031" quat="0 -0.707107 0 0.707107">
             <inertial pos="-0.0119998 -0.000495981 -0.0185041" quat="-0.273471 0.652073 -0.267709 0.654482" mass="0.1106" diaginertia="3.14464e-05 3.02975e-05 2.28182e-05" />
-            <joint name="right_hip_roll" pos="0 0 0" axis="0 0 1" range="-0.785398 1.5708" damping="0.218" armature="0.002" />
+            <joint name="right_hip_roll" pos="0 0 0" axis="0 0 1" range="-0.785398 0.785398" damping="0.218" armature="0.002" />
             <geom type="mesh" rgba="0.516987 0.503478 0.490506 1" mesh="right_hip_roll_link_visual" class="visual" />
             <body name="right_hip_pitch_link_xm430" pos="-0.024 -0.019 -0.019" quat="0.5 0.5 0.5 -0.5">
               <inertial pos="0.000757159 -0.0507148 -0.0126562" quat="0.719539 0.693946 -0.0141939 0.0224005" mass="0.114801" diaginertia="6.60879e-05 6.22631e-05 2.35772e-05" />
@@ -433,13 +433,13 @@
     <position name="waist_act_1" joint="waist_act_1" kp="18.75" ctrlrange="-2.78255 2.78255" class="XC330" />
     <position name="waist_act_2" joint="waist_act_2" kp="18.75" ctrlrange="-2.78255 2.78255" class="XC330" />
     <position name="left_hip_yaw_drive" joint="left_hip_yaw_driven" kp="18.75" gear="0.904762" ctrlrange="-1.5708 1.5708" class="XC330" />
-    <position name="left_hip_roll" joint="left_hip_roll" kp="18.75" ctrlrange="-0.785398 1.5708" class="2XC430" />
+    <position name="left_hip_roll" joint="left_hip_roll" kp="18.75" ctrlrange="-0.785398 0.785398" class="2XC430" />
     <position name="left_hip_pitch" joint="left_hip_pitch" kp="18.75" ctrlrange="-1.5708 1.5708" class="2XC430" />
     <position name="left_knee_act" joint="left_knee_act" kp="18.75" ctrlrange="0 1.91986" class="XM430" />
     <position name="left_ank_act_1" joint="left_ank_act_1" kp="18.75" ctrlrange="-1.309 1.309" class="XC330" />
     <position name="left_ank_act_2" joint="left_ank_act_2" kp="18.75" ctrlrange="-1.309 1.309" class="XC330" />
     <position name="right_hip_yaw_drive" joint="right_hip_yaw_driven" kp="18.75" gear="0.904762" ctrlrange="-1.5708 1.5708" class="XC330" />
-    <position name="right_hip_roll" joint="right_hip_roll" kp="18.75" ctrlrange="-0.785398 1.5708" class="2XC430" />
+    <position name="right_hip_roll" joint="right_hip_roll" kp="18.75" ctrlrange="-0.785398 0.785398" class="2XC430" />
     <position name="right_hip_pitch" joint="right_hip_pitch" kp="18.75" ctrlrange="-1.5708 1.5708" class="2XC430" />
     <position name="right_knee_act" joint="right_knee_act" kp="18.75" ctrlrange="-1.91986 0" class="XM430" />
     <position name="right_ank_act_1" joint="right_ank_act_1" kp="18.75" ctrlrange="-1.309 1.309" class="XC330" />
