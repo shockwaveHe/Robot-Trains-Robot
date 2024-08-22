@@ -317,9 +317,16 @@ if __name__ == "__main__":
 
     robot = Robot(args.robot)
 
+    if args.robot == "toddlerbot":
+        num_envs = 1024
+        num_minibatches = 4
+    else:
+        num_envs = 2048
+        num_minibatches = 8
+
     if args.env == "walk":
         cfg = MuJoCoConfig()
-        train_cfg = PPOConfig()
+        train_cfg = PPOConfig(num_envs=num_envs, num_minibatches=num_minibatches)
         test_command = jnp.array([0.3, 0.0, 0.0, 0.0])  # type:ignore
 
     elif args.env == "walk_fixed":
@@ -343,7 +350,12 @@ if __name__ == "__main__":
                 ),
             )
         )
-        train_cfg = PPOConfig(num_timesteps=20_000_000, num_evals=200)
+        train_cfg = PPOConfig(
+            num_envs=num_envs,
+            num_minibatches=num_minibatches,
+            num_timesteps=20_000_000,
+            num_evals=200,
+        )
         test_command = jnp.array([0.0, 0.0, 0.0, 0.0])  # type:ignore
 
     else:
