@@ -201,7 +201,9 @@ def update_geom_classes(root: ET.Element, geom_keys: List[str]):
                 del geom.attrib[attr]
 
 
-def add_keyframes(root: ET.Element, is_fixed: bool):
+def add_keyframes(
+    root: ET.Element, is_fixed: bool, has_lower_body: bool, has_upper_body: bool
+):
     # Create or find the <default> element
     keyframe = root.find("keyframe")
     if keyframe is not None:
@@ -214,22 +216,29 @@ def add_keyframes(root: ET.Element, is_fixed: bool):
     else:
         qpos_str = "0 0 0.336 1 0 0 0 "
 
-    ET.SubElement(
-        keyframe,
-        "key",
-        {
-            "name": "home",
-            "qpos": qpos_str
-            + "0 0 0 0 0 0 0 0 "
+    ctrl_str = ""
+
+    if has_upper_body:  # neck
+        qpos_str += "0 0 0 0 "
+        ctrl_str += "0 0 "
+
+    if has_lower_body:  # waist and legs
+        qpos_str += (
+            "0 0 0 0 "
             + "0 0 0 -0.2672678 0.523599 -0.523599 -0.523599 -0.25637 0 0 0.248043 0 -0.246445 -0.253132 0.256023 0.523599 -0.523599 -0.523599 "
             + "0 0 0 0.2672678 -0.523599 0.523599 0.523599 -0.25637 0 0 -0.248043 0 0.246445 0.253132 -0.256023 -0.523599 0.523599 0.523599 "
-            + "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0",
-            "ctrl": "0 0 0 0 "
+        )
+        ctrl_str += (
+            "0 0 "
             + "0 0 -0.2672678 0.523599 -0.253132 0.256023 "
             + "0 0 0.2672678 -0.523599 0.253132 -0.256023 "
-            + "0 0 0 0 0 0 0 0 0 0 0 0 0 0",
-        },
-    )
+        )
+
+    if has_upper_body:  # arms
+        qpos_str += "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"
+        ctrl_str += "0 0 0 0 0 0 0 0 0 0 0 0 0 0"
+
+    ET.SubElement(keyframe, "key", {"name": "home", "qpos": qpos_str, "ctrl": ctrl_str})
 
 
 def add_default_settings(root: ET.Element):
@@ -703,7 +712,7 @@ def process_mjcf_fixed_file(root: ET.Element, robot: Robot):
     if robot.config["general"]["is_ankle_closed_loop"]:
         add_ankle_constraints(root, robot.config["general"]["offsets"])
 
-    add_keyframes(root, True)
+    add_keyframes(root, True, "arms" not in robot.name, "legs" not in robot.name)
 
     add_default_settings(root)
 
@@ -744,7 +753,9 @@ def get_mjcf_files(robot_name: str):
 
         mjcf_path = os.path.join(robot_dir, robot_name + ".xml")
         add_body_link(xml_root, urdf_path, robot.config["general"]["offsets"])
-        add_keyframes(xml_root, False)
+        add_keyframes(
+            xml_root, False, "arms" not in robot.name, "legs" not in robot.name
+        )
         add_contacts(xml_root, robot.collision_config)
         xml_tree.write(mjcf_path)
 

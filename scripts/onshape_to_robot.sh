@@ -4,23 +4,23 @@
 # NC='\033[0m' # No Color
 
 ##### toddlerbot #####
-ROBOT_NAME="toddlerbot"
-BODY_NAME="toddlerbot"
-ARM_NAME="arm_hand"
-LEG_NAME="leg_XM430"
-DOC_ID_LIST="6f1a2a766fbbc097a49abb91 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
-ASSEMBLY_LIST="toddlerbot left_leg_XM430 right_leg_XM430 left_arm_hand right_arm_hand"
-# DOC_ID_LIST="6f1a2a766fbbc097a49abb91"
-# ASSEMBLY_LIST="toddlerbot"
+# ROBOT_NAME="toddlerbot"
+# BODY_NAME="toddlerbot"
+# ARM_NAME="arm_hand"
+# LEG_NAME="leg_XM430"
+# DOC_ID_LIST="6f1a2a766fbbc097a49abb91 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
+# ASSEMBLY_LIST="toddlerbot left_leg_XM430 right_leg_XM430 left_arm_hand right_arm_hand"
+# # DOC_ID_LIST="6f1a2a766fbbc097a49abb91"
+# # ASSEMBLY_LIST="toddlerbot"
 
-##### toddlerbot_legs #####
-# ROBOT_NAME="toddlerbot_legs"
-# BODY_NAME="no_body"
-# LEG_NAME="3R+RH5_leg"
-# DOC_ID_LIST="dca63e30dcbfe66f561f5fd4 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe"
-# ASSEMBLY_LIST="no_body left_3R+RH5_leg right_3R+RH5_leg"
-# # DOC_ID_LIST="dca63e30dcbfe66f561f5fd4"
-# # ASSEMBLY_LIST="no_body"
+#### toddlerbot_legs #####
+ROBOT_NAME="toddlerbot_legs"
+BODY_NAME="toddlerbot_legs"
+LEG_NAME="leg_XM430"
+DOC_ID_LIST="6f1a2a766fbbc097a49abb91 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe"
+ASSEMBLY_LIST="toddlerbot_legs left_leg_XM430 right_leg_XM430"
+DOC_ID_LIST="6f1a2a766fbbc097a49abb91"
+ASSEMBLY_LIST="toddlerbot_legs"
 
 ##### sysID_device #####
 # MOTOR_TYPE="XM430"
@@ -63,10 +63,10 @@ if [ "$run_process" == "y" ]; then
     fi
     eval "$cmd"
 
-    printf "Visualizing the kinematic tree...\n\n"
-    python $REPO_NAME/visualization/vis_kine_tree.py \
-        --path $URDF_PATH \
-        -o $REPO_NAME/robot_descriptions/$ROBOT_NAME/${ROBOT_NAME}_kine_tree.png
+    # printf "Visualizing the kinematic tree...\n\n"
+    # python $REPO_NAME/visualization/vis_kine_tree.py \
+    #     --path $URDF_PATH \
+    #     -o $REPO_NAME/robot_descriptions/$ROBOT_NAME/${ROBOT_NAME}_kine_tree.png
 else
     printf "Process skipped.\n\n"
 fi
