@@ -13,7 +13,7 @@ class BasePolicy(ABC):
     def __init__(self, robot: Robot):
         self.robot = robot
         self.name = "base"
-        self.control_dt = 0.01
+        self.control_dt = 6 * 0.002
 
     @abstractmethod
     def run(self, obs: Obs) -> npt.NDArray[np.float32]:

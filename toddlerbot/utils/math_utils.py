@@ -2,6 +2,8 @@ import math
 from dataclasses import is_dataclass
 from typing import Any, Dict, List, Tuple
 
+from scipy.signal import chirp  # type: ignore
+
 from toddlerbot.utils.array_utils import ArrayType
 from toddlerbot.utils.array_utils import array_lib as np
 
@@ -44,6 +46,26 @@ def get_sine_signal(sine_signal_config: Dict[str, float]):
         2 * np.pi * sine_signal_config["frequency"] * t
     )
     return t, signal.astype(np.float32)  # type: ignore
+
+
+def get_chirp_signal(
+    duration: float,
+    control_dt: float,
+    mean: float,
+    initial_frequency: float,
+    final_frequency: float,
+    amplitude: float,
+    method: str = "linear",  # "linear", "quadratic", "logarithmic", etc.
+) -> Tuple[ArrayType, ArrayType]:
+    t = np.linspace(  # type: ignore
+        0, duration, int(duration / control_dt), endpoint=False, dtype=np.float32
+    )
+
+    signal = mean + amplitude * chirp(
+        t, f0=initial_frequency, f1=final_frequency, t1=duration, method=method, phi=-90
+    )
+
+    return t, signal.astype(np.float32)
 
 
 def round_floats(obj: Any, precision: int = 6) -> Any:
