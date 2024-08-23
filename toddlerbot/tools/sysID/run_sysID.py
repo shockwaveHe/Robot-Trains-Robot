@@ -1,42 +1,27 @@
 import argparse
 import copy
-import glob
 import json
 import os
 import pickle
 import time
 import xml.etree.ElementTree as ET
 from multiprocessing import Pool
-from typing import Any, Dict, List, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 import numpy.typing as npt
 import optuna
-from sklearn.model_selection import train_test_split  # type: ignore
 
 from toddlerbot.sim import BaseSim, Obs
+from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.robot import Robot
-from toddlerbot.utils.file_utils import combine_images, find_robot_file_path
+from toddlerbot.utils.file_utils import combine_images
 from toddlerbot.utils.math_utils import get_sine_signal
 from toddlerbot.utils.misc_utils import log
 from toddlerbot.visualization.vis_plot import plot_joint_angle_tracking
 
 
-def extract_data(
-    real_world_data_dict: Dict[str, Dict[int, Dict[str, Any]]], joint_name: str
-):
-    signal_config_list: List[Dict[str, float]] = []
-    observed_time_list: List[List[float]] = []
-    observed_pos_list: List[List[float]] = []
-    for data in real_world_data_dict[joint_name].values():
-        signal_config_list.append(data["signal_config"])
-        observed_time_list.append(data["joint_data"]["time"])
-        observed_pos_list.append(data["joint_data"]["pos"])
-
-    return signal_config_list, observed_time_list, observed_pos_list
-
-
-def load_datasets(robot: Robot, exp_folder_path: str, test_split_ratio: float = 0.2):
+def load_datasets(robot: Robot, exp_folder_path: str):
     # Use glob to find all pickle files matching the pattern
     pickle_file_path = os.path.join(exp_folder_path, "log_data.pkl")
     if not os.path.exists(pickle_file_path):
@@ -47,20 +32,17 @@ def load_datasets(robot: Robot, exp_folder_path: str, test_split_ratio: float = 
 
     obs_list: List[Obs] = data_dict["obs_list"]
     motor_angles_list: List[Dict[str, float]] = data_dict["motor_angles_list"]
-    joint_angles_list = [
-        robot.motor_to_joint_angles(motor_angles) for motor_angles in motor_angles_list
-    ]
 
     split_obs_dict: Dict[str, npt.NDArray[np.float32]] = {}
     split_action_dict: Dict[str, npt.NDArray[np.float32]] = {}
 
     def set_obs_action(joint_name: str, idx_range: slice):
-        joint_idx = robot.joint_ordering.index(joint_name)
-        split_obs_dict[joint_name] = np.array(
-            [obs.q[joint_idx] for obs in obs_list[idx_range]]
-        )
+        split_obs_dict[joint_name] = np.array([obs.q for obs in obs_list[idx_range]])
         split_action_dict[joint_name] = np.array(
-            [joint_angles[joint_name] for joint_angles in joint_angles_list[idx_range]]
+            [
+                list(motor_angles.values())
+                for motor_angles in motor_angles_list[idx_range]
+            ]
         )
 
     if "time_mark_dict" in data_dict:
@@ -68,7 +50,7 @@ def load_datasets(robot: Robot, exp_folder_path: str, test_split_ratio: float = 
         joint_names = list(time_mark_dict.keys())
         time_mark_list = list(time_mark_dict.values())
         obs_time = [obs.time for obs in obs_list]
-        obs_indices = np.searchsorted(obs_time, time_mark_list)
+        obs_indices = np.searchsorted(obs_time, time_mark_list)  # type: ignore
 
         last_idx = 0
         for symmetric_name, idx in zip(joint_names, obs_indices):
@@ -226,98 +208,45 @@ def update_xml(
 
 def optimize_parameters(
     robot: Robot,
-    sim_name: str,
+    sim: MuJoCoSim,
     joint_name: str,
-    tree: ET.ElementTree,
-    assets_dict: Dict[str, bytes],
-    signal_config_list: List[List[Dict[str, float]]],
-    observed_pos_arr: npt.NDArray[np.float32],
-    n_load_list: List[int],
+    obs: npt.NDArray[np.float32],
+    action: npt.NDArray[np.float32],
     n_iters: int = 1000,
     sampler_name: str = "CMA",
     # gain_range: Tuple[float, float, float] = (0, 50, 0.1),
     damping_range: Tuple[float, float, float] = (0, 5, 1e-3),
     armature_range: Tuple[float, float, float] = (0, 0.1, 1e-3),
-    friction_range: Tuple[float, float, float] = (0, 1.0, 1e-3),
+    # friction_range: Tuple[float, float, float] = (0, 1.0, 1e-3),
 ):
     def objective(trial: optuna.Trial):
         model_response_all: List[List[List[float]]] = []
-        for i, n_load in enumerate(n_load_list):
-            if sim_name == "mujoco":
-                from toddlerbot.sim.mujoco_sim import MuJoCoSim
+        # gain = trial.suggest_float("gain", *gain_range[:2], step=gain_range[2])
+        damping = trial.suggest_float(
+            "damping", *damping_range[:2], step=damping_range[2]
+        )
+        armature = trial.suggest_float(
+            "armature", *armature_range[:2], step=armature_range[2]
+        )
+        # frictionloss = trial.suggest_float(
+        #     "frictionloss", *friction_range[:2], step=friction_range[2]
+        # )
+        joint_dyn = {
+            joint_name: {
+                # "gain": gain,
+                "damping": damping,
+                "armature": armature,
+                # "frictionloss": frictionloss,
+            }
+        }
+        sim.set_joint_dyn(joint_dyn)
 
-                # gain = trial.suggest_float("gain", *gain_range[:2], step=gain_range[2])
-                damping = trial.suggest_float(
-                    "damping", *damping_range[:2], step=damping_range[2]
-                )
-                armature = trial.suggest_float(
-                    "armature", *armature_range[:2], step=armature_range[2]
-                )
-                frictionloss = trial.suggest_float(
-                    "frictionloss", *friction_range[:2], step=friction_range[2]
-                )
-                params_dict = {
-                    joint_name: {
-                        # "gain": gain,
-                        "damping": damping,
-                        "armature": armature,
-                        "frictionloss": frictionloss,
-                        "n_load": n_load,
-                    }
-                }
-                xml_str = update_xml(sim_name, copy.deepcopy(tree), params_dict)
-                sim = MuJoCoSim(robot, xml_str=xml_str, assets=assets_dict)
+        # TODO: Use sim.rollout
+        model_response_list: List[List[float]] = []
+        for angle in action:
+            motor_angles = robot.init_motor_angles.copy()
 
-            elif sim_name == "isaac":
-                from toddlerbot.sim.isaac_sim import IsaacSim
-
-                damping = trial.suggest_float(
-                    "damping", *damping_range[:2], step=damping_range[2]
-                )
-                friction = trial.suggest_float(
-                    "friction", *friction_range[:2], step=friction_range[2]
-                )
-                params_dict = {
-                    joint_name: {
-                        "damping": damping,
-                        "friction": friction,
-                        "n_load": n_load,
-                    }
-                }
-                xml_str = update_xml(sim_name, copy.deepcopy(tree), params_dict)
-                time_str = time.strftime("%Y%m%d_%H%M%S")
-                urdf_path_temp = os.path.join(
-                    "toddlerbot",
-                    "robot_descriptions",
-                    robot.name,
-                    f"{robot.name}_{sim_name}_{joint_name}_sysID_{time_str}.urdf",
-                )
-                with open(urdf_path_temp, "w") as f:
-                    f.write(xml_str)
-
-                sim = IsaacSim(
-                    robot,
-                    urdf_path=urdf_path_temp,
-                    fixed=True,
-                    custom_parameters=custom_parameters,
-                )
-
-                os.remove(urdf_path_temp)
-
-            else:
-                raise ValueError("Invalid simulator")
-
-            model_response_list: List[List[float]] = []
-            for signal_config in signal_config_list[i]:
-                _, signal_pos = get_sine_signal(signal_config)
-                joint_data_dict = actuate_single_motor(
-                    sim, robot, joint_name, signal_pos, signal_config["control_dt"]
-                )
-                model_response_list.append(joint_data_dict["pos"])
-
-            sim.close()
-
-            model_response_all.append(model_response_list)
+        model_response_all.append(model_response_list)
 
         error = np.sqrt(np.mean((observed_pos_arr - np.array(model_response_all)) ** 2))
 
@@ -353,56 +282,50 @@ def optimize_parameters(
 
 def multiprocessing_optimization(
     robot: Robot,
-    sim_name: str,
-    exp_folder_path: str,
-    sysID_file_path: str,
-    sysID_robot_tree: ET.ElementTree,
-    assets_dict: Dict[str, bytes],
-    signal_config_data: Dict[str, List[List[Dict[str, float]]]],
-    observed_pos_data: Dict[str, npt.NDArray[np.float32]],
-    n_load_list: List[int],
+    sim: BaseSim,
+    split_obs_dict: Dict[str, npt.NDArray[np.float32]],
+    split_action_dict: Dict[str, npt.NDArray[np.float32]],
     n_iters: int,
 ):
     # return sysID_file_path
     optimize_args: List[
         Tuple[
             Robot,
+            BaseSim,
             str,
-            str,
-            ET.ElementTree,
-            Dict[str, bytes],
-            List[List[Dict[str, float]]],
             npt.NDArray[np.float32],
-            List[int],
+            npt.NDArray[np.float32],
             int,
         ]
     ] = [
         (
             robot,
-            sim_name,
+            sim,
             joint_name,
-            sysID_robot_tree,
-            assets_dict,
-            signal_config_data[joint_name],
-            observed_pos_data[joint_name],
-            n_load_list,
+            split_obs_dict[joint_name],
+            split_action_dict[joint_name],
             n_iters,
         )
-        for joint_name in signal_config_data
+        for joint_name in split_obs_dict
     ]
 
     # Create a pool of processes
-    with Pool(processes=len(signal_config_data)) as pool:
+    with Pool(processes=len(split_obs_dict)) as pool:
         results = pool.starmap(optimize_parameters, optimize_args)
 
+    exp_name = f"{robot.name}_sysID_{sim.name}_optim"
     time_str = time.strftime("%Y%m%d_%H%M%S")
+    exp_folder_path = f"results/{exp_name}_{time_str}"
+
+    os.makedirs(exp_folder_path, exist_ok=True)
+
     opt_params_file_path = os.path.join(exp_folder_path, f"opt_params_{time_str}.json")
     opt_values_file_path = os.path.join(exp_folder_path, f"opt_values_{time_str}.json")
 
     # Process results
     opt_params_dict: Dict[str, Dict[str, float]] = {}
     opt_values_dict: Dict[str, float] = {}
-    for joint_name, result in zip(signal_config_data.keys(), results):
+    for joint_name, result in zip(split_obs_dict.keys(), results):
         opt_params, opt_values = result
         if len(opt_params) > 0:
             opt_params_dict[joint_name] = opt_params
@@ -413,19 +336,6 @@ def multiprocessing_optimization(
 
         with open(opt_values_file_path, "w") as f:
             json.dump(opt_values_dict, f, indent=4)
-
-    for joint_name, opt_params in opt_params_dict.items():
-        robot.config["joints"][joint_name].update(opt_params)
-
-    update_xml(sim_name, sysID_robot_tree, opt_params_dict)
-    sysID_robot_tree.write(sysID_file_path)
-
-    if sim_name == "mujoco":
-        suffix = "_fixed" if robot.config["general"]["is_fixed"] else ""
-        xml_path = find_robot_file_path(robot.name, suffix=suffix + ".xml")
-        robot_tree = ET.parse(xml_path)
-        update_xml(sim_name, robot_tree, opt_params_dict)
-        robot_tree.write(xml_path)
 
 
 def evaluate(
@@ -570,62 +480,23 @@ def main():
     )
     args = parser.parse_args()
 
-    exp_folder_path = os.path.join("results", args.run_name)
-    if not os.path.exists(exp_folder_path):
+    data_path = os.path.join("results", args.run_name)
+    if not os.path.exists(data_path):
         raise ValueError("Invalid experiment folder path")
 
     robot = Robot(args.robot)
 
-    (
-        signal_config_train,
-        signal_config_test,
-        observed_time_train,
-        observed_time_test,
-        observed_pos_train,
-        observed_pos_test,
-        n_load_list,
-    ) = load_datasets(robot, exp_folder_path)
+    split_obs_dict, split_action_dict = load_datasets(robot, data_path)
 
     if args.sim == "mujoco":
-        fixed_xml_path = find_robot_file_path(robot.name, suffix="_fixed.xml")
-        sysID_file_path = os.path.join(
-            os.path.dirname(fixed_xml_path), f"{robot.name}_{args.sim}_sysID.xml"
-        )
-        sysID_robot_tree = ET.parse(fixed_xml_path)
-        assets_dict: Dict[str, bytes] = {}
-        # Find mesh file references
-        for mesh in sysID_robot_tree.getroot().findall(".//mesh"):
-            mesh_file = mesh.get("file")
-            if mesh_file and mesh_file not in assets_dict:
-                mesh_file_path = os.path.join(
-                    os.path.dirname(fixed_xml_path), mesh_file
-                )
-                with open(mesh_file_path, "rb") as f:
-                    assets_dict[mesh_file] = f.read()
-
-    elif args.sim == "isaac":
-        urdf_path = find_robot_file_path(robot.name, suffix="_isaac.urdf")
-        sysID_file_path = os.path.join(
-            os.path.dirname(urdf_path), f"{robot.name}_{args.sim}_sysID.urdf"
-        )
-        sysID_robot_tree = ET.parse(urdf_path)
-        assets_dict: Dict[str, bytes] = {}
+        sim = MuJoCoSim(robot, fixed_base=True)
 
     else:
         raise ValueError("Invalid simulator")
 
     ###### Optimize the hyperparameters ######
     multiprocessing_optimization(
-        robot,
-        args.sim,
-        args.exp_folder_path,
-        sysID_file_path,
-        sysID_robot_tree,
-        assets_dict,
-        signal_config_train,
-        observed_pos_train,
-        n_load_list,
-        args.n_iters,
+        robot, sim, split_obs_dict, split_action_dict, args.n_iters
     )
 
     ###### Evaluate the optimized parameters in the simulation ######

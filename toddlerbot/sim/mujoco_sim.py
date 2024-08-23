@@ -19,7 +19,7 @@ class MuJoCoSim(BaseSim):
     def __init__(
         self,
         robot: Robot,
-        n_frames: int = 5,
+        n_frames: int = 6,
         dt: float = 0.002,
         fixed_base: bool = False,
         xml_path: str = "",
@@ -173,6 +173,11 @@ class MuJoCoSim(BaseSim):
         else:
             for name in joint_angles:
                 self.data.joint(name).qpos = joint_angles[name]  # type: ignore
+
+    def set_joint_dyn(self, joint_dyn: Dict[str, Dict[str, float]]):
+        for joint_name, dyn in joint_dyn.items():
+            self.model.joint(joint_name).damping = dyn["damping"]  # type: ignore
+            self.model.joint(joint_name).armature = dyn["armature"]  # type: ignore
 
     def forward(self):
         mujoco.mj_forward(self.model, self.data)  # type: ignore

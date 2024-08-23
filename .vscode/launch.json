@@ -137,7 +137,7 @@
                 "--sim",
                 "mujoco",
                 "--run-name",
-                "toddlerbot_sysID_fixed_mujoco_20240822_205013"
+                "toddlerbot_sysID_fixed_real_world_20240822_213614"
             ]
         },
         {
