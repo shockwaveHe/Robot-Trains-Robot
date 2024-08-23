@@ -315,7 +315,9 @@ def exclude_all_contacts(root: ET.Element):
                 ET.SubElement(contact, "exclude", body1=body1_name, body2=body2_name)
 
 
-def add_contacts(root: ET.Element, collision_config: Dict[str, Dict[str, Any]]):
+def add_contacts(
+    root: ET.Element, collision_config: Dict[str, Dict[str, Any]], foot_name: str
+):
     # Ensure there is a <contact> element
     contact = root.find("contact")
     if contact is not None:
@@ -337,23 +339,23 @@ def add_contacts(root: ET.Element, collision_config: Dict[str, Dict[str, Any]]):
     for body_name in collision_body_names:
         if (
             "floor" in collision_config[body_name]["contact_pairs"]
-            and "ank_roll_link" in body_name
+            and foot_name in body_name
         ):
             pairs.append((body_name, "floor"))
 
-    for i in range(len(collision_bodies) - 1):
-        for j in range(i + 1, len(collision_body_names)):
-            body1_name = collision_body_names[i]
-            body2_name = collision_body_names[j]
+    # for i in range(len(collision_bodies) - 1):
+    #     for j in range(i + 1, len(collision_body_names)):
+    #         body1_name = collision_body_names[i]
+    #         body2_name = collision_body_names[j]
 
-            paired_1 = body2_name in collision_config[body1_name]["contact_pairs"]
-            paired_2 = body1_name in collision_config[body2_name]["contact_pairs"]
-            if (paired_1 and paired_2) and (
-                "ank_roll_link" in body1_name or "ank_roll_link" in body2_name
-            ):
-                pairs.append((body1_name, body2_name))
-            else:
-                excludes.append((body1_name, body2_name))
+    #         paired_1 = body2_name in collision_config[body1_name]["contact_pairs"]
+    #         paired_2 = body1_name in collision_config[body2_name]["contact_pairs"]
+    #         if (paired_1 and paired_2) and (
+    #             foot_name in body1_name or foot_name in body2_name
+    #         ):
+    #             pairs.append((body1_name, body2_name))
+    #         else:
+    #             excludes.append((body1_name, body2_name))
 
     # Add all <pair> elements first
     for body1_name, body2_name in pairs:
@@ -565,6 +567,103 @@ def add_body_link(root: ET.Element, urdf_path: str, offsets: Dict[str, float]):
         body_link.append(element)
 
 
+def replace_box_collision(root: ET.Element, foot_name: str):
+    # Search for the target geom using the substring condition
+    target_geoms: Dict[str, Tuple[ET.Element, ET.Element]] = {}
+    for parent in root.iter():
+        for geom in parent.findall("geom"):
+            name = geom.attrib.get("name", "")
+            if foot_name in name and "collision" in name:
+                # Store both the parent and the geom in the dictionary
+                target_geoms[name] = (parent, geom)
+
+    if len(target_geoms) == 0:
+        raise ValueError(f"Could not find geom with name containing '{foot_name}'")
+
+    for name, (parent, target_geom) in target_geoms.items():
+        pos = list(map(float, target_geom.attrib["pos"].split()))
+        size = list(map(float, target_geom.attrib["size"].split()))
+
+        # Compute positions and sizes for the capsules based on the box
+        size_ratio = 0.8
+        capsule_radius = round_to_sig_digits(size[1] * size_ratio, 6)
+        capsule_length = round_to_sig_digits(size[2] * size_ratio, 6)
+        capsule_1_pos = [
+            pos[0] - size[0] / 2,
+            pos[1] + (1 - size_ratio) * size[1],
+            pos[2],
+        ]
+        capsule_2_pos = [
+            pos[0] + size[0] / 2,
+            pos[1] + (1 - size_ratio) * size[1],
+            pos[2],
+        ]
+        capsule_1_pos = [round_to_sig_digits(x, 6) for x in capsule_1_pos]
+        capsule_2_pos = [round_to_sig_digits(x, 6) for x in capsule_2_pos]
+
+        # Create the new capsule elements
+        capsule_1 = ET.Element(
+            "geom",
+            {
+                "name": f"{name}_1",
+                "type": "capsule",
+                "size": f"{capsule_radius} {capsule_length}",
+                "pos": f"{capsule_1_pos[0]} {capsule_1_pos[1]} {capsule_1_pos[2]}",
+                "rgba": target_geom.attrib["rgba"],
+                "class": target_geom.attrib["class"],
+            },
+        )
+
+        capsule_2 = ET.Element(
+            "geom",
+            {
+                "name": f"{name}_2",
+                "type": "capsule",
+                "size": f"{capsule_radius} {capsule_length}",
+                "pos": f"{capsule_2_pos[0]} {capsule_2_pos[1]} {capsule_2_pos[2]}",
+                "rgba": target_geom.attrib["rgba"],
+                "class": target_geom.attrib["class"],
+            },
+        )
+
+        parent.remove(target_geom)
+        parent.append(capsule_1)
+        parent.append(capsule_2)
+
+    # Now update the contact section based on the replacement
+    contact = root.find(".//contact")
+
+    if contact is not None:
+        target_names = list(target_geoms.keys())
+        for pair in contact.findall("pair"):
+            geom1 = pair.attrib.get("geom1")
+            geom2 = pair.attrib.get("geom2")
+
+            if geom1 is None or geom2 is None:
+                continue
+
+            # Check if any of the geoms match the one we are replacing
+            if geom1 in target_names or geom2 in target_names:
+                # Remove the old contact pair
+                contact.remove(pair)
+
+                # Add new contact pairs with capsule_1 and capsule_2
+                if geom1 in target_names:
+                    contact.append(
+                        ET.Element("pair", {"geom1": f"{geom1}_1", "geom2": geom2})
+                    )
+                    contact.append(
+                        ET.Element("pair", {"geom1": f"{geom1}_2", "geom2": geom2})
+                    )
+                if geom2 in target_names:
+                    contact.append(
+                        ET.Element("pair", {"geom1": geom1, "geom2": f"{geom2}_1"})
+                    )
+                    contact.append(
+                        ET.Element("pair", {"geom1": geom1, "geom2": f"{geom2}_2"})
+                    )
+
+
 def create_scene_xml(mjcf_path: str, is_fixed: bool):
     robot_name = os.path.basename(mjcf_path).replace(".xml", "")
 
@@ -762,7 +861,10 @@ def get_mjcf_files(robot_name: str):
         add_keyframes(
             xml_root, False, "arms" not in robot.name, "legs" not in robot.name
         )
-        add_contacts(xml_root, robot.collision_config)
+        add_contacts(
+            xml_root, robot.collision_config, robot.config["general"]["foot_name"]
+        )
+        replace_box_collision(xml_root, robot.config["general"]["foot_name"])
         xml_tree.write(mjcf_path)
 
     create_scene_xml(mjcf_path, robot.config["general"]["is_fixed"])

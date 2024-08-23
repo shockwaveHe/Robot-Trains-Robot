@@ -86,32 +86,32 @@
     "left_sho_pitch": {
         "motor": "XC430",
         "init_pos": 2.356194490192345,
-        "default_pos": 0
+        "default_pos": 0.174533
     },
     "left_sho_roll": {
         "motor": "2XL430",
         "init_pos": 3.141592653589793,
-        "default_pos": 0
+        "default_pos": -0.261799
     },
     "left_sho_yaw_drive": {
         "motor": "2XL430",
         "init_pos": 3.7858645915985107,
-        "default_pos": 0
+        "default_pos": -1.0472
     },
     "left_elbow_roll": {
         "motor": "2XL430",
         "init_pos": 0.7853981633974483,
-        "default_pos": 0
+        "default_pos": 0.523599
     },
     "left_elbow_yaw_drive": {
         "motor": "2XL430",
         "init_pos": 6.137456893920898,
-        "default_pos": 0
+        "default_pos": -0.523599
     },
     "left_wrist_roll_drive": {
         "motor": "2XL430",
         "init_pos": 0.8958447575569153,
-        "default_pos": 0
+        "default_pos": -1.0472
     },
     "left_wrist_pitch": {
         "motor": "2XL430",
@@ -121,32 +121,32 @@
     "right_sho_pitch": {
         "motor": "XC430",
         "init_pos": 0.7853981633974483,
-        "default_pos": 0
+        "default_pos": -0.174533
     },
     "right_sho_roll": {
         "motor": "2XL430",
         "init_pos": 3.141592653589793,
-        "default_pos": 0
+        "default_pos": -0.261799
     },
     "right_sho_yaw_drive": {
         "motor": "2XL430",
         "init_pos": 1.6965827941894531,
-        "default_pos": 0
+        "default_pos": 1.0472
     },
     "right_elbow_roll": {
         "motor": "2XL430",
         "init_pos": 1.5707963267948966,
-        "default_pos": 0
+        "default_pos": 0.523599
     },
     "right_elbow_yaw_drive": {
         "motor": "2XL430",
         "init_pos": 5.879748344421387,
-        "default_pos": 0
+        "default_pos": 0.523599
     },
     "right_wrist_roll_drive": {
         "motor": "2XL430",
         "init_pos": 3.041883945465088,
-        "default_pos": 0
+        "default_pos": 1.0472
     },
     "right_wrist_pitch": {
         "motor": "2XL430",

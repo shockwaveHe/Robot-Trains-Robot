@@ -50,16 +50,11 @@ class MuJoCoSim(BaseSim):
         self.model = model  # type: ignore
         self.data = mujoco.MjData(model)  # type: ignore
 
-        self.default_qpos = np.array(model.keyframe("home").qpos, dtype=np.float32)  # type:ignore
-        self.default_action = np.array(model.keyframe("home").ctrl, dtype=np.float32)  # type:ignore
-
         self.model.opt.timestep = self.dt  # type: ignore
         # TODO: remove after debugging
         self.model.opt.solver = mujoco.mjtSolver.mjSOL_NEWTON  # type: ignore
         self.model.opt.iterations = 1  # type: ignore
         self.model.opt.ls_iterations = 4  # type: ignore
-
-        self.initialize()
 
         self.visualizer = None
         if vis_type == "render":
@@ -67,8 +62,9 @@ class MuJoCoSim(BaseSim):
         elif vis_type == "view":
             self.visualizer = MuJoCoViewer(self.model, self.data)  # type: ignore
 
-    def initialize(self):
-        self.data.qpos = self.default_qpos.copy()  # type: ignore
+    def load_keyframe(self):
+        default_qpos = np.array(self.model.keyframe("home").qpos, dtype=np.float32)  # type:ignore
+        self.data.qpos = default_qpos.copy()  # type: ignore
         self.data.qvel = np.zeros(self.model.nv, dtype=np.float32)  # type: ignore
         self.forward()
 

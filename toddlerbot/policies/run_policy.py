@@ -172,12 +172,13 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
 
             # Get the latest state from the queue
             obs = sim.get_observation()
+            obs.time -= start_time
+
             if "real" not in sim.name:
                 obs.time += time_until_next_step
 
             obs_time = time.time()
 
-            obs.time -= start_time
             action = run_policy(policy, obs)
             inference_time = time.time()
 
@@ -234,11 +235,25 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
         log("KeyboardInterrupt recieved. Closing...", header=header_name)
 
     finally:
+        p_bar.close()
+
         exp_name = f"{robot.name}_{policy.name}_{sim.name}"
         time_str = time.strftime("%Y%m%d_%H%M%S")
         exp_folder_path = f"results/{exp_name}_{time_str}"
 
         os.makedirs(exp_folder_path, exist_ok=True)
+
+        log_data_dict: Dict[str, Any] = {
+            "obs_list": obs_list,
+            "motor_angles_list": motor_angles_list,
+        }
+        if "sysID" in policy.name:
+            assert isinstance(policy, SysIDFixedPolicy)
+            log_data_dict["time_mark_dict"] = policy.time_mark_dict
+
+        log_data_path = os.path.join(exp_folder_path, "log_data.pkl")
+        with open(log_data_path, "wb") as f:
+            pickle.dump(log_data_dict, f)
 
         if debug["render"] and hasattr(sim, "save_recording"):
             assert isinstance(sim, MuJoCoSim)
@@ -246,18 +261,8 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
 
         sim.close()
 
-        p_bar.close()
-
         prof_path = os.path.join(exp_folder_path, "profile_output.lprof")
         dump_profiling_data(prof_path)
-
-        log_data_dict = {
-            "obs_list": obs_list,
-            "motor_angles_list": motor_angles_list,
-        }
-        log_data_path = os.path.join(exp_folder_path, "log_data.pkl")
-        with open(log_data_path, "wb") as f:
-            pickle.dump(log_data_dict, f)
 
         if debug["plot"]:
             log("Visualizing...", header="Walking")

@@ -125,6 +125,22 @@
             ]
         },
         {
+            "name": "Python: sysid_toddlerbot_optim",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/tools/sysID/run_sysID.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot",
+                "toddlerbot",
+                "--sim",
+                "mujoco",
+                "--run-name",
+                "toddlerbot_sysID_fixed_mujoco_20240822_205013"
+            ]
+        },
+        {
             "name": "Python: walk_toddlerbot_legs_eval_mjx",
             "type": "python",
             "request": "launch",
