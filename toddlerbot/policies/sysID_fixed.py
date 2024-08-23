@@ -26,7 +26,7 @@ class SysIDSpecs:
 class SysIDFixedPolicy(BasePolicy):
     def __init__(self, robot: Robot):
         super().__init__(robot)
-        self.name = "sysID"
+        self.name = "sysID_fixed"
 
         set_seed(0)
 
@@ -37,7 +37,7 @@ class SysIDFixedPolicy(BasePolicy):
 
         prep_duration = 2.0
         warm_up_duration = 2.0
-        sine_duraion = 6.0
+        signal_duraion = 10.0
         reset_duration = 2.0
 
         joint_sysID_specs = {
@@ -56,6 +56,7 @@ class SysIDFixedPolicy(BasePolicy):
                 }
             ),
             "hip_yaw_driven": SysIDSpecs(
+                amplitude_ratio=0.5,
                 warm_up_angles={
                     "left_sho_roll": -np.pi / 6,
                     "right_sho_roll": -np.pi / 6,
@@ -127,6 +128,7 @@ class SysIDFixedPolicy(BasePolicy):
 
         time_list: List[npt.NDArray[np.float32]] = []
         action_list: List[npt.NDArray[np.float32]] = []
+        self.time_mark_dict: Dict[str, float] = {}
 
         prep_act = np.zeros_like(init_action)
         prep_time, prep_action = self.reset(
@@ -136,15 +138,15 @@ class SysIDFixedPolicy(BasePolicy):
         time_list.append(prep_time)
         action_list.append(prep_action)
 
-        for name, sysID_specs in joint_sysID_specs.items():
-            if name in robot.joint_ordering:
-                joint_name = name
+        for symmetric_name, sysID_specs in joint_sysID_specs.items():
+            if symmetric_name in robot.joint_ordering:
+                joint_name = symmetric_name
                 joint_idx = robot.joint_ordering.index(joint_name)
             else:
-                joint_name = f"left_{name}"
+                joint_name = f"left_{symmetric_name}"
                 joint_idx = [
                     robot.joint_ordering.index(joint_name),
-                    robot.joint_ordering.index(f"right_{name}"),
+                    robot.joint_ordering.index(f"right_{symmetric_name}"),
                 ]
 
             mean = (
@@ -176,7 +178,7 @@ class SysIDFixedPolicy(BasePolicy):
             amplitude = sysID_specs.amplitude_ratio * amplitude_max
 
             rotate_time, signal = get_chirp_signal(
-                sine_duraion,
+                signal_duraion,
                 self.control_dt,
                 0.0,
                 sysID_specs.initial_frequency,
@@ -216,6 +218,7 @@ class SysIDFixedPolicy(BasePolicy):
 
             time_list.append(reset_time)
             action_list.append(reset_action)
+            self.time_mark_dict[symmetric_name] = time_list[-1][-1]
 
         self.time_arr = np.concatenate(time_list)  # type: ignore
         self.action_arr = np.concatenate(action_list)  # type: ignore

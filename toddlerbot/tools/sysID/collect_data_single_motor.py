@@ -118,7 +118,7 @@ def collect_data(
             level="debug",
         )
         joint_data_dict = actuate_single_motor(
-            real_world, robot, joint_name, signal_pos, control_dt
+            real_world, robot, joint_name, np.asarray(signal_pos), control_dt
         )
 
         data_dict[trial] = {

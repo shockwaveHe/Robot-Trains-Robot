@@ -14,77 +14,12 @@ import numpy.typing as npt
 import optuna
 from sklearn.model_selection import train_test_split  # type: ignore
 
-from toddlerbot.sim import BaseSim
+from toddlerbot.sim import BaseSim, Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import combine_images, find_robot_file_path
 from toddlerbot.utils.math_utils import get_sine_signal
 from toddlerbot.utils.misc_utils import log
 from toddlerbot.visualization.vis_plot import plot_joint_angle_tracking
-
-# TODO: Remove the hardcoded custom_parameters
-custom_parameters = [
-    {"name": "--robot", "type": str, "default": "toddlerbot_legs"},
-    {"name": "--sim", "type": str, "default": "mujoco"},
-    {"name": "--joint-names", "type": str, "default": "all"},
-    {"name": "--n-trials", "type": int, "default": 15},
-    {"name": "--n-iters", "type": int, "default": 1000},
-    {"name": "--exp-folder-path", "type": str, "default": ""},
-]
-
-inertial_data_430_list = [
-    {
-        "pos_x": "-0.0700005",
-        "mass": "0.0945",
-        "diaginertia": "0.000176057 9.76865e-05 9.75621e-05",
-    },
-    {
-        "pos_x": "-0.07159",
-        "mass": "0.1645",
-        "diaginertia": "0.000272705 0.000166538 0.00014119",
-    },
-    {
-        "pos_x": "-0.0722306",
-        "mass": "0.2345",
-        "diaginertia": "0.000369018 0.00023539 0.000184483",
-    },
-    {
-        "pos_x": "-0.0725766",
-        "mass": "0.3045",
-        "diaginertia": "0.000465228 0.000304241 0.000227672",
-    },
-    {
-        "pos_x": "-0.0727933",
-        "mass": "0.3745",
-        "diaginertia": "0.000561391 0.000373093 0.000270815",
-    },
-]
-inertial_data_330_list = [
-    {
-        "pos_x": "0.0699496",
-        "mass": "0.0945",
-        "diaginertia": "0.000175559 9.80867e-05 9.66481e-05",
-    },
-    {
-        "pos_x": "0.0715608",
-        "mass": "0.1645",
-        "diaginertia": "0.000272223 0.0001655 0.00014173",
-    },
-    {
-        "pos_x": "0.0722101",
-        "mass": "0.2345",
-        "diaginertia": "0.000368542 0.000234351 0.000185029",
-    },
-    {
-        "pos_x": "0.0725608",
-        "mass": "0.3045",
-        "diaginertia": "0.000464755 0.000303203 0.000228221",
-    },
-    {
-        "pos_x": "0.0727805",
-        "mass": "0.3745",
-        "diaginertia": "0.000560921 0.000372055 0.000271366",
-    },
-]
 
 
 def extract_data(
@@ -101,86 +36,53 @@ def extract_data(
     return signal_config_list, observed_time_list, observed_pos_list
 
 
-def load_datasets(
-    exp_folder_path: str, joint_names: str, test_split_ratio: float = 0.2
-):
+def load_datasets(robot: Robot, exp_folder_path: str, test_split_ratio: float = 0.2):
     # Use glob to find all pickle files matching the pattern
-    pickle_files = sorted(
-        glob.glob(os.path.join(exp_folder_path, "real_world_data*.pkl"))
-    )
-    if not pickle_files:
-        raise ValueError("No real world data files found")
+    pickle_file_path = os.path.join(exp_folder_path, "log_data.pkl")
+    if not os.path.exists(pickle_file_path):
+        raise ValueError("No data files found")
 
-    signal_config_train: Dict[str, List[List[Dict[str, float]]]] = {}
-    signal_config_test: Dict[str, List[List[Dict[str, float]]]] = {}
-    observed_time_train: Dict[str, List[List[List[float]]]] = {}
-    observed_time_test: Dict[str, List[List[List[float]]]] = {}
-    observed_pos_train: Dict[str, List[List[List[float]]]] = {}
-    observed_pos_test: Dict[str, List[List[List[float]]]] = {}
-    n_load_list: List[int] = []
+    with open(pickle_file_path, "rb") as f:
+        data_dict = pickle.load(f)
 
-    for pickle_file in pickle_files:
-        with open(pickle_file, "rb") as f:
-            real_world_data_dict = pickle.load(f)
+    obs_list: List[Obs] = data_dict["obs_list"]
+    motor_angles_list: List[Dict[str, float]] = data_dict["motor_angles_list"]
+    joint_angles_list = [
+        robot.motor_to_joint_angles(motor_angles) for motor_angles in motor_angles_list
+    ]
 
-        n_load_str = pickle_file.split(".")[0].split("L=")[-1].split("_")[0]
-        if n_load_str.isdigit():
-            n_load_list.append(int(n_load_str))
-        else:
-            n_load_list.append(0)
+    split_obs_dict: Dict[str, npt.NDArray[np.float32]] = {}
+    split_action_dict: Dict[str, npt.NDArray[np.float32]] = {}
 
-        for joint_name in joint_names:
-            signal_config_list, observed_time_list, observed_pos_list = extract_data(
-                real_world_data_dict, joint_name
-            )
+    def set_obs_action(joint_name: str, idx_range: slice):
+        joint_idx = robot.joint_ordering.index(joint_name)
+        split_obs_dict[joint_name] = np.array(
+            [obs.q[joint_idx] for obs in obs_list[idx_range]]
+        )
+        split_action_dict[joint_name] = np.array(
+            [joint_angles[joint_name] for joint_angles in joint_angles_list[idx_range]]
+        )
 
-            # Split the data into train and test sets
-            output: List[Any] = train_test_split(
-                signal_config_list,
-                observed_time_list,
-                observed_pos_list,
-                test_size=test_split_ratio,
-                random_state=0,
-            )
-            (
-                signal_config_train_split,
-                signal_config_test_split,
-                observed_time_train_split,
-                observed_time_test_split,
-                observed_pos_train_split,
-                observed_pos_test_split,
-            ) = output
+    if "time_mark_dict" in data_dict:
+        time_mark_dict: Dict[str, float] = data_dict["time_mark_dict"]
+        joint_names = list(time_mark_dict.keys())
+        time_mark_list = list(time_mark_dict.values())
+        obs_time = [obs.time for obs in obs_list]
+        obs_indices = np.searchsorted(obs_time, time_mark_list)
 
-            if joint_name in signal_config_train:
-                signal_config_train[joint_name].append(signal_config_train_split)
-                signal_config_test[joint_name].append(signal_config_test_split)
-                observed_time_train[joint_name].append(observed_time_train_split)
-                observed_time_test[joint_name].append(observed_time_test_split)
-                observed_pos_train[joint_name].append(observed_pos_train_split)
-                observed_pos_test[joint_name].append(observed_pos_test_split)
+        last_idx = 0
+        for symmetric_name, idx in zip(joint_names, obs_indices):
+            if symmetric_name in robot.joint_ordering:
+                set_obs_action(symmetric_name, slice(last_idx, idx))
             else:
-                signal_config_train[joint_name] = [signal_config_train_split]
-                signal_config_test[joint_name] = [signal_config_test_split]
-                observed_time_train[joint_name] = [observed_time_train_split]
-                observed_time_test[joint_name] = [observed_time_test_split]
-                observed_pos_train[joint_name] = [observed_pos_train_split]
-                observed_pos_test[joint_name] = [observed_pos_test_split]
+                set_obs_action(f"left_{symmetric_name}", slice(last_idx, idx))
+                set_obs_action(f"right_{symmetric_name}", slice(last_idx, idx))
 
-    observed_pos_train_arr: Dict[str, npt.NDArray[np.float32]] = {}
-    observed_pos_test_arr: Dict[str, npt.NDArray[np.float32]] = {}
-    for joint_name in joint_names:
-        observed_pos_train_arr[joint_name] = np.array(observed_pos_train[joint_name])
-        observed_pos_test_arr[joint_name] = np.array(observed_pos_test[joint_name])
+            last_idx = idx
+    else:
+        set_obs_action("all", slice(None))
 
-    return (
-        signal_config_train,
-        signal_config_test,
-        observed_time_train,
-        observed_time_test,
-        observed_pos_train_arr,
-        observed_pos_test_arr,
-        n_load_list,
-    )
+    return split_obs_dict, split_action_dict
 
 
 def actuate_single_motor(
@@ -640,7 +542,7 @@ def evaluate(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run the SysID data collection.")
+    parser = argparse.ArgumentParser(description="Run the SysID optimization.")
     parser.add_argument(
         "--robot",
         type=str,
@@ -654,26 +556,22 @@ def main():
         help="The simulator to use.",
     )
     parser.add_argument(
-        "--joint-names",
-        type=str,
-        nargs="+",  # Indicates that one or more values are expected
-        help="The names of the joints to perform SysID on.",
-    )
-    parser.add_argument(
         "--n-iters",
         type=int,
         default=1000,
         help="The number of iterations to optimize the parameters.",
     )
     parser.add_argument(
-        "--exp-folder-path",
+        "--run-name",
         type=str,
         default="",
-        help="The path to the experiment folder.",
+        required=True,
+        help="The name of the run.",
     )
     args = parser.parse_args()
 
-    if len(args.exp_folder_path) == 0 or not os.path.exists(args.exp_folder_path):
+    exp_folder_path = os.path.join("results", args.run_name)
+    if not os.path.exists(exp_folder_path):
         raise ValueError("Invalid experiment folder path")
 
     robot = Robot(args.robot)
@@ -686,7 +584,7 @@ def main():
         observed_pos_train,
         observed_pos_test,
         n_load_list,
-    ) = load_datasets(args.exp_folder_path, args.joint_names)
+    ) = load_datasets(robot, exp_folder_path)
 
     if args.sim == "mujoco":
         fixed_xml_path = find_robot_file_path(robot.name, suffix="_fixed.xml")
