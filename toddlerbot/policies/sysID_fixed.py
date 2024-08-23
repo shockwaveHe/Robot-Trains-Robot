@@ -73,12 +73,16 @@ class SysIDFixedPolicy(BasePolicy):
                 warm_up_angles={
                     "left_sho_roll": -np.pi / 12,
                     "right_sho_roll": -np.pi / 12,
+                    "left_hip_roll": -np.pi / 8,
+                    "right_hip_roll": -np.pi / 8,
                 },
             ),
             "knee_pitch": SysIDSpecs(
                 warm_up_angles={
                     "left_sho_roll": -np.pi / 12,
                     "right_sho_roll": -np.pi / 12,
+                    "left_hip_roll": -np.pi / 8,
+                    "right_hip_roll": -np.pi / 8,
                 },
                 direction=-1,
             ),
