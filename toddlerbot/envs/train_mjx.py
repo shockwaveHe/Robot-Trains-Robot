@@ -3,7 +3,7 @@ import functools
 import json
 import os
 import time
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from typing import Any, Dict, List, Tuple
 
 import jax
@@ -330,31 +330,24 @@ if __name__ == "__main__":
         test_command = jnp.array([0.3, 0.0, 0.0, 0.0])  # type:ignore
 
     elif args.env == "walk_fixed":
+        reward_scales = replace(
+            RewardScales(),
+            **{field: 0.0 for field in RewardScales.__dataclass_fields__},
+        )
+        reward_scales.leg_joint_pos = 5.0
+        reward_scales.waist_joint_pos = 5.0
+        reward_scales.joint_torque = 5e-2
+        reward_scales.joint_acc = 5e-7
+
         cfg = MuJoCoConfig(
-            rewards=RewardsConfig(
-                healthy_z_range=[-0.2, 0.2],
-                scales=RewardScales(
-                    torso_pos=0.0,
-                    torso_quat=0.0,
-                    lin_vel_xy=0.0,
-                    lin_vel_z=0.0,
-                    ang_vel_xy=0.0,
-                    ang_vel_z=0.0,
-                    leg_joint_pos=5.0,
-                    feet_air_time=0.0,
-                    feet_clearance=0.0,
-                    feet_contact=0.0,
-                    feet_distance=0.0,
-                    feet_slip=0.0,
-                    stand_still=0.0,
-                ),
-            )
+            rewards=RewardsConfig(healthy_z_range=[-0.2, 0.2], scales=reward_scales)
         )
         train_cfg = PPOConfig(
             num_envs=num_envs,
             num_minibatches=num_minibatches,
-            num_timesteps=20_000_000,
-            num_evals=200,
+            num_timesteps=10_000_000,
+            num_evals=100,
+            transition_steps=1_000_000,
         )
         test_command = jnp.array([0.0, 0.0, 0.0, 0.0])  # type:ignore
 

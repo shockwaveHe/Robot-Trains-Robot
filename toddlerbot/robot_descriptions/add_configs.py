@@ -89,18 +89,17 @@ def get_default_config(
         }
 
         if is_passive:
-            # if transmission == "gears":
-            #     joint_drive_name = joint_name.replace("_driven", "_drive")
-            #     motor_name = motor_config[joint_drive_name]["motor"]
-            #     gear_ratio = motor_config[joint_drive_name].get("gear_ratio", 1.0)
-            #     for param_name in ["damping", "armature", "frictionloss"]:
-            #         joint_dict[param_name] = joint_dyn_config[motor_name][
-            #             param_name
-            #         ] * (gear_ratio**2)
-            # else:
             if joint_name in joint_dyn_config:
                 for param_name in ["damping", "armature"]:  # , "frictionloss"]:
                     joint_dict[param_name] = joint_dyn_config[joint_name][param_name]
+            elif transmission == "gears":
+                joint_drive_name = joint_name.replace("_driven", "_drive")
+                motor_name = motor_config[joint_drive_name]["motor"]
+                gear_ratio = motor_config[joint_drive_name].get("gear_ratio", 1.0)
+                for param_name in ["damping", "armature"]:  # , "frictionloss"]:
+                    joint_dict[param_name] = joint_dyn_config[motor_name][
+                        param_name
+                    ] * (gear_ratio**2)
         else:
             if joint_name not in motor_config:
                 raise ValueError(f"{joint_name} not found in the motor config!")

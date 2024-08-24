@@ -90,11 +90,11 @@
     </body>
     <body name="neck_yaw_link" pos="0.016 0 0.122487" quat="0 0 0 1">
       <inertial pos="2.72913e-05 -0.00019799 0.0115274" quat="0.707 0.0136941 -0.0132325 0.706957" mass="0.00851683" diaginertia="1.12518e-06 1.04071e-06 3.14701e-07" />
-      <joint name="neck_yaw_driven" pos="0 0 0" axis="0 0 1" range="-3.14159 3.14159" damping="0.0" armature="0.0" />
+      <joint name="neck_yaw_driven" pos="0 0 0" axis="0 0 1" range="-3.14159 3.14159" damping="0.189799" armature="0.00383432" />
       <geom type="mesh" rgba="0.336363 0.486808 0.749761 1" mesh="neck_yaw_link_visual" class="visual" />
       <body name="neck_pitch_link" pos="3.75e-10 -0.00515 0.0275" quat="0 0 -0.707107 -0.707107">
         <inertial pos="-0.00343705 0.0328768 -0.000364765" quat="0.985226 -0.157163 0.0224975 -0.064217" mass="0.112116" diaginertia="7.73792e-05 6.73704e-05 2.43788e-05" />
-        <joint name="neck_pitch_driven" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.0" armature="0.0" />
+        <joint name="neck_pitch_driven" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.11979" armature="0.00242" />
         <geom type="mesh" rgba="0.749111 0.800028 0.874413 1" mesh="neck_pitch_link_visual" class="visual" />
         <body name="spur_gear_(13_teeth)" pos="0 0.01565 -0.0088" quat="0.707107 0 0 -0.707107">
           <inertial pos="9.15216e-10 -5.48726e-10 0.00927515" mass="0.000814694" diaginertia="2.02448e-08 2.02448e-08 1.89055e-08" />
@@ -322,7 +322,7 @@
         </body>
         <body name="spur_1m_24t_driven" pos="-3.58071e-10 -0.027 -0.019" quat="0.707107 0.707107 0 0">
           <inertial pos="0 0 0.0216102" mass="0.0172" diaginertia="1.08021e-05 7.42977e-06 4.68733e-06" />
-          <joint name="left_sho_yaw_driven" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.0" armature="0.0" />
+          <joint name="left_sho_yaw_driven" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.153" armature="0.008" />
           <geom type="mesh" rgba="0.231373 0.380392 0.705882 1" mesh="left_spur_1m_24t_driven_visual" class="visual" />
           <geom pos="0 0 0.0016" quat="0 -1 0 0" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="left_sho_yaw_link_visual" class="visual" />
           <body name="2xl430_gears_2" pos="0 0.019 0.0606" quat="0.707107 -0.707107 0 0">
@@ -336,13 +336,13 @@
             </body>
             <body name="spur_1m_24t_driven_2" pos="-3.58069e-10 -0.027 -0.019" quat="0.5 0.5 0.5 -0.5">
               <inertial pos="0.00116139 -4.04035e-08 0.025284" quat="0.665601 0.238694 0.238694 0.665601" mass="0.0229" diaginertia="1.97992e-05 1.15815e-05 1.01733e-05" />
-              <joint name="left_elbow_yaw_driven" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.0" armature="0.0" />
+              <joint name="left_elbow_yaw_driven" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.153" armature="0.008" />
               <geom type="mesh" rgba="0.231373 0.380392 0.705882 1" mesh="left_spur_1m_24t_driven_2_visual" class="visual" />
               <geom pos="0 0 0.0016" quat="0 0.707107 -0.707107 0" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="left_elb_yaw_link_visual" class="visual" />
               <geom pos="0.0253 0 0.0536" quat="-0.707107 0 -0.707107 0" type="mesh" rgba="0.231373 0.380392 0.705882 1" mesh="left_spur_1m_24t_driven_3_visual" class="visual" />
               <body name="2xl430_gears_3" pos="0.0237 0 0.0536" quat="-0.5 0.5 -0.5 0.5">
                 <inertial pos="0.000431007 0.0114203 -0.025465" quat="0.750271 0.658201 -0.0437595 0.0441611" mass="0.1229" diaginertia="3.89635e-05 3.40271e-05 3.0248e-05" />
-                <joint name="left_wrist_roll_driven" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.0" armature="0.0" />
+                <joint name="left_wrist_roll_driven" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.153" armature="0.008" />
                 <geom type="mesh" rgba="0.75606 0.858047 0.913203 1" mesh="left_2xl430_gears_3_visual" class="visual" />
                 <geom pos="0.0155 0 -0.045" quat="0.707107 0 0 -0.707107" type="mesh" rgba="0.644963 0.690118 0.717068 1" mesh="left_wrist_bearing_plate_visual" class="visual" />
                 <body name="spur_1m_24t_drive_3" pos="-1.52441e-10 0.024 -0.008" quat="0.707107 0 0 -0.707107">
@@ -376,7 +376,7 @@
         </body>
         <body name="spur_1m_24t_driven_4" pos="-3.58067e-10 -0.027 -0.019" quat="0.707107 0.707107 0 0">
           <inertial pos="0 0 0.0216102" mass="0.0172" diaginertia="1.08021e-05 7.42977e-06 4.68733e-06" />
-          <joint name="right_sho_yaw_driven" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.0" armature="0.0" />
+          <joint name="right_sho_yaw_driven" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.153" armature="0.008" />
           <geom type="mesh" rgba="0.231373 0.380392 0.705882 1" mesh="right_spur_1m_24t_driven_visual" class="visual" />
           <geom pos="0 0 0.0016" quat="0 -1 0 0" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="right_sho_yaw_link_visual" class="visual" />
           <body name="2xl430_gears_5" pos="0 0.019 0.0606" quat="0.707107 -0.707107 0 0">
@@ -390,13 +390,13 @@
             </body>
             <body name="spur_1m_24t_driven_5" pos="-3.58071e-10 -0.027 -0.019" quat="0.707107 0.707107 0 0">
               <inertial pos="4.04035e-08 0.00116139 0.025284" quat="0.941302 -0.337564 0 0" mass="0.0229" diaginertia="1.97992e-05 1.15815e-05 1.01733e-05" />
-              <joint name="right_elbow_yaw_driven" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.0" armature="0.0" />
+              <joint name="right_elbow_yaw_driven" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.153" armature="0.008" />
               <geom type="mesh" rgba="0.231373 0.380392 0.705882 1" mesh="right_spur_1m_24t_driven_2_visual" class="visual" />
               <geom pos="0 0 0.0016" quat="0 -1 0 0" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="right_elb_yaw_link_visual" class="visual" />
               <geom pos="0 0.0253 0.0536" quat="0.5 -0.5 -0.5 -0.5" type="mesh" rgba="0.231373 0.380392 0.705882 1" mesh="right_spur_1m_24t_driven_3_visual" class="visual" />
               <body name="2xl430_gears_6" pos="0 0.0237 0.0536" quat="0.707107 -0.707107 0 0">
                 <inertial pos="0.000431007 0.0114203 -0.025465" quat="0.750271 0.658201 -0.0437595 0.0441611" mass="0.1229" diaginertia="3.89635e-05 3.40271e-05 3.0248e-05" />
-                <joint name="right_wrist_roll_driven" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.0" armature="0.0" />
+                <joint name="right_wrist_roll_driven" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.153" armature="0.008" />
                 <geom type="mesh" rgba="0.75606 0.858047 0.913203 1" mesh="right_2xl430_gears_3_visual" class="visual" />
                 <geom pos="0.0155 0 -0.045" quat="0.707107 0 0 -0.707107" type="mesh" rgba="0.644963 0.690118 0.717068 1" mesh="right_wrist_bearing_plate_visual" class="visual" />
                 <body name="spur_1m_24t_drive_6" pos="-1.52443e-10 0.024 -0.008" quat="0.707107 0 0 -0.707107">

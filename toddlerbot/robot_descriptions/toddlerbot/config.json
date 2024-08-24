@@ -789,8 +789,8 @@
             "group": "arm",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
-            "damping": 0.0,
-            "armature": 0.0,
+            "damping": 0.153,
+            "armature": 0.008,
             "frictionloss": 0.0
         },
         "left_hip_yaw_driven": {
@@ -859,8 +859,8 @@
             "group": "arm",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
-            "damping": 0.0,
-            "armature": 0.0,
+            "damping": 0.153,
+            "armature": 0.008,
             "frictionloss": 0.0
         },
         "left_wrist_roll_driven": {
@@ -869,8 +869,8 @@
             "group": "arm",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
-            "damping": 0.0,
-            "armature": 0.0,
+            "damping": 0.153,
+            "armature": 0.008,
             "frictionloss": 0.0
         },
         "neck_pitch_driven": {
@@ -879,8 +879,8 @@
             "group": "neck",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
-            "damping": 0.0,
-            "armature": 0.0,
+            "damping": 0.11979000000000002,
+            "armature": 0.0024200000000000003,
             "frictionloss": 0.0
         },
         "neck_yaw_driven": {
@@ -889,8 +889,8 @@
             "group": "neck",
             "lower_limit": -3.141592653589793,
             "upper_limit": 3.141592653589793,
-            "damping": 0.0,
-            "armature": 0.0,
+            "damping": 0.1897988165680473,
+            "armature": 0.0038343195266272185,
             "frictionloss": 0.0
         },
         "right_ank_long_rev_1": {
@@ -959,8 +959,8 @@
             "group": "arm",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
-            "damping": 0.0,
-            "armature": 0.0,
+            "damping": 0.153,
+            "armature": 0.008,
             "frictionloss": 0.0
         },
         "right_hip_yaw_driven": {
@@ -1029,8 +1029,8 @@
             "group": "arm",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
-            "damping": 0.0,
-            "armature": 0.0,
+            "damping": 0.153,
+            "armature": 0.008,
             "frictionloss": 0.0
         },
         "right_wrist_roll_driven": {
@@ -1039,8 +1039,8 @@
             "group": "arm",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
-            "damping": 0.0,
-            "armature": 0.0,
+            "damping": 0.153,
+            "armature": 0.008,
             "frictionloss": 0.0
         },
         "waist_roll": {
