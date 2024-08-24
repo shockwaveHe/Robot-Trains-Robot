@@ -337,7 +337,6 @@ def main():
 
     exp_name = f"{robot.name}_sysID_{args.sim}_optim"
     time_str = time.strftime("%Y%m%d_%H%M%S")
-    time_str = "20240823_152825"
     exp_folder_path = f"results/{exp_name}_{time_str}"
 
     os.makedirs(exp_folder_path, exist_ok=True)
@@ -361,14 +360,14 @@ def main():
         robot, args.sim, obs_pos_dict, action_dict, args.n_iters
     )
 
-    opt_params_file_path = os.path.join(exp_folder_path, "opt_params.json")
-    opt_values_file_path = os.path.join(exp_folder_path, "opt_values.json")
+    # opt_params_file_path = os.path.join(exp_folder_path, "opt_params.json")
+    # opt_values_file_path = os.path.join(exp_folder_path, "opt_values.json")
 
-    with open(opt_params_file_path, "r") as f:
-        opt_params_dict = json.load(f)
+    # with open(opt_params_file_path, "r") as f:
+    #     opt_params_dict = json.load(f)
 
-    with open(opt_values_file_path, "r") as f:
-        opt_values_dict = json.load(f)
+    # with open(opt_values_file_path, "r") as f:
+    #     opt_values_dict = json.load(f)
 
     ##### Evaluate the optimized parameters in the simulation ######
     evaluate(

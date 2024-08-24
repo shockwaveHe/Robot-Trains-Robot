@@ -176,8 +176,8 @@ class MuJoCoSim(BaseSim):
 
     def set_joint_dyn(self, joint_dyn: Dict[str, Dict[str, float]]):
         for joint_name, dyn in joint_dyn.items():
-            self.model.joint(joint_name).damping = dyn["damping"]  # type: ignore
-            self.model.joint(joint_name).armature = dyn["armature"]  # type: ignore
+            for key, value in dyn.items():
+                setattr(self.model.joint(joint_name), key, value)  # type: ignore
 
     def forward(self):
         mujoco.mj_forward(self.model, self.data)  # type: ignore

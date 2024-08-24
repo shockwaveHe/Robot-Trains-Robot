@@ -89,17 +89,18 @@ def get_default_config(
         }
 
         if is_passive:
-            if transmission == "gears":
-                joint_drive_name = joint_name.replace("_driven", "_drive")
-                motor_name = motor_config[joint_drive_name]["motor"]
-                gear_ratio = motor_config[joint_drive_name].get("gear_ratio", 1.0)
-                for param_name in ["damping", "armature", "frictionloss"]:
-                    joint_dict[param_name] = joint_dyn_config[motor_name][
-                        param_name
-                    ] * (gear_ratio**2)
-            else:
-                pass
-                # TODO: sysID the joint dynamics params for passive joints
+            # if transmission == "gears":
+            #     joint_drive_name = joint_name.replace("_driven", "_drive")
+            #     motor_name = motor_config[joint_drive_name]["motor"]
+            #     gear_ratio = motor_config[joint_drive_name].get("gear_ratio", 1.0)
+            #     for param_name in ["damping", "armature", "frictionloss"]:
+            #         joint_dict[param_name] = joint_dyn_config[motor_name][
+            #             param_name
+            #         ] * (gear_ratio**2)
+            # else:
+            if joint_name in joint_dyn_config:
+                for param_name in ["damping", "armature"]:  # , "frictionloss"]:
+                    joint_dict[param_name] = joint_dyn_config[joint_name][param_name]
         else:
             if joint_name not in motor_config:
                 raise ValueError(f"{joint_name} not found in the motor config!")
@@ -133,7 +134,7 @@ def get_default_config(
             joint_dict["kd_sim"] = 0.0
 
             if motor_name in joint_dyn_config:
-                for param_name in ["damping", "armature", "frictionloss"]:
+                for param_name in ["damping", "armature"]:  # , "frictionloss"]:
                     joint_dict[param_name] = joint_dyn_config[motor_name][param_name]
 
             if transmission == "gears":
@@ -233,10 +234,18 @@ def main():
                 sysID_result = json.load(f)
 
             joint_dyn_config[motor_name] = {}
-            for param_name in ["damping", "armature", "frictionloss"]:
+            for param_name in ["damping", "armature"]:  # , "frictionloss"]:
                 joint_dyn_config[motor_name][param_name] = sysID_result["joints"][
                     "joint_0"
                 ][param_name]
+
+        dynamics_config_path = os.path.join(robot_dir, "config_dynamics.json")
+        if os.path.exists(dynamics_config_path):
+            with open(dynamics_config_path, "r") as f:
+                passive_joint_dyn_config = json.load(f)
+
+            for joint_name, joint_config in passive_joint_dyn_config.items():
+                joint_dyn_config[joint_name] = joint_config
 
     urdf_path = os.path.join(robot_dir, f"{args.robot}.urdf")
     tree = ET.parse(urdf_path)
