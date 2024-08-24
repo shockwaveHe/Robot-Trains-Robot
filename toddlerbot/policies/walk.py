@@ -54,7 +54,7 @@ class WalkPolicy(BasePolicy):
             cfg.obs.frame_stack * cfg.obs.num_single_obs, dtype=np.float32
         )
         self.cycle_time = cfg.action.cycle_time
-        self.step = 0
+        self.step_curr = 0
 
         ppo_network = make_networks_factory(  # type: ignore
             cfg.obs.num_single_obs,
@@ -72,8 +72,8 @@ class WalkPolicy(BasePolicy):
         self.jit_inference_fn(self.obs_history, self.rng)[0].block_until_ready()  # type: ignore
 
     # @profile()
-    def run(self, obs: Obs) -> npt.NDArray[np.float32]:
-        phase = self.step * self.control_dt / self.cycle_time
+    def step(self, obs: Obs) -> npt.NDArray[np.float32]:
+        phase = self.step_curr * self.control_dt / self.cycle_time
         phase_signal = np.array(  # type:ignore
             [np.sin(2 * np.pi * phase), np.cos(2 * np.pi * phase)]  # type:ignore
         )
@@ -104,7 +104,7 @@ class WalkPolicy(BasePolicy):
         action[self.waist_motor_indices[-1]] = 0.0
 
         self.last_action = action
-        self.step += 1
+        self.step_curr += 1
 
         motor_target = self.default_action + action * self.action_scale
 

@@ -227,7 +227,7 @@ class SysIDFixedPolicy(BasePolicy):
         self.time_arr = np.concatenate(time_list)  # type: ignore
         self.action_arr = np.concatenate(action_list)  # type: ignore
 
-    def run(self, obs: Obs) -> npt.NDArray[np.float32]:
+    def step(self, obs: Obs) -> npt.NDArray[np.float32]:
         action = np.asarray(
             interpolate_action(obs.time, self.time_arr, self.action_arr)
         )

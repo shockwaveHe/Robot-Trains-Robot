@@ -77,13 +77,13 @@ if [ -f "$CONFIG_PATH" ]; then
     read -r -p " > " overwrite_config
     if [ "$overwrite_config" == "y" ]; then
         printf "Overwriting the configuration file...\n\n"
-        python $REPO_NAME/robot_descriptions/add_config.py --robot $ROBOT_NAME
+        python $REPO_NAME/robot_descriptions/add_configs.py --robot $ROBOT_NAME
     else
         printf "Configuration file not written.\n\n"
     fi
 else
     printf "Generating the configuration file...\n\n"
-    python $REPO_NAME/robot_descriptions/add_config.py --robot $ROBOT_NAME
+    python $REPO_NAME/robot_descriptions/add_configs.py --robot $ROBOT_NAME
 fi
 
 printf "Do you want to update the collision files? If so, make sure you have edited config_collision.json! (y/n)"

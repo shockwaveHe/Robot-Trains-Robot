@@ -15,5 +15,5 @@ class StandPolicy(BasePolicy):
             list(robot.default_motor_angles.values()), dtype=np.float32
         )
 
-    def run(self, obs: Obs) -> npt.NDArray[np.float32]:
+    def step(self, obs: Obs) -> npt.NDArray[np.float32]:
         return self.default_action
