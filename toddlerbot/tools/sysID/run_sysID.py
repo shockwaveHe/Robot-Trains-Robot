@@ -17,9 +17,9 @@ from toddlerbot.utils.misc_utils import log
 from toddlerbot.visualization.vis_plot import plot_joint_angle_tracking
 
 
-def load_datasets(robot: Robot, exp_folder_path: str):
+def load_datasets(robot: Robot, data_path: str):
     # Use glob to find all pickle files matching the pattern
-    pickle_file_path = os.path.join(exp_folder_path, "log_data.pkl")
+    pickle_file_path = os.path.join(data_path, "log_data.pkl")
     if not os.path.exists(pickle_file_path):
         raise ValueError("No data files found")
 

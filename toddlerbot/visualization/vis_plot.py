@@ -267,6 +267,8 @@ def plot_joint_angle_tracking(
     file_name: str = "joint_angle_tracking",
     file_suffix: str = "",
     title_list: List[str] = [],
+    set_ylim: bool = True,
+    line_suffix: List[str] = ["_obs", "_act"],
 ):
     x_list: List[List[float]] = []
     y_list: List[List[float]] = []
@@ -276,8 +278,8 @@ def plot_joint_angle_tracking(
         x_list.append(time_seq_ref_dict[name])
         y_list.append(joint_angle_dict[name])
         y_list.append(joint_angle_ref_dict[name])
-        legend_labels.append(name)
-        legend_labels.append(name + "_ref")
+        legend_labels.append(name + line_suffix[0])
+        legend_labels.append(name + line_suffix[1])
 
     n_plots = len(time_seq_dict)
     n_rows = int(np.ceil(n_plots / 3))
@@ -291,8 +293,9 @@ def plot_joint_angle_tracking(
             ax.set_visible(False)  # type: ignore
             continue
 
-        y_min, y_max = joint_limits[legend_labels[2 * i]]
-        ax.set_ylim(y_min - 0.1, y_max + 0.1)  # type: ignore
+        if set_ylim:
+            y_min, y_max = joint_limits[legend_labels[2 * i]]
+            ax.set_ylim(y_min - 0.1, y_max + 0.1)  # type: ignore
 
         plot_line_graph(
             y_list[2 * i : 2 * i + 2],

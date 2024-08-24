@@ -1,0 +1,161 @@
+import argparse
+import json
+import os
+import pickle
+import time
+from typing import Dict, List
+
+import numpy as np
+import numpy.typing as npt
+
+from toddlerbot.sim import Obs
+from toddlerbot.sim.robot import Robot
+from toddlerbot.utils.misc_utils import log
+from toddlerbot.visualization.vis_plot import plot_joint_angle_tracking
+
+
+def load_datasets(
+    robot: Robot, sim_data_path: str, real_data_path: str, idx: int = 1000
+):
+    # Use glob to find all pickle files matching the pattern
+    sim_data: Dict[str, Dict[str, npt.NDArray[np.float32]]] = {}
+    real_data: Dict[str, Dict[str, npt.NDArray[np.float32]]] = {}
+    for data_dict, data_path in zip(
+        [sim_data, real_data], [sim_data_path, real_data_path]
+    ):
+        pickle_file_path = os.path.join(data_path, "log_data.pkl")
+        if not os.path.exists(pickle_file_path):
+            raise ValueError("No data files found")
+
+        with open(pickle_file_path, "rb") as f:
+            log_data_dict = pickle.load(f)
+
+        obs_list: List[Obs] = log_data_dict["obs_list"]
+        motor_angles_list: List[Dict[str, float]] = log_data_dict["motor_angles_list"]
+
+        for joint_name in robot.joint_ordering:
+            data_dict[joint_name] = {}
+            data_dict[joint_name]["obs_time"] = np.array(
+                [obs.time for obs in obs_list[:idx]]
+            )
+            data_dict[joint_name]["obs_pos"] = np.array(
+                [obs.q for obs in obs_list[:idx]]
+            )
+            data_dict[joint_name]["action"] = np.array(
+                [
+                    list(motor_angles.values())
+                    for motor_angles in motor_angles_list[:idx]
+                ]
+            )
+
+    return sim_data, real_data
+
+
+def evaluate(
+    robot: Robot,
+    sim_data: Dict[str, Dict[str, npt.NDArray[np.float32]]],
+    real_data: Dict[str, Dict[str, npt.NDArray[np.float32]]],
+    exp_folder_path: str,
+):
+    time_seq_ref_dict: Dict[str, List[float]] = {}
+    time_seq_sim_dict: Dict[str, List[float]] = {}
+    time_seq_real_dict: Dict[str, List[float]] = {}
+    joint_angle_ref_dict: Dict[str, List[float]] = {}
+    joint_angle_sim_dict: Dict[str, List[float]] = {}
+    joint_angle_real_dict: Dict[str, List[float]] = {}
+
+    for joint_name in sim_data:
+        joint_idx = robot.joint_ordering.index(joint_name)
+        obs_pos_sim = sim_data[joint_name]["obs_pos"][:, joint_idx]
+        obs_pos_real = real_data[joint_name]["obs_pos"][:, joint_idx]
+        # action_sim = sim_data[joint_name]["action"][:, joint_idx]
+        # action_real = real_data[joint_name]["action"][:, joint_idx]
+
+        obs_pos_error = np.sqrt(np.mean((obs_pos_real - obs_pos_sim) ** 2))
+
+        log(
+            f"{joint_name} root mean squared error: {obs_pos_error}",
+            header="SysID",
+            level="info",
+        )
+
+        time_seq_sim_dict[joint_name] = sim_data[joint_name]["obs_time"].tolist()
+        time_seq_real_dict[joint_name] = real_data[joint_name]["obs_time"].tolist()
+
+        joint_angle_sim_dict[joint_name] = obs_pos_sim.tolist()
+        joint_angle_real_dict[joint_name] = obs_pos_real.tolist()
+
+    plot_joint_angle_tracking(
+        time_seq_sim_dict,
+        time_seq_real_dict,
+        joint_angle_sim_dict,
+        joint_angle_real_dict,
+        robot.joint_limits,
+        save_path=exp_folder_path,
+        file_name="sim2real_eval",
+        set_ylim=False,
+        line_suffix=["_sim", "_real"],
+    )
+
+    # plot_joint_angle_tracking(
+    #     time_seq_real_dict,
+    #     time_seq_ref_dict,
+    #     joint_angle_real_dict,
+    #     joint_angle_ref_dict,
+    #     robot.joint_limits,
+    #     save_path=exp_folder_path,
+    #     file_name="real_tracking",
+    # )
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Run the SysID optimization.")
+    parser.add_argument(
+        "--robot",
+        type=str,
+        default="toddlerbot",
+        help="The name of the robot. Need to match the name in robot_descriptions.",
+    )
+    parser.add_argument(
+        "--sim-data",
+        type=str,
+        default="",
+        required=True,
+        help="The name of the run.",
+    )
+    parser.add_argument(
+        "--real-data",
+        type=str,
+        default="",
+        required=True,
+        help="The name of the run.",
+    )
+    args = parser.parse_args()
+
+    sim_data_path = os.path.join("results", args.sim_data)
+    if not os.path.exists(sim_data_path):
+        raise ValueError("Invalid sim experiment folder path")
+
+    real_data_path = os.path.join("results", args.real_data)
+    if not os.path.exists(real_data_path):
+        raise ValueError("Invalid real experiment folder path")
+
+    robot = Robot(args.robot)
+
+    exp_name = f"{robot.name}_sim2real_eval"
+    time_str = time.strftime("%Y%m%d_%H%M%S")
+    exp_folder_path = f"results/{exp_name}_{time_str}"
+
+    os.makedirs(exp_folder_path, exist_ok=True)
+
+    with open(os.path.join(exp_folder_path, "config.json"), "w") as f:
+        json.dump(vars(args), f, indent=4)
+
+    sim_data, real_data = load_datasets(robot, sim_data_path, real_data_path)
+
+    ##### Evaluate the optimized parameters in the simulation ######
+    evaluate(robot, sim_data, real_data, exp_folder_path)
+
+
+if __name__ == "__main__":
+    main()
