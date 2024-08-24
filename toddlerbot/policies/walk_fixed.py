@@ -19,7 +19,9 @@ from toddlerbot.utils.math_utils import interpolate_action
 
 
 class WalkFixedPolicy(BasePolicy):
-    def __init__(self, robot: Robot, run_name: str):
+    def __init__(
+        self, robot: Robot, run_name: str, init_joint_pos: npt.NDArray[np.float32]
+    ):
         super().__init__(robot)
         self.name = "walk_fixed"
 
@@ -73,7 +75,14 @@ class WalkFixedPolicy(BasePolicy):
         self.jit_inference_fn(self.obs_history, self.rng)[0].block_until_ready()  # type: ignore
 
         prep_duration = 2.0
-        init_action = np.zeros_like(self.default_action)
+        init_action = np.array(
+            list(
+                robot.joint_to_motor_angles(
+                    dict(zip(robot.joint_ordering, init_joint_pos))
+                ).values()
+            ),
+            dtype=np.float32,
+        )
         self.prep_time, self.prep_action = self.reset(
             -self.control_dt, init_action, self.default_action, prep_duration
         )

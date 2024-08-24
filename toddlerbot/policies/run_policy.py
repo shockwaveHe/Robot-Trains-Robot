@@ -305,6 +305,21 @@ if __name__ == "__main__":
 
     robot = Robot(args.robot)
 
+    if args.sim == "mujoco":
+        from toddlerbot.sim.mujoco_sim import MuJoCoSim
+
+        sim = MuJoCoSim(robot, vis_type="render", fixed_base="fixed" in args.policy)
+
+    elif args.sim == "real":
+        from toddlerbot.sim.real_world import RealWorld
+
+        sim = RealWorld(robot)
+        # TODO: Debug IMU
+        sim.has_imu = False
+
+    else:
+        raise ValueError("Unknown simulator")
+
     if args.policy == "stand":
         from toddlerbot.policies.stand import StandPolicy
 
@@ -324,7 +339,7 @@ if __name__ == "__main__":
         from toddlerbot.policies.walk_fixed import WalkFixedPolicy
 
         run_name = f"{args.robot}_{args.policy}_ppo_{args.ckpt}"
-        policy = WalkFixedPolicy(robot, run_name)
+        policy = WalkFixedPolicy(robot, run_name, sim.get_observation().q)
 
     elif args.policy == "walk":
         from toddlerbot.policies.walk import WalkPolicy
@@ -351,20 +366,5 @@ if __name__ == "__main__":
         "plot": True,
         "render": True,
     }
-
-    if args.sim == "mujoco":
-        from toddlerbot.sim.mujoco_sim import MuJoCoSim
-
-        sim = MuJoCoSim(robot, vis_type="render", fixed_base="fixed" in args.policy)
-
-    elif args.sim == "real":
-        from toddlerbot.sim.real_world import RealWorld
-
-        sim = RealWorld(robot)
-        # TODO: Debug IMU
-        sim.has_imu = False
-
-    else:
-        raise ValueError("Unknown simulator")
 
     main(robot, sim, policy, debug)
