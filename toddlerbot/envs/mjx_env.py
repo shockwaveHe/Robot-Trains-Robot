@@ -1,3 +1,4 @@
+import os
 from dataclasses import asdict
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -16,6 +17,8 @@ from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.jax_utils import quat_apply, quat_mult
 from toddlerbot.utils.math_utils import wrap_to_pi
+
+os.environ["USE_JAX"] = "true"
 
 
 class MuJoCoEnv(PipelineEnv):
@@ -153,7 +156,7 @@ class MuJoCoEnv(PipelineEnv):
             from toddlerbot.motion_reference.walk_simple_ref import WalkSimpleReference
 
             self.motion_ref = WalkSimpleReference(
-                self.robot, use_jax=True, default_joint_pos=default_joint_pos
+                self.robot, default_joint_pos=default_joint_pos
             )
         else:
             raise ValueError(f"Unknown env {self.name}")

@@ -45,9 +45,8 @@ def state_to_obs(
 
 class BaseSim(ABC):
     @abstractmethod
-    def __init__(self, name: str, dt: float):
+    def __init__(self, name: str):
         self.name = name
-        self.dt = dt
         self.visualizer = None
 
     @abstractmethod

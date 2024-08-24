@@ -28,10 +28,12 @@ class MuJoCoSim(BaseSim):
         vis_type: str = "",
     ):
         """Initialize the MuJoCo simulation environment."""
-        super().__init__("mujoco", dt)
+        super().__init__("mujoco")
 
         self.robot = robot
         self.n_frames = n_frames
+        self.dt = dt
+        self.control_dt = n_frames * dt
         self.fixed_base = fixed_base
 
         if len(xml_str) > 0 and assets is not None:

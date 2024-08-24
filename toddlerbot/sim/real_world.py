@@ -13,7 +13,7 @@ from toddlerbot.utils.file_utils import find_ports
 
 class RealWorld(BaseSim):
     def __init__(self, robot: Robot):
-        super().__init__("real_world", 0.001)
+        super().__init__("real_world")
         self.robot = robot
 
         self.has_imu = self.robot.config["general"]["has_imu"]

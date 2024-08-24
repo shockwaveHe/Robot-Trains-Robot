@@ -1,17 +1,15 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
-import jax
-
 from toddlerbot.sim.robot import Robot
+from toddlerbot.utils.array_utils import ArrayType
 
 
 class MotionReference(ABC):
-    def __init__(self, name: str, motion_type: str, robot: Robot, use_jax: bool):
+    def __init__(self, name: str, motion_type: str, robot: Robot):
         self.name = name
         self.motion_type = motion_type
         self.robot = robot
-        self.use_jax = use_jax
 
     def get_joint_idx(self, joint_name: str) -> int:
         return self.robot.joint_ordering.index(joint_name)
@@ -19,9 +17,9 @@ class MotionReference(ABC):
     @abstractmethod
     def get_state_ref(
         self,
-        path_pos: jax.Array,
-        path_quat: jax.Array,
-        phase: Optional[float | jax.Array] = None,
-        command: Optional[jax.Array] = None,
-    ) -> jax.Array:
+        path_pos: ArrayType,
+        path_quat: ArrayType,
+        phase: Optional[float | ArrayType] = None,
+        command: Optional[ArrayType] = None,
+    ) -> ArrayType:
         pass
