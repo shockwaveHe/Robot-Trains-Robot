@@ -28,6 +28,8 @@ class RealWorld(BaseSim):
             "right_sho_yaw_drive",
             "left_elbow_roll",
             "right_elbow_roll",
+            "left_elbow_yaw_drive",
+            "right_elbow_yaw_drive",
             "left_knee_act",
             "right_knee_act",
         ]
