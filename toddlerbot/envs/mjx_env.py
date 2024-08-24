@@ -228,6 +228,7 @@ class MuJoCoEnv(PipelineEnv):
             self.reward_scales = self.reward_scales.at[i].set(scale)  # type:ignore
 
         self.healthy_z_range = self.cfg.rewards.healthy_z_range
+        self.tracking_sigma = self.cfg.rewards.tracking_sigma
         self.min_feet_distance = self.cfg.rewards.min_feet_distance
         self.max_feet_distance = self.cfg.rewards.max_feet_distance
         self.target_feet_z_delta = self.cfg.rewards.target_feet_z_delta
@@ -614,7 +615,7 @@ class MuJoCoEnv(PipelineEnv):
         lin_vel_xy = local_vel[:2]
         lin_vel_xy_ref = info["state_ref"][7:9]
         error = jnp.linalg.norm(lin_vel_xy - lin_vel_xy_ref, axis=-1)  # type:ignore
-        reward = jnp.exp(-8.0 * error**2)  # type:ignore
+        reward = jnp.exp(-self.tracking_sigma * error**2)  # type:ignore
         return reward
 
     def _reward_lin_vel_z(
@@ -627,7 +628,7 @@ class MuJoCoEnv(PipelineEnv):
         lin_vel_z = local_vel[2]
         lin_vel_z_ref = info["state_ref"][9]
         error = lin_vel_z - lin_vel_z_ref
-        reward = jnp.exp(-8.0 * error**2)  # type:ignore
+        reward = jnp.exp(-self.tracking_sigma * error**2)  # type:ignore
         return reward
 
     def _reward_ang_vel_xy(
@@ -640,7 +641,7 @@ class MuJoCoEnv(PipelineEnv):
         ang_vel_xy = local_vel[:2]
         ang_vel_xy_ref = info["state_ref"][10:12]
         error = jnp.linalg.norm(ang_vel_xy - ang_vel_xy_ref, axis=-1)  # type:ignore
-        reward = jnp.exp(-2.0 * error**2)  # type:ignore
+        reward = jnp.exp(-self.tracking_sigma / 4 * error**2)  # type:ignore
         return reward
 
     def _reward_ang_vel_z(
@@ -653,7 +654,7 @@ class MuJoCoEnv(PipelineEnv):
         ang_vel_z = local_vel[2]
         ang_vel_z_ref = info["state_ref"][12]
         error = ang_vel_z - ang_vel_z_ref
-        reward = jnp.exp(-2.0 * error**2)  # type:ignore
+        reward = jnp.exp(-self.tracking_sigma / 4 * error**2)  # type:ignore
         return reward
 
     def _reward_leg_joint_pos(

@@ -76,6 +76,7 @@ class RewardScales:
 @dataclass
 class RewardsConfig:
     healthy_z_range: List[float] = field(default_factory=lambda: [0.2, 0.4])
+    tracking_sigma: float = 10.0
     min_feet_distance: float = 0.05
     max_feet_distance: float = 0.15
     target_feet_z_delta: float = 0.03
