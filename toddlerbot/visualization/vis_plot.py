@@ -272,12 +272,14 @@ def plot_joint_angle_tracking(
 ):
     x_list: List[List[float]] = []
     y_list: List[List[float]] = []
+    joint_name_list: List[str] = []
     legend_labels: List[str] = []
     for name in time_seq_dict.keys():
         x_list.append(time_seq_dict[name])
         x_list.append(time_seq_ref_dict[name])
         y_list.append(joint_angle_dict[name])
         y_list.append(joint_angle_ref_dict[name])
+        joint_name_list.append(name)
         legend_labels.append(name + line_suffix[0])
         legend_labels.append(name + line_suffix[1])
 
@@ -294,13 +296,13 @@ def plot_joint_angle_tracking(
             continue
 
         if set_ylim:
-            y_min, y_max = joint_limits[legend_labels[2 * i]]
+            y_min, y_max = joint_limits[joint_name_list[i]]
             ax.set_ylim(y_min - 0.1, y_max + 0.1)  # type: ignore
 
         plot_line_graph(
             y_list[2 * i : 2 * i + 2],
             x_list[2 * i : 2 * i + 2],
-            title=f"{legend_labels[2*i]}" if len(title_list) == 0 else title_list[i],
+            title=f"{joint_name_list[i]}" if len(title_list) == 0 else title_list[i],
             x_label="Time (s)",
             y_label="Position (rad)",
             save_config=True if i == n_plots - 1 else False,

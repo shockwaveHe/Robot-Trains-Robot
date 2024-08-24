@@ -323,7 +323,7 @@ if __name__ == "__main__":
     if args.policy == "stand":
         from toddlerbot.policies.stand import StandPolicy
 
-        policy: BasePolicy = StandPolicy(robot)
+        policy = StandPolicy(robot, sim.get_observation().q)
 
     elif args.policy == "rotate_torso":
         from toddlerbot.policies.rotate_torso import RotateTorsoPolicy
