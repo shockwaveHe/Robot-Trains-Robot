@@ -193,9 +193,14 @@ class MuJoCoSim(BaseSim):
         if self.visualizer is not None:
             self.visualizer.visualize(self.data)  # type: ignore
 
-    def rollout(self, motor_angles_list: List[Dict[str, float]]):
+    def rollout(
+        self,
+        motor_angles_list: List[Dict[str, float]]
+        | List[npt.NDArray[np.float32]]
+        | npt.NDArray[np.float32],
+    ):
         n_state = mujoco.mj_stateSize(self.model, mujoco.mjtState.mjSTATE_FULLPHYSICS)  # type: ignore
-        initial_state = np.empty(n_state, dtype=np.float32)  # type: ignore
+        initial_state = np.empty(n_state, dtype=np.float64)  # type: ignore
         mujoco.mj_getState(  # type: ignore
             self.model,  # type: ignore
             self.data,  # type: ignore
@@ -204,12 +209,18 @@ class MuJoCoSim(BaseSim):
         )
 
         control = np.zeros(
-            (len(motor_angles_list), int(self.model.nu)),  # type: ignore
-            dtype=np.float32,
+            (len(motor_angles_list) * self.n_frames, int(self.model.nu)),  # type: ignore
+            dtype=np.float64,
         )
-        for i, joint_angles in enumerate(motor_angles_list):
-            for name, angle in joint_angles.items():
-                control[i, self.model.actuator(name).id] = angle  # type: ignore
+        for i, motor_angles in enumerate(motor_angles_list):
+            if isinstance(motor_angles, np.ndarray):
+                control[self.n_frames * i : self.n_frames * (i + 1)] = motor_angles
+            else:
+                for name, angle in motor_angles.items():
+                    control[
+                        self.n_frames * i : self.n_frames * (i + 1),
+                        self.model.actuator(name).id,  # type: ignore
+                    ] = angle
 
         state_traj, _ = mujoco.rollout.rollout(  # type: ignore
             self.model,  # type: ignore
@@ -217,7 +228,7 @@ class MuJoCoSim(BaseSim):
             initial_state,
             control,
         )
-        state_traj = np.array(state_traj, dtype=np.float32).squeeze()
+        state_traj = np.array(state_traj, dtype=np.float32).squeeze()[:: self.n_frames]
 
         joint_state_list: List[Dict[str, JointState]] = []
         # mjSTATE_TIME ｜ mjSTATE_QPOS | mjSTATE_QVEL | mjSTATE_ACT

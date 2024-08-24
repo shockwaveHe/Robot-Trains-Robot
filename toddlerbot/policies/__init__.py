@@ -16,7 +16,7 @@ class BasePolicy(ABC):
         self.control_dt = 6 * 0.002
 
     @abstractmethod
-    def run(self, obs: Obs) -> npt.NDArray[np.float32]:
+    def step(self, obs: Obs) -> npt.NDArray[np.float32]:
         pass
 
     def reset(

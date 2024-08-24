@@ -1,10 +1,8 @@
 import argparse
-import copy
 import json
 import os
 import pickle
 import time
-import xml.etree.ElementTree as ET
 from multiprocessing import Pool
 from typing import Dict, List, Tuple
 
@@ -12,11 +10,9 @@ import numpy as np
 import numpy.typing as npt
 import optuna
 
-from toddlerbot.sim import BaseSim, Obs
+from toddlerbot.sim import Obs
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.robot import Robot
-from toddlerbot.utils.file_utils import combine_images
-from toddlerbot.utils.math_utils import get_sine_signal
 from toddlerbot.utils.misc_utils import log
 from toddlerbot.visualization.vis_plot import plot_joint_angle_tracking
 
@@ -33,12 +29,16 @@ def load_datasets(robot: Robot, exp_folder_path: str):
     obs_list: List[Obs] = data_dict["obs_list"]
     motor_angles_list: List[Dict[str, float]] = data_dict["motor_angles_list"]
 
-    split_obs_dict: Dict[str, npt.NDArray[np.float32]] = {}
-    split_action_dict: Dict[str, npt.NDArray[np.float32]] = {}
+    obs_time_dict: Dict[str, npt.NDArray[np.float32]] = {}
+    obs_pos_dict: Dict[str, npt.NDArray[np.float32]] = {}
+    action_dict: Dict[str, npt.NDArray[np.float32]] = {}
 
     def set_obs_action(joint_name: str, idx_range: slice):
-        split_obs_dict[joint_name] = np.array([obs.q for obs in obs_list[idx_range]])
-        split_action_dict[joint_name] = np.array(
+        obs_time_dict[joint_name] = np.array([obs.time for obs in obs_list[idx_range]])
+        obs_time_dict[joint_name] -= obs_time_dict[joint_name][0]
+
+        obs_pos_dict[joint_name] = np.array([obs.q for obs in obs_list[idx_range]])
+        action_dict[joint_name] = np.array(
             [
                 list(motor_angles.values())
                 for motor_angles in motor_angles_list[idx_range]
@@ -54,6 +54,9 @@ def load_datasets(robot: Robot, exp_folder_path: str):
 
         last_idx = 0
         for symmetric_name, idx in zip(joint_names, obs_indices):
+            if "knee_pitch" not in symmetric_name:
+                continue
+
             if symmetric_name in robot.joint_ordering:
                 set_obs_action(symmetric_name, slice(last_idx, idx))
             else:
@@ -64,151 +67,12 @@ def load_datasets(robot: Robot, exp_folder_path: str):
     else:
         set_obs_action("all", slice(None))
 
-    return split_obs_dict, split_action_dict
-
-
-def actuate_single_motor(
-    sim: BaseSim,
-    robot: Robot,
-    joint_name: str,
-    signal_pos: npt.NDArray[np.float32],
-    control_dt: float,
-    prep_time: float = 1,
-):
-    """
-    Actuates a single joint with the given signal and collects the response.
-    """
-    # Convert signal time to sleep time between updates
-    joint_data_dict: Dict[str, List[float]] = {"pos": [], "time": []}
-
-    joint_angles = robot.init_motor_angles.copy()
-    joint_angles[joint_name] = signal_pos[0]
-
-    prep_steps = int(prep_time / sim.dt)
-    control_steps = int(control_dt / sim.dt)
-
-    joint_angles_list: List[Dict[str, float]] = []
-    for _ in range(prep_steps):
-        joint_angles_list.append(joint_angles)
-
-    for joint_angle in signal_pos:
-        joint_angles_copy = joint_angles.copy()
-        joint_angles_copy[joint_name] = joint_angle
-        for _ in range(control_steps):
-            joint_angles_list.append(joint_angles_copy)
-
-    joint_state_list = sim.rollout(joint_angles_list)
-
-    joint_data_dict = {"pos": [], "time": []}
-    time_start = joint_state_list[prep_steps][joint_name].time
-    for i in range(prep_steps, len(joint_state_list), control_steps):
-        joint_state_dict = joint_state_list[i]
-        joint_data_dict["time"].append(joint_state_dict[joint_name].time - time_start)
-        joint_data_dict["pos"].append(joint_state_dict[joint_name].pos)
-
-    return joint_data_dict
-
-
-def update_xml(
-    sim_name: str, tree: ET.ElementTree, params_dict: Dict[str, Dict[str, float]]
-):
-    """
-    Update the MuJoCo XML file with new actuator parameters and return it as a string.
-    """
-    # Load the XML file
-    root = tree.getroot()
-
-    for joint_name, params in params_dict.items():
-        joint_name_pair = [joint_name]
-        if "left" in joint_name:
-            joint_name_pair.append(joint_name.replace("left", "right"))
-        elif "right" in joint_name:
-            joint_name_pair.append(joint_name.replace("right", "left"))
-
-        for name in joint_name_pair:
-            # Find the joint by name
-            joint = root.find(f".//joint[@name='{name}']")
-            if joint is not None:
-                if sim_name == "mujoco":
-                    # Update the joint with new parameters
-                    if "gain" in params:
-                        actuator = root.find(f".//position[@name='{name}_act']")
-                        if actuator is not None:
-                            actuator.set("kp", str(params["gain"]))
-                        else:
-                            raise ValueError(
-                                f"Actuator '{name}' not found in the XML tree."
-                            )
-
-                    if "n_load" in params:
-                        parent_body = None
-                        for body in root.findall(".//body"):
-                            if joint in body:
-                                parent_body = body
-                                break
-
-                        if parent_body is not None:
-                            parent_body_name = parent_body.get("name", "")
-                            if "430" in parent_body_name:
-                                inertial_data = inertial_data_430_list[
-                                    int(params["n_load"])
-                                ]
-                            elif "330" in parent_body_name:
-                                inertial_data = inertial_data_330_list[
-                                    int(params["n_load"])
-                                ]
-                            else:
-                                raise ValueError(
-                                    f"Parent body '{parent_body_name}' not found."
-                                )
-
-                            # Find the inertial element and update the mass
-                            inertial = parent_body.find("inertial")
-                            if inertial is not None:
-                                current_pos_list = inertial.get("pos", "").split(" ")
-                                current_pos_list[0] = inertial_data["pos_x"]
-                                inertial.set("pos", " ".join(current_pos_list))
-                                inertial.set("mass", inertial_data["mass"])
-                                inertial.set(
-                                    "diaginertia", inertial_data["diaginertia"]
-                                )
-                            else:
-                                raise ValueError(
-                                    f"Inertial element for joint '{name}' not found."
-                                )
-                        else:
-                            raise ValueError(
-                                f"Parent body for joint '{name}' not found."
-                            )
-
-                    for param_name, param_value in params.items():
-                        if param_name in ["damping", "armature", "frictionloss"]:
-                            joint.set(param_name, str(param_value))
-
-                elif sim_name == "isaac":
-                    dynamics = joint.find("dynamics")
-                    if dynamics is None:
-                        dynamics = ET.Element("dynamics")
-                        joint.append(dynamics)
-
-                    # Update the joint with new parameters
-                    for param_name, param_value in params.items():
-                        dynamics.set(param_name, str(param_value))
-
-                else:
-                    raise ValueError("Invalid simulator")
-            else:
-                raise ValueError(f"Joint '{name}' not found in the XML tree.")
-
-    # Convert the updated XML tree back to a string
-    xml_string = ET.tostring(root, encoding="unicode")
-
-    return xml_string
+    return obs_time_dict, obs_pos_dict, action_dict
 
 
 def optimize_parameters(
     robot: Robot,
-    sim: MuJoCoSim,
+    sim_name: str,
     joint_name: str,
     obs: npt.NDArray[np.float32],
     action: npt.NDArray[np.float32],
@@ -219,8 +83,20 @@ def optimize_parameters(
     armature_range: Tuple[float, float, float] = (0, 0.1, 1e-3),
     # friction_range: Tuple[float, float, float] = (0, 1.0, 1e-3),
 ):
+    if sim_name == "mujoco":
+        sim = MuJoCoSim(robot, fixed_base=True)
+
+    else:
+        raise ValueError("Invalid simulator")
+
+    initial_trial = {
+        "damping": float(sim.model.joint(joint_name).damping),  # type: ignore
+        "armature": float(sim.model.joint(joint_name).armature),  # type: ignore
+    }
+    joint_idx = robot.joint_ordering.index(joint_name)
+    obs_real = obs[:, joint_idx]
+
     def objective(trial: optuna.Trial):
-        model_response_all: List[List[List[float]]] = []
         # gain = trial.suggest_float("gain", *gain_range[:2], step=gain_range[2])
         damping = trial.suggest_float(
             "damping", *damping_range[:2], step=damping_range[2]
@@ -239,16 +115,16 @@ def optimize_parameters(
                 # "frictionloss": frictionloss,
             }
         }
+
         sim.set_joint_dyn(joint_dyn)
 
-        # TODO: Use sim.rollout
-        model_response_list: List[List[float]] = []
-        for angle in action:
-            motor_angles = robot.init_motor_angles.copy()
+        joint_state_list = sim.rollout(action)
 
-        model_response_all.append(model_response_list)
+        obs_sim = np.array(
+            [joint_state[joint_name].pos for joint_state in joint_state_list]
+        )
 
-        error = np.sqrt(np.mean((observed_pos_arr - np.array(model_response_all)) ** 2))
+        error = np.sqrt(np.mean((obs_real - obs_sim) ** 2))
 
         return error
 
@@ -268,7 +144,7 @@ def optimize_parameters(
         load_if_exists=True,
     )
 
-    # study.enqueue_trial({"damping": 0.099, "armature": 0.002, "frictionloss": 0.239})
+    study.enqueue_trial(initial_trial)
     study.optimize(objective, n_trials=n_iters, n_jobs=1, show_progress_bar=True)
 
     log(
@@ -277,21 +153,23 @@ def optimize_parameters(
         level="info",
     )
 
+    sim.close()
+
     return study.best_params, study.best_value
 
 
 def multiprocessing_optimization(
     robot: Robot,
-    sim: BaseSim,
-    split_obs_dict: Dict[str, npt.NDArray[np.float32]],
-    split_action_dict: Dict[str, npt.NDArray[np.float32]],
+    sim_name: str,
+    obs_pos_dict: Dict[str, npt.NDArray[np.float32]],
+    action_dict: Dict[str, npt.NDArray[np.float32]],
     n_iters: int,
 ):
     # return sysID_file_path
     optimize_args: List[
         Tuple[
             Robot,
-            BaseSim,
+            str,
             str,
             npt.NDArray[np.float32],
             npt.NDArray[np.float32],
@@ -300,155 +178,126 @@ def multiprocessing_optimization(
     ] = [
         (
             robot,
-            sim,
+            sim_name,
             joint_name,
-            split_obs_dict[joint_name],
-            split_action_dict[joint_name],
+            obs_pos_dict[joint_name],
+            action_dict[joint_name],
             n_iters,
         )
-        for joint_name in split_obs_dict
+        for joint_name in obs_pos_dict
     ]
 
     # Create a pool of processes
-    with Pool(processes=len(split_obs_dict)) as pool:
+    with Pool(processes=len(obs_pos_dict)) as pool:
         results = pool.starmap(optimize_parameters, optimize_args)
-
-    exp_name = f"{robot.name}_sysID_{sim.name}_optim"
-    time_str = time.strftime("%Y%m%d_%H%M%S")
-    exp_folder_path = f"results/{exp_name}_{time_str}"
-
-    os.makedirs(exp_folder_path, exist_ok=True)
-
-    opt_params_file_path = os.path.join(exp_folder_path, f"opt_params_{time_str}.json")
-    opt_values_file_path = os.path.join(exp_folder_path, f"opt_values_{time_str}.json")
 
     # Process results
     opt_params_dict: Dict[str, Dict[str, float]] = {}
     opt_values_dict: Dict[str, float] = {}
-    for joint_name, result in zip(split_obs_dict.keys(), results):
+    for joint_name, result in zip(obs_pos_dict.keys(), results):
         opt_params, opt_values = result
         if len(opt_params) > 0:
             opt_params_dict[joint_name] = opt_params
             opt_values_dict[joint_name] = opt_values
 
-        with open(opt_params_file_path, "w") as f:
-            json.dump(opt_params_dict, f, indent=4)
-
-        with open(opt_values_file_path, "w") as f:
-            json.dump(opt_values_dict, f, indent=4)
+    return opt_params_dict, opt_values_dict
 
 
 def evaluate(
     robot: Robot,
     sim_name: str,
+    obs_time_dict: Dict[str, npt.NDArray[np.float32]],
+    obs_pos_dict: Dict[str, npt.NDArray[np.float32]],
+    action_dict: Dict[str, npt.NDArray[np.float32]],
+    opt_params_dict: Dict[str, Dict[str, float]],
+    opt_values_dict: Dict[str, float],
     exp_folder_path: str,
-    tree: ET.ElementTree,
-    assets_dict: Dict[str, bytes],
-    signal_config_data: Dict[str, List[List[Dict[str, float]]]],
-    observed_time_data: Dict[str, List[List[List[float]]]],
-    observed_pos_data: Dict[str, npt.NDArray[np.float32]],
-    n_load_list: List[int],
-    dataset_name: str,
 ):
-    for joint_name in signal_config_data:
-        model_response_all: List[List[List[float]]] = []
+    opt_params_file_path = os.path.join(exp_folder_path, "opt_params.json")
+    opt_values_file_path = os.path.join(exp_folder_path, "opt_values.json")
 
-        time_seq_ref_dict: Dict[str, List[float]] = {}
-        time_seq_dict: Dict[str, List[float]] = {}
-        time_seq_dict_gt: Dict[str, List[float]] = {}
-        joint_angle_ref_dict: Dict[str, List[float]] = {}
-        joint_angle_dict: Dict[str, List[float]] = {}
-        joint_angle_dict_gt: Dict[str, List[float]] = {}
-        title_list: List[str] = []
+    with open(opt_params_file_path, "w") as f:
+        json.dump(opt_params_dict, f, indent=4)
 
-        for i, n_load in enumerate(n_load_list):
-            if sim_name == "mujoco":
-                from toddlerbot.sim.mujoco_sim import MuJoCoSim
+    with open(opt_values_file_path, "w") as f:
+        json.dump(opt_values_dict, f, indent=4)
 
-                params_dict = {joint_name: {"n_load": float(n_load)}}
-                xml_str = update_xml(sim_name, copy.deepcopy(tree), params_dict)
-                sim = MuJoCoSim(robot, xml_str=xml_str, assets=assets_dict)
+    time_seq_ref_dict: Dict[str, List[float]] = {}
+    time_seq_sim_dict: Dict[str, List[float]] = {}
+    time_seq_real_dict: Dict[str, List[float]] = {}
+    joint_angle_ref_dict: Dict[str, List[float]] = {}
+    joint_angle_sim_dict: Dict[str, List[float]] = {}
+    joint_angle_real_dict: Dict[str, List[float]] = {}
 
-            elif sim_name == "isaac":
-                from toddlerbot.sim.isaac_sim import IsaacSim
+    for joint_name in obs_pos_dict:
+        obs = obs_pos_dict[joint_name]
+        action = action_dict[joint_name]
 
-                # TODO: update later
-                sim = IsaacSim(robot, fixed=True, custom_parameters=custom_parameters)
+        joint_idx = robot.joint_ordering.index(joint_name)
+        obs_real = obs[:, joint_idx]
 
-            else:
-                raise ValueError("Invalid simulator")
+        if sim_name == "mujoco":
+            sim = MuJoCoSim(robot, fixed_base=True)
 
-            model_response_list: List[List[float]] = []
-            for trial, signal_config in enumerate(signal_config_data[joint_name][i]):
-                signal_time, signal_pos = get_sine_signal(signal_config)
+        else:
+            raise ValueError("Invalid simulator")
 
-                joint_data_dict = actuate_single_motor(
-                    sim, robot, joint_name, signal_pos, signal_config["control_dt"]
-                )
-                model_response_list.append(joint_data_dict["pos"])
+        joint_dyn = {
+            joint_name: {
+                "damping": opt_params_dict[joint_name]["damping"],
+                "armature": opt_params_dict[joint_name]["armature"],
+            }
+        }
+        sim.set_joint_dyn(joint_dyn)
 
-                title_list.append(
-                    json.dumps(
-                        {
-                            "load": n_load,
-                            "freq": round(signal_config["frequency"], 3),
-                            "amp": round(signal_config["amplitude"], 3),
-                        }
-                    )
-                )
-                time_seq_ref_dict[f"l={n_load}_i={trial}"] = list(signal_time)
-                time_seq_dict[f"l={n_load}_i={trial}"] = joint_data_dict["time"]
-                time_seq_dict_gt[f"l={n_load}_i={trial}"] = observed_time_data[
-                    joint_name
-                ][i][trial]
-                joint_angle_ref_dict[f"l={n_load}_i={trial}"] = list(signal_pos)
-                joint_angle_dict[f"l={n_load}_i={trial}"] = joint_data_dict["pos"]
-                joint_angle_dict_gt[f"l={n_load}_i={trial}"] = observed_pos_data[
-                    joint_name
-                ][i][trial]
+        joint_state_list = sim.rollout(action)
 
-            sim.close()
+        obs_sim = np.array(
+            [joint_state[joint_name].pos for joint_state in joint_state_list]
+        )
 
-            model_response_all.append(model_response_list)
+        error = np.sqrt(np.mean((obs_real - obs_sim) ** 2))
 
-        observed_pos_arr = observed_pos_data[joint_name]
-        error = np.sqrt(np.mean((observed_pos_arr - np.array(model_response_all)) ** 2))
         log(
-            f"{dataset_name} root mean squared error: {error}",
+            f"{joint_name} root mean squared error: {error}",
             header="SysID",
             level="info",
         )
 
-        if dataset_name == "test":
-            time_str = time.strftime("%Y%m%d_%H%M%S")
-            sim_file_name = f"{joint_name}_sim_{dataset_name}_{time_str}"
-            plot_joint_angle_tracking(
-                time_seq_dict,
-                time_seq_ref_dict,
-                joint_angle_dict,
-                joint_angle_ref_dict,
-                save_path=exp_folder_path,
-                file_name=sim_file_name,
-                title_list=title_list,
-            )
+        time_seq_ref_dict[joint_name] = np.arange(len(action)) * (sim.n_frames * sim.dt)  # type: ignore
+        time_seq_sim_dict[joint_name] = [
+            joint_state[joint_name].time for joint_state in joint_state_list
+        ]
+        time_seq_real_dict[joint_name] = obs_time_dict[joint_name].tolist()
 
-            real_file_name = f"{joint_name}_real_{dataset_name}_{time_str}"
-            plot_joint_angle_tracking(
-                time_seq_dict_gt,
-                time_seq_ref_dict,
-                joint_angle_dict_gt,
-                joint_angle_ref_dict,
-                save_path=exp_folder_path,
-                file_name=real_file_name,
-                title_list=title_list,
-            )
+        joint_angle_ref_dict[joint_name] = [
+            robot.motor_to_joint_angles(dict(zip(robot.motor_ordering, a)))[joint_name]
+            for a in action
+        ]
+        joint_angle_sim_dict[joint_name] = obs_sim.tolist()
+        joint_angle_real_dict[joint_name] = obs_real.tolist()
 
-            combined_file_name = f"{joint_name}_combined_{dataset_name}_{time_str}"
-            combine_images(
-                os.path.join(exp_folder_path, sim_file_name + ".png"),
-                os.path.join(exp_folder_path, real_file_name + ".png"),
-                os.path.join(exp_folder_path, combined_file_name + ".png"),
-            )
+        sim.close()
+
+    plot_joint_angle_tracking(
+        time_seq_sim_dict,
+        time_seq_ref_dict,
+        joint_angle_sim_dict,
+        joint_angle_ref_dict,
+        robot.joint_limits,
+        save_path=exp_folder_path,
+        file_name="sim_tracking",
+    )
+
+    plot_joint_angle_tracking(
+        time_seq_real_dict,
+        time_seq_ref_dict,
+        joint_angle_real_dict,
+        joint_angle_ref_dict,
+        robot.joint_limits,
+        save_path=exp_folder_path,
+        file_name="real_tracking",
+    )
 
 
 def main():
@@ -486,44 +335,51 @@ def main():
 
     robot = Robot(args.robot)
 
-    split_obs_dict, split_action_dict = load_datasets(robot, data_path)
+    exp_name = f"{robot.name}_sysID_{args.sim}_optim"
+    time_str = time.strftime("%Y%m%d_%H%M%S")
+    time_str = "20240823_152825"
+    exp_folder_path = f"results/{exp_name}_{time_str}"
 
-    if args.sim == "mujoco":
-        sim = MuJoCoSim(robot, fixed_base=True)
+    os.makedirs(exp_folder_path, exist_ok=True)
 
-    else:
-        raise ValueError("Invalid simulator")
+    with open(os.path.join(exp_folder_path, "opt_config.json"), "w") as f:
+        json.dump(vars(args), f, indent=4)
+
+    obs_time_dict, obs_pos_dict, action_dict = load_datasets(robot, data_path)
 
     ###### Optimize the hyperparameters ######
-    multiprocessing_optimization(
-        robot, sim, split_obs_dict, split_action_dict, args.n_iters
+    # optimize_parameters(
+    #     robot,
+    #     args.sim,
+    #     "waist_yaw",
+    #     obs_pos_dict["waist_yaw"],
+    #     action_dict["waist_yaw"],
+    #     args.n_iters,
+    # )
+
+    opt_params_dict, opt_values_dict = multiprocessing_optimization(
+        robot, args.sim, obs_pos_dict, action_dict, args.n_iters
     )
 
-    ###### Evaluate the optimized parameters in the simulation ######
-    sysID_robot_tree = ET.parse(sysID_file_path)
+    opt_params_file_path = os.path.join(exp_folder_path, "opt_params.json")
+    opt_values_file_path = os.path.join(exp_folder_path, "opt_values.json")
+
+    with open(opt_params_file_path, "r") as f:
+        opt_params_dict = json.load(f)
+
+    with open(opt_values_file_path, "r") as f:
+        opt_values_dict = json.load(f)
+
+    ##### Evaluate the optimized parameters in the simulation ######
     evaluate(
         robot,
         args.sim,
-        args.exp_folder_path,
-        sysID_robot_tree,
-        assets_dict,
-        signal_config_train,
-        observed_time_train,
-        observed_pos_train,
-        n_load_list,
-        "train",
-    )
-    evaluate(
-        robot,
-        args.sim,
-        args.exp_folder_path,
-        sysID_robot_tree,
-        assets_dict,
-        signal_config_test,
-        observed_time_test,
-        observed_pos_test,
-        n_load_list,
-        "test",
+        obs_time_dict,
+        obs_pos_dict,
+        action_dict,
+        opt_params_dict,
+        opt_values_dict,
+        exp_folder_path,
     )
 
 

@@ -176,7 +176,7 @@ def main():
     robot_dir = os.path.join("toddlerbot", "robot_descriptions", args.robot)
 
     if "sysID" in args.robot:
-        general_config = {
+        general_config: Dict[str, Any] = {
             "is_fixed": True,
             "use_torso_site": False,
             "has_imu": False,
@@ -185,15 +185,21 @@ def main():
             "has_sunny_sky": False,
         }
     else:
-        general_config = {
-            "is_fixed": False,
-            "use_torso_site": True,
-            "has_imu": True,
+        general_config: Dict[str, Any] = {
+            "is_fixed": True,
+            "use_torso_site": False,
+            "has_imu": False,
             "has_dynamixel": True,
             "dynamixel_baudrate": 4000000,
             "has_sunny_sky": False,
-            "foot_name": "ank_roll_link",
-            "offsets": {
+        }
+
+        if "arms" not in args.robot:
+            general_config["is_fixed"] = False
+            general_config["use_torso_site"] = True
+            general_config["has_imu"] = True
+            general_config["foot_name"] = "ank_roll_link"
+            general_config["offsets"] = {
                 "torso_z": 0.3442,
                 "waist_roll_coef": 0.29166667,
                 "waist_yaw_coef": 0.41666667,
@@ -203,8 +209,7 @@ def main():
                 "ank_short_rod_len": 0.03951266,
                 "ank_rev_r": 0.01,
                 "foot_z": 0.039,
-            },
-        }
+            }
 
     # This one needs to be ORDERED
     motor_config_path = os.path.join(robot_dir, "config_motors.json")

@@ -218,7 +218,7 @@ def add_keyframes(
 
     ctrl_str = ""
 
-    if has_upper_body:  # neck
+    if has_upper_body and has_lower_body:  # neck
         qpos_str += "0 0 0 0 "
         ctrl_str += "0 0 "
 

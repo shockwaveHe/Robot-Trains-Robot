@@ -151,7 +151,7 @@ def plot_results(
 
 
 def run_policy(policy: BasePolicy, obs: Obs) -> npt.NDArray[np.float32]:
-    return policy.run(obs)
+    return policy.step(obs)
 
 
 # @profile()

@@ -22,6 +22,15 @@ ASSEMBLY_LIST="toddlerbot left_leg_XM430 right_leg_XM430 left_arm_hand right_arm
 # DOC_ID_LIST="6f1a2a766fbbc097a49abb91"
 # ASSEMBLY_LIST="toddlerbot_legs"
 
+#### toddlerbot_arms #####
+# ROBOT_NAME="toddlerbot_arms"
+# BODY_NAME="toddlerbot_arms"
+# ARM_NAME="arm_hand"
+# DOC_ID_LIST="6f1a2a766fbbc097a49abb91 cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
+# ASSEMBLY_LIST="toddlerbot_arms left_arm_hand right_arm_hand"
+# DOC_ID_LIST="6f1a2a766fbbc097a49abb91"
+# ASSEMBLY_LIST="toddlerbot_arms"
+
 ##### sysID_device #####
 # MOTOR_TYPE="XM430"
 # ROBOT_NAME="sysID_$MOTOR_TYPE"
@@ -31,7 +40,7 @@ ASSEMBLY_LIST="toddlerbot left_leg_XM430 right_leg_XM430 left_arm_hand right_arm
 
 REPO_NAME="toddlerbot"
 URDF_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/$ROBOT_NAME.urdf
-MJCF_SCENE_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/${ROBOT_NAME}_scene.xml
+MJCF_FIXED_SCENE_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/${ROBOT_NAME}_fixed_scene.xml
 CONFIG_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/config.json
 
 # shellcheck disable=SC1091
@@ -77,13 +86,13 @@ if [ -f "$CONFIG_PATH" ]; then
     read -r -p " > " overwrite_config
     if [ "$overwrite_config" == "y" ]; then
         printf "Overwriting the configuration file...\n\n"
-        python $REPO_NAME/robot_descriptions/add_config.py --robot $ROBOT_NAME
+        python $REPO_NAME/robot_descriptions/add_configs.py --robot $ROBOT_NAME
     else
         printf "Configuration file not written.\n\n"
     fi
 else
     printf "Generating the configuration file...\n\n"
-    python $REPO_NAME/robot_descriptions/add_config.py --robot $ROBOT_NAME
+    python $REPO_NAME/robot_descriptions/add_configs.py --robot $ROBOT_NAME
 fi
 
 printf "Do you want to update the collision files? If so, make sure you have edited config_collision.json! (y/n)"
@@ -113,7 +122,7 @@ read -r -p " > " run_mujoco
 
 if [ "$run_mujoco" == "y" ]; then
     printf "Simulation running...\n\n"
-    python -m mujoco.viewer --mjcf=$MJCF_SCENE_PATH
+    python -m mujoco.viewer --mjcf=$MJCF_FIXED_SCENE_PATH
 else
     printf "Simulation skipped.\n\n"
 fi

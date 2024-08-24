@@ -366,6 +366,8 @@ class MuJoCoEnv(PipelineEnv):
         #     "qfrc: {}",
         #     pipeline_state.qfrc_actuator[self.qd_start_idx + self.leg_joint_indices],
         # )
+        # jax.debug.print("stance_mask: {}", state.info["stance_mask"])
+        # jax.debug.print("feet_air_time: {}", state.info["feet_air_time"])
 
         phase = state.info["step"] * self.dt / self.cycle_time
         phase_signal = jnp.array(  # type:ignore

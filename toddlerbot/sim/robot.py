@@ -71,19 +71,21 @@ class Robot:
                 pickle.dump(self.data_dict, f)
                 log("Computed and cached new data.", header="Robot")
 
-        points, values = self.data_dict["ank_fk_lookup_table"]
-        # TODO: Look up the speed
-        self.ank_fk_lookup_table = LinearNDInterpolator(points, values)
-        self.ank_act_pos_tri = Delaunay(points)
-        self.ank_pos_tri = Delaunay(values)
+        if "ank_fk_lookup_table" in self.data_dict:
+            points, values = self.data_dict["ank_fk_lookup_table"]
+            # TODO: Look up the speed
+            self.ank_fk_lookup_table = LinearNDInterpolator(points, values)
+            self.ank_act_pos_tri = Delaunay(points)
+            self.ank_pos_tri = Delaunay(values)
 
     def compute_cache(self, urdf: URDF):
-        self.data_dict: Dict[str, Any] = {}
-        self.data_dict["foot_size"] = self.compute_foot_size(urdf)
-        self.data_dict["offsets"] = self.compute_offsets(urdf)
-        self.data_dict["ank_act_zero"] = self.ankle_ik([0.0, 0.0])
-        points, values = self.compute_ankle_fk_lookup()
-        self.data_dict["ank_fk_lookup_table"] = (points, values)
+        self.data_dict: Dict[str, Any] = {"name": self.name}
+        if "foot_name" in self.config["general"]:
+            self.data_dict["foot_size"] = self.compute_foot_size(urdf)
+            self.data_dict["offsets"] = self.compute_offsets(urdf)
+            self.data_dict["ank_act_zero"] = self.ankle_ik([0.0, 0.0])
+            points, values = self.compute_ankle_fk_lookup()
+            self.data_dict["ank_fk_lookup_table"] = (points, values)
 
     def compute_foot_size(self, urdf: URDF) -> npt.NDArray[np.float32]:
         foot_bounds = urdf.scene.geometry.get("left_ank_pitch_link_visual.stl").bounds  # type: ignore
