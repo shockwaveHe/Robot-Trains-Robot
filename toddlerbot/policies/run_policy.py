@@ -127,6 +127,14 @@ def plot_results(
         save_path=exp_folder_path,
     )
     plot_joint_angle_tracking(
+        time_seq_dict,
+        time_seq_ref_dict,
+        joint_angle_dict,
+        joint_angle_ref_dict,
+        robot.joint_limits,
+        save_path=exp_folder_path,
+    )
+    plot_joint_angle_tracking(
         time_seq_dict_copy,
         time_seq_ref_dict_copy,
         motor_angle_dict,
@@ -134,14 +142,6 @@ def plot_results(
         robot.joint_limits,
         save_path=exp_folder_path,
         file_name="motor_angle_tracking",
-    )
-    plot_joint_angle_tracking(
-        time_seq_dict,
-        time_seq_ref_dict,
-        joint_angle_dict,
-        joint_angle_ref_dict,
-        robot.joint_limits,
-        save_path=exp_folder_path,
     )
     plot_joint_velocity_tracking(
         time_seq_dict,

@@ -200,7 +200,7 @@
             "type": "dynamixel",
             "spec": "XM430",
             "control_mode": "extended_position",
-            "init_pos": 0.38196122646331787,
+            "init_pos": 3.5250414902529474,
             "default_pos": 0.523599,
             "kp_real": 2400.0,
             "ki_real": 0.0,

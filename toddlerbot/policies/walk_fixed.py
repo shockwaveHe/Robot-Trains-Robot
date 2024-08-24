@@ -73,7 +73,6 @@ class WalkFixedPolicy(BasePolicy):
         self.jit_inference_fn(self.obs_history, self.rng)[0].block_until_ready()  # type: ignore
 
         prep_duration = 2.0
-
         init_action = np.zeros_like(self.default_action)
         self.prep_time, self.prep_action = self.reset(
             -self.control_dt, init_action, self.default_action, prep_duration
