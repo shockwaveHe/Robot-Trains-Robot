@@ -362,6 +362,7 @@ if __name__ == "__main__":
             RewardScales(),
             **{field: 0.0 for field in RewardScales.__dataclass_fields__},
         )
+        reward_scales.feet_distance = 0.5
         reward_scales.leg_joint_pos = 5.0
         reward_scales.waist_joint_pos = 5.0
         reward_scales.joint_torque = 5e-2
