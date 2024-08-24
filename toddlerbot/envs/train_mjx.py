@@ -142,20 +142,20 @@ def domain_randomize(
         gain = sys.actuator_gainprm.at[:, 0].set(param)  # type: ignore
         bias = sys.actuator_biasprm.at[:, 1].set(-param)  # type: ignore
 
-        damping_range = (-0.5, 0.5)
+        damping_range = (0.5, 2)
         damping = jnp.clip(  # type: ignore
             jax.random.uniform(  # type: ignore
                 key, (sys.nv,), minval=damping_range[0], maxval=damping_range[1]
             )
-            + sys.dof_damping,
+            * sys.dof_damping,
             min=0.0,
         )
-        armature_range = (0.0, 0.005)
+        armature_range = (0.5, 2)
         armature = (
             jax.random.uniform(  # type: ignore
                 key, (sys.nv,), minval=armature_range[0], maxval=armature_range[1]
             )
-            + sys.dof_armature
+            * sys.dof_armature
         )
 
         return friction, gain, bias, damping, armature
