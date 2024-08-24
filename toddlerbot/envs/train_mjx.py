@@ -1,7 +1,11 @@
+import os
+
+os.environ["XLA_FLAGS"] = "--xla_gpu_triton_gemm_any=true"
+os.environ["USE_JAX"] = "true"
+
 import argparse
 import functools
 import json
-import os
 import time
 from dataclasses import asdict, replace
 from typing import Any, Dict, List, Tuple
@@ -24,8 +28,6 @@ from toddlerbot.envs.mjx_config import MuJoCoConfig, RewardScales, RewardsConfig
 from toddlerbot.envs.mjx_env import MuJoCoEnv
 from toddlerbot.envs.ppo_config import PPOConfig
 from toddlerbot.sim.robot import Robot
-
-os.environ["XLA_FLAGS"] = "--xla_gpu_triton_gemm_any=true"
 
 
 def render_video(
@@ -119,24 +121,46 @@ def domain_randomize(
     sys: base.System, rng: jax.Array
 ) -> Tuple[base.System, base.System]:
     @jax.vmap
-    def rand(rng: jax.Array) -> Tuple[jax.Array, jax.Array, jax.Array]:
+    def rand(rng: jax.Array) -> Tuple[jax.Array, ...]:
         _, key = jax.random.split(rng, 2)  # type: ignore
         # Friction
-        friction = jax.random.uniform(key, (1,), minval=0.6, maxval=1.4)  # type: ignore
+        friction_range = (0.6, 1.4)
+        friction = jax.random.uniform(  # type: ignore
+            key, (1,), minval=friction_range[0], maxval=friction_range[1]
+        )  # type: ignore
         friction = sys.geom_friction.at[:, 0].set(friction)  # type: ignore
 
         # Actuator
         _, key = jax.random.split(key, 2)  # type: ignore
         gain_range = (-5, 5)
         param = (
-            jax.random.uniform(key, (1,), minval=gain_range[0], maxval=gain_range[1])  # type: ignore
+            jax.random.uniform(  # type: ignore
+                key, (sys.nu,), minval=gain_range[0], maxval=gain_range[1]
+            )
             + sys.actuator_gainprm[:, 0]
         )
         gain = sys.actuator_gainprm.at[:, 0].set(param)  # type: ignore
         bias = sys.actuator_biasprm.at[:, 1].set(-param)  # type: ignore
-        return friction, gain, bias
 
-    friction, gain, bias = rand(rng)
+        damping_range = (-0.5, 0.5)
+        damping = jnp.clip(  # type: ignore
+            jax.random.uniform(  # type: ignore
+                key, (sys.nv,), minval=damping_range[0], maxval=damping_range[1]
+            )
+            + sys.dof_damping,
+            min=0.0,
+        )
+        armature_range = (0.0, 0.005)
+        armature = (
+            jax.random.uniform(  # type: ignore
+                key, (sys.nv,), minval=armature_range[0], maxval=armature_range[1]
+            )
+            + sys.dof_armature
+        )
+
+        return friction, gain, bias, damping, armature
+
+    friction, gain, bias, damping, armature = rand(rng)
 
     in_axes = jax.tree.map(lambda x: None, sys)  # type: ignore
     in_axes = in_axes.tree_replace(
@@ -144,6 +168,8 @@ def domain_randomize(
             "geom_friction": 0,
             "actuator_gainprm": 0,
             "actuator_biasprm": 0,
+            "dof_damping": 0,
+            "dof_armature": 0,
         }
     )
 
@@ -152,6 +178,8 @@ def domain_randomize(
             "geom_friction": friction,
             "actuator_gainprm": gain,
             "actuator_biasprm": bias,
+            "dof_damping": damping,
+            "dof_armature": armature,
         }
     )
 

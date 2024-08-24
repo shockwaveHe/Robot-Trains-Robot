@@ -1,4 +1,3 @@
-import os
 from dataclasses import asdict
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -17,8 +16,6 @@ from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.jax_utils import quat_apply, quat_mult
 from toddlerbot.utils.math_utils import wrap_to_pi
-
-os.environ["USE_JAX"] = "true"
 
 
 class MuJoCoEnv(PipelineEnv):
