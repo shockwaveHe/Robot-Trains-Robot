@@ -13,6 +13,7 @@ from toddlerbot.envs.ppo_config import PPOConfig
 from toddlerbot.policies import BasePolicy
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
+from toddlerbot.utils.math_utils import interpolate_action
 
 # from toddlerbot.utils.misc_utils import profile
 
@@ -71,8 +72,22 @@ class WalkFixedPolicy(BasePolicy):
         self.rng = jax.random.PRNGKey(0)  # type: ignore
         self.jit_inference_fn(self.obs_history, self.rng)[0].block_until_ready()  # type: ignore
 
+        prep_duration = 2.0
+
+        init_action = np.zeros_like(self.default_action)
+        self.prep_time, self.prep_action = self.reset(
+            -self.control_dt, init_action, self.default_action, prep_duration
+        )
+
     # @profile()
     def step(self, obs: Obs) -> npt.NDArray[np.float32]:
+        if obs.time < self.prep_time[-1]:
+            action = np.asarray(
+                interpolate_action(obs.time, self.prep_time, self.prep_action)
+            )
+
+            return action
+
         phase = self.step_curr * self.control_dt / self.cycle_time
         phase_signal = np.array(  # type:ignore
             [np.sin(2 * np.pi * phase), np.cos(2 * np.pi * phase)]  # type:ignore
