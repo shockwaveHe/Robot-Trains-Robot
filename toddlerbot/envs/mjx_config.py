@@ -59,16 +59,16 @@ class RewardScales:
     feet_distance: float = 0.5
     feet_slip: float = 0.0  # 0.1
     stand_still: float = 0.0  # 1.0
-    joint_torque: float = 0.0  # 5e-2
-    joint_acc: float = 0.0  # 5e-7
-    leg_action_rate: float = 0.0  # 1e-2
-    leg_action_acc: float = 0.0  # 1e-2
-    arm_action_rate: float = 0.0  # 1e-2
-    arm_action_acc: float = 0.0  # 1e-2
+    joint_torque: float = 5e-2
+    joint_acc: float = 5e-7
+    leg_action_rate: float = 1e-2
+    leg_action_acc: float = 1e-2
+    arm_action_rate: float = 0.0  #  1e-2
+    arm_action_acc: float = 0.0  #  1e-2
     neck_action_rate: float = 0.0  # 1e-2
     neck_action_acc: float = 0.0  # 1e-2
-    waist_action_rate: float = 0.0  # 1e-2
-    waist_action_acc: float = 0.0  # 1e-2
+    waist_action_rate: float = 1e-2
+    waist_action_acc: float = 1e-2
     collision: float = 0.0  # 1.0
     survival: float = 10.0
 

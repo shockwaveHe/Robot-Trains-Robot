@@ -161,7 +161,7 @@
                     <inertial pos="-4.19816e-07 0.0301847 0.00114994" quat="0.99889 -0.0470974 7.07694e-05 0.000269543" mass="0.0195" diaginertia="1.51504e-05 1.4939e-05 3.04775e-06" />
                     <joint name="left_ank_roll" pos="0 0 0" axis="0 0 1" range="-0.785398 0.785398" damping="0.0" armature="0.0" />
                     <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="left_ank_roll_link_visual" class="visual" />
-                    <geom name="ank_roll_link_collision" size="0.021 0.0225 0.06" pos="0 0.0165 0.0074" type="box" rgba="0.615686 0.811765 0.929412 1" class="collision" />
+                    <geom name="ank_roll_link_collision" size="0.01785 0.0225 0.06" pos="0 0.0165 0.0074" type="box" rgba="0.615686 0.811765 0.929412 1" class="collision" />
                     <body name="ank_rr_link" pos="-0.018 0.016 -0.0206" quat="0.00911142 0 0 0.999958">
                       <inertial pos="-4.52496e-05 0.00630964 0" quat="0.473509 0.525157 -0.473509 0.525157" mass="0.00145" diaginertia="4.29219e-08 2.97647e-08 2.74049e-08" />
                       <joint name="left_ank_long_rev_1" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.0" armature="0.0" />
@@ -253,7 +253,7 @@
                     <inertial pos="-4.19816e-07 0.0301847 0.00114994" quat="0.99889 -0.0470974 7.07694e-05 0.000269543" mass="0.0195" diaginertia="1.51504e-05 1.4939e-05 3.04775e-06" />
                     <joint name="right_ank_roll" pos="0 0 0" axis="0 0 1" range="-0.785398 0.785398" damping="0.0" armature="0.0" />
                     <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="right_ank_roll_link_visual" class="visual" />
-                    <geom name="ank_roll_link_2_collision" size="0.021 0.0225 0.06" pos="0 0.0165 0.0074" type="box" rgba="0.615686 0.811765 0.929412 1" class="collision" />
+                    <geom name="ank_roll_link_2_collision" size="0.01785 0.0225 0.06" pos="0 0.0165 0.0074" type="box" rgba="0.615686 0.811765 0.929412 1" class="collision" />
                     <body name="ank_rr_link_3" pos="0.018 0.016 -0.0206" quat="0.999958 0 0 0.00911142">
                       <inertial pos="-4.52496e-05 -0.00630964 0" quat="0.525157 0.473509 -0.525157 0.473509" mass="0.00145" diaginertia="4.29219e-08 2.97647e-08 2.74049e-08" />
                       <joint name="right_ank_long_rev_1" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.0" armature="0.0" />

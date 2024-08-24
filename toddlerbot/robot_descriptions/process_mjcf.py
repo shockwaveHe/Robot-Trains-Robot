@@ -864,7 +864,7 @@ def get_mjcf_files(robot_name: str):
         add_contacts(
             xml_root, robot.collision_config, robot.config["general"]["foot_name"]
         )
-        replace_box_collision(xml_root, robot.config["general"]["foot_name"])
+        # replace_box_collision(xml_root, robot.config["general"]["foot_name"])
         xml_tree.write(mjcf_path)
 
     create_scene_xml(mjcf_path, robot.config["general"]["is_fixed"])
