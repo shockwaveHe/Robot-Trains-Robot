@@ -328,7 +328,7 @@ if __name__ == "__main__":
     elif args.policy == "rotate_torso":
         from toddlerbot.policies.rotate_torso import RotateTorsoPolicy
 
-        policy = RotateTorsoPolicy(robot)
+        policy = RotateTorsoPolicy(robot, sim.get_observation().q)
 
     elif args.policy == "squat":
         from toddlerbot.policies.squat import SquatPolicy

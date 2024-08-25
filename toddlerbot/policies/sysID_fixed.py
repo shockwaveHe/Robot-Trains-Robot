@@ -1,4 +1,3 @@
-from dataclasses import dataclass, field
 from typing import Dict, List
 
 import numpy as np
@@ -7,20 +6,12 @@ import numpy.typing as npt
 from toddlerbot.policies import BasePolicy
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
+from toddlerbot.tools.sysID import SysIDSpecs
 from toddlerbot.utils.math_utils import (
     get_chirp_signal,
     interpolate_action,
 )
 from toddlerbot.utils.misc_utils import set_seed
-
-
-@dataclass
-class SysIDSpecs:
-    amplitude_ratio: float = 0.75
-    initial_frequency: float = 0.1
-    final_frequency: float = 0.5
-    warm_up_angles: Dict[str, float] = field(default_factory=lambda: {})
-    direction: float = 1
 
 
 class SysIDFixedPolicy(BasePolicy):
