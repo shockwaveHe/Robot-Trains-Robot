@@ -36,6 +36,11 @@ class MuJoCoSim(BaseSim):
         self.control_dt = n_frames * dt
         self.fixed_base = fixed_base
 
+        self.imu_euler_noise_std = self.robot.config["general"]["imu"][
+            "euler_noise_std"
+        ]
+        self.imu_gyro_noise_std = self.robot.config["general"]["imu"]["gyro_noise_std"]
+
         if len(xml_str) > 0 and assets is not None:
             model = mujoco.MjModel.from_xml_string(xml_str, assets)  # type: ignore
         else:
@@ -137,16 +142,21 @@ class MuJoCoSim(BaseSim):
 
         obs = state_to_obs(motor_state_dict, joint_state_dict)
 
-        # TODO: Tune the IMU data
         if self.fixed_base:
-            quat = self.data.sensor("orientation").data  # type: ignore
-            ang_vel = self.data.sensor("angular_velocity").data  # type: ignore
+            quat = np.array([1, 0, 0, 0], dtype=np.float32)
+            ang_vel = np.zeros(3, dtype=np.float32)
         else:
             quat = self.data.body("torso").xquat  # type: ignore
             ang_vel = self.data.body("torso").cvel[:3]  # type: ignore
 
-        obs.imu_euler = np.asarray(quat2euler(np.array(quat, copy=True)))  # type: ignore
-        obs.imu_ang_vel = np.array(ang_vel, copy=True)  # type: ignore
+        obs.euler = np.asarray(quat2euler(np.array(quat, copy=True)))  # type: ignore
+        obs.ang_vel = np.array(ang_vel, copy=True)  # type: ignore
+
+        # Add sensor noise
+        obs.euler += np.random.normal(0, self.imu_euler_noise_std, size=obs.euler.shape)
+        obs.ang_vel += np.random.normal(
+            0, self.imu_gyro_noise_std, size=obs.ang_vel.shape
+        )
 
         return obs
 

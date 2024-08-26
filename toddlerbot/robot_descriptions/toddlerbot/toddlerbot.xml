@@ -81,11 +81,10 @@
 
   <worldbody>
     <body name="torso" pos="0 0 0.3442" quat="1 0 0 0">
-      <inertial pos="-0.00744026 0.00250666 0.0724345" quat="1.0 0.0 0.0 0.0" mass="0.584753" diaginertia="1.61612e-03 1.30945e-03 1.18978e-03" />
+      <inertial pos="-0.0093224 0.00309257 0.074559" quat="1.0 0.0 0.0 0.0" mass="0.594208" diaginertia="1.66337e-03 1.31253e-03 1.24671e-03" />
       <freejoint />
-      <site name="imu" size="0.01" pos="0.0 0 0.0" />
       <site name="torso" fromto="0.01 0 0.4 -0.01 0 0.4" type="cylinder" size="0.005 0.005 1" group="3" />
-      <geom type="mesh" rgba="0.58594 0.732003 0.846222 1" mesh="torso_visual" class="visual" />
+      <geom type="mesh" rgba="0.575265 0.732668 0.855581 1" mesh="torso_visual" class="visual" />
       <body name="spur_1m_20t" pos="-0.005 0 0.121487" quat="1 0 0 0">
         <inertial pos="0 0 0.0033746" quat="0.5 0.5 -0.5 0.5" mass="0.0015535" diaginertia="7.95589e-08 4.47265e-08 4.47265e-08" />
         <joint name="neck_yaw_drive" pos="0 0 0" axis="0 0 1" range="-2.26893 2.26893" damping="0.099" armature="0.002" />
@@ -95,7 +94,7 @@
         <inertial pos="2.72913e-05 -0.00019799 0.0115274" quat="0.707 0.0136941 -0.0132325 0.706957" mass="0.00851683" diaginertia="1.12518e-06 1.04071e-06 3.14701e-07" />
         <joint name="neck_yaw_driven" pos="0 0 0" axis="0 0 1" range="-3.14159 3.14159" damping="0.189799" armature="0.00383432" />
         <geom type="mesh" rgba="0.336363 0.486808 0.749761 1" mesh="neck_yaw_link_visual" class="visual" />
-        <body name="neck_pitch_link" pos="3.75e-10 -0.00515 0.0275" quat="0 0 -0.707107 -0.707107">
+        <body name="neck_pitch_link" pos="3.75001e-10 -0.00515 0.0275" quat="0 0 0.707107 0.707107">
           <inertial pos="-0.00343705 0.0328768 -0.000364765" quat="0.985226 -0.157163 0.0224975 -0.064217" mass="0.112116" diaginertia="7.73792e-05 6.73704e-05 2.43788e-05" />
           <joint name="neck_pitch_driven" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.11979" armature="0.00242" />
           <geom type="mesh" rgba="0.749111 0.800028 0.874413 1" mesh="neck_pitch_link_visual" class="visual" />
@@ -106,7 +105,7 @@
           </body>
         </body>
       </body>
-      <body name="waist_gears" pos="0 0 0" quat="0 0 0 -1">
+      <body name="waist_gears" pos="0 0 0" quat="0 0 0 1">
         <inertial pos="-2.96888e-07 5.64643e-08 -0.0125882" quat="0.49998 0.500022 0.500015 0.499983" mass="0.02581" diaginertia="7.25404e-06 6.93797e-06 1.51213e-06" />
         <joint name="waist_yaw" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.454" armature="0.005" />
         <geom type="mesh" rgba="0.263277 0.517464 0.701287 1" mesh="waist_gears_visual" class="visual" />
@@ -161,10 +160,10 @@
                     <joint name="left_ank_pitch" pos="0 0 0" axis="0 0 1" range="-1.0472 0.785398" damping="0.603" armature="0.0" />
                     <geom type="mesh" rgba="0.631892 0.726687 0.783564 1" mesh="left_ank_pitch_link_visual" class="visual" />
                     <body name="ank_roll_link" pos="0.0015 0 0" quat="0.707107 0 0.707107 0">
-                      <inertial pos="-4.19816e-07 0.0301847 0.00114994" quat="0.99889 -0.0470974 7.07694e-05 0.000269543" mass="0.0195" diaginertia="1.51504e-05 1.4939e-05 3.04775e-06" />
+                      <inertial pos="-3.22063e-10 0.0304877 0.00477926" quat="0.706988 -0.0129711 0.0129711 0.706988" mass="0.0272" diaginertia="2.53038e-05 2.29435e-05 5.07044e-06" />
                       <joint name="left_ank_roll" pos="0 0 0" axis="0 0 1" range="-0.785398 0.785398" damping="0.565" armature="0.0" />
                       <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="left_ank_roll_link_visual" class="visual" />
-                      <geom name="ank_roll_link_collision" size="0.01785 0.0225 0.06" pos="0 0.0165 0.0074" type="box" rgba="0.615686 0.811765 0.929412 1" class="collision" />
+                      <geom name="ank_roll_link_collision" size="0.021 0.0225 0.06" pos="0 0.0165 0.0084" type="box" rgba="0.615686 0.811765 0.929412 1" class="collision" />
                       <body name="ank_rr_link" pos="-0.018 0.016 -0.0206" quat="0.00911142 0 0 0.999958">
                         <inertial pos="-4.52496e-05 0.00630964 0" quat="0.473509 0.525157 -0.473509 0.525157" mass="0.00145" diaginertia="4.29219e-08 2.97647e-08 2.74049e-08" />
                         <joint name="left_ank_long_rev_1" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.0" armature="0.0" />
@@ -253,10 +252,10 @@
                     <joint name="right_ank_pitch" pos="0 0 0" axis="0 0 1" range="-1.0472 0.785398" damping="0.608" armature="0.0" />
                     <geom type="mesh" rgba="0.631892 0.726687 0.783564 1" mesh="right_ank_pitch_link_visual" class="visual" />
                     <body name="ank_roll_link_2" pos="0.0015 0 0" quat="0.707107 0 0.707107 0">
-                      <inertial pos="-4.19816e-07 0.0301847 0.00114994" quat="0.99889 -0.0470974 7.07694e-05 0.000269543" mass="0.0195" diaginertia="1.51504e-05 1.4939e-05 3.04775e-06" />
+                      <inertial pos="-3.22063e-10 0.0304877 0.00477926" quat="0.706988 -0.0129711 0.0129711 0.706988" mass="0.0272" diaginertia="2.53038e-05 2.29435e-05 5.07044e-06" />
                       <joint name="right_ank_roll" pos="0 0 0" axis="0 0 1" range="-0.785398 0.785398" damping="0.579" armature="0.0" />
                       <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="right_ank_roll_link_visual" class="visual" />
-                      <geom name="ank_roll_link_2_collision" size="0.01785 0.0225 0.06" pos="0 0.0165 0.0074" type="box" rgba="0.615686 0.811765 0.929412 1" class="collision" />
+                      <geom name="ank_roll_link_2_collision" size="0.021 0.0225 0.06" pos="0 0.0165 0.0084" type="box" rgba="0.615686 0.811765 0.929412 1" class="collision" />
                       <body name="ank_rr_link_3" pos="0.018 0.016 -0.0206" quat="0.999958 0 0 0.00911142">
                         <inertial pos="-4.52496e-05 -0.00630964 0" quat="0.525157 0.473509 -0.525157 0.473509" mass="0.00145" diaginertia="4.29219e-08 2.97647e-08 2.74049e-08" />
                         <joint name="right_ank_long_rev_1" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.0" armature="0.0" />
@@ -423,14 +422,6 @@
   <option>
     <flag eulerdamp="disable" />
   </option>
-  <sensor>
-    <framequat name="orientation" objtype="site" noise="0.001" objname="imu" />
-    <framepos name="position" objtype="site" noise="0.001" objname="imu" />
-    <gyro name="angular_velocity" site="imu" noise="0.005" cutoff="34.9" />
-    <velocimeter name="linear_velocity" site="imu" noise="0.001" cutoff="30" />
-    <accelerometer name="linear_acceleration" site="imu" noise="0.005" cutoff="157" />
-    <magnetometer name="magnetometer" site="imu" />
-  </sensor>
   <actuator>
     <position name="neck_yaw_drive" joint="neck_yaw_driven" kp="18.75" gear="0.722222" ctrlrange="-3.14159 3.14159" class="XC330" />
     <position name="neck_pitch_drive" joint="neck_pitch_driven" kp="18.75" gear="0.909091" ctrlrange="-1.5708 1.5708" class="XC330" />

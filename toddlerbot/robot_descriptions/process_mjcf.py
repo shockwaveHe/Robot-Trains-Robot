@@ -801,8 +801,8 @@ def process_mjcf_fixed_file(root: ET.Element, robot: Robot):
     if robot.config["general"]["use_torso_site"]:
         add_torso_site(root)
 
-    if robot.config["general"]["has_imu"]:
-        add_imu_sensor(root)
+    # if robot.config["general"]["has_imu"]:
+    #     add_imu_sensor(root)
 
     update_joint_params(root, robot.config["joints"])
     update_geom_classes(root, ["contype", "conaffinity", "group", "density"])

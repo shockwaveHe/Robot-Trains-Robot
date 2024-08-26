@@ -14,8 +14,8 @@ class Obs:
     a: npt.NDArray[np.float32]
     q: npt.NDArray[np.float32]
     dq: npt.NDArray[np.float32]
-    imu_euler: npt.NDArray[np.float32] = np.zeros(3, dtype=np.float32)
-    imu_ang_vel: npt.NDArray[np.float32] = np.zeros(3, dtype=np.float32)
+    euler: npt.NDArray[np.float32] = np.zeros(3, dtype=np.float32)
+    ang_vel: npt.NDArray[np.float32] = np.zeros(3, dtype=np.float32)
 
 
 def state_to_obs(

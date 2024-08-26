@@ -102,8 +102,8 @@ class WalkFixedPolicy(BasePolicy):
         )
         joint_pos_delta = obs.q - self.default_joint_pos
 
-        obs.imu_ang_vel = np.zeros(3, dtype=np.float32)
-        obs.imu_euler = np.zeros(3, dtype=np.float32)
+        obs.ang_vel = np.zeros(3, dtype=np.float32)
+        obs.euler = np.zeros(3, dtype=np.float32)
 
         obs_arr = np.concatenate(  # type:ignore
             [
@@ -112,8 +112,8 @@ class WalkFixedPolicy(BasePolicy):
                 joint_pos_delta * self.obs_scales.dof_pos,
                 obs.dq * self.obs_scales.dof_vel,
                 self.last_action,
-                obs.imu_ang_vel * self.obs_scales.ang_vel,
-                obs.imu_euler * self.obs_scales.euler,
+                obs.ang_vel * self.obs_scales.ang_vel,
+                obs.euler * self.obs_scales.euler,
             ]
         )
 
