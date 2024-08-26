@@ -309,13 +309,13 @@ if __name__ == "__main__":
         from toddlerbot.sim.mujoco_sim import MuJoCoSim
 
         sim = MuJoCoSim(robot, vis_type="render", fixed_base="fixed" in args.policy)
+        init_joint_pos = sim.get_observation().q
 
     elif args.sim == "real":
         from toddlerbot.sim.real_world import RealWorld
 
         sim = RealWorld(robot)
-        # TODO: Debug IMU
-        sim.has_imu = False
+        init_joint_pos = sim.get_observation(retries=-1).q
 
     else:
         raise ValueError("Unknown simulator")
@@ -323,12 +323,12 @@ if __name__ == "__main__":
     if args.policy == "stand":
         from toddlerbot.policies.stand import StandPolicy
 
-        policy = StandPolicy(robot, sim.get_observation().q)
+        policy = StandPolicy(robot, init_joint_pos)
 
     elif args.policy == "rotate_torso":
         from toddlerbot.policies.rotate_torso import RotateTorsoPolicy
 
-        policy = RotateTorsoPolicy(robot, sim.get_observation().q)
+        policy = RotateTorsoPolicy(robot, init_joint_pos)
 
     elif args.policy == "squat":
         from toddlerbot.policies.squat import SquatPolicy
@@ -339,7 +339,7 @@ if __name__ == "__main__":
         from toddlerbot.policies.walk_fixed import WalkFixedPolicy
 
         run_name = f"{args.robot}_{args.policy}_ppo_{args.ckpt}"
-        policy = WalkFixedPolicy(robot, run_name, sim.get_observation().q)
+        policy = WalkFixedPolicy(robot, run_name, init_joint_pos)
 
     elif args.policy == "walk":
         from toddlerbot.policies.walk import WalkPolicy

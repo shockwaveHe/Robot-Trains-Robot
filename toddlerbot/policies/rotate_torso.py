@@ -21,18 +21,27 @@ class RotateTorsoPolicy(BasePolicy):
 
         set_seed(0)
 
-        self.default_action = np.array(
-            list(robot.default_motor_angles.values()), dtype=np.float32
-        )
-
-        prep_duration = 10.0
+        prep_duration = 7.0
         warm_up_duration = 2.0
         signal_duraion = 10.0
         reset_duration = 2.0
 
         joint_sysID_specs = {
-            "waist_roll": SysIDSpecs(amplitude_ratio=0.5, final_frequency=0.3),
-            "waist_yaw": SysIDSpecs(final_frequency=0.3),
+            "waist_roll": SysIDSpecs(
+                amplitude_ratio=0.5,
+                final_frequency=0.3,
+                warm_up_angles={
+                    "left_sho_roll": -np.pi / 6,
+                    "right_sho_roll": -np.pi / 6,
+                },
+            ),
+            "waist_yaw": SysIDSpecs(
+                final_frequency=0.3,
+                warm_up_angles={
+                    "left_sho_roll": -np.pi / 6,
+                    "right_sho_roll": -np.pi / 6,
+                },
+            ),
         }
 
         time_list: List[npt.NDArray[np.float32]] = []
@@ -47,12 +56,14 @@ class RotateTorsoPolicy(BasePolicy):
             ),
             dtype=np.float32,
         )
+        zero_action = np.zeros_like(init_action)
+
         prep_time, prep_action = self.reset(
             -self.control_dt,
             init_action,
-            self.default_action,
+            zero_action,
             prep_duration,
-            end_time=8.0,
+            end_time=5.0,
         )
 
         time_list.append(prep_time)
@@ -64,7 +75,7 @@ class RotateTorsoPolicy(BasePolicy):
             mean = (
                 robot.joint_limits[joint_name][0] + robot.joint_limits[joint_name][1]
             ) / 2
-            warm_up_act = self.default_action.copy()
+            warm_up_act = zero_action.copy()
             warm_up_act[joint_idx] = mean
 
             if len(sysID_specs.warm_up_angles) > 0:
