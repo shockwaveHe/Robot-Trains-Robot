@@ -366,8 +366,6 @@ if __name__ == "__main__":
             rewards=RewardsConfig(healthy_z_range=[-0.2, 0.2], scales=reward_scales)
         )
         train_cfg = PPOConfig(
-            num_envs=2048,
-            num_minibatches=8,
             num_timesteps=10_000_000,
             num_evals=100,
             transition_steps=1_000_000,
