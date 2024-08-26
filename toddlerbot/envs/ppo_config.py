@@ -17,6 +17,7 @@ class PPOConfig:
     min_learning_rate: float = 2e-5
     transition_steps: int = 10_000_000
     entropy_cost: float = 1e-4
+    clipping_epsilon: float = 0.3
     num_envs: int = 1024
     batch_size: int = 256
     seed: int = 0
