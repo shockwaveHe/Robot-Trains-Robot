@@ -69,7 +69,7 @@ class RewardScales:
     neck_action_acc: float = 0.0  # 1e-2
     waist_action_rate: float = 1e-2
     waist_action_acc: float = 1e-2
-    collision: float = 1.0
+    collision: float = 0.0  # 1.0
     survival: float = 10.0
 
 
