@@ -18,10 +18,6 @@
             "ank_rev_r": 0.01,
             "foot_z": 0.039
         },
-        "imu": {
-            "euler_noise_std": 0.01,
-            "gyro_noise_std": 0.01
-        },
         "is_waist_closed_loop": true,
         "is_knee_closed_loop": true,
         "is_ankle_closed_loop": true

@@ -36,10 +36,10 @@ class MuJoCoSim(BaseSim):
         self.control_dt = n_frames * dt
         self.fixed_base = fixed_base
 
-        self.imu_euler_noise_std = self.robot.config["general"]["imu"][
-            "euler_noise_std"
-        ]
-        self.imu_gyro_noise_std = self.robot.config["general"]["imu"]["gyro_noise_std"]
+        # self.imu_euler_noise_std = self.robot.config["general"]["imu"][
+        #     "euler_noise_std"
+        # ]
+        # self.imu_gyro_noise_std = self.robot.config["general"]["imu"]["gyro_noise_std"]
 
         if len(xml_str) > 0 and assets is not None:
             model = mujoco.MjModel.from_xml_string(xml_str, assets)  # type: ignore
@@ -153,10 +153,10 @@ class MuJoCoSim(BaseSim):
         obs.ang_vel = np.array(ang_vel, copy=True)  # type: ignore
 
         # Add sensor noise
-        obs.euler += np.random.normal(0, self.imu_euler_noise_std, size=obs.euler.shape)
-        obs.ang_vel += np.random.normal(
-            0, self.imu_gyro_noise_std, size=obs.ang_vel.shape
-        )
+        # obs.euler += np.random.normal(0, self.imu_euler_noise_std, size=obs.euler.shape)
+        # obs.ang_vel += np.random.normal(
+        #     0, self.imu_gyro_noise_std, size=obs.ang_vel.shape
+        # )
 
         return obs
 

@@ -211,13 +211,13 @@ def main():
                 "foot_z": 0.039,
             }
 
-    if general_config["has_imu"]:
-        imu_config_path = os.path.join(robot_dir, "config_imu.json")
-        if os.path.exists(imu_config_path):
-            with open(imu_config_path, "r") as f:
-                general_config["imu"] = json.load(f)
-        else:
-            raise ValueError(f"{imu_config_path} not found!")
+    # if general_config["has_imu"]:
+    #     imu_config_path = os.path.join(robot_dir, "config_imu.json")
+    #     if os.path.exists(imu_config_path):
+    #         with open(imu_config_path, "r") as f:
+    #             general_config["imu"] = json.load(f)
+    #     else:
+    #         raise ValueError(f"{imu_config_path} not found!")
 
     # This one needs to be ORDERED
     motor_config_path = os.path.join(robot_dir, "config_motors.json")
