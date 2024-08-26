@@ -195,10 +195,15 @@ class SysIDFixedPolicy(BasePolicy):
 
             rotate_action = np.zeros_like(rotate_pos)
             for j, pos in enumerate(rotate_pos):
-                joint_angles = dict(zip(robot.joint_ordering, pos))
-                motor_angles = robot.joint_to_motor_angles(joint_angles)
-                sine_action = np.array(list(motor_angles.values()), dtype=np.float32)
-                rotate_action[j] = sine_action + warm_up_act
+                signal_action = np.array(
+                    list(
+                        robot.joint_to_motor_angles(
+                            dict(zip(robot.joint_ordering, pos))
+                        ).values()
+                    ),
+                    dtype=np.float32,
+                )
+                rotate_action[j] = signal_action + warm_up_act
 
             time_list.append(rotate_time)
             action_list.append(rotate_action)

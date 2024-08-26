@@ -98,15 +98,22 @@ class RotateTorsoPolicy(BasePolicy):
 
             rotate_time += time_list[-1][-1] + self.control_dt
 
-            rotate_pos = np.tile(init_joint_pos.copy(), (signal.shape[0], 1))  # type: ignore
+            rotate_pos = np.zeros(
+                (signal.shape[0], len(robot.joint_ordering)), np.float32
+            )
             rotate_pos[:, joint_idx] = signal
 
             rotate_action = np.zeros_like(rotate_pos)
             for j, pos in enumerate(rotate_pos):
-                joint_angles = dict(zip(robot.joint_ordering, pos))
-                motor_angles = robot.joint_to_motor_angles(joint_angles)
-                sine_action = np.array(list(motor_angles.values()), dtype=np.float32)
-                rotate_action[j] = sine_action + warm_up_act
+                signal_action = np.array(
+                    list(
+                        robot.joint_to_motor_angles(
+                            dict(zip(robot.joint_ordering, pos))
+                        ).values()
+                    ),
+                    dtype=np.float32,
+                )
+                rotate_action[j] = signal_action + warm_up_act
 
             time_list.append(rotate_time)
             action_list.append(rotate_action)
