@@ -1,4 +1,4 @@
 {
-    "euler_noise_std": 0.1,
-    "gyro_noise_std": 0.1
+    "euler_noise_std": 0.01,
+    "gyro_noise_std": 0.01
 }

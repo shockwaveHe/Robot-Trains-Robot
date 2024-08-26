@@ -26,7 +26,7 @@ class SysIDFixedPolicy(BasePolicy):
             list(robot.init_joint_angles.values()), dtype=np.float32
         )
 
-        prep_duration = 2.0
+        self.prep_duration = 2.0
         warm_up_duration = 2.0
         signal_duraion = 10.0
         reset_duration = 2.0
@@ -127,7 +127,7 @@ class SysIDFixedPolicy(BasePolicy):
 
         prep_act = np.zeros_like(init_action)
         prep_time, prep_action = self.reset(
-            -self.control_dt, prep_act, init_action, prep_duration
+            -self.control_dt, prep_act, init_action, self.prep_duration
         )
 
         time_list.append(prep_time)

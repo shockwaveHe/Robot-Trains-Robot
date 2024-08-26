@@ -74,7 +74,7 @@ class WalkFixedPolicy(BasePolicy):
         self.rng = jax.random.PRNGKey(0)  # type: ignore
         self.jit_inference_fn(self.obs_history, self.rng)[0].block_until_ready()  # type: ignore
 
-        prep_duration = 2.0
+        self.prep_duration = 2.0
         init_action = np.array(
             list(
                 robot.joint_to_motor_angles(
@@ -84,7 +84,7 @@ class WalkFixedPolicy(BasePolicy):
             dtype=np.float32,
         )
         self.prep_time, self.prep_action = self.reset(
-            -self.control_dt, init_action, self.default_action, prep_duration
+            -self.control_dt, init_action, self.default_action, self.prep_duration
         )
 
     # @profile()

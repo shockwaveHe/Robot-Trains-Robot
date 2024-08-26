@@ -1,6 +1,6 @@
 import math
 from dataclasses import is_dataclass
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from scipy.signal import chirp  # type: ignore
 
@@ -132,6 +132,16 @@ def quat2euler(quat: ArrayType, order: str = "wxyz") -> ArrayType:
     yaw = np.arctan2(t3, t4)  # type: ignore
 
     return np.array([roll, pitch, yaw])  # type: ignore
+
+
+def exponential_moving_average(
+    alpha: float,
+    current_value: ArrayType,
+    previous_filtered_value: Optional[ArrayType] = None,
+):
+    if previous_filtered_value is None:
+        return current_value
+    return alpha * current_value + (1 - alpha) * previous_filtered_value
 
 
 def wrap_to_pi(angle: ArrayType) -> ArrayType:

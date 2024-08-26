@@ -162,6 +162,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
     obs_list: List[Obs] = []
     motor_angles_list: List[Dict[str, float]] = []
 
+    is_prepared = False
     start_time = time.time()
     step_idx = 0
     p_bar = tqdm(total=n_steps, desc="Running the policy")
@@ -174,7 +175,12 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
             obs = sim.get_observation()
             obs.time -= start_time
 
-            if "real" not in sim.name:
+            if "real" in sim.name:
+                assert isinstance(sim, RealWorld)
+                if not is_prepared and obs.time > policy.prep_duration:
+                    is_prepared = True
+                    sim.imu.set_zero_pose()
+            else:
                 obs.time += time_until_next_step
 
             obs_time = time.time()

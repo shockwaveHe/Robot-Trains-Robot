@@ -16,7 +16,7 @@ class StandPolicy(BasePolicy):
             list(robot.default_motor_angles.values()), dtype=np.float32
         )
 
-        prep_duration = 2.0
+        self.prep_duration = 2.0
         init_action = np.array(
             list(
                 robot.joint_to_motor_angles(
@@ -26,7 +26,7 @@ class StandPolicy(BasePolicy):
             dtype=np.float32,
         )
         self.prep_time, self.prep_action = self.reset(
-            -self.control_dt, init_action, self.default_action, prep_duration
+            -self.control_dt, init_action, self.default_action, self.prep_duration
         )
 
     def step(self, obs: Obs) -> npt.NDArray[np.float32]:

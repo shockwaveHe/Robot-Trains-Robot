@@ -14,6 +14,7 @@ class BasePolicy(ABC):
         self.robot = robot
         self.name = "base"
         self.control_dt = 6 * 0.002
+        self.prep_duration = 0.0
 
     @abstractmethod
     def step(self, obs: Obs) -> npt.NDArray[np.float32]:
