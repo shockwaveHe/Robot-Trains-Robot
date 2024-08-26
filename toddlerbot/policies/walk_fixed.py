@@ -89,7 +89,7 @@ class WalkFixedPolicy(BasePolicy):
 
     # @profile()
     def step(self, obs: Obs) -> npt.NDArray[np.float32]:
-        if obs.time < self.prep_time[-1]:
+        if obs.time < self.prep_duration:
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
             )

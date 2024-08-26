@@ -351,7 +351,7 @@ if __name__ == "__main__":
         from toddlerbot.policies.walk import WalkPolicy
 
         run_name = f"{args.robot}_{args.policy}_ppo_{args.ckpt}"
-        policy = WalkPolicy(robot, run_name)
+        policy = WalkPolicy(robot, run_name, init_joint_pos)
 
     elif args.policy == "sysID_fixed":
         from toddlerbot.policies.sysID_fixed import SysIDFixedPolicy

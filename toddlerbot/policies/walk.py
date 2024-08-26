@@ -13,12 +13,15 @@ from toddlerbot.envs.ppo_config import PPOConfig
 from toddlerbot.policies import BasePolicy
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
+from toddlerbot.utils.math_utils import interpolate_action
 
 # from toddlerbot.utils.misc_utils import profile
 
 
 class WalkPolicy(BasePolicy):
-    def __init__(self, robot: Robot, run_name: str):
+    def __init__(
+        self, robot: Robot, run_name: str, init_joint_pos: npt.NDArray[np.float32]
+    ):
         super().__init__(robot)
         self.name = "walk"
 
@@ -71,13 +74,38 @@ class WalkPolicy(BasePolicy):
         self.rng = jax.random.PRNGKey(0)  # type: ignore
         self.jit_inference_fn(self.obs_history, self.rng)[0].block_until_ready()  # type: ignore
 
+        self.prep_duration = 7.0
+        init_action = np.array(
+            list(
+                robot.joint_to_motor_angles(
+                    dict(zip(robot.joint_ordering, init_joint_pos))
+                ).values()
+            ),
+            dtype=np.float32,
+        )
+        self.prep_time, self.prep_action = self.reset(
+            -self.control_dt,
+            init_action,
+            self.default_action,
+            self.prep_duration,
+            end_time=5.0,
+        )
+
     # @profile()
     def step(self, obs: Obs) -> npt.NDArray[np.float32]:
+        if obs.time < self.prep_duration:
+            action = np.asarray(
+                interpolate_action(obs.time, self.prep_time, self.prep_action)
+            )
+
+            return action
+
         phase = self.step_curr * self.control_dt / self.cycle_time
         phase_signal = np.array(  # type:ignore
             [np.sin(2 * np.pi * phase), np.cos(2 * np.pi * phase)]  # type:ignore
         )
         joint_pos_delta = obs.q - self.default_joint_pos
+
         obs_arr = np.concatenate(  # type:ignore
             [
                 phase_signal,
@@ -93,10 +121,8 @@ class WalkPolicy(BasePolicy):
         self.obs_history = np.roll(self.obs_history, obs_arr.size)  # type:ignore
         self.obs_history[: obs_arr.size] = obs_arr
 
-        # TODO: Remove after debugging
-        act_rng, self.rng = jax.random.split(self.rng)  # type: ignore
         # act_rng = self.rng
-        jit_action, _ = self.jit_inference_fn(jnp.asarray(self.obs_history), act_rng)  # type: ignore
+        jit_action, _ = self.jit_inference_fn(jnp.asarray(self.obs_history), self.rng)  # type: ignore
 
         action = np.asarray(jit_action, dtype=np.float32).copy()
         action[self.arm_motor_indices] = 0.0
