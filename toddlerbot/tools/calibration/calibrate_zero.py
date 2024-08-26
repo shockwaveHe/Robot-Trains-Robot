@@ -39,10 +39,13 @@ def calibrate_dynamixel(port: str, robot: Robot, group: str):
     transmission_list = robot.get_joint_attrs(
         "type", "dynamixel", "transmission", group
     )
+    joint_group_list = robot.get_joint_attrs("type", "dynamixel", "group", group)
     state_dict = controller.get_motor_state(retries=-1)
     init_pos: Dict[int, float] = {}
-    for transmission, (id, state) in zip(transmission_list, state_dict.items()):
-        if transmission == "none":
+    for transmission, joint_group, (id, state) in zip(
+        transmission_list, joint_group_list, state_dict.items()
+    ):
+        if transmission == "none" and joint_group == "arm":
             init_pos[id] = np.pi / 4 * round(state.pos / (np.pi / 4))
         elif transmission == "ankle":
             act_ank_zero = robot.data_dict["ank_act_zero"]
