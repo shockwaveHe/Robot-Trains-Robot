@@ -71,8 +71,8 @@ def plot_results(
     joint_vel_dict: Dict[str, List[float]] = {}
     for i, obs in enumerate(obs_list):
         time_obs_list.append(obs.time)
-        euler_obs_list.append(obs.imu_euler)
-        ang_vel_obs_list.append(obs.imu_ang_vel)
+        euler_obs_list.append(obs.euler)
+        ang_vel_obs_list.append(obs.ang_vel)
 
         for j, motor_name in enumerate(robot.motor_ordering):
             if motor_name not in motor_angle_dict:

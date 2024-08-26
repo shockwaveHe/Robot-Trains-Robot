@@ -85,8 +85,8 @@ class WalkPolicy(BasePolicy):
                 joint_pos_delta * self.obs_scales.dof_pos,
                 obs.dq * self.obs_scales.dof_vel,
                 self.last_action,
-                obs.imu_ang_vel * self.obs_scales.ang_vel,
-                obs.imu_euler * self.obs_scales.euler,
+                obs.ang_vel * self.obs_scales.ang_vel,
+                obs.euler * self.obs_scales.euler,
             ]
         )
 

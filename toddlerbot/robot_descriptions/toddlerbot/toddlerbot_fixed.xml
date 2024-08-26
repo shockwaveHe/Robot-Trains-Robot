@@ -80,7 +80,6 @@
   </asset>
 
   <worldbody>
-    <site name="imu" size="0.01" pos="0.0 0 0.0" />
     <site name="torso" fromto="0.01 0 0.4 -0.01 0 0.4" type="cylinder" size="0.005 0.005 1" group="3" />
     <geom type="mesh" rgba="0.58594 0.732003 0.846222 1" mesh="torso_visual" class="visual" />
     <body name="spur_1m_20t" pos="-0.005 0 0.121487" quat="1 0 0 0">
@@ -419,14 +418,6 @@
   <option>
     <flag eulerdamp="disable" />
   </option>
-  <sensor>
-    <framequat name="orientation" objtype="site" noise="0.001" objname="imu" />
-    <framepos name="position" objtype="site" noise="0.001" objname="imu" />
-    <gyro name="angular_velocity" site="imu" noise="0.005" cutoff="34.9" />
-    <velocimeter name="linear_velocity" site="imu" noise="0.001" cutoff="30" />
-    <accelerometer name="linear_acceleration" site="imu" noise="0.005" cutoff="157" />
-    <magnetometer name="magnetometer" site="imu" />
-  </sensor>
   <actuator>
     <position name="neck_yaw_drive" joint="neck_yaw_driven" kp="18.75" gear="0.722222" ctrlrange="-3.14159 3.14159" class="XC330" />
     <position name="neck_pitch_drive" joint="neck_pitch_driven" kp="18.75" gear="0.909091" ctrlrange="-1.5708 1.5708" class="XC330" />
