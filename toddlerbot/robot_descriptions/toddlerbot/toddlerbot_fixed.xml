@@ -112,12 +112,12 @@
         <geom type="mesh" rgba="0.634012 0.682047 0.669102 1" mesh="waist_link_visual" class="visual" />
         <body name="spiral_bevel_1m_14t_30deg" pos="0 0.0196 -0.01275" quat="0.5 0.5 0.5 -0.5">
           <inertial pos="8.26411e-10 3.40558e-10 0.00686126" quat="0.5 0.5 -0.5 0.5" mass="0.000679976" diaginertia="1.31787e-08 1.21746e-08 1.21746e-08" />
-          <joint name="waist_act_1" pos="0 0 0" axis="0 0 1" range="-2.78255 2.78255" damping="0.099" armature="0.002" />
+          <joint name="waist_act_1" pos="0 0 0" axis="0 0 1" range="-4.67748 4.67748" damping="0.099" armature="0.002" />
           <geom type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="spiral_bevel_1m_14t_30deg_visual" class="visual" />
         </body>
         <body name="spiral_bevel_1m_14t_30deg_2" pos="0 0.0196 -0.03275" quat="0.552838 0.552838 0.440874 -0.440874">
           <inertial pos="7.2991e-10 5.15913e-10 0.00686126" quat="0.5 0.5 -0.5 0.5" mass="0.000679976" diaginertia="1.31787e-08 1.21746e-08 1.21746e-08" />
-          <joint name="waist_act_2" pos="0 0 0" axis="0 0 1" range="-2.78255 2.78255" damping="0.099" armature="0.002" />
+          <joint name="waist_act_2" pos="0 0 0" axis="0 0 1" range="-4.67748 4.67748" damping="0.099" armature="0.002" />
           <geom type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="spiral_bevel_1m_14t_30deg_2_visual" class="visual" />
         </body>
         <body name="spur_gear_19_teeth" pos="-0.037 0.0371 -0.0395" quat="0.707107 -0.707107 0 0">
@@ -421,8 +421,8 @@
   <actuator>
     <position name="neck_yaw_drive" joint="neck_yaw_driven" kp="18.75" gear="0.722222" ctrlrange="-3.14159 3.14159" class="XC330" />
     <position name="neck_pitch_drive" joint="neck_pitch_driven" kp="18.75" gear="0.909091" ctrlrange="-1.5708 1.5708" class="XC330" />
-    <position name="waist_act_1" joint="waist_act_1" kp="18.75" ctrlrange="-2.78255 2.78255" class="XC330" />
-    <position name="waist_act_2" joint="waist_act_2" kp="18.75" ctrlrange="-2.78255 2.78255" class="XC330" />
+    <position name="waist_act_1" joint="waist_act_1" kp="18.75" ctrlrange="-4.67748 4.67748" class="XC330" />
+    <position name="waist_act_2" joint="waist_act_2" kp="18.75" ctrlrange="-4.67748 4.67748" class="XC330" />
     <position name="left_hip_yaw_drive" joint="left_hip_yaw_driven" kp="18.75" gear="0.904762" ctrlrange="-1.5708 1.5708" class="XC330" />
     <position name="left_hip_roll" joint="left_hip_roll" kp="18.75" ctrlrange="-0.785398 0.785398" class="2XC430" />
     <position name="left_hip_pitch" joint="left_hip_pitch" kp="18.75" ctrlrange="-1.5708 1.5708" class="2XC430" />
@@ -457,8 +457,8 @@
       <joint joint="waist_roll" coef="1" />
     </fixed>
     <fixed name="waist_yaw_coupling" limited="true" range="0 0.001">
-      <joint joint="waist_act_1" coef="0.416667" />
-      <joint joint="waist_act_2" coef="0.416667" />
+      <joint joint="waist_act_1" coef="0.208333" />
+      <joint joint="waist_act_2" coef="0.208333" />
       <joint joint="waist_yaw" coef="1" />
     </fixed>
   </tendon>

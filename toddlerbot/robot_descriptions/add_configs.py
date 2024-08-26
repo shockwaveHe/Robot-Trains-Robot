@@ -202,7 +202,7 @@ def main():
             general_config["offsets"] = {
                 "torso_z": 0.3442,
                 "waist_roll_coef": 0.29166667,
-                "waist_yaw_coef": 0.41666667,
+                "waist_yaw_coef": 0.20833333,
                 "ank_act_arm_y": 0.00582666,
                 "ank_act_arm_r": 0.02,
                 "ank_long_rod_len": 0.05900847,
