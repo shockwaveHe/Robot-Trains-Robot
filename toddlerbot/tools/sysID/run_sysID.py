@@ -54,9 +54,6 @@ def load_datasets(robot: Robot, data_path: str):
 
         last_idx = 0
         for symmetric_name, idx in zip(joint_names, obs_indices):
-            if "knee_pitch" not in symmetric_name:
-                continue
-
             if symmetric_name in robot.joint_ordering:
                 set_obs_action(symmetric_name, slice(last_idx, idx))
             else:
@@ -222,6 +219,22 @@ def evaluate(
     with open(opt_values_file_path, "w") as f:
         json.dump(opt_values_dict, f, indent=4)
 
+    dyn_config_path = os.path.join(
+        "toddlerbot", "robot_descriptions", robot.name, "config_dynamics.json"
+    )
+    if os.path.exists(dyn_config_path):
+        dyn_config = json.load(open(dyn_config_path, "r"))
+        for joint_name in opt_params_dict:
+            for param_name in opt_params_dict[joint_name]:
+                dyn_config[joint_name][param_name] = opt_params_dict[joint_name][
+                    param_name
+                ]
+    else:
+        dyn_config = opt_params_dict
+
+    with open(dyn_config_path, "w") as f:
+        json.dump(dyn_config, f, indent=4)
+
     time_seq_ref_dict: Dict[str, List[float]] = {}
     time_seq_sim_dict: Dict[str, List[float]] = {}
     time_seq_real_dict: Dict[str, List[float]] = {}
@@ -359,15 +372,6 @@ def main():
     opt_params_dict, opt_values_dict = multiprocessing_optimization(
         robot, args.sim, obs_pos_dict, action_dict, args.n_iters
     )
-
-    # opt_params_file_path = os.path.join(exp_folder_path, "opt_params.json")
-    # opt_values_file_path = os.path.join(exp_folder_path, "opt_values.json")
-
-    # with open(opt_params_file_path, "r") as f:
-    #     opt_params_dict = json.load(f)
-
-    # with open(opt_values_file_path, "r") as f:
-    #     opt_values_dict = json.load(f)
 
     ##### Evaluate the optimized parameters in the simulation ######
     evaluate(

@@ -4,8 +4,8 @@
         "armature": 0.0
     },
     "waist_yaw": {
-        "damping": 0.454,
-        "armature": 0.005
+        "damping": 0.51,
+        "armature": 0.028
     },
     "left_hip_yaw_driven": {
         "damping": 0.425,

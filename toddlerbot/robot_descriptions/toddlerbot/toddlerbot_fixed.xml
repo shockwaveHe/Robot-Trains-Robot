@@ -104,7 +104,7 @@
     </body>
     <body name="waist_gears" pos="0 0 0" quat="0 0 0 1">
       <inertial pos="-2.96888e-07 5.64643e-08 -0.0125882" quat="0.49998 0.500022 0.500015 0.499983" mass="0.02581" diaginertia="7.25404e-06 6.93797e-06 1.51213e-06" />
-      <joint name="waist_yaw" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.454" armature="0.005" />
+      <joint name="waist_yaw" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.51" armature="0.028" />
       <geom type="mesh" rgba="0.263277 0.517464 0.701287 1" mesh="waist_gears_visual" class="visual" />
       <body name="waist_link" pos="-0.0227079 0 -0.014" quat="0.5 -0.5 -0.5 0.5">
         <inertial pos="-9.10862e-07 0.0262045 -0.0301904" quat="0.531459 0.467704 0.510522 0.488028" mass="0.16632" diaginertia="0.000200893 0.000157531 6.84712e-05" />
