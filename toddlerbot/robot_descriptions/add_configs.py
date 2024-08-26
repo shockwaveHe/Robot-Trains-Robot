@@ -197,7 +197,6 @@ def main():
         if "arms" not in args.robot:
             general_config["is_fixed"] = False
             general_config["use_torso_site"] = True
-            general_config["has_imu"] = True
             general_config["foot_name"] = "ank_roll_link"
             general_config["offsets"] = {
                 "torso_z": 0.3442,
