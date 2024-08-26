@@ -2,7 +2,7 @@
     "general": {
         "is_fixed": false,
         "use_torso_site": true,
-        "has_imu": false,
+        "has_imu": true,
         "has_dynamixel": true,
         "dynamixel_baudrate": 4000000,
         "has_sunny_sky": false,
@@ -17,6 +17,10 @@
             "ank_short_rod_len": 0.03951266,
             "ank_rev_r": 0.01,
             "foot_z": 0.039
+        },
+        "imu": {
+            "euler_noise_std": 0.1,
+            "gyro_noise_std": 0.1
         },
         "is_waist_closed_loop": true,
         "is_knee_closed_loop": true,

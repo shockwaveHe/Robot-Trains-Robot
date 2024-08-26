@@ -197,6 +197,7 @@ def main():
         if "arms" not in args.robot:
             general_config["is_fixed"] = False
             general_config["use_torso_site"] = True
+            general_config["has_imu"] = True
             general_config["foot_name"] = "ank_roll_link"
             general_config["offsets"] = {
                 "torso_z": 0.3442,
@@ -210,21 +211,32 @@ def main():
                 "foot_z": 0.039,
             }
 
+    if general_config["has_imu"]:
+        imu_config_path = os.path.join(robot_dir, "config_imu.json")
+        if os.path.exists(imu_config_path):
+            with open(imu_config_path, "r") as f:
+                general_config["imu"] = json.load(f)
+        else:
+            raise ValueError(f"{imu_config_path} not found!")
+
     # This one needs to be ORDERED
     motor_config_path = os.path.join(robot_dir, "config_motors.json")
     if os.path.exists(motor_config_path):
         with open(motor_config_path, "r") as f:
             motor_config = json.load(f)
     elif "sysID" in args.robot:
-        motor_name = args.robot.split("_")[-1]
-        motor_config = {"joint_0": {"motor": motor_name, "init_pos": 0.0}}
+        motor_config = {
+            "joint_0": {"motor": str(args.robot.split("_")[-1]), "init_pos": 0.0}
+        }
     else:
-        motor_config: Dict[str, Dict[str, Any]] = {}
+        raise ValueError(f"{motor_config_path} not found!")
 
     joint_dyn_config: Dict[str, Dict[str, float]] = {}
     if "sysID" not in args.robot:
-        motor_list = [motor_config["motor"] for motor_config in motor_config.values()]
-        for motor_name in motor_list:
+        motor_name_list = [
+            str(motor_config["motor"]) for motor_config in motor_config.values()
+        ]
+        for motor_name in motor_name_list:
             sysID_result_path = os.path.join(
                 "toddlerbot", "robot_descriptions", f"sysID_{motor_name}", "config.json"
             )
