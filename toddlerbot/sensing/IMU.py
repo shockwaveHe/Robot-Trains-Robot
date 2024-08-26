@@ -71,7 +71,7 @@ class IMU:
             dtype=np.float32,
         )
 
-        state = {"imu_euler": euler_relative, "imu_ang_vel": ang_vel_relative}
+        state = {"euler": euler_relative, "ang_vel": ang_vel_relative}
 
         return state
 
@@ -94,22 +94,12 @@ if __name__ == "__main__":
     imu = IMU()
     imu.set_zero_pose()
 
-    # last_state = None
     step = 0
     while step < 100:  # True:
         step_start = time.time()
         # acceleration = imu.get_acceleration()
         state = imu.get_state()
-
-        print(f"euler: {state['euler']}, omega: {state['angular_velocity']}")
-
-        # if last_state:
-        #     euler_angles_delta = state["euler_angles"] - last_state["euler_angles"]
-        #     time_delta = state["time"] - last_state["time"]
-        #     ang_vel_fd = euler_angles_delta / time_delta
-        #     print(f"omega_fd: {ang_vel_fd}")
-
-        # last_state = copy.deepcopy(state)
+        print(f"euler: {state['euler']}, ang_vel: {state['ang_vel']}")
 
         step_time = time.time() - step_start
         print(f"Step time: {step_time * 1000:.3f} ms")

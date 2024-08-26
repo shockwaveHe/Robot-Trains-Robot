@@ -23,20 +23,20 @@ class RotateTorsoPolicy(BasePolicy):
 
         prep_duration = 7.0
         warm_up_duration = 2.0
-        signal_duraion = 10.0
+        signal_duraion = 20.0
         reset_duration = 2.0
 
         joint_sysID_specs = {
             "waist_roll": SysIDSpecs(
                 amplitude_ratio=0.5,
-                final_frequency=0.3,
+                final_frequency=0.5,
                 warm_up_angles={
                     "left_sho_roll": -np.pi / 6,
                     "right_sho_roll": -np.pi / 6,
                 },
             ),
             "waist_yaw": SysIDSpecs(
-                final_frequency=0.3,
+                final_frequency=0.5,
                 warm_up_angles={
                     "left_sho_roll": -np.pi / 6,
                     "right_sho_roll": -np.pi / 6,
