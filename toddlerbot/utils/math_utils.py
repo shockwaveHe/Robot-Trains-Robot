@@ -136,8 +136,8 @@ def quat2euler(quat: ArrayType, order: str = "wxyz") -> ArrayType:
 
 def exponential_moving_average(
     alpha: float,
-    current_value: ArrayType,
-    previous_filtered_value: Optional[ArrayType] = None,
+    current_value: ArrayType | float,
+    previous_filtered_value: Optional[ArrayType | float] = None,
 ):
     if previous_filtered_value is None:
         return current_value

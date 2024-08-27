@@ -11,6 +11,7 @@ from yourdfpy import URDF  # type: ignore
 
 from toddlerbot.actuation import JointState
 from toddlerbot.utils.file_utils import find_robot_file_path
+from toddlerbot.utils.math_utils import exponential_moving_average
 from toddlerbot.utils.misc_utils import log  # , profile
 
 
@@ -613,10 +614,17 @@ class Robot:
                     - last_joint_state_dict[joint_name].time
                 )
                 if time_delta > 0:
-                    joint_state_dict[joint_name].vel = (
+                    vel_fd = (
                         joint_state_dict[joint_name].pos
                         - last_joint_state_dict[joint_name].pos
                     ) / time_delta
+                    joint_state_dict[joint_name].vel = float(
+                        exponential_moving_average(
+                            self.config["general"]["fd_smooth_alpha"],
+                            vel_fd,
+                            last_joint_state_dict[joint_name].vel,
+                        )
+                    )
                 else:
                     raise ValueError("Time delta must be greater than 0.")
 

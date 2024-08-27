@@ -181,6 +181,12 @@ def main():
         help="The name of the robot. Need to match the name in robot_descriptions.",
     )
     parser.add_argument(
+        "--policy",
+        type=str,
+        default="walk",
+        help="The name of the task.",
+    )
+    parser.add_argument(
         "--sim-data",
         type=str,
         default="",
@@ -206,9 +212,7 @@ def main():
 
     robot = Robot(args.robot)
 
-    policy_name = args.sim_data.split("_")[1]
-
-    exp_name = f"{robot.name}_{policy_name}_sim2real_eval"
+    exp_name = f"{robot.name}_{args.policy}_sim2real_eval"
     time_str = time.strftime("%Y%m%d_%H%M%S")
     exp_folder_path = f"results/{exp_name}_{time_str}"
 
