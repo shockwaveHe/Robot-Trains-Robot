@@ -1,15 +1,22 @@
 import pygame
-
-# Initialize Pygame
-pygame.init()
-
-# Initialize the joystick
-pygame.joystick.init()
-joystick = pygame.joystick.Joystick(0)
-joystick.init()
+from pygame.joystick import JoystickType
 
 
-def get_controller_input(dead_zone: float = 0.05):
+def initialize_joystick():
+    # Initialize Pygame
+    try:
+        pygame.init()
+        # Initialize the joystick
+        pygame.joystick.init()
+        joystick = pygame.joystick.Joystick(0)
+        joystick.init()
+    except Exception:
+        joystick = None
+
+    return joystick
+
+
+def get_controller_input(joystick: JoystickType, dead_zone: float = 0.05):
     # Process pygame events
     pygame.event.pump()
 
@@ -22,7 +29,7 @@ def get_controller_input(dead_zone: float = 0.05):
 
     # Adjust axis values (e.g., invert axis if needed, apply scaling, etc.)
     linear_vel_x = -axis_1  # Inverting because pushing stick up gives negative values
-    linear_vel_y = axis_0
+    linear_vel_y = -axis_0  # Inverting because pushing stick left gives negative values
     angular_vel_z = axis_3
 
     # Apply dead zones or thresholds for more precise control
@@ -35,9 +42,12 @@ def get_controller_input(dead_zone: float = 0.05):
 
 if __name__ == "__main__":
     try:
+        joystick = initialize_joystick()
+        assert joystick is not None, "No joystick found."
+
         while True:
             # Get the mapped controller input
-            command = get_controller_input()
+            command = get_controller_input(joystick)
 
             # Print the command
             print(

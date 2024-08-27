@@ -15,7 +15,7 @@ from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 
 # from toddlerbot.utils.misc_utils import profile
-from toddlerbot.tools.teleop.joystick import get_controller_input
+from toddlerbot.tools.teleop.joystick import get_controller_input, initialize_joystick
 from toddlerbot.utils.math_utils import interpolate_action
 
 
@@ -81,6 +81,8 @@ class WalkPolicy(BasePolicy):
         self.rng = jax.random.PRNGKey(0)  # type: ignore
         self.jit_inference_fn(self.obs_history, self.rng)[0].block_until_ready()  # type: ignore
 
+        self.joystick = initialize_joystick()
+
         self.prep_duration = 7.0
         init_action = np.array(
             list(
@@ -113,7 +115,11 @@ class WalkPolicy(BasePolicy):
         )
         joint_pos_delta = obs.q - self.default_joint_pos
 
-        controller_input = get_controller_input()
+        if self.joystick is None:
+            controller_input = [0.0, 0.0, 0.0]
+        else:
+            controller_input = get_controller_input(self.joystick)
+
         # Scale the controller input to the range of the command
         for i in range(len(controller_input)):
             if controller_input[i] < 0:
