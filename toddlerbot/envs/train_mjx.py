@@ -8,7 +8,7 @@ import functools
 import json
 import time
 from dataclasses import asdict, replace
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -118,45 +118,60 @@ def log_metrics(
 
 
 def domain_randomize(
-    sys: base.System, rng: jax.Array
+    sys: base.System,
+    rng: jax.Array,
+    friction_range: Optional[List[float]],
+    gain_range: Optional[List[float]],
+    damping_range: Optional[List[float]],
+    armature_range: Optional[List[float]],
 ) -> Tuple[base.System, base.System]:
     @jax.vmap
     def rand(rng: jax.Array) -> Tuple[jax.Array, ...]:
         _, key = jax.random.split(rng, 2)  # type: ignore
-        # Friction
-        friction_range = (0.6, 1.4)
-        friction = jax.random.uniform(  # type: ignore
-            key, (1,), minval=friction_range[0], maxval=friction_range[1]
-        )  # type: ignore
-        friction = sys.geom_friction.at[:, 0].set(friction)  # type: ignore
 
-        # Actuator
-        _, key = jax.random.split(key, 2)  # type: ignore
-        gain_range = (-5, 5)
-        param = (
-            jax.random.uniform(  # type: ignore
-                key, (sys.nu,), minval=gain_range[0], maxval=gain_range[1]
-            )
-            + sys.actuator_gainprm[:, 0]
-        )
-        gain = sys.actuator_gainprm.at[:, 0].set(param)  # type: ignore
-        bias = sys.actuator_biasprm.at[:, 1].set(-param)  # type: ignore
+        if friction_range is None:
+            friction = sys.geom_friction
+        else:
+            # Friction
+            friction = jax.random.uniform(  # type: ignore
+                key, (1,), minval=friction_range[0], maxval=friction_range[1]
+            )  # type: ignore
+            friction = sys.geom_friction.at[:, 0].set(friction)  # type: ignore
 
-        damping_range = (0.5, 2)
-        damping = jnp.clip(  # type: ignore
-            jax.random.uniform(  # type: ignore
-                key, (sys.nv,), minval=damping_range[0], maxval=damping_range[1]
+        if gain_range is None:
+            gain = sys.actuator_gainprm
+            bias = sys.actuator_biasprm
+        else:
+            # Actuator
+            _, key = jax.random.split(key, 2)  # type: ignore
+            param = (
+                jax.random.uniform(  # type: ignore
+                    key, (1,), minval=gain_range[0], maxval=gain_range[1]
+                )
+                + sys.actuator_gainprm[:, 0]
             )
-            * sys.dof_damping,
-            min=0.0,
-        )
-        armature_range = (0.5, 2)
-        armature = (
-            jax.random.uniform(  # type: ignore
-                key, (sys.nv,), minval=armature_range[0], maxval=armature_range[1]
+            gain = sys.actuator_gainprm.at[:, 0].set(param)  # type: ignore
+            bias = sys.actuator_biasprm.at[:, 1].set(-param)  # type: ignore
+
+        if damping_range is None:
+            damping = sys.dof_damping
+        else:
+            damping = (
+                jax.random.uniform(  # type: ignore
+                    key, (sys.nv,), minval=damping_range[0], maxval=damping_range[1]
+                )
+                * sys.dof_damping
             )
-            * sys.dof_armature
-        )
+
+        if armature_range is None:
+            armature = sys.dof_armature
+        else:
+            armature = (
+                jax.random.uniform(  # type: ignore
+                    key, (sys.nv,), minval=armature_range[0], maxval=armature_range[1]
+                )
+                * sys.dof_armature
+            )
 
         return friction, gain, bias, damping, armature
 
@@ -230,6 +245,14 @@ def train(
         transition_steps=train_cfg.num_timesteps,
     )
 
+    domain_randomize_fn = functools.partial(
+        domain_randomize,
+        friction_range=cfg.domain_rand.friction_range,
+        gain_range=cfg.domain_rand.gain_range,
+        damping_range=cfg.domain_rand.damping_range,
+        armature_range=cfg.domain_rand.armature_range,
+    )
+
     train_fn = functools.partial(  # type: ignore
         ppo.train,
         num_timesteps=train_cfg.num_timesteps,
@@ -247,7 +270,7 @@ def train(
         batch_size=train_cfg.batch_size,
         seed=train_cfg.seed,
         network_factory=make_networks_factory,  # type: ignore
-        randomization_fn=domain_randomize,
+        randomization_fn=domain_randomize_fn,
         policy_params_fn=policy_params_fn,
         restore_checkpoint_path=restore_checkpoint_path,
     )

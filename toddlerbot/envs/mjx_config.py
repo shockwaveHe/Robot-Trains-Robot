@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 
 
 @dataclass
@@ -106,16 +106,18 @@ class CommandsConfig:
 
 @dataclass
 class DomainRandConfig:
-    randomize_friction: bool = True
-    friction_range: List[float] = field(default_factory=lambda: [0.1, 2.0])
-    randomize_base_mass: bool = True
-    added_mass_range: List[float] = field(default_factory=lambda: [-0.1, 0.1])
+    friction_range: Optional[List[float]] = field(default_factory=lambda: [0.6, 1.4])
+    gain_range: Optional[List[float]] = field(default_factory=lambda: [-5, 5])
+    damping_range: Optional[List[float]] = field(default_factory=lambda: [0.8, 1.2])
+    armature_range: Optional[List[float]] = field(default_factory=lambda: [0.8, 1.2])
+    added_mass_range: Optional[List[float]] = (
+        None  # field(default_factory=lambda: [-0.1, 0.1])
+    )
     push_robots: bool = False  # TODO: change it back to True
     push_interval_s: int = 4
     max_push_xy_vel: float = 0.2
     max_push_ang_vel: float = 0.4
     max_push_duration: float = 0.2
-    dynamic_randomization: float = 0.02
 
 
 @dataclass
