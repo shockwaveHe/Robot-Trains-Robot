@@ -296,6 +296,12 @@ if __name__ == "__main__":
         help="The simulator to use.",
     )
     parser.add_argument(
+        "--vis",
+        type=str,
+        default="render",
+        help="The visualization type.",
+    )
+    parser.add_argument(
         "--policy",
         type=str,
         default="stand",
@@ -314,7 +320,7 @@ if __name__ == "__main__":
     if args.sim == "mujoco":
         from toddlerbot.sim.mujoco_sim import MuJoCoSim
 
-        sim = MuJoCoSim(robot, vis_type="render", fixed_base="fixed" in args.policy)
+        sim = MuJoCoSim(robot, vis_type=args.vis, fixed_base="fixed" in args.policy)
         init_joint_pos = sim.get_observation().q
 
     elif args.sim == "real":

@@ -13,9 +13,10 @@ from toddlerbot.envs.ppo_config import PPOConfig
 from toddlerbot.policies import BasePolicy
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
-from toddlerbot.utils.math_utils import interpolate_action
 
 # from toddlerbot.utils.misc_utils import profile
+from toddlerbot.tools.teleop.joystick import get_controller_input
+from toddlerbot.utils.math_utils import interpolate_action
 
 
 class WalkPolicy(BasePolicy):
@@ -57,6 +58,12 @@ class WalkPolicy(BasePolicy):
             cfg.obs.frame_stack * cfg.obs.num_single_obs, dtype=np.float32
         )
         self.cycle_time = cfg.action.cycle_time
+        self.command_ranges = [
+            cfg.commands.ranges.lin_vel_x,
+            cfg.commands.ranges.lin_vel_y,
+            cfg.commands.ranges.ang_vel_yaw,
+        ]
+
         self.step_curr = 0
 
         ppo_network = make_networks_factory(  # type: ignore
@@ -106,10 +113,22 @@ class WalkPolicy(BasePolicy):
         )
         joint_pos_delta = obs.q - self.default_joint_pos
 
+        controller_input = get_controller_input()
+        # Scale the controller input to the range of the command
+        for i in range(len(controller_input)):
+            if controller_input[i] < 0:
+                controller_input[i] = np.interp(  # type:ignore
+                    controller_input[i], [-1, 0], [self.command_ranges[i][0], 0]
+                )
+            else:
+                controller_input[i] = np.interp(  # type:ignore
+                    controller_input[i], [0, 1], [0, self.command_ranges[i][1]]
+                )
+
         obs_arr = np.concatenate(  # type:ignore
             [
                 phase_signal,
-                np.array([0.3, 0.0, 0.0]),  # type:ignore
+                np.array(controller_input),  # type:ignore
                 joint_pos_delta * self.obs_scales.dof_pos,
                 obs.dq * self.obs_scales.dof_vel,
                 self.last_action,

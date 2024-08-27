@@ -15,6 +15,7 @@ numpy==1.24.4
 opencv-python==4.9.0.80
 optuna==3.6.1
 pillow==10.2.0
+pygame==2.6.0
 pynput==1.7.6
 pyserial==3.5
 PyYAML==6.0.1
