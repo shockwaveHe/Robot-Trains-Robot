@@ -372,7 +372,7 @@ if __name__ == "__main__":
     if args.env == "walk":
         cfg = MuJoCoConfig()
         train_cfg = PPOConfig()
-        test_command = jnp.array([0.3, 0.0, 0.0, 0.0])  # type:ignore
+        test_command = jnp.array([0.0, 0.0, 0.0, 0.0])  # type:ignore
 
     elif args.env == "walk_fixed":
         reward_scales = replace(

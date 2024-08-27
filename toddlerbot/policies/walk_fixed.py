@@ -126,7 +126,6 @@ class WalkFixedPolicy(BasePolicy):
         action = np.asarray(jit_action, dtype=np.float32).copy()
         action[self.arm_motor_indices] = 0.0
         action[self.neck_motor_indices] = 0.0
-        action[self.waist_motor_indices[-1]] = 0.0
 
         self.last_action = action
         self.step_curr += 1
