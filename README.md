@@ -22,6 +22,8 @@ Recommended VSCode Extenstions:
 
 ### Jetson-orin
 
+https://docs.nvidia.com/jetson/archives/r36.3/DeveloperGuide/SD/SoftwarePackagesAndTheUpdateMechanism.html#real-time-kernel-using-ota-update
+
 ```bash
 sudo apt install dkms
 sudo git clone https://github.com/paroj/xpad.git /usr/src/xpad-0.4
