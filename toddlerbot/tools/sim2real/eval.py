@@ -10,8 +10,12 @@ import numpy.typing as npt
 
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
-from toddlerbot.utils.misc_utils import log
-from toddlerbot.visualization.vis_plot import plot_joint_angle_tracking
+from toddlerbot.visualization.vis_plot import (
+    plot_ang_vel_gap,
+    plot_euler_gap,
+    plot_joint_angle_tracking,
+    plot_sim2real_gap,
+)
 
 
 def load_datasets(
@@ -33,6 +37,11 @@ def load_datasets(
         obs_list: List[Obs] = log_data_dict["obs_list"]
         motor_angles_list: List[Dict[str, float]] = log_data_dict["motor_angles_list"]
 
+        data_dict["imu"] = {
+            "euler": np.array([obs.euler for obs in obs_list[:idx]]),
+            "ang_vel": np.array([obs.ang_vel for obs in obs_list[:idx]]),
+        }
+
         for joint_name in robot.joint_ordering:
             data_dict[joint_name] = {}
             data_dict[joint_name]["obs_time"] = np.array(
@@ -40,6 +49,9 @@ def load_datasets(
             )
             data_dict[joint_name]["obs_pos"] = np.array(
                 [obs.q for obs in obs_list[:idx]]
+            )
+            data_dict[joint_name]["obs_vel"] = np.array(
+                [obs.dq for obs in obs_list[:idx]]
             )
             data_dict[joint_name]["action"] = np.array(
                 [
@@ -57,55 +69,107 @@ def evaluate(
     real_data: Dict[str, Dict[str, npt.NDArray[np.float32]]],
     exp_folder_path: str,
 ):
-    time_seq_ref_dict: Dict[str, List[float]] = {}
     time_seq_sim_dict: Dict[str, List[float]] = {}
     time_seq_real_dict: Dict[str, List[float]] = {}
-    joint_angle_ref_dict: Dict[str, List[float]] = {}
-    joint_angle_sim_dict: Dict[str, List[float]] = {}
-    joint_angle_real_dict: Dict[str, List[float]] = {}
+    joint_pos_sim_dict: Dict[str, List[float]] = {}
+    joint_pos_real_dict: Dict[str, List[float]] = {}
+    joint_vel_sim_dict: Dict[str, List[float]] = {}
+    joint_vel_real_dict: Dict[str, List[float]] = {}
+    action_sim_dict: Dict[str, List[float]] = {}
+    action_real_dict: Dict[str, List[float]] = {}
+
+    rmse_pos_dict: Dict[str, float] = {}
+    rmse_vel_dict: Dict[str, float] = {}
+    rmse_action_dict: Dict[str, float] = {}
 
     for joint_name in sim_data:
+        if joint_name == "imu":
+            continue
+
         joint_idx = robot.joint_ordering.index(joint_name)
         obs_pos_sim = sim_data[joint_name]["obs_pos"][:, joint_idx]
         obs_pos_real = real_data[joint_name]["obs_pos"][:, joint_idx]
-        # action_sim = sim_data[joint_name]["action"][:, joint_idx]
-        # action_real = real_data[joint_name]["action"][:, joint_idx]
-
-        obs_pos_error = np.sqrt(np.mean((obs_pos_real - obs_pos_sim) ** 2))
-
-        log(
-            f"{joint_name} root mean squared error: {obs_pos_error}",
-            header="SysID",
-            level="info",
-        )
+        obs_vel_sim = sim_data[joint_name]["obs_vel"][:, joint_idx]
+        obs_vel_real = real_data[joint_name]["obs_vel"][:, joint_idx]
+        action_sim = sim_data[joint_name]["action"][:, joint_idx]
+        action_real = real_data[joint_name]["action"][:, joint_idx]
 
         time_seq_sim_dict[joint_name] = sim_data[joint_name]["obs_time"].tolist()
         time_seq_real_dict[joint_name] = real_data[joint_name]["obs_time"].tolist()
 
-        joint_angle_sim_dict[joint_name] = obs_pos_sim.tolist()
-        joint_angle_real_dict[joint_name] = obs_pos_real.tolist()
+        joint_pos_sim_dict[joint_name] = obs_pos_sim.tolist()
+        joint_pos_real_dict[joint_name] = obs_pos_real.tolist()
+        joint_vel_sim_dict[joint_name] = obs_vel_sim.tolist()
+        joint_vel_real_dict[joint_name] = obs_vel_real.tolist()
+        action_sim_dict[joint_name] = action_sim.tolist()
+        action_real_dict[joint_name] = action_real.tolist()
+
+        rmse_pos_dict[joint_name] = np.sqrt(np.mean((obs_pos_real - obs_pos_sim) ** 2))
+        rmse_vel_dict[joint_name] = np.sqrt(np.mean((obs_vel_real - obs_vel_sim) ** 2))
+        rmse_action_dict[joint_name] = np.sqrt(np.mean((action_real - action_sim) ** 2))
+
+    plot_euler_gap(
+        time_seq_sim_dict[list(sim_data.keys())[-1]],
+        time_seq_real_dict[list(sim_data.keys())[-1]],
+        sim_data["imu"]["euler"],
+        real_data["imu"]["euler"],
+        save_path=exp_folder_path,
+    )
+
+    plot_ang_vel_gap(
+        time_seq_sim_dict[list(sim_data.keys())[-1]],
+        time_seq_real_dict[list(sim_data.keys())[-1]],
+        sim_data["imu"]["ang_vel"],
+        real_data["imu"]["ang_vel"],
+        save_path=exp_folder_path,
+    )
+
+    for rmse_dict, label in zip(
+        [rmse_pos_dict, rmse_vel_dict, rmse_action_dict],
+        ["joint_pos", "joint_vel", "action"],
+    ):
+        plot_sim2real_gap(
+            rmse_dict,
+            label,
+            save_path=exp_folder_path,
+            file_name="sim2real_gap_" + label,
+        )
 
     plot_joint_angle_tracking(
         time_seq_sim_dict,
         time_seq_real_dict,
-        joint_angle_sim_dict,
-        joint_angle_real_dict,
+        joint_pos_sim_dict,
+        joint_pos_real_dict,
         robot.joint_limits,
         save_path=exp_folder_path,
-        file_name="sim2real_eval",
+        file_name="sim2real_joint_pos",
         set_ylim=False,
         line_suffix=["_sim", "_real"],
     )
 
-    # plot_joint_angle_tracking(
-    #     time_seq_real_dict,
-    #     time_seq_ref_dict,
-    #     joint_angle_real_dict,
-    #     joint_angle_ref_dict,
-    #     robot.joint_limits,
-    #     save_path=exp_folder_path,
-    #     file_name="real_tracking",
-    # )
+    plot_joint_angle_tracking(
+        time_seq_sim_dict,
+        time_seq_real_dict,
+        joint_vel_sim_dict,
+        joint_vel_real_dict,
+        robot.joint_limits,
+        save_path=exp_folder_path,
+        file_name="sim2real_joint_vel",
+        set_ylim=False,
+        line_suffix=["_sim", "_real"],
+    )
+
+    plot_joint_angle_tracking(
+        time_seq_sim_dict,
+        time_seq_real_dict,
+        action_sim_dict,
+        action_real_dict,
+        robot.joint_limits,
+        save_path=exp_folder_path,
+        file_name="sim2real_action",
+        set_ylim=False,
+        line_suffix=["_sim", "_real"],
+    )
 
 
 def main():
@@ -142,7 +206,9 @@ def main():
 
     robot = Robot(args.robot)
 
-    exp_name = f"{robot.name}_sim2real_eval"
+    policy_name = args.sim_data.split("_")[1]
+
+    exp_name = f"{robot.name}_{policy_name}_sim2real_eval"
     time_str = time.strftime("%Y%m%d_%H%M%S")
     exp_folder_path = f"results/{exp_name}_{time_str}"
 

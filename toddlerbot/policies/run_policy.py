@@ -20,11 +20,11 @@ from toddlerbot.utils.misc_utils import (
     snake2camel,
 )
 from toddlerbot.visualization.vis_plot import (
-    plot_angular_velocity_tracking,
+    plot_ang_vel_tracking,
+    plot_euler_tracking,
     plot_joint_angle_tracking,
     plot_joint_velocity_tracking,
     plot_loop_time,
-    plot_orientation_tracking,
 )
 
 
@@ -116,12 +116,12 @@ def plot_results(
 
     plot_loop_time(loop_time_dict, exp_folder_path)
 
-    plot_orientation_tracking(
+    plot_euler_tracking(
         time_obs_list,
         euler_obs_list,
         save_path=exp_folder_path,
     )
-    plot_angular_velocity_tracking(
+    plot_ang_vel_tracking(
         time_obs_list,
         ang_vel_obs_list,
         save_path=exp_folder_path,

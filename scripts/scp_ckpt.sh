@@ -1,9 +1,25 @@
 #!/bin/bash
 
 # Assign positional arguments to variables
-TIME_STR="$1"
-ROBOT="${2:-toddlerbot}"  # Use the second argument or a default value
-ENV="${3:-walk}"      # Use the third argument or a default value
+# Default values
+TIME_STR=""
+ROBOT="toddlerbot"
+ENV="walk"
+
+# Parse named arguments
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        --time_str) TIME_STR="$2"; shift ;;
+        --robot) ROBOT="$2"; shift ;;
+        --env) ENV="$2"; shift ;;
+        *) echo "Unknown parameter passed: $1"; exit 1 ;;
+    esac
+    shift
+done
+
+echo "TIME_STR: $TIME_STR"
+echo "ROBOT: $ROBOT"
+echo "ENV: $ENV"
 
 REMOTE_USER="hshi74"
 REMOTE_HOST="scdt.stanford.edu"

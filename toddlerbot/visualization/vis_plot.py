@@ -359,7 +359,7 @@ def plot_joint_velocity_tracking(
         )()
 
 
-def plot_orientation_tracking(
+def plot_euler_tracking(
     time_list: List[float],
     euler_list: List[npt.NDArray[np.float32]],
     save_path: str,
@@ -380,7 +380,7 @@ def plot_orientation_tracking(
     )()
 
 
-def plot_angular_velocity_tracking(
+def plot_ang_vel_tracking(
     time_list: List[float],
     ang_vel_list: List[npt.NDArray[np.float32]],
     save_path: str,
@@ -399,6 +399,197 @@ def plot_angular_velocity_tracking(
         file_name=file_name,
         file_suffix=file_suffix,
     )()
+
+
+def plot_euler_gap(
+    time_sim_list: List[float],
+    time_real_list: List[float],
+    euler_sim: npt.NDArray[np.float32],
+    euler_real: npt.NDArray[np.float32],
+    save_path: str,
+    file_name: str = "euler_gap",
+    file_suffix: str = "",
+):
+    for angle_sim, angle_real, axis_name in zip(
+        euler_sim.T, euler_real.T, ["roll", "pitch", "yaw"]
+    ):
+        plot_line_graph(
+            [angle_sim, angle_real],
+            [
+                time_sim_list,
+                time_real_list,
+            ],
+            legend_labels=[
+                f"{axis_name}_sim",
+                f"{axis_name}_real",
+            ],
+            title="Euler Angles Over Time",
+            x_label="Time (s)",
+            y_label="Euler Angles (rad)",
+            save_config=True,
+            save_path=save_path,
+            file_name=f"{file_name}_{axis_name}",
+            file_suffix=file_suffix,
+        )()
+
+
+def plot_ang_vel_gap(
+    time_sim_list: List[float],
+    time_real_list: List[float],
+    ang_vel_sim: npt.NDArray[np.float32],
+    ang_vel_real: npt.NDArray[np.float32],
+    save_path: str,
+    file_name: str = "ang_vel_gap",
+    file_suffix: str = "",
+):
+    for vel_sim, vel_real, axis_name in zip(
+        ang_vel_sim.T, ang_vel_real.T, ["roll", "pitch", "yaw"]
+    ):
+        plot_line_graph(
+            [vel_sim, vel_real],
+            [
+                time_sim_list,
+                time_real_list,
+            ],
+            legend_labels=[
+                f"{axis_name}_sim",
+                f"{axis_name}_real",
+            ],
+            title="Angular Velocities Over Time",
+            x_label="Time (s)",
+            y_label="Angular Velocity (rad/s)",
+            save_config=True,
+            save_path=save_path,
+            file_name=f"{file_name}_{axis_name}",
+            file_suffix=file_suffix,
+        )()
+
+
+def plot_sim2real_gap(
+    rmse_dict: Dict[str, float],
+    rmse_label: str,
+    save_path: str,
+    file_name: str = "sim2real_gap",
+    file_suffix: str = "",
+):
+    joint_labels = list(rmse_dict.keys())
+
+    # Call the plot_bar_graph function
+    plot_bar_graph(
+        y=list(rmse_dict.values()),
+        x=np.arange(len(rmse_dict)),  # type: ignore
+        fig_size=(int(len(rmse_dict) / 3), 6),
+        legend_labels=[rmse_label],
+        title="Root Mean Squared Error by Joint",
+        x_label="Joints",
+        y_label="Root Mean Squared Error",
+        bar_colors=["b"],
+        bar_width=0.25,
+        save_config=True,
+        save_path=save_path,
+        file_name=file_name,
+        file_suffix=file_suffix,
+        joint_labels=joint_labels,  # Pass the joint labels
+    )()
+
+
+def plot_bar_graph(
+    y: Any,
+    x: Any = None,
+    fig_size: Tuple[int, int] = (10, 6),
+    legend_labels: List[str] = [],
+    bar_colors: List[str] = [],
+    title: str = "",
+    x_label: str = "",
+    y_label: str = "",
+    save_config: bool = False,
+    save_path: str = "",
+    file_name: str = "",
+    file_suffix: str = "",
+    ax: Any = None,
+    bar_width: float = 0.25,
+    joint_labels: List[str] = [],  # New parameter for joint labels
+    number_font_size: int = 0,
+):
+    if ax is None:
+        plt.figure(figsize=fig_size)  # type: ignore
+        ax = plt.gca()  # type: ignore
+
+    def plot():
+        # Ensure bar_colors are lists and have sufficient length
+        bar_colors_local = bar_colors if len(bar_colors) > 0 else COLORS
+
+        # Determine if x is None and set it to the index of y if so
+        if x is None:
+            x_local = (
+                np.arange(len(y[0])) if isinstance(y[0], list) else np.arange(len(y))  # type: ignore
+            )
+        else:
+            x_local = x
+
+        # Add number labels on each bar
+        def add_number_labels(bars: List[Any]):
+            for bar in bars:
+                yval = bar.get_height()
+                ax.text(
+                    bar.get_x() + bar.get_width() / 2,
+                    yval,
+                    f"{yval:.4f}",
+                    ha="center",
+                    va="bottom",
+                    fontsize=number_font_size,
+                )
+
+        # Plotting multiple bars if y is a list of lists
+        if isinstance(y[0], list) or isinstance(y[0], np.ndarray):  # Multiple groups
+            for i, sub_y in enumerate(y):
+                bar_positions = x_local + i * bar_width
+                color = bar_colors_local[i % len(bar_colors_local)]
+                bars = ax.bar(
+                    bar_positions,
+                    sub_y,
+                    width=bar_width,
+                    color=color,
+                    label=legend_labels[i] if legend_labels else None,
+                )
+
+                if number_font_size > 0:
+                    add_number_labels(bars)
+
+        else:  # Single group of bars
+            bars = ax.bar(
+                x_local,
+                y,
+                width=bar_width,
+                color=bar_colors_local[0],
+                label=legend_labels[0] if legend_labels else None,
+            )
+
+            if number_font_size > 0:
+                add_number_labels(bars)
+
+        # Set joint labels as x-tick labels
+        if joint_labels:
+            ax.set_xticks(x_local + bar_width)  # Adjusting for center alignment
+            ax.set_xticklabels(joint_labels, rotation=90, ha="right")
+
+        if legend_labels:
+            ax.legend()
+
+    # Create and return a visualization function using the make_vis_function
+    vis_function: Any = make_vis_function(
+        plot,
+        ax=ax,
+        title=title,
+        x_label=x_label,
+        y_label=y_label,
+        save_config=save_config,
+        save_path=save_path,
+        file_name=file_name,
+        file_suffix=file_suffix,
+    )
+
+    return vis_function
 
 
 def plot_line_graph(
