@@ -21,6 +21,13 @@ Recommended VSCode Extenstions:
 
 
 ### Jetson-orin
+
+```bash
+sudo apt install dkms
+sudo git clone https://github.com/paroj/xpad.git /usr/src/xpad-0.4
+sudo dkms install -m xpad -v 0.4
+```
+
 - Add yourself to the correct user group [doc](https://github.com/NVIDIA/jetson-gpio)
 - Be sure to modify the address of rules: e.g
 ```bash
