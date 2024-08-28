@@ -173,8 +173,7 @@ class RealWorld(BaseSim):
             if transmission == "gears":
                 joint_pos[i] = motor_pos * joints_config[motor_name]["gear_ratio"]
                 joint_vel[i] = -motor_vel / joints_config[motor_name]["gear_ratio"]
-                joint_name = self.robot.motor_to_joint_name[motor_name]
-                if joint_name in self.negated_motor_names:
+                if motor_name in self.negated_motor_names:
                     joint_vel[i] *= -1
 
             elif transmission == "waist":
