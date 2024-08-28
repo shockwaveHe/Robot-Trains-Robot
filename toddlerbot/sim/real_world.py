@@ -7,6 +7,7 @@ from toddlerbot.actuation import JointState
 from toddlerbot.sim import BaseSim, state_to_obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_ports
+from toddlerbot.utils.math_utils import exponential_moving_average
 
 # from toddlerbot.utils.misc_utils import profile
 
@@ -154,9 +155,101 @@ class RealWorld(BaseSim):
             for motor_name in self.robot.motor_ordering
         }
 
-        joint_state_dict = self.robot.motor_to_joint_state(
-            motor_state_dict, self.last_joint_state_dict
+        joint_state_dict: Dict[str, JointState] = {}
+        joints_config = self.robot.config["joints"]
+        waist_act_pos: List[float] = []
+        left_ank_act_pos: List[float] = []
+        right_ank_act_pos: List[float] = []
+        for motor_name, motor_state in motor_state_dict.items():
+            transmission = joints_config[motor_name]["transmission"]
+            if transmission == "gears":
+                joint_name = motor_name.replace("_drive", "_driven")
+                joint_state_dict[joint_name] = JointState(
+                    time=motor_state.time,
+                    pos=motor_state.pos * joints_config[motor_name]["gear_ratio"],
+                    vel=-motor_state.vel / joints_config[motor_name]["gear_ratio"],
+                )
+                if joint_name in self.negated_motor_names:
+                    joint_state_dict[joint_name].vel *= -1
+
+            elif transmission == "waist":
+                # Placeholder to ensure the correct order
+                joint_state_dict["waist_roll"] = JointState(
+                    time=motor_state.time, pos=0.0, vel=0.0
+                )
+                joint_state_dict["waist_yaw"] = JointState(
+                    time=motor_state.time, pos=0.0, vel=0.0
+                )
+                waist_act_pos.append(motor_state.pos)
+            elif transmission == "knee":
+                joint_name: str = motor_name.replace("_act", "_pitch")
+                joint_state_dict[joint_name] = JointState(
+                    time=motor_state.time, pos=motor_state.pos, vel=motor_state.vel
+                )
+            elif transmission == "ankle":
+                if "left" in motor_name:
+                    joint_state_dict["left_ank_roll"] = JointState(
+                        time=motor_state.time, pos=0.0, vel=0.0
+                    )
+                    joint_state_dict["left_ank_pitch"] = JointState(
+                        time=motor_state.time, pos=0.0, vel=0.0
+                    )
+                    left_ank_act_pos.append(motor_state.pos)
+                elif "right" in motor_name:
+                    joint_state_dict["right_ank_roll"] = JointState(
+                        time=motor_state.time, pos=0.0, vel=0.0
+                    )
+                    joint_state_dict["right_ank_pitch"] = JointState(
+                        time=motor_state.time, pos=0.0, vel=0.0
+                    )
+                    right_ank_act_pos.append(motor_state.pos)
+            elif transmission == "none":
+                joint_state_dict[motor_name] = JointState(
+                    time=motor_state.time, pos=motor_state.pos, vel=motor_state.vel
+                )
+
+        joint_state_dict["waist_roll"].pos, joint_state_dict["waist_yaw"].pos = (
+            self.robot.waist_fk(waist_act_pos)
         )
+        (
+            joint_state_dict["left_ank_roll"].pos,
+            joint_state_dict["left_ank_pitch"].pos,
+        ) = self.robot.ankle_fk(left_ank_act_pos, "left")
+        (
+            joint_state_dict["right_ank_roll"].pos,
+            joint_state_dict["right_ank_pitch"].pos,
+        ) = self.robot.ankle_fk(right_ank_act_pos, "right")
+
+        for joint_name in [
+            "waist_roll",
+            "waist_yaw",
+            "left_ank_roll",
+            "left_ank_pitch",
+            "right_ank_roll",
+            "right_ank_pitch",
+        ]:
+            if self.last_joint_state_dict and joint_name in self.last_joint_state_dict:
+                time_delta = (
+                    joint_state_dict[joint_name].time
+                    - self.last_joint_state_dict[joint_name].time
+                )
+                if time_delta > 0:
+                    joint_state_dict[joint_name].vel = (
+                        joint_state_dict[joint_name].pos
+                        - self.last_joint_state_dict[joint_name].pos
+                    ) / time_delta
+                else:
+                    raise ValueError("Time delta must be greater than 0.")
+
+        for joint_name in joint_state_dict.keys():
+            joint_state_dict[joint_name].vel = float(
+                exponential_moving_average(
+                    self.robot.config["general"]["fd_smooth_alpha"],
+                    joint_state_dict[joint_name].vel,
+                    self.last_joint_state_dict[joint_name].vel,
+                )
+            )
+
         self.last_joint_state_dict = joint_state_dict
 
         return motor_state_dict, joint_state_dict

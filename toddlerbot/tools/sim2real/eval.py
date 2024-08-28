@@ -159,8 +159,17 @@ def evaluate(
         line_suffix=["_sim", "_real"],
     )
 
+    # Hack the motor names
+    time_seq_motor_dict: Dict[str, List[float]] = {}
+    for joint_name in time_seq_sim_dict:
+        if joint_name == "imu":
+            continue
+
+        motor_name = robot.motor_ordering[robot.joint_ordering.index(joint_name)]
+        time_seq_motor_dict[motor_name] = time_seq_sim_dict[joint_name]
+
     plot_joint_angle_tracking(
-        time_seq_sim_dict,
+        time_seq_motor_dict,
         time_seq_real_dict,
         action_sim_dict,
         action_real_dict,

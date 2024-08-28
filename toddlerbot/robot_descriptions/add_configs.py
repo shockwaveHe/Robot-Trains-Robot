@@ -198,7 +198,7 @@ def main():
             general_config["is_fixed"] = False
             general_config["use_torso_site"] = True
             general_config["has_imu"] = True
-            general_config["fd_smooth_alpha"] = 0.1
+            general_config["fd_smooth_alpha"] = 0.9
             general_config["foot_name"] = "ank_roll_link"
             general_config["offsets"] = {
                 "torso_z": 0.3442,
