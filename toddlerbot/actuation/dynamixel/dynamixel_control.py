@@ -46,18 +46,16 @@ class DynamixelController(BaseController):
 
         self.config = config
         self.motor_ids: List[int] = motor_ids
+        self.lock = Lock()
+
+        self.connect_to_client()
+        self.initialize_motors()
+
         if len(self.config.init_pos) == 0:
             self.init_pos = np.zeros(len(motor_ids), dtype=np.float32)
         else:
             self.init_pos = np.array(config.init_pos, dtype=np.float32)
-
-        self.lock = Lock()
-
-        self.connect_to_client()
-
-        self.initialize_motors()
-
-        self.update_init_pos()
+            self.update_init_pos()
 
     def connect_to_client(self, latency_value: int = 1):
         os_type = platform.system()
