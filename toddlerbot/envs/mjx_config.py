@@ -125,7 +125,7 @@ class NoiseConfig:
     add_noise: bool = True
     noise_scale: float = 0.05
     dof_pos: float = 1.0
-    dof_vel: float = 5.0
+    dof_vel: float = 2.0
     ang_vel: float = 2.0
     lin_vel: float = 1.0
     euler: float = 1.0
