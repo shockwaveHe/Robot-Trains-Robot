@@ -6,8 +6,15 @@
         "has_dynamixel": true,
         "dynamixel_baudrate": 4000000,
         "has_sunny_sky": false,
+        "solref": [
+            0.004,
+            1
+        ],
         "smooth_alpha": 0.9,
         "fd_smooth_alpha": 0.2,
+        "waist_roll_backlash": 0.08,
+        "waist_yaw_backlash": 0.04,
+        "ank_solimp_d0": 0.95,
         "foot_name": "ank_roll_link",
         "offsets": {
             "torso_z": 0.3442,

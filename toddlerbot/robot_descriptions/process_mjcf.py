@@ -247,7 +247,7 @@ def add_keyframes(
     ET.SubElement(keyframe, "key", {"name": "home", "qpos": qpos_str, "ctrl": ctrl_str})
 
 
-def add_default_settings(root: ET.Element):
+def add_default_settings(root: ET.Element, general_config: Dict[str, Any]):
     # Create or find the <default> element
     default = root.find("default")
     if default is not None:
@@ -255,7 +255,14 @@ def add_default_settings(root: ET.Element):
 
     default = ET.SubElement(root, "default")
 
-    ET.SubElement(default, "geom", {"type": "mesh", "solref": ".004 1"})
+    ET.SubElement(
+        default,
+        "geom",
+        {
+            "type": "mesh",
+            "solref": f"{general_config['solref'][0]} {general_config['solref'][1]}",
+        },
+    )
 
     XM430_default = ET.SubElement(default, "default", {"class": "XM430"})
     ET.SubElement(XM430_default, "position", {"forcerange": "-3 3"})
@@ -274,9 +281,6 @@ def add_default_settings(root: ET.Element):
 
     XC330_default = ET.SubElement(default, "default", {"class": "XC330"})
     ET.SubElement(XC330_default, "position", {"forcerange": "-1 1"})
-
-    # Set <geom> settings
-    # ET.SubElement(default, "geom", {"type": "mesh", "solref": ".004 1"})
 
     # Add <default class="visual"> settings
     visual_default = ET.SubElement(default, "default", {"class": "visual"})
@@ -379,7 +383,7 @@ def add_contacts(
         ET.SubElement(contact, "exclude", body1=body1_name, body2=body2_name)
 
 
-def add_waist_constraints(root: ET.Element, offsets: Dict[str, float]):
+def add_waist_constraints(root: ET.Element, general_config: Dict[str, Any]):
     # Ensure there is an <equality> element
     tendon = root.find("tendon")
     if tendon is not None:
@@ -387,16 +391,19 @@ def add_waist_constraints(root: ET.Element, offsets: Dict[str, float]):
 
     tendon = ET.SubElement(root, "tendon")
 
+    offsets = general_config["offsets"]
     waist_roll_coef = round_to_sig_digits(offsets["waist_roll_coef"], 6)
     waist_yaw_coef = round_to_sig_digits(offsets["waist_yaw_coef"], 6)
 
+    waist_roll_backlash = general_config["waist_roll_backlash"]
+    waist_yaw_backlash = general_config["waist_yaw_backlash"]
     # waist roll
     fixed_roll = ET.SubElement(
         tendon,
         "fixed",
         name="waist_roll_coupling",
         limited="true",
-        range="-0.04 0.04",
+        range=f"-{waist_roll_backlash} {waist_roll_backlash}",
     )
     ET.SubElement(fixed_roll, "joint", joint="waist_act_1", coef=f"{waist_roll_coef}")
     ET.SubElement(fixed_roll, "joint", joint="waist_act_2", coef=f"{-waist_roll_coef}")
@@ -404,14 +411,18 @@ def add_waist_constraints(root: ET.Element, offsets: Dict[str, float]):
 
     # waist roll
     fixed_yaw = ET.SubElement(
-        tendon, "fixed", name="waist_yaw_coupling", limited="true", range="-0.04 0.04"
+        tendon,
+        "fixed",
+        name="waist_yaw_coupling",
+        limited="true",
+        range=f"-{waist_yaw_backlash} {waist_yaw_backlash}",
     )
     ET.SubElement(fixed_yaw, "joint", joint="waist_act_1", coef=f"{-waist_yaw_coef}")
     ET.SubElement(fixed_yaw, "joint", joint="waist_act_2", coef=f"{-waist_yaw_coef}")
     ET.SubElement(fixed_yaw, "joint", joint="waist_yaw", coef="1")
 
 
-def add_knee_constraints(root: ET.Element):
+def add_knee_constraints(root: ET.Element, general_config: Dict[str, Any]):
     # Ensure there is an <equality> element
     equality = root.find("./equality")
     if equality is None:
@@ -432,23 +443,23 @@ def add_knee_constraints(root: ET.Element):
             body1=body1,
             body2=body2,
             solimp="0.9999 0.9999 0.001 0.5 2",
-            solref="0.0001 1",
+            solref=f"{general_config['solref'][0]} {general_config['solref'][1]}",
         )
 
 
-def add_ankle_constraints(root: ET.Element, offsets: Dict[str, float]):
+def add_ankle_constraints(root: ET.Element, general_config: Dict[str, Any]):
     # Ensure there is an <equality> element
     equality = root.find("./equality")
     if equality is None:
         equality = ET.SubElement(root, "equality")
 
+    offsets = general_config["offsets"]
     body_pairs: List[Tuple[str, str]] = [
         ("ank_motor_arm", "ank_motor_rod_long"),
         ("ank_motor_arm_2", "ank_motor_rod_short"),
         ("ank_motor_arm_3", "ank_motor_rod_long_2"),
         ("ank_motor_arm_4", "ank_motor_rod_short_2"),
     ]
-
     # Add equality constraints for each pair
     for body1, body2 in body_pairs:
         ET.SubElement(
@@ -456,8 +467,8 @@ def add_ankle_constraints(root: ET.Element, offsets: Dict[str, float]):
             "connect",
             body1=body1,
             body2=body2,
-            solimp="0.9999 0.9999 0.001 0.5 2",
-            solref="0.0001 1",
+            solimp=f"{general_config['ank_solimp_d0']} 0.9999 0.001 0.5 2",
+            solref=f"{general_config['solref'][0]} {general_config['solref'][1]}",
             anchor=f"{offsets['ank_act_arm_r']} 0 {offsets['ank_act_arm_y']}",
         )
 
@@ -670,7 +681,7 @@ def replace_box_collision(root: ET.Element, foot_name: str):
                     )
 
 
-def create_scene_xml(mjcf_path: str, is_fixed: bool):
+def create_scene_xml(mjcf_path: str, general_config: Dict[str, Any], is_fixed: bool):
     robot_name = os.path.basename(mjcf_path).replace(".xml", "")
 
     # Create the root element
@@ -752,6 +763,7 @@ def create_scene_xml(mjcf_path: str, is_fixed: bool):
                 "type": "plane",
                 "material": "groundplane",
                 "condim": "3",
+                # "solref": f"{general_config['solref'][0]} {general_config['solref'][1]}",
             },
         )
         # Asset settings
@@ -815,17 +827,17 @@ def process_mjcf_fixed_file(root: ET.Element, robot: Robot):
     add_actuators_to_mjcf(root, robot.config["joints"])
 
     if robot.config["general"]["is_waist_closed_loop"]:
-        add_waist_constraints(root, robot.config["general"]["offsets"])
+        add_waist_constraints(root, robot.config["general"])
 
     if robot.config["general"]["is_knee_closed_loop"]:
-        add_knee_constraints(root)
+        add_knee_constraints(root, robot.config["general"])
 
     if robot.config["general"]["is_ankle_closed_loop"]:
-        add_ankle_constraints(root, robot.config["general"]["offsets"])
+        add_ankle_constraints(root, robot.config["general"])
 
     add_keyframes(root, True, "arms" not in robot.name, "legs" not in robot.name)
 
-    add_default_settings(root)
+    add_default_settings(root, robot.config["general"])
 
     # include_all_contacts(root)
     exclude_all_contacts(root)
@@ -860,7 +872,7 @@ def get_mjcf_files(robot_name: str):
     if robot.config["general"]["is_fixed"]:
         mjcf_path = mjcf_fixed_path
     else:
-        create_scene_xml(mjcf_fixed_path, is_fixed=True)
+        create_scene_xml(mjcf_fixed_path, robot.config["general"], is_fixed=True)
 
         mjcf_path = os.path.join(robot_dir, robot_name + ".xml")
         add_body_link(xml_root, urdf_path, robot.config["general"]["offsets"])
@@ -873,7 +885,9 @@ def get_mjcf_files(robot_name: str):
         # replace_box_collision(xml_root, robot.config["general"]["foot_name"])
         xml_tree.write(mjcf_path)
 
-    create_scene_xml(mjcf_path, robot.config["general"]["is_fixed"])
+    create_scene_xml(
+        mjcf_path, robot.config["general"], robot.config["general"]["is_fixed"]
+    )
 
 
 def main():

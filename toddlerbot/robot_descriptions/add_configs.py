@@ -192,6 +192,7 @@ def main():
             "has_dynamixel": True,
             "dynamixel_baudrate": 4000000,
             "has_sunny_sky": False,
+            "solref": [0.004, 1],
         }
 
         if "arms" not in args.robot:
@@ -200,6 +201,9 @@ def main():
             general_config["has_imu"] = True
             general_config["smooth_alpha"] = 0.9
             general_config["fd_smooth_alpha"] = 0.2
+            general_config["waist_roll_backlash"] = 0.08
+            general_config["waist_yaw_backlash"] = 0.04
+            general_config["ank_solimp_d0"] = 0.95
             general_config["foot_name"] = "ank_roll_link"
             general_config["offsets"] = {
                 "torso_z": 0.3442,
