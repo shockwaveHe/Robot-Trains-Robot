@@ -38,8 +38,6 @@ class DynamixelConfig:
     default_vel: float = np.pi
     interp_method: str = "cubic"
     return_delay_time: int = 1
-    pos_max: float = 2 * np.pi
-    pos_min: float = -2 * np.pi
 
 
 class DynamixelController(BaseController):
@@ -55,10 +53,11 @@ class DynamixelController(BaseController):
 
         self.lock = Lock()
 
-        self.last_state_dict: Dict[int, JointState] = {}
-
         self.connect_to_client()
+
         self.initialize_motors()
+
+        self.update_init_pos()
 
     def connect_to_client(self, latency_value: int = 1):
         os_type = platform.system()
@@ -115,6 +114,12 @@ class DynamixelController(BaseController):
         self.client.set_torque_enabled(self.motor_ids, True)
 
         time.sleep(0.2)
+
+    def update_init_pos(self):
+        _, pos_arr = self.client.read_pos(retries=-1)
+        delta_pos = pos_arr - self.init_pos
+        delta_pos = (delta_pos + np.pi) % (2 * np.pi) - np.pi
+        self.init_pos = pos_arr - delta_pos
 
     def close_motors(self):
         open_clients: List[DynamixelClient] = list(DynamixelClient.OPEN_CLIENTS)  # type: ignore
@@ -186,17 +191,9 @@ class DynamixelController(BaseController):
         # )
 
         pos_arr -= self.init_pos
-        for i, id in enumerate(self.motor_ids):
-            state_dict[id] = JointState(time=time, pos=pos_arr[i], vel=vel_arr[i])
 
-        if len(self.last_state_dict) > 0 and (
-            np.any(pos_arr > self.config.pos_max)
-            or np.any(pos_arr < self.config.pos_min)
-        ):
-            log("Position out of range!", header="Dynamixel", level="warning")
-            state_dict = self.last_state_dict
-
-        self.last_state_dict = state_dict
+        for i, motor_id in enumerate(self.motor_ids):
+            state_dict[motor_id] = JointState(time=time, pos=pos_arr[i], vel=vel_arr[i])
 
         # log(f"End... {time.time()}", header="Dynamixel", level="warning")
 

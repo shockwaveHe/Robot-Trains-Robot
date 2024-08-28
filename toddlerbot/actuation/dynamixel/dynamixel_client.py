@@ -533,6 +533,14 @@ class DynamixelClient:
 
         return True
 
+    def clear_multi_turn(self, motor_ids: Sequence[int]):
+        for motor_id in motor_ids:
+            self.packet_handler.clearMultiTurn(self.port_handler, motor_id)  # type: ignore
+
+    def reboot(self, motor_ids: Sequence[int]):
+        for motor_id in motor_ids:
+            self.packet_handler.reboot(self.port_handler, motor_id)  # type: ignore
+
     def convert_to_unsigned(self, value: int, size: int) -> int:
         """Converts the given value to its unsigned representation."""
         if value < 0:
