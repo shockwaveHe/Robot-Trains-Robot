@@ -390,7 +390,11 @@ def add_waist_constraints(root: ET.Element, offsets: Dict[str, float]):
 
     # waist roll
     fixed_roll = ET.SubElement(
-        tendon, "fixed", name="waist_roll_coupling", limited="true", range="0 0.05"
+        tendon,
+        "fixed",
+        name="waist_roll_coupling",
+        limited="true",
+        range="-0.025 0.025",
     )
     ET.SubElement(fixed_roll, "joint", joint="waist_act_1", coef=f"{waist_roll_coef}")
     ET.SubElement(fixed_roll, "joint", joint="waist_act_2", coef=f"{-waist_roll_coef}")
@@ -398,7 +402,7 @@ def add_waist_constraints(root: ET.Element, offsets: Dict[str, float]):
 
     # waist roll
     fixed_yaw = ET.SubElement(
-        tendon, "fixed", name="waist_yaw_coupling", limited="true", range="0 0.05"
+        tendon, "fixed", name="waist_yaw_coupling", limited="true", range="-0.025 0.025"
     )
     ET.SubElement(fixed_yaw, "joint", joint="waist_act_1", coef=f"{-waist_yaw_coef}")
     ET.SubElement(fixed_yaw, "joint", joint="waist_act_2", coef=f"{-waist_yaw_coef}")

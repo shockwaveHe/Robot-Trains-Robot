@@ -100,7 +100,7 @@ class CommandsConfig:
     num_commands: int = 4
     resample_time: float = 5.0
     # if true: compute ang vel command from heading error
-    has_heading_command: bool = True
+    has_heading_command: bool = False
     ranges: CommandRanges = CommandRanges()
 
 
@@ -124,10 +124,10 @@ class DomainRandConfig:
 class NoiseConfig:
     add_noise: bool = True
     noise_scale: float = 0.05
-    dof_pos: float = 1.0
-    dof_vel: float = 1.0
-    ang_vel: float = 0.2
-    euler: float = 1.0
+    dof_pos: float = 2.0
+    dof_vel: float = 5.0
+    ang_vel: float = 1.0
+    euler: float = 5.0
 
 
 # Top-level configuration dataclass

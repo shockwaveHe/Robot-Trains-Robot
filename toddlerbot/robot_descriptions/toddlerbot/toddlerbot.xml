@@ -455,12 +455,12 @@
     <position name="right_wrist_pitch" joint="right_wrist_pitch" kp="18.75" ctrlrange="-1.5708 1.5708" class="2XL430" />
   </actuator>
   <tendon>
-    <fixed name="waist_roll_coupling" limited="true" range="0 0.05">
+    <fixed name="waist_roll_coupling" limited="true" range="-0.025 0.025">
       <joint joint="waist_act_1" coef="0.291667" />
       <joint joint="waist_act_2" coef="-0.291667" />
       <joint joint="waist_roll" coef="1" />
     </fixed>
-    <fixed name="waist_yaw_coupling" limited="true" range="0 0.05">
+    <fixed name="waist_yaw_coupling" limited="true" range="-0.025 0.025">
       <joint joint="waist_act_1" coef="-0.208333" />
       <joint joint="waist_act_2" coef="-0.208333" />
       <joint joint="waist_yaw" coef="1" />
