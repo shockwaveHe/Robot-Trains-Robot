@@ -24,7 +24,7 @@ class ObsScales:
 class ObsConfig:
     frame_stack: int = 15
     c_frame_stack: int = 15  # 3
-    num_single_obs: int = 101
+    num_single_obs: int = 104
     num_single_privileged_obs: int = 138
     scales: ObsScales = ObsScales()
 
@@ -124,10 +124,11 @@ class DomainRandConfig:
 class NoiseConfig:
     add_noise: bool = True
     noise_scale: float = 0.05
-    dof_pos: float = 2.0
+    dof_pos: float = 1.0
     dof_vel: float = 5.0
-    ang_vel: float = 1.0
-    euler: float = 5.0
+    ang_vel: float = 2.0
+    lin_vel: float = 1.0
+    euler: float = 1.0
 
 
 # Top-level configuration dataclass

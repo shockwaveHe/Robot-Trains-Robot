@@ -189,6 +189,7 @@ class MuJoCoEnv(PipelineEnv):
                 jnp.ones_like(self.joint_indices) * self.cfg.noise.dof_pos,  # type:ignore
                 jnp.ones_like(self.joint_indices) * self.cfg.noise.dof_vel,  # type:ignore
                 jnp.zeros_like(self.motor_indices),  # type:ignore
+                jnp.ones(3) * self.cfg.noise.lin_vel,  # type:ignore
                 jnp.ones(3) * self.cfg.noise.ang_vel,  # type:ignore
                 jnp.ones(3) * self.cfg.noise.euler,  # type:ignore
             ]
@@ -517,6 +518,7 @@ class MuJoCoEnv(PipelineEnv):
                 joint_pos_delta * self.obs_scales.dof_pos,
                 joint_vel * self.obs_scales.dof_vel,
                 info["last_act"],
+                torso_lin_vel * self.obs_scales.lin_vel,
                 torso_ang_vel * self.obs_scales.ang_vel,
                 torso_euler * self.obs_scales.euler,
             ]
@@ -529,10 +531,10 @@ class MuJoCoEnv(PipelineEnv):
                 joint_pos_delta * self.obs_scales.dof_pos,
                 joint_vel * self.obs_scales.dof_vel,
                 info["last_act"],
+                torso_lin_vel * self.obs_scales.lin_vel,
                 torso_ang_vel * self.obs_scales.ang_vel,
                 torso_euler * self.obs_scales.euler,
                 joint_pos_error,
-                torso_lin_vel * self.obs_scales.lin_vel,
                 info["stance_mask"],
                 info["state_ref"][-2:],
             ]
