@@ -34,8 +34,9 @@ class IMU:
 
         # Initialize previous Euler angle for smoothing
         self.time_last = time.time()
-        self.euler_prev = np.zeros(3, dtype=np.float32)
+        self.lin_vel_prev = np.zeros(3, dtype=np.float32)
         self.ang_vel_prev = np.zeros(3, dtype=np.float32)
+        self.euler_prev = np.zeros(3, dtype=np.float32)
 
     def set_zero_pose(self):
         self.zero_pose = R.from_quat(np.array(self.sensor.quaternion))
@@ -48,7 +49,7 @@ class IMU:
         assert self.zero_pose_inv is not None
 
         time_curr = time.time()
-        lin_acc = np.array(self.sensor.acceleration)
+        lin_acc = np.array(self.sensor.linear_acceleration)
         lin_acc_relative = self.zero_pose.apply(lin_acc).astype(np.float32)  # type: ignore
         lin_vel_relative = lin_acc_relative * (time_curr - self.time_last)
         self.time_last = time_curr

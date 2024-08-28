@@ -20,10 +20,9 @@ from toddlerbot.utils.misc_utils import (
     snake2camel,
 )
 from toddlerbot.visualization.vis_plot import (
-    plot_ang_vel_tracking,
-    plot_euler_tracking,
-    plot_joint_angle_tracking,
-    plot_joint_velocity_tracking,
+    plot_joint_tracking,
+    plot_joint_tracking_single,
+    plot_line_graph,
     plot_loop_time,
 )
 
@@ -62,8 +61,9 @@ def plot_results(
         # loop_time_dict["total_time"].append((step_end - step_start) * 1000)
 
     time_obs_list: List[float] = []
-    euler_obs_list: List[npt.NDArray[np.float32]] = []
+    lin_vel_obs_list: List[npt.NDArray[np.float32]] = []
     ang_vel_obs_list: List[npt.NDArray[np.float32]] = []
+    euler_obs_list: List[npt.NDArray[np.float32]] = []
     time_seq_dict: Dict[str, List[float]] = {}
     time_seq_ref_dict: Dict[str, List[float]] = {}
     motor_angle_dict: Dict[str, List[float]] = {}
@@ -71,8 +71,9 @@ def plot_results(
     joint_vel_dict: Dict[str, List[float]] = {}
     for i, obs in enumerate(obs_list):
         time_obs_list.append(obs.time)
-        euler_obs_list.append(obs.euler)
+        lin_vel_obs_list.append(obs.lin_vel)
         ang_vel_obs_list.append(obs.ang_vel)
+        euler_obs_list.append(obs.euler)
 
         for j, motor_name in enumerate(robot.motor_ordering):
             if motor_name not in motor_angle_dict:
@@ -116,36 +117,57 @@ def plot_results(
 
     plot_loop_time(loop_time_dict, exp_folder_path)
 
-    plot_euler_tracking(
+    plot_line_graph(
+        np.array(lin_vel_obs_list).T,
         time_obs_list,
-        euler_obs_list,
+        legend_labels=["X", "Y", "Z"],
+        title="Linear Velocities Over Time",
+        x_label="Time (s)",
+        y_label="Linear Velocity (m/s)",
+        save_config=True,
         save_path=exp_folder_path,
-    )
-    plot_ang_vel_tracking(
+        file_name="lin_vel_tracking",
+    )()
+    plot_line_graph(
+        np.array(ang_vel_obs_list).T,
         time_obs_list,
-        ang_vel_obs_list,
+        legend_labels=["Roll (X)", "Pitch (Y)", "Yaw (Z)"],
+        title="Angular Velocities Over Time",
+        x_label="Time (s)",
+        y_label="Angular Velocity (rad/s)",
+        save_config=True,
         save_path=exp_folder_path,
-    )
-    plot_joint_angle_tracking(
+        file_name="ang_vel_tracking",
+    )()
+    plot_line_graph(
+        np.array(euler_obs_list).T,
+        time_obs_list,
+        legend_labels=["Roll (X)", "Pitch (Y)", "Yaw (Z)"],
+        title="Euler Angles Over Time",
+        x_label="Time (s)",
+        y_label="Euler Angles (rad)",
+        save_config=True,
+        save_path=exp_folder_path,
+        file_name="euler_tracking",
+    )()
+    plot_joint_tracking(
         time_seq_dict,
         time_seq_ref_dict,
         joint_angle_dict,
         joint_angle_ref_dict,
         robot.joint_limits,
         save_path=exp_folder_path,
-        set_ylim=False,
     )
-    plot_joint_angle_tracking(
+    plot_joint_tracking(
         time_seq_dict_copy,
         time_seq_ref_dict_copy,
         motor_angle_dict,
         motor_angle_ref_dict,
         robot.joint_limits,
         save_path=exp_folder_path,
-        file_name="motor_angle_tracking",
-        set_ylim=False,
+        file_name="motor_pos_tracking",
     )
-    plot_joint_velocity_tracking(
+    plot_joint_tracking_single(
         time_seq_dict,
         joint_vel_dict,
         save_path=exp_folder_path,

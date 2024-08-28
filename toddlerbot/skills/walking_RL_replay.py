@@ -44,8 +44,8 @@ from tqdm import tqdm
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.misc_utils import dump_profiling_data, log, profile
 from toddlerbot.visualization.vis_plot import (
-    plot_joint_angle_tracking,
-    plot_joint_velocity_tracking,
+    plot_joint_tracking,
+    plot_joint_tracking_single,
 )
 
 
@@ -195,7 +195,7 @@ def play(args, duration=5, fix_command=True, export=True, render=True):
             os.path.join(exp_folder_path, "isaac.mp4"), video_frames, fps=frame_rate
         )
 
-    plot_joint_angle_tracking(
+    plot_joint_tracking(
         time_seq_dict,
         time_seq_ref,
         dof_pos_dict,
@@ -210,7 +210,7 @@ def play(args, duration=5, fix_command=True, export=True, render=True):
         },
     )
 
-    plot_joint_velocity_tracking(
+    plot_joint_tracking_single(
         time_seq_dict,
         dof_vel_dict,
         save_path=exp_folder_path,

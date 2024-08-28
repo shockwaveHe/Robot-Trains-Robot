@@ -257,17 +257,19 @@ def plot_loop_time(
     )()
 
 
-def plot_joint_angle_tracking(
+def plot_joint_tracking(
     time_seq_dict: Dict[str, List[float]],
     time_seq_ref_dict: Dict[str, List[float]],
-    joint_angle_dict: Dict[str, List[float]],
-    joint_angle_ref_dict: Dict[str, List[float]],
+    joint_data_dict: Dict[str, List[float]],
+    joint_data_ref_dict: Dict[str, List[float]],
     joint_limits: Dict[str, List[float]],
     save_path: str,
-    file_name: str = "joint_angle_tracking",
+    x_label: str = "Time (s)",
+    y_label: str = "Position (rad)",
+    file_name: str = "joint_pos_tracking",
     file_suffix: str = "",
     title_list: List[str] = [],
-    set_ylim: bool = True,
+    set_ylim: bool = False,
     line_suffix: List[str] = ["_obs", "_act"],
 ):
     x_list: List[List[float]] = []
@@ -277,8 +279,8 @@ def plot_joint_angle_tracking(
     for name in time_seq_dict.keys():
         x_list.append(time_seq_dict[name])
         x_list.append(time_seq_ref_dict[name])
-        y_list.append(joint_angle_dict[name])
-        y_list.append(joint_angle_ref_dict[name])
+        y_list.append(joint_data_dict[name])
+        y_list.append(joint_data_ref_dict[name])
         joint_name_list.append(name)
         legend_labels.append(name + line_suffix[0])
         legend_labels.append(name + line_suffix[1])
@@ -303,8 +305,8 @@ def plot_joint_angle_tracking(
             y_list[2 * i : 2 * i + 2],
             x_list[2 * i : 2 * i + 2],
             title=f"{joint_name_list[i]}" if len(title_list) == 0 else title_list[i],
-            x_label="Time (s)",
-            y_label="Position (rad)",
+            x_label=x_label,
+            y_label=y_label,
             save_config=True if i == n_plots - 1 else False,
             save_path=save_path if i == n_plots - 1 else "",
             file_name=file_name if i == n_plots - 1 else "",
@@ -314,9 +316,9 @@ def plot_joint_angle_tracking(
         )()
 
 
-def plot_joint_velocity_tracking(
+def plot_joint_tracking_single(
     time_seq_dict: Dict[str, List[float]],
-    joint_vel_dict: Dict[str, List[float]],
+    joint_data_dict: Dict[str, List[float]],
     save_path: str,
     file_name: str = "joint_velocity_tracking",
     file_suffix: str = "",
@@ -327,7 +329,7 @@ def plot_joint_velocity_tracking(
     legend_labels: List[str] = []
     for name in time_seq_dict.keys():
         x_list.append(time_seq_dict[name])
-        y_list.append(joint_vel_dict[name])
+        y_list.append(joint_data_dict[name])
         legend_labels.append(name)
 
     n_plots = len(time_seq_dict)
@@ -359,62 +361,23 @@ def plot_joint_velocity_tracking(
         )()
 
 
-def plot_euler_tracking(
-    time_list: List[float],
-    euler_list: List[npt.NDArray[np.float32]],
-    save_path: str,
-    file_name: str = "euler_angles_tracking",
-    file_suffix: str = "",
-):
-    plot_line_graph(
-        np.array(euler_list).T,
-        time_list,
-        legend_labels=["Roll (X)", "Pitch (Y)", "Yaw (Z)"],
-        title="Euler Angles Over Time",
-        x_label="Time (s)",
-        y_label="Euler Angles (rad)",
-        save_config=True,
-        save_path=save_path,
-        file_name=file_name,
-        file_suffix=file_suffix,
-    )()
-
-
-def plot_ang_vel_tracking(
-    time_list: List[float],
-    ang_vel_list: List[npt.NDArray[np.float32]],
-    save_path: str,
-    file_name: str = "angular_velocity_tracking",
-    file_suffix: str = "",
-):
-    plot_line_graph(
-        np.array(ang_vel_list).T,
-        time_list,
-        legend_labels=["Roll (X)", "Pitch (Y)", "Yaw (Z)"],
-        title="Angular Velocities Over Time",
-        x_label="Time (s)",
-        y_label="Angular Velocity (rad/s)",
-        save_config=True,
-        save_path=save_path,
-        file_name=file_name,
-        file_suffix=file_suffix,
-    )()
-
-
-def plot_euler_gap(
+def plot_sim2real_gap_line(
     time_sim_list: List[float],
     time_real_list: List[float],
-    euler_sim: npt.NDArray[np.float32],
-    euler_real: npt.NDArray[np.float32],
+    data_sim: npt.NDArray[np.float32],
+    data_real: npt.NDArray[np.float32],
     save_path: str,
+    title: str = "Euler Angles",
+    x_label: str = "Time (s)",
+    y_label: str = "Euler Angles (rad)",
     file_name: str = "euler_gap",
     file_suffix: str = "",
 ):
-    for angle_sim, angle_real, axis_name in zip(
-        euler_sim.T, euler_real.T, ["roll", "pitch", "yaw"]
+    for data_sim, angle_real, axis_name in zip(
+        data_sim.T, data_real.T, ["roll", "pitch", "yaw"]
     ):
         plot_line_graph(
-            [angle_sim, angle_real],
+            [data_sim, angle_real],
             [
                 time_sim_list,
                 time_real_list,
@@ -423,9 +386,9 @@ def plot_euler_gap(
                 f"{axis_name}_sim",
                 f"{axis_name}_real",
             ],
-            title="Euler Angles Over Time",
-            x_label="Time (s)",
-            y_label="Euler Angles (rad)",
+            title=title,
+            x_label=x_label,
+            y_label=y_label,
             save_config=True,
             save_path=save_path,
             file_name=f"{file_name}_{axis_name}",
@@ -433,42 +396,13 @@ def plot_euler_gap(
         )()
 
 
-def plot_ang_vel_gap(
-    time_sim_list: List[float],
-    time_real_list: List[float],
-    ang_vel_sim: npt.NDArray[np.float32],
-    ang_vel_real: npt.NDArray[np.float32],
-    save_path: str,
-    file_name: str = "ang_vel_gap",
-    file_suffix: str = "",
-):
-    for vel_sim, vel_real, axis_name in zip(
-        ang_vel_sim.T, ang_vel_real.T, ["roll", "pitch", "yaw"]
-    ):
-        plot_line_graph(
-            [vel_sim, vel_real],
-            [
-                time_sim_list,
-                time_real_list,
-            ],
-            legend_labels=[
-                f"{axis_name}_sim",
-                f"{axis_name}_real",
-            ],
-            title="Angular Velocities Over Time",
-            x_label="Time (s)",
-            y_label="Angular Velocity (rad/s)",
-            save_config=True,
-            save_path=save_path,
-            file_name=f"{file_name}_{axis_name}",
-            file_suffix=file_suffix,
-        )()
-
-
-def plot_sim2real_gap(
+def plot_sim2real_gap_bar(
     rmse_dict: Dict[str, float],
     rmse_label: str,
     save_path: str,
+    title: str = "Root Mean Squared Error by Joint",
+    x_label: str = "Joints",
+    y_label: str = "Root Mean Squared Error",
     file_name: str = "sim2real_gap",
     file_suffix: str = "",
 ):
@@ -480,9 +414,9 @@ def plot_sim2real_gap(
         x=np.arange(len(rmse_dict)),  # type: ignore
         fig_size=(int(len(rmse_dict) / 3), 6),
         legend_labels=[rmse_label],
-        title="Root Mean Squared Error by Joint",
-        x_label="Joints",
-        y_label="Root Mean Squared Error",
+        title=title,
+        x_label=x_label,
+        y_label=y_label,
         bar_colors=["b"],
         bar_width=0.25,
         save_config=True,

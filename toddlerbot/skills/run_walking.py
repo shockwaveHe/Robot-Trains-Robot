@@ -16,7 +16,7 @@ from toddlerbot.utils.math_utils import round_floats
 from toddlerbot.utils.misc_utils import dump_profiling_data, log, precise_sleep, profile
 from toddlerbot.visualization.vis_plot import (
     # plot_footsteps,
-    plot_joint_angle_tracking,
+    plot_joint_tracking,
     plot_line_graph,
 )
 
@@ -224,7 +224,7 @@ def main():
             pickle.dump(robot_state_traj_data, f)
 
         log("Visualizing...", header="Walking")
-        plot_joint_angle_tracking(
+        plot_joint_tracking(
             time_seq_dict,
             time_seq_ref,
             joint_angle_dict,

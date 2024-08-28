@@ -11,10 +11,9 @@ import numpy.typing as npt
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.visualization.vis_plot import (
-    plot_ang_vel_gap,
-    plot_euler_gap,
-    plot_joint_angle_tracking,
-    plot_sim2real_gap,
+    plot_joint_tracking,
+    plot_sim2real_gap_bar,
+    plot_sim2real_gap_line,
 )
 
 
@@ -127,7 +126,7 @@ def evaluate(
         rmse_vel_dict[joint_name] = np.sqrt(np.mean((obs_vel_real - obs_vel_sim) ** 2))
         rmse_action_dict[motor_name] = np.sqrt(np.mean((action_real - action_sim) ** 2))
 
-    plot_euler_gap(
+    plot_sim2real_gap_line(
         time_seq_sim_dict[list(sim_data.keys())[-1]],
         time_seq_real_dict[list(sim_data.keys())[-1]],
         sim_data["imu"]["euler"],
@@ -135,26 +134,29 @@ def evaluate(
         save_path=exp_folder_path,
     )
 
-    plot_ang_vel_gap(
+    plot_sim2real_gap_line(
         time_seq_sim_dict[list(sim_data.keys())[-1]],
         time_seq_real_dict[list(sim_data.keys())[-1]],
         sim_data["imu"]["ang_vel"],
         real_data["imu"]["ang_vel"],
         save_path=exp_folder_path,
+        title="Angular Velocity",
+        y_label="Angular Velocities (rad/s)",
+        file_name="ang_vel_gap",
     )
 
     for rmse_dict, label in zip(
         [rmse_pos_dict, rmse_vel_dict, rmse_action_dict],
         ["joint_pos", "joint_vel", "action"],
     ):
-        plot_sim2real_gap(
+        plot_sim2real_gap_bar(
             rmse_dict,
             label,
             save_path=exp_folder_path,
             file_name=f"{label}_gap",
         )
 
-    plot_joint_angle_tracking(
+    plot_joint_tracking(
         time_seq_sim_dict,
         time_seq_sim_dict,
         joint_pos_sim_dict,
@@ -165,7 +167,7 @@ def evaluate(
         set_ylim=False,
     )
 
-    plot_joint_angle_tracking(
+    plot_joint_tracking(
         time_seq_real_dict,
         time_seq_real_dict,
         joint_pos_real_dict,
@@ -176,7 +178,7 @@ def evaluate(
         set_ylim=False,
     )
 
-    plot_joint_angle_tracking(
+    plot_joint_tracking(
         time_seq_sim_dict,
         time_seq_real_dict,
         joint_pos_sim_dict,
@@ -188,7 +190,7 @@ def evaluate(
         line_suffix=["_sim", "_real"],
     )
 
-    plot_joint_angle_tracking(
+    plot_joint_tracking(
         time_seq_sim_dict,
         time_seq_real_dict,
         joint_vel_sim_dict,
@@ -211,7 +213,7 @@ def evaluate(
         time_seq_sim_dict_motor[motor_name] = time_seq_sim_dict[joint_name]
         time_seq_real_dict_motor[motor_name] = time_seq_real_dict[joint_name]
 
-    plot_joint_angle_tracking(
+    plot_joint_tracking(
         time_seq_sim_dict_motor,
         time_seq_real_dict_motor,
         action_sim_dict,

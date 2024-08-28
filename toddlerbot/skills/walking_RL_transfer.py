@@ -25,8 +25,8 @@ from toddlerbot.utils.misc_utils import (
 from toddlerbot.visualization.vis_plot import (
     plot_ang_vel_tracking,
     plot_euler_tracking,
-    plot_joint_angle_tracking,
-    plot_joint_velocity_tracking,
+    plot_joint_tracking,
+    plot_joint_tracking_single,
 )
 
 
@@ -396,7 +396,7 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=False):
             ang_vel_obs_list,
             save_path=exp_folder_path,
         )
-        plot_joint_angle_tracking(
+        plot_joint_tracking(
             time_seq_dict,
             time_seq_ref,
             dof_pos_dict,
@@ -409,7 +409,7 @@ def main(sim, robot, policy, cfg, duration=5.0, debug=False):
                 "mighty_zap": "whitesmoke",
             },
         )
-        plot_joint_velocity_tracking(
+        plot_joint_tracking_single(
             time_seq_dict,
             dof_vel_dict,
             save_path=exp_folder_path,

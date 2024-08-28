@@ -102,6 +102,7 @@ class WalkFixedPolicy(BasePolicy):
         )
         joint_pos_delta = obs.q - self.default_joint_pos
 
+        obs.lin_vel = np.zeros(3, dtype=np.float32)
         obs.ang_vel = np.zeros(3, dtype=np.float32)
         obs.euler = np.zeros(3, dtype=np.float32)
 

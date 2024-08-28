@@ -12,7 +12,7 @@ from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.math_utils import get_random_sine_signal_config, get_sine_signal
 from toddlerbot.utils.misc_utils import log, precise_sleep, set_seed
-from toddlerbot.visualization.vis_plot import plot_joint_angle_tracking
+from toddlerbot.visualization.vis_plot import plot_joint_tracking
 
 
 def actuate_single_motor(
@@ -141,7 +141,7 @@ def collect_data(
 
     real_world.close()
 
-    plot_joint_angle_tracking(
+    plot_joint_tracking(
         time_seq_dict,
         time_seq_ref_dict,
         joint_angle_dict,

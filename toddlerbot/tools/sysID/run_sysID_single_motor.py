@@ -19,7 +19,7 @@ from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import combine_images, find_robot_file_path
 from toddlerbot.utils.math_utils import get_sine_signal
 from toddlerbot.utils.misc_utils import log
-from toddlerbot.visualization.vis_plot import plot_joint_angle_tracking
+from toddlerbot.visualization.vis_plot import plot_joint_tracking
 
 inertial_data_430_list = [
     {
@@ -600,7 +600,7 @@ def evaluate(
         if dataset_name == "test":
             time_str = time.strftime("%Y%m%d_%H%M%S")
             sim_file_name = f"{joint_name}_sim_{dataset_name}_{time_str}"
-            plot_joint_angle_tracking(
+            plot_joint_tracking(
                 time_seq_dict,
                 time_seq_ref_dict,
                 joint_angle_dict,
@@ -611,7 +611,7 @@ def evaluate(
             )
 
             real_file_name = f"{joint_name}_real_{dataset_name}_{time_str}"
-            plot_joint_angle_tracking(
+            plot_joint_tracking(
                 time_seq_dict_gt,
                 time_seq_ref_dict,
                 joint_angle_dict_gt,

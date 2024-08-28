@@ -14,7 +14,7 @@ from toddlerbot.sim import Obs
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.misc_utils import log
-from toddlerbot.visualization.vis_plot import plot_joint_angle_tracking
+from toddlerbot.visualization.vis_plot import plot_joint_tracking
 
 
 def load_datasets(robot: Robot, data_path: str):
@@ -292,7 +292,7 @@ def evaluate(
 
         sim.close()
 
-    plot_joint_angle_tracking(
+    plot_joint_tracking(
         time_seq_sim_dict,
         time_seq_ref_dict,
         joint_angle_sim_dict,
@@ -302,7 +302,7 @@ def evaluate(
         file_name="sim_tracking",
     )
 
-    plot_joint_angle_tracking(
+    plot_joint_tracking(
         time_seq_real_dict,
         time_seq_ref_dict,
         joint_angle_real_dict,
