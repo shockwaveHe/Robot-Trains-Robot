@@ -58,7 +58,6 @@ class MuJoCoSim(BaseSim):
         self.data = mujoco.MjData(model)  # type: ignore
 
         self.model.opt.timestep = self.dt  # type: ignore
-        # TODO: remove after debugging
         self.model.opt.solver = mujoco.mjtSolver.mjSOL_NEWTON  # type: ignore
         self.model.opt.iterations = 1  # type: ignore
         self.model.opt.ls_iterations = 4  # type: ignore

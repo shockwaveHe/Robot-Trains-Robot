@@ -255,6 +255,8 @@ def add_default_settings(root: ET.Element):
 
     default = ET.SubElement(root, "default")
 
+    ET.SubElement(default, "geom", {"type": "mesh", "solref": ".004 1"})
+
     XM430_default = ET.SubElement(default, "default", {"class": "XM430"})
     ET.SubElement(XM430_default, "position", {"forcerange": "-3 3"})
 
@@ -287,7 +289,7 @@ def add_default_settings(root: ET.Element):
     # Add <default class="collision"> settings
     collision_default = ET.SubElement(default, "default", {"class": "collision"})
     # Group 3's visualization is diabled by default
-    ET.SubElement(collision_default, "geom", {"type": "sphere", "group": "3"})
+    ET.SubElement(collision_default, "geom", {"group": "3"})
 
 
 def include_all_contacts(root: ET.Element):
