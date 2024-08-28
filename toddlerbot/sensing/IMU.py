@@ -4,8 +4,8 @@ import board  # type: ignore
 import busio  # type: ignore
 import numpy as np
 from adafruit_bno08x import (  # type: ignore
-    BNO_REPORT_ACCELEROMETER,  # type: ignore
     BNO_REPORT_GYROSCOPE,  # type: ignore
+    BNO_REPORT_LINEAR_ACCELERATION,  # type: ignore
     BNO_REPORT_ROTATION_VECTOR,  # type: ignore
 )
 from adafruit_bno08x.i2c import BNO08X_I2C  # type: ignore
@@ -21,7 +21,7 @@ class IMU:
         self.sensor = BNO08X_I2C(self.i2c)
 
         # Enable the gyroscope and rotation vector features
-        self.sensor.enable_feature(BNO_REPORT_ACCELEROMETER)  # type: ignore
+        self.sensor.enable_feature(BNO_REPORT_LINEAR_ACCELERATION)  # type: ignore
         self.sensor.enable_feature(BNO_REPORT_GYROSCOPE)  # type: ignore
         self.sensor.enable_feature(BNO_REPORT_ROTATION_VECTOR)  # type: ignore
 
@@ -33,6 +33,7 @@ class IMU:
         self.alpha = alpha
 
         # Initialize previous Euler angle for smoothing
+        self.time_last = time.time()
         self.euler_prev = np.zeros(3, dtype=np.float32)
         self.ang_vel_prev = np.zeros(3, dtype=np.float32)
 
@@ -45,6 +46,23 @@ class IMU:
             self.set_zero_pose()
 
         assert self.zero_pose_inv is not None
+
+        time_curr = time.time()
+        lin_acc = np.array(self.sensor.acceleration)
+        lin_acc_relative = self.zero_pose.apply(lin_acc).astype(np.float32)  # type: ignore
+        lin_vel_relative = lin_acc_relative * (time_curr - self.time_last)
+        self.time_last = time_curr
+        filtered_lin_vel = exponential_moving_average(
+            self.alpha, lin_vel_relative, self.lin_vel_prev
+        )
+        self.lin_vel_prev = filtered_lin_vel
+
+        ang_vel = np.array(self.sensor.gyro)
+        ang_vel_relative = self.zero_pose.apply(ang_vel).astype(np.float32)  # type: ignore
+        filtered_ang_vel = exponential_moving_average(
+            self.alpha, ang_vel_relative, self.ang_vel_prev
+        )
+        self.ang_vel_prev = filtered_ang_vel
 
         # Compute relative rotation based on zero pose
         rotation_relative = (
@@ -62,16 +80,10 @@ class IMU:
         )
         self.euler_prev = filtered_euler
 
-        ang_vel = np.array(self.sensor.gyro)
-        ang_vel_relative = self.zero_pose.apply(ang_vel).astype(np.float32)  # type: ignore
-        filtered_ang_vel = exponential_moving_average(
-            self.alpha, ang_vel_relative, self.ang_vel_prev
-        )
-        self.ang_vel_prev = filtered_ang_vel
-
         state = {
-            "euler": filtered_euler,
+            "lin_vel": filtered_lin_vel,
             "ang_vel": filtered_ang_vel,
+            "euler": filtered_euler,
         }
 
         return state

@@ -8,7 +8,7 @@ import numpy as np
 import numpy.typing as npt
 
 from toddlerbot.actuation import JointState
-from toddlerbot.sim import BaseSim, state_to_obs
+from toddlerbot.sim import BaseSim, Obs
 from toddlerbot.sim.mujoco_utils import MuJoCoRenderer, MuJoCoViewer
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
@@ -140,17 +140,36 @@ class MuJoCoSim(BaseSim):
         motor_state_dict = self.get_motor_state()
         joint_state_dict = self.get_joint_state()
 
-        obs = state_to_obs(motor_state_dict, joint_state_dict)
+        time = list(joint_state_dict.values())[0].time
+
+        a_obs: List[float] = []
+        for motor_name in motor_state_dict:
+            a_obs.append(motor_state_dict[motor_name].pos)
+
+        q_obs: List[float] = []
+        dq_obs: List[float] = []
+        for joint_name in joint_state_dict:
+            q_obs.append(joint_state_dict[joint_name].pos)
+            dq_obs.append(joint_state_dict[joint_name].vel)
 
         if self.fixed_base:
-            quat = np.array([1, 0, 0, 0], dtype=np.float32)
+            lin_vel = np.zeros(3, dtype=np.float32)
             ang_vel = np.zeros(3, dtype=np.float32)
+            quat = np.array([1, 0, 0, 0], dtype=np.float32)
         else:
+            lin_vel = np.array(
+                self.data.body("torso").cvel[3:],  # type: ignore
+                dtype=np.float32,
+                copy=True,
+            )
+            ang_vel = np.array(
+                self.data.body("torso").cvel[:3],  # type: ignore
+                dtype=np.float32,
+                copy=True,
+            )
             quat = self.data.body("torso").xquat  # type: ignore
-            ang_vel = self.data.body("torso").cvel[:3]  # type: ignore
 
-        obs.euler = np.asarray(quat2euler(np.array(quat, copy=True)))  # type: ignore
-        obs.ang_vel = np.array(ang_vel, copy=True)  # type: ignore
+        euler = np.asarray(quat2euler(np.array(quat, copy=True)))  # type: ignore
 
         # Add sensor noise
         # obs.euler += np.random.normal(0, self.imu_euler_noise_std, size=obs.euler.shape)
@@ -158,6 +177,15 @@ class MuJoCoSim(BaseSim):
         #     0, self.imu_gyro_noise_std, size=obs.ang_vel.shape
         # )
 
+        obs = Obs(
+            time=time,
+            u=np.array(a_obs, dtype=np.float32),
+            q=np.array(q_obs, dtype=np.float32),
+            dq=np.array(dq_obs, dtype=np.float32),
+            lin_vel=lin_vel,
+            ang_vel=ang_vel,
+            euler=euler,
+        )
         return obs
 
     def get_mass(self) -> float:
