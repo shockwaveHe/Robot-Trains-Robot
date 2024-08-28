@@ -36,6 +36,10 @@ def load_datasets(
 
         obs_list: List[Obs] = log_data_dict["obs_list"]
         motor_angles_list: List[Dict[str, float]] = log_data_dict["motor_angles_list"]
+        joint_pos_ref_list: List[Dict[str, float]] = [
+            robot.motor_to_joint_angles(motor_angles)
+            for motor_angles in motor_angles_list
+        ]
 
         data_dict["imu"] = {
             "euler": np.array([obs.euler for obs in obs_list[:idx]]),
@@ -59,6 +63,12 @@ def load_datasets(
                     for motor_angles in motor_angles_list[:idx]
                 ]
             )
+            data_dict[joint_name]["joint_pos_ref"] = np.array(
+                [
+                    list(joint_pos_ref.values())
+                    for joint_pos_ref in joint_pos_ref_list[:idx]
+                ]
+            )
 
     return sim_data, real_data
 
@@ -77,6 +87,8 @@ def evaluate(
     joint_vel_real_dict: Dict[str, List[float]] = {}
     action_sim_dict: Dict[str, List[float]] = {}
     action_real_dict: Dict[str, List[float]] = {}
+    joint_pos_ref_sim_dict: Dict[str, List[float]] = {}
+    joint_pos_ref_real_dict: Dict[str, List[float]] = {}
 
     rmse_pos_dict: Dict[str, float] = {}
     rmse_vel_dict: Dict[str, float] = {}
@@ -86,6 +98,8 @@ def evaluate(
         if joint_name == "imu":
             continue
 
+        motor_name = robot.motor_ordering[robot.joint_ordering.index(joint_name)]
+
         joint_idx = robot.joint_ordering.index(joint_name)
         obs_pos_sim = sim_data[joint_name]["obs_pos"][:, joint_idx]
         obs_pos_real = real_data[joint_name]["obs_pos"][:, joint_idx]
@@ -93,6 +107,8 @@ def evaluate(
         obs_vel_real = real_data[joint_name]["obs_vel"][:, joint_idx]
         action_sim = sim_data[joint_name]["action"][:, joint_idx]
         action_real = real_data[joint_name]["action"][:, joint_idx]
+        joint_pos_ref_sim = sim_data[joint_name]["joint_pos_ref"][:, joint_idx]
+        joint_pos_ref_real = real_data[joint_name]["joint_pos_ref"][:, joint_idx]
 
         time_seq_sim_dict[joint_name] = sim_data[joint_name]["obs_time"].tolist()
         time_seq_real_dict[joint_name] = real_data[joint_name]["obs_time"].tolist()
@@ -101,12 +117,15 @@ def evaluate(
         joint_pos_real_dict[joint_name] = obs_pos_real.tolist()
         joint_vel_sim_dict[joint_name] = obs_vel_sim.tolist()
         joint_vel_real_dict[joint_name] = obs_vel_real.tolist()
-        action_sim_dict[joint_name] = action_sim.tolist()
-        action_real_dict[joint_name] = action_real.tolist()
+
+        action_sim_dict[motor_name] = action_sim.tolist()
+        action_real_dict[motor_name] = action_real.tolist()
+        joint_pos_ref_sim_dict[joint_name] = joint_pos_ref_sim.tolist()
+        joint_pos_ref_real_dict[joint_name] = joint_pos_ref_real.tolist()
 
         rmse_pos_dict[joint_name] = np.sqrt(np.mean((obs_pos_real - obs_pos_sim) ** 2))
         rmse_vel_dict[joint_name] = np.sqrt(np.mean((obs_vel_real - obs_vel_sim) ** 2))
-        rmse_action_dict[joint_name] = np.sqrt(np.mean((action_real - action_sim) ** 2))
+        rmse_action_dict[motor_name] = np.sqrt(np.mean((action_real - action_sim) ** 2))
 
     plot_euler_gap(
         time_seq_sim_dict[list(sim_data.keys())[-1]],
@@ -132,8 +151,30 @@ def evaluate(
             rmse_dict,
             label,
             save_path=exp_folder_path,
-            file_name="sim2real_gap_" + label,
+            file_name=f"{label}_gap",
         )
+
+    plot_joint_angle_tracking(
+        time_seq_sim_dict,
+        time_seq_sim_dict,
+        joint_pos_sim_dict,
+        joint_pos_ref_sim_dict,
+        robot.joint_limits,
+        save_path=exp_folder_path,
+        file_name="sim_joint_pos_tracking",
+        set_ylim=False,
+    )
+
+    plot_joint_angle_tracking(
+        time_seq_real_dict,
+        time_seq_real_dict,
+        joint_pos_real_dict,
+        joint_pos_ref_real_dict,
+        robot.joint_limits,
+        save_path=exp_folder_path,
+        file_name="real_joint_pos_tracking",
+        set_ylim=False,
+    )
 
     plot_joint_angle_tracking(
         time_seq_sim_dict,
@@ -160,17 +201,19 @@ def evaluate(
     )
 
     # Hack the motor names
-    time_seq_motor_dict: Dict[str, List[float]] = {}
+    time_seq_sim_dict_motor: Dict[str, List[float]] = {}
+    time_seq_real_dict_motor: Dict[str, List[float]] = {}
     for joint_name in time_seq_sim_dict:
         if joint_name == "imu":
             continue
 
         motor_name = robot.motor_ordering[robot.joint_ordering.index(joint_name)]
-        time_seq_motor_dict[motor_name] = time_seq_sim_dict[joint_name]
+        time_seq_sim_dict_motor[motor_name] = time_seq_sim_dict[joint_name]
+        time_seq_real_dict_motor[motor_name] = time_seq_real_dict[joint_name]
 
     plot_joint_angle_tracking(
-        time_seq_motor_dict,
-        time_seq_real_dict,
+        time_seq_sim_dict_motor,
+        time_seq_real_dict_motor,
         action_sim_dict,
         action_real_dict,
         robot.joint_limits,
