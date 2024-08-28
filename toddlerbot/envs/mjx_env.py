@@ -320,6 +320,7 @@ class MuJoCoEnv(PipelineEnv):
         else:
             ang_vel_yaw = jax.random.uniform(  # type:ignore
                 rng_3,
+                (1,),
                 minval=self.command_ranges["ang_vel_yaw"][0],
                 maxval=self.command_ranges["ang_vel_yaw"][1],
             )
