@@ -78,7 +78,7 @@ def plot_results(
             if motor_name not in motor_angle_dict:
                 motor_angle_dict[motor_name] = []
 
-            motor_angle_dict[motor_name].append(obs.a[j])
+            motor_angle_dict[motor_name].append(obs.u[j])
 
         for j, joint_name in enumerate(robot.joint_ordering):
             if joint_name not in time_seq_dict:

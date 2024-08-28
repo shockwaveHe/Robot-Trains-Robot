@@ -1,10 +1,11 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
 import numpy as np
+import numpy.typing as npt
 
 from toddlerbot.actuation import JointState
-from toddlerbot.sim import BaseSim, state_to_obs
+from toddlerbot.sim import BaseSim, Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_ports
 from toddlerbot.utils.math_utils import exponential_moving_average
@@ -110,12 +111,12 @@ class RealWorld(BaseSim):
         if future_imu is not None:
             self.imu = future_imu.result()
 
-        self.last_joint_state_dict: Dict[str, JointState] = {}
+        self.last_joint_state: Dict[str, npt.NDArray[np.float32]] = {}
 
         for _ in range(100):
             self.get_observation()
 
-        self.last_joint_state_dict: Dict[str, JointState] = {}
+        self.last_joint_state: Dict[str, npt.NDArray[np.float32]] = {}
 
     def negate_motor_angles(self, joint_angles: Dict[str, float]) -> Dict[str, float]:
         joint_angles_negated: Dict[str, float] = {}
@@ -128,160 +129,115 @@ class RealWorld(BaseSim):
         return joint_angles_negated
 
     # @profile()
-    def process_motor_reading(
-        self, results: Dict[str, Dict[int, JointState]]
-    ) -> Tuple[Dict[str, JointState], Dict[str, JointState]]:
-        motor_state_dict: Dict[str, JointState] = {}
-
+    def process_motor_reading(self, results: Dict[str, Dict[int, JointState]]) -> Obs:
+        motor_state_dict_unordered: Dict[str, JointState] = {}
         if self.has_dynamixel:
             dynamixel_state = results["dynamixel"]
             for motor_name in self.robot.get_joint_attrs("type", "dynamixel"):
                 motor_id = self.robot.config["joints"][motor_name]["id"]
-                motor_state_dict[motor_name] = dynamixel_state[motor_id]
+                motor_state_dict_unordered[motor_name] = dynamixel_state[motor_id]
 
         if self.has_sunny_sky:
             sunny_sky_state = results["sunny_sky"]
             for motor_name in self.robot.get_joint_attrs("type", "sunny_sky"):
                 motor_id = self.robot.config["joints"][motor_name]["id"]
-                motor_state_dict[motor_name] = sunny_sky_state[motor_id]
+                motor_state_dict_unordered[motor_name] = sunny_sky_state[motor_id]
 
-        for motor_name in motor_state_dict.keys():
+        time_curr = 0.0
+        motor_pos_obs = np.zeros(len(self.robot.motor_ordering), dtype=np.float32)
+        motor_vel_obs = np.zeros(len(self.robot.motor_ordering), dtype=np.float32)
+        for i, motor_name in enumerate(self.robot.motor_ordering):
+            if i == 0:
+                time_curr = motor_state_dict_unordered[motor_name].time
+
             if motor_name in self.negated_motor_names:
-                motor_state_dict[motor_name].pos *= -1
-                motor_state_dict[motor_name].vel *= -1
+                motor_pos_obs[i] = -motor_state_dict_unordered[motor_name].pos
+                motor_vel_obs[i] = -motor_state_dict_unordered[motor_name].vel
+            else:
+                motor_pos_obs[i] = motor_state_dict_unordered[motor_name].pos
+                motor_vel_obs[i] = motor_state_dict_unordered[motor_name].vel
 
-        motor_state_dict = {
-            motor_name: motor_state_dict[motor_name]
-            for motor_name in self.robot.motor_ordering
-        }
-
-        joint_state_dict: Dict[str, JointState] = {}
         joints_config = self.robot.config["joints"]
+        joint_pos = np.zeros(len(self.robot.joint_ordering), dtype=np.float32)
+        joint_vel = np.zeros(len(self.robot.joint_ordering), dtype=np.float32)
         waist_act_pos: List[float] = []
+        waist_act_ind: List[int] = []
         left_ank_act_pos: List[float] = []
+        left_ank_act_ind: List[int] = []
         right_ank_act_pos: List[float] = []
-        for motor_name, motor_state in motor_state_dict.items():
+        right_ank_act_ind: List[int] = []
+        for i, (motor_name, motor_pos, motor_vel) in enumerate(
+            zip(self.robot.motor_ordering, motor_pos_obs, motor_vel_obs)
+        ):
             transmission = joints_config[motor_name]["transmission"]
             if transmission == "gears":
-                joint_name = motor_name.replace("_drive", "_driven")
-                joint_state_dict[joint_name] = JointState(
-                    time=motor_state.time,
-                    pos=motor_state.pos * joints_config[motor_name]["gear_ratio"],
-                    vel=-motor_state.vel / joints_config[motor_name]["gear_ratio"],
-                )
+                joint_pos[i] = motor_pos * joints_config[motor_name]["gear_ratio"]
+                joint_vel[i] = -motor_vel / joints_config[motor_name]["gear_ratio"]
+                joint_name = self.robot.motor_to_joint_name[motor_name]
                 if joint_name in self.negated_motor_names:
-                    joint_state_dict[joint_name].vel *= -1
+                    joint_vel[i] *= -1
 
             elif transmission == "waist":
-                # Placeholder to ensure the correct order
-                joint_state_dict["waist_roll"] = JointState(
-                    time=motor_state.time, pos=0.0, vel=0.0
-                )
-                joint_state_dict["waist_yaw"] = JointState(
-                    time=motor_state.time, pos=0.0, vel=0.0
-                )
-                waist_act_pos.append(motor_state.pos)
+                waist_act_pos.append(motor_pos)
+                waist_act_ind.append(i)
+
             elif transmission == "knee":
-                joint_name: str = motor_name.replace("_act", "_pitch")
-                joint_state_dict[joint_name] = JointState(
-                    time=motor_state.time, pos=motor_state.pos, vel=motor_state.vel
-                )
+                joint_pos[i] = motor_pos
+                joint_vel[i] = motor_vel
+
             elif transmission == "ankle":
                 if "left" in motor_name:
-                    joint_state_dict["left_ank_roll"] = JointState(
-                        time=motor_state.time, pos=0.0, vel=0.0
-                    )
-                    joint_state_dict["left_ank_pitch"] = JointState(
-                        time=motor_state.time, pos=0.0, vel=0.0
-                    )
-                    left_ank_act_pos.append(motor_state.pos)
+                    left_ank_act_pos.append(motor_pos)
+                    left_ank_act_ind.append(i)
                 elif "right" in motor_name:
-                    joint_state_dict["right_ank_roll"] = JointState(
-                        time=motor_state.time, pos=0.0, vel=0.0
-                    )
-                    joint_state_dict["right_ank_pitch"] = JointState(
-                        time=motor_state.time, pos=0.0, vel=0.0
-                    )
-                    right_ank_act_pos.append(motor_state.pos)
+                    right_ank_act_pos.append(motor_pos)
+                    right_ank_act_ind.append(i)
+
             elif transmission == "none":
-                joint_state_dict[motor_name] = JointState(
-                    time=motor_state.time, pos=motor_state.pos, vel=motor_state.vel
-                )
+                joint_pos[i] = motor_pos
+                joint_vel[i] = motor_vel
 
-        joint_state_dict["waist_roll"].pos, joint_state_dict["waist_yaw"].pos = (
-            self.robot.waist_fk(waist_act_pos)
+        joint_pos[waist_act_ind[0]], joint_pos[waist_act_ind[1]] = self.robot.waist_fk(
+            waist_act_pos
         )
-        (
-            joint_state_dict["left_ank_roll"].pos,
-            joint_state_dict["left_ank_pitch"].pos,
-        ) = self.robot.ankle_fk(left_ank_act_pos, "left")
-        (
-            joint_state_dict["right_ank_roll"].pos,
-            joint_state_dict["right_ank_pitch"].pos,
-        ) = self.robot.ankle_fk(right_ank_act_pos, "right")
+        joint_pos[left_ank_act_ind[0]], joint_pos[left_ank_act_ind[1]] = (
+            self.robot.ankle_fk(left_ank_act_pos, "left")
+        )
+        joint_pos[right_ank_act_ind[0]], joint_pos[right_ank_act_ind[1]] = (
+            self.robot.ankle_fk(right_ank_act_pos, "right")
+        )
 
-        for joint_name in [
-            "waist_roll",
-            "waist_yaw",
-            "left_ank_roll",
-            "left_ank_pitch",
-            "right_ank_roll",
-            "right_ank_pitch",
-        ]:
-            if self.last_joint_state_dict and joint_name in self.last_joint_state_dict:
-                time_delta = (
-                    joint_state_dict[joint_name].time
-                    - self.last_joint_state_dict[joint_name].time
-                )
+        if self.last_joint_state:
+            closed_joint_ind = waist_act_ind + left_ank_act_ind + right_ank_act_ind
+            for joint_idx in closed_joint_ind:
+                time_delta = time_curr - self.time_last
                 if time_delta > 0:
-                    joint_state_dict[joint_name].vel = (
-                        joint_state_dict[joint_name].pos
-                        - self.last_joint_state_dict[joint_name].pos
+                    joint_vel[joint_idx] = (
+                        joint_pos[joint_idx] - self.last_joint_state["pos"][joint_idx]
                     ) / time_delta
                 else:
                     raise ValueError("Time delta must be greater than 0.")
 
-        for joint_name in joint_state_dict.keys():
-            joint_state_dict[joint_name].vel = float(
-                exponential_moving_average(
-                    self.robot.config["general"]["fd_smooth_alpha"],
-                    joint_state_dict[joint_name].vel,
-                    self.last_joint_state_dict[joint_name].vel,
-                )
+            closed_joint_mask = np.zeros(len(self.robot.joint_ordering), dtype=bool)
+            closed_joint_mask[closed_joint_ind] = True
+
+            joint_vel[~closed_joint_mask] = exponential_moving_average(
+                self.robot.config["general"]["smooth_alpha"],
+                joint_vel[~closed_joint_mask].astype(np.float32),
+                self.last_joint_state["vel"][~closed_joint_mask].astype(np.float32),
+            )
+            joint_vel[closed_joint_mask] = exponential_moving_average(
+                self.robot.config["general"]["fd_smooth_alpha"],
+                joint_vel[closed_joint_mask].astype(np.float32),
+                self.last_joint_state["vel"][closed_joint_mask].astype(np.float32),
             )
 
-        self.last_joint_state_dict = joint_state_dict
+        obs = Obs(time=time_curr, u=motor_pos_obs, q=joint_pos, dq=joint_vel)
 
-        return motor_state_dict, joint_state_dict
+        self.time_last = time_curr
+        self.last_joint_state = {"pos": joint_pos, "vel": joint_vel}
 
-    def get_torso_pose(self):
-        return np.array([0, 0, 0.4]), np.eye(3)
-
-    # @profile()
-    def get_joint_state(self, retries: int = 0) -> Dict[str, JointState]:
-        futures: Dict[str, Any] = {}
-        if self.has_dynamixel:
-            futures["dynamixel"] = self.executor.submit(
-                self.dynamixel_controller.get_motor_state, retries
-            )
-
-        if self.has_sunny_sky:
-            futures["sunny_sky"] = self.executor.submit(
-                self.sunny_sky_controller.get_motor_state
-            )
-
-        results: Dict[str, Dict[int, JointState]] = {}
-        for future in as_completed(futures.values()):
-            for key, f in futures.items():
-                if f is future:
-                    # end_time = time.time()
-                    results[key] = future.result()
-                    # log(f"Time taken for {key}: {end_time - start_times[key]}", header=snake2camel(self.name), level="debug")
-                    break
-
-        _, joint_state_dict = self.process_motor_reading(results)
-
-        return joint_state_dict
+        return obs
 
     def step(self):
         pass
@@ -315,9 +271,7 @@ class RealWorld(BaseSim):
                     # log(f"Time taken for {key}: {end_time - start_times[key]}", header=snake2camel(self.name), level="debug")
                     break
 
-        motor_state_dict, joint_state_dict = self.process_motor_reading(results)
-
-        obs = state_to_obs(motor_state_dict, joint_state_dict)
+        obs = self.process_motor_reading(results)
 
         if self.has_imu:
             for k, v in results["imu"].items():

@@ -37,7 +37,10 @@ class Robot:
         self.cache_path = os.path.join(self.root_path, f"{self.name}_cache.pkl")
 
         self.load_robot_config()
+
         self.load_robot_cache()
+
+        self.initialize()
 
     def load_robot_config(self):
         if os.path.exists(self.config_path):
@@ -145,79 +148,47 @@ class Robot:
 
         return offsets
 
-    @property
-    def init_motor_angles(self) -> Dict[str, float]:
-        motor_angles: Dict[str, float] = {}
+    def initialize(self):
+        self.init_motor_angles: Dict[str, float] = {}
         for joint_name, joint_config in self.config["joints"].items():
             if not joint_config["is_passive"]:
-                motor_angles[joint_name] = 0.0
+                self.init_motor_angles[joint_name] = 0.0
 
-        return motor_angles
-
-    @property
-    def default_motor_angles(self) -> Dict[str, float]:
-        motor_angles: Dict[str, float] = {}
+        self.default_motor_angles: Dict[str, float] = {}
         for joint_name, joint_config in self.config["joints"].items():
             if not joint_config["is_passive"]:
-                motor_angles[joint_name] = joint_config["default_pos"]
+                self.default_motor_angles[joint_name] = joint_config["default_pos"]
 
-        return motor_angles
+        self.init_joint_angles = self.motor_to_joint_angles(self.init_motor_angles)
 
-    @property
-    def init_joint_angles(self) -> Dict[str, float]:
-        return self.motor_to_joint_angles(self.init_motor_angles)
+        self.default_joint_angles = self.motor_to_joint_angles(
+            self.default_motor_angles
+        )
 
-    @property
-    def default_joint_angles(self) -> Dict[str, float]:
-        return self.motor_to_joint_angles(self.default_motor_angles)
+        self.motor_ordering = list(self.init_motor_angles.keys())
+        self.joint_ordering = list(self.init_joint_angles.keys())
+        self.motor_to_joint_name = dict(zip(self.motor_ordering, self.joint_ordering))
+        self.joint_to_motor_name = dict(zip(self.joint_ordering, self.motor_ordering))
 
-    @property
-    def motor_ordering(self) -> List[str]:
-        return list(self.init_motor_angles.keys())
+        self.foot_name = self.config["general"]["foot_name"]
+        self.foot_z = self.config["general"]["offsets"]["foot_z"]
 
-    @property
-    def joint_ordering(self) -> List[str]:
-        return list(self.init_joint_angles.keys())
-
-    @property
-    def foot_name(self) -> str:
-        return self.config["general"]["foot_name"]
-
-    @property
-    def foot_z(self) -> float:
-        return self.config["general"]["offsets"]["foot_z"]
-
-    @property
-    def collider_names(self) -> List[str]:
-        collider_names: List[str] = []
+        self.collider_names: List[str] = []
         for link_name, link_config in self.collision_config.items():
             if link_config["has_collision"]:
-                collider_names.append(link_name)
+                self.collider_names.append(link_name)
 
-        return collider_names
-
-    @property
-    def action_size(self) -> int:
-        return len(self.motor_ordering)
-
-    @property
-    def joint_group(self) -> Dict[str, str]:
-        joint_group: Dict[str, str] = {}
+        self.action_size = len(self.motor_ordering)
+        self.joint_group: Dict[str, str] = {}
         for joint_name, joint_config in self.config["joints"].items():
-            joint_group[joint_name] = joint_config["group"]
+            self.joint_group[joint_name] = joint_config["group"]
 
-        return joint_group
-
-    @property
-    def joint_limits(self) -> Dict[str, List[float]]:
-        joint_limits: Dict[str, List[float]] = {}
+        self.joint_limits: Dict[str, List[float]] = {}
         for joint_name, joint_config in self.config["joints"].items():
-            joint_limits[joint_name] = [
+            self.joint_limits[joint_name] = [
                 joint_config["lower_limit"],
                 joint_config["upper_limit"],
             ]
-
-        return joint_limits
 
     def get_joint_attrs(
         self,

@@ -6,6 +6,7 @@
         "has_dynamixel": true,
         "dynamixel_baudrate": 4000000,
         "has_sunny_sky": false,
+        "smooth_alpha": 0.1,
         "fd_smooth_alpha": 0.9,
         "foot_name": "ank_roll_link",
         "offsets": {

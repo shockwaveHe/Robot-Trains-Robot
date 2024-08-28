@@ -11,7 +11,7 @@ from toddlerbot.actuation import JointState
 @dataclass
 class Obs:
     time: float
-    a: npt.NDArray[np.float32]
+    u: npt.NDArray[np.float32]
     q: npt.NDArray[np.float32]
     dq: npt.NDArray[np.float32]
     euler: npt.NDArray[np.float32] = np.zeros(3, dtype=np.float32)
@@ -36,7 +36,7 @@ def state_to_obs(
 
     obs = Obs(
         time=time,
-        a=np.array(a_obs, dtype=np.float32),
+        u=np.array(a_obs, dtype=np.float32),
         q=np.array(q_obs, dtype=np.float32),
         dq=np.array(dq_obs, dtype=np.float32),
     )
@@ -48,10 +48,6 @@ class BaseSim(ABC):
     def __init__(self, name: str):
         self.name = name
         self.visualizer = None
-
-    @abstractmethod
-    def get_joint_state(self) -> Dict[str, JointState]:
-        pass
 
     @abstractmethod
     def set_motor_angles(self, motor_angles: Dict[str, float]):
