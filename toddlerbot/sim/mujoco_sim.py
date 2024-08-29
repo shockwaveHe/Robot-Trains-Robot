@@ -153,7 +153,7 @@ class MuJoCoSim(BaseSim):
                     / joints_config[motor_name]["gear_ratio"]
                 )
                 motor_vel.append(
-                    -joint_state_dict[joint_name].vel
+                    joint_state_dict[joint_name].vel
                     * joints_config[motor_name]["gear_ratio"]
                 )
             else:
