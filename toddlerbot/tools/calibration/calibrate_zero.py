@@ -47,21 +47,6 @@ def calibrate_dynamixel(port: str, robot: Robot, group: str):
     ):
         if transmission == "none" and joint_group == "arm":
             init_pos[id] = np.pi / 4 * round(state.pos / (np.pi / 4))
-        elif transmission == "ankle":
-            act_ank_zero = robot.data_dict["ank_act_zero"]
-
-            motor_name = robot.get_joint_attrs("id", id)[0]
-            if "act_1" in motor_name:
-                act_pos = act_ank_zero[0]
-            else:
-                act_pos = act_ank_zero[1]
-
-            if "right" in motor_name:
-                act_pos = -act_pos
-
-            init_pos[id] = (
-                np.pi / 4 * round((state.pos - act_pos) / (np.pi / 4)) + act_pos
-            )
         else:
             init_pos[id] = state.pos
 
