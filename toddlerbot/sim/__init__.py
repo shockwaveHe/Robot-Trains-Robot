@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Dict
+from typing import Dict, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -9,12 +9,13 @@ import numpy.typing as npt
 @dataclass
 class Obs:
     time: float
-    u: npt.NDArray[np.float32]
-    q: npt.NDArray[np.float32]
-    dq: npt.NDArray[np.float32]
+    motor_pos: npt.NDArray[np.float32]
+    motor_vel: npt.NDArray[np.float32]
     lin_vel: npt.NDArray[np.float32] = np.zeros(3, dtype=np.float32)
     ang_vel: npt.NDArray[np.float32] = np.zeros(3, dtype=np.float32)
     euler: npt.NDArray[np.float32] = np.zeros(3, dtype=np.float32)
+    joint_pos: Optional[npt.NDArray[np.float32]] = None
+    joint_vel: Optional[npt.NDArray[np.float32]] = None
 
 
 class BaseSim(ABC):

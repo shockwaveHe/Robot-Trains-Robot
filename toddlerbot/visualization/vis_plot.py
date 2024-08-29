@@ -266,7 +266,7 @@ def plot_joint_tracking(
     save_path: str,
     x_label: str = "Time (s)",
     y_label: str = "Position (rad)",
-    file_name: str = "joint_pos_tracking",
+    file_name: str = "motor_pos_tracking",
     file_suffix: str = "",
     title_list: List[str] = [],
     set_ylim: bool = False,
@@ -320,7 +320,7 @@ def plot_joint_tracking_single(
     time_seq_dict: Dict[str, List[float]],
     joint_data_dict: Dict[str, List[float]],
     save_path: str,
-    file_name: str = "joint_velocity_tracking",
+    file_name: str = "motor_vel_tracking",
     file_suffix: str = "",
     title_list: List[str] = [],
 ):

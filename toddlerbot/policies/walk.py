@@ -13,17 +13,17 @@ from toddlerbot.envs.ppo_config import PPOConfig
 from toddlerbot.policies import BasePolicy
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
-
-# from toddlerbot.utils.misc_utils import profile
 from toddlerbot.tools.teleop.joystick import get_controller_input, initialize_joystick
 from toddlerbot.utils.math_utils import interpolate_action
+
+# from toddlerbot.utils.misc_utils import profile
 
 
 class WalkPolicy(BasePolicy):
     def __init__(
-        self, robot: Robot, run_name: str, init_joint_pos: npt.NDArray[np.float32]
+        self, robot: Robot, init_motor_pos: npt.NDArray[np.float32], run_name: str
     ):
-        super().__init__(robot)
+        super().__init__(robot, init_motor_pos)
         self.name = "walk"
 
         cfg = MuJoCoConfig()
@@ -35,7 +35,7 @@ class WalkPolicy(BasePolicy):
         )
 
         # joint indices
-        motor_indices = np.arange(robot.action_size)  # type:ignore
+        motor_indices = np.arange(robot.nu)  # type:ignore
         motor_groups = np.array(
             [robot.joint_group[name] for name in robot.motor_ordering]
         )
@@ -46,30 +46,26 @@ class WalkPolicy(BasePolicy):
 
         self.action_scale = cfg.action.action_scale
         self.obs_scales = cfg.obs.scales
-        self.default_action = np.array(
+        self.default_motor_pos = np.array(
             list(robot.default_motor_angles.values()), dtype=np.float32
         )
-        self.default_joint_pos = np.array(
-            list(robot.default_joint_angles.values()), dtype=np.float32
-        )
 
-        self.last_action = np.zeros(robot.action_size, dtype=np.float32)
+        self.last_action = np.zeros(robot.nu, dtype=np.float32)
         self.obs_history = np.zeros(
             cfg.obs.frame_stack * cfg.obs.num_single_obs, dtype=np.float32
         )
         self.cycle_time = cfg.action.cycle_time
+        self.step_curr = 0
         self.command_ranges = [
             cfg.commands.ranges.lin_vel_x,
             cfg.commands.ranges.lin_vel_y,
             cfg.commands.ranges.ang_vel_yaw,
         ]
 
-        self.step_curr = 0
-
         ppo_network = make_networks_factory(  # type: ignore
             cfg.obs.num_single_obs,
             cfg.obs.num_single_privileged_obs,
-            robot.action_size,
+            robot.nu,
         )
         make_policy = ppo_networks.make_inference_fn(ppo_network)  # type: ignore
 
@@ -84,18 +80,10 @@ class WalkPolicy(BasePolicy):
         self.joystick = initialize_joystick()
 
         self.prep_duration = 7.0
-        init_action = np.array(
-            list(
-                robot.joint_to_motor_angles(
-                    dict(zip(robot.joint_ordering, init_joint_pos))
-                ).values()
-            ),
-            dtype=np.float32,
-        )
         self.prep_time, self.prep_action = self.reset(
             -self.control_dt,
-            init_action,
-            self.default_action,
+            init_motor_pos,
+            self.default_motor_pos,
             self.prep_duration,
             end_time=5.0,
         )
@@ -113,7 +101,7 @@ class WalkPolicy(BasePolicy):
         phase_signal = np.array(  # type:ignore
             [np.sin(2 * np.pi * phase), np.cos(2 * np.pi * phase)]  # type:ignore
         )
-        joint_pos_delta = obs.q - self.default_joint_pos
+        motor_pos_delta = obs.motor_pos - self.default_motor_pos
 
         if self.joystick is None:
             controller_input = [0.0, 0.0, 0.0]
@@ -135,8 +123,8 @@ class WalkPolicy(BasePolicy):
             [
                 phase_signal,
                 np.array(controller_input),  # type:ignore
-                joint_pos_delta * self.obs_scales.dof_pos,
-                obs.dq * self.obs_scales.dof_vel,
+                motor_pos_delta * self.obs_scales.dof_pos,
+                obs.motor_vel * self.obs_scales.dof_vel,
                 self.last_action,
                 obs.lin_vel * self.obs_scales.lin_vel,
                 obs.ang_vel * self.obs_scales.ang_vel,
@@ -157,6 +145,6 @@ class WalkPolicy(BasePolicy):
         self.last_action = action
         self.step_curr += 1
 
-        motor_target = self.default_action + action * self.action_scale
+        motor_target = self.default_motor_pos + action * self.action_scale
 
         return motor_target

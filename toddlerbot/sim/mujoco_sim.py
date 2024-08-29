@@ -115,7 +115,7 @@ class MuJoCoSim(BaseSim):
 
     def get_motor_state(self):
         motor_state_dict: Dict[str, JointState] = {}
-        for name in self.robot.motor_ordering:
+        for name in self.robot.joint_ordering:
             motor_state_dict[name] = JointState(
                 time=time.time(),
                 pos=self.data.joint(name).qpos.item(),  # type: ignore
@@ -139,17 +139,19 @@ class MuJoCoSim(BaseSim):
         motor_state_dict = self.get_motor_state()
         joint_state_dict = self.get_joint_state()
 
-        time = list(joint_state_dict.values())[0].time
+        time = list(motor_state_dict.values())[0].time
 
-        a_obs: List[float] = []
+        motor_pos: List[float] = []
+        motor_vel: List[float] = []
         for motor_name in motor_state_dict:
-            a_obs.append(motor_state_dict[motor_name].pos)
+            motor_pos.append(motor_state_dict[motor_name].pos)
+            motor_vel.append(motor_state_dict[motor_name].vel)
 
-        q_obs: List[float] = []
-        dq_obs: List[float] = []
+        joint_pos: List[float] = []
+        joint_vel: List[float] = []
         for joint_name in joint_state_dict:
-            q_obs.append(joint_state_dict[joint_name].pos)
-            dq_obs.append(joint_state_dict[joint_name].vel)
+            joint_pos.append(joint_state_dict[joint_name].pos)
+            joint_vel.append(joint_state_dict[joint_name].vel)
 
         if self.fixed_base:
             lin_vel = np.zeros(3, dtype=np.float32)
@@ -178,12 +180,13 @@ class MuJoCoSim(BaseSim):
 
         obs = Obs(
             time=time,
-            u=np.array(a_obs, dtype=np.float32),
-            q=np.array(q_obs, dtype=np.float32),
-            dq=np.array(dq_obs, dtype=np.float32),
+            motor_pos=np.array(motor_pos, dtype=np.float32),
+            motor_vel=np.array(motor_vel, dtype=np.float32),
             lin_vel=lin_vel,
             ang_vel=ang_vel,
             euler=euler,
+            joint_pos=np.array(joint_pos, dtype=np.float32),
+            joint_vel=np.array(joint_vel, dtype=np.float32),
         )
         return obs
 
@@ -213,7 +216,7 @@ class MuJoCoSim(BaseSim):
             for name in joint_angles:
                 self.data.joint(name).qpos = joint_angles[name]  # type: ignore
 
-    def set_joint_dyn(self, joint_dyn: Dict[str, Dict[str, float]]):
+    def set_joint_dynamics(self, joint_dyn: Dict[str, Dict[str, float]]):
         for joint_name, dyn in joint_dyn.items():
             for key, value in dyn.items():
                 setattr(self.model.joint(joint_name), key, value)  # type: ignore

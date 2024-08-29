@@ -10,11 +10,12 @@ from toddlerbot.utils.math_utils import interpolate
 
 class BasePolicy(ABC):
     @abstractmethod
-    def __init__(self, robot: Robot):
+    def __init__(self, robot: Robot, init_motor_pos: npt.NDArray[np.float32]):
         self.robot = robot
+        self.init_motor_pos = init_motor_pos
         self.name = "base"
         self.control_dt = 6 * 0.002
-        self.prep_duration = 0.0
+        self.prep_duration = 2.0
 
     @abstractmethod
     def step(self, obs: Obs) -> npt.NDArray[np.float32]:

@@ -178,7 +178,7 @@ class Robot:
             if link_config["has_collision"]:
                 self.collider_names.append(link_name)
 
-        self.action_size = len(self.motor_ordering)
+        self.nu = len(self.motor_ordering)
         self.joint_group: Dict[str, str] = {}
         for joint_name, joint_config in self.config["joints"].items():
             self.joint_group[joint_name] = joint_config["group"]

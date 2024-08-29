@@ -15,8 +15,8 @@ from toddlerbot.utils.misc_utils import set_seed
 
 
 class RotateTorsoPolicy(BasePolicy):
-    def __init__(self, robot: Robot, init_joint_pos: npt.NDArray[np.float32]):
-        super().__init__(robot)
+    def __init__(self, robot: Robot, init_motor_pos: npt.NDArray[np.float32]):
+        super().__init__(robot, init_motor_pos)
         self.name = "rotate_torso"
 
         set_seed(0)
@@ -48,20 +48,10 @@ class RotateTorsoPolicy(BasePolicy):
         action_list: List[npt.NDArray[np.float32]] = []
         self.time_mark_dict: Dict[str, float] = {}
 
-        init_action = np.array(
-            list(
-                robot.joint_to_motor_angles(
-                    dict(zip(robot.joint_ordering, init_joint_pos))
-                ).values()
-            ),
-            dtype=np.float32,
-        )
-        zero_action = np.zeros_like(init_action)
-
         prep_time, prep_action = self.reset(
             -self.control_dt,
-            init_action,
-            zero_action,
+            init_motor_pos,
+            np.zeros_like(init_motor_pos),
             self.prep_duration,
             end_time=5.0,
         )
@@ -75,7 +65,7 @@ class RotateTorsoPolicy(BasePolicy):
             mean = (
                 robot.joint_limits[joint_name][0] + robot.joint_limits[joint_name][1]
             ) / 2
-            warm_up_act = zero_action.copy()
+            warm_up_act = np.zeros_like(init_motor_pos)
             warm_up_act[joint_idx] = mean
 
             if len(sysID_specs.warm_up_angles) > 0:

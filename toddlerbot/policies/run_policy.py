@@ -28,6 +28,7 @@ from toddlerbot.visualization.vis_plot import (
 
 
 def plot_results(
+    robot: Robot,
     loop_time_list: List[List[float]],
     obs_list: List[Obs],
     motor_angles_list: List[Dict[str, float]],
@@ -66,8 +67,9 @@ def plot_results(
     euler_obs_list: List[npt.NDArray[np.float32]] = []
     time_seq_dict: Dict[str, List[float]] = {}
     time_seq_ref_dict: Dict[str, List[float]] = {}
-    motor_angle_dict: Dict[str, List[float]] = {}
-    joint_angle_dict: Dict[str, List[float]] = {}
+    motor_pos_dict: Dict[str, List[float]] = {}
+    motor_vel_dict: Dict[str, List[float]] = {}
+    joint_pos_dict: Dict[str, List[float]] = {}
     joint_vel_dict: Dict[str, List[float]] = {}
     for i, obs in enumerate(obs_list):
         time_obs_list.append(obs.time)
@@ -76,44 +78,37 @@ def plot_results(
         euler_obs_list.append(obs.euler)
 
         for j, motor_name in enumerate(robot.motor_ordering):
-            if motor_name not in motor_angle_dict:
-                motor_angle_dict[motor_name] = []
-
-            motor_angle_dict[motor_name].append(obs.u[j])
-
-        for j, joint_name in enumerate(robot.joint_ordering):
-            if joint_name not in time_seq_dict:
-                time_seq_ref_dict[joint_name] = []
-                time_seq_dict[joint_name] = []
-                joint_angle_dict[joint_name] = []
-                joint_vel_dict[joint_name] = []
+            if motor_name not in time_seq_dict:
+                time_seq_ref_dict[motor_name] = []
+                time_seq_dict[motor_name] = []
+                motor_pos_dict[motor_name] = []
+                motor_vel_dict[motor_name] = []
 
             # Assume the state fetching is instantaneous
-            time_seq_dict[joint_name].append(float(obs.time))
-            time_seq_ref_dict[joint_name].append(i * control_dt)
-            joint_angle_dict[joint_name].append(obs.q[j])
-            joint_vel_dict[joint_name].append(obs.dq[j])
+            time_seq_dict[motor_name].append(float(obs.time))
+            time_seq_ref_dict[motor_name].append(i * control_dt)
+            motor_pos_dict[motor_name].append(obs.motor_pos[j])
+            motor_vel_dict[motor_name].append(obs.motor_vel[j])
 
-    time_seq_dict_copy: Dict[str, List[float]] = {}
-    time_seq_ref_dict_copy: Dict[str, List[float]] = {}
-    for joint_name, time_seq_ref in time_seq_ref_dict.items():
-        motor_name = robot.motor_ordering[robot.joint_ordering.index(joint_name)]
-        time_seq_dict_copy[motor_name] = time_seq_dict[joint_name]
-        time_seq_ref_dict_copy[motor_name] = time_seq_ref
+            joint_name = robot.motor_to_joint_name[motor_name]
+            if obs.joint_pos is not None:
+                joint_pos_dict[joint_name].append(obs.joint_pos[j])
+            if obs.joint_vel is not None:
+                joint_vel_dict[joint_name].append(obs.joint_vel[j])
 
-    motor_angle_ref_dict: Dict[str, List[float]] = {}
-    joint_angle_ref_dict: Dict[str, List[float]] = {}
+    action_dict: Dict[str, List[float]] = {}
+    joint_pos_ref_dict: Dict[str, List[float]] = {}
     for motor_angles in motor_angles_list:
         for motor_name, motor_angle in motor_angles.items():
-            if motor_name not in motor_angle_ref_dict:
-                motor_angle_ref_dict[motor_name] = []
-            motor_angle_ref_dict[motor_name].append(motor_angle)
+            if motor_name not in action_dict:
+                action_dict[motor_name] = []
+            action_dict[motor_name].append(motor_angle)
 
         joint_angle_ref = robot.motor_to_joint_angles(motor_angles)
         for joint_name, joint_angle in joint_angle_ref.items():
-            if joint_name not in joint_angle_ref_dict:
-                joint_angle_ref_dict[joint_name] = []
-            joint_angle_ref_dict[joint_name].append(joint_angle)
+            if joint_name not in joint_pos_ref_dict:
+                joint_pos_ref_dict[joint_name] = []
+            joint_pos_ref_dict[joint_name].append(joint_angle)
 
     plot_loop_time(loop_time_dict, exp_folder_path)
 
@@ -153,25 +148,33 @@ def plot_results(
     plot_joint_tracking(
         time_seq_dict,
         time_seq_ref_dict,
-        joint_angle_dict,
-        joint_angle_ref_dict,
+        motor_pos_dict,
+        action_dict,
         robot.joint_limits,
         save_path=exp_folder_path,
-    )
-    plot_joint_tracking(
-        time_seq_dict_copy,
-        time_seq_ref_dict_copy,
-        motor_angle_dict,
-        motor_angle_ref_dict,
-        robot.joint_limits,
-        save_path=exp_folder_path,
-        file_name="motor_pos_tracking",
     )
     plot_joint_tracking_single(
         time_seq_dict,
-        joint_vel_dict,
+        motor_vel_dict,
         save_path=exp_folder_path,
     )
+    if len(joint_pos_dict) > 0:
+        time_seq_dict_joint: Dict[str, List[float]] = {}
+        time_seq_ref_dict_joint: Dict[str, List[float]] = {}
+        for motor_name, time_seq_ref in time_seq_ref_dict.items():
+            joint_name = robot.joint_ordering[robot.motor_ordering.index(motor_name)]
+            time_seq_dict_joint[joint_name] = time_seq_dict[motor_name]
+            time_seq_ref_dict_joint[joint_name] = time_seq_ref
+
+        plot_joint_tracking(
+            time_seq_dict_joint,
+            time_seq_ref_dict_joint,
+            joint_pos_dict,
+            joint_pos_ref_dict,
+            robot.joint_limits,
+            save_path=exp_folder_path,
+            file_name="joint_pos_tracking",
+        )
 
 
 def run_policy(policy: BasePolicy, obs: Obs) -> npt.NDArray[np.float32]:
@@ -213,7 +216,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
             inference_time = time.time()
 
             motor_angles: Dict[str, float] = {}
-            for motor_name, act in zip(robot.motor_ordering, action):
+            for motor_name, act in zip(robot.joint_ordering, action):
                 motor_angles[motor_name] = act
 
             sim.set_motor_angles(motor_angles)
@@ -297,6 +300,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
         if debug["plot"]:
             log("Visualizing...", header="Walking")
             plot_results(
+                robot,
                 loop_time_list,
                 obs_list,
                 motor_angles_list,
@@ -345,13 +349,13 @@ if __name__ == "__main__":
         from toddlerbot.sim.mujoco_sim import MuJoCoSim
 
         sim = MuJoCoSim(robot, vis_type=args.vis, fixed_base="fixed" in args.policy)
-        init_joint_pos = sim.get_observation().q
+        init_joint_pos = sim.get_observation().motor_pos
 
     elif args.sim == "real":
         from toddlerbot.sim.real_world import RealWorld
 
         sim = RealWorld(robot)
-        init_joint_pos = sim.get_observation(retries=-1).q
+        init_joint_pos = sim.get_observation(retries=-1).motor_pos
 
     else:
         raise ValueError("Unknown simulator")
@@ -375,13 +379,13 @@ if __name__ == "__main__":
         from toddlerbot.policies.walk_fixed import WalkFixedPolicy
 
         run_name = f"{args.robot}_{args.policy}_ppo_{args.ckpt}"
-        policy = WalkFixedPolicy(robot, run_name, init_joint_pos)
+        policy = WalkFixedPolicy(robot, init_joint_pos, run_name)
 
     elif args.policy == "walk":
         from toddlerbot.policies.walk import WalkPolicy
 
         run_name = f"{args.robot}_{args.policy}_ppo_{args.ckpt}"
-        policy = WalkPolicy(robot, run_name, init_joint_pos)
+        policy = WalkPolicy(robot, init_joint_pos, run_name)
 
     elif args.policy == "sysID_fixed":
         from toddlerbot.policies.sysID_fixed import SysIDFixedPolicy

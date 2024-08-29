@@ -22,16 +22,11 @@ def test_walk_simple_ref():
 
     sim = MuJoCoSim(robot, fixed_base=True, vis_type="render")
 
-    default_ctrl = sim.model.keyframe("home").ctrl  # type: ignore
-    default_joint_angles = robot.motor_to_joint_angles(
-        dict(zip(robot.motor_ordering, default_ctrl))  # type: ignore
-    )
-
     from toddlerbot.motion_reference.walk_simple_ref import WalkSimpleReference
 
     walk_ref = WalkSimpleReference(
         robot,
-        default_joint_pos=np.array(list(default_joint_angles.values())),  # type: ignore
+        default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
     )
 
     duration = 10
@@ -68,16 +63,11 @@ def test_walk_zmp_ref():
     sim = MuJoCoSim(robot, fixed_base=True, vis_type="render")
     # sim.simulate(vis_type="render")
 
-    default_ctrl = sim.model.keyframe("home").ctrl  # type: ignore
-    default_joint_angles = robot.motor_to_joint_angles(
-        dict(zip(robot.motor_ordering, default_ctrl))  # type: ignore
-    )
-
     from toddlerbot.motion_reference.walk_zmp_ref import WalkZMPReference
 
     walk_ref = WalkZMPReference(
         robot,
-        default_joint_pos=jnp.array(list(default_joint_angles.values())),  # type: ignore
+        default_joint_pos=jnp.array(list(robot.default_joint_angles.values())),  # type: ignore
     )
 
     with jax.disable_jit():
@@ -100,7 +90,7 @@ def test_walk_zmp_ref():
         sim.set_joint_angles(np.asarray(state[13 : 13 + len(robot.joint_ordering)]))  # type: ignore
         sim.step()
 
-    sim.save_recording(exp_folder_path)
+    sim.save_recording(exp_folder_path, sim.control_dt, 2)  # type: ignore
 
     sim.close()
 

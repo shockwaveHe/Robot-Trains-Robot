@@ -37,7 +37,9 @@ def load_datasets(robot: Robot, data_path: str):
         obs_time_dict[joint_name] = np.array([obs.time for obs in obs_list[idx_range]])
         obs_time_dict[joint_name] -= obs_time_dict[joint_name][0]
 
-        obs_pos_dict[joint_name] = np.array([obs.q for obs in obs_list[idx_range]])
+        obs_pos_dict[joint_name] = np.array(
+            [obs.motor_pos for obs in obs_list[idx_range]]
+        )
         action_dict[joint_name] = np.array(
             [
                 list(motor_angles.values())
@@ -113,7 +115,7 @@ def optimize_parameters(
             }
         }
 
-        sim.set_joint_dyn(joint_dyn)
+        sim.set_joint_dynamics(joint_dyn)
 
         joint_state_list = sim.rollout(action)
 
@@ -261,7 +263,7 @@ def evaluate(
                 "armature": opt_params_dict[joint_name]["armature"],
             }
         }
-        sim.set_joint_dyn(joint_dyn)
+        sim.set_joint_dynamics(joint_dyn)
 
         joint_state_list = sim.rollout(action)
 
@@ -284,8 +286,10 @@ def evaluate(
         time_seq_real_dict[joint_name] = obs_time_dict[joint_name].tolist()
 
         joint_angle_ref_dict[joint_name] = [
-            robot.motor_to_joint_angles(dict(zip(robot.motor_ordering, a)))[joint_name]
-            for a in action
+            robot.motor_to_joint_angles(dict(zip(robot.motor_ordering, act)))[
+                joint_name
+            ]
+            for act in action
         ]
         joint_angle_sim_dict[joint_name] = obs_sim.tolist()
         joint_angle_real_dict[joint_name] = obs_real.tolist()

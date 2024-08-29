@@ -35,37 +35,27 @@ def load_datasets(
 
         obs_list: List[Obs] = log_data_dict["obs_list"]
         motor_angles_list: List[Dict[str, float]] = log_data_dict["motor_angles_list"]
-        joint_pos_ref_list: List[Dict[str, float]] = [
-            robot.motor_to_joint_angles(motor_angles)
-            for motor_angles in motor_angles_list
-        ]
 
         data_dict["imu"] = {
             "euler": np.array([obs.euler for obs in obs_list[:idx]]),
             "ang_vel": np.array([obs.ang_vel for obs in obs_list[:idx]]),
         }
 
-        for joint_name in robot.joint_ordering:
-            data_dict[joint_name] = {}
-            data_dict[joint_name]["obs_time"] = np.array(
+        for motor_name in robot.motor_ordering:
+            data_dict[motor_name] = {}
+            data_dict[motor_name]["time"] = np.array(
                 [obs.time for obs in obs_list[:idx]]
             )
-            data_dict[joint_name]["obs_pos"] = np.array(
-                [obs.q for obs in obs_list[:idx]]
+            data_dict[motor_name]["pos"] = np.array(
+                [obs.motor_pos for obs in obs_list[:idx]]
             )
-            data_dict[joint_name]["obs_vel"] = np.array(
-                [obs.dq for obs in obs_list[:idx]]
+            data_dict[motor_name]["vel"] = np.array(
+                [obs.motor_vel for obs in obs_list[:idx]]
             )
-            data_dict[joint_name]["action"] = np.array(
+            data_dict[motor_name]["action"] = np.array(
                 [
                     list(motor_angles.values())
                     for motor_angles in motor_angles_list[:idx]
-                ]
-            )
-            data_dict[joint_name]["joint_pos_ref"] = np.array(
-                [
-                    list(joint_pos_ref.values())
-                    for joint_pos_ref in joint_pos_ref_list[:idx]
                 ]
             )
 
@@ -80,50 +70,47 @@ def evaluate(
 ):
     time_seq_sim_dict: Dict[str, List[float]] = {}
     time_seq_real_dict: Dict[str, List[float]] = {}
-    joint_pos_sim_dict: Dict[str, List[float]] = {}
-    joint_pos_real_dict: Dict[str, List[float]] = {}
-    joint_vel_sim_dict: Dict[str, List[float]] = {}
-    joint_vel_real_dict: Dict[str, List[float]] = {}
+    motor_pos_sim_dict: Dict[str, List[float]] = {}
+    motor_pos_real_dict: Dict[str, List[float]] = {}
+    motor_vel_sim_dict: Dict[str, List[float]] = {}
+    motor_vel_real_dict: Dict[str, List[float]] = {}
     action_sim_dict: Dict[str, List[float]] = {}
     action_real_dict: Dict[str, List[float]] = {}
-    joint_pos_ref_sim_dict: Dict[str, List[float]] = {}
-    joint_pos_ref_real_dict: Dict[str, List[float]] = {}
 
     rmse_pos_dict: Dict[str, float] = {}
     rmse_vel_dict: Dict[str, float] = {}
     rmse_action_dict: Dict[str, float] = {}
 
-    for joint_name in sim_data:
-        if joint_name == "imu":
+    for motor_name in sim_data:
+        if motor_name == "imu":
             continue
 
-        motor_name = robot.motor_ordering[robot.joint_ordering.index(joint_name)]
+        motor_idx = robot.motor_ordering.index(motor_name)
 
-        joint_idx = robot.joint_ordering.index(joint_name)
-        obs_pos_sim = sim_data[joint_name]["obs_pos"][:, joint_idx]
-        obs_pos_real = real_data[joint_name]["obs_pos"][:, joint_idx]
-        obs_vel_sim = sim_data[joint_name]["obs_vel"][:, joint_idx]
-        obs_vel_real = real_data[joint_name]["obs_vel"][:, joint_idx]
-        action_sim = sim_data[joint_name]["action"][:, joint_idx]
-        action_real = real_data[joint_name]["action"][:, joint_idx]
-        joint_pos_ref_sim = sim_data[joint_name]["joint_pos_ref"][:, joint_idx]
-        joint_pos_ref_real = real_data[joint_name]["joint_pos_ref"][:, joint_idx]
+        motor_pos_sim = sim_data[motor_name]["pos"][:, motor_idx]
+        motor_pos_real = real_data[motor_name]["pos"][:, motor_idx]
+        motor_vel_sim = sim_data[motor_name]["vel"][:, motor_idx]
+        motor_vel_real = real_data[motor_name]["vel"][:, motor_idx]
+        action_sim = sim_data[motor_name]["action"][:, motor_idx]
+        action_real = real_data[motor_name]["action"][:, motor_idx]
 
-        time_seq_sim_dict[joint_name] = sim_data[joint_name]["obs_time"].tolist()
-        time_seq_real_dict[joint_name] = real_data[joint_name]["obs_time"].tolist()
+        time_seq_sim_dict[motor_name] = sim_data[motor_name]["time"].tolist()
+        time_seq_real_dict[motor_name] = real_data[motor_name]["time"].tolist()
 
-        joint_pos_sim_dict[joint_name] = obs_pos_sim.tolist()
-        joint_pos_real_dict[joint_name] = obs_pos_real.tolist()
-        joint_vel_sim_dict[joint_name] = obs_vel_sim.tolist()
-        joint_vel_real_dict[joint_name] = obs_vel_real.tolist()
+        motor_pos_sim_dict[motor_name] = motor_pos_sim.tolist()
+        motor_pos_real_dict[motor_name] = motor_pos_real.tolist()
+        motor_vel_sim_dict[motor_name] = motor_vel_sim.tolist()
+        motor_vel_real_dict[motor_name] = motor_vel_real.tolist()
 
         action_sim_dict[motor_name] = action_sim.tolist()
         action_real_dict[motor_name] = action_real.tolist()
-        joint_pos_ref_sim_dict[joint_name] = joint_pos_ref_sim.tolist()
-        joint_pos_ref_real_dict[joint_name] = joint_pos_ref_real.tolist()
 
-        rmse_pos_dict[joint_name] = np.sqrt(np.mean((obs_pos_real - obs_pos_sim) ** 2))
-        rmse_vel_dict[joint_name] = np.sqrt(np.mean((obs_vel_real - obs_vel_sim) ** 2))
+        rmse_pos_dict[motor_name] = np.sqrt(
+            np.mean((motor_pos_real - motor_pos_sim) ** 2)
+        )
+        rmse_vel_dict[motor_name] = np.sqrt(
+            np.mean((motor_vel_real - motor_vel_sim) ** 2)
+        )
         rmse_action_dict[motor_name] = np.sqrt(np.mean((action_real - action_sim) ** 2))
 
     plot_sim2real_gap_line(
@@ -147,7 +134,7 @@ def evaluate(
 
     for rmse_dict, label in zip(
         [rmse_pos_dict, rmse_vel_dict, rmse_action_dict],
-        ["joint_pos", "joint_vel", "action"],
+        ["motor_pos", "motor_vel", "action"],
     ):
         plot_sim2real_gap_bar(
             rmse_dict,
@@ -159,33 +146,42 @@ def evaluate(
     plot_joint_tracking(
         time_seq_sim_dict,
         time_seq_sim_dict,
-        joint_pos_sim_dict,
-        joint_pos_ref_sim_dict,
+        motor_pos_sim_dict,
+        action_sim_dict,
         robot.joint_limits,
         save_path=exp_folder_path,
-        file_name="sim_joint_pos_tracking",
-        set_ylim=False,
+        file_name="sim_motor_pos_tracking",
     )
 
     plot_joint_tracking(
         time_seq_real_dict,
         time_seq_real_dict,
-        joint_pos_real_dict,
-        joint_pos_ref_real_dict,
+        motor_pos_real_dict,
+        action_real_dict,
         robot.joint_limits,
         save_path=exp_folder_path,
-        file_name="real_joint_pos_tracking",
-        set_ylim=False,
+        file_name="real_motor_pos_tracking",
     )
 
     plot_joint_tracking(
         time_seq_sim_dict,
         time_seq_real_dict,
-        joint_pos_sim_dict,
-        joint_pos_real_dict,
+        motor_pos_sim_dict,
+        motor_pos_real_dict,
         robot.joint_limits,
         save_path=exp_folder_path,
-        file_name="sim2real_joint_pos",
+        file_name="sim2real_motor_pos",
+        line_suffix=["_sim", "_real"],
+    )
+
+    plot_joint_tracking(
+        time_seq_sim_dict,
+        time_seq_real_dict,
+        motor_vel_sim_dict,
+        motor_vel_real_dict,
+        robot.joint_limits,
+        save_path=exp_folder_path,
+        file_name="sim2real_motor_vel",
         set_ylim=False,
         line_suffix=["_sim", "_real"],
     )
@@ -193,29 +189,6 @@ def evaluate(
     plot_joint_tracking(
         time_seq_sim_dict,
         time_seq_real_dict,
-        joint_vel_sim_dict,
-        joint_vel_real_dict,
-        robot.joint_limits,
-        save_path=exp_folder_path,
-        file_name="sim2real_joint_vel",
-        set_ylim=False,
-        line_suffix=["_sim", "_real"],
-    )
-
-    # Hack the motor names
-    time_seq_sim_dict_motor: Dict[str, List[float]] = {}
-    time_seq_real_dict_motor: Dict[str, List[float]] = {}
-    for joint_name in time_seq_sim_dict:
-        if joint_name == "imu":
-            continue
-
-        motor_name = robot.motor_ordering[robot.joint_ordering.index(joint_name)]
-        time_seq_sim_dict_motor[motor_name] = time_seq_sim_dict[joint_name]
-        time_seq_real_dict_motor[motor_name] = time_seq_real_dict[joint_name]
-
-    plot_joint_tracking(
-        time_seq_sim_dict_motor,
-        time_seq_real_dict_motor,
         action_sim_dict,
         action_real_dict,
         robot.joint_limits,

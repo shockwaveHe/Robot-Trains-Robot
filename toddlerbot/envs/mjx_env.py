@@ -141,19 +141,19 @@ class MuJoCoEnv(PipelineEnv):
 
         # default qpos
         self.default_qpos = jnp.array(self.sys.mj_model.keyframe("home").qpos)  # type:ignore
-
         # default action
-        self.default_action = jnp.array(self.sys.mj_model.keyframe("home").ctrl)  # type:ignore
-
-        default_joint_angles = self.robot.motor_to_joint_angles(
-            dict(zip(self.robot.motor_ordering, self.default_action.tolist()))
+        self.default_motor_pos = jnp.array(  # type:ignore
+            list(self.robot.default_motor_angles.values())
         )
-        default_joint_pos = jnp.array(list(default_joint_angles.values()))  # type:ignore
+
         if "walk" in self.name:
             from toddlerbot.motion_reference.walk_simple_ref import WalkSimpleReference
 
             self.motion_ref = WalkSimpleReference(
-                self.robot, default_joint_pos=default_joint_pos
+                self.robot,
+                default_joint_pos=jnp.array(  # type:ignore
+                    list(self.robot.default_joint_angles.values())
+                ),
             )
         else:
             raise ValueError(f"Unknown env {self.name}")
@@ -353,7 +353,7 @@ class MuJoCoEnv(PipelineEnv):
         action = action.at[self.neck_motor_indices].set(0)  # type:ignore
         # action = action.at[self.waist_motor_indices[-1]].set(0)  # type:ignore
 
-        motor_target = self.default_action + action * self.action_scale
+        motor_target = self.default_motor_pos + action * self.action_scale
 
         # jax.debug.breakpoint()
 
@@ -519,7 +519,7 @@ class MuJoCoEnv(PipelineEnv):
                 torso_euler * self.obs_scales.euler,
             ]
         )
-        # TODO: Add push, friction
+        # TODO: Add push
         privileged_obs = jnp.concatenate(  # type:ignore
             [
                 info["phase_signal"],
