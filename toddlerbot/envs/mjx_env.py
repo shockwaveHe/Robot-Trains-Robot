@@ -186,8 +186,8 @@ class MuJoCoEnv(PipelineEnv):
         self.noise_scale = self.cfg.noise.noise_scale * jnp.concatenate(  # type:ignore
             [
                 jnp.zeros(5),  # type:ignore
-                jnp.ones_like(self.joint_indices) * self.cfg.noise.dof_pos,  # type:ignore
-                jnp.ones_like(self.joint_indices) * self.cfg.noise.dof_vel,  # type:ignore
+                jnp.ones_like(self.motor_indices) * self.cfg.noise.dof_pos,  # type:ignore
+                jnp.ones_like(self.motor_indices) * self.cfg.noise.dof_vel,  # type:ignore
                 jnp.zeros_like(self.motor_indices),  # type:ignore
                 jnp.ones(3) * self.cfg.noise.lin_vel,  # type:ignore
                 jnp.ones(3) * self.cfg.noise.ang_vel,  # type:ignore
@@ -360,14 +360,8 @@ class MuJoCoEnv(PipelineEnv):
         pipeline_state = self.pipeline_step(state.pipeline_state, motor_target)
 
         # jax.debug.print(
-        #     "qpos: {}", pipeline_state.q[self.q_start_idx + self.leg_joint_indices]
-        # )
-        # jax.debug.print(
-        #     "qvel: {}", pipeline_state.qd[self.qd_start_idx + self.leg_joint_indices]
-        # )
-        # jax.debug.print(
         #     "qfrc: {}",
-        #     pipeline_state.qfrc_actuator[self.qd_start_idx + self.leg_joint_indices],
+        #     pipeline_state.qfrc_actuator[self.qd_start_idx + self.leg_motor_indices],
         # )
         # jax.debug.print("stance_mask: {}", state.info["stance_mask"])
         # jax.debug.print("feet_air_time: {}", state.info["feet_air_time"])
@@ -500,12 +494,14 @@ class MuJoCoEnv(PipelineEnv):
         privileged_obs_history: Optional[jax.Array] = None,
     ) -> Tuple[jax.Array, jax.Array]:
         """Observes humanoid body position, velocities, and angles."""
-        joint_pos = pipeline_state.q[self.q_start_idx + self.joint_indices]
-        joint_pos_delta = (
-            joint_pos - self.default_qpos[self.q_start_idx + self.joint_indices]
+        motor_pos = pipeline_state.q[self.q_start_idx + self.motor_indices]
+        motor_pos_delta = (
+            motor_pos - self.default_qpos[self.q_start_idx + self.motor_indices]
         )
+        motor_vel = pipeline_state.qd[self.qd_start_idx + self.motor_indices]
+
+        joint_pos = pipeline_state.q[self.q_start_idx + self.joint_indices]
         joint_pos_error = joint_pos - info["state_ref"][13 : 13 + self.nu]
-        joint_vel = pipeline_state.qd[self.qd_start_idx + self.joint_indices]
 
         torso_lin_vel = pipeline_state.xd.vel[0]
         torso_ang_vel = pipeline_state.xd.ang[0]
@@ -515,8 +511,8 @@ class MuJoCoEnv(PipelineEnv):
             [
                 info["phase_signal"],
                 info["command"][:3],
-                joint_pos_delta * self.obs_scales.dof_pos,
-                joint_vel * self.obs_scales.dof_vel,
+                motor_pos_delta * self.obs_scales.dof_pos,
+                motor_vel * self.obs_scales.dof_vel,
                 info["last_act"],
                 torso_lin_vel * self.obs_scales.lin_vel,
                 torso_ang_vel * self.obs_scales.ang_vel,
@@ -528,8 +524,8 @@ class MuJoCoEnv(PipelineEnv):
             [
                 info["phase_signal"],
                 info["command"][:3],
-                joint_pos_delta * self.obs_scales.dof_pos,
-                joint_vel * self.obs_scales.dof_vel,
+                motor_pos_delta * self.obs_scales.dof_pos,
+                motor_vel * self.obs_scales.dof_vel,
                 info["last_act"],
                 torso_lin_vel * self.obs_scales.lin_vel,
                 torso_ang_vel * self.obs_scales.ang_vel,
