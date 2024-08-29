@@ -281,18 +281,18 @@ class MuJoCoSim(BaseSim):
         )
         state_traj = np.array(state_traj, dtype=np.float32).squeeze()[:: self.n_frames]
 
-        joint_state_list: List[Dict[str, JointState]] = []
+        motor_state_list: List[Dict[str, JointState]] = []
         # mjSTATE_TIME ｜ mjSTATE_QPOS | mjSTATE_QVEL | mjSTATE_ACT
         for state in state_traj:
-            joint_state_dict: Dict[str, JointState] = {}
-            for name in self.robot.joint_ordering:
-                joint_state_dict[name] = JointState(
+            motor_state: Dict[str, JointState] = {}
+            for name in self.robot.motor_ordering:
+                motor_state[name] = JointState(
                     time=state[0],
                     pos=state[1 + self.model.joint(name).id],  # type: ignore
                 )
-            joint_state_list.append(joint_state_dict)
+            motor_state_list.append(motor_state)
 
-        return joint_state_list
+        return motor_state_list
 
     def save_recording(
         self,

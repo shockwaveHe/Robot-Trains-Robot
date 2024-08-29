@@ -759,7 +759,7 @@
             "group": "leg",
             "lower_limit": -1.0471975511965976,
             "upper_limit": 0.7853981633974483,
-            "damping": 0.603,
+            "damping": 0.932,
             "armature": 0.0,
             "frictionloss": 0.0
         },
@@ -769,7 +769,7 @@
             "group": "leg",
             "lower_limit": -0.7853981633974483,
             "upper_limit": 0.7853981633974483,
-            "damping": 0.565,
+            "damping": 0.985,
             "armature": 0.0,
             "frictionloss": 0.0
         },
@@ -929,8 +929,8 @@
             "group": "leg",
             "lower_limit": -1.0471975511965976,
             "upper_limit": 0.7853981633974483,
-            "damping": 0.608,
-            "armature": 0.0,
+            "damping": 0.826,
+            "armature": 0.005,
             "frictionloss": 0.0
         },
         "right_ank_roll": {
@@ -939,7 +939,7 @@
             "group": "leg",
             "lower_limit": -0.7853981633974483,
             "upper_limit": 0.7853981633974483,
-            "damping": 0.579,
+            "damping": 0.926,
             "armature": 0.0,
             "frictionloss": 0.0
         },
@@ -1059,8 +1059,8 @@
             "group": "waist",
             "lower_limit": -0.5235987755982988,
             "upper_limit": 0.5235987755982988,
-            "damping": 1.468,
-            "armature": 0.0,
+            "damping": 2.823,
+            "armature": 0.033,
             "frictionloss": 0.0
         },
         "waist_yaw": {
@@ -1069,8 +1069,8 @@
             "group": "waist",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
-            "damping": 0.51,
-            "armature": 0.028,
+            "damping": 0.728,
+            "armature": 0.047,
             "frictionloss": 0.0
         }
     }
