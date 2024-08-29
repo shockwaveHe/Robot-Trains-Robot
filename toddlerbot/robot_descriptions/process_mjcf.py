@@ -467,8 +467,8 @@ def add_ankle_constraints(root: ET.Element, general_config: Dict[str, Any]):
             "connect",
             body1=body1,
             body2=body2,
-            solimp=f"{general_config['ank_solimp_d0']} 0.9999 0.001 0.5 2",
-            solref=f"{general_config['solref'][0]} {general_config['solref'][1]}",
+            solimp=f"{general_config['ank_solimp_0']} 0.9999 0.001 0.5 2",
+            solref=f"{general_config['ank_solref_0']} {general_config['solref'][1]}",
             anchor=f"{offsets['ank_act_arm_r']} 0 {offsets['ank_act_arm_y']}",
         )
 
