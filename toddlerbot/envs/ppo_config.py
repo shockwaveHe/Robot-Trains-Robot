@@ -4,8 +4,8 @@ from typing import Tuple
 
 @dataclass
 class PPOConfig:
-    policy_hidden_layer_sizes: Tuple[int, ...] = (128,) * 4
-    value_hidden_layer_sizes: Tuple[int, ...] = (128,) * 4
+    policy_hidden_layer_sizes: Tuple[int, ...] = (256,) * 3
+    value_hidden_layer_sizes: Tuple[int, ...] = (256,) * 3
     num_timesteps: int = 100_000_000
     num_evals: int = 1000
     episode_length: int = 1000
