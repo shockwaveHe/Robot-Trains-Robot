@@ -179,9 +179,9 @@ class Robot:
                 self.collider_names.append(link_name)
 
         self.nu = len(self.motor_ordering)
-        self.joint_group: Dict[str, str] = {}
+        self.joint_groups: Dict[str, str] = {}
         for joint_name, joint_config in self.config["joints"].items():
-            self.joint_group[joint_name] = joint_config["group"]
+            self.joint_groups[joint_name] = joint_config["group"]
 
         self.joint_limits: Dict[str, List[float]] = {}
         for joint_name, joint_config in self.config["joints"].items():

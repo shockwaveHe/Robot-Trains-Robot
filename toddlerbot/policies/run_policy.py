@@ -91,6 +91,10 @@ def plot_results(
             motor_vel_dict[motor_name].append(obs.motor_vel[j])
 
             joint_name = robot.motor_to_joint_name[motor_name]
+            if joint_name not in joint_pos_dict:
+                joint_pos_dict[joint_name] = []
+                joint_vel_dict[joint_name] = []
+
             if obs.joint_pos is not None:
                 joint_pos_dict[joint_name].append(obs.joint_pos[j])
             if obs.joint_vel is not None:
@@ -216,7 +220,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
             inference_time = time.time()
 
             motor_angles: Dict[str, float] = {}
-            for motor_name, act in zip(robot.joint_ordering, action):
+            for motor_name, act in zip(robot.motor_ordering, action):
                 motor_angles[motor_name] = act
 
             sim.set_motor_angles(motor_angles)

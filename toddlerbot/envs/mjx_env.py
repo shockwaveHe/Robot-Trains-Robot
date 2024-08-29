@@ -117,7 +117,7 @@ class MuJoCoEnv(PipelineEnv):
             self.joint_indices -= 1
 
         joint_groups = np.array(
-            [self.robot.joint_group[name] for name in self.robot.joint_ordering]
+            [self.robot.joint_groups[name] for name in self.robot.joint_ordering]
         )
         self.leg_joint_indices = self.joint_indices[joint_groups == "leg"]
         self.arm_joint_indices = self.joint_indices[joint_groups == "arm"]
@@ -132,7 +132,7 @@ class MuJoCoEnv(PipelineEnv):
         )
         self.motor_indices = jnp.array(motor_indices)  # type:ignore
         motor_groups = np.array(
-            [self.robot.joint_group[name] for name in self.robot.motor_ordering]
+            [self.robot.joint_groups[name] for name in self.robot.motor_ordering]
         )
         self.leg_motor_indices = self.motor_indices[motor_groups == "leg"]
         self.arm_motor_indices = self.motor_indices[motor_groups == "arm"]

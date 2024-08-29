@@ -36,7 +36,7 @@ class WalkFixedPolicy(BasePolicy):
         # joint indices
         motor_indices = np.arange(robot.nu)  # type:ignore
         motor_groups = np.array(
-            [robot.joint_group[name] for name in robot.motor_ordering]
+            [robot.joint_groups[name] for name in robot.motor_ordering]
         )
         self.leg_motor_indices = motor_indices[motor_groups == "leg"]
         self.arm_motor_indices = motor_indices[motor_groups == "arm"]

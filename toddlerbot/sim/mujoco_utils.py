@@ -1,5 +1,6 @@
 import os
 import pickle
+import time
 from typing import Any, Dict, List
 
 import mediapy as media
@@ -155,6 +156,9 @@ class MuJoCoRenderer:
 
             media.write_video(video_path, video_frames, fps=1.0 / dt / render_every)
             video_paths.append(video_path)
+
+        # Delay to ensure the video files are fully written
+        time.sleep(1)
 
         # Load the video clips using moviepy
         clips = [VideoFileClip(path) for path in video_paths]
