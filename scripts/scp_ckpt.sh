@@ -9,7 +9,7 @@ ENV="walk"
 # Parse named arguments
 while [[ "$#" -gt 0 ]]; do
     case $1 in
-        --time_str) TIME_STR="$2"; shift ;;
+        --time-str) TIME_STR="$2"; shift ;;
         --robot) ROBOT="$2"; shift ;;
         --env) ENV="$2"; shift ;;
         *) echo "Unknown parameter passed: $1"; exit 1 ;;
