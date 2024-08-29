@@ -96,5 +96,5 @@ def test_walk_zmp_ref():
 
 
 if __name__ == "__main__":
-    test_walk_simple_ref()
-    # test_walk_zmp_ref()
+    # test_walk_simple_ref()
+    test_walk_zmp_ref()

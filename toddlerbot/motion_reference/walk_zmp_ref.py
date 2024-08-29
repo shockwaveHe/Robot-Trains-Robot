@@ -1,8 +1,4 @@
-from typing import Any, List, Optional, Tuple
-
-from jax import Array
-from numpy import dtype, floating, ndarray
-from numpy._typing import _32Bit
+from typing import List, Optional, Tuple
 
 from toddlerbot.algorithms.zmp.footstep_planner import FootStepPlanner
 from toddlerbot.algorithms.zmp.zmp_planner import ZMPPlanner
@@ -17,7 +13,6 @@ class WalkZMPReference(MotionReference):
     def __init__(
         self,
         robot: Robot,
-        use_jax: bool = False,
         default_joint_pos: Optional[ArrayType] = None,
         default_joint_vel: Optional[ArrayType] = None,
         max_knee_pitch: float = np.pi / 3,
@@ -25,7 +20,7 @@ class WalkZMPReference(MotionReference):
         single_support_phase: float = 1.0,
         plan_max_stride: List[float] = [0.1, 0.05, np.pi / 8],
     ):
-        super().__init__("walk", "periodic", robot, use_jax)
+        super().__init__("walk", "periodic", robot)
 
         self.default_joint_pos = default_joint_pos
         self.default_joint_vel = default_joint_vel
@@ -36,15 +31,15 @@ class WalkZMPReference(MotionReference):
                 self.get_joint_idx("left_knee_pitch")
             ]
 
+        self.max_knee_pitch = max_knee_pitch
+        self.double_support_phase = double_support_phase
+        self.single_support_phase = single_support_phase
         self.num_joints = len(self.robot.joint_ordering)
         self.shin_thigh_ratio = (
             self.robot.data_dict["offsets"]["knee_to_ank_pitch_z"]
             / self.robot.data_dict["offsets"]["hip_pitch_to_knee_z"]
         )
         self.com_z = self.robot.config["general"]["offsets"]["torso_z"]
-        self.max_knee_pitch = max_knee_pitch
-        self.double_support_phase = double_support_phase
-        self.single_support_phase = single_support_phase
 
         self.zmp_planner = ZMPPlanner()
 
@@ -271,12 +266,20 @@ class WalkZMPReference(MotionReference):
                 support_leg_next = int(footsteps[i + 1][-1])
                 if support_leg_curr == 2:
                     current_pos = last_pos.copy()
+                    current_ori = last_ori.copy()
+                    target_leg_next = support_leg_next
                 else:
                     current_pos = inplace_update(
                         last_pos,
                         slice(support_leg_curr * 3, support_leg_curr * 3 + 2),
                         footsteps[i][:2],
                     )
+                    current_ori = inplace_update(
+                        last_ori,
+                        support_leg_curr * 3 + 2,
+                        footsteps[i][2],
+                    )
+                    target_leg_next = 1 - support_leg_curr
 
                 if support_leg_next == 2:
                     offset = np.array(  # type: ignore
@@ -290,32 +293,26 @@ class WalkZMPReference(MotionReference):
 
                 target_pos = inplace_update(
                     current_pos,
-                    slice(support_leg_next * 3, support_leg_next * 3 + 2),
+                    slice(target_leg_next * 3, target_leg_next * 3 + 2),
                     footsteps[i + 1][:2] + offset,
                 )
-                current_ori = inplace_update(
-                    last_ori,
-                    support_leg_curr * 3 - 1,
-                    footsteps[i][2],
-                )
                 target_ori = inplace_update(
-                    current_ori,
-                    support_leg_next * 3 - 1,
-                    footsteps[i + 1][2],
+                    current_ori, target_leg_next * 3 + 2, footsteps[i + 1][2]
                 )
                 last_pos = target_pos.copy()
                 last_ori = target_ori.copy()
 
+                up_delta = self.footstep_height / (num_steps // 2 - 1)
+                up_traj = up_delta * np.concatenate(  # type: ignore
+                    (
+                        np.arange(num_steps // 2, dtype=np.float32),  # type: ignore
+                        np.arange(num_steps // 2 - 1, -1, -1, dtype=np.float32),  # type: ignore
+                    )
+                )
                 pos_delta = (target_pos - current_pos) / num_steps
                 pos_traj = current_pos + pos_delta * np.arange(num_steps)[:, None]  # type: ignore
-
-                up_delta = self.footstep_height / num_steps
-                up_traj = up_delta * np.concatenate(  # type: ignore
-                    np.arange(num_steps // 2 + 1),
-                    np.arange(num_steps // 2 + 1, -1, -1),  # type: ignore
-                )
                 pos_traj = inplace_update(
-                    pos_traj, (slice(None), support_leg_next * 3 + 2), up_traj
+                    pos_traj, (slice(None), target_leg_next * 3 + 2), up_traj
                 )
 
                 ori_delta = (target_ori - current_ori) / num_steps

@@ -20,6 +20,9 @@ class WalkSimpleReference(MotionReference):
         self.default_joint_pos = default_joint_pos
         self.default_joint_vel = default_joint_vel
         if self.default_joint_pos is None:
+            self.default_joint_pos = np.zeros(  # type: ignore
+                len(self.robot.joint_ordering), dtype=np.float32
+            )
             self.knee_pitch_default = 0.0
         else:
             self.knee_pitch_default = self.default_joint_pos[
@@ -54,10 +57,8 @@ class WalkSimpleReference(MotionReference):
         signal_left = np.clip(sin_phase_signal, 0, None)  # type: ignore
         signal_right = np.clip(sin_phase_signal, None, 0)  # type: ignore
 
-        if self.default_joint_pos is None:
-            joint_pos = np.zeros(self.num_joints, dtype=np.float32)  # type: ignore
-        else:
-            joint_pos = self.default_joint_pos.copy()  # type: ignore
+        assert self.default_joint_pos is not None
+        joint_pos = self.default_joint_pos.copy()  # type: ignore
 
         if self.default_joint_vel is None:
             joint_vel = np.zeros(self.num_joints, dtype=np.float32)  # type: ignore
