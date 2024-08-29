@@ -124,6 +124,19 @@ class DynamixelController(BaseController):
             open_client.port_handler.is_using = False
             open_client.disconnect()
 
+    # Only disable the torque, but stay connected through comm. If no id is provided, disable all motors
+    def disable_motors(self, ids=None):
+        open_clients: List[DynamixelClient] = list(DynamixelClient.OPEN_CLIENTS)  # type: ignore
+        for open_client in open_clients:
+            if ids is not None:
+                # get the intersecting list between ids and motor_ids
+                ids_to_disable = list(set(open_client.motor_ids) & set(ids))
+                print("Disabling motor id ", ids_to_disable)
+                open_client.set_torque_enabled(ids_to_disable, False)
+            else:
+                print("Disabling all motor")
+                open_client.set_torque_enabled(open_client.motor_ids, False)
+
     # @profile()
     def set_pos(
         self,

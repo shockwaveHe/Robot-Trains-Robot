@@ -34,6 +34,7 @@
   </asset>
 
   <worldbody>
+    <site name="torso" fromto="0.01 0 0.4 -0.01 0 0.4" type="cylinder" size="0.005 0.005 1" group="3" />
     <geom type="mesh" rgba="0.58594 0.732003 0.846222 1" mesh="torso_visual" class="visual" />
     <body name="sho_pitch_link" pos="-0.003 0.062 0.104237" quat="0.707107 -0.707107 0 0">
       <inertial pos="5.82542e-11 -5.12646e-05 0.00824408" quat="0.0155166 0.706937 0.0155166 0.706937" mass="0.0086" diaginertia="3.08064e-06 2.9104e-06 1.22729e-06" />

@@ -25,46 +25,52 @@ from toddlerbot.utils.misc_utils import (
 )
 
 
+def state_dict_to_action(state_dict):
+    action = np.zeros(14)
+    for i, key in enumerate(state_dict.keys()):
+        action[i] = state_dict[key].pos
+    return action
+
+
+def state_dict_to_np(state_dict):
+    np_array = np.zeros((len(state_dict), 4))
+    for i, key in enumerate(state_dict.keys()):
+        np_array[i, :] = np.array(
+            [key, state_dict[key].time, state_dict[key].pos, state_dict[key].vel]
+        )
+    return np_array
+
+
 class TeleopPolicy(BasePolicy):
     def __init__(self, robot: Robot):
         super().__init__(robot)
-        self.name = "teleop"
+        self.name = "teleop_fixed"
 
         self.default_action = np.array(
             list(robot.default_motor_angles.values()), dtype=np.float32
         )
 
-        try:
-            # Connect to leader controller
-            self.controller_config = DynamixelConfig(
-                port="/dev/tty.usbserial-FT8ISUJY",
-                baudrate=3000000,
-                control_mode=["extended_position"],
-                kP=[2400],
-                kI=[0.0],
-                kD=[2400],
-                kFF2=[0.0],
-                kFF1=[0.0],
-                init_pos=[0.0],
-            )
-            self.controller = DynamixelController(
-                self.controller_config, motor_ids=list(range(16, 30))
-            )
-        except Exception as e:
-            raise Exception(f"Failed to connect to the leader controller: {str(e)}")
-
     # note: calibrate zero at: toddlerbot/tools/calibration/calibrate_zero.py --robot toddlerbot_arms
     # note: zero points can be accessed in config_motors.json
 
-    def run(self, obs: Obs) -> npt.NDArray[np.float32]:
-        state_dict = self.controller.get_motor_state()
-        print(np.array(list(state_dict.values())))
-        print(self.default_action)
-        return self.default_action
+    def step(self, obs: Obs, obs_real: Obs) -> npt.NDArray[np.float32]:
+        sim_action = obs_real.q
+        # state_dict = self.controller.get_motor_state()
+        # print(np.array(list(state_dict.values())))
+        # action = state_dict_to_action(state_dict)
+        # print(self.default_action)
+        # return self.default_action
+        return sim_action
 
 
 # @profile()
-def main(robot: Robot, sim: BaseSim, policy: BasePolicy, config: Dict[str, Any]):
+def main(
+    robot: Robot,
+    sim: BaseSim,
+    sim_real: BaseSim,
+    policy: BasePolicy,
+    config: Dict[str, Any],
+):
     header_name = snake2camel(sim.name)
 
     loop_time_list: List[List[float]] = []
@@ -80,10 +86,11 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, config: Dict[str, Any])
 
             # Get the latest state from the queue
             obs = sim.get_observation()
+            obs_real = sim_real.get_observation()
             obs_time = time.time()
 
             obs.time -= start_time
-            action = policy.run(obs)
+            action = policy.step(obs, obs_real)
             inference_time = time.time()
 
             motor_angles: Dict[str, float] = {}
@@ -182,7 +189,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--robot",
         type=str,
-        default="toddlerbot",
+        default="toddlerbot_arms",
         help="The name of the robot. Need to match the name in robot_descriptions.",
     )
     parser.add_argument(
@@ -194,7 +201,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--policy",
         type=str,
-        default="teleop",
+        default="teleop_fixed",
         help="The name of the task.",
     )
     parser.add_argument(
@@ -205,11 +212,18 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    robot = Robot(args.robot)
+    # real and sim robot need slightly different configurations
+    robot_sim = Robot(args.robot)
+    robot_real = Robot(args.robot)
+    for joint in list(robot_real.config["joints"].keys()):
+        robot_real.config["joints"][joint]["kp_real"] = 0.0
+        robot_real.config["joints"][joint]["kd_real"] = 0.0
+        robot_real.config["joints"][joint]["kff1_real"] = 0.0
+        robot_real.config["joints"][joint]["kff2_real"] = 0.0
 
-    if args.policy == "teleop":
+    if args.policy == "teleop_fixed":
         # from toddlerbot.policies.stand import StandPolicy
-        policy: BasePolicy = TeleopPolicy(robot)
+        policy: BasePolicy = TeleopPolicy(robot_real)
 
     else:
         raise ValueError("Unknown policy")
@@ -228,16 +242,14 @@ if __name__ == "__main__":
 
     if args.sim == "mujoco":
         from toddlerbot.sim.mujoco_sim import MuJoCoSim
-
-        sim = MuJoCoSim(robot, vis_type="view", fixed_base="fixed" in args.policy)
-
-    elif args.sim == "real":
         from toddlerbot.sim.real_world import RealWorld
 
-        sim = RealWorld(robot)
-        sim.has_imu = False
+        sim = MuJoCoSim(robot_sim, vis_type="view", fixed_base="fixed" in args.policy)
+        sim_real = RealWorld(robot_real)
+        sim_real.has_imu = False
+        sim_real.dynamixel_controller.disable_motors([18, 20, 21, 22, 25, 27, 28, 29])
 
     else:
         raise ValueError("Unknown simulator")
 
-    main(robot, sim, policy, config)
+    main(robot_sim, sim, sim_real, policy, config)

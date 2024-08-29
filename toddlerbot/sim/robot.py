@@ -519,15 +519,20 @@ class Robot:
             elif transmission == "none":
                 joint_angles[motor_name] = motor_pos
 
-        joint_angles["waist_roll"], joint_angles["waist_yaw"] = self.waist_fk(
-            waist_act_pos
-        )
-        joint_angles["left_ank_roll"], joint_angles["left_ank_pitch"] = self.ankle_fk(
-            left_ank_act_pos, "left"
-        )
-        joint_angles["right_ank_roll"], joint_angles["right_ank_pitch"] = self.ankle_fk(
-            right_ank_act_pos, "right"
-        )
+        if len(waist_act_pos) > 0:
+            joint_angles["waist_roll"], joint_angles["waist_yaw"] = self.waist_fk(
+                waist_act_pos
+            )
+
+        if len(left_ank_act_pos) > 0:
+            joint_angles["left_ank_roll"], joint_angles["left_ank_pitch"] = (
+                self.ankle_fk(left_ank_act_pos, "left")
+            )
+
+        if len(right_ank_act_pos) > 0:
+            joint_angles["right_ank_roll"], joint_angles["right_ank_pitch"] = (
+                self.ankle_fk(right_ank_act_pos, "right")
+            )
 
         return joint_angles
 
@@ -587,17 +592,20 @@ class Robot:
                     time=motor_state.time, pos=motor_state.pos, vel=motor_state.vel
                 )
 
-        joint_state_dict["waist_roll"].pos, joint_state_dict["waist_yaw"].pos = (
-            self.waist_fk(waist_act_pos)
-        )
-        (
-            joint_state_dict["left_ank_roll"].pos,
-            joint_state_dict["left_ank_pitch"].pos,
-        ) = self.ankle_fk(left_ank_act_pos, "left")
-        (
-            joint_state_dict["right_ank_roll"].pos,
-            joint_state_dict["right_ank_pitch"].pos,
-        ) = self.ankle_fk(right_ank_act_pos, "right")
+        if len(waist_act_pos) > 0:
+            joint_state_dict["waist_roll"].pos, joint_state_dict["waist_yaw"].pos = (
+                self.waist_fk(waist_act_pos)
+            )
+        if len(left_ank_act_pos) > 0:
+            (
+                joint_state_dict["left_ank_roll"].pos,
+                joint_state_dict["left_ank_pitch"].pos,
+            ) = self.ankle_fk(left_ank_act_pos, "left")
+        if len(right_ank_act_pos) > 0:
+            (
+                joint_state_dict["right_ank_roll"].pos,
+                joint_state_dict["right_ank_pitch"].pos,
+            ) = self.ankle_fk(right_ank_act_pos, "right")
 
         for joint_name in [
             "waist_roll",

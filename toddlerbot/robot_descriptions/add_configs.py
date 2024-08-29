@@ -9,6 +9,7 @@ from typing import Any, Dict
 
 
 def get_default_config(
+    robot_name: str,
     root: ET.Element,
     general_config: Dict[str, Any],
     motor_config: Dict[str, Dict[str, Any]],
@@ -23,7 +24,13 @@ def get_default_config(
     is_knee_closed_loop = False
     is_ankle_closed_loop = False
     config_dict["joints"] = {}
-    id = 0
+
+    # toddlerbot_arm joints should start with id 16
+    if "arms" in robot_name:
+        init_id = 16
+    else:
+        init_id = 0
+
     for joint in root.findall("joint"):
         joint_type = joint.get("type")
         if joint_type is None or joint_type == "fixed":
@@ -105,7 +112,7 @@ def get_default_config(
                 raise ValueError(f"{joint_name} not found in the motor config!")
 
             motor_name = motor_config[joint_name]["motor"]
-            joint_dict["id"] = list(motor_config.keys()).index(joint_name)
+            joint_dict["id"] = list(motor_config.keys()).index(joint_name) + init_id
             joint_dict["type"] = "dynamixel"
             joint_dict["spec"] = motor_name
             joint_dict["control_mode"] = (
@@ -142,8 +149,6 @@ def get_default_config(
                 else:
                     joint_dict["gear_ratio"] = 1.0
 
-            id += 1
-
         config_dict["joints"][joint_name] = joint_dict
 
     joints_list = list(config_dict["joints"].items())
@@ -171,6 +176,13 @@ def main():
         default="toddlerbot",
         help="The name of the robot. Need to match the name in robot_descriptions.",
     )
+    # baud is either 3 or 4 int
+    parser.add_argument(
+        "--baud",
+        type=int,
+        default=4,
+        help="The baudrate of motors, unit in Mbps",
+    )
     args = parser.parse_args()
 
     robot_dir = os.path.join("toddlerbot", "robot_descriptions", args.robot)
@@ -181,22 +193,21 @@ def main():
             "use_torso_site": False,
             "has_imu": False,
             "has_dynamixel": True,
-            "dynamixel_baudrate": 4000000,
+            "dynamixel_baudrate": args.baud * 1000000,
             "has_sunny_sky": False,
         }
     else:
         general_config: Dict[str, Any] = {
             "is_fixed": True,
-            "use_torso_site": False,
+            "use_torso_site": True,
             "has_imu": False,
             "has_dynamixel": True,
-            "dynamixel_baudrate": 4000000,
+            "dynamixel_baudrate": args.baud * 1000000,
             "has_sunny_sky": False,
         }
 
         if "arms" not in args.robot:
             general_config["is_fixed"] = False
-            general_config["use_torso_site"] = True
             general_config["has_imu"] = True
             general_config["foot_name"] = "ank_roll_link"
             general_config["offsets"] = {
@@ -243,12 +254,13 @@ def main():
     root = tree.getroot()
 
     config_dict = get_default_config(
-        root, general_config, motor_config, joint_dyn_config
+        args.robot, root, general_config, motor_config, joint_dyn_config
     )
 
     config_file_path = os.path.join(robot_dir, "config.json")
     with open(config_file_path, "w") as f:
         f.write(json.dumps(config_dict, indent=4))
+        print(f"Config file saved to {config_file_path}")
 
     collision_config_file_path = os.path.join(robot_dir, "config_collision.json")
     if not os.path.exists(collision_config_file_path):
@@ -263,6 +275,9 @@ def main():
 
         with open(collision_config_file_path, "w") as f:
             f.write(json.dumps(collision_config, indent=4))
+            print(f"Collision config file saved to {collision_config_file_path}")
+
+    print("Done")
 
 
 if __name__ == "__main__":

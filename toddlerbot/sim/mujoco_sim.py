@@ -141,8 +141,10 @@ class MuJoCoSim(BaseSim):
 
         # TODO: Tune the IMU data
         if self.fixed_base:
-            quat = self.data.sensor("orientation").data  # type: ignore
-            ang_vel = self.data.sensor("angular_velocity").data  # type: ignore
+            # quat = self.data.sensor("orientation").data  # type: ignore
+            # ang_vel = self.data.sensor("angular_velocity").data  # type: ignore
+            quat = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)
+            ang_vel = np.zeros(3, dtype=np.float32)
         else:
             quat = self.data.body("torso").xquat  # type: ignore
             ang_vel = self.data.body("torso").cvel[:3]  # type: ignore
