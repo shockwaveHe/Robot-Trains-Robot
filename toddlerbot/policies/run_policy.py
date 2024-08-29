@@ -196,10 +196,10 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
     is_prepared = False
     start_time = time.time()
     step_idx = 0
-    p_bar = tqdm(total=n_steps, desc="Running the policy")
+    p_bar = tqdm(total=policy.num_total_steps, desc="Running the policy")
     time_until_next_step = 0
     try:
-        while step_idx < n_steps:
+        while step_idx < policy.num_total_steps:
             step_start = time.time()
 
             # Get the latest state from the queue
@@ -353,13 +353,13 @@ if __name__ == "__main__":
         from toddlerbot.sim.mujoco_sim import MuJoCoSim
 
         sim = MuJoCoSim(robot, vis_type=args.vis, fixed_base="fixed" in args.policy)
-        init_joint_pos = sim.get_observation().motor_pos
+        init_motor_pos = sim.get_observation().motor_pos
 
     elif args.sim == "real":
         from toddlerbot.sim.real_world import RealWorld
 
         sim = RealWorld(robot)
-        init_joint_pos = sim.get_observation(retries=-1).motor_pos
+        init_motor_pos = sim.get_observation(retries=-1).motor_pos
 
     else:
         raise ValueError("Unknown simulator")
@@ -367,12 +367,12 @@ if __name__ == "__main__":
     if args.policy == "stand":
         from toddlerbot.policies.stand import StandPolicy
 
-        policy = StandPolicy(robot, init_joint_pos)
+        policy = StandPolicy(robot, init_motor_pos)
 
     elif args.policy == "rotate_torso":
         from toddlerbot.policies.rotate_torso import RotateTorsoPolicy
 
-        policy = RotateTorsoPolicy(robot, init_joint_pos)
+        policy = RotateTorsoPolicy(robot, init_motor_pos)
 
     elif args.policy == "squat":
         from toddlerbot.policies.squat import SquatPolicy
@@ -383,32 +383,22 @@ if __name__ == "__main__":
         from toddlerbot.policies.walk_fixed import WalkFixedPolicy
 
         run_name = f"{args.robot}_{args.policy}_ppo_{args.ckpt}"
-        policy = WalkFixedPolicy(robot, init_joint_pos, run_name)
+        policy = WalkFixedPolicy(robot, init_motor_pos, run_name)
 
     elif args.policy == "walk":
         from toddlerbot.policies.walk import WalkPolicy
 
         run_name = f"{args.robot}_{args.policy}_ppo_{args.ckpt}"
-        policy = WalkPolicy(robot, init_joint_pos, run_name)
+        policy = WalkPolicy(robot, init_motor_pos, run_name)
 
     elif args.policy == "sysID_fixed":
         from toddlerbot.policies.sysID_fixed import SysIDFixedPolicy
 
-        policy = SysIDFixedPolicy(robot)
+        policy = SysIDFixedPolicy(robot, init_motor_pos)
 
     else:
         raise ValueError("Unknown policy")
 
-    if "real" not in args.sim and hasattr(policy, "time_arr"):
-        n_steps: float = round(policy.time_arr[-1] / policy.control_dt) + 1  # type: ignore
-    else:
-        n_steps = float("inf")
+    debug_config: Dict[str, Any] = {"log": False, "plot": True, "render": True}
 
-    debug: Dict[str, Any] = {
-        "n_steps": n_steps,
-        "log": False,
-        "plot": True,
-        "render": True,
-    }
-
-    main(robot, sim, policy, debug)
+    main(robot, sim, policy, debug_config)

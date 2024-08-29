@@ -15,16 +15,11 @@ from toddlerbot.utils.misc_utils import set_seed
 
 
 class SysIDFixedPolicy(BasePolicy):
-    def __init__(self, robot: Robot):
-        super().__init__(robot)
+    def __init__(self, robot: Robot, init_motor_pos: npt.NDArray[np.float32]):
+        super().__init__(robot, init_motor_pos)
         self.name = "sysID_fixed"
 
         set_seed(0)
-
-        init_action = np.array(list(robot.init_motor_angles.values()), dtype=np.float32)
-        init_joint_pos = np.array(
-            list(robot.init_joint_angles.values()), dtype=np.float32
-        )
 
         self.prep_duration = 2.0
         warm_up_duration = 2.0
@@ -125,29 +120,32 @@ class SysIDFixedPolicy(BasePolicy):
         action_list: List[npt.NDArray[np.float32]] = []
         self.time_mark_dict: Dict[str, float] = {}
 
-        prep_act = np.zeros_like(init_action)
         prep_time, prep_action = self.reset(
-            -self.control_dt, prep_act, init_action, self.prep_duration
+            -self.control_dt,
+            init_motor_pos,
+            np.zeros_like(init_motor_pos),
+            self.prep_duration,
         )
 
         time_list.append(prep_time)
         action_list.append(prep_action)
 
-        for symmetric_name, sysID_specs in joint_sysID_specs.items():
-            if symmetric_name in robot.joint_ordering:
-                joint_name = symmetric_name
+        for symm_name, sysID_specs in joint_sysID_specs.items():
+            if symm_name in robot.joint_ordering:
+                joint_name = symm_name
                 joint_idx = robot.joint_ordering.index(joint_name)
             else:
-                joint_name = f"left_{symmetric_name}"
+                joint_name = f"left_{symm_name}"
                 joint_idx = [
                     robot.joint_ordering.index(joint_name),
-                    robot.joint_ordering.index(f"right_{symmetric_name}"),
+                    robot.joint_ordering.index(f"right_{symm_name}"),
                 ]
 
             mean = (
                 robot.joint_limits[joint_name][0] + robot.joint_limits[joint_name][1]
             ) / 2
-            warm_up_act = init_action.copy()
+            warm_up_act = np.zeros_like(init_motor_pos)
+
             if isinstance(joint_idx, int):
                 warm_up_act[joint_idx] = mean
             else:
@@ -185,7 +183,9 @@ class SysIDFixedPolicy(BasePolicy):
 
             rotate_time += time_list[-1][-1] + self.control_dt
 
-            rotate_pos = np.tile(init_joint_pos.copy(), (signal.shape[0], 1))  # type: ignore
+            rotate_pos = np.zeros(
+                (signal.shape[0], len(robot.joint_ordering)), np.float32
+            )
 
             if isinstance(joint_idx, int):
                 rotate_pos[:, joint_idx] = signal
@@ -218,10 +218,12 @@ class SysIDFixedPolicy(BasePolicy):
 
             time_list.append(reset_time)
             action_list.append(reset_action)
-            self.time_mark_dict[symmetric_name] = time_list[-1][-1]
+            self.time_mark_dict[symm_name] = time_list[-1][-1]
 
         self.time_arr = np.concatenate(time_list)  # type: ignore
         self.action_arr = np.concatenate(action_list)  # type: ignore
+
+        self.num_total_steps = len(self.time_arr)
 
     def step(self, obs: Obs) -> npt.NDArray[np.float32]:
         action = np.asarray(

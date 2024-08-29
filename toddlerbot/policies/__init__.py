@@ -16,6 +16,7 @@ class BasePolicy(ABC):
         self.name = "base"
         self.control_dt = 6 * 0.002
         self.prep_duration = 2.0
+        self.num_total_steps = float("inf")
 
     @abstractmethod
     def step(self, obs: Obs) -> npt.NDArray[np.float32]:
