@@ -1,7 +1,6 @@
 {
     "general": {
         "is_fixed": false,
-        "use_torso_site": true,
         "has_imu": true,
         "has_dynamixel": true,
         "dynamixel_baudrate": 4000000,

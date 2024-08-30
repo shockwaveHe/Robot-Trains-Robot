@@ -52,102 +52,91 @@ def add_option_settings(root: ET.Element):
     ET.SubElement(option, "flag", {"eulerdamp": "disable"})
 
 
-def add_torso_site(root: ET.Element):
-    worldbody = root.find("worldbody")
-    if worldbody is None:
-        raise ValueError("No worldbody element found in the XML.")
-
-    site_attributes = {
-        "name": "torso",
-        "fromto": "0.01 0 0.4 -0.01 0 0.4",
-        "type": "cylinder",
-        "size": "0.005 0.005 1",
-        "group": "3",
-    }
-
-    site_element = ET.Element("site", site_attributes)
-    worldbody.insert(0, site_element)
-
-
 def add_imu_sensor(root: ET.Element):
     worldbody = root.find("worldbody")
     if worldbody is None:
         raise ValueError("No worldbody element found in the XML.")
 
-    site_attributes = {"name": "imu", "size": "0.01", "pos": "0.0 0 0.0"}
+    site_attributes = {
+        "name": "imu",
+        "type": "box",
+        "size": "0.0128 0.0128 0.0008",
+        "pos": "0.0282 0.0 0.105483",
+        "zaxis": "-1 0 0",
+    }
     site_element = ET.Element("site", site_attributes)
     worldbody.insert(0, site_element)
 
-    sensor = root.find("sensor")
-    if sensor is not None:
-        root.remove(sensor)
+    # sensor = root.find("sensor")
+    # if sensor is not None:
+    #     root.remove(sensor)
 
-    sensor = ET.SubElement(root, "sensor")
+    # sensor = ET.SubElement(root, "sensor")
 
-    # Adding framequat sub-element
-    ET.SubElement(
-        sensor,
-        "framequat",
-        attrib={
-            "name": "orientation",
-            "objtype": "site",
-            "noise": "0.001",
-            "objname": "imu",
-        },
-    )
+    # # Adding framequat sub-element
+    # ET.SubElement(
+    #     sensor,
+    #     "framequat",
+    #     attrib={
+    #         "name": "orientation",
+    #         "objtype": "site",
+    #         "noise": "0.001",
+    #         "objname": "imu",
+    #     },
+    # )
 
-    # Adding framepos sub-element
-    ET.SubElement(
-        sensor,
-        "framepos",
-        attrib={
-            "name": "position",
-            "objtype": "site",
-            "noise": "0.001",
-            "objname": "imu",
-        },
-    )
+    # # Adding framepos sub-element
+    # ET.SubElement(
+    #     sensor,
+    #     "framepos",
+    #     attrib={
+    #         "name": "position",
+    #         "objtype": "site",
+    #         "noise": "0.001",
+    #         "objname": "imu",
+    #     },
+    # )
 
-    # Adding gyro sub-element
-    ET.SubElement(
-        sensor,
-        "gyro",
-        attrib={
-            "name": "angular_velocity",
-            "site": "imu",
-            "noise": "0.005",
-            "cutoff": "34.9",
-        },
-    )
+    # # Adding gyro sub-element
+    # ET.SubElement(
+    #     sensor,
+    #     "gyro",
+    #     attrib={
+    #         "name": "angular_velocity",
+    #         "site": "imu",
+    #         "noise": "0.005",
+    #         "cutoff": "34.9",
+    #     },
+    # )
 
-    # Adding velocimeter sub-element
-    ET.SubElement(
-        sensor,
-        "velocimeter",
-        attrib={
-            "name": "linear_velocity",
-            "site": "imu",
-            "noise": "0.001",
-            "cutoff": "30",
-        },
-    )
+    # # Adding velocimeter sub-element
+    # ET.SubElement(
+    #     sensor,
+    #     "velocimeter",
+    #     attrib={
+    #         "name": "linear_velocity",
+    #         "site": "imu",
+    #         "noise": "0.001",
+    #         "cutoff": "30",
+    #     },
+    # )
 
-    # Adding accelerometer sub-element
-    ET.SubElement(
-        sensor,
-        "accelerometer",
-        attrib={
-            "name": "linear_acceleration",
-            "site": "imu",
-            "noise": "0.005",
-            "cutoff": "157",
-        },
-    )
+    # # Adding accelerometer sub-element
+    # ET.SubElement(
+    #     sensor,
+    #     "accelerometer",
+    #     attrib={
+    #         "name": "linear_acceleration",
+    #         "site": "imu",
+    #         "noise": "0.005",
+    #         "cutoff": "157",
+    #     },
+    # )
 
-    # Adding magnetometer sub-element
-    ET.SubElement(
-        sensor, "magnetometer", attrib={"name": "magnetometer", "site": "imu"}
-    )
+    # # Adding magnetometer sub-element
+    # ET.SubElement(
+    #     sensor, "magnetometer", attrib={"name": "magnetometer", "site": "imu"}
+    # )
 
 
 def update_joint_params(root: ET.Element, joints_config: Dict[str, Any]):
@@ -816,11 +805,8 @@ def process_mjcf_fixed_file(root: ET.Element, robot: Robot):
     update_compiler_settings(root)
     add_option_settings(root)
 
-    if robot.config["general"]["use_torso_site"]:
-        add_torso_site(root)
-
-    # if robot.config["general"]["has_imu"]:
-    #     add_imu_sensor(root)
+    if robot.config["general"]["has_imu"]:
+        add_imu_sensor(root)
 
     update_joint_params(root, robot.config["joints"])
     update_geom_classes(root, ["contype", "conaffinity", "group", "density"])

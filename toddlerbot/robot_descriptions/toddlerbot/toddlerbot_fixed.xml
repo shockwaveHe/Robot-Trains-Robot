@@ -80,7 +80,7 @@
   </asset>
 
   <worldbody>
-    <site name="torso" fromto="0.01 0 0.4 -0.01 0 0.4" type="cylinder" size="0.005 0.005 1" group="3" />
+    <site name="imu" type="box" size="0.0128 0.0128 0.0008" pos="0.0282 0.0 0.105483" zaxis="-1 0 0" />
     <geom type="mesh" rgba="0.575265 0.732668 0.855581 1" mesh="torso_visual" class="visual" />
     <body name="spur_1m_20t" pos="-0.005 0 0.121487" quat="1 0 0 0">
       <inertial pos="0 0 0.0033746" quat="0.5 0.5 -0.5 0.5" mass="0.0015535" diaginertia="7.95589e-08 4.47265e-08 4.47265e-08" />

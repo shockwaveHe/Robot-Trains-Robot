@@ -178,7 +178,6 @@ def main():
     if "sysID" in args.robot:
         general_config: Dict[str, Any] = {
             "is_fixed": True,
-            "use_torso_site": False,
             "has_imu": False,
             "has_dynamixel": True,
             "dynamixel_baudrate": 4000000,
@@ -187,7 +186,6 @@ def main():
     else:
         general_config: Dict[str, Any] = {
             "is_fixed": True,
-            "use_torso_site": False,
             "has_imu": False,
             "has_dynamixel": True,
             "dynamixel_baudrate": 4000000,
@@ -197,7 +195,6 @@ def main():
 
         if "arms" not in args.robot:
             general_config["is_fixed"] = False
-            general_config["use_torso_site"] = True
             general_config["has_imu"] = True
             general_config["smooth_alpha"] = 0.9
             general_config["fd_smooth_alpha"] = 0.2
