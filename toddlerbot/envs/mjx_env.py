@@ -59,10 +59,6 @@ class MuJoCoEnv(PipelineEnv):
         self.nu = self.sys.nu  # type:ignore
         self.nv = self.sys.nv  # type:ignore
 
-        # imu
-        self.imu_pos = self.sys.site_pos[0]  # Assume imu is the first site
-        self.imu_quat = self.sys.site_quat[0]
-
         # colliders
         collider_names = ["floor"] + self.robot.collider_names
         self.num_colliders = len(collider_names)
@@ -176,6 +172,8 @@ class MuJoCoEnv(PipelineEnv):
 
         self.q_start_idx = 0 if self.fixed_base else 7
         self.qd_start_idx = 0 if self.fixed_base else 6
+
+        self.torso_euler_prev = jnp.zeros(3)  # type:ignore
 
         # actions
         self.action_scale = self.cfg.action.action_scale
@@ -492,10 +490,11 @@ class MuJoCoEnv(PipelineEnv):
         torso_lin_vel = math.rotate(pipeline_state.xd.vel[0], math.quat_inv(torso_quat))
         torso_ang_vel = math.rotate(pipeline_state.xd.ang[0], math.quat_inv(torso_quat))
 
-        imu_lin_vel = torso_lin_vel + jnp.cross(torso_ang_vel, self.imu_pos)  # type:ignore
-        imu_ang_vel = math.rotate(torso_ang_vel, math.quat_inv(self.imu_quat))
-        imu_quat = math.quat_mul(torso_quat, self.imu_quat)
-        imu_euler = math.quat_to_euler(imu_quat)
+        torso_euler = math.quat_to_euler(torso_quat)
+        torso_euler_delta = torso_euler - self.torso_euler_prev
+        torso_euler_delta = (torso_euler_delta + jnp.pi) % (2 * jnp.pi) - jnp.pi
+        torso_euler = self.torso_euler_prev + torso_euler_delta
+        self.torso_euler_prev = torso_euler
 
         obs = jnp.concatenate(  # type:ignore
             [
@@ -504,9 +503,9 @@ class MuJoCoEnv(PipelineEnv):
                 motor_pos_delta * self.obs_scales.dof_pos,
                 motor_vel * self.obs_scales.dof_vel,
                 info["last_act"],
-                imu_lin_vel * self.obs_scales.lin_vel,
-                imu_ang_vel * self.obs_scales.ang_vel,
-                imu_euler * self.obs_scales.euler,
+                torso_lin_vel * self.obs_scales.lin_vel,
+                torso_ang_vel * self.obs_scales.ang_vel,
+                torso_euler * self.obs_scales.euler,
             ]
         )
         # TODO: Add push
@@ -517,9 +516,9 @@ class MuJoCoEnv(PipelineEnv):
                 motor_pos_delta * self.obs_scales.dof_pos,
                 motor_vel * self.obs_scales.dof_vel,
                 info["last_act"],
-                imu_lin_vel * self.obs_scales.lin_vel,
-                imu_ang_vel * self.obs_scales.ang_vel,
-                imu_euler * self.obs_scales.euler,
+                torso_lin_vel * self.obs_scales.lin_vel,
+                torso_ang_vel * self.obs_scales.ang_vel,
+                torso_euler * self.obs_scales.euler,
                 joint_pos_error,
                 info["stance_mask"],
                 info["state_ref"][-2:],
