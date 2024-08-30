@@ -24,7 +24,7 @@ class ObsScales:
 class ObsConfig:
     frame_stack: int = 15
     c_frame_stack: int = 3
-    num_single_obs: int = 104
+    num_single_obs: int = 101
     num_single_privileged_obs: int = 138
     scales: ObsScales = ObsScales()
 
