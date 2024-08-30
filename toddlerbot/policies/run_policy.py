@@ -194,12 +194,17 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
     motor_angles_list: List[Dict[str, float]] = []
 
     is_prepared = False
+    num_total_steps = (
+        float("inf")
+        if "real" in sim.name and "fixed" not in policy.name
+        else policy.num_total_steps
+    )
+    p_bar = tqdm(total=num_total_steps, desc="Running the policy")
     start_time = time.time()
     step_idx = 0
-    p_bar = tqdm(total=policy.num_total_steps, desc="Running the policy")
     time_until_next_step = 0
     try:
-        while step_idx < policy.num_total_steps:
+        while step_idx < num_total_steps:
             step_start = time.time()
 
             # Get the latest state from the queue

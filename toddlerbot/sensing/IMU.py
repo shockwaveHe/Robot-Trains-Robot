@@ -9,9 +9,14 @@ from adafruit_bno08x import (  # type: ignore
     BNO_REPORT_ROTATION_VECTOR,  # type: ignore
 )
 from adafruit_bno08x.i2c import BNO08X_I2C  # type: ignore
-from scipy.spatial.transform import Rotation as R  # type: ignore
 
-from toddlerbot.utils.math_utils import exponential_moving_average
+from toddlerbot.utils.math_utils import (
+    exponential_moving_average,
+    quat2euler,
+    quat_inv,
+    quat_mult,
+    rotate_vec,
+)
 
 
 class IMU:
@@ -27,8 +32,7 @@ class IMU:
 
         time.sleep(0.2)
 
-        self.zero_pose = None
-        self.zero_pose_inv = None
+        self.zero_quat = None
 
         self.alpha = alpha
 
@@ -39,50 +43,49 @@ class IMU:
         self.euler_prev = np.zeros(3, dtype=np.float32)
 
     def set_zero_pose(self):
-        self.zero_pose = R.from_quat(np.array(self.sensor.quaternion))
-        self.zero_pose_inv = self.zero_pose.inv()
+        self.zero_quat = np.array(self.sensor.quaternion, dtype=np.float32, copy=True)  # type: ignore
 
     def get_state(self):
-        if self.zero_pose is None:
+        if self.zero_quat is None:
             self.set_zero_pose()
 
-        assert self.zero_pose_inv is not None
+        assert self.zero_quat is not None
 
-        time_curr = time.time()
-        lin_acc = np.array(self.sensor.linear_acceleration)
-        lin_acc_relative = self.zero_pose.apply(lin_acc).astype(np.float32)  # type: ignore
-        lin_vel_relative = lin_acc_relative * (time_curr - self.time_last)
-        self.time_last = time_curr
-        filtered_lin_vel = exponential_moving_average(
-            self.alpha, lin_vel_relative, self.lin_vel_prev
-        )
-        self.lin_vel_prev = filtered_lin_vel
-
-        ang_vel = np.array(self.sensor.gyro)
-        ang_vel_relative = self.zero_pose.apply(ang_vel).astype(np.float32)  # type: ignore
-        filtered_ang_vel = exponential_moving_average(
-            self.alpha, ang_vel_relative, self.ang_vel_prev
-        )
-        self.ang_vel_prev = filtered_ang_vel
-
+        quat_raw = np.array(self.sensor.quaternion, dtype=np.float32, copy=True)  # type: ignore
         # Compute relative rotation based on zero pose
-        rotation_relative = (
-            R.from_quat(np.array(self.sensor.quaternion)) * self.zero_pose_inv
-        )
-        euler_relative = rotation_relative.as_euler("xyz").astype(np.float32)  # type: ignore
+        quat = quat_mult(quat_raw, quat_inv(self.zero_quat))
+        euler = np.asarray(quat2euler(quat))  # type: ignore
         # Ensure the transition is smooth by adjusting for any discontinuities
-        delta = euler_relative - self.euler_prev
+        delta = euler - self.euler_prev
         delta = np.where(delta > np.pi, delta - 2 * np.pi, delta)  # type: ignore
         delta = np.where(delta < -np.pi, delta + 2 * np.pi, delta)  # type: ignore
-        euler_relative = self.euler_prev + delta
+        euler = self.euler_prev + delta
 
-        filtered_euler = exponential_moving_average(
-            self.alpha, euler_relative, self.euler_prev
+        filtered_euler = np.asarray(
+            exponential_moving_average(self.alpha, euler, self.euler_prev),
+            dtype=np.float32,
         )
         self.euler_prev = filtered_euler
 
+        time_curr = time.time()
+        lin_acc_raw = np.array(
+            self.sensor.linear_acceleration, dtype=np.float32, copy=True
+        )
+        lin_acc = np.asarray(rotate_vec(lin_acc_raw, quat_inv(quat_raw)))
+        lin_vel = self.lin_vel_prev + lin_acc * (time_curr - self.time_last)
+        self.time_last = time_curr
+        self.lin_vel_prev = lin_vel
+
+        ang_vel_raw = np.array(self.sensor.gyro, dtype=np.float32, copy=True)
+        ang_vel = np.asarray(rotate_vec(ang_vel_raw, quat_inv(quat_raw)))
+        filtered_ang_vel = np.asarray(
+            exponential_moving_average(self.alpha, ang_vel, self.ang_vel_prev),
+            dtype=np.float32,
+        )
+        self.ang_vel_prev = filtered_ang_vel
+
         state = {
-            "lin_vel": filtered_lin_vel,
+            "lin_vel": lin_vel,
             "ang_vel": filtered_ang_vel,
             "euler": filtered_euler,
         }

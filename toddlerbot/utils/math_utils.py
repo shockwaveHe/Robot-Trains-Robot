@@ -134,6 +134,41 @@ def quat2euler(quat: ArrayType, order: str = "wxyz") -> ArrayType:
     return np.array([roll, pitch, yaw])  # type: ignore
 
 
+def quat_inv(quat: ArrayType, order: str = "wxyz") -> ArrayType:
+    """Compute the inverse of a quaternion."""
+    if order == "xyzw":
+        x, y, z, w = quat
+    else:
+        w, x, y, z = quat
+
+    norm = w**2 + x**2 + y**2 + z**2
+    return np.array([w, -x, -y, -z]) / norm  # type: ignore
+
+
+def quat_mult(q1: ArrayType, q2: ArrayType, order: str = "wxyz") -> ArrayType:
+    """Multiply two quaternions."""
+    if order == "wxyz":
+        w1, x1, y1, z1 = q1
+        w2, x2, y2, z2 = q2
+    else:
+        x1, y1, z1, w1 = q1
+        x2, y2, z2, w2 = q2
+
+    w = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2
+    x = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2
+    y = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2
+    z = w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2
+    return np.array([w, x, y, z])  # type: ignore
+
+
+def rotate_vec(vector: ArrayType, quat: ArrayType):
+    """Rotate a vector by a quaternion."""
+    v = np.array([0.0] + list(vector))  # type: ignore
+    q_inv = quat_inv(quat)
+    v_rotated = quat_mult(quat_mult(quat, v), q_inv)
+    return v_rotated[1:]
+
+
 def exponential_moving_average(
     alpha: float,
     current_value: ArrayType | float,
