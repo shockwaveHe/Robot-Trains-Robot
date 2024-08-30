@@ -56,10 +56,9 @@ class IMU:
         quat = quat_mult(quat_raw, quat_inv(self.zero_quat))
         euler = np.asarray(quat2euler(quat))  # type: ignore
         # Ensure the transition is smooth by adjusting for any discontinuities
-        delta = euler - self.euler_prev
-        delta = np.where(delta > np.pi, delta - 2 * np.pi, delta)  # type: ignore
-        delta = np.where(delta < -np.pi, delta + 2 * np.pi, delta)  # type: ignore
-        euler = self.euler_prev + delta
+        euler_delta = euler - self.euler_prev
+        euler_delta = (euler_delta + np.pi) % (2 * np.pi) - np.pi
+        euler = self.euler_prev + euler_delta
 
         filtered_euler = np.asarray(
             exponential_moving_average(self.alpha, euler, self.euler_prev),

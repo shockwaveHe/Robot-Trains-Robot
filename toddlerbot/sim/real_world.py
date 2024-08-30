@@ -7,6 +7,7 @@ from toddlerbot.actuation import JointState
 from toddlerbot.sim import BaseSim, Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_ports
+from toddlerbot.utils.math_utils import quat2euler, rotate_vec
 
 # from toddlerbot.utils.misc_utils import profile
 
@@ -15,6 +16,15 @@ class RealWorld(BaseSim):
     def __init__(self, robot: Robot):
         super().__init__("real_world")
         self.robot = robot
+        offsets = robot.config["general"]["offests"]
+        self.imu_pos = np.array(
+            [offsets["imu_x"], offsets["imu_y"], offsets["imu_z"]], dtype=np.float32
+        )
+        imu_euler = np.array(
+            [offsets["imu_roll"], offsets["imu_pitch"], offsets["imu_yaw"]],
+            dtype=np.float32,
+        )
+        self.imu_quat = np.asarray(quat2euler(imu_euler))
 
         self.has_imu = self.robot.config["general"]["has_imu"]
         self.has_dynamixel = self.robot.config["general"]["has_dynamixel"]
@@ -179,8 +189,13 @@ class RealWorld(BaseSim):
         obs = self.process_motor_reading(results)
 
         if self.has_imu:
-            for k, v in results["imu"].items():
-                setattr(obs, k, v.copy())
+            imu_lin_vel = np.array(results["imu"]["lin_vel"], dtype=np.float32)
+            imu_ang_vel = np.array(results["imu"]["ang_vel"], dtype=np.float32)
+            imu_euler = np.array(results["imu"]["euler"], dtype=np.float32)
+
+            obs.euler = np.asarray(rotate_vec(imu_euler, self.imu_quat))
+            obs.ang_vel = np.asarray(rotate_vec(imu_ang_vel, self.imu_quat))
+            obs.lin_vel = imu_lin_vel - np.cross(obs.ang_vel, self.imu_pos)
 
         return obs
 

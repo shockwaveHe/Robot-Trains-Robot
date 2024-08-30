@@ -52,17 +52,18 @@ def add_option_settings(root: ET.Element):
     ET.SubElement(option, "flag", {"eulerdamp": "disable"})
 
 
-def add_imu_sensor(root: ET.Element):
+def add_imu_sensor(root: ET.Element, general_config: Dict[str, Any]):
     worldbody = root.find("worldbody")
     if worldbody is None:
         raise ValueError("No worldbody element found in the XML.")
 
+    offsets = general_config["offsets"]
     site_attributes = {
         "name": "imu",
         "type": "box",
         "size": "0.0128 0.0128 0.0008",
-        "pos": "0.0282 0.0 0.105483",
-        "zaxis": "-1 0 0",
+        "pos": f"{offsets['imu_x']} {offsets['imu_y']} {offsets['imu_z']}",
+        "euler": f"{offsets['imu_roll']} {offsets['imu_pitch']} {offsets['imu_yaw']}",
     }
     site_element = ET.Element("site", site_attributes)
     worldbody.insert(0, site_element)
@@ -806,7 +807,7 @@ def process_mjcf_fixed_file(root: ET.Element, robot: Robot):
     add_option_settings(root)
 
     if robot.config["general"]["has_imu"]:
-        add_imu_sensor(root)
+        add_imu_sensor(root, robot.config["general"])
 
     update_joint_params(root, robot.config["joints"])
     update_geom_classes(root, ["contype", "conaffinity", "group", "density"])

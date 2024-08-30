@@ -205,6 +205,12 @@ def main():
             general_config["foot_name"] = "ank_roll_link"
             general_config["offsets"] = {
                 "torso_z": 0.3442,
+                "imu_x": 0.0282,
+                "imu_y": 0.0,
+                "imu_z": 0.105483,
+                "imu_roll": 0.0,
+                "imu_pitch": -1.5708,
+                "imu_yaw": 0.0,
                 "waist_roll_coef": 0.29166667,
                 "waist_yaw_coef": 0.20833333,
                 "ank_act_arm_y": 0.00582666,
