@@ -806,8 +806,8 @@ def process_mjcf_fixed_file(root: ET.Element, robot: Robot):
     update_compiler_settings(root)
     add_option_settings(root)
 
-    if robot.config["general"]["has_imu"]:
-        add_imu_sensor(root, robot.config["general"])
+    # if robot.config["general"]["has_imu"]:
+    #     add_imu_sensor(root, robot.config["general"])
 
     update_joint_params(root, robot.config["joints"])
     update_geom_classes(root, ["contype", "conaffinity", "group", "density"])
