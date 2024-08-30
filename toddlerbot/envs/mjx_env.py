@@ -503,9 +503,10 @@ class MuJoCoEnv(PipelineEnv):
         joint_pos = pipeline_state.q[self.q_start_idx + self.joint_indices]
         joint_pos_error = joint_pos - info["state_ref"][13 : 13 + self.nu]
 
-        torso_lin_vel = pipeline_state.xd.vel[0]
-        torso_ang_vel = pipeline_state.xd.ang[0]
-        torso_euler = math.quat_to_euler(pipeline_state.x.rot[0])
+        torso_quat = pipeline_state.x.rot[0]
+        torso_lin_vel = math.rotate(pipeline_state.xd.vel[0], math.quat_inv(torso_quat))
+        torso_ang_vel = math.rotate(pipeline_state.xd.ang[0], math.quat_inv(torso_quat))
+        torso_euler = math.quat_to_euler(torso_quat)
 
         obs = jnp.concatenate(  # type:ignore
             [
@@ -608,10 +609,10 @@ class MuJoCoEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ):
         """Reward for track linear velocity in xy"""
-        local_vel = math.rotate(
+        lin_vel_local = math.rotate(
             pipeline_state.xd.vel[0], math.quat_inv(pipeline_state.x.rot[0])
         )
-        lin_vel_xy = local_vel[:2]
+        lin_vel_xy = lin_vel_local[:2]
         lin_vel_xy_ref = info["state_ref"][7:9]
         error = jnp.linalg.norm(lin_vel_xy - lin_vel_xy_ref, axis=-1)  # type:ignore
         reward = jnp.exp(-self.tracking_sigma * error**2)  # type:ignore
@@ -621,10 +622,10 @@ class MuJoCoEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ):
         """Reward for track linear velocity in z"""
-        local_vel = math.rotate(
+        lin_vel_local = math.rotate(
             pipeline_state.xd.vel[0], math.quat_inv(pipeline_state.x.rot[0])
         )
-        lin_vel_z = local_vel[2]
+        lin_vel_z = lin_vel_local[2]
         lin_vel_z_ref = info["state_ref"][9]
         error = lin_vel_z - lin_vel_z_ref
         reward = jnp.exp(-self.tracking_sigma * error**2)  # type:ignore
@@ -634,10 +635,10 @@ class MuJoCoEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ):
         """Reward for track angular velocity in xy"""
-        local_vel = math.rotate(
+        ang_vel_local = math.rotate(
             pipeline_state.xd.ang[0], math.quat_inv(pipeline_state.x.rot[0])
         )
-        ang_vel_xy = local_vel[:2]
+        ang_vel_xy = ang_vel_local[:2]
         ang_vel_xy_ref = info["state_ref"][10:12]
         error = jnp.linalg.norm(ang_vel_xy - ang_vel_xy_ref, axis=-1)  # type:ignore
         reward = jnp.exp(-self.tracking_sigma / 4 * error**2)  # type:ignore
@@ -647,10 +648,10 @@ class MuJoCoEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ):
         """Reward for track angular velocity in z"""
-        local_vel = math.rotate(
+        ang_vel_local = math.rotate(
             pipeline_state.xd.ang[0], math.quat_inv(pipeline_state.x.rot[0])
         )
-        ang_vel_z = local_vel[2]
+        ang_vel_z = ang_vel_local[2]
         ang_vel_z_ref = info["state_ref"][12]
         error = ang_vel_z - ang_vel_z_ref
         reward = jnp.exp(-self.tracking_sigma / 4 * error**2)  # type:ignore

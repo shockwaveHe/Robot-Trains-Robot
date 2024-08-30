@@ -370,12 +370,11 @@ def plot_sim2real_gap_line(
     title: str = "Euler Angles",
     x_label: str = "Time (s)",
     y_label: str = "Euler Angles (rad)",
+    axis_names: List[str] = ["roll", "pitch", "yaw"],
     file_name: str = "euler_gap",
     file_suffix: str = "",
 ):
-    for data_sim, angle_real, axis_name in zip(
-        data_sim.T, data_real.T, ["roll", "pitch", "yaw"]
-    ):
+    for data_sim, angle_real, axis_name in zip(data_sim.T, data_real.T, axis_names):
         plot_line_graph(
             [data_sim, angle_real],
             [

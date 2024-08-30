@@ -37,8 +37,9 @@ def load_datasets(
         motor_angles_list: List[Dict[str, float]] = log_data_dict["motor_angles_list"]
 
         data_dict["imu"] = {
-            "euler": np.array([obs.euler for obs in obs_list[:idx]]),
+            "lin_vel": np.array([obs.lin_vel for obs in obs_list[:idx]]),
             "ang_vel": np.array([obs.ang_vel for obs in obs_list[:idx]]),
+            "euler": np.array([obs.euler for obs in obs_list[:idx]]),
         }
 
         for motor_name in robot.motor_ordering:
@@ -116,9 +117,13 @@ def evaluate(
     plot_sim2real_gap_line(
         time_seq_sim_dict[list(sim_data.keys())[-1]],
         time_seq_real_dict[list(sim_data.keys())[-1]],
-        sim_data["imu"]["euler"],
-        real_data["imu"]["euler"],
+        sim_data["imu"]["lin_vel"],
+        real_data["imu"]["lin_vel"],
         save_path=exp_folder_path,
+        title="Linear Velocity",
+        y_label="Linear Velocities (m/s)",
+        axis_names=["x", "y", "z"],
+        file_name="lin_vel_gap",
     )
 
     plot_sim2real_gap_line(
@@ -130,6 +135,14 @@ def evaluate(
         title="Angular Velocity",
         y_label="Angular Velocities (rad/s)",
         file_name="ang_vel_gap",
+    )
+
+    plot_sim2real_gap_line(
+        time_seq_sim_dict[list(sim_data.keys())[-1]],
+        time_seq_real_dict[list(sim_data.keys())[-1]],
+        sim_data["imu"]["euler"],
+        real_data["imu"]["euler"],
+        save_path=exp_folder_path,
     )
 
     for rmse_dict, label in zip(

@@ -4,9 +4,6 @@ import os
 import xml.etree.ElementTree as ET
 from typing import Any, Dict
 
-# TODO: Convert to CSV and upload to google sheet with python
-# TODO: Verify that the XC330 is well system identified
-
 
 def get_default_config(
     root: ET.Element,
