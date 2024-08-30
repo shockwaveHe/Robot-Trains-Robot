@@ -91,13 +91,17 @@ def plot_results(
             motor_vel_dict[motor_name].append(obs.motor_vel[j])
 
             joint_name = robot.motor_to_joint_name[motor_name]
-            if joint_name not in joint_pos_dict:
-                joint_pos_dict[joint_name] = []
-                joint_vel_dict[joint_name] = []
 
             if obs.joint_pos is not None:
+                if joint_name not in joint_pos_dict:
+                    joint_pos_dict[joint_name] = []
+
                 joint_pos_dict[joint_name].append(obs.joint_pos[j])
+
             if obs.joint_vel is not None:
+                if joint_name not in joint_vel_dict:
+                    joint_vel_dict[joint_name] = []
+
                 joint_vel_dict[joint_name].append(obs.joint_vel[j])
 
     action_dict: Dict[str, List[float]] = {}

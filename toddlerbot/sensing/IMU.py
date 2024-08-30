@@ -71,13 +71,15 @@ class IMU:
         lin_acc_raw = np.array(
             self.sensor.linear_acceleration, dtype=np.float32, copy=True
         )
-        lin_acc = np.asarray(rotate_vec(lin_acc_raw, quat_inv(quat_raw)))
+        lin_acc_global = np.asarray(rotate_vec(lin_acc_raw, self.zero_quat))
+        lin_acc = np.asarray(rotate_vec(lin_acc_global, quat_inv(quat)))
         lin_vel = self.lin_vel_prev + lin_acc * (time_curr - self.time_last)
         self.time_last = time_curr
         self.lin_vel_prev = lin_vel
 
         ang_vel_raw = np.array(self.sensor.gyro, dtype=np.float32, copy=True)
-        ang_vel = np.asarray(rotate_vec(ang_vel_raw, quat_inv(quat_raw)))
+        ang_vel_global = np.asarray(rotate_vec(ang_vel_raw, self.zero_quat))
+        ang_vel = np.asarray(rotate_vec(ang_vel_global, quat_inv(quat)))
         filtered_ang_vel = np.asarray(
             exponential_moving_average(self.alpha, ang_vel, self.ang_vel_prev),
             dtype=np.float32,
