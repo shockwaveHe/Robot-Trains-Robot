@@ -62,7 +62,7 @@ def plot_results(
         # loop_time_dict["total_time"].append((step_end - step_start) * 1000)
 
     time_obs_list: List[float] = []
-    lin_vel_obs_list: List[npt.NDArray[np.float32]] = []
+    # lin_vel_obs_list: List[npt.NDArray[np.float32]] = []
     ang_vel_obs_list: List[npt.NDArray[np.float32]] = []
     euler_obs_list: List[npt.NDArray[np.float32]] = []
     time_seq_dict: Dict[str, List[float]] = {}
@@ -73,7 +73,7 @@ def plot_results(
     joint_vel_dict: Dict[str, List[float]] = {}
     for i, obs in enumerate(obs_list):
         time_obs_list.append(obs.time)
-        lin_vel_obs_list.append(obs.lin_vel)
+        # lin_vel_obs_list.append(obs.lin_vel)
         ang_vel_obs_list.append(obs.ang_vel)
         euler_obs_list.append(obs.euler)
 
@@ -120,17 +120,17 @@ def plot_results(
 
     plot_loop_time(loop_time_dict, exp_folder_path)
 
-    plot_line_graph(
-        np.array(lin_vel_obs_list).T,
-        time_obs_list,
-        legend_labels=["X", "Y", "Z"],
-        title="Linear Velocities Over Time",
-        x_label="Time (s)",
-        y_label="Linear Velocity (m/s)",
-        save_config=True,
-        save_path=exp_folder_path,
-        file_name="lin_vel_tracking",
-    )()
+    # plot_line_graph(
+    #     np.array(lin_vel_obs_list).T,
+    #     time_obs_list,
+    #     legend_labels=["X", "Y", "Z"],
+    #     title="Linear Velocities Over Time",
+    #     x_label="Time (s)",
+    #     y_label="Linear Velocity (m/s)",
+    #     save_config=True,
+    #     save_path=exp_folder_path,
+    #     file_name="lin_vel_tracking",
+    # )()
     plot_line_graph(
         np.array(ang_vel_obs_list).T,
         time_obs_list,
