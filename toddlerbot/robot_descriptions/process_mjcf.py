@@ -63,7 +63,7 @@ def add_imu_sensor(root: ET.Element, general_config: Dict[str, Any]):
         "type": "box",
         "size": "0.0128 0.0128 0.0008",
         "pos": f"{offsets['imu_x']} {offsets['imu_y']} {offsets['imu_z']}",
-        "euler": f"{offsets['imu_roll']} {offsets['imu_pitch']} {offsets['imu_yaw']}",
+        "zaxis": offsets["imu_zaxis"],
     }
     site_element = ET.Element("site", site_attributes)
     worldbody.insert(0, site_element)
