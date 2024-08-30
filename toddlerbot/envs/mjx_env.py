@@ -173,8 +173,6 @@ class MuJoCoEnv(PipelineEnv):
         self.q_start_idx = 0 if self.fixed_base else 7
         self.qd_start_idx = 0 if self.fixed_base else 6
 
-        self.torso_euler_prev = jnp.zeros(3)  # type:ignore
-
         # actions
         self.action_scale = self.cfg.action.action_scale
         self.cycle_time = self.cfg.action.cycle_time
@@ -256,6 +254,7 @@ class MuJoCoEnv(PipelineEnv):
             "init_feet_height": pipeline_state.x.pos[self.feet_link_ids, 2],
             "last_last_act": jnp.zeros(self.nu),  # type:ignore
             "last_act": jnp.zeros(self.nu),  # type:ignore
+            "last_torso_euler": jnp.zeros(3),  # type:ignore
             "rewards": {k: 0.0 for k in self.reward_names},
             "done": False,
             "step": 0,
@@ -380,12 +379,18 @@ class MuJoCoEnv(PipelineEnv):
             pipeline_state, state.info, state.obs, state.privileged_obs
         )
 
+        torso_euler = math.quat_to_euler(pipeline_state.x.rot[0])
+        torso_euler_delta = torso_euler - state.info["last_torso_euler"]
+        torso_euler_delta = (torso_euler_delta + jnp.pi) % (2 * jnp.pi) - jnp.pi
+        torso_euler = state.info["last_torso_euler"] + torso_euler_delta
+
         reward_dict = self._compute_reward(pipeline_state, state.info, action)  # type:ignore
         reward = sum(reward_dict.values()) * self.dt  # type:ignore
         # reward = jnp.clip(reward, 0.0)  # type:ignore
 
         state.info["last_last_act"] = state.info["last_act"].copy()
         state.info["last_act"] = action.copy()
+        state.info["last_torso_euler"] = torso_euler
         state.info["last_stance_mask"] = stance_mask.copy()
         state.info["feet_air_time"] += self.dt
         state.info["feet_air_time"] *= 1.0 - stance_mask
@@ -491,10 +496,9 @@ class MuJoCoEnv(PipelineEnv):
         torso_ang_vel = math.rotate(pipeline_state.xd.ang[0], math.quat_inv(torso_quat))
 
         torso_euler = math.quat_to_euler(torso_quat)
-        torso_euler_delta = torso_euler - self.torso_euler_prev
+        torso_euler_delta = torso_euler - info["last_torso_euler"]
         torso_euler_delta = (torso_euler_delta + jnp.pi) % (2 * jnp.pi) - jnp.pi
-        torso_euler = self.torso_euler_prev + torso_euler_delta
-        self.torso_euler_prev = torso_euler
+        torso_euler = info["last_torso_euler"] + torso_euler_delta
 
         obs = jnp.concatenate(  # type:ignore
             [
