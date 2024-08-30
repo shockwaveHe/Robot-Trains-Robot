@@ -110,7 +110,7 @@ def get_default_config(
             joint_dict["spec"] = motor_name
             joint_dict["control_mode"] = (
                 "current_based_position"
-                if motor_name == "XC330"  # or motor_name == "XM430"
+                if motor_name == "XC330"
                 else "extended_position"
             )
             # joint_dict["control_mode"] = "extended_position"
@@ -132,7 +132,10 @@ def get_default_config(
             joint_dict["kp_sim"] = kp / 128
             joint_dict["kd_sim"] = 0.0
 
-            if motor_name in joint_dyn_config:
+            if joint_name in joint_dyn_config:
+                for param_name in ["damping", "armature"]:  # , "frictionloss"]:
+                    joint_dict[param_name] = joint_dyn_config[joint_name][param_name]
+            elif motor_name in joint_dyn_config:
                 for param_name in ["damping", "armature"]:  # , "frictionloss"]:
                     joint_dict[param_name] = joint_dyn_config[motor_name][param_name]
 
