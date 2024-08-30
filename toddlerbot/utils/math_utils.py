@@ -7,8 +7,6 @@ from scipy.signal import chirp  # type: ignore
 from toddlerbot.utils.array_utils import ArrayType
 from toddlerbot.utils.array_utils import array_lib as np
 
-# import torch
-
 
 def get_random_sine_signal_config(
     duration: float,

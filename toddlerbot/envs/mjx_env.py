@@ -14,8 +14,6 @@ from mujoco.mjx._src import support  # type: ignore
 from toddlerbot.envs.mjx_config import MuJoCoConfig
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
-from toddlerbot.utils.jax_utils import quat_apply, quat_mult
-from toddlerbot.utils.math_utils import wrap_to_pi
 
 
 class MuJoCoEnv(PipelineEnv):
@@ -60,6 +58,10 @@ class MuJoCoEnv(PipelineEnv):
     def _init_env(self):
         self.nu = self.sys.nu  # type:ignore
         self.nv = self.sys.nv  # type:ignore
+
+        # imu
+        self.imu_pos = self.sys.site_pos[0]  # Assume imu is the first site
+        self.imu_quat = self.sys.site_quat[0]
 
         # colliders
         collider_names = ["floor"] + self.robot.collider_names
@@ -159,12 +161,10 @@ class MuJoCoEnv(PipelineEnv):
             raise ValueError(f"Unknown env {self.name}")
 
         # commands
-        self.has_heading_command = self.cfg.commands.has_heading_command
         # x vel, y vel, yaw vel, heading
         self.num_commands = self.cfg.commands.num_commands
         self.command_ranges = asdict(self.cfg.commands.ranges)
         self.resample_steps = int(self.cfg.commands.resample_time / self.dt)
-        self.forward_vec = jnp.array([1.0, 0.0, 0.0])  # type:ignore
 
         # observation
         self.state_ref_size = 7 + 6 + 2 * self.nu + 2
@@ -304,29 +304,14 @@ class MuJoCoEnv(PipelineEnv):
             minval=self.command_ranges["lin_vel_y"][0],
             maxval=self.command_ranges["lin_vel_y"][1],
         )
-        # Determine whether to use heading or angular velocity command
-        heading = jnp.zeros(1)  # type:ignore
-        if self.has_heading_command:
-            command_heading = jax.random.uniform(  # type:ignore
-                rng_3,
-                (1,),
-                minval=self.command_ranges["heading"][0],
-                maxval=self.command_ranges["heading"][1],
-            )
+        ang_vel_yaw = jax.random.uniform(  # type:ignore
+            rng_3,
+            (1,),
+            minval=self.command_ranges["ang_vel_yaw"][0],
+            maxval=self.command_ranges["ang_vel_yaw"][1],
+        )
 
-            forward = quat_apply(pipeline_state.x.rot[0], self.forward_vec)  # type:ignore
-            heading = heading.at[0].set(jnp.atan2(forward[1], forward[0]))  # type:ignore
-            ang_vel_yaw_raw = 0.5 * wrap_to_pi(command_heading - heading)  # type:ignore
-            ang_vel_yaw = jnp.clip(ang_vel_yaw_raw, -1.0, 1.0)  # type:ignore
-        else:
-            ang_vel_yaw = jax.random.uniform(  # type:ignore
-                rng_3,
-                (1,),
-                minval=self.command_ranges["ang_vel_yaw"][0],
-                maxval=self.command_ranges["ang_vel_yaw"][1],
-            )
-
-        commands = jnp.concatenate([lin_vel_x, lin_vel_y, ang_vel_yaw, heading])  # type:ignore
+        commands = jnp.concatenate([lin_vel_x, lin_vel_y, ang_vel_yaw])  # type:ignore
 
         # # Set small commands to zero based on norm condition
         # norms = jnp.linalg.norm(commands[:2], axis=1)  # type:ignore
@@ -448,7 +433,7 @@ class MuJoCoEnv(PipelineEnv):
             [jnp.cos(theta), 0.0, 0.0, jnp.sin(theta)],  # type:ignore
         )
         yaw_quat /= jnp.linalg.norm(yaw_quat)  # type:ignore
-        quat = quat_mult(quat, yaw_quat)  # type:ignore
+        quat = math.quat_mul(quat, yaw_quat)  # type:ignore
         quat /= jnp.linalg.norm(quat)  #   type:ignore
 
         return pos, quat  # type:ignore
@@ -506,31 +491,35 @@ class MuJoCoEnv(PipelineEnv):
         torso_quat = pipeline_state.x.rot[0]
         torso_lin_vel = math.rotate(pipeline_state.xd.vel[0], math.quat_inv(torso_quat))
         torso_ang_vel = math.rotate(pipeline_state.xd.ang[0], math.quat_inv(torso_quat))
-        torso_euler = math.quat_to_euler(torso_quat)
+
+        imu_lin_vel = torso_lin_vel + jnp.cross(torso_ang_vel, self.imu_pos)  # type:ignore
+        imu_ang_vel = math.rotate(torso_ang_vel, math.quat_inv(self.imu_quat))
+        imu_quat = math.quat_mul(torso_quat, self.imu_quat)
+        imu_euler = math.quat_to_euler(imu_quat)
 
         obs = jnp.concatenate(  # type:ignore
             [
                 info["phase_signal"],
-                info["command"][:3],
+                info["command"],
                 motor_pos_delta * self.obs_scales.dof_pos,
                 motor_vel * self.obs_scales.dof_vel,
                 info["last_act"],
-                torso_lin_vel * self.obs_scales.lin_vel,
-                torso_ang_vel * self.obs_scales.ang_vel,
-                torso_euler * self.obs_scales.euler,
+                imu_lin_vel * self.obs_scales.lin_vel,
+                imu_ang_vel * self.obs_scales.ang_vel,
+                imu_euler * self.obs_scales.euler,
             ]
         )
         # TODO: Add push
         privileged_obs = jnp.concatenate(  # type:ignore
             [
                 info["phase_signal"],
-                info["command"][:3],
+                info["command"],
                 motor_pos_delta * self.obs_scales.dof_pos,
                 motor_vel * self.obs_scales.dof_vel,
                 info["last_act"],
-                torso_lin_vel * self.obs_scales.lin_vel,
-                torso_ang_vel * self.obs_scales.ang_vel,
-                torso_euler * self.obs_scales.euler,
+                imu_lin_vel * self.obs_scales.lin_vel,
+                imu_ang_vel * self.obs_scales.ang_vel,
+                imu_euler * self.obs_scales.euler,
                 joint_pos_error,
                 info["stance_mask"],
                 info["state_ref"][-2:],

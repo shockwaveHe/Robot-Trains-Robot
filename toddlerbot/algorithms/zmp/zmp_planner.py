@@ -4,7 +4,8 @@ import control  # type: ignore
 
 from toddlerbot.utils.array_utils import ArrayType, expm, inplace_add, inplace_update
 from toddlerbot.utils.array_utils import array_lib as np
-from toddlerbot.utils.constants import GRAVITY
+
+GRAVITY = 9.81
 
 
 class PPoly:

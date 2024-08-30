@@ -97,10 +97,9 @@ class CommandsConfig:
     # (in heading mode ang_vel_yaw is recomputed from heading error)
     # curriculum: bool = False
     # max_curriculum: float = 8.0  # time before command are changed[s]
-    num_commands: int = 4
+    num_commands: int = 3
     resample_time: float = 5.0
     # if true: compute ang vel command from heading error
-    has_heading_command: bool = False
     ranges: CommandRanges = CommandRanges()
 
 

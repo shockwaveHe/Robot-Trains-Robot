@@ -4,7 +4,8 @@ import control
 import numpy as np
 
 from toddlerbot.planning.foot_step_planner import FootStep
-from toddlerbot.utils.constants import GRAVITY
+
+GRAVITY = 9.81
 
 
 class ZMPPreviewPlanner:

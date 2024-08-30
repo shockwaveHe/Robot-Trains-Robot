@@ -141,7 +141,7 @@
             ]
         },
         {
-            "name": "Python: walk_toddlerbot_legs_eval_mjx",
+            "name": "Python: walk_toddlerbot_mjx",
             "type": "python",
             "request": "launch",
             "program": "toddlerbot/envs/train_mjx.py",
@@ -149,11 +149,9 @@
             "justMyCode": true,
             "args": [
                 "--robot",
-                "toddlerbot_legs",
+                "toddlerbot",
                 "--env",
-                "walk",
-                "--eval",
-                "20240822_112419"
+                "walk"
             ],
         },
         {
