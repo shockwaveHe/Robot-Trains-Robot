@@ -126,7 +126,7 @@ class NoiseConfig:
     dof_pos: float = 1.0
     dof_vel: float = 2.0
     ang_vel: float = 2.0
-    lin_vel: float = 1.0
+    lin_vel: float = 2.0
     euler: float = 1.0
 
 
