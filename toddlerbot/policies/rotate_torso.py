@@ -23,7 +23,7 @@ class RotateTorsoPolicy(BasePolicy):
 
         self.prep_duration = 7.0
         warm_up_duration = 2.0
-        signal_duraion = 20.0
+        signal_duraion = 10.0
         reset_duration = 2.0
 
         joint_sysID_specs = {

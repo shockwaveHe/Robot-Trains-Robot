@@ -169,15 +169,15 @@ class MuJoCoSim(BaseSim):
             joint_vel.append(joint_state_dict[joint_name].vel)
 
         if self.fixed_base:
-            torso_lin_vel = np.zeros(3, dtype=np.float32)
+            # torso_lin_vel = np.zeros(3, dtype=np.float32)
             torso_ang_vel = np.zeros(3, dtype=np.float32)
             torso_euler = np.zeros(3, dtype=np.float32)
         else:
-            lin_vel_global = np.array(
-                self.data.body("torso").cvel[3:],  # type: ignore
-                dtype=np.float32,
-                copy=True,
-            )
+            # lin_vel_global = np.array(
+            #     self.data.body("torso").cvel[3:],  # type: ignore
+            #     dtype=np.float32,
+            #     copy=True,
+            # )
             ang_vel_global = np.array(
                 self.data.body("torso").cvel[:3],  # type: ignore
                 dtype=np.float32,
@@ -191,14 +191,14 @@ class MuJoCoSim(BaseSim):
             if np.linalg.norm(torso_quat) == 0:
                 torso_quat = np.array([1, 0, 0, 0], dtype=np.float32)
 
-            torso_lin_vel = np.asarray(rotate_vec(lin_vel_global, quat_inv(torso_quat)))
+            # torso_lin_vel = np.asarray(rotate_vec(lin_vel_global, quat_inv(torso_quat)))
             torso_ang_vel = np.asarray(rotate_vec(ang_vel_global, quat_inv(torso_quat)))
 
-            torso_euler = np.asarray(quat2euler(torso_quat))  # type: ignore
+            torso_euler = np.asarray(quat2euler(torso_quat))
             torso_euler_delta = torso_euler - self.torso_euler_prev
             torso_euler_delta = (torso_euler_delta + np.pi) % (2 * np.pi) - np.pi
             torso_euler = self.torso_euler_prev + torso_euler_delta
-            self.torso_euler_prev = torso_euler
+            self.torso_euler_prev = np.asarray(torso_euler, dtype=np.float32)
 
         # Add sensor noise
         # obs.euler += np.random.normal(0, self.imu_euler_noise_std, size=obs.euler.shape)
@@ -210,7 +210,7 @@ class MuJoCoSim(BaseSim):
             time=time,
             motor_pos=np.array(motor_pos, dtype=np.float32),
             motor_vel=np.array(motor_vel, dtype=np.float32),
-            lin_vel=torso_lin_vel,
+            # lin_vel=torso_lin_vel,
             ang_vel=torso_ang_vel,
             euler=torso_euler,
             joint_pos=np.array(joint_pos, dtype=np.float32),

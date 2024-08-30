@@ -91,7 +91,7 @@ class WalkFixedPolicy(BasePolicy):
         )
         motor_pos_delta = obs.motor_pos - self.default_motor_pos
 
-        obs.lin_vel = np.zeros(3, dtype=np.float32)
+        # obs.lin_vel = np.zeros(3, dtype=np.float32)
         obs.ang_vel = np.zeros(3, dtype=np.float32)
         obs.euler = np.zeros(3, dtype=np.float32)
 
@@ -102,7 +102,7 @@ class WalkFixedPolicy(BasePolicy):
                 motor_pos_delta * self.obs_scales.dof_pos,
                 obs.motor_vel * self.obs_scales.dof_vel,
                 self.last_action,
-                obs.lin_vel * self.obs_scales.lin_vel,
+                # obs.lin_vel * self.obs_scales.lin_vel,
                 obs.ang_vel * self.obs_scales.ang_vel,
                 obs.euler * self.obs_scales.euler,
             ]

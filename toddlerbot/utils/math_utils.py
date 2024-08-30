@@ -132,6 +132,37 @@ def quat2euler(quat: ArrayType, order: str = "wxyz") -> ArrayType:
     return np.array([roll, pitch, yaw])  # type: ignore
 
 
+def euler2quat(euler: ArrayType, order: str = "wxyz") -> ArrayType:
+    """
+    Convert Euler angles (roll, pitch, yaw) to a quaternion.
+
+    Args:
+        euler: Euler angles as [roll, pitch, yaw].
+        order: Output quaternion order, either "wxyz" or "xyzw".
+
+    Returns:
+        Quaternion as [w, x, y, z] or [x, y, z, w].
+    """
+    roll, pitch, yaw = euler
+
+    cy = np.cos(yaw * 0.5)  # type: ignore
+    sy = np.sin(yaw * 0.5)  # type: ignore
+    cp = np.cos(pitch * 0.5)  # type: ignore
+    sp = np.sin(pitch * 0.5)  # type: ignore
+    cr = np.cos(roll * 0.5)  # type: ignore
+    sr = np.sin(roll * 0.5)  # type: ignore
+
+    w = cr * cp * cy + sr * sp * sy
+    x = sr * cp * cy - cr * sp * sy
+    y = cr * sp * cy + sr * cp * sy
+    z = cr * cp * sy - sr * sp * cy
+
+    if order == "xyzw":
+        return np.array([x, y, z, w])  # type: ignore
+    else:
+        return np.array([w, x, y, z])  # type: ignore
+
+
 def quat_inv(quat: ArrayType, order: str = "wxyz") -> ArrayType:
     """Compute the inverse of a quaternion."""
     if order == "xyzw":
@@ -171,7 +202,7 @@ def exponential_moving_average(
     alpha: float,
     current_value: ArrayType | float,
     previous_filtered_value: Optional[ArrayType | float] = None,
-):
+) -> ArrayType | float:
     if previous_filtered_value is None:
         return current_value
     return alpha * current_value + (1 - alpha) * previous_filtered_value

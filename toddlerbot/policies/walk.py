@@ -126,7 +126,7 @@ class WalkPolicy(BasePolicy):
                 motor_pos_delta * self.obs_scales.dof_pos,
                 obs.motor_vel * self.obs_scales.dof_vel,
                 self.last_action,
-                obs.lin_vel * self.obs_scales.lin_vel,
+                # obs.lin_vel * self.obs_scales.lin_vel,
                 obs.ang_vel * self.obs_scales.ang_vel,
                 obs.euler * self.obs_scales.euler,
             ]
