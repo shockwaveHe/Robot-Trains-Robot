@@ -52,6 +52,7 @@ class IMU:
         if self.zero_quat is None:
             self.set_zero_pose()
 
+        assert self.zero_quat is not None
         assert self.zero_quat_inv is not None
 
         quat_raw = np.array(self.sensor.quaternion, dtype=np.float32, copy=True)  # type: ignore

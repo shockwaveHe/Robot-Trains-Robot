@@ -31,6 +31,7 @@ class RealWorld(BaseSim):
         self.negated_motor_names: List[str] = [
             "left_hip_yaw_drive",
             "right_hip_yaw_drive",
+            "left_hip_roll",
             "left_knee_act",
             "right_knee_act",
             "left_sho_roll",
