@@ -57,7 +57,7 @@ class RewardScales:
     feet_clearance: float = 0.0  # 1.0 # Doesn't help
     feet_contact: float = 0.5
     feet_distance: float = 0.5
-    feet_slip: float = 0.0  # 0.1
+    feet_slip: float = 0.1
     stand_still: float = 0.0  # 1.0
     joint_torque: float = 5e-3
     joint_acc: float = 5e-7
@@ -88,7 +88,6 @@ class CommandRanges:
     lin_vel_x: List[float] = field(default_factory=lambda: [-0.2, 0.4])
     lin_vel_y: List[float] = field(default_factory=lambda: [-0.2, 0.2])
     ang_vel_yaw: List[float] = field(default_factory=lambda: [-0.3, 0.3])
-    heading: List[float] = field(default_factory=lambda: [-3.14, 3.14])
 
 
 @dataclass
@@ -122,12 +121,11 @@ class DomainRandConfig:
 @dataclass
 class NoiseConfig:
     reset_noise_pos: float = 0.1
-    reset_noise_vel: float = 0.1
-    obs_noise_scale: float = 0.05
+    reset_noise_vel: float = 0.0
+    obs_noise_scale: float = 0.1
     dof_pos: float = 1.0
     dof_vel: float = 2.0
     ang_vel: float = 2.0
-    lin_vel: float = 2.0
     euler: float = 1.0
 
 
