@@ -57,6 +57,7 @@ class MuJoCoEnv(PipelineEnv):
 
     def _init_env(self):
         self.nu = self.sys.nu  # type:ignore
+        self.nq = self.sys.nq  # type:ignore
         self.nv = self.sys.nv  # type:ignore
 
         # colliders
@@ -178,8 +179,7 @@ class MuJoCoEnv(PipelineEnv):
         self.cycle_time = self.cfg.action.cycle_time
 
         # noise
-        self.add_noise = self.cfg.noise.add_noise
-        self.noise_scale = self.cfg.noise.noise_scale * jnp.concatenate(  # type:ignore
+        self.obs_noise_scale = self.cfg.noise.obs_noise_scale * jnp.concatenate(  # type:ignore
             [
                 jnp.zeros(5),  # type:ignore
                 jnp.ones_like(self.motor_indices) * self.cfg.noise.dof_pos,  # type:ignore
@@ -190,6 +190,8 @@ class MuJoCoEnv(PipelineEnv):
                 jnp.ones(3) * self.cfg.noise.euler,  # type:ignore
             ]
         )
+        self.reset_noise_pos = self.cfg.noise.reset_noise_pos
+        self.reset_noise_vel = self.cfg.noise.reset_noise_vel
 
         # self.push_interval = np.ceil(self.cfg.domain_rand.push_interval_s / self.dt)
         # self.env_frictions = torch.zeros(
@@ -232,14 +234,23 @@ class MuJoCoEnv(PipelineEnv):
 
     def reset(self, rng: jax.Array) -> State:
         """Resets the environment to an initial state."""
-        rng, key = jax.random.split(rng)  # type:ignore
+        rng, rng1, rng2, rng3 = jax.random.split(rng, 4)  # type:ignore
 
-        qvel = jnp.zeros(self.nv)  # type:ignore
-        pipeline_state = self.pipeline_init(self.default_qpos, qvel)
+        qpos = self.default_qpos + jax.random.uniform(  # type:ignore
+            rng1, (self.nq,), minval=-self.reset_noise_pos, maxval=self.reset_noise_pos
+        )
+        qvel = jax.random.uniform(  # type:ignore
+            rng2,
+            (self.sys.nv,),
+            minval=-self.reset_noise_vel,
+            maxval=self.reset_noise_vel,
+        )
+
+        pipeline_state = self.pipeline_init(qpos, qvel)
 
         state_info = {
             "rng": rng,
-            "command": self._sample_command(pipeline_state, key),
+            "command": self._sample_command(pipeline_state, rng3),
             "path_pos": jnp.zeros(3),  # type:ignore
             "path_quat": jnp.array([1.0, 0.0, 0.0, 0.0]),  # type:ignore
             "phase": 0.0,
@@ -529,10 +540,9 @@ class MuJoCoEnv(PipelineEnv):
             ]
         )
 
-        if self.add_noise:
-            obs += self.noise_scale * jax.random.uniform(  # type:ignore
-                info["rng"], obs.shape, minval=-1, maxval=1
-            )
+        obs += self.obs_noise_scale * jax.random.uniform(  # type:ignore
+            info["rng"], obs.shape, minval=-1, maxval=1
+        )
 
         # jax.debug.breakpoint()
 

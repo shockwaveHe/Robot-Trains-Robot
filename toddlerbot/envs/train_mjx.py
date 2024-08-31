@@ -410,7 +410,6 @@ if __name__ == "__main__":
         fixed_command=test_command,
         fixed_base="fixed" in args.env,
     )
-    test_env.add_noise = False
 
     make_networks_factory = functools.partial(
         ppo_networks.make_ppo_networks,
