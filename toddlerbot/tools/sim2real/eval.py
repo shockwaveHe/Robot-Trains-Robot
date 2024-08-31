@@ -37,7 +37,7 @@ def load_datasets(
         motor_angles_list: List[Dict[str, float]] = log_data_dict["motor_angles_list"]
 
         data_dict["imu"] = {
-            "lin_vel": np.array([obs.lin_vel for obs in obs_list[:idx]]),
+            # "lin_vel": np.array([obs.lin_vel for obs in obs_list[:idx]]),
             "ang_vel": np.array([obs.ang_vel for obs in obs_list[:idx]]),
             "euler": np.array([obs.euler for obs in obs_list[:idx]]),
         }
@@ -114,17 +114,17 @@ def evaluate(
         )
         rmse_action_dict[motor_name] = np.sqrt(np.mean((action_real - action_sim) ** 2))
 
-    plot_sim2real_gap_line(
-        time_seq_sim_dict[list(sim_data.keys())[-1]],
-        time_seq_real_dict[list(sim_data.keys())[-1]],
-        sim_data["imu"]["lin_vel"],
-        real_data["imu"]["lin_vel"],
-        save_path=exp_folder_path,
-        title="Linear Velocity",
-        y_label="Linear Velocities (m/s)",
-        axis_names=["x", "y", "z"],
-        file_name="lin_vel_gap",
-    )
+    # plot_sim2real_gap_line(
+    #     time_seq_sim_dict[list(sim_data.keys())[-1]],
+    #     time_seq_real_dict[list(sim_data.keys())[-1]],
+    #     sim_data["imu"]["lin_vel"],
+    #     real_data["imu"]["lin_vel"],
+    #     save_path=exp_folder_path,
+    #     title="Linear Velocity",
+    #     y_label="Linear Velocities (m/s)",
+    #     axis_names=["x", "y", "z"],
+    #     file_name="lin_vel_gap",
+    # )
 
     plot_sim2real_gap_line(
         time_seq_sim_dict[list(sim_data.keys())[-1]],
@@ -145,16 +145,16 @@ def evaluate(
         save_path=exp_folder_path,
     )
 
-    for rmse_dict, label in zip(
-        [rmse_pos_dict, rmse_vel_dict, rmse_action_dict],
-        ["motor_pos", "motor_vel", "action"],
-    ):
-        plot_sim2real_gap_bar(
-            rmse_dict,
-            label,
-            save_path=exp_folder_path,
-            file_name=f"{label}_gap",
-        )
+    # for rmse_dict, label in zip(
+    #     [rmse_pos_dict, rmse_vel_dict, rmse_action_dict],
+    #     ["motor_pos", "motor_vel", "action"],
+    # ):
+    #     plot_sim2real_gap_bar(
+    #         rmse_dict,
+    #         label,
+    #         save_path=exp_folder_path,
+    #         file_name=f"{label}_gap",
+    #     )
 
     plot_joint_tracking(
         time_seq_sim_dict,
