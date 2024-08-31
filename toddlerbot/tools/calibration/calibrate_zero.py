@@ -35,6 +35,7 @@ def calibrate_dynamixel(port: str, robot: Robot, group: str):
     )
 
     controller = DynamixelController(dynamixel_config, dynamixel_ids)
+    controller.reboot_motors()
 
     transmission_list = robot.get_joint_attrs(
         "type", "dynamixel", "transmission", group

@@ -127,6 +127,9 @@ class DynamixelController(BaseController):
             open_client.port_handler.is_using = False
             open_client.disconnect()
 
+    def reboot_motors(self):
+        self.client.reboot(self.motor_ids)
+
     # @profile()
     def set_pos(
         self,
