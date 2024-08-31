@@ -191,7 +191,6 @@ class MuJoCoEnv(PipelineEnv):
             ]
         )
         self.reset_noise_pos = self.cfg.noise.reset_noise_pos
-        self.reset_noise_vel = self.cfg.noise.reset_noise_vel
 
         # self.push_interval = np.ceil(self.cfg.domain_rand.push_interval_s / self.dt)
         # self.env_frictions = torch.zeros(
@@ -234,23 +233,21 @@ class MuJoCoEnv(PipelineEnv):
 
     def reset(self, rng: jax.Array) -> State:
         """Resets the environment to an initial state."""
-        rng, rng1, rng2, rng3 = jax.random.split(rng, 4)  # type:ignore
+        rng, rng1, rng2 = jax.random.split(rng, 3)  # type:ignore
 
-        qpos = self.default_qpos + jax.random.uniform(  # type:ignore
-            rng1, (self.nq,), minval=-self.reset_noise_pos, maxval=self.reset_noise_pos
+        noise_pos = jax.random.uniform(  # type:ignore
+            rng1,
+            (self.nq - self.q_start_idx,),
+            minval=-self.reset_noise_pos,
+            maxval=self.reset_noise_pos,
         )
-        qvel = jax.random.uniform(  # type:ignore
-            rng2,
-            (self.sys.nv,),
-            minval=-self.reset_noise_vel,
-            maxval=self.reset_noise_vel,
-        )
-
+        qpos = self.default_qpos.at[self.q_start_idx :].add(noise_pos)
+        qvel = jnp.zeros(self.nv)  # type:ignore
         pipeline_state = self.pipeline_init(qpos, qvel)
 
         state_info = {
             "rng": rng,
-            "command": self._sample_command(pipeline_state, rng3),
+            "command": self._sample_command(pipeline_state, rng2),
             "path_pos": jnp.zeros(3),  # type:ignore
             "path_quat": jnp.array([1.0, 0.0, 0.0, 0.0]),  # type:ignore
             "phase": 0.0,

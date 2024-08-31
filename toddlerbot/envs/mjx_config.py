@@ -121,7 +121,6 @@ class DomainRandConfig:
 @dataclass
 class NoiseConfig:
     reset_noise_pos: float = 0.1
-    reset_noise_vel: float = 0.0
     obs_noise_scale: float = 0.1
     dof_pos: float = 1.0
     dof_vel: float = 2.0
