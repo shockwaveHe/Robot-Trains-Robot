@@ -454,7 +454,7 @@
     <position name="right_wrist_pitch" joint="right_wrist_pitch" kp="18.75" ctrlrange="-1.5708 1.5708" class="2XL430" />
   </actuator>
   <tendon>
-    <fixed name="waist_roll_coupling" limited="true" range="-0.02 0.02">
+    <fixed name="waist_roll_coupling" limited="true" range="-0.03 0.03">
       <joint joint="waist_act_1" coef="0.291667" />
       <joint joint="waist_act_2" coef="-0.291667" />
       <joint joint="waist_roll" coef="1" />
@@ -470,10 +470,10 @@
     <weld body1="knee_rod_2" body2="bearing_683_2" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
     <weld body1="knee_rod_3" body2="bearing_683_3" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
     <weld body1="knee_rod_4" body2="bearing_683_4" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
-    <connect body1="ank_motor_arm" body2="ank_motor_rod_long" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" anchor="0.02 0 0.00582666" />
-    <connect body1="ank_motor_arm_2" body2="ank_motor_rod_short" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" anchor="0.02 0 0.00582666" />
-    <connect body1="ank_motor_arm_3" body2="ank_motor_rod_long_2" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" anchor="0.02 0 0.00582666" />
-    <connect body1="ank_motor_arm_4" body2="ank_motor_rod_short_2" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" anchor="0.02 0 0.00582666" />
+    <connect body1="ank_motor_arm" body2="ank_motor_rod_long" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.01 1" anchor="0.02 0 0.00582666" />
+    <connect body1="ank_motor_arm_2" body2="ank_motor_rod_short" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.01 1" anchor="0.02 0 0.00582666" />
+    <connect body1="ank_motor_arm_3" body2="ank_motor_rod_long_2" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.01 1" anchor="0.02 0 0.00582666" />
+    <connect body1="ank_motor_arm_4" body2="ank_motor_rod_short_2" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.01 1" anchor="0.02 0 0.00582666" />
   </equality>
   <default>
     <geom type="mesh" solref="0.004 1" />
