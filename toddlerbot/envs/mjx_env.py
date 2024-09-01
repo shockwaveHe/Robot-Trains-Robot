@@ -11,7 +11,7 @@ from jax import numpy as jnp
 from mujoco import mjx  # type: ignore
 from mujoco.mjx._src import support  # type: ignore
 
-from toddlerbot.envs.mjx_config import MuJoCoConfig
+from toddlerbot.envs.mjx_config import MJXConfig
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
 
@@ -20,7 +20,7 @@ class MuJoCoEnv(PipelineEnv):
     def __init__(
         self,
         name: str,
-        cfg: MuJoCoConfig,
+        cfg: MJXConfig,
         robot: Robot,
         fixed_base: bool = False,
         fixed_command: Optional[jax.Array] = None,
@@ -245,8 +245,6 @@ class MuJoCoEnv(PipelineEnv):
         qpos = self.default_qpos.at[self.q_start_idx :].add(noise_pos)
         qvel = jnp.zeros(self.nv)  # type:ignore
         pipeline_state = self.pipeline_init(qpos, qvel)
-
-        self.motion_ref.reset()
 
         state_info = {
             "rng": rng,

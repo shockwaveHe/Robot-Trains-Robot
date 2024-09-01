@@ -21,7 +21,7 @@ def test_walk_ref(robot: Robot, sim: MuJoCoSim, walk_ref: MotionReference):
     path_quat = np.array([1, 0, 0, 0], dtype=np.float32)
 
     command_list = [
-        np.array([0, 0, 0], dtype=np.float32),
+        # np.array([0, 0, 0], dtype=np.float32),
         np.array([0.3, 0, 0], dtype=np.float32),
         np.array([0, -0.1, 0], dtype=np.float32),
         np.array([0.0, 0, 0.2], dtype=np.float32),
@@ -111,10 +111,18 @@ if __name__ == "__main__":
         )
 
     else:
+        from toddlerbot.envs.mjx_config import MJXConfig
         from toddlerbot.ref_motion.walk_zmp_ref import WalkZMPReference
+
+        cfg = MJXConfig()
 
         walk_ref = WalkZMPReference(
             robot,
+            [
+                cfg.commands.ranges.lin_vel_x,
+                cfg.commands.ranges.lin_vel_y,
+                cfg.commands.ranges.ang_vel_yaw,
+            ],
             default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
         )
 

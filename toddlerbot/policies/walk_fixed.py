@@ -8,7 +8,7 @@ import numpy.typing as npt
 from brax.io import model  # type: ignore
 from brax.training.agents.ppo import networks as ppo_networks  # type: ignore
 
-from toddlerbot.envs.mjx_config import MuJoCoConfig
+from toddlerbot.envs.mjx_config import MJXConfig
 from toddlerbot.envs.ppo_config import PPOConfig
 from toddlerbot.policies import BasePolicy
 from toddlerbot.sim import Obs
@@ -25,7 +25,7 @@ class WalkFixedPolicy(BasePolicy):
         super().__init__(robot, init_motor_pos)
         self.name = "walk_fixed"
 
-        cfg = MuJoCoConfig()
+        cfg = MJXConfig()
         train_cfg = PPOConfig()
         make_networks_factory = functools.partial(
             ppo_networks.make_ppo_networks,

@@ -3,7 +3,7 @@ from typing import List, Optional
 
 
 @dataclass
-class MJConfig:
+class SimConfig:
     timestep: float = 0.002
     solver: int = 2  # Newton
     iterations: int = 1
@@ -85,9 +85,9 @@ class RewardsConfig:
 
 @dataclass
 class CommandRanges:
-    lin_vel_x: List[float] = field(default_factory=lambda: [-0.2, 0.4])
-    lin_vel_y: List[float] = field(default_factory=lambda: [-0.2, 0.2])
-    ang_vel_yaw: List[float] = field(default_factory=lambda: [-0.3, 0.3])
+    lin_vel_x: List[float] = field(default_factory=lambda: [-0.1, 0.3])
+    lin_vel_y: List[float] = field(default_factory=lambda: [-0.1, 0.1])
+    ang_vel_yaw: List[float] = field(default_factory=lambda: [-0.2, 0.2])
 
 
 @dataclass
@@ -130,8 +130,8 @@ class NoiseConfig:
 
 # Top-level configuration dataclass
 @dataclass
-class MuJoCoConfig:
-    mj: MJConfig = MJConfig()
+class MJXConfig:
+    mj: SimConfig = SimConfig()
     obs: ObsConfig = ObsConfig()
     action: ActionConfig = ActionConfig()
     rewards: RewardsConfig = RewardsConfig()

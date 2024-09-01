@@ -24,7 +24,7 @@ from orbax import checkpoint as ocp  # type: ignore
 from tqdm import tqdm
 
 import wandb
-from toddlerbot.envs.mjx_config import MuJoCoConfig, RewardScales, RewardsConfig
+from toddlerbot.envs.mjx_config import MJXConfig, RewardScales, RewardsConfig
 from toddlerbot.envs.mjx_env import MuJoCoEnv
 from toddlerbot.envs.ppo_config import PPOConfig
 from toddlerbot.sim.robot import Robot
@@ -370,7 +370,7 @@ if __name__ == "__main__":
     robot = Robot(args.robot)
 
     if args.env == "walk":
-        cfg = MuJoCoConfig()
+        cfg = MJXConfig()
         train_cfg = PPOConfig()
         # test_command = jnp.array([0.0, 0.0, 0.0])  # type:ignore
         test_command = jnp.array([0.3, 0.0, 0.0])  # type:ignore
@@ -386,7 +386,7 @@ if __name__ == "__main__":
         reward_scales.joint_torque = 5e-2
         reward_scales.joint_acc = 5e-7
 
-        cfg = MuJoCoConfig(
+        cfg = MJXConfig(
             rewards=RewardsConfig(healthy_z_range=[-0.2, 0.2], scales=reward_scales)
         )
         train_cfg = PPOConfig(

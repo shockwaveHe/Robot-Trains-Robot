@@ -39,6 +39,8 @@ def generate_hermite_spline(
 
     # Calculate tangents
     path_distance = np.linalg.norm(np.array([xn - x0, yn - y0]))  # type: ignore
+    # For rotation in the same location
+    path_distance = max(path_distance, 1e-2)  # type: ignore
     t0_vec = np.array([np.cos(theta0), np.sin(theta0)]) * path_distance  # type: ignore
     tn_vec = np.array([np.cos(thetan), np.sin(thetan)]) * path_distance  # type: ignore
 
