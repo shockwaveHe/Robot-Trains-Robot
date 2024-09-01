@@ -8,6 +8,7 @@ from tqdm import tqdm
 from toddlerbot.ref_motion import MotionReference
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.robot import Robot
+from toddlerbot.utils.misc_utils import dump_profiling_data
 
 
 def test_walk_ref(robot: Robot, sim: MuJoCoSim, walk_ref: MotionReference):
@@ -18,27 +19,42 @@ def test_walk_ref(robot: Robot, sim: MuJoCoSim, walk_ref: MotionReference):
 
     path_pos = np.zeros(3, dtype=np.float32)
     path_quat = np.array([1, 0, 0, 0], dtype=np.float32)
-    command = np.zeros(3, dtype=np.float32)
 
-    duration = 2
-    for phase in tqdm(
-        np.arange(0, duration, sim.control_dt),  # type: ignore
-        desc="Running Ref Motion",
-    ):
-        state = walk_ref.get_state_ref(path_pos, path_quat, phase, command)
-        joint_angles = np.asarray(state[13 : 13 + len(robot.joint_ordering)])  # type: ignore
-        motor_angles = robot.joint_to_motor_angles(
-            dict(zip(robot.joint_ordering, joint_angles))
-        )
-        print(joint_angles[14:16])
-        sim.set_motor_angles(motor_angles)
-        sim.step()
+    command_list = [
+        np.array([0, 0, 0], dtype=np.float32),
+        np.array([0.3, 0, 0], dtype=np.float32),
+        np.array([0, -0.1, 0], dtype=np.float32),
+        np.array([0.0, 0, 0.2], dtype=np.float32),
+    ]
+    duration = 10
+    try:
+        for command in command_list:
+            for phase in tqdm(
+                np.arange(0, duration, sim.control_dt),  # type: ignore
+                desc="Running Ref Motion",
+            ):
+                state = walk_ref.get_state_ref(
+                    path_pos, path_quat, phase, command, duration
+                )
+                joint_angles = np.asarray(state[13 : 13 + len(robot.joint_ordering)])  # type: ignore
+                motor_angles = robot.joint_to_motor_angles(
+                    dict(zip(robot.joint_ordering, joint_angles))
+                )
+                sim.set_motor_angles(motor_angles)
+                sim.step()
 
-    if hasattr(sim, "save_recording"):
-        assert isinstance(sim, MuJoCoSim)
-        sim.save_recording(exp_folder_path, sim.control_dt, 2)
+    except KeyboardInterrupt:
+        print("KeyboardInterrupt: Stopping the simulation...")
 
-    sim.close()
+    finally:
+        if hasattr(sim, "save_recording"):
+            assert isinstance(sim, MuJoCoSim)
+            sim.save_recording(exp_folder_path, sim.control_dt, 2)
+
+        sim.close()
+
+        prof_path = os.path.join(exp_folder_path, "profile_output.lprof")
+        dump_profiling_data(prof_path)
 
 
 if __name__ == "__main__":
@@ -64,7 +80,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--ref",
         type=str,
-        default="limp",
+        default="zmp",
         help="The name of the task.",
     )
     args = parser.parse_args()
@@ -95,6 +111,11 @@ if __name__ == "__main__":
         )
 
     else:
-        raise ValueError("Unknown reference motion")
+        from toddlerbot.ref_motion.walk_zmp_ref import WalkZMPReference
+
+        walk_ref = WalkZMPReference(
+            robot,
+            default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
+        )
 
     test_walk_ref(robot, sim, walk_ref)

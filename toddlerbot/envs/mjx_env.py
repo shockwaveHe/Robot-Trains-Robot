@@ -146,13 +146,14 @@ class MuJoCoEnv(PipelineEnv):
         )
 
         if "walk" in self.name:
-            from toddlerbot.ref_motion.walk_simple_ref import WalkSimpleReference
+            from toddlerbot.ref_motion.walk_zmp_ref import WalkZMPReference
 
-            self.motion_ref = WalkSimpleReference(
+            self.motion_ref = WalkZMPReference(
                 self.robot,
                 default_joint_pos=jnp.array(  # type:ignore
                     list(self.robot.default_joint_angles.values())
                 ),
+                control_dt=float(self.dt),
             )
         else:
             raise ValueError(f"Unknown env {self.name}")
@@ -161,7 +162,8 @@ class MuJoCoEnv(PipelineEnv):
         # x vel, y vel, yaw vel, heading
         self.num_commands = self.cfg.commands.num_commands
         self.command_ranges = asdict(self.cfg.commands.ranges)
-        self.resample_steps = int(self.cfg.commands.resample_time / self.dt)
+        self.resample_time = self.cfg.commands.resample_time
+        self.resample_steps = int(self.resample_time / self.dt)
 
         # observation
         self.state_ref_size = 7 + 6 + 2 * self.nu + 2
@@ -176,7 +178,6 @@ class MuJoCoEnv(PipelineEnv):
 
         # actions
         self.action_scale = self.cfg.action.action_scale
-        self.cycle_time = self.cfg.action.cycle_time
 
         # noise
         self.obs_noise_scale = self.cfg.noise.obs_noise_scale * jnp.concatenate(  # type:ignore
@@ -244,6 +245,8 @@ class MuJoCoEnv(PipelineEnv):
         qpos = self.default_qpos.at[self.q_start_idx :].add(noise_pos)
         qvel = jnp.zeros(self.nv)  # type:ignore
         pipeline_state = self.pipeline_init(qpos, qvel)
+
+        self.motion_ref.reset()
 
         state_info = {
             "rng": rng,
@@ -355,13 +358,13 @@ class MuJoCoEnv(PipelineEnv):
         # jax.debug.print("stance_mask: {}", state.info["stance_mask"])
         # jax.debug.print("feet_air_time: {}", state.info["feet_air_time"])
 
-        phase = state.info["step"] * self.dt / self.cycle_time
+        phase = state.info["step"] * self.dt
         phase_signal = jnp.array(  # type:ignore
             [jnp.sin(2 * jnp.pi * phase), jnp.cos(2 * jnp.pi * phase)]  # type:ignore
         )
         path_pos, path_quat = self._integrate_path_frame(state.info)
         state_ref = self.motion_ref.get_state_ref(
-            path_pos, path_quat, phase, state.info["command"]
+            path_pos, path_quat, phase, state.info["command"], self.resample_time
         )
         contact_forces, stance_mask = self._get_contact_forces(
             pipeline_state  # type:ignore

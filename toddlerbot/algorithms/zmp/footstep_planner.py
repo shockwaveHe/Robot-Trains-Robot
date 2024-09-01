@@ -58,12 +58,17 @@ class FootStepPlanner:
         self.foot_to_com_y = foot_to_com_y
 
     def compute_steps(
-        self, curr_pose: ArrayType, target_pose: ArrayType
+        self,
+        curr_pose: ArrayType,
+        target_pose: ArrayType,
+        has_start: bool = True,
+        has_stop: bool = True,
     ) -> Tuple[ArrayType, List[ArrayType]]:
         y_offset = self.foot_to_com_y
         footsteps: List[ArrayType] = []
 
-        footsteps.append(np.array([*curr_pose, 2]))  # type: ignore
+        if has_start:
+            footsteps.append(np.array([*curr_pose, 2]))  # type: ignore
 
         sampled_spline_x, sampled_spline_y = self.generate_and_sample_path(
             curr_pose, target_pose
@@ -113,7 +118,8 @@ class FootStepPlanner:
             support_leg = 1 - support_leg  # Toggle between 0 and 1
 
         # Add the final step(s) with the foot together or stopped position
-        footsteps.append(np.array([*target_pose, 2]))  # type: ignore
+        if has_stop:
+            footsteps.append(np.array([*target_pose, 2]))  # type: ignore
 
         # Add another step for the robot to stabilize
         # footsteps.append(np.array([*target_pose, 2]))  # type: ignore

@@ -1,6 +1,7 @@
 import os
 import pickle
 import time
+import warnings
 from typing import Any, Dict, List
 
 import mediapy as media
@@ -10,6 +11,9 @@ import mujoco.viewer  # type: ignore
 import numpy as np
 import numpy.typing as npt
 from moviepy.editor import VideoFileClip, clips_array  # type: ignore
+
+# Suppress specific warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="moviepy")
 
 
 class MuJoCoViewer:

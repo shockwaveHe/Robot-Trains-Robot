@@ -32,7 +32,7 @@ class WalkLIPMReference(MotionReference):
             )
 
         COM_pos_0: list[float] = [0.0, 0.0, self.com_z]
-        COM_v0 = [0.3, -0.0]
+        COM_v0 = [0.1, 0.0]
 
         left_foot_pos = [self.foot_to_com_x, self.foot_to_com_y, 0]
         right_foot_pos = [self.foot_to_com_x, -self.foot_to_com_y, 0]
@@ -46,7 +46,7 @@ class WalkLIPMReference(MotionReference):
 
         self.planner = LIPM3DPlanner(
             dt=delta_t,
-            T_sup=0.6,
+            T_sup=0.34,
             support_leg="left_leg",
         )
         self.planner.initialize_model(COM_pos_0, left_foot_pos, right_foot_pos)
@@ -80,10 +80,10 @@ class WalkLIPMReference(MotionReference):
         command: Optional[ArrayType] = None,
     ) -> ArrayType:
         if phase is None:
-            raise ValueError(f"phase is required for {self.motion_type} motion")
+            raise ValueError(f"phase is required for {self.name}")
 
         if command is None:
-            raise ValueError(f"command is required for {self.motion_type} motion")
+            raise ValueError(f"command is required for {self.name}")
 
         if not self.planned:
             self.plan(path_pos, path_quat, command, 10)
@@ -120,7 +120,7 @@ class WalkLIPMReference(MotionReference):
                 joint_pos,
                 joint_vel,
                 stance_mask,
-            )  # type: ignore
+            )
         )
 
     def reset(self):

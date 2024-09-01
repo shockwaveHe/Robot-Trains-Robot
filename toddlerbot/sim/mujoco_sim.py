@@ -188,7 +188,7 @@ class MuJoCoSim(BaseSim):
                 dtype=np.float32,
                 copy=True,
             )
-            if np.linalg.norm(torso_quat) == 0:
+            if np.linalg.norm(torso_quat) == 0:  # type: ignore
                 torso_quat = np.array([1, 0, 0, 0], dtype=np.float32)
 
             # torso_lin_vel = np.asarray(rotate_vec(lin_vel_global, quat_inv(torso_quat)))
