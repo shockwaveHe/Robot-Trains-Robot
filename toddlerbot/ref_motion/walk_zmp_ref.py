@@ -86,21 +86,24 @@ class WalkZMPReference(MotionReference):
         else:
             joint_vel = self.default_joint_vel.copy()  # type: ignore
 
-        joint_pos = self.default_joint_pos.copy()  # type: ignore
-        command_scale = np.linalg.norm(command)  # type: ignore
-        if float(command_scale) < 1e-6:  # type: ignore
-            stance_mask = np.ones(2, dtype=np.float32)  # type: ignore
-        else:
-            if not self.planned:
-                self.plan(path_pos, path_quat, command, duration)
+        if not self.planned:
+            self.plan(path_pos, path_quat, command, duration)
 
-            idx = int(phase / self.control_dt)
-            joint_pos = inplace_update(
-                joint_pos,
-                self.leg_joint_slice,
-                self.leg_joint_pos_ref[idx],
-            )
-            stance_mask = self.stance_mask_ref[idx]
+        is_zero_commmand = np.linalg.norm(command) < 1e-6  # type: ignore
+        idx = int(phase / self.control_dt)
+        joint_pos = self.default_joint_pos.copy()  # type: ignore
+        joint_pos = np.where(  # type: ignore
+            is_zero_commmand,
+            joint_pos,
+            inplace_update(
+                joint_pos, self.leg_joint_slice, self.leg_joint_pos_ref[idx]
+            ),
+        )
+        stance_mask = np.where(  # type: ignore
+            is_zero_commmand,
+            np.ones(2, dtype=np.float32),  # type: ignore
+            self.stance_mask_ref[idx],
+        )
 
         return np.concatenate(  # type: ignore
             (
@@ -129,28 +132,6 @@ class WalkZMPReference(MotionReference):
         path, footsteps = self.fsp.compute_steps(
             pose_curr, target_pose, has_start=False, has_stop=False
         )
-
-        import numpy
-
-        from toddlerbot.visualization.vis_plot import plot_footsteps
-
-        # You can plot the footsteps with your existing plotting utility here
-        plot_footsteps(
-            numpy.asarray(path, dtype=numpy.float32),
-            numpy.array(
-                [numpy.asarray(fs[:3]) for fs in footsteps], dtype=numpy.float32
-            ),
-            [int(fs[-1]) for fs in footsteps],
-            (0.1, 0.05),
-            self.foot_to_com_y,
-            fig_size=(8, 8),
-            title=f"Footsteps Planning: {target_pose[0]:.2f} {target_pose[1]:.2f} {target_pose[2]:.2f}",
-            x_label="Position X",
-            y_label="Position Y",
-            save_config=False,
-            save_path=".",
-            file_name="footsteps.png",
-        )()
 
         double_support_phase = duration / (
             (len(footsteps) - 1) * (1 + self.single_double_ratio) + 1
@@ -230,11 +211,12 @@ class WalkZMPReference(MotionReference):
         # Linear velocities in local frame
         v_x, v_y, v_yaw = command
 
+        vx_local = np.where(v_yaw == 0, v_x, v_x * np.cos(pose_curr[2]))  # type: ignore
+
+        final_yaw = pose_curr[2] + v_yaw * duration
+
         # If angular velocity is not zero, handle the integration considering the changing yaw
         if v_yaw != 0:
-            yaw_change = v_yaw * duration
-            final_yaw = pose_curr[2] + yaw_change
-
             # Calculate the integrals for x and y considering the changing yaw
             integrated_x = (v_x / v_yaw) * (
                 np.sin(final_yaw) - np.sin(pose_curr[2])  # type: ignore
@@ -256,7 +238,7 @@ class WalkZMPReference(MotionReference):
             [
                 pose_curr[0] + integrated_x,
                 pose_curr[1] + integrated_y,
-                pose_curr[2] + v_yaw * duration,
+                final_yaw,
             ],
             dtype=np.float32,
         )
