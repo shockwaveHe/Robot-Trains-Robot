@@ -146,7 +146,7 @@ class MuJoCoEnv(PipelineEnv):
         )
 
         if "walk" in self.name:
-            from toddlerbot.motion_reference.walk_simple_ref import WalkSimpleReference
+            from toddlerbot.ref_motion.walk_simple_ref import WalkSimpleReference
 
             self.motion_ref = WalkSimpleReference(
                 self.robot,

@@ -16,29 +16,29 @@ class LIPM3DPlanner:
         w_d: float = 0.035,
         support_leg: str = "left_leg",
     ) -> None:
-        self.dt: float = control_dt
-        self.t: float = 0.0
-        self.T: float = T  # step time
-        self.T_d: float = T_d  # desired step duration
-        self.s_d: float = s_d  # desired step length
-        self.w_d: float = w_d  # desired step width
+        self.control_dt = control_dt
+        self.t = 0.0
+        self.T = T  # step time
+        self.T_d = T_d  # desired step duration
+        self.s_d = s_d  # desired step length
+        self.w_d = w_d  # desired step width
 
-        self.eICP_x: float = 0.0  # ICP location x
-        self.eICP_y: float = 0.0  # ICP location y
-        self.u_x: float = 0.0  # step location x
-        self.u_y: float = 0.0  # step location y
+        self.eICP_x = 0.0  # ICP location x
+        self.eICP_y = 0.0  # ICP location y
+        self.u_x = 0.0  # step location x
+        self.u_y = 0.0  # step location y
 
         # COM initial state
-        self.x_0: float = 0.0
-        self.vx_0: float = 0.0
-        self.y_0: float = 0.0
-        self.vy_0: float = 0.0
+        self.x_0 = 0.0
+        self.vx_0 = 0.0
+        self.y_0 = 0.0
+        self.vy_0 = 0.0
 
         # COM real-time state
-        self.x_t: float = 0.0
-        self.vx_t: float = 0.0
-        self.y_t: float = 0.0
-        self.vy_t: float = 0.0
+        self.x_t = 0.0
+        self.vx_t = 0.0
+        self.y_t = 0.0
+        self.vy_t = 0.0
 
         self.support_leg: str = support_leg
         self.support_foot_pos: List[float] = [0.0, 0.0, 0.0]
@@ -63,12 +63,12 @@ class LIPM3DPlanner:
             self.right_foot_pos = right_foot_pos
             self.support_foot_pos = right_foot_pos
 
-        self.zc: float = self.COM_pos[2]
-        self.w_0: float = np.sqrt(GRAVITY / self.zc)  # type: ignore
+        self.zc = self.COM_pos[2]
+        self.w_0 = np.sqrt(GRAVITY / self.zc)  # type: ignore
 
     def step(self) -> None:
-        self.t += self.dt
-        t: float = self.t
+        self.t += self.control_dt
+        t = self.t
 
         self.x_t = (
             self.x_0 * np.cosh(t * self.w_0)  # type: ignore

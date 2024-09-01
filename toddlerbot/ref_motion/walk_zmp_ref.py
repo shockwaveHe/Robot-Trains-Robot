@@ -1,16 +1,15 @@
 from typing import List, Optional, Tuple
 
-from toddlerbot.algorithms.lipm.lipm_3d import LIPM3DPlanner
 from toddlerbot.algorithms.zmp.footstep_planner import FootStepPlanner
 from toddlerbot.algorithms.zmp.zmp_planner import ZMPPlanner
-from toddlerbot.motion_reference.motion_ref import MotionReference
+from toddlerbot.ref_motion import MotionReference
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.array_utils import ArrayType, inplace_update, loop_update
 from toddlerbot.utils.array_utils import array_lib as np
 from toddlerbot.utils.math_utils import quat2euler, resample_trajectory
 
 
-class WalkLIPMReference(MotionReference):
+class WalkZMPReference(MotionReference):
     def __init__(
         self,
         robot: Robot,
@@ -21,7 +20,7 @@ class WalkLIPMReference(MotionReference):
         single_support_phase: float = 1.0,
         plan_max_stride: List[float] = [0.1, 0.05, np.pi / 8],
     ):
-        super().__init__("walk", "periodic", robot)
+        super().__init__("walk_zmp", "periodic", robot)
 
         self.default_joint_pos = default_joint_pos
         self.default_joint_vel = default_joint_vel
@@ -84,74 +83,6 @@ class WalkLIPMReference(MotionReference):
         command: ArrayType,
         duration: float,
     ):
-        COM_pos_x, COM_pos_y = [], []
-        COM_vel_x, COM_vel_y = [], []
-        COM_dvel_x, COM_dvel_y = [], []
-        left_foot_pos_x, left_foot_pos_y, left_foot_pos_z = [], [], []
-        right_foot_pos_x, right_foot_pos_y, right_foot_pos_z = [], [], []
-        step_length, dstep_length, step_width, dstep_width = [], [], [], []
-
-        swing_data_len = int(LIPM_model.T / LIPM_model.dt)
-        swing_foot_pos = np.zeros((swing_data_len, 3))
-        j, step_num = 0, 0
-        theta, COM_dvel = 0.0, COM_dvel_list[0]
-
-        support_foot_pos = np.array(LIPM_model.support_foot_pos)
-        prev_support_foot_pos = np.array(LIPM_model.support_foot_pos)
-
-        for i in range(1, int(total_time / LIPM_model.dt)):
-            LIPM_model.step()
-
-            update_com_data(
-                LIPM_model,
-                COM_pos_x,
-                COM_pos_y,
-                COM_vel_x,
-                COM_vel_y,
-                COM_dvel_x,
-                COM_dvel_y,
-                COM_dvel,
-            )
-
-            update_foot_positions(
-                LIPM_model,
-                swing_foot_pos,
-                j,
-                left_foot_pos_x,
-                left_foot_pos_y,
-                left_foot_pos_z,
-                right_foot_pos_x,
-                right_foot_pos_y,
-                right_foot_pos_z,
-            )
-            j += 1
-
-            if i % swing_data_len == 0:
-                j = 0
-                prev_support_foot_pos = support_foot_pos
-                step_num, theta, COM_dvel = update_step_and_switch_leg(
-                    LIPM_model, step_num, step_to_cmdv, COM_dvel_list, w_d_list, theta
-                )
-                support_foot_pos = update_step_data(
-                    LIPM_model,
-                    prev_support_foot_pos,
-                    np.array(LIPM_model.support_foot_pos),
-                    step_length,
-                    dstep_length,
-                    step_width,
-                    dstep_width,
-                    theta,
-                )
-
-                LIPM_model.calculate_foot_location_world(theta)
-                swing_foot_pos = calculate_swing_foot_positions(
-                    swing_data_len,
-                    LIPM_model.right_foot_pos
-                    if LIPM_model.support_leg == "left_leg"
-                    else LIPM_model.left_foot_pos,
-                    [LIPM_model.u_x, LIPM_model.u_y, 0],
-                )
-
         if not np.any(command):  # type: ignore
             raise ValueError("command cannot be all zeros")
 
@@ -491,146 +422,13 @@ class WalkLIPMReference(MotionReference):
                 "right_ank_pitch": -ank_pitch_angle,
             }
 
-    def initialize_lipm_model(
-        COM_pos_0: List[float],
-        COM_v0: List[float],
-        left_foot_pos: List[float],
-        right_foot_pos: List[float],
-        support_leg: str = "left_leg",
-    ) -> LIPM3DPlanner:
-        model = LIPM3DPlanner(
-            control_dt=0.02, T=0.34, s_d=0.6, w_d=0.4, support_leg=support_leg
-        )
-        model.initialize_model(COM_pos_0, left_foot_pos, right_foot_pos)
-        model.x_0 = model.COM_pos[0] - model.support_foot_pos[0]
-        model.y_0 = model.COM_pos[1] - model.support_foot_pos[1]
-        model.vx_0 = COM_v0[0]
-        model.vy_0 = COM_v0[1]
-        model.x_t = model.x_0
-        model.y_t = model.y_0
-        model.vx_t = model.vx_0
-        model.vy_t = model.vy_0
-        return model
 
-    def calculate_swing_foot_positions(
-        swing_data_len: int, start_pos: List[float], target_pos: List[float]
-    ) -> np.ndarray:
-        swing_foot_pos = np.zeros((swing_data_len, 3))
-        swing_foot_pos[:, 0] = np.linspace(start_pos[0], target_pos[0], swing_data_len)
-        swing_foot_pos[:, 1] = np.linspace(start_pos[1], target_pos[1], swing_data_len)
-        swing_foot_pos[1 : swing_data_len - 1, 2] = 0.1
-        return swing_foot_pos
+if __name__ == "__main__":
+    from toddlerbot.utils.math_utils import round_to_sig_digits
 
-    def update_com_data(
-        model: LIPM3DPlanner,
-        COM_pos_x: List[float],
-        COM_pos_y: List[float],
-        COM_vel_x: List[float],
-        COM_vel_y: List[float],
-        COM_dvel_x: List[float],
-        COM_dvel_y: List[float],
-        COM_dvel: np.ndarray,
-    ) -> None:
-        COM_pos_x.append(model.x_t + model.support_foot_pos[0])
-        COM_pos_y.append(model.y_t + model.support_foot_pos[1])
-        COM_vel_x.append(model.vx_t)
-        COM_vel_y.append(model.vy_t)
-        COM_dvel_x.append(COM_dvel[0])
-        COM_dvel_y.append(COM_dvel[1])
-
-    def update_foot_positions(
-        model: LIPM3DPlanner,
-        swing_foot_pos: np.ndarray,
-        j: int,
-        left_foot_pos_x: List[float],
-        left_foot_pos_y: List[float],
-        left_foot_pos_z: List[float],
-        right_foot_pos_x: List[float],
-        right_foot_pos_y: List[float],
-        right_foot_pos_z: List[float],
-    ) -> None:
-        if model.support_leg == "left_leg":
-            model.right_foot_pos = [
-                swing_foot_pos[j, 0],
-                swing_foot_pos[j, 1],
-                swing_foot_pos[j, 2],
-            ]
-        else:
-            model.left_foot_pos = [
-                swing_foot_pos[j, 0],
-                swing_foot_pos[j, 1],
-                swing_foot_pos[j, 2],
-            ]
-
-        left_foot_pos_x.append(model.left_foot_pos[0])
-        left_foot_pos_y.append(model.left_foot_pos[1])
-        left_foot_pos_z.append(model.left_foot_pos[2])
-        right_foot_pos_x.append(model.right_foot_pos[0])
-        right_foot_pos_y.append(model.right_foot_pos[1])
-        right_foot_pos_z.append(model.right_foot_pos[2])
-
-    def update_step_and_switch_leg(
-        model: LIPM3DPlanner,
-        step_num: int,
-        step_to_cmdv: List[int],
-        COM_dvel_list: np.ndarray,
-        w_d_list: np.ndarray,
-        theta: float,
-    ) -> Tuple[int, float, np.ndarray]:
-        model.switch_support_leg()
-        step_num += 1
-
-        if step_num >= step_to_cmdv[2]:
-            theta = np.arctan2(COM_dvel_list[3, 1], COM_dvel_list[3, 0])
-            model.s_d = np.linalg.norm(COM_dvel_list[3]) * model.T
-            COM_dvel = COM_dvel_list[3]
-            model.w_d = w_d_list[3]
-        elif step_num >= step_to_cmdv[1]:
-            theta = np.arctan2(COM_dvel_list[2, 1], COM_dvel_list[2, 0])
-            model.s_d = np.linalg.norm(COM_dvel_list[2]) * model.T
-            COM_dvel = COM_dvel_list[2]
-            model.w_d = w_d_list[2]
-        elif step_num >= step_to_cmdv[0]:
-            theta = np.arctan2(COM_dvel_list[1, 1], COM_dvel_list[1, 0])
-            model.s_d = np.linalg.norm(COM_dvel_list[1]) * model.T
-            COM_dvel = COM_dvel_list[1]
-            model.w_d = w_d_list[1]
-        else:
-            theta = np.arctan2(COM_dvel_list[0, 1], COM_dvel_list[0, 0])
-            model.s_d = np.linalg.norm(COM_dvel_list[0]) * model.T
-            COM_dvel = COM_dvel_list[0]
-            model.w_d = w_d_list[0]
-
-        return step_num, theta, COM_dvel
-
-    def update_step_data(
-        model: LIPM3DPlanner,
-        prev_support_foot_pos: np.ndarray,
-        support_foot_pos: np.ndarray,
-        step_length: List[float],
-        dstep_length: List[float],
-        step_width: List[float],
-        dstep_width: List[float],
-        theta: float,
-    ) -> np.ndarray:
-        rsupport_foot_pos_x = (
-            np.cos(theta) * support_foot_pos[0] + np.sin(theta) * support_foot_pos[1]
-        )
-        rsupport_foot_pos_y = (
-            -np.sin(theta) * support_foot_pos[0] + np.cos(theta) * support_foot_pos[1]
-        )
-        rprev_support_foot_pos_x = (
-            np.cos(theta) * prev_support_foot_pos[0]
-            + np.sin(theta) * prev_support_foot_pos[1]
-        )
-        rprev_support_foot_pos_y = (
-            -np.sin(theta) * prev_support_foot_pos[0]
-            + np.cos(theta) * prev_support_foot_pos[1]
-        )
-
-        step_length.append(rsupport_foot_pos_x - rprev_support_foot_pos_x)
-        dstep_length.append(model.s_d)
-        step_width.append(np.abs(rsupport_foot_pos_y - rprev_support_foot_pos_y))
-        dstep_width.append(model.w_d)
-
-        return support_foot_pos
+    robot = Robot("toddlerbot")
+    walk_ref = WalkZMPReference(robot, max_knee_pitch=0.523599)
+    left_leg_angles = walk_ref.calculate_leg_angles(np.ones(1, dtype=np.float32), True)
+    left_ank_act = robot.ankle_ik([0.0, left_leg_angles["left_ank_pitch"].item()])
+    print(left_leg_angles)
+    print([round_to_sig_digits(x, 6) for x in left_ank_act])

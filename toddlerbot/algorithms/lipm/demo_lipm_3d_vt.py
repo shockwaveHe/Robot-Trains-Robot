@@ -217,7 +217,7 @@ LIPM_model.y_t = LIPM_model.y_0
 LIPM_model.vx_t = LIPM_model.vx_0
 LIPM_model.vy_t = LIPM_model.vy_0
 
-swing_data_len = int(LIPM_model.T / LIPM_model.dt)
+swing_data_len = int(LIPM_model.T / LIPM_model.control_dt)
 swing_foot_pos = np.zeros((swing_data_len, 3))
 j = 0
 
@@ -259,7 +259,7 @@ w_d_list = np.array([0.4, 0.8, 0.4, 0.4])
 
 COM_dvel = COM_dvel_list[0]
 
-for i in range(1, int(total_time / LIPM_model.dt)):
+for i in range(1, int(total_time / LIPM_model.control_dt)):
     # Update body (CoM) state: x_t, vx_t, y_t, vy_t
     LIPM_model.step()
 
@@ -415,7 +415,7 @@ ani_text_COM_pos = bx.text(0.05, 0.9, "", transform=bx.transAxes)
 
 # Add CoM velocity plot
 cx = fig.add_subplot(spec[0, 1])
-cx.set_xlim(0, total_time / LIPM_model.dt)
+cx.set_xlim(0, total_time / LIPM_model.control_dt)
 cx.set_ylim(
     min(min(COM_vel_x), min(COM_vel_y)) - 0.1, max(max(COM_vel_x), max(COM_vel_y)) + 0.1
 )
@@ -438,7 +438,7 @@ cx.legend(loc="upper right")
 
 # Add analysis plot
 dx = fig.add_subplot(spec[1, 1])
-dx.set_xlim(0, total_time / LIPM_model.dt)
+dx.set_xlim(0, total_time / LIPM_model.control_dt)
 dx.set_ylim(
     min(min(step_length), min(step_width)) - 0.1,
     max(max(step_length), max(step_width)) + 0.1,
@@ -483,7 +483,7 @@ anim = FuncAnimation(
     init_func=_init_func,
     func=_update_func,
     frames=range(1, data_len),
-    interval=1.0 / LIPM_model.dt,
+    interval=1.0 / LIPM_model.control_dt,
     blit=False,
     repeat=False,
 )
@@ -496,6 +496,6 @@ print("--------- Save the animation")
 filepath = os.path.join(os.getcwd(), "LIPM_vt.mp4")
 # COM_vel_2D.save(filepath, fps=self.fps, extra_args=['-vcodec', 'libx264'])
 # step_params_2D.save(filepath, fps=self.fps, extra_args=['-vcodec', 'libx264'])
-anim.save(filepath, fps=1.0 / LIPM_model.dt, extra_args=["-vcodec", "libx264"])
+anim.save(filepath, fps=1.0 / LIPM_model.control_dt, extra_args=["-vcodec", "libx264"])
 
 print("---------  Program terminated")

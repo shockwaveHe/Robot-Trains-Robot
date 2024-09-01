@@ -1,6 +1,6 @@
 from typing import Optional
 
-from toddlerbot.motion_reference.motion_ref import MotionReference
+from toddlerbot.ref_motion import MotionReference
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.array_utils import ArrayType, inplace_update
 from toddlerbot.utils.array_utils import array_lib as np
@@ -15,7 +15,7 @@ class WalkSimpleReference(MotionReference):
         max_knee_pitch: float = np.pi / 3,
         double_support_phase: float = 0.1,
     ):
-        super().__init__("walk", "periodic", robot)
+        super().__init__("walk_simple", "periodic", robot)
 
         self.default_joint_pos = default_joint_pos
         self.default_joint_vel = default_joint_vel

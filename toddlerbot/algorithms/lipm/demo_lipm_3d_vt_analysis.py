@@ -429,7 +429,7 @@ LIPM_model.y_t = LIPM_model.y_0
 LIPM_model.vx_t = LIPM_model.vx_0
 LIPM_model.vy_t = LIPM_model.vy_0
 
-swing_data_len = int(LIPM_model.T / LIPM_model.dt)
+swing_data_len = int(LIPM_model.T / LIPM_model.control_dt)
 swing_foot_pos = np.zeros((swing_data_len, 3))
 j = 0
 
@@ -469,7 +469,7 @@ COM_dvel_list = np.array([[1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0]])
 
 COM_dvel = COM_dvel_list[0]
 
-for i in range(1, int(total_time / LIPM_model.dt)):
+for i in range(1, int(total_time / LIPM_model.control_dt)):
     # Update body (CoM) state: x_t, vx_t, y_t, vy_t
     LIPM_model.step()
 
@@ -766,7 +766,7 @@ ani_2D = FuncAnimation(
     init_func=ani_2D_init,
     func=ani_2D_update,
     frames=range(1, data_len),
-    interval=1.0 / LIPM_model.dt,
+    interval=1.0 / LIPM_model.control_dt,
     blit=False,
     repeat=True,
 )
@@ -775,7 +775,9 @@ print("--------- Save the 2D animation")
 filepath = os.path.join(os.getcwd(), "LIPM_vt_2D.mp4")
 # COM_vel_2D.save(filepath, fps=self.fps, extra_args=['-vcodec', 'libx264'])
 # step_params_2D.save(filepath, fps=self.fps, extra_args=['-vcodec', 'libx264'])
-ani_2D.save(filepath, fps=1.0 / LIPM_model.dt, extra_args=["-vcodec", "libx264"])
+ani_2D.save(
+    filepath, fps=1.0 / LIPM_model.control_dt, extra_args=["-vcodec", "libx264"]
+)
 
 
 # * ------------------------------------------------- Save static plot
