@@ -124,8 +124,8 @@ class WalkPolicy(BasePolicy):
         self.obs_history = np.roll(self.obs_history, obs_arr.size)  # type:ignore
         self.obs_history[: obs_arr.size] = obs_arr
 
-        # act_rng = self.rng
-        jit_action, _ = self.jit_inference_fn(jnp.asarray(self.obs_history), self.rng)  # type: ignore
+        act_rng, self.rng = jax.random.split(self.rng)  # type: ignore
+        jit_action, _ = self.jit_inference_fn(jnp.asarray(self.obs_history), act_rng)  # type: ignore
 
         action = np.asarray(jit_action, dtype=np.float32).copy()
         action[self.arm_motor_indices] = 0.0

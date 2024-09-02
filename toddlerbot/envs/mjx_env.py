@@ -328,20 +328,21 @@ class MuJoCoEnv(PipelineEnv):
             minval=self.command_ranges["lin_vel_x"][0],
             maxval=self.command_ranges["lin_vel_x"][1],
         )
-        lin_vel_y = jax.random.uniform(  # type:ignore
-            rng_2,
-            (1,),
-            minval=self.command_ranges["lin_vel_y"][0],
-            maxval=self.command_ranges["lin_vel_y"][1],
-        )
-        ang_vel_yaw = jax.random.uniform(  # type:ignore
-            rng_3,
-            (1,),
-            minval=self.command_ranges["ang_vel_yaw"][0],
-            maxval=self.command_ranges["ang_vel_yaw"][1],
-        )
+        # lin_vel_y = jax.random.uniform(  # type:ignore
+        #     rng_2,
+        #     (1,),
+        #     minval=self.command_ranges["lin_vel_y"][0],
+        #     maxval=self.command_ranges["lin_vel_y"][1],
+        # )
+        # ang_vel_yaw = jax.random.uniform(  # type:ignore
+        #     rng_3,
+        #     (1,),
+        #     minval=self.command_ranges["ang_vel_yaw"][0],
+        #     maxval=self.command_ranges["ang_vel_yaw"][1],
+        # )
 
-        commands = jnp.concatenate([lin_vel_x, lin_vel_y, ang_vel_yaw])  # type:ignore
+        # TODO: Add command back
+        commands = jnp.concatenate([lin_vel_x, jnp.zeros(1), jnp.zeros(1)])  # type:ignore
 
         # Set small commands to zero based on norm condition
         mask = (jnp.linalg.norm(commands[:2]) > 0.1).astype(jnp.float32)  # type:ignore
