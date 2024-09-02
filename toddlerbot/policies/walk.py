@@ -106,18 +106,7 @@ class WalkPolicy(BasePolicy):
         if self.joystick is None:
             controller_input = [0.0, 0.0, 0.0]
         else:
-            controller_input = get_controller_input(self.joystick)
-
-        # Scale the controller input to the range of the command
-        for i in range(len(controller_input)):
-            if controller_input[i] < 0:
-                controller_input[i] = np.interp(  # type:ignore
-                    controller_input[i], [-1, 0], [self.command_ranges[i][0], 0]
-                )
-            else:
-                controller_input[i] = np.interp(  # type:ignore
-                    controller_input[i], [0, 1], [0, self.command_ranges[i][1]]
-                )
+            controller_input = get_controller_input(self.joystick, self.command_ranges)
 
         obs_arr = np.concatenate(  # type:ignore
             [

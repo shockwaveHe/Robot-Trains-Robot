@@ -13,6 +13,7 @@ from toddlerbot.envs.ppo_config import PPOConfig
 from toddlerbot.policies import BasePolicy
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
+from toddlerbot.tools.teleop.joystick import get_controller_input, initialize_joystick
 from toddlerbot.utils.math_utils import interpolate_action
 
 # from toddlerbot.utils.misc_utils import profile
@@ -55,6 +56,11 @@ class WalkFixedPolicy(BasePolicy):
         )
         self.cycle_time = cfg.action.cycle_time
         self.step_curr = 0
+        self.command_ranges = [
+            cfg.commands.ranges.lin_vel_x,
+            cfg.commands.ranges.lin_vel_y,
+            cfg.commands.ranges.ang_vel_yaw,
+        ]
 
         ppo_network = make_networks_factory(  # type: ignore
             cfg.obs.num_single_obs,
@@ -70,6 +76,8 @@ class WalkFixedPolicy(BasePolicy):
         self.jit_inference_fn = jax.jit(inference_fn)  # type: ignore
         self.rng = jax.random.PRNGKey(0)  # type: ignore
         self.jit_inference_fn(self.obs_history, self.rng)[0].block_until_ready()  # type: ignore
+
+        self.joystick = initialize_joystick()
 
         self.prep_duration = 2.0
         self.prep_time, self.prep_action = self.reset(
@@ -95,10 +103,15 @@ class WalkFixedPolicy(BasePolicy):
         obs.ang_vel = np.zeros(3, dtype=np.float32)
         obs.euler = np.zeros(3, dtype=np.float32)
 
+        if self.joystick is None:
+            controller_input = [0.0, 0.0, 0.0]
+        else:
+            controller_input = get_controller_input(self.joystick, self.command_ranges)
+
         obs_arr = np.concatenate(  # type:ignore
             [
                 phase_signal,
-                np.array([0.0, 0.0, 0.0]),  # type:ignore
+                np.array(controller_input),  # type:ignore
                 motor_pos_delta * self.obs_scales.dof_pos,
                 obs.motor_vel * self.obs_scales.dof_vel,
                 self.last_action,

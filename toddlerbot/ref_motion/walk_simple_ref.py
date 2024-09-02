@@ -43,7 +43,6 @@ class WalkSimpleReference(MotionReference):
         path_quat: ArrayType,
         phase: Optional[float | ArrayType] = None,
         command: Optional[ArrayType] = None,
-        duration: Optional[float] = None,
     ) -> ArrayType:
         # TODO: move cycle_time to this function
         if phase is None:

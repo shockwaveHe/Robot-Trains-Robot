@@ -296,10 +296,6 @@ class MuJoCoEnv(PipelineEnv):
         )
 
     def _sample_command(self, pipeline_state: base.State, rng: jax.Array) -> jax.Array:
-        # Generate random commands for lin_vel_x and lin_vel_y
-        if self.fixed_base:
-            return jnp.zeros(self.num_commands)  # type:ignore
-
         if self.fixed_command is not None:
             return self.fixed_command
 
@@ -368,7 +364,7 @@ class MuJoCoEnv(PipelineEnv):
         )
         path_pos, path_quat = self._integrate_path_frame(state.info)
         state_ref = self.motion_ref.get_state_ref(
-            path_pos, path_quat, phase, state.info["command"], self.resample_time
+            path_pos, path_quat, phase, state.info["command"]
         )
         contact_forces, stance_mask = self._get_contact_forces(
             pipeline_state  # type:ignore

@@ -21,6 +21,5 @@ class MotionReference(ABC):
         path_quat: ArrayType,
         phase: Optional[float | ArrayType] = None,
         command: Optional[ArrayType] = None,
-        duration: Optional[float] = None,
     ) -> ArrayType:
         pass

@@ -71,16 +71,12 @@ class WalkZMPReference(MotionReference):
         path_quat: ArrayType,
         phase: Optional[float | ArrayType] = None,
         command: Optional[ArrayType] = None,
-        duration: Optional[float] = None,
     ) -> ArrayType:
         if phase is None:
             raise ValueError(f"phase is required for {self.name}")
 
         if command is None:
             raise ValueError(f"command is required for {self.name}")
-
-        if duration is None:
-            raise ValueError(f"duration is required for {self.name}")
 
         linear_vel = np.array([command[0], command[1], 0.0], dtype=np.float32)  # type: ignore
         angular_vel = np.array([0.0, 0.0, command[2]], dtype=np.float32)  # type: ignore
