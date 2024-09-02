@@ -12,36 +12,51 @@ from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.visualization.vis_plot import (
     plot_joint_tracking,
-    plot_sim2real_gap_bar,
+    # plot_sim2real_gap_bar,
     plot_sim2real_gap_line,
 )
 
 
-def load_datasets(
-    robot: Robot, sim_data_path: str, real_data_path: str, idx: int = 1000
-):
+def load_datasets(robot: Robot, sim_data_path: str, real_data_path: str):
     # Use glob to find all pickle files matching the pattern
+    sim_pickle_file_path = os.path.join(sim_data_path, "log_data.pkl")
+    if not os.path.exists(sim_pickle_file_path):
+        raise ValueError("No data files found")
+
+    with open(sim_pickle_file_path, "rb") as f:
+        sim_log_data_dict = pickle.load(f)
+
+    sim_obs_list: List[Obs] = sim_log_data_dict["obs_list"]
+    sim_motor_angles_list: List[Dict[str, float]] = sim_log_data_dict[
+        "motor_angles_list"
+    ]
+
+    real_pickle_file_path = os.path.join(real_data_path, "log_data.pkl")
+    if not os.path.exists(real_pickle_file_path):
+        raise ValueError("No data files found")
+
+    with open(real_pickle_file_path, "rb") as f:
+        real_log_data_dict = pickle.load(f)
+
+    real_obs_list: List[Obs] = real_log_data_dict["obs_list"]
+    real_motor_angles_list: List[Dict[str, float]] = real_log_data_dict[
+        "motor_angles_list"
+    ]
+    idx = min(len(sim_obs_list), len(real_obs_list))
+
     sim_data: Dict[str, Dict[str, npt.NDArray[np.float32]]] = {}
     real_data: Dict[str, Dict[str, npt.NDArray[np.float32]]] = {}
-    for data_dict, data_path in zip(
-        [sim_data, real_data], [sim_data_path, real_data_path]
+
+    for data_dict, obs_list, motor_angles_list in zip(
+        [sim_data, real_data],
+        [sim_obs_list, real_obs_list],
+        [sim_motor_angles_list, real_motor_angles_list],
     ):
-        pickle_file_path = os.path.join(data_path, "log_data.pkl")
-        if not os.path.exists(pickle_file_path):
-            raise ValueError("No data files found")
-
-        with open(pickle_file_path, "rb") as f:
-            log_data_dict = pickle.load(f)
-
-        obs_list: List[Obs] = log_data_dict["obs_list"]
-        motor_angles_list: List[Dict[str, float]] = log_data_dict["motor_angles_list"]
-
         data_dict["imu"] = {
             # "lin_vel": np.array([obs.lin_vel for obs in obs_list[:idx]]),
             "ang_vel": np.array([obs.ang_vel for obs in obs_list[:idx]]),
             "euler": np.array([obs.euler for obs in obs_list[:idx]]),
         }
-
         for motor_name in robot.motor_ordering:
             data_dict[motor_name] = {}
             data_dict[motor_name]["time"] = np.array(
@@ -158,26 +173,6 @@ def evaluate(
 
     plot_joint_tracking(
         time_seq_sim_dict,
-        time_seq_sim_dict,
-        motor_pos_sim_dict,
-        action_sim_dict,
-        robot.joint_limits,
-        save_path=exp_folder_path,
-        file_name="sim_motor_pos_tracking",
-    )
-
-    plot_joint_tracking(
-        time_seq_real_dict,
-        time_seq_real_dict,
-        motor_pos_real_dict,
-        action_real_dict,
-        robot.joint_limits,
-        save_path=exp_folder_path,
-        file_name="real_motor_pos_tracking",
-    )
-
-    plot_joint_tracking(
-        time_seq_sim_dict,
         time_seq_real_dict,
         motor_pos_sim_dict,
         motor_pos_real_dict,
@@ -209,6 +204,26 @@ def evaluate(
         file_name="sim2real_action",
         set_ylim=False,
         line_suffix=["_sim", "_real"],
+    )
+
+    plot_joint_tracking(
+        time_seq_sim_dict,
+        time_seq_sim_dict,
+        motor_pos_sim_dict,
+        action_sim_dict,
+        robot.joint_limits,
+        save_path=exp_folder_path,
+        file_name="sim_motor_pos_tracking",
+    )
+
+    plot_joint_tracking(
+        time_seq_real_dict,
+        time_seq_real_dict,
+        motor_pos_real_dict,
+        action_real_dict,
+        robot.joint_limits,
+        save_path=exp_folder_path,
+        file_name="real_motor_pos_tracking",
     )
 
 

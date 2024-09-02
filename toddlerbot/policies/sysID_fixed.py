@@ -53,6 +53,7 @@ class SysIDFixedPolicy(BasePolicy):
                     "left_sho_roll": -np.pi / 6,
                     "right_sho_roll": -np.pi / 6,
                 },
+                direction=-1,
             ),
             "hip_pitch": SysIDSpecs(
                 warm_up_angles={
