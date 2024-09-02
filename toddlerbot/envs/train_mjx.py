@@ -279,7 +279,7 @@ def train(
     times = [time.time()]
 
     best_ckpt_step = 0
-    best_episode_reward = 0.0
+    best_episode_reward = -float("inf")
 
     def progress(num_steps: int, metrics: Dict[str, Any]):
         nonlocal best_episode_reward, best_ckpt_step

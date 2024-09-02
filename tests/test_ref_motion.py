@@ -27,10 +27,11 @@ def test_walk_ref(robot: Robot, sim: MuJoCoSim, walk_ref: MotionReference):
         np.array([0, 0, 0], dtype=np.float32),
     ]
     duration = 10
+    dt = float(walk_ref.control_dt / walk_ref.cycle_time)  # type: ignore
     try:
         for command in command_list:
             for phase in tqdm(
-                np.arange(0, duration, sim.control_dt),  # type: ignore
+                np.arange(0, duration, dt),  # type: ignore
                 desc="Running Ref Motion",
             ):
                 state = walk_ref.get_state_ref(path_pos, path_quat, phase, command)
@@ -118,8 +119,8 @@ if __name__ == "__main__":
             robot,
             [
                 cfg.commands.ranges.lin_vel_x,
-                cfg.commands.ranges.lin_vel_y,
-                cfg.commands.ranges.ang_vel_yaw,
+                [0.0, 0.0],  # cfg.commands.ranges.lin_vel_y,
+                [0.0, 0.0],  # cfg.commands.ranges.ang_vel_yaw,
             ],
             cfg.action.cycle_time,
             default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore

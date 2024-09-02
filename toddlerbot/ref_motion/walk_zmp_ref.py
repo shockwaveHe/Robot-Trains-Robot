@@ -93,8 +93,7 @@ class WalkZMPReference(MotionReference):
         nearest_command_idx = np.argmin(  # type: ignore
             np.linalg.norm(self.lookup_keys - command, axis=1)  # type: ignore
         )
-        idx = (phase * self.cycle_time / self.control_dt).astype(int)  # type: ignore
-
+        idx = np.round(phase * self.cycle_time / self.control_dt).astype(int)  # type: ignore
         joint_pos = self.default_joint_pos.copy()  # type: ignore
         # joint_pos = np.where(  # type: ignore
         #     is_zero_commmand,  # type: ignore
@@ -113,9 +112,13 @@ class WalkZMPReference(MotionReference):
         joint_pos = inplace_update(
             joint_pos,
             self.leg_joint_slice,
-            self.leg_joint_pos_lookup[nearest_command_idx][idx],
+            self.leg_joint_pos_lookup[nearest_command_idx][
+                idx % self.lookup_length_list[nearest_command_idx]
+            ],
         )
-        stance_mask = self.stance_mask_lookup[nearest_command_idx][idx]
+        stance_mask = self.stance_mask_lookup[nearest_command_idx][
+            idx % self.lookup_length_list[nearest_command_idx]
+        ]
 
         return np.concatenate(  # type: ignore
             (
@@ -130,7 +133,7 @@ class WalkZMPReference(MotionReference):
         )
 
     def build_lookup_table(
-        self, command_ranges: List[List[float]], interval: float = 0.1
+        self, command_ranges: List[List[float]], interval: float = 0.01
     ):
         """
         Precompute and store the trajectories for a range of commands.
@@ -174,6 +177,10 @@ class WalkZMPReference(MotionReference):
                 )
 
         self.lookup_keys = np.array(lookup_keys, dtype=np.float32)  # type: ignore
+        self.lookup_length_list = [
+            len(stance_mask_ref) for stance_mask_ref in stance_mask_ref_list
+        ]
+
         num_commands = len(stance_mask_ref_list)
         num_total_steps_max = max(
             [len(stance_mask_ref) for stance_mask_ref in stance_mask_ref_list]
@@ -203,7 +210,13 @@ class WalkZMPReference(MotionReference):
             self.stance_mask_lookup = jax.device_put(self.stance_mask_lookup)  # type: ignore
             self.leg_joint_pos_lookup = jax.device_put(self.leg_joint_pos_lookup)  # type: ignore
 
-    def plan(self, path_pos: ArrayType, path_quat: ArrayType, command: ArrayType):
+    def plan(
+        self,
+        path_pos: ArrayType,
+        path_quat: ArrayType,
+        command: ArrayType,
+        total_time: float = 20.0,
+    ) -> Tuple[ArrayType, ArrayType]:
         path_euler = quat2euler(path_quat)
         pose_curr = np.array(  # type: ignore
             [path_pos[0], path_pos[1], path_euler[2]], dtype=np.float32
@@ -211,7 +224,7 @@ class WalkZMPReference(MotionReference):
 
         if np.linalg.norm(command) < 1e-6:  # type: ignore
             footsteps: List[ArrayType] = []
-            for _ in range(int(np.ceil(10.0 / self.cycle_time))):  # type: ignore
+            for _ in range(int(np.ceil(total_time / self.cycle_time))):  # type: ignore
                 footsteps.append(
                     np.array(  # type: ignore
                         [
@@ -238,7 +251,7 @@ class WalkZMPReference(MotionReference):
             spline_x, spline_y, spline_theta = self.sample_spline(
                 pose_curr,
                 command,
-                np.ceil(10.0 / self.cycle_time) * self.cycle_time,  # type: ignore
+                np.ceil(total_time / self.cycle_time) * self.cycle_time,  # type: ignore
             )
             _, footsteps = self.footstep_planner.compute_steps(
                 pose_curr,
@@ -347,7 +360,14 @@ class WalkZMPReference(MotionReference):
             x_traj[:, :2],
         )
 
-        return leg_joint_pos_ref, stance_mask_ref
+        first_double_support_idx = int(time_steps[1] // self.control_dt)
+        leg_joint_pos_ref_truncated = leg_joint_pos_ref[  # type: ignore
+            first_double_support_idx:
+        ]
+        stance_mask_ref_truncated = stance_mask_ref[  # type: ignore
+            first_double_support_idx:
+        ]
+        return leg_joint_pos_ref_truncated, stance_mask_ref_truncated
 
     def sample_spline(
         self,
