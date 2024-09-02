@@ -460,6 +460,38 @@ def add_ankle_constraints(root: ET.Element, general_config: Dict[str, Any]):
         )
 
 
+def add_gear_constraints(
+    root: ET.Element, general_config: Dict[str, Any], joints_config: Dict[str, Any]
+):
+    equality = root.find("./equality")
+    if equality is None:
+        equality = ET.SubElement(root, "equality")
+
+    for joint_name, joint_config in joints_config.items():
+        if "spec" not in joint_config:
+            continue
+
+        transmission = joint_config["transmission"]
+        if transmission == "gears":
+            joint_driven_name = joint_name.replace("_drive", "_driven")
+            joint_driven: ET.Element | None = root.find(
+                f".//joint[@name='{joint_driven_name}']"
+            )
+            if joint_driven is None:
+                raise ValueError(f"The driven joint {joint_driven_name} is not found")
+
+            gear_ratio = round_to_sig_digits(joints_config[joint_name]["gear_ratio"], 6)
+            ET.SubElement(
+                equality,
+                "joint",
+                joint1=joint_name,
+                joint2=joint_driven_name,
+                polycoef=f"0 {gear_ratio} 0 0 0",
+                solimp="0.9999 0.9999 0.001 0.5 2",
+                solref=f"{general_config['solref'][0]} {general_config['solref'][1]}",
+            )
+
+
 def add_actuators_to_mjcf(root: ET.Element, joints_config: Dict[str, Any]):
     # Create <actuator> element if it doesn't exist
     actuator = root.find("./actuator")
@@ -472,7 +504,8 @@ def add_actuators_to_mjcf(root: ET.Element, joints_config: Dict[str, Any]):
         if "spec" not in joint_config:
             continue
 
-        if "_drive" in joint_name:
+        transmission = joint_config["transmission"]
+        if transmission == "gears":
             joint_driven_name = joint_name.replace("_drive", "_driven")
             joint_driven: ET.Element | None = root.find(
                 f".//joint[@name='{joint_driven_name}']"
@@ -809,6 +842,7 @@ def process_mjcf_fixed_file(root: ET.Element, robot: Robot):
     update_joint_params(root, robot.config["joints"])
     update_geom_classes(root, ["contype", "conaffinity", "group", "density"])
     add_actuators_to_mjcf(root, robot.config["joints"])
+    add_gear_constraints(root, robot.config["general"], robot.config["joints"])
 
     if robot.config["general"]["is_waist_closed_loop"]:
         add_waist_constraints(root, robot.config["general"])
