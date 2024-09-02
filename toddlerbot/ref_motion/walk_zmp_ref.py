@@ -113,11 +113,11 @@ class WalkZMPReference(MotionReference):
             joint_pos,
             self.leg_joint_slice,
             self.leg_joint_pos_lookup[nearest_command_idx][
-                idx % self.lookup_length_list[nearest_command_idx]
+                (idx % self.lookup_length[nearest_command_idx]).astype(int)  # type: ignore
             ],
         )
         stance_mask = self.stance_mask_lookup[nearest_command_idx][
-            idx % self.lookup_length_list[nearest_command_idx]
+            (idx % self.lookup_length[nearest_command_idx]).astype(int)  # type: ignore
         ]
 
         return np.concatenate(  # type: ignore
@@ -177,9 +177,10 @@ class WalkZMPReference(MotionReference):
                 )
 
         self.lookup_keys = np.array(lookup_keys, dtype=np.float32)  # type: ignore
-        self.lookup_length_list = [
-            len(stance_mask_ref) for stance_mask_ref in stance_mask_ref_list
-        ]
+        self.lookup_length = np.array(  # type: ignore
+            [len(stance_mask_ref) for stance_mask_ref in stance_mask_ref_list],
+            dtype=np.float32,
+        )
 
         num_commands = len(stance_mask_ref_list)
         num_total_steps_max = max(
@@ -207,6 +208,7 @@ class WalkZMPReference(MotionReference):
 
         if os.environ.get("USE_JAX", "false") == "true":
             self.lookup_keys = jax.device_put(self.lookup_keys)  # type: ignore
+            self.lookup_length = jax.device_put(self.lookup_length)  # type: ignore
             self.stance_mask_lookup = jax.device_put(self.stance_mask_lookup)  # type: ignore
             self.leg_joint_pos_lookup = jax.device_put(self.leg_joint_pos_lookup)  # type: ignore
 
