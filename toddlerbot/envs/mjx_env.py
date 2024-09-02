@@ -145,25 +145,6 @@ class MuJoCoEnv(PipelineEnv):
             list(self.robot.default_motor_angles.values())
         )
 
-        with jax.disable_jit():
-            if "walk" in self.name:
-                from toddlerbot.ref_motion.walk_zmp_ref import WalkZMPReference
-
-                self.motion_ref = WalkZMPReference(
-                    self.robot,
-                    [
-                        self.cfg.commands.ranges.lin_vel_x,
-                        self.cfg.commands.ranges.lin_vel_y,
-                        self.cfg.commands.ranges.ang_vel_yaw,
-                    ],
-                    default_joint_pos=jnp.array(  # type:ignore
-                        list(self.robot.default_joint_angles.values())
-                    ),
-                    control_dt=float(self.dt),
-                )
-            else:
-                raise ValueError(f"Unknown env {self.name}")
-
         # commands
         # x vel, y vel, yaw vel, heading
         self.num_commands = self.cfg.commands.num_commands
@@ -184,6 +165,7 @@ class MuJoCoEnv(PipelineEnv):
 
         # actions
         self.action_scale = self.cfg.action.action_scale
+        self.cycle_time = self.cfg.action.cycle_time
 
         # noise
         self.obs_noise_scale = self.cfg.noise.obs_noise_scale * jnp.concatenate(  # type:ignore
@@ -212,6 +194,22 @@ class MuJoCoEnv(PipelineEnv):
         # self.rand_push = torch.zeros(
         #     (self.num_envs, 6), dtype=torch.float32, device=self.device
         # )
+
+        with jax.disable_jit():
+            if "walk" in self.name:
+                from toddlerbot.ref_motion.walk_zmp_ref import WalkZMPReference
+
+                self.motion_ref = WalkZMPReference(
+                    self.robot,
+                    list(self.command_ranges.values()),
+                    self.cycle_time,
+                    default_joint_pos=jnp.array(  # type:ignore
+                        list(self.robot.default_joint_angles.values())
+                    ),
+                    control_dt=float(self.dt),
+                )
+            else:
+                raise ValueError(f"Unknown env {self.name}")
 
     def _init_reward(self):
         """Prepares a list of reward functions, which will be called to compute the total reward.
@@ -358,7 +356,7 @@ class MuJoCoEnv(PipelineEnv):
         # jax.debug.print("stance_mask: {}", state.info["stance_mask"])
         # jax.debug.print("feet_air_time: {}", state.info["feet_air_time"])
 
-        phase = state.info["step"] * self.dt
+        phase = state.info["step"] * self.dt / self.cycle_time
         phase_signal = jnp.array(  # type:ignore
             [jnp.sin(2 * jnp.pi * phase), jnp.cos(2 * jnp.pi * phase)]  # type:ignore
         )

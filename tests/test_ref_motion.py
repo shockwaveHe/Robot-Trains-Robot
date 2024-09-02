@@ -33,9 +33,7 @@ def test_walk_ref(robot: Robot, sim: MuJoCoSim, walk_ref: MotionReference):
                 np.arange(0, duration, sim.control_dt),  # type: ignore
                 desc="Running Ref Motion",
             ):
-                state = walk_ref.get_state_ref(
-                    path_pos, path_quat, phase, command, duration
-                )
+                state = walk_ref.get_state_ref(path_pos, path_quat, phase, command)
                 joint_angles = np.asarray(state[13 : 13 + len(robot.joint_ordering)])  # type: ignore
                 motor_angles = robot.joint_to_motor_angles(
                     dict(zip(robot.joint_ordering, joint_angles))
@@ -123,6 +121,7 @@ if __name__ == "__main__":
                 cfg.commands.ranges.lin_vel_y,
                 cfg.commands.ranges.ang_vel_yaw,
             ],
+            cfg.action.cycle_time,
             default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
         )
 

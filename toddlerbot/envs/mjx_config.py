@@ -33,7 +33,7 @@ class ObsConfig:
 class ActionConfig:
     action_scale: float = 0.25
     contact_force_threshold: float = 5.0
-    cycle_time: float = 0.6
+    cycle_time: float = 0.72
     n_frames: int = 6
 
 

@@ -19,6 +19,7 @@ class WalkZMPReference(MotionReference):
         self,
         robot: Robot,
         command_ranges: List[List[float]],
+        cycle_time: float,
         default_joint_pos: Optional[ArrayType] = None,
         default_joint_vel: Optional[ArrayType] = None,
         stride_max: List[float] = [0.12, 0.04, np.pi / 16],
@@ -33,7 +34,9 @@ class WalkZMPReference(MotionReference):
         self.default_joint_pos = default_joint_pos
         self.default_joint_vel = default_joint_vel
         self.stride_max = np.array(stride_max, dtype=np.float32)  # type: ignore
-        self.single_double_ratio = single_double_ratio
+        self.cycle_time = cycle_time
+        self.double_support_phase = cycle_time / 2 / (single_double_ratio + 1)
+        self.single_support_phase = single_double_ratio * self.double_support_phase
         self.footstep_height = foot_step_height
         self.control_dt = control_dt
         self.control_cost_Q = control_cost_Q
@@ -121,10 +124,7 @@ class WalkZMPReference(MotionReference):
         )
 
     def build_lookup_table(
-        self,
-        command_ranges: List[List[float]],
-        interval: float = 0.1,
-        duration: float = 10.0,
+        self, command_ranges: List[List[float]], interval: float = 0.1
     ):
         """
         Precompute and store the trajectories for a range of commands.
@@ -156,7 +156,7 @@ class WalkZMPReference(MotionReference):
                     continue
 
                 leg_joint_pos_ref, stance_mask_ref = self.plan(
-                    path_pos, path_quat, command, duration
+                    path_pos, path_quat, command
                 )
                 lookup_keys.append(tuple(map(float, command)))
                 stance_mask_ref_list.append(stance_mask_ref)
@@ -197,20 +197,16 @@ class WalkZMPReference(MotionReference):
             self.stance_mask_lookup = jax.device_put(self.stance_mask_lookup)  # type: ignore
             self.leg_joint_pos_lookup = jax.device_put(self.leg_joint_pos_lookup)  # type: ignore
 
-    def plan(
-        self,
-        path_pos: ArrayType,
-        path_quat: ArrayType,
-        command: ArrayType,
-        duration: float,
-    ):
+    def plan(self, path_pos: ArrayType, path_quat: ArrayType, command: ArrayType):
         path_euler = quat2euler(path_quat)
         pose_curr = np.array(  # type: ignore
             [path_pos[0], path_pos[1], path_euler[2]], dtype=np.float32
         )
 
         spline_x, spline_y, spline_theta = self.sample_spline(
-            pose_curr, command, duration
+            pose_curr,
+            command,
+            np.ceil(10.0 / self.cycle_time) * self.cycle_time,  # type: ignore
         )
         _, footsteps = self.footstep_planner.compute_steps(
             pose_curr,
@@ -240,17 +236,17 @@ class WalkZMPReference(MotionReference):
         #     file_name="footsteps.png",
         # )()
 
-        num_footsteps = len(footsteps)
-        double_support_phase = duration / (
-            (num_footsteps - 1) * (1 + self.single_double_ratio) + 1
-        )
-        double_support_phase = (
-            np.ceil(double_support_phase / self.control_dt) * self.control_dt  # type: ignore
-        )
-        single_support_phase = double_support_phase * self.single_double_ratio
+        # double_support_phase = duration / (
+        #     (num_footsteps - 1) * (1 + self.single_double_ratio) + 1
+        # )
+        # double_support_phase = (
+        #     np.ceil(double_support_phase / self.control_dt) * self.control_dt  # type: ignore
+        # )
+        # single_support_phase = double_support_phase * self.single_double_ratio
         time_list = np.array(  # type: ignore
-            [0, double_support_phase]
-            + [single_support_phase, double_support_phase] * (num_footsteps - 1),
+            [0, self.double_support_phase]
+            + [self.single_support_phase, self.double_support_phase]
+            * (len(footsteps) - 1),
             dtype=np.float32,
         )
         time_steps = np.cumsum(time_list)  # type: ignore
@@ -323,15 +319,15 @@ class WalkZMPReference(MotionReference):
         self,
         pose_curr: ArrayType,
         command: ArrayType,
-        duration: float,
+        total_time: float,
     ) -> Tuple[ArrayType, ...]:
         # Linear velocities in local frame
         v_x, v_y, v_yaw = command  # type: ignore = command
 
         timesteps = np.linspace(  # type: ignore
             0,
-            duration,
-            int(np.ceil(duration / self.control_dt)),  # type: ignore
+            total_time,
+            int(np.ceil(total_time / self.control_dt)),  # type: ignore
             dtype=np.float32,
         )
         yaw_traj = pose_curr[2] + v_yaw * timesteps
