@@ -661,7 +661,7 @@ class MuJoCoEnv(PipelineEnv):
     ) -> jax.Array:
         """Reward for tracking leg joint positions"""
         joint_pos = pipeline_state.q[self.q_start_idx + self.leg_joint_indices]
-        joint_pos_ref = info["state_ref"][13 + self.leg_motor_indices]
+        joint_pos_ref = info["state_ref"][13 + self.leg_joint_indices]
         error = joint_pos - joint_pos_ref
         reward = -jnp.mean(error**2)  # type:ignore
         return reward
@@ -671,7 +671,7 @@ class MuJoCoEnv(PipelineEnv):
     ) -> jax.Array:
         """Reward for tracking leg joint velocities"""
         joint_vel = pipeline_state.qd[self.qd_start_idx + self.leg_joint_indices]
-        joint_vel_ref = info["state_ref"][13 + self.nu + self.leg_motor_indices]
+        joint_vel_ref = info["state_ref"][13 + self.nu + self.leg_joint_indices]
         error = joint_vel - joint_vel_ref
         reward = -jnp.mean(error**2)  # type:ignore
         return reward
@@ -681,7 +681,7 @@ class MuJoCoEnv(PipelineEnv):
     ) -> jax.Array:
         """Reward for tracking arm joint positions"""
         joint_pos = pipeline_state.q[self.q_start_idx + self.arm_joint_indices]
-        joint_pos_ref = info["state_ref"][13 + self.arm_motor_indices]
+        joint_pos_ref = info["state_ref"][13 + self.arm_joint_indices]
         error = joint_pos - joint_pos_ref
         reward = -jnp.mean(error**2)  # type:ignore
         return reward
@@ -691,7 +691,7 @@ class MuJoCoEnv(PipelineEnv):
     ) -> jax.Array:
         """Reward for tracking arm joint velocities"""
         joint_vel = pipeline_state.qd[self.qd_start_idx + self.arm_joint_indices]
-        joint_vel_ref = info["state_ref"][13 + self.nu + self.arm_motor_indices]
+        joint_vel_ref = info["state_ref"][13 + self.nu + self.arm_joint_indices]
         error = joint_vel - joint_vel_ref
         reward = -jnp.mean(error**2)  # type:ignore
         return reward
@@ -701,7 +701,7 @@ class MuJoCoEnv(PipelineEnv):
     ) -> jax.Array:
         """Reward for tracking neck joint positions"""
         joint_pos = pipeline_state.q[self.q_start_idx + self.neck_joint_indices]
-        joint_pos_ref = info["state_ref"][13 + self.neck_motor_indices]
+        joint_pos_ref = info["state_ref"][13 + self.neck_joint_indices]
         error = joint_pos - joint_pos_ref
         reward = -jnp.mean(error**2)  # type:ignore
         return reward
@@ -711,7 +711,7 @@ class MuJoCoEnv(PipelineEnv):
     ) -> jax.Array:
         """Reward for tracking neck joint velocities"""
         joint_vel = pipeline_state.qd[self.qd_start_idx + self.neck_joint_indices]
-        joint_vel_ref = info["state_ref"][13 + self.nu + self.neck_motor_indices]
+        joint_vel_ref = info["state_ref"][13 + self.nu + self.neck_joint_indices]
         error = joint_vel - joint_vel_ref
         reward = -jnp.mean(error**2)  # type:ignore
         return reward
@@ -721,7 +721,7 @@ class MuJoCoEnv(PipelineEnv):
     ) -> jax.Array:
         """Reward for tracking waist joint positions"""
         joint_pos = pipeline_state.q[self.q_start_idx + self.waist_joint_indices]
-        joint_pos_ref = info["state_ref"][13 + self.waist_motor_indices]
+        joint_pos_ref = info["state_ref"][13 + self.waist_joint_indices]
         error = joint_pos - joint_pos_ref
         reward = -jnp.mean(error**2)  # type:ignore
         return reward
@@ -731,7 +731,7 @@ class MuJoCoEnv(PipelineEnv):
     ) -> jax.Array:
         """Reward for tracking waist joint velocities"""
         joint_vel = pipeline_state.qd[self.qd_start_idx + self.waist_joint_indices]
-        joint_vel_ref = info["state_ref"][13 + self.nu + self.waist_motor_indices]
+        joint_vel_ref = info["state_ref"][13 + self.nu + self.waist_joint_indices]
         error = joint_vel - joint_vel_ref
         reward = -jnp.mean(error**2)  # type:ignore
         return reward
