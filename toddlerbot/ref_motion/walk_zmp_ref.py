@@ -89,27 +89,33 @@ class WalkZMPReference(MotionReference):
         else:
             joint_vel = self.default_joint_vel.copy()  # type: ignore
 
-        is_zero_commmand = np.linalg.norm(command) < 1e-6  # type: ignore
+        # is_zero_commmand = np.linalg.norm(command) < 1e-6  # type: ignore
         nearest_command_idx = np.argmin(  # type: ignore
             np.linalg.norm(self.lookup_keys - command, axis=1)  # type: ignore
         )
         idx = (phase * self.cycle_time / self.control_dt).astype(int)  # type: ignore
 
         joint_pos = self.default_joint_pos.copy()  # type: ignore
-        joint_pos = np.where(  # type: ignore
-            is_zero_commmand,  # type: ignore
+        # joint_pos = np.where(  # type: ignore
+        #     is_zero_commmand,  # type: ignore
+        #     joint_pos,
+        #     inplace_update(
+        #         joint_pos,
+        #         self.leg_joint_slice,
+        #         self.leg_joint_pos_lookup[nearest_command_idx][idx],
+        #     ),
+        # )
+        # stance_mask = np.where(  # type: ignore
+        #     is_zero_commmand,  # type: ignore
+        #     np.ones(2, dtype=np.float32),  # type: ignore
+        #     self.stance_mask_lookup[nearest_command_idx][idx],
+        # )
+        joint_pos = inplace_update(
             joint_pos,
-            inplace_update(
-                joint_pos,
-                self.leg_joint_slice,
-                self.leg_joint_pos_lookup[nearest_command_idx][idx],
-            ),
+            self.leg_joint_slice,
+            self.leg_joint_pos_lookup[nearest_command_idx][idx],
         )
-        stance_mask = np.where(  # type: ignore
-            is_zero_commmand,  # type: ignore
-            np.ones(2, dtype=np.float32),  # type: ignore
-            self.stance_mask_lookup[nearest_command_idx][idx],
-        )
+        stance_mask = self.stance_mask_lookup[nearest_command_idx][idx]
 
         return np.concatenate(  # type: ignore
             (
@@ -152,8 +158,8 @@ class WalkZMPReference(MotionReference):
             command_spectrum = np.stack(meshgrid, axis=-1).reshape(-1, 3)  # type: ignore
             # command_spectrum = np.array([[0.0, 0.0, 0.2]])
             for command in tqdm(command_spectrum, desc="Building Lookup Table"):
-                if np.linalg.norm(command) < 1e-6:  # type: ignore
-                    continue
+                # if np.linalg.norm(command) < 1e-6:  # type: ignore
+                #     continue
 
                 leg_joint_pos_ref, stance_mask_ref = self.plan(
                     path_pos, path_quat, command
@@ -203,17 +209,45 @@ class WalkZMPReference(MotionReference):
             [path_pos[0], path_pos[1], path_euler[2]], dtype=np.float32
         )
 
-        spline_x, spline_y, spline_theta = self.sample_spline(
-            pose_curr,
-            command,
-            np.ceil(10.0 / self.cycle_time) * self.cycle_time,  # type: ignore
-        )
-        _, footsteps = self.footstep_planner.compute_steps(
-            pose_curr,
-            np.array([spline_x[-1], spline_y[-1], spline_theta[-1]], dtype=np.float32),  # type: ignore
-            has_start=False,
-            has_stop=False,
-        )
+        if np.linalg.norm(command) < 1e-6:  # type: ignore
+            footsteps: List[ArrayType] = []
+            for _ in range(int(np.ceil(10.0 / self.cycle_time))):  # type: ignore
+                footsteps.append(
+                    np.array(  # type: ignore
+                        [
+                            pose_curr[0],
+                            pose_curr[1] + self.foot_to_com_y,
+                            pose_curr[2],
+                            0,
+                        ],
+                        dtype=np.float32,
+                    )
+                )  # type: ignore
+                footsteps.append(
+                    np.array(  # type: ignore
+                        [
+                            pose_curr[0],
+                            pose_curr[1] - self.foot_to_com_y,
+                            pose_curr[2],
+                            1,
+                        ],
+                        dtype=np.float32,
+                    )
+                )
+        else:
+            spline_x, spline_y, spline_theta = self.sample_spline(
+                pose_curr,
+                command,
+                np.ceil(10.0 / self.cycle_time) * self.cycle_time,  # type: ignore
+            )
+            _, footsteps = self.footstep_planner.compute_steps(
+                pose_curr,
+                np.array(  # type: ignore
+                    [spline_x[-1], spline_y[-1], spline_theta[-1]], dtype=np.float32
+                ),
+                has_start=False,
+                has_stop=False,
+            )
 
         # import numpy
 

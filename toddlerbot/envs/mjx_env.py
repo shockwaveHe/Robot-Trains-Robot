@@ -345,7 +345,7 @@ class MuJoCoEnv(PipelineEnv):
         commands = jnp.concatenate([lin_vel_x, jnp.zeros(1), jnp.zeros(1)])  # type:ignore
 
         # Set small commands to zero based on norm condition
-        mask = (jnp.linalg.norm(commands[:2]) > 0.1).astype(jnp.float32)  # type:ignore
+        mask = (jnp.linalg.norm(commands[:2]) > 0.05).astype(jnp.float32)  # type:ignore
         commands = commands.at[:2].set(commands[:2] * mask)  # type:ignore
 
         return commands

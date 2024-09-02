@@ -21,10 +21,10 @@ def test_walk_ref(robot: Robot, sim: MuJoCoSim, walk_ref: MotionReference):
     path_quat = np.array([1, 0, 0, 0], dtype=np.float32)
 
     command_list = [
-        # np.array([0, 0, 0], dtype=np.float32),
         np.array([0.3, 0, 0], dtype=np.float32),
-        np.array([0, -0.1, 0], dtype=np.float32),
-        np.array([0.0, 0, 0.2], dtype=np.float32),
+        # np.array([0, -0.1, 0], dtype=np.float32),
+        # np.array([0.0, 0, 0.2], dtype=np.float32),
+        np.array([0, 0, 0], dtype=np.float32),
     ]
     duration = 10
     try:
