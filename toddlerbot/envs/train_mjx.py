@@ -425,19 +425,20 @@ if __name__ == "__main__":
 
     # Need to a separate env for evaluation, otherwise the domain randomization will cause tracer leak errors.
     env = MuJoCoEnv(
-        args.env, cfg, robot, fixed_base="fixed" in args.env, ref_motion_name=args.ref
+        args.env, cfg, robot, ref_motion_name=args.ref, fixed_base="fixed" in args.env
     )
     eval_env = MuJoCoEnv(
-        args.env, cfg, robot, fixed_base="fixed" in args.env, ref_motion_name=args.ref
+        args.env, cfg, robot, ref_motion_name=args.ref, fixed_base="fixed" in args.env
     )
 
     test_env = MuJoCoEnv(
         args.env,
         cfg,
         robot,
+        ref_motion_name=args.ref,
         fixed_base="fixed" in args.env,
         fixed_command=test_command,
-        ref_motion_name=args.ref,
+        add_noise=False,
     )
 
     make_networks_factory = functools.partial(

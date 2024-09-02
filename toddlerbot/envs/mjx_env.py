@@ -22,17 +22,19 @@ class MuJoCoEnv(PipelineEnv):
         name: str,
         cfg: MJXConfig,
         robot: Robot,
+        ref_motion_name: str = "walk_simple",
         fixed_base: bool = False,
         fixed_command: Optional[jax.Array] = None,
-        ref_motion_name: str = "walk_simple",
+        add_noise: bool = True,
         **kwargs: Any,
     ):
         self.name = name
         self.cfg = cfg
         self.robot = robot
+        self.ref_motion_name = ref_motion_name
         self.fixed_base = fixed_base
         self.fixed_command = fixed_command
-        self.ref_motion_name = ref_motion_name
+        self.add_noise = add_noise
 
         if fixed_base:
             xml_path = find_robot_file_path(robot.name, suffix="_fixed_scene.xml")
@@ -258,13 +260,17 @@ class MuJoCoEnv(PipelineEnv):
         """Resets the environment to an initial state."""
         rng, rng1, rng2 = jax.random.split(rng, 3)  # type:ignore
 
-        noise_pos = jax.random.uniform(  # type:ignore
-            rng1,
-            (self.nq - self.q_start_idx,),
-            minval=-self.reset_noise_pos,
-            maxval=self.reset_noise_pos,
-        )
-        qpos = self.default_qpos.at[self.q_start_idx :].add(noise_pos)
+        qpos = self.default_qpos
+
+        if self.add_noise:
+            noise_pos = jax.random.uniform(  # type:ignore
+                rng1,
+                (self.nq - self.q_start_idx,),
+                minval=-self.reset_noise_pos,
+                maxval=self.reset_noise_pos,
+            )
+            qpos = qpos.at[self.q_start_idx :].add(noise_pos)
+
         qvel = jnp.zeros(self.nv)  # type:ignore
         pipeline_state = self.pipeline_init(qpos, qvel)
 
@@ -558,9 +564,10 @@ class MuJoCoEnv(PipelineEnv):
             ]
         )
 
-        obs += self.obs_noise_scale * jax.random.uniform(  # type:ignore
-            info["rng"], obs.shape, minval=-1, maxval=1
-        )
+        if self.add_noise:
+            obs += self.obs_noise_scale * jax.random.uniform(  # type:ignore
+                info["rng"], obs.shape, minval=-1, maxval=1
+            )
 
         # jax.debug.breakpoint()
 

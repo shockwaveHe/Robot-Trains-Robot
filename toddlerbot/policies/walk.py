@@ -104,7 +104,7 @@ class WalkPolicy(BasePolicy):
         motor_pos_delta = obs.motor_pos - self.default_motor_pos
 
         if self.joystick is None:
-            controller_input = [0.0, 0.0, 0.0]
+            controller_input = [0.3, 0.0, 0.0]
         else:
             controller_input = get_controller_input(self.joystick, self.command_ranges)
 

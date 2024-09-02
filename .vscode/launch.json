@@ -88,6 +88,8 @@
                 "mujoco",
                 "--policy",
                 "walk_fixed",
+                "--ckpt",
+                "20240901_210722"
             ]
         },
         {

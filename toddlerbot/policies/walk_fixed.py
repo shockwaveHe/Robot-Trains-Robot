@@ -104,7 +104,7 @@ class WalkFixedPolicy(BasePolicy):
         obs.euler = np.zeros(3, dtype=np.float32)
 
         if self.joystick is None:
-            controller_input = [0.0, 0.0, 0.0]
+            controller_input = [0.3, 0.0, 0.0]
         else:
             controller_input = get_controller_input(self.joystick, self.command_ranges)
 
