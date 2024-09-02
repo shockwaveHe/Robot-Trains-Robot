@@ -29,20 +29,17 @@ class RealWorld(BaseSim):
 
         # TODO: Fix the mate directions in the URDF and remove the negated_motor_names
         self.negated_motor_names: List[str] = [
-            "left_hip_yaw_drive",
-            "right_hip_yaw_drive",
+            "neck_pitch_drive",
             "left_hip_roll",
             "right_hip_roll",
             "left_knee_act",
             "right_knee_act",
             "left_sho_roll",
             "right_sho_roll",
-            "left_sho_yaw_drive",
-            "right_sho_yaw_drive",
             "left_elbow_roll",
             "right_elbow_roll",
-            "left_elbow_yaw_drive",
-            "right_elbow_yaw_drive",
+            "left_wrist_roll_drive",
+            "right_wrist_roll_drive",
         ]
 
         self.initialize()
@@ -201,13 +198,13 @@ class RealWorld(BaseSim):
     # @profile()
     def set_motor_angles(self, motor_angles: Dict[str, float]):
         # Directions are tuned to match the assembly of the robot.
-        joints_config = self.robot.config["joints"]
+        # joints_config = self.robot.config["joints"]
 
         motor_angles_updated: Dict[str, float] = {}
         for name, angle in motor_angles.items():
-            transmission = joints_config[name]["transmission"]
-            if transmission == "gears":
-                angle *= joints_config[name]["gear_ratio"]
+            # transmission = joints_config[name]["transmission"]
+            # if transmission == "gears":
+            #     angle *= joints_config[name]["gear_ratio"]
 
             if name in self.negated_motor_names:
                 motor_angles_updated[name] = -angle

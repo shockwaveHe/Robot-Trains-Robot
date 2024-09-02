@@ -467,7 +467,7 @@ class Robot:
             if transmission == "gears":
                 joint_name = motor_name.replace("_drive", "_driven")
                 joint_angles[joint_name] = (
-                    motor_pos * joints_config[motor_name]["gear_ratio"]
+                    -motor_pos * joints_config[motor_name]["gear_ratio"]
                 )
             elif transmission == "waist":
                 # Placeholder to ensure the correct order
@@ -512,7 +512,7 @@ class Robot:
             if transmission == "gears":
                 motor_name = joint_name.replace("_driven", "_drive")
                 motor_angles[motor_name] = (
-                    joint_pos / joints_config[motor_name]["gear_ratio"]
+                    -joint_pos / joints_config[motor_name]["gear_ratio"]
                 )
             elif transmission == "waist":
                 # Placeholder to ensure the correct order
