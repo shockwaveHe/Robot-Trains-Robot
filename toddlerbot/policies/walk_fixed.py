@@ -75,7 +75,8 @@ class WalkFixedPolicy(BasePolicy):
         # jit_inference_fn = inference_fn
         self.jit_inference_fn = jax.jit(inference_fn)  # type: ignore
         self.rng = jax.random.PRNGKey(0)  # type: ignore
-        self.jit_inference_fn(self.obs_history, self.rng)[0].block_until_ready()  # type: ignore
+        act_rng, _ = jax.random.split(self.rng)  # type: ignore
+        self.jit_inference_fn(self.obs_history, act_rng)[0].block_until_ready()  # type: ignore
 
         self.joystick = initialize_joystick()
 
