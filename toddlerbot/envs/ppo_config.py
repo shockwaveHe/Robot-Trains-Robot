@@ -13,7 +13,7 @@ class PPOConfig:
     num_minibatches: int = 4
     num_updates_per_batch: int = 4
     discounting: float = 0.97
-    learning_rate: float = 1e-4
+    learning_rate: float = 2e-5
     min_learning_rate: float = 1e-5
     transition_steps: int = 10_000_000
     entropy_cost: float = 1e-4
