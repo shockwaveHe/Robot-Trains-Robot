@@ -6,6 +6,7 @@ os.environ["USE_JAX"] = "true"
 import argparse
 import functools
 import json
+import shutil
 import time
 from dataclasses import asdict, replace
 from typing import Any, Dict, List, Optional, Tuple
@@ -277,8 +278,18 @@ def train(
 
     times = [time.time()]
 
+    best_ckpt_step = 0
+    best_episode_reward = 0.0
+
     def progress(num_steps: int, metrics: Dict[str, Any]):
+        nonlocal best_episode_reward, best_ckpt_step
+
         times.append(time.time())
+
+        episode_reward = float(metrics.get("eval/episode_reward", 0.0))
+        if episode_reward > best_episode_reward:
+            best_episode_reward = episode_reward
+            best_ckpt_step = num_steps
 
         log_data = log_metrics(
             metrics, times[-1] - times[0], num_steps, train_cfg.num_timesteps
@@ -291,6 +302,11 @@ def train(
 
     model_path = os.path.join(exp_folder_path, "policy")
     model.save_params(model_path, params)
+
+    shutil.copy2(
+        os.path.join(exp_folder_path, str(best_ckpt_step), "policy"),
+        os.path.join(exp_folder_path, "best_policy"),
+    )
 
     print(f"time to jit: {times[1] - times[0]}")
     print(f"time to train: {times[-1] - times[1]}")
