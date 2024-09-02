@@ -8,11 +8,11 @@
         "armature": 0.037
     },
     "left_hip_yaw_driven": {
-        "damping": 0.431,
+        "damping": 0.45,
         "armature": 0.001
     },
     "right_hip_yaw_driven": {
-        "damping": 0.403,
+        "damping": 0.45,
         "armature": 0.001
     },
     "left_hip_roll": {

@@ -347,7 +347,7 @@ def main():
         help="The number of iterations to optimize the parameters.",
     )
     parser.add_argument(
-        "--run-name",
+        "--time-str",
         type=str,
         default="",
         required=True,
@@ -355,7 +355,9 @@ def main():
     )
     args = parser.parse_args()
 
-    data_path = os.path.join("results", args.run_name)
+    data_path = os.path.join(
+        "results", f"{args.robot}_sysID_fixed_real_world_{args.time_str}"
+    )
     if not os.path.exists(data_path):
         raise ValueError("Invalid experiment folder path")
 

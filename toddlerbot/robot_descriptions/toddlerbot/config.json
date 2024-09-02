@@ -14,7 +14,7 @@
         "waist_roll_backlash": 0.03,
         "waist_yaw_backlash": 0.001,
         "ank_solimp_0": 0.9999,
-        "ank_solref_0": 0.01,
+        "ank_solref_0": 0.004,
         "foot_name": "ank_roll_link",
         "offsets": {
             "torso_z": 0.3442,
