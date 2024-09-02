@@ -1,4 +1,9 @@
-from typing import Dict, List, Optional, Tuple
+import os
+import pickle
+from typing import List, Optional, Tuple
+
+import jax
+from tqdm import tqdm
 
 from toddlerbot.algorithms.zmp.footstep_planner import FootStepPlanner
 from toddlerbot.algorithms.zmp.zmp_planner import ZMPPlanner
@@ -54,6 +59,9 @@ class WalkZMPReference(MotionReference):
         self.footstep_planner = FootStepPlanner(self.stride_max, self.foot_to_com_y)
         self.zmp_planner = ZMPPlanner()
 
+        self.lookup_table_path = os.path.join(
+            "toddlerbot", "ref_motion", "walk_zmp_lookup_table.pkl"
+        )
         self.build_lookup_table(command_ranges)
 
     # @profile()
@@ -82,27 +90,26 @@ class WalkZMPReference(MotionReference):
         else:
             joint_vel = self.default_joint_vel.copy()  # type: ignore
 
-        def lookup():
-            nearest_command_idx = np.argmin(  # type: ignore
-                np.linalg.norm(self.lookup_keys - command, axis=1)  # type: ignore
-            )
-            nearest_command = self.lookup_keys[nearest_command_idx]
-            # Retrieve the precomputed trajectory
-            data = self.lookup_table[tuple(nearest_command)]
-            return data["leg_joint_pos_ref"], data["stance_mask_ref"]
-
         is_zero_commmand = np.linalg.norm(command) < 1e-6  # type: ignore
-        idx = int(phase / self.control_dt)
+        nearest_command_idx = np.argmin(  # type: ignore
+            np.linalg.norm(self.lookup_keys - command, axis=1)  # type: ignore
+        )
+        idx = (phase / self.control_dt).astype(int)  # type: ignore
+
         joint_pos = self.default_joint_pos.copy()  # type: ignore
         joint_pos = np.where(  # type: ignore
             is_zero_commmand,  # type: ignore
             joint_pos,
-            inplace_update(joint_pos, self.leg_joint_slice, lookup()[0][idx]),
+            inplace_update(
+                joint_pos,
+                self.leg_joint_slice,
+                self.leg_joint_pos_lookup[nearest_command_idx][idx],
+            ),
         )
         stance_mask = np.where(  # type: ignore
             is_zero_commmand,  # type: ignore
             np.ones(2, dtype=np.float32),  # type: ignore
-            lookup()[1][idx],
+            self.stance_mask_lookup[nearest_command_idx][idx],
         )
 
         return np.concatenate(  # type: ignore
@@ -126,33 +133,73 @@ class WalkZMPReference(MotionReference):
         """
         Precompute and store the trajectories for a range of commands.
         """
-        self.lookup_table: Dict[Tuple[float, ...], Dict[str, ArrayType]] = {}
+        if os.path.exists(self.lookup_table_path):
+            with open(self.lookup_table_path, "rb") as f:
+                lookup_keys, stance_mask_ref_list, leg_joint_pos_ref_list = pickle.load(
+                    f
+                )
+        else:
+            lookup_keys: List[Tuple[float, ...]] = []
+            stance_mask_ref_list: List[ArrayType] = []
+            leg_joint_pos_ref_list: List[ArrayType] = []
 
-        path_pos = np.zeros(3, dtype=np.float32)  # type: ignore
-        path_quat = np.array([1, 0, 0, 0], dtype=np.float32)  # type: ignore
+            path_pos = np.zeros(3, dtype=np.float32)  # type: ignore
+            path_quat = np.array([1, 0, 0, 0], dtype=np.float32)  # type: ignore
 
-        # Create linspace arrays for each command range
-        linspaces = [
-            np.arange(start, stop + interval, interval)  # type: ignore
-            for start, stop in command_ranges
-        ]
-        # Create a meshgrid
-        meshgrid = np.meshgrid(*linspaces, indexing="ij")  # type: ignore
-        command_spectrum = np.stack(meshgrid, axis=-1).reshape(-1, 3)  # type: ignore
-        for command in command_spectrum:
-            if np.linalg.norm(command) < 1e-6:  # type: ignore
-                continue
+            # Create linspace arrays for each command range
+            linspaces = [
+                np.arange(start, stop + interval, interval)  # type: ignore
+                for start, stop in command_ranges
+            ]
+            # Create a meshgrid
+            meshgrid = np.meshgrid(*linspaces, indexing="ij")  # type: ignore
+            command_spectrum = np.stack(meshgrid, axis=-1).reshape(-1, 3)  # type: ignore
+            # command_spectrum = np.array([[0.0, 0.0, 0.2]])
+            for command in tqdm(command_spectrum, desc="Building Lookup Table"):
+                if np.linalg.norm(command) < 1e-6:  # type: ignore
+                    continue
 
-            leg_joint_pos_ref, stance_mask_ref = self.plan(
-                path_pos, path_quat, command, duration
+                leg_joint_pos_ref, stance_mask_ref = self.plan(
+                    path_pos, path_quat, command, duration
+                )
+                lookup_keys.append(tuple(map(float, command)))
+                stance_mask_ref_list.append(stance_mask_ref)
+                leg_joint_pos_ref_list.append(leg_joint_pos_ref)
+
+            with open(self.lookup_table_path, "wb") as f:
+                pickle.dump(
+                    (lookup_keys, stance_mask_ref_list, leg_joint_pos_ref_list), f
+                )
+
+        self.lookup_keys = np.array(lookup_keys, dtype=np.float32)  # type: ignore
+        num_commands = len(stance_mask_ref_list)
+        num_total_steps_max = max(
+            [len(stance_mask_ref) for stance_mask_ref in stance_mask_ref_list]
+        )
+        self.stance_mask_lookup = np.zeros(  # type: ignore
+            (num_commands, num_total_steps_max, 2), dtype=np.float32
+        )
+        self.leg_joint_pos_lookup = np.zeros(  # type: ignore
+            (num_commands, num_total_steps_max, 12), dtype=np.float32
+        )
+        for i, (stance_mask_ref, leg_joint_pos_ref) in enumerate(
+            zip(stance_mask_ref_list, leg_joint_pos_ref_list)
+        ):
+            self.stance_mask_lookup = inplace_update(  # type: ignore
+                self.stance_mask_lookup,
+                (i, slice(None, len(stance_mask_ref))),
+                stance_mask_ref,
             )
-            command_key = tuple(map(float, command))
-            self.lookup_table[command_key] = {
-                "stance_mask_ref": stance_mask_ref,
-                "leg_joint_pos_ref": leg_joint_pos_ref,
-            }
+            self.leg_joint_pos_lookup = inplace_update(  # type: ignore
+                self.leg_joint_pos_lookup,
+                (i, slice(None, len(leg_joint_pos_ref))),
+                leg_joint_pos_ref,
+            )
 
-        self.lookup_keys = command_spectrum
+        if os.environ.get("USE_JAX", "false") == "true":
+            self.lookup_keys = jax.device_put(self.lookup_keys)  # type: ignore
+            self.stance_mask_lookup = jax.device_put(self.stance_mask_lookup)  # type: ignore
+            self.leg_joint_pos_lookup = jax.device_put(self.leg_joint_pos_lookup)  # type: ignore
 
     def plan(
         self,
@@ -169,75 +216,45 @@ class WalkZMPReference(MotionReference):
         spline_x, spline_y, spline_theta = self.sample_spline(
             pose_curr, command, duration
         )
-        path, footsteps = self.footstep_planner.compute_steps(
+        _, footsteps = self.footstep_planner.compute_steps(
             pose_curr,
             np.array([spline_x[-1], spline_y[-1], spline_theta[-1]], dtype=np.float32),  # type: ignore
             has_start=False,
             has_stop=False,
         )
 
-        # path = np.stack([spline_x, spline_y], axis=-1)  # type: ignore
-        # nx = -np.sin(spline_theta)  # type: ignore
-        # ny = np.cos(spline_theta)  # type: ignore
+        # import numpy
 
-        # left_foot_x = spline_x + nx * self.foot_to_com_y
-        # left_foot_y = spline_y + ny * self.foot_to_com_y
-        # right_foot_x = spline_x - nx * self.foot_to_com_y
-        # right_foot_y = spline_y - ny * self.foot_to_com_y
+        # from toddlerbot.visualization.vis_plot import plot_footsteps
 
-        # left_first_step_length = np.linalg.norm(  # type: ignore
-        #     np.array([left_foot_x[1] - left_foot_x[0], left_foot_y[1] - left_foot_y[0]])  # type: ignore
-        # )
-        # right_first_step_length = np.linalg.norm(  # type: ignore
-        #     np.array(  # type: ignore
-        #         [right_foot_x[1] - right_foot_x[0], right_foot_y[1] - right_foot_y[0]]
-        #     )
-        # )
-        # is_left_first = left_first_step_length > right_first_step_length  # type: ignore
-        # support_leg = np.where(  # type: ignore
-        #     is_left_first,
-        #     np.arange(len(spline_x)) % 2,  # type: ignore
-        #     1 - np.arange(len(spline_x)) % 2,  # type: ignore
-        # )
+        # plot_footsteps(
+        #     numpy.asarray(path, dtype=numpy.float32),
+        #     numpy.array(
+        #         [numpy.asarray(fs[:3]) for fs in footsteps], dtype=numpy.float32
+        #     ),
+        #     [int(fs[-1]) for fs in footsteps],
+        #     (0.1, 0.05),
+        #     self.foot_to_com_y,
+        #     fig_size=(8, 8),
+        #     title="Footsteps Planning",
+        #     x_label="Position X",
+        #     y_label="Position Y",
+        #     save_config=False,
+        #     save_path=".",
+        #     file_name="footsteps.png",
+        # )()
 
-        # foot_x = np.where(  # type: ignore
-        #     support_leg == 0, left_foot_x, right_foot_x
-        # )
-        # foot_y = np.where(  # type: ignore
-        #     support_leg == 0, left_foot_y, right_foot_y
-        # )
-        # footsteps = np.stack([foot_x, foot_y, spline_theta, support_leg], axis=-1)  # type: ignore
-
-        # You can plot the footsteps with your existing plotting utility here
-        print(command)
-        import numpy
-
-        from toddlerbot.visualization.vis_plot import plot_footsteps
-
-        plot_footsteps(
-            numpy.asarray(path, dtype=numpy.float32),
-            numpy.array(
-                [numpy.asarray(fs[:3]) for fs in footsteps], dtype=numpy.float32
-            ),
-            [int(fs[-1]) for fs in footsteps],
-            (0.1, 0.05),
-            self.foot_to_com_y,
-            fig_size=(8, 8),
-            title="Footsteps Planning",
-            x_label="Position X",
-            y_label="Position Y",
-            save_config=False,
-            save_path=".",
-            file_name="footsteps.png",
-        )()
-
+        num_footsteps = len(footsteps)
         double_support_phase = duration / (
-            (len(footsteps) - 1) * (1 + self.single_double_ratio) + 1
+            (num_footsteps - 1) * (1 + self.single_double_ratio) + 1
+        )
+        double_support_phase = (
+            np.ceil(double_support_phase / self.control_dt) * self.control_dt  # type: ignore
         )
         single_support_phase = double_support_phase * self.single_double_ratio
         time_list = np.array(  # type: ignore
             [0, double_support_phase]
-            + [single_support_phase, double_support_phase] * (len(footsteps) - 1),
+            + [single_support_phase, double_support_phase] * (num_footsteps - 1),
             dtype=np.float32,
         )
         time_steps = np.cumsum(time_list)  # type: ignore
@@ -271,9 +288,11 @@ class WalkZMPReference(MotionReference):
             return (x_traj, u_traj), x_traj[idx]
 
         # Initialize the arrays
-        N = int(np.ceil((time_steps[-1] - time_steps[0]) / self.control_dt))  # type: ignore
-        x_traj = np.zeros((N, 4), dtype=np.float32)  # type: ignore
-        u_traj = np.zeros((N, 2), dtype=np.float32)  # type: ignore
+        num_total_steps = int(
+            np.ceil((time_steps[-1] - time_steps[0]) / self.control_dt)  # type: ignore
+        )
+        x_traj = np.zeros((num_total_steps, 4), dtype=np.float32)  # type: ignore
+        u_traj = np.zeros((num_total_steps, 2), dtype=np.float32)  # type: ignore
         # Set the initial conditions
         x_traj = inplace_update(x_traj, 0, x0)
         u_traj = inplace_update(
@@ -281,7 +300,7 @@ class WalkZMPReference(MotionReference):
             0,
             self.zmp_planner.get_optim_com_acc(time_steps[0], x0),  # type: ignore
         )
-        x_traj = loop_update(update_step, x_traj, u_traj, (1, N))
+        x_traj = loop_update(update_step, x_traj, u_traj, (1, num_total_steps))
 
         (
             left_foot_pos_traj,
@@ -289,7 +308,10 @@ class WalkZMPReference(MotionReference):
             right_foot_pos_traj,
             right_foot_ori_traj,
             stance_mask_ref,
-        ) = self.compute_foot_trajectories(time_steps, np.repeat(footsteps, 2, axis=0))  # type: ignore
+        ) = self.compute_foot_trajectories(
+            time_steps,
+            np.repeat(np.stack(footsteps), 2, axis=0),  # type: ignore
+        )
 
         leg_joint_pos_ref = self.solve_ik(
             left_foot_pos_traj,
@@ -310,13 +332,16 @@ class WalkZMPReference(MotionReference):
         # Linear velocities in local frame
         v_x, v_y, v_yaw = command  # type: ignore = command
 
-        timesteps = np.linspace(
-            0, duration, int(np.ceil(duration / self.control_dt)), dtype=np.float32
-        )  # type: ignore
+        timesteps = np.linspace(  # type: ignore
+            0,
+            duration,
+            int(np.ceil(duration / self.control_dt)),  # type: ignore
+            dtype=np.float32,
+        )
         yaw_traj = pose_curr[2] + v_yaw * timesteps
 
         # Calculate the differences between consecutive timesteps
-        dt = np.diff(np.concatenate(([0], timesteps)))  # type: ignore
+        dt = np.diff(np.concatenate((np.zeros(1, dtype=np.float32), timesteps)))  # type: ignore
 
         # Calculate x and y increments
         delta_x = (v_x * np.cos(yaw_traj) - v_y * np.sin(yaw_traj)) * dt  # type: ignore
@@ -330,6 +355,7 @@ class WalkZMPReference(MotionReference):
         sampled_x = [last_x]
         sampled_y = [last_y]
         sampled_theta = [last_theta]
+
         for i in range(1, len(timesteps)):
             x_dist = (x_traj[i] - last_x) * np.cos(last_theta) - (  # type: ignore
                 y_traj[i] - last_y
@@ -355,7 +381,7 @@ class WalkZMPReference(MotionReference):
         return sampled_x, sampled_y, sampled_theta  # type: ignore
 
     def compute_foot_trajectories(
-        self, time_steps: List[float], footsteps: List[ArrayType]
+        self, time_steps: ArrayType, footsteps: List[ArrayType]
     ) -> Tuple[ArrayType, ...]:
         offset = np.array(  # type: ignore
             [
@@ -375,19 +401,19 @@ class WalkZMPReference(MotionReference):
             [0.0, 0.0, footsteps[0][2], 0.0, 0.0, footsteps[0][2]], dtype=np.float32
         )
 
-        N = int(np.ceil((time_steps[-1] - time_steps[0]) / self.control_dt))  # type: ignore
-        left_foot_pos_traj = np.zeros((N, 3), dtype=np.float32)  # type: ignore
-        left_foot_ori_traj = np.zeros((N, 3), dtype=np.float32)  # type: ignore
-        right_foot_pos_traj = np.zeros((N, 3), dtype=np.float32)  # type: ignore
-        right_foot_ori_traj = np.zeros((N, 3), dtype=np.float32)  # type: ignore
-        stance_mask_traj = np.zeros((N, 2), dtype=np.float32)  # type: ignore
+        num_total_steps = int(
+            np.ceil((time_steps[-1] - time_steps[0]) / self.control_dt)  # type: ignore
+        )
+        left_foot_pos_traj = np.zeros((num_total_steps, 3), dtype=np.float32)  # type: ignore
+        left_foot_ori_traj = np.zeros((num_total_steps, 3), dtype=np.float32)  # type: ignore
+        right_foot_pos_traj = np.zeros((num_total_steps, 3), dtype=np.float32)  # type: ignore
+        right_foot_ori_traj = np.zeros((num_total_steps, 3), dtype=np.float32)  # type: ignore
+        stance_mask_traj = np.zeros((num_total_steps, 2), dtype=np.float32)  # type: ignore
         step_curr = 0
         for i in range(len(time_steps) - 1):
-            if i == len(time_steps) - 2:
-                # For the last interval, ensure the total number of steps is exactly N
-                num_steps = N - step_curr
-            else:
-                num_steps = int((time_steps[i + 1] - time_steps[i]) / self.control_dt)
+            num_steps = round((time_steps[i + 1] - time_steps[i]) / self.control_dt)
+            if num_steps + step_curr > num_total_steps:
+                num_steps = num_total_steps - step_curr
 
             stance_mask = np.tile(np.ones(2, dtype=np.float32), (num_steps, 1))  # type: ignore
             if i % 2 == 0:  # Double support
@@ -416,7 +442,7 @@ class WalkZMPReference(MotionReference):
                 if support_leg_next == 2:
                     offset = np.array(  # type: ignore
                         [
-                            -np.sin(footsteps[i][2]) * self.foot_to_com_y,
+                            -np.sin(footsteps[i][2]) * self.foot_to_com_y,  # type: ignore
                             np.cos(footsteps[i][2]) * self.foot_to_com_y,  # type: ignore
                         ]
                     ) * (-1 if support_leg_curr == 1 else 1)
@@ -437,7 +463,7 @@ class WalkZMPReference(MotionReference):
                 up_delta = self.footstep_height / (num_steps // 2 - 1)
                 up_traj = up_delta * np.concatenate(  # type: ignore
                     (
-                        np.arange(num_steps // 2, dtype=np.float32),
+                        np.arange(num_steps // 2, dtype=np.float32),  # type: ignore
                         np.arange(  # type: ignore
                             num_steps - num_steps // 2 - 1, -1, -1, dtype=np.float32
                         ),
@@ -446,13 +472,20 @@ class WalkZMPReference(MotionReference):
                 pos_delta = (target_pos - current_pos) / num_steps
                 foot_pos_traj = current_pos + pos_delta * np.arange(num_steps)[:, None]  # type: ignore
                 foot_pos_traj = inplace_update(
-                    foot_pos_traj, (slice(None), swing_leg * 3 + 2), up_traj
+                    foot_pos_traj,  # type: ignore
+                    (slice(None), swing_leg * 3 + 2),
+                    up_traj,
                 )
 
+                # TODO: check this
                 ori_delta = (target_ori - current_ori) / num_steps
                 foot_ori_traj = current_ori + ori_delta * np.arange(num_steps)[:, None]  # type: ignore
-
-                stance_mask = inplace_update(stance_mask, (slice(None), swing_leg), 0)
+                foot_ori_traj = inplace_update(
+                    foot_ori_traj,  # type: ignore
+                    (slice(None), swing_leg * 3 + 2),
+                    np.zeros(num_steps, dtype=np.float32),  # type: ignore
+                )
+                stance_mask = inplace_update(stance_mask, (slice(None), swing_leg), 0)  # type: ignore
 
             slice_curr = slice(step_curr, step_curr + num_steps)
             left_foot_pos_traj = inplace_update(
@@ -568,7 +601,7 @@ class WalkZMPReference(MotionReference):
         if side == "left":
             return np.vstack(  # type: ignore
                 [
-                    hip_yaw,
+                    -hip_yaw,
                     -hip_roll,
                     hip_pitch,
                     knee_pitch,
@@ -579,7 +612,7 @@ class WalkZMPReference(MotionReference):
         else:
             return np.vstack(  # type: ignore
                 [
-                    hip_yaw,
+                    -hip_yaw,
                     hip_roll,
                     -hip_pitch,
                     -knee_pitch,  # type: ignore

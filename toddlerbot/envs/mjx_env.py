@@ -145,18 +145,24 @@ class MuJoCoEnv(PipelineEnv):
             list(self.robot.default_motor_angles.values())
         )
 
-        if "walk" in self.name:
-            from toddlerbot.ref_motion.walk_zmp_ref import WalkZMPReference
+        with jax.disable_jit():
+            if "walk" in self.name:
+                from toddlerbot.ref_motion.walk_zmp_ref import WalkZMPReference
 
-            self.motion_ref = WalkZMPReference(
-                self.robot,
-                default_joint_pos=jnp.array(  # type:ignore
-                    list(self.robot.default_joint_angles.values())
-                ),
-                control_dt=float(self.dt),
-            )
-        else:
-            raise ValueError(f"Unknown env {self.name}")
+                self.motion_ref = WalkZMPReference(
+                    self.robot,
+                    [
+                        self.cfg.commands.ranges.lin_vel_x,
+                        self.cfg.commands.ranges.lin_vel_y,
+                        self.cfg.commands.ranges.ang_vel_yaw,
+                    ],
+                    default_joint_pos=jnp.array(  # type:ignore
+                        list(self.robot.default_joint_angles.values())
+                    ),
+                    control_dt=float(self.dt),
+                )
+            else:
+                raise ValueError(f"Unknown env {self.name}")
 
         # commands
         # x vel, y vel, yaw vel, heading
