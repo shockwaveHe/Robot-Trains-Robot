@@ -772,7 +772,7 @@
             "group": "leg",
             "lower_limit": -0.7853981633974483,
             "upper_limit": 0.7853981633974483,
-            "damping": 0.974,
+            "damping": 0.923,
             "armature": 0.0,
             "frictionloss": 0.0
         },
@@ -942,7 +942,7 @@
             "group": "leg",
             "lower_limit": -0.7853981633974483,
             "upper_limit": 0.7853981633974483,
-            "damping": 0.913,
+            "damping": 0.891,
             "armature": 0.0,
             "frictionloss": 0.0
         },

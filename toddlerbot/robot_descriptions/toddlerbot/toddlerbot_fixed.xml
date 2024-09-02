@@ -126,7 +126,7 @@
         </body>
         <body name="spur_gear_21_teeth" pos="-0.037 0.0411 -0.0195" quat="0.5 -0.5 -0.5 -0.5">
           <inertial pos="-2.5316e-11 0 0.0141855" quat="0.5 0.5 0.5 0.5" mass="0.0190063" diaginertia="7.83675e-06 7.7816e-06 2.81558e-06" />
-          <joint name="left_hip_yaw_driven" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.431" armature="0.001" />
+          <joint name="left_hip_yaw_driven" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.45" armature="0.001" />
           <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="spur_gear_21_teeth_visual" class="visual" />
           <geom pos="0 0 0.005" quat="0 1 0 0" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="left_hip_yaw_link_visual" class="visual" />
           <body name="hip_roll_link" pos="0.019 0 0.031" quat="-0.707107 0 -0.707107 0">
@@ -157,7 +157,7 @@
                   <geom type="mesh" rgba="0.631892 0.726687 0.783564 1" mesh="left_ank_pitch_link_visual" class="visual" />
                   <body name="ank_roll_link" pos="0.0015 0 0" quat="0.707107 0 0.707107 0">
                     <inertial pos="-3.22063e-10 0.0304877 0.00477926" quat="0.706988 -0.0129711 0.0129711 0.706988" mass="0.0272" diaginertia="2.53038e-05 2.29435e-05 5.07044e-06" />
-                    <joint name="left_ank_roll" pos="0 0 0" axis="0 0 1" range="-0.785398 0.785398" damping="0.974" armature="0.0" />
+                    <joint name="left_ank_roll" pos="0 0 0" axis="0 0 1" range="-0.785398 0.785398" damping="0.923" armature="0.0" />
                     <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="left_ank_roll_link_visual" class="visual" />
                     <geom name="ank_roll_link_collision" size="0.021 0.0225 0.06" pos="0 0.0165 0.0084" type="box" rgba="0.615686 0.811765 0.929412 1" class="collision" />
                     <body name="ank_rr_link" pos="-0.018 0.016 -0.0206" quat="0.00911142 0 0 0.999958">
@@ -218,7 +218,7 @@
         </body>
         <body name="spur_gear_21_teeth_2" pos="0.037 0.0411 -0.0195" quat="0.5 -0.5 -0.5 -0.5">
           <inertial pos="-2.5316e-11 0 0.014186" quat="0.5 0.5 0.5 0.5" mass="0.0190063" diaginertia="7.83649e-06 7.7816e-06 2.81532e-06" />
-          <joint name="right_hip_yaw_driven" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.403" armature="0.001" />
+          <joint name="right_hip_yaw_driven" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.45" armature="0.001" />
           <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="spur_gear_21_teeth_2_visual" class="visual" />
           <geom pos="0 0 0.005" quat="0 -1 0 0" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="right_hip_yaw_link_visual" class="visual" />
           <body name="hip_roll_link_2" pos="-0.019 0 0.031" quat="0 -0.707107 0 0.707107">
@@ -249,7 +249,7 @@
                   <geom type="mesh" rgba="0.631892 0.726687 0.783564 1" mesh="right_ank_pitch_link_visual" class="visual" />
                   <body name="ank_roll_link_2" pos="0.0015 0 0" quat="0.707107 0 0.707107 0">
                     <inertial pos="-3.22063e-10 0.0304877 0.00477926" quat="0.706988 -0.0129711 0.0129711 0.706988" mass="0.0272" diaginertia="2.53038e-05 2.29435e-05 5.07044e-06" />
-                    <joint name="right_ank_roll" pos="0 0 0" axis="0 0 1" range="-0.785398 0.785398" damping="0.913" armature="0.0" />
+                    <joint name="right_ank_roll" pos="0 0 0" axis="0 0 1" range="-0.785398 0.785398" damping="0.891" armature="0.0" />
                     <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="right_ank_roll_link_visual" class="visual" />
                     <geom name="ank_roll_link_2_collision" size="0.021 0.0225 0.06" pos="0 0.0165 0.0084" type="box" rgba="0.615686 0.811765 0.929412 1" class="collision" />
                     <body name="ank_rr_link_3" pos="0.018 0.016 -0.0206" quat="0.999958 0 0 0.00911142">
