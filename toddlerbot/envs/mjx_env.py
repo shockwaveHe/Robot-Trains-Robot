@@ -24,6 +24,7 @@ class MuJoCoEnv(PipelineEnv):
         robot: Robot,
         fixed_base: bool = False,
         fixed_command: Optional[jax.Array] = None,
+        ref_motion_name: str = "walk_simple",
         **kwargs: Any,
     ):
         self.name = name
@@ -31,6 +32,7 @@ class MuJoCoEnv(PipelineEnv):
         self.robot = robot
         self.fixed_base = fixed_base
         self.fixed_command = fixed_command
+        self.ref_motion_name = ref_motion_name
 
         if fixed_base:
             xml_path = find_robot_file_path(robot.name, suffix="_fixed_scene.xml")
@@ -115,7 +117,7 @@ class MuJoCoEnv(PipelineEnv):
             # Disregard the free joint
             self.joint_indices -= 1
 
-        joint_groups = np.array(
+        joint_groups = np.array(  # type:ignore
             [self.robot.joint_groups[name] for name in self.robot.joint_ordering]
         )
         self.leg_joint_indices = self.joint_indices[joint_groups == "leg"]
@@ -130,7 +132,7 @@ class MuJoCoEnv(PipelineEnv):
             ]
         )
         self.motor_indices = jnp.array(motor_indices)  # type:ignore
-        motor_groups = np.array(
+        motor_groups = np.array(  # type:ignore
             [self.robot.joint_groups[name] for name in self.robot.motor_ordering]
         )
         self.leg_motor_indices = self.motor_indices[motor_groups == "leg"]
@@ -159,6 +161,7 @@ class MuJoCoEnv(PipelineEnv):
         self.resample_steps = int(self.resample_time / self.dt)
 
         # observation
+        self.ref_start_idx = 7 + 6
         self.state_ref_size = 7 + 6 + 2 * self.nu + 2
         self.num_obs_history = self.cfg.obs.frame_stack
         self.num_privileged_obs_history = self.cfg.obs.c_frame_stack
@@ -202,7 +205,16 @@ class MuJoCoEnv(PipelineEnv):
         # )
 
         with jax.disable_jit():
-            if "walk" in self.name:
+            if self.ref_motion_name == "walk_simple":
+                from toddlerbot.ref_motion.walk_simple_ref import WalkSimpleReference
+
+                self.motion_ref = WalkSimpleReference(
+                    self.robot,
+                    default_joint_pos=jnp.array(  # type:ignore
+                        list(self.robot.default_joint_angles.values())
+                    ),
+                )
+            elif self.ref_motion_name == "walk_zmp":
                 from toddlerbot.ref_motion.walk_zmp_ref import WalkZMPReference
 
                 self.motion_ref = WalkZMPReference(
@@ -503,7 +515,10 @@ class MuJoCoEnv(PipelineEnv):
         motor_vel = pipeline_state.qd[self.qd_start_idx + self.motor_indices]
 
         joint_pos = pipeline_state.q[self.q_start_idx + self.joint_indices]
-        joint_pos_error = joint_pos - info["state_ref"][13 : 13 + self.nu]
+        joint_pos_error = (
+            joint_pos
+            - info["state_ref"][self.ref_start_idx : self.ref_start_idx + self.nu]
+        )
 
         torso_quat = pipeline_state.x.rot[0]
         torso_lin_vel = math.rotate(pipeline_state.xd.vel[0], math.quat_inv(torso_quat))
@@ -667,7 +682,9 @@ class MuJoCoEnv(PipelineEnv):
     ) -> jax.Array:
         """Reward for tracking leg joint positions"""
         joint_pos = pipeline_state.q[self.q_start_idx + self.leg_joint_indices]
-        joint_pos_ref = info["state_ref"][13 + self.leg_joint_ref_indices]
+        joint_pos_ref = info["state_ref"][
+            self.ref_start_idx + self.leg_joint_ref_indices
+        ]
         error = joint_pos - joint_pos_ref
         reward = -jnp.mean(error**2)  # type:ignore
         return reward
@@ -677,7 +694,9 @@ class MuJoCoEnv(PipelineEnv):
     ) -> jax.Array:
         """Reward for tracking leg joint velocities"""
         joint_vel = pipeline_state.qd[self.qd_start_idx + self.leg_joint_indices]
-        joint_vel_ref = info["state_ref"][13 + self.nu + self.leg_joint_ref_indices]
+        joint_vel_ref = info["state_ref"][
+            self.ref_start_idx + self.nu + self.leg_joint_ref_indices
+        ]
         error = joint_vel - joint_vel_ref
         reward = -jnp.mean(error**2)  # type:ignore
         return reward
@@ -687,7 +706,9 @@ class MuJoCoEnv(PipelineEnv):
     ) -> jax.Array:
         """Reward for tracking arm joint positions"""
         joint_pos = pipeline_state.q[self.q_start_idx + self.arm_joint_indices]
-        joint_pos_ref = info["state_ref"][13 + self.arm_joint_ref_indices]
+        joint_pos_ref = info["state_ref"][
+            self.ref_start_idx + self.arm_joint_ref_indices
+        ]
         error = joint_pos - joint_pos_ref
         reward = -jnp.mean(error**2)  # type:ignore
         return reward
@@ -697,7 +718,9 @@ class MuJoCoEnv(PipelineEnv):
     ) -> jax.Array:
         """Reward for tracking arm joint velocities"""
         joint_vel = pipeline_state.qd[self.qd_start_idx + self.arm_joint_indices]
-        joint_vel_ref = info["state_ref"][13 + self.nu + self.arm_joint_ref_indices]
+        joint_vel_ref = info["state_ref"][
+            self.ref_start_idx + self.nu + self.arm_joint_ref_indices
+        ]
         error = joint_vel - joint_vel_ref
         reward = -jnp.mean(error**2)  # type:ignore
         return reward
@@ -707,7 +730,9 @@ class MuJoCoEnv(PipelineEnv):
     ) -> jax.Array:
         """Reward for tracking neck joint positions"""
         joint_pos = pipeline_state.q[self.q_start_idx + self.neck_joint_indices]
-        joint_pos_ref = info["state_ref"][13 + self.neck_joint_ref_indices]
+        joint_pos_ref = info["state_ref"][
+            self.ref_start_idx + self.neck_joint_ref_indices
+        ]
         error = joint_pos - joint_pos_ref
         reward = -jnp.mean(error**2)  # type:ignore
         return reward
@@ -717,7 +742,9 @@ class MuJoCoEnv(PipelineEnv):
     ) -> jax.Array:
         """Reward for tracking neck joint velocities"""
         joint_vel = pipeline_state.qd[self.qd_start_idx + self.neck_joint_indices]
-        joint_vel_ref = info["state_ref"][13 + self.nu + self.neck_joint_ref_indices]
+        joint_vel_ref = info["state_ref"][
+            self.ref_start_idx + self.nu + self.neck_joint_ref_indices
+        ]
         error = joint_vel - joint_vel_ref
         reward = -jnp.mean(error**2)  # type:ignore
         return reward
@@ -727,7 +754,9 @@ class MuJoCoEnv(PipelineEnv):
     ) -> jax.Array:
         """Reward for tracking waist joint positions"""
         joint_pos = pipeline_state.q[self.q_start_idx + self.waist_joint_indices]
-        joint_pos_ref = info["state_ref"][13 + self.waist_joint_ref_indices]
+        joint_pos_ref = info["state_ref"][
+            self.ref_start_idx + self.waist_joint_ref_indices
+        ]
         error = joint_pos - joint_pos_ref
         reward = -jnp.mean(error**2)  # type:ignore
         return reward
@@ -737,7 +766,9 @@ class MuJoCoEnv(PipelineEnv):
     ) -> jax.Array:
         """Reward for tracking waist joint velocities"""
         joint_vel = pipeline_state.qd[self.qd_start_idx + self.waist_joint_indices]
-        joint_vel_ref = info["state_ref"][13 + self.nu + self.waist_joint_ref_indices]
+        joint_vel_ref = info["state_ref"][
+            self.ref_start_idx + self.nu + self.waist_joint_ref_indices
+        ]
         error = joint_vel - joint_vel_ref
         reward = -jnp.mean(error**2)  # type:ignore
         return reward

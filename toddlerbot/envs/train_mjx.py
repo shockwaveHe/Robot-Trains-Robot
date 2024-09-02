@@ -354,6 +354,12 @@ if __name__ == "__main__":
         help="The name of the env.",
     )
     parser.add_argument(
+        "--ref",
+        type=str,
+        default="walk_zmp",
+        help="The name of the env.",
+    )
+    parser.add_argument(
         "--eval",
         type=str,
         default="",
@@ -402,15 +408,20 @@ if __name__ == "__main__":
         raise ValueError(f"Unknown env: {args.env}")
 
     # Need to a separate env for evaluation, otherwise the domain randomization will cause tracer leak errors.
-    env = MuJoCoEnv(args.env, cfg, robot, fixed_base="fixed" in args.env)
-    eval_env = MuJoCoEnv(args.env, cfg, robot, fixed_base="fixed" in args.env)
+    env = MuJoCoEnv(
+        args.env, cfg, robot, fixed_base="fixed" in args.env, ref_motion_name=args.ref
+    )
+    eval_env = MuJoCoEnv(
+        args.env, cfg, robot, fixed_base="fixed" in args.env, ref_motion_name=args.ref
+    )
 
     test_env = MuJoCoEnv(
         args.env,
         cfg,
         robot,
-        fixed_command=test_command,
         fixed_base="fixed" in args.env,
+        fixed_command=test_command,
+        ref_motion_name=args.ref,
     )
 
     make_networks_factory = functools.partial(

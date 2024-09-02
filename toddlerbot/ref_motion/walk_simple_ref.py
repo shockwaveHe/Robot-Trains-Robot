@@ -44,7 +44,6 @@ class WalkSimpleReference(MotionReference):
         phase: Optional[float | ArrayType] = None,
         command: Optional[ArrayType] = None,
     ) -> ArrayType:
-        # TODO: move cycle_time to this function
         if phase is None:
             raise ValueError(f"phase is required for {self.name}")
 
