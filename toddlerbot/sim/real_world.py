@@ -201,16 +201,22 @@ class RealWorld(BaseSim):
     # @profile()
     def set_motor_angles(self, motor_angles: Dict[str, float]):
         # Directions are tuned to match the assembly of the robot.
-        motor_angles_negated: Dict[str, float] = {}
+        joints_config = self.robot.config["joints"]
+
+        motor_angles_updated: Dict[str, float] = {}
         for name, angle in motor_angles.items():
+            transmission = joints_config[name]["transmission"]
+            if transmission == "gears":
+                angle *= joints_config[name]["gear_ratio"]
+
             if name in self.negated_motor_names:
-                motor_angles_negated[name] = -angle
+                motor_angles_updated[name] = -angle
             else:
-                motor_angles_negated[name] = angle
+                motor_angles_updated[name] = angle
 
         if self.has_dynamixel:
             dynamixel_pos = [
-                motor_angles_negated[k]
+                motor_angles_updated[k]
                 for k in self.robot.get_joint_attrs("type", "dynamixel")
             ]
             self.executor.submit(
@@ -219,7 +225,7 @@ class RealWorld(BaseSim):
 
         if self.has_sunny_sky:
             sunny_sky_pos = [
-                motor_angles_negated[k]
+                motor_angles_updated[k]
                 for k in self.robot.get_joint_attrs("type", "sunny_sky")
             ]
             self.executor.submit(

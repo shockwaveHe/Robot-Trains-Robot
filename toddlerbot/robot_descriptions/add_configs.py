@@ -10,8 +10,6 @@ def get_default_config(
     general_config: Dict[str, Any],
     motor_config: Dict[str, Dict[str, Any]],
     joint_dyn_config: Dict[str, Dict[str, float]],
-    kp: float = 2400.0,
-    kd: float = 2400.0,
 ):
     # Define the URDF file path
     config_dict: Dict[str, Dict[str, Any]] = {"general": general_config}
@@ -121,12 +119,12 @@ def get_default_config(
                 if "default_pos" in motor_config[joint_name]
                 else 0.0
             )
-            joint_dict["kp_real"] = kp
+            joint_dict["kp_real"] = motor_config[joint_name]["kp"]
             joint_dict["ki_real"] = 0.0
-            joint_dict["kd_real"] = kd
+            joint_dict["kd_real"] = motor_config[joint_name]["kd"]
             joint_dict["kff2_real"] = 0.0
             joint_dict["kff1_real"] = 0.0
-            joint_dict["kp_sim"] = kp / 128
+            joint_dict["kp_sim"] = motor_config[joint_name]["kp"] / 128  # TODO: Update
             joint_dict["kd_sim"] = 0.0
 
             if joint_name in joint_dyn_config:
