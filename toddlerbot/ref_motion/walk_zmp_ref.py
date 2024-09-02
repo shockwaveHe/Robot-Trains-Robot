@@ -93,7 +93,7 @@ class WalkZMPReference(MotionReference):
         nearest_command_idx = np.argmin(  # type: ignore
             np.linalg.norm(self.lookup_keys - command, axis=1)  # type: ignore
         )
-        idx = (phase / self.control_dt).astype(int)  # type: ignore
+        idx = (phase * self.cycle_time / self.control_dt).astype(int)  # type: ignore
 
         joint_pos = self.default_joint_pos.copy()  # type: ignore
         joint_pos = np.where(  # type: ignore
