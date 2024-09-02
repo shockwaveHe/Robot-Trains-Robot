@@ -9,9 +9,6 @@ from transforms3d.euler import euler2quat  # type: ignore
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.math_utils import round_to_sig_digits
 
-# TODO: Implement the actuator model of MuJoCo in IsaacGym. How should I do frictionloss?
-# What's the activation parameter? Damping and armature are known.
-
 
 def find_root_link_name(root: ET.Element):
     child_links = {joint.find("child").get("link") for joint in root.findall("joint")}  # type: ignore

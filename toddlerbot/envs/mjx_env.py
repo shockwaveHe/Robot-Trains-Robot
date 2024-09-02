@@ -354,7 +354,7 @@ class MuJoCoEnv(PipelineEnv):
         """Runs one timestep of the environment's dynamics."""
         rng, cmd_rng, _ = jax.random.split(state.info["rng"], 3)  # type:ignore
 
-        # TODO: add push
+        # TODO: Add push
         # push_interval = 10
         # kick_theta = jax.random.uniform(kick_noise_2, maxval=2 * jp.pi)
         # kick = jp.array([jp.cos(kick_theta), jp.sin(kick_theta)])
