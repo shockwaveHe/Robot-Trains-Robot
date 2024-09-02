@@ -393,6 +393,7 @@ if __name__ == "__main__":
             num_timesteps=10_000_000,
             num_evals=100,
             transition_steps=1_000_000,
+            learning_rate=1e-4,
         )
         # test_command = jnp.array([0.0, 0.0, 0.0])  # type:ignore
         test_command = jnp.array([0.3, 0.0, 0.0])  # type:ignore
