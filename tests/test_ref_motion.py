@@ -27,7 +27,7 @@ def test_walk_ref(robot: Robot, sim: MuJoCoSim, walk_ref: MotionReference):
         np.array([0, 0, 0], dtype=np.float32),
     ]
     duration = 10
-    dt = float(walk_ref.control_dt / walk_ref.cycle_time)  # type: ignore
+    dt = float(sim.control_dt / walk_ref.cycle_time)  # type: ignore
     try:
         for command in command_list:
             for phase in tqdm(
@@ -93,11 +93,16 @@ if __name__ == "__main__":
     else:
         raise ValueError("Unknown simulator")
 
+    from toddlerbot.envs.mjx_config import MJXConfig
+
+    cfg = MJXConfig()
+
     if args.ref == "simple":
         from toddlerbot.ref_motion.walk_simple_ref import WalkSimpleReference
 
         walk_ref = WalkSimpleReference(
             robot,
+            cfg.action.cycle_time,
             default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
         )
 
@@ -110,10 +115,7 @@ if __name__ == "__main__":
         )
 
     else:
-        from toddlerbot.envs.mjx_config import MJXConfig
         from toddlerbot.ref_motion.walk_zmp_ref import WalkZMPReference
-
-        cfg = MJXConfig()
 
         walk_ref = WalkZMPReference(
             robot,
