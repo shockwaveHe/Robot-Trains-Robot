@@ -812,8 +812,8 @@
             "group": "leg",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
-            "damping": 0.45,
-            "armature": 0.001,
+            "damping": 0.551,
+            "armature": 0.0,
             "frictionloss": 0.0
         },
         "left_knee_back_rev_1": {
@@ -982,8 +982,8 @@
             "group": "leg",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
-            "damping": 0.45,
-            "armature": 0.001,
+            "damping": 0.551,
+            "armature": 0.0,
             "frictionloss": 0.0
         },
         "right_knee_back_rev_1": {
