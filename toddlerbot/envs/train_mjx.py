@@ -406,7 +406,7 @@ if __name__ == "__main__":
         reward_scales.leg_joint_pos = 5.0
         reward_scales.waist_joint_pos = 5.0
         reward_scales.joint_torque = 5e-2
-        reward_scales.joint_acc = 5e-7
+        reward_scales.joint_acc = 5e-6
 
         cfg = MJXConfig(
             rewards=RewardsConfig(healthy_z_range=[-0.2, 0.2], scales=reward_scales)
