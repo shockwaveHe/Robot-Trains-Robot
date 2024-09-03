@@ -23,7 +23,7 @@ def test_walk_ref(robot: Robot, sim: MuJoCoSim, walk_ref: MotionReference):
     command_list = [
         np.array([0.3, 0, 0], dtype=np.float32),
         # np.array([0, -0.1, 0], dtype=np.float32),
-        # np.array([0.0, 0, 0.2], dtype=np.float32),
+        np.array([0.0, 0, 0.2], dtype=np.float32),
         np.array([0, 0, 0], dtype=np.float32),
     ]
     duration = 10
@@ -119,8 +119,8 @@ if __name__ == "__main__":
             robot,
             [
                 cfg.commands.ranges.lin_vel_x,
-                [0.0, 0.0],  # cfg.commands.ranges.lin_vel_y,
-                [0.0, 0.0],  # cfg.commands.ranges.ang_vel_yaw,
+                cfg.commands.ranges.lin_vel_y,
+                cfg.commands.ranges.ang_vel_yaw,
             ],
             cfg.action.cycle_time,
             default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
