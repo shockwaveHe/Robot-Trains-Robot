@@ -1,8 +1,10 @@
 import tkinter as tk
-from tkinter import filedialog, simpledialog, messagebox
+from tkinter import simpledialog, messagebox
 import mujoco
 import mujoco.viewer as viewer
 import os
+from scipy.interpolate import CubicSpline
+import numpy as np
 
 class MuJoCoApp:
     def __init__(self, root):
@@ -19,12 +21,15 @@ class MuJoCoApp:
         self.slider_columns = 4
         
         self.key_frame_dir = "toddlerbot/key_frames"
+        self.qpos_offset = 6
         self.create_widgets()
         self.load_keyframes()
         self.joint_sliders = {}
+        self.load_xml()
     
+
     def create_widgets(self):
-    # Load XML button, Keyframe input, and Record button in one row
+        # Load XML button, Keyframe input, and Record button in one row
         top_frame = tk.Frame(self.root)
         top_frame.pack(pady=5)
 
@@ -53,11 +58,11 @@ class MuJoCoApp:
         self.update_button = tk.Button(self.button_frame, text="Update Keyframe", command=self.update_keyframe)
         self.update_button.grid(row=0, column=3, padx=5, pady=5)
 
-        # self.move_up_button = tk.Button(self.button_frame, text="Move Up", command=self.move_up)
-        # self.move_up_button.grid(row=1, column=0, padx=5, pady=5)
+        self.move_up_button = tk.Button(self.button_frame, text="Move Up", command=self.move_up)
+        self.move_up_button.grid(row=1, column=1, padx=5, pady=5)
 
-        # self.move_down_button = tk.Button(self.button_frame, text="Move Down", command=self.move_down)
-        # self.move_down_button.grid(row=1, column=1, padx=5, pady=5)
+        self.move_down_button = tk.Button(self.button_frame, text="Move Down", command=self.move_down)
+        self.move_down_button.grid(row=1, column=2, padx=5, pady=5)
 
         self.pause_button = tk.Button(self.button_frame, text="Start Simulation", command=self.toggle_simulation)
         self.pause_button.grid(row=0, column=4, padx=5, pady=5)
@@ -66,14 +71,54 @@ class MuJoCoApp:
         # self.gravity_button = tk.Button(self.button_frame, text="Toggle Gravity", command=self.toggle_gravity)
         # self.gravity_button.grid(row=1, column=3, padx=5, pady=5)
 
+        self.sequence_list = []
+        # Horizontal frame to hold both the keyframe list and sequence list
+        self.horizontal_frame = tk.Frame(self.root)
+        self.horizontal_frame.pack(pady=5, fill=tk.BOTH, expand=True)
+
         # Keyframe listbox
-        self.keyframe_listbox = tk.Listbox(self.root)
-        self.keyframe_listbox.pack(pady=5, fill=tk.BOTH, expand=True)
+        self.keyframe_listbox = tk.Listbox(self.horizontal_frame, height=10)
+        self.keyframe_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.keyframe_listbox.bind('<<ListboxSelect>>', self.on_keyframe_select)
+
+        # Sequence list frame to hold keyframes and their arrival times
+        self.sequence_listbox = tk.Listbox(self.horizontal_frame, height=10)
+        self.sequence_listbox.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+        self.sequence_listbox.bind('<<ListboxSelect>>', self.on_sequence_select)
+
 
         # Sliders for joints in three columns
         self.joint_sliders_frame = tk.Frame(self.root)
         self.joint_sliders_frame.pack(pady=10, fill=tk.BOTH, expand=True)
+    
+        self.add_to_sequence_button = tk.Button(self.button_frame, text="Add to Sequence", command=self.add_to_sequence)
+        self.add_to_sequence_button.grid(row=1, column=0, padx=5, pady=5)
+
+        self.update_arrival_time_button = tk.Button(self.button_frame, text="Update Arrival Time", command=self.update_arrival_time)
+        self.update_arrival_time_button.grid(row=1, column=3, padx=5, pady=5)
+
+        self.display_trajectory_button = tk.Button(self.button_frame, text="Display Trajectory", command=self.display_trajectory)
+        self.display_trajectory_button.grid(row=1, column=4, padx=5, pady=5)
+        
+
+        # Total time , Arrival Time, and Interpolation Steps input
+        self.total_time_label = tk.Label(self.button_frame, text="Total time:")
+        self.total_time_label.grid(row=2, column=0, padx=3, pady=5)
+        self.total_time_entry = tk.Entry(self.button_frame, width=5)
+        self.total_time_entry.grid(row=2, column=1, padx=3, pady=5)
+        self.total_time_entry.insert(0, "3")
+
+        self.arrival_time_label = tk.Label(self.button_frame, text="Arrival Time:")
+        self.arrival_time_label.grid(row=2, column=2, padx=3, pady=5)
+        self.arrival_time_entry = tk.Entry(self.button_frame, width=5)
+        self.arrival_time_entry.grid(row=2, column=3, padx=3, pady=5)
+        self.arrival_time_entry.insert(0, "0")
+
+        self.interpolation_steps_label = tk.Label(self.button_frame, text="Interpolation Steps:")
+        self.interpolation_steps_label.grid(row=2, column=4, padx=3, pady=5)
+        self.interpolation_steps_entry = tk.Entry(self.button_frame, width=5)
+        self.interpolation_steps_entry.grid(row=2, column=5, padx=3, pady=5)
+        self.interpolation_steps_entry.insert(0, "300")
     
     def load_xml(self):
         # xml_file = filedialog.askopenfilename(initialdir = "toddlerbot/robot_descriptions/toddlerbot", filetypes=[("XML files", "*.xml")])
@@ -85,6 +130,14 @@ class MuJoCoApp:
             self.create_joint_sliders()
             self.root.after(100, self.update_viewer)
     
+    def load_joint_positions(self, joint_positions: Dict[str, float]):
+        for joint_name, joint_pos in joint_positions.items():
+            self.data.joint(joint_name).qpos = joint_pos
+
+        mujoco.mj_forward(self.model, self.data)
+        self.viewer.sync()
+        self.update_sliders()
+
     def update_viewer(self):
         if self.viewer is not None:
             if not self.paused:
@@ -97,7 +150,7 @@ class MuJoCoApp:
             joint_slider = self.joint_sliders_frame.grid_slaves(row=i//self.slider_columns, column=(i % self.slider_columns) * (self.slider_columns - 1) + 1)
             if joint_slider:
                 slider = joint_slider[0]
-                slider.set(self.data.qpos[i])
+                slider.set(self.data.qpos[i + self.qpos_offset])
 
     def create_joint_sliders(self):
         # Clear existing sliders
@@ -110,8 +163,9 @@ class MuJoCoApp:
         self.joint_sliders.clear()  # Clear the slider dictionary
 
         # Create sliders for each joint in three columns
-        for i in range(self.model.njnt):
+        for i in range(self.model.njnt - self.qpos_offset):
             joint_name = mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_JOINT, i)
+            print(i, joint_name)
             if joint_name is None:
                 continue
             
@@ -139,14 +193,14 @@ class MuJoCoApp:
             slider.bind("<Double-Button-1>", lambda event, idx=i: self.reset_joint(idx))
 
             # Initial value
-            slider.set(self.data.qpos[i])
+            slider.set(self.data.qpos[i + self.qpos_offset])
 
         # Start periodic slider update
         self.update_sliders_periodically()
 
     def update_sliders_periodically(self):
         for i, slider in self.joint_sliders.items():
-            current_value = self.data.qpos[i]
+            current_value = self.data.qpos[i + self.qpos_offset]
             if slider.get() != current_value:
                 slider.set(current_value)
         
@@ -154,17 +208,14 @@ class MuJoCoApp:
         self.root.after(100, self.update_sliders_periodically)
    
     def reset_joint(self, joint_index):
-        initial_position = self.model.qpos0[joint_index]
-        self.data.qpos[joint_index] = initial_position
-        self.data.qvel[joint_index] = 0.0
+        initial_position = self.model.qpos0[joint_index + self.qpos_offset]
+        self.data.qpos[joint_index + self.qpos_offset] = initial_position
+        self.data.qvel[joint_index + self.qpos_offset] = 0.0
         mujoco.mj_forward(self.model, self.data)
         self.viewer.sync()
 
-    # The slider update will be handled by the periodic callback
-
-
     def update_joint_position(self, joint_index, value):
-        self.data.qpos[joint_index] = float(value)
+        self.data.qpos[joint_index + self.qpos_offset] = float(value)
         mujoco.mj_forward(self.model, self.data)
         self.viewer.sync()
 
@@ -185,7 +236,7 @@ class MuJoCoApp:
                 with open(keyframe_path, "r") as f:
                     qpos = [float(line.strip()) for line in f.readlines()]
                     self.keyframes.append((index, keyframe_name, qpos))
-                    self.keyframe_listbox.insert(tk.END, filename[:-4])
+                    self.keyframe_listbox.insert(tk.END, keyframe_name)
         
         if self.keyframes:
             self.current_index = max(index + 1 for index, _, _ in self.keyframes)
@@ -198,14 +249,14 @@ class MuJoCoApp:
             return
         
         keyframe_name = self.keyframe_name_entry.get() or f"Keyframe {self.current_index}"
-        keyframe = (keyframe_name, self.data.qpos.copy())
+        keyframe = (self.current_index, keyframe_name, self.data.qpos.copy()[self.qpos_offset:])
         self.keyframes.append(keyframe)
         self.keyframe_listbox.insert(tk.END, keyframe_name)
 
         # Save keyframe to file
         keyframe_path = os.path.join(self.key_frame_dir, f"{self.current_index}_{keyframe_name}.txt")
         with open(keyframe_path, "w") as f:
-            for value in self.data.qpos:
+            for value in self.data.qpos[self.qpos_offset:]:
                 f.write(f"{value}\n")
         self.current_index += 1
     
@@ -217,7 +268,7 @@ class MuJoCoApp:
     def load_keyframe(self):
         if hasattr(self, 'selected_keyframe'):
             index, keyframe_name, qpos = self.keyframes[self.selected_keyframe]
-            self.data.qpos[:] = qpos
+            self.data.qpos[self.qpos_offset:] = qpos
             mujoco.mj_forward(self.model, self.data)
             self.viewer.sync()
             self.update_sliders()
@@ -235,7 +286,8 @@ class MuJoCoApp:
                 self.update_keyframe_listbox()
     
     def delete_keyframe(self):
-        if hasattr(self, 'selected_keyframe'):
+        # TODO: debug this part
+        if hasattr(self, 'selected_keyframe') and self.keyframe_listbox.curselection():
             index, keyframe_name, _ = self.keyframes[self.selected_keyframe]
             keyframe_file = f"{index}_{keyframe_name}.txt"
             
@@ -258,36 +310,55 @@ class MuJoCoApp:
                 self.keyframes[i] = (new_index, old_name, qpos)
             
             self.update_keyframe_listbox()
+        
+        elif hasattr(self, 'selected_sequence') and self.sequence_listbox.curselection():
+            del self.sequence_list[self.selected_sequence]
+            self.update_sequence_listbox()
     
     def update_keyframe(self):
         if hasattr(self, 'selected_keyframe'):
             index, keyframe_name, _ = self.keyframes[self.selected_keyframe]
-            self.keyframes[self.selected_keyframe] = (index, keyframe_name, self.data.qpos.copy())
+            self.keyframes[self.selected_keyframe] = (index, keyframe_name, self.data.qpos.copy()[self.qpos_offset:])
             
             # Update the keyframe file
             keyframe_path = os.path.join(self.key_frame_dir, f"{index}_{keyframe_name}.txt")
             with open(keyframe_path, "w") as f:
-                for value in self.data.qpos:
+                for value in self.data.qpos[self.qpos_offset:]:
                     f.write(f"{value}\n")
 
     def move_up(self):
-        if hasattr(self, 'selected_keyframe') and self.selected_keyframe > 0:
+        if hasattr(self, 'selected_keyframe') and self.keyframe_listbox.curselection():
             index = self.selected_keyframe
             self.keyframes[index - 1], self.keyframes[index] = self.keyframes[index], self.keyframes[index - 1]
             self.update_keyframe_listbox()
             self.keyframe_listbox.select_set(index - 1)
+        elif hasattr(self, 'selected_sequence') and self.sequence_listbox.curselection():
+            index = self.selected_sequence
+            self.sequence_list[index - 1], self.sequence_list[index] = self.sequence_list[index], self.sequence_list[index - 1]
+            self.update_sequence_listbox()
+            self.sequence_listbox.select_set(index - 1)
     
     def move_down(self):
-        if hasattr(self, 'selected_keyframe') and self.selected_keyframe < len(self.keyframes) - 1:
+        if hasattr(self, 'selected_keyframe') and self.keyframe_listbox.curselection():
             index = self.selected_keyframe
             self.keyframes[index + 1], self.keyframes[index] = self.keyframes[index], self.keyframes[index + 1]
             self.update_keyframe_listbox()
             self.keyframe_listbox.select_set(index + 1)
+        elif hasattr(self, 'selected_sequence') and self.sequence_listbox.curselection():
+            index = self.selected_sequence
+            self.sequence_list[index + 1], self.sequence_list[index] = self.sequence_list[index], self.sequence_list[index + 1]
+            self.update_sequence_listbox()
+            self.sequence_listbox.select_set(index + 1)
     
     def update_keyframe_listbox(self):
         self.keyframe_listbox.delete(0, tk.END)
         for name, _ in self.keyframes:
             self.keyframe_listbox.insert(tk.END, name)
+    
+    def update_sequence_listbox(self):
+        self.sequence_listbox.delete(0, tk.END)
+        for name, _ in self.sequence_list:
+            self.sequence_listbox.insert(tk.END, name)
     
     def toggle_simulation(self):
         if self.data is not None:
@@ -309,6 +380,56 @@ class MuJoCoApp:
 
             mujoco.mj_forward(self.model, self.data)
             self.viewer.sync()
+            
+    def on_sequence_select(self, event):
+        selected_index = self.sequence_listbox.curselection()
+        if selected_index:
+            self.selected_sequence = selected_index[0]
+
+    def add_to_sequence(self):
+        selected_index = self.keyframe_listbox.curselection()
+        if selected_index:
+            keyframe_name = self.keyframe_listbox.get(selected_index)
+            arrival_time = float(self.arrival_time_entry.get())
+            keyframe_name += f" {arrival_time}"
+
+            self.sequence_list.append((keyframe_name, float(self.arrival_time_entry.get())))
+            self.update_sequence_listbox()
+    
+    def update_arrival_time(self):
+        if hasattr(self, 'selected_sequence'):
+            keyframe_name = self.sequence_list[self.selected_sequence][0].rsplit(" ", 1)[0]
+            arrival_time = float(self.arrival_time_entry.get())
+            self.sequence_list[self.selected_sequence] = (f"{keyframe_name} {arrival_time}", arrival_time)
+            self.update_sequence_listbox()
+        
+    def generate_trajectory(self):
+        # Extract positions and arrival times from the sequence
+        positions = []
+        times = []
+        for keyframe_name, arrival_time in self.sequence_list:
+            keyframe_name = keyframe_name.rsplit(" ", 1)[0]
+
+            index = next(i for i, (i, name, _) in enumerate(self.keyframes) if name == keyframe_name)
+            positions.append(self.keyframes[index][2])
+            times.append(arrival_time)
+        
+        positions = np.array(positions)
+        times = np.array(times) * float(self.total_time_entry.get())
+        # Interpolation using cubic spline
+        spline = CubicSpline(times, positions, bc_type='clamped')
+        self.trajectory = [spline(t) for t in np.linspace(0, float(self.total_time_entry.get()), int(self.interpolation_steps_entry.get()))]
+    
+    def display_trajectory(self):
+        if not hasattr(self, 'trajectory'):
+            self.generate_trajectory()
+
+        for qpos in self.trajectory:
+            self.data.qpos[self.qpos_offset:] = qpos
+            mujoco.mj_forward(self.model, self.data)
+            self.viewer.sync()
+            self.root.after(int(float(self.total_time_entry.get()) * 1000 / len(self.trajectory)))
+
 
 if __name__ == "__main__":
     root = tk.Tk()
