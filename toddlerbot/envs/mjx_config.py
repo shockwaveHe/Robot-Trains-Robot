@@ -53,7 +53,7 @@ class RewardScales:
     neck_joint_vel: float = 0.0  # 1e-3
     waist_joint_pos: float = 0.0  # 50.0
     waist_joint_vel: float = 0.0  # 1e-3
-    feet_air_time: float = 10.0
+    feet_air_time: float = 50.0
     feet_clearance: float = 0.0  # 1.0 # Doesn't help
     feet_contact: float = 0.5
     feet_distance: float = 0.5
@@ -77,7 +77,7 @@ class RewardScales:
 class RewardsConfig:
     healthy_z_range: List[float] = field(default_factory=lambda: [0.2, 0.4])
     tracking_sigma: float = 5.0
-    min_feet_distance: float = 0.05
+    min_feet_distance: float = 0.06
     max_feet_distance: float = 0.15
     target_feet_z_delta: float = 0.03
     scales: RewardScales = RewardScales()
