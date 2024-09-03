@@ -56,6 +56,10 @@ def load_datasets(robot: Robot, data_path: str):
 
         last_idx = 0
         for symmetric_name, idx in zip(joint_names, obs_indices):
+            if "waist_yaw" not in symmetric_name:
+                last_idx = idx
+                continue
+
             if symmetric_name in robot.joint_ordering:
                 set_obs_and_action(symmetric_name, slice(last_idx, idx))
             else:
@@ -78,7 +82,7 @@ def optimize_parameters(
     n_iters: int = 1000,
     sampler_name: str = "CMA",
     # gain_range: Tuple[float, float, float] = (0, 50, 0.1),
-    damping_range: Tuple[float, float, float] = (0, 5, 1e-3),
+    damping_range: Tuple[float, float, float] = (0, 10, 1e-3),
     armature_range: Tuple[float, float, float] = (0, 0.1, 1e-3),
     # friction_range: Tuple[float, float, float] = (0, 1.0, 1e-3),
 ):
@@ -187,18 +191,23 @@ def multiprocessing_optimization(
         for joint_name in obs_pos_dict
     ]
 
-    # Create a pool of processes
-    with Pool(processes=len(obs_pos_dict)) as pool:
-        results = pool.starmap(optimize_parameters, optimize_args)
+    # # Create a pool of processes
+    # with Pool(processes=len(obs_pos_dict)) as pool:
+    #     results = pool.starmap(optimize_parameters, optimize_args)
 
-    # Process results
+    # # Process results
+    # for joint_name, result in zip(obs_pos_dict.keys(), results):
+    #     opt_params, opt_values = result
+    #     if len(opt_params) > 0:
+    #         opt_params_dict[joint_name] = opt_params
+    #         opt_values_dict[joint_name] = opt_values
+
     opt_params_dict: Dict[str, Dict[str, float]] = {}
     opt_values_dict: Dict[str, float] = {}
-    for joint_name, result in zip(obs_pos_dict.keys(), results):
-        opt_params, opt_values = result
-        if len(opt_params) > 0:
-            opt_params_dict[joint_name] = opt_params
-            opt_values_dict[joint_name] = opt_values
+    for args in optimize_args:
+        opt_params, opt_values = optimize_parameters(*args)
+        opt_params_dict[args[2]] = opt_params
+        opt_values_dict[args[2]] = opt_values
 
     return opt_params_dict, opt_values_dict
 
