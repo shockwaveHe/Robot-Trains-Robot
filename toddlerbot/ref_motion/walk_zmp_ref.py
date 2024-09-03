@@ -153,13 +153,26 @@ class WalkZMPReference(MotionReference):
 
             # Create linspace arrays for each command range
             linspaces = [
-                np.arange(start, stop + interval, interval)  # type: ignore
+                np.arange(start, stop + interval, interval, dtype=np.float32)  # type: ignore
                 for start, stop in command_ranges
             ]
             # Create a meshgrid
-            meshgrid = np.meshgrid(*linspaces, indexing="ij")  # type: ignore
-            command_spectrum = np.stack(meshgrid, axis=-1).reshape(-1, 3)  # type: ignore
+            # meshgrid = np.meshgrid(*linspaces, indexing="ij")  # type: ignore
+            # command_spectrum = np.stack(meshgrid, axis=-1).reshape(-1, 3)  # type: ignore
             # command_spectrum = np.array([[0.0, 0.0, 0.2]])
+            # Create zero arrays with the same shape as each linspace
+
+            zeros_x = np.zeros_like(linspaces[0])  # type: ignore
+            zeros_y = np.zeros_like(linspaces[1])  # type: ignore
+            zeros_z = np.zeros_like(linspaces[2])  # type: ignore
+
+            command_spectrum_x = np.stack([linspaces[0], zeros_x, zeros_x], axis=1)  # type: ignore
+            command_spectrum_y = np.stack([zeros_y, linspaces[1], zeros_y], axis=1)  # type: ignore
+            command_spectrum_z = np.stack([zeros_z, zeros_z, linspaces[2]], axis=1)  # type: ignore
+            # Concatenate all command spectrums
+            command_spectrum = np.concatenate(  # type: ignore
+                [command_spectrum_x, command_spectrum_y, command_spectrum_z], axis=0
+            )
             for command in tqdm(command_spectrum, desc="Building Lookup Table"):
                 # if np.linalg.norm(command) < 1e-6:  # type: ignore
                 #     continue

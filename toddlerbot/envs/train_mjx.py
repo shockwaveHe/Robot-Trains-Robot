@@ -323,7 +323,11 @@ def evaluate(
         env.obs_size, env.privileged_obs_size, env.action_size
     )
     make_policy = ppo_networks.make_inference_fn(ppo_network)  # type: ignore
-    params = model.load_params(os.path.join("results", run_name, "policy"))
+    policy_path = os.path.join("results", run_name, "best_policy")
+    if not os.path.exists(policy_path):
+        policy_path = os.path.join("results", run_name, "policy")
+
+    params = model.load_params(policy_path)
     inference_fn = make_policy(params)
 
     # initialize the state
@@ -402,19 +406,21 @@ if __name__ == "__main__":
             RewardScales(),
             **{field: 0.0 for field in RewardScales.__dataclass_fields__},
         )
-        reward_scales.feet_distance = 0.5
+        # reward_scales.feet_distance = 0.5
         reward_scales.leg_joint_pos = 5.0
         reward_scales.waist_joint_pos = 5.0
         reward_scales.joint_torque = 5e-2
-        reward_scales.joint_acc = 5e-7
+        reward_scales.joint_acc = 5e-6
+        reward_scales.leg_action_rate = 1e-2
+        reward_scales.leg_action_acc = 1e-2
 
         cfg = MJXConfig(
             rewards=RewardsConfig(healthy_z_range=[-0.2, 0.2], scales=reward_scales)
         )
         train_cfg = PPOConfig(
-            num_timesteps=20_000_000,
-            num_evals=200,
-            transition_steps=2_000_000,
+            num_timesteps=10_000_000,
+            num_evals=100,
+            transition_steps=1_000_000,
             learning_rate=1e-4,
         )
         # test_command = jnp.array([0.0, 0.0, 0.0])  # type:ignore

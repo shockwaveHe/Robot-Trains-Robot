@@ -209,6 +209,7 @@ def add_keyframes(
         qpos_str += "0 0 0 0 "
         ctrl_str += "0 0 "
 
+    # TODO: Read from config
     if has_lower_body:  # waist and legs
         qpos_str += (
             "0 0 0 0 "
@@ -223,12 +224,12 @@ def add_keyframes(
 
     if has_upper_body:  # arms
         qpos_str += (
-            "0.174533 -0.261799 0 -1.0472 0.523599 0 -0.523599 -1.0472 0 0 "
-            + "-0.174533 -0.261799 0 1.0472 0.523599 0 0.523599 1.0472 0 0"
+            "0.174533 -0.261799 0 1.0472 0.523599 0 0.523599 1.0472 0 0 "
+            + "-0.174533 -0.261799 0 -1.0472 0.523599 0 -0.523599 -1.0472 0 0"
         )
         ctrl_str += (
-            "0.174533 -0.261799 -1.0472 0.523599 -0.523599 -1.0472 0 "
-            + "-0.174533 -0.261799 1.0472 0.523599 0.523599 1.0472 0"
+            "0.174533 -0.261799 1.0472 0.523599 0.523599 1.0472 0 "
+            + "-0.174533 -0.261799 -1.0472 0.523599 -0.523599 -1.0472 0"
         )
 
     ET.SubElement(keyframe, "key", {"name": "home", "qpos": qpos_str, "ctrl": ctrl_str})
@@ -480,12 +481,14 @@ def add_gear_constraints(
             if joint_driven is None:
                 raise ValueError(f"The driven joint {joint_driven_name} is not found")
 
-            gear_ratio = round_to_sig_digits(joints_config[joint_name]["gear_ratio"], 6)
+            gear_ratio = round_to_sig_digits(
+                -1 / joints_config[joint_name]["gear_ratio"], 6
+            )
             ET.SubElement(
                 equality,
                 "joint",
-                joint1=joint_name,
-                joint2=joint_driven_name,
+                joint1=joint_driven_name,
+                joint2=joint_name,
                 polycoef=f"0 {gear_ratio} 0 0 0",
                 solimp="0.9999 0.9999 0.001 0.5 2",
                 solref=f"{general_config['solref'][0]} {general_config['solref'][1]}",
@@ -504,39 +507,39 @@ def add_actuators_to_mjcf(root: ET.Element, joints_config: Dict[str, Any]):
         if "spec" not in joint_config:
             continue
 
-        transmission = joint_config["transmission"]
-        if transmission == "gears":
-            joint_driven_name = joint_name.replace("_drive", "_driven")
-            joint_driven: ET.Element | None = root.find(
-                f".//joint[@name='{joint_driven_name}']"
-            )
-            if joint_driven is None:
-                raise ValueError(f"The driven joint {joint_driven_name} is not found")
+        # transmission = joint_config["transmission"]
+        # if transmission == "gears":
+        #     joint_driven_name = joint_name.replace("_drive", "_driven")
+        #     joint_driven: ET.Element | None = root.find(
+        #         f".//joint[@name='{joint_driven_name}']"
+        #     )
+        #     if joint_driven is None:
+        #         raise ValueError(f"The driven joint {joint_driven_name} is not found")
 
-            position = ET.SubElement(
-                actuator,
-                "position",
-                name=joint_name,
-                joint=joint_driven_name,
-                kp=str(joints_config[joint_name]["kp_sim"]),
-                gear=str(
-                    round_to_sig_digits(1 / joints_config[joint_name]["gear_ratio"], 6)
-                ),
-                ctrlrange=joint_driven.get("range", "-3.141592 3.141592"),
-            )
-        else:
-            joint: ET.Element | None = root.find(f".//joint[@name='{joint_name}']")
-            if joint is None:
-                raise ValueError(f"The joint {joint_name} is not found")
+        #     position = ET.SubElement(
+        #         actuator,
+        #         "position",
+        #         name=joint_name,
+        #         joint=joint_driven_name,
+        #         kp=str(joints_config[joint_name]["kp_sim"]),
+        #         gear=str(
+        #             round_to_sig_digits(1 / joints_config[joint_name]["gear_ratio"], 6)
+        #         ),
+        #         ctrlrange=joint_driven.get("range", "-3.141592 3.141592"),
+        #     )
+        # else:
+        joint: ET.Element | None = root.find(f".//joint[@name='{joint_name}']")
+        if joint is None:
+            raise ValueError(f"The joint {joint_name} is not found")
 
-            position = ET.SubElement(
-                actuator,
-                "position",
-                name=joint_name,
-                joint=joint_name,
-                kp=str(joints_config[joint_name]["kp_sim"]),
-                ctrlrange=joint.get("range", "-3.141592 3.141592"),
-            )
+        position = ET.SubElement(
+            actuator,
+            "position",
+            name=joint_name,
+            joint=joint_name,
+            kp=str(joints_config[joint_name]["kp_sim"]),
+            ctrlrange=joint.get("range", "-3.141592 3.141592"),
+        )
 
         position.set("class", joints_config[joint_name]["spec"])
 

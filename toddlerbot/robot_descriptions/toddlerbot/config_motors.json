@@ -132,7 +132,7 @@
     "left_sho_yaw_drive": {
         "motor": "2XL430",
         "init_pos": 3.7858645915985107,
-        "default_pos": -1.0472,
+        "default_pos": 1.0472,
         "kp": 2400.0,
         "kd": 2400.0
     },
@@ -146,14 +146,14 @@
     "left_elbow_yaw_drive": {
         "motor": "2XL430",
         "init_pos": 6.137456893920898,
-        "default_pos": -0.523599,
+        "default_pos": 0.523599,
         "kp": 2400.0,
         "kd": 2400.0
     },
     "left_wrist_roll_drive": {
         "motor": "2XL430",
         "init_pos": 0.8958447575569153,
-        "default_pos": -1.0472,
+        "default_pos": 1.0472,
         "kp": 2400.0,
         "kd": 2400.0
     },
@@ -181,7 +181,7 @@
     "right_sho_yaw_drive": {
         "motor": "2XL430",
         "init_pos": 1.6965827941894531,
-        "default_pos": 1.0472,
+        "default_pos": -1.0472,
         "kp": 2400.0,
         "kd": 2400.0
     },
@@ -195,14 +195,14 @@
     "right_elbow_yaw_drive": {
         "motor": "2XL430",
         "init_pos": 5.879748344421387,
-        "default_pos": 0.523599,
+        "default_pos": -0.523599,
         "kp": 2400.0,
         "kd": 2400.0
     },
     "right_wrist_roll_drive": {
         "motor": "2XL430",
         "init_pos": 3.041883945465088,
-        "default_pos": 1.0472,
+        "default_pos": -1.0472,
         "kp": 2400.0,
         "kd": 2400.0
     },
