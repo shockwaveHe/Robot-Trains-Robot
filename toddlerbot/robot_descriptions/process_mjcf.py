@@ -209,6 +209,7 @@ def add_keyframes(
         qpos_str += "0 0 0 0 "
         ctrl_str += "0 0 "
 
+    # TODO: Read from config
     if has_lower_body:  # waist and legs
         qpos_str += (
             "0 0 0 0 "

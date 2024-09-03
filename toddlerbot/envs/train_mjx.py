@@ -402,7 +402,7 @@ if __name__ == "__main__":
             RewardScales(),
             **{field: 0.0 for field in RewardScales.__dataclass_fields__},
         )
-        reward_scales.feet_distance = 0.5
+        # reward_scales.feet_distance = 0.5
         reward_scales.leg_joint_pos = 5.0
         reward_scales.waist_joint_pos = 5.0
         reward_scales.joint_torque = 5e-2
@@ -412,9 +412,9 @@ if __name__ == "__main__":
             rewards=RewardsConfig(healthy_z_range=[-0.2, 0.2], scales=reward_scales)
         )
         train_cfg = PPOConfig(
-            num_timesteps=20_000_000,
-            num_evals=200,
-            transition_steps=2_000_000,
+            num_timesteps=10_000_000,
+            num_evals=100,
+            transition_steps=1_000_000,
             learning_rate=1e-4,
         )
         # test_command = jnp.array([0.0, 0.0, 0.0])  # type:ignore
