@@ -192,11 +192,8 @@ class MuJoCoEnv(PipelineEnv):
         )
         self.reset_noise_pos = self.cfg.noise.reset_noise_pos
 
-        # self.push_interval = np.ceil(self.cfg.domain_rand.push_interval_s / self.dt)
-        # self.env_frictions = torch.zeros(
-        #     self.num_envs, 1, dtype=torch.float32, device=self.device
-        # )
-
+        self.push_interval = np.ceil(self.cfg.domain_rand.push_interval_s / self.dt)
+        self.push_vel = self.cfg.domain_rand.push_vel
         # # forces
         # self.gravity_vec = torch.tensor([0.0, 0.0, -1.0], device=self.device).repeat(
         #     (self.num_envs, 1)
@@ -293,6 +290,7 @@ class MuJoCoEnv(PipelineEnv):
             "last_act": jnp.zeros(self.nu),  # type:ignore
             "last_torso_euler": jnp.zeros(3),  # type:ignore
             "rewards": {k: 0.0 for k in self.reward_names},
+            "push": jnp.zeros(2),  # type:ignore
             "done": False,
             "step": 0,
         }
@@ -352,22 +350,19 @@ class MuJoCoEnv(PipelineEnv):
 
     def step(self, state: State, action: jax.Array) -> State:
         """Runs one timestep of the environment's dynamics."""
-        rng, cmd_rng, _ = jax.random.split(state.info["rng"], 3)  # type:ignore
+        rng, cmd_rng, push_rng = jax.random.split(state.info["rng"], 3)  # type:ignore
 
-        # TODO: Add push
-        # push_interval = 10
-        # kick_theta = jax.random.uniform(kick_noise_2, maxval=2 * jp.pi)
-        # kick = jp.array([jp.cos(kick_theta), jp.sin(kick_theta)])
-        # kick *= jp.mod(state.info["step"], push_interval) == 0
-        # qvel = state.pipeline_state.qd  # pytype: disable=attribute-error
-        # qvel = qvel.at[:2].set(kick * self._kick_vel + qvel[:2])
-        # state = state.tree_replace({"pipeline_state.qd": qvel})
+        push_theta = jax.random.uniform(push_rng, maxval=2 * jnp.pi)  # type:ignore
+        push = jnp.array([jnp.cos(push_theta), jnp.sin(push_theta)])  # type:ignore
+        push *= jnp.mod(state.info["step"], self.push_interval) == 0  # type:ignore
+        qvel = state.pipeline_state.qd  # type:ignore
+        qvel = qvel.at[:2].set(push * self.push_vel + qvel[:2])  # type:ignore
+        state = state.tree_replace({"pipeline_state.qd": qvel})  # type:ignore
 
         # TODO: Refactor this part to allow the input of manipulation policy
         action = action.at[self.arm_motor_indices].set(0)  # type:ignore
         action = action.at[self.neck_motor_indices].set(0)  # type:ignore
         # action = action.at[self.waist_motor_indices[-1]].set(0)  # type:ignore
-
         motor_target = self.default_motor_pos + action * self.action_scale
 
         # jax.debug.breakpoint()
@@ -421,6 +416,7 @@ class MuJoCoEnv(PipelineEnv):
         reward = sum(reward_dict.values()) * self.dt  # type:ignore
         # reward = jnp.clip(reward, 0.0)  # type:ignore
 
+        state.info["push"] = push
         state.info["last_last_act"] = state.info["last_act"].copy()
         state.info["last_act"] = action.copy()
         state.info["last_torso_euler"] = torso_euler
@@ -548,7 +544,6 @@ class MuJoCoEnv(PipelineEnv):
                 torso_euler * self.obs_scales.euler,
             ]
         )
-        # TODO: Add push
         privileged_obs = jnp.concatenate(  # type:ignore
             [
                 info["phase_signal"],
@@ -562,6 +557,7 @@ class MuJoCoEnv(PipelineEnv):
                 joint_pos_error,
                 info["stance_mask"],
                 info["state_ref"][-2:],
+                info["push"],
             ]
         )
 
