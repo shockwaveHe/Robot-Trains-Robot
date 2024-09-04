@@ -95,38 +95,30 @@ if __name__ == "__main__":
     else:
         raise ValueError("Unknown simulator")
 
-    from toddlerbot.envs.mjx_config import MJXConfig
-
-    cfg = MJXConfig()
-
     if args.ref == "walk_simple":
+        from toddlerbot.envs.walk_env import WalkCfg
         from toddlerbot.ref_motion.walk_simple_ref import WalkSimpleReference
 
+        cfg = WalkCfg()
         motion_ref = WalkSimpleReference(
             robot,
             cfg.action.cycle_time,
             default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
         )
 
-    elif args.ref == "walk_limp":
-        from toddlerbot.ref_motion.walk_lipm_ref import WalkLIPMReference
-
-        motion_ref = WalkLIPMReference(
-            robot,
-            default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
-        )
-
     elif args.ref == "walk_zmp":
+        from toddlerbot.envs.walk_env import WalkCfg
         from toddlerbot.ref_motion.walk_zmp_ref import WalkZMPReference
 
+        cfg = WalkCfg()
         motion_ref = WalkZMPReference(
             robot,
-            [
-                cfg.commands.ranges.lin_vel_x,
-                cfg.commands.ranges.lin_vel_y,
-                cfg.commands.ranges.ang_vel_yaw,
-            ],
             cfg.action.cycle_time,
+            [
+                cfg.commands.lin_vel_x_range,
+                cfg.commands.lin_vel_y_range,
+                cfg.commands.ang_vel_yaw_range,
+            ],
             default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
         )
 

@@ -1,21 +1,25 @@
-from typing import Optional
+from typing import Optional, Tuple
 
 from toddlerbot.ref_motion import MotionReference
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.array_utils import ArrayType, inplace_update
 from toddlerbot.utils.array_utils import array_lib as np
+from toddlerbot.utils.math_utils import gaussian_basis_functions
 
 
 class SquatReference(MotionReference):
     def __init__(
         self,
         robot: Robot,
+        episode_time: float,
         default_joint_pos: Optional[ArrayType] = None,
         default_joint_vel: Optional[ArrayType] = None,
         max_knee_pitch: float = np.pi / 2,
         min_knee_pitch: float = 0.0,
     ):
         super().__init__("squat", "episodic", robot)
+
+        self.episode_time = episode_time
 
         self.default_joint_pos = default_joint_pos
         self.default_joint_vel = default_joint_vel
@@ -44,14 +48,16 @@ class SquatReference(MotionReference):
         self,
         path_pos: ArrayType,
         path_quat: ArrayType,
-        phase: Optional[float | ArrayType] = None,
+        time_curr: Optional[float | ArrayType] = None,
         command: Optional[ArrayType] = None,
-    ) -> ArrayType:
-        if phase is None:
-            raise ValueError(f"phase is required for {self.name}")
+    ) -> Tuple[ArrayType, ArrayType]:
+        if time_curr is None:
+            raise ValueError(f"time_curr is required for {self.name}")
 
         if command is None:
             raise ValueError(f"command is required for {self.name}")
+
+        phase_signal = gaussian_basis_functions(time_curr)  # type: ignore
 
         linear_vel = np.array([0.0, 0.0, command[0]], dtype=np.float32)  # type: ignore
         angular_vel = np.array([0.0, 0.0, 0.0], dtype=np.float32)  # type: ignore
@@ -59,8 +65,9 @@ class SquatReference(MotionReference):
         assert self.default_joint_pos is not None
         joint_pos = self.default_joint_pos.copy()  # type: ignore
 
-        signal = command[0] * phase
-        leg_angles = self.calculate_leg_angles(np.array(signal, dtype=np.float32))  # type: ignore
+        leg_angles = self.calculate_leg_angles(
+            np.array(command[0] * time_curr / self.episode_time, dtype=np.float32)  # type: ignore
+        )
         for name, angle in leg_angles.items():
             joint_pos = inplace_update(joint_pos, self.get_joint_idx(name), angle)
 
@@ -71,7 +78,7 @@ class SquatReference(MotionReference):
 
         stance_mask = np.ones(2, dtype=np.float32)  # type: ignore
 
-        return np.concatenate(  # type: ignore
+        return phase_signal, np.concatenate(  # type: ignore
             (
                 path_pos,
                 path_quat,
@@ -84,16 +91,14 @@ class SquatReference(MotionReference):
         )
 
     def calculate_leg_angles(self, signal: ArrayType):
-        if signal < 0:
-            knee_angle = np.abs(  # type: ignore
-                signal * (self.knee_pitch_default - self.min_knee_pitch)
-                + self.knee_pitch_default
-            )
-        else:
-            knee_angle = np.abs(  # type: ignore
-                signal * (self.max_knee_pitch - self.knee_pitch_default)
-                + self.knee_pitch_default
-            )
+        signal_sign = (signal < 0).astype(int)  # type: ignore
+        delta_knee_pitch = (
+            self.knee_pitch_default - self.min_knee_pitch
+        ) * signal_sign + (self.max_knee_pitch - self.knee_pitch_default) * (
+            1 - signal_sign
+        )
+
+        knee_angle = np.abs(signal * delta_knee_pitch + self.knee_pitch_default)  # type: ignore
 
         ank_pitch_angle = np.arctan2(  # type: ignore
             np.sin(knee_angle),  # type: ignore

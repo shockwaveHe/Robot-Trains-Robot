@@ -18,8 +18,8 @@ class WalkZMPReference(MotionReference):
     def __init__(
         self,
         robot: Robot,
-        command_ranges: List[List[float]],
         cycle_time: float,
+        command_ranges: List[List[float]],
         default_joint_pos: Optional[ArrayType] = None,
         default_joint_vel: Optional[ArrayType] = None,
         stride_max: List[float] = [0.12, 0.04, np.pi / 16],
@@ -72,14 +72,16 @@ class WalkZMPReference(MotionReference):
         self,
         path_pos: ArrayType,
         path_quat: ArrayType,
-        phase: Optional[float | ArrayType] = None,
+        time_curr: Optional[float | ArrayType] = None,
         command: Optional[ArrayType] = None,
-    ) -> ArrayType:
-        if phase is None:
-            raise ValueError(f"phase is required for {self.name}")
+    ) -> Tuple[ArrayType, ArrayType]:
+        if time_curr is None:
+            raise ValueError(f"time_curr is required for {self.name}")
 
         if command is None:
             raise ValueError(f"command is required for {self.name}")
+
+        phase_signal = np.sin(2 * np.pi * time_curr / self.cycle_time)  # type: ignore
 
         linear_vel = np.array([command[0], command[1], 0.0], dtype=np.float32)  # type: ignore
         angular_vel = np.array([0.0, 0.0, command[2]], dtype=np.float32)  # type: ignore
@@ -93,7 +95,7 @@ class WalkZMPReference(MotionReference):
         nearest_command_idx = np.argmin(  # type: ignore
             np.linalg.norm(self.lookup_keys - command, axis=1)  # type: ignore
         )
-        idx = np.round(phase * self.cycle_time / self.control_dt).astype(int)  # type: ignore
+        idx = np.round(time_curr / self.control_dt).astype(int)  # type: ignore
         joint_pos = self.default_joint_pos.copy()  # type: ignore
         # joint_pos = np.where(  # type: ignore
         #     is_zero_commmand,  # type: ignore
@@ -120,7 +122,7 @@ class WalkZMPReference(MotionReference):
             (idx % self.lookup_length[nearest_command_idx]).astype(int)  # type: ignore
         ]
 
-        return np.concatenate(  # type: ignore
+        return phase_signal, np.concatenate(  # type: ignore
             (
                 path_pos,
                 path_quat,
