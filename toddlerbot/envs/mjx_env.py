@@ -359,7 +359,6 @@ class MuJoCoEnv(PipelineEnv):
         qvel = qvel.at[:2].set(push * self.push_vel + qvel[:2])  # type:ignore
         state = state.tree_replace({"pipeline_state.qd": qvel})  # type:ignore
 
-        # TODO: Refactor this part to allow the input of manipulation policy
         action = action.at[self.arm_motor_indices].set(0)  # type:ignore
         action = action.at[self.neck_motor_indices].set(0)  # type:ignore
         # action = action.at[self.waist_motor_indices[-1]].set(0)  # type:ignore
