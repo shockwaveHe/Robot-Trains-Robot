@@ -12,7 +12,12 @@ from toddlerbot.sim import BaseSim, Obs
 from toddlerbot.sim.mujoco_utils import MuJoCoRenderer, MuJoCoViewer
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
-from toddlerbot.utils.math_utils import quat2euler, quat_inv, rotate_vec
+from toddlerbot.utils.math_utils import (
+    exponential_moving_average,
+    quat2euler,
+    quat_inv,
+    rotate_vec,
+)
 
 
 class MuJoCoSim(BaseSim):
@@ -59,10 +64,7 @@ class MuJoCoSim(BaseSim):
 
         # Assume imu is the first site
         self.torso_euler_prev = np.zeros(3, dtype=np.float32)
-        # self.imu_euler_noise_std = self.robot.config["general"]["imu"][
-        #     "euler_noise_std"
-        # ]
-        # self.imu_gyro_noise_std = self.robot.config["general"]["imu"]["gyro_noise_std"]
+        self.motor_vel_prev = np.zeros(self.model.nu, dtype=np.float32)  # type: ignore
 
         self.visualizer = None
         if vis_type == "render":
@@ -162,11 +164,17 @@ class MuJoCoSim(BaseSim):
             motor_pos.append(motor_state_dict[motor_name].pos)
             motor_vel.append(motor_state_dict[motor_name].vel)
 
+        motor_pos_arr = np.array(motor_pos, dtype=np.float32)
+        motor_vel_arr = np.array(motor_vel, dtype=np.float32)
+
         joint_pos: List[float] = []
         joint_vel: List[float] = []
         for joint_name in joint_state_dict:
             joint_pos.append(joint_state_dict[joint_name].pos)
             joint_vel.append(joint_state_dict[joint_name].vel)
+
+        joint_pos_arr = np.array(motor_pos, dtype=np.float32)
+        joint_vel_arr = np.array(motor_vel, dtype=np.float32)
 
         if self.fixed_base:
             # torso_lin_vel = np.zeros(3, dtype=np.float32)
@@ -206,15 +214,21 @@ class MuJoCoSim(BaseSim):
         #     0, self.imu_gyro_noise_std, size=obs.ang_vel.shape
         # )
 
+        filtered_motor_vel = np.asarray(
+            exponential_moving_average(0.1, motor_vel_arr, self.motor_vel_prev),
+            dtype=np.float32,
+        )
+        self.motor_vel_prev = motor_vel_arr
+
         obs = Obs(
             time=time,
-            motor_pos=np.array(motor_pos, dtype=np.float32),
-            motor_vel=np.array(motor_vel, dtype=np.float32),
+            motor_pos=motor_pos_arr,
+            motor_vel=filtered_motor_vel,
             # lin_vel=torso_lin_vel,
             ang_vel=torso_ang_vel,
             euler=torso_euler,
-            joint_pos=np.array(joint_pos, dtype=np.float32),
-            joint_vel=np.array(joint_vel, dtype=np.float32),
+            joint_pos=joint_pos_arr,
+            joint_vel=joint_vel_arr,
         )
         return obs
 
