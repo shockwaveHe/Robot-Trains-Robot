@@ -211,7 +211,7 @@ def exponential_moving_average(
 def gaussian_basis_functions(phase: ArrayType, N: int = 50):
     centers = np.linspace(0, 1, N)  # type: ignore
     # Compute the Gaussian basis functions
-    basis = np.exp(-np.square(phase[:, None] - centers) / (2 * N**2))  # type: ignore
+    basis = np.exp(-np.square(phase - centers) / (2 * N**2))  # type: ignore
     return basis
 
 

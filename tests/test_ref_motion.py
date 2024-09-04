@@ -32,7 +32,7 @@ def test_motion_ref(
                 range(5), desc="Running Ref Motion"
             ):  # Run the same command for 10 cycles
                 for phase in np.arange(0, 1, sim.control_dt):  # type: ignore
-                    state = motion_ref.get_state_ref(
+                    _, state = motion_ref.get_state_ref(
                         path_pos, path_quat, phase, command
                     )
                     joint_angles = np.asarray(
@@ -123,10 +123,13 @@ if __name__ == "__main__":
         )
 
     elif args.ref == "squat":
+        from toddlerbot.envs.squat_env import SquatCfg
         from toddlerbot.ref_motion.squat_ref import SquatReference
 
+        cfg = SquatCfg()
         motion_ref = SquatReference(
             robot,
+            cfg.action.episode_time,
             default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
         )
 
