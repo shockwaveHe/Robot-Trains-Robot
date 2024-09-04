@@ -170,7 +170,6 @@ class MJXEnv(PipelineEnv):
 
         # observation
         self.ref_start_idx = 7 + 6
-        self.state_ref_size = 7 + 6 + 2 * self.nu + 2
         self.num_obs_history = self.cfg.obs.frame_stack
         self.num_privileged_obs_history = self.cfg.obs.c_frame_stack
         self.obs_size = self.cfg.obs.num_single_obs
@@ -186,7 +185,7 @@ class MJXEnv(PipelineEnv):
         # noise
         self.obs_noise_scale = self.cfg.noise.obs_noise_scale * jnp.concatenate(  # type:ignore
             [
-                jnp.zeros(5),  # type:ignore
+                jnp.zeros(self.obs_size - 3 * self.nu - 6),  # type:ignore
                 jnp.ones_like(self.motor_indices) * self.cfg.noise.dof_pos,  # type:ignore
                 jnp.ones_like(self.motor_indices) * self.cfg.noise.dof_vel,  # type:ignore
                 jnp.zeros_like(self.motor_indices),  # type:ignore
@@ -248,8 +247,6 @@ class MJXEnv(PipelineEnv):
             "command": self._sample_command(pipeline_state, rng2),
             "path_pos": jnp.zeros(3),  # type:ignore
             "path_quat": jnp.array([1.0, 0.0, 0.0, 0.0]),  # type:ignore
-            "phase_signal": jnp.array([0.0, 1.0]),  # type:ignore
-            "state_ref": jnp.zeros(self.state_ref_size),  # type:ignore
             "contact_forces": jnp.zeros(  # type:ignore
                 (self.num_colliders, self.num_colliders, 3)
             ),
@@ -265,6 +262,8 @@ class MJXEnv(PipelineEnv):
             "done": False,
             "step": 0,
         }
+
+        state_info["phase_signal"], state_info["state_ref"] = self.motion_ref.get_state_ref(state_info["path_pos"],state_info["path_quat"], 0.0, state_info["command"])  # type:ignore
 
         obs_history = jnp.zeros(self.num_obs_history * self.obs_size)  # type:ignore
         privileged_obs_history = jnp.zeros(  # type:ignore

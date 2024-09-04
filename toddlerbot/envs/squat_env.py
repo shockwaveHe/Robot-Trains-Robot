@@ -14,23 +14,30 @@ from toddlerbot.sim.robot import Robot
 @dataclass
 class SquatCfg(MJXConfig):
     @dataclass
+    class ObsConfig(MJXConfig.ObsConfig):
+        num_single_obs: int = 147
+        num_single_privileged_obs: int = 186
+
+    @dataclass
     class ActionConfig(MJXConfig.ActionConfig):
         resample_time: float = 1.5
         episode_time: float = 2.0
 
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):
+        num_commands: int = 1
         squat_depth_range: List[float] = field(default_factory=lambda: [-1, 1])
 
     @dataclass
     class RewardsConfig(MJXConfig.RewardsConfig):
         @dataclass
         class RewardScales(MJXConfig.RewardsConfig.RewardScales):
-            # Walk specific rewards
+            # Squat specific rewards
             pass
 
     def __init__(self):
         super().__init__()
+        self.obs = self.ObsConfig()
         self.action = self.ActionConfig()
         self.commands = self.CommandsConfig()
         self.rewards = self.RewardsConfig()
@@ -51,7 +58,7 @@ class SquatEnv(MJXEnv):
             robot,
             episode_time=cfg.action.episode_time,
             default_joint_pos=jnp.array(  # type:ignore
-                list(self.robot.default_joint_angles.values())
+                list(robot.default_joint_angles.values())
             ),
         )
 
