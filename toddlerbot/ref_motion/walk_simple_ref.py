@@ -10,12 +10,15 @@ class WalkSimpleReference(MotionReference):
     def __init__(
         self,
         robot: Robot,
+        cycle_time: float,
         default_joint_pos: Optional[ArrayType] = None,
         default_joint_vel: Optional[ArrayType] = None,
         max_knee_pitch: float = np.pi / 3,
         double_support_phase: float = 0.1,
     ):
         super().__init__("walk_simple", "periodic", robot)
+
+        self.cycle_time = cycle_time
 
         self.default_joint_pos = default_joint_pos
         self.default_joint_vel = default_joint_vel

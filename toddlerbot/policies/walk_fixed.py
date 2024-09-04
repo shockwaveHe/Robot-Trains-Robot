@@ -83,9 +83,13 @@ class WalkFixedPolicy(BasePolicy):
 
         self.joystick = initialize_joystick()
 
-        self.prep_duration = 2.0
+        self.prep_duration = 7.0
         self.prep_time, self.prep_action = self.reset(
-            -self.control_dt, init_motor_pos, self.default_motor_pos, self.prep_duration
+            -self.control_dt,
+            init_motor_pos,
+            self.default_motor_pos,
+            self.prep_duration,
+            end_time=5.0,
         )
 
     # @profile()

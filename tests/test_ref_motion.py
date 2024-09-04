@@ -1,8 +1,10 @@
 import argparse
 import os
 import time
+from typing import List
 
 import numpy as np
+import numpy.typing as npt
 from tqdm import tqdm
 
 from toddlerbot.ref_motion import MotionReference
@@ -11,36 +13,36 @@ from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.misc_utils import dump_profiling_data
 
 
-def test_walk_ref(robot: Robot, sim: MuJoCoSim, walk_ref: MotionReference):
-    exp_name: str = f"{robot.name}_{walk_ref.name}_{sim.name}_test"
+def test_motion_ref(
+    robot: Robot,
+    sim: MuJoCoSim,
+    motion_ref: MotionReference,
+    command_list: List[npt.NDArray[np.float32]],
+):
+    exp_name: str = f"{robot.name}_{motion_ref.name}_{sim.name}_test"
     time_str = time.strftime("%Y%m%d_%H%M%S")
     exp_folder_path = f"results/{exp_name}_{time_str}"
     os.makedirs(exp_folder_path, exist_ok=True)
 
     path_pos = np.zeros(3, dtype=np.float32)
     path_quat = np.array([1, 0, 0, 0], dtype=np.float32)
-
-    command_list = [
-        np.array([0.3, 0, 0], dtype=np.float32),
-        # np.array([0, -0.1, 0], dtype=np.float32),
-        np.array([0.0, 0, 0.2], dtype=np.float32),
-        np.array([0, 0, 0], dtype=np.float32),
-    ]
-    duration = 10
-    dt = float(walk_ref.control_dt / walk_ref.cycle_time)  # type: ignore
     try:
         for command in command_list:
-            for phase in tqdm(
-                np.arange(0, duration, dt),  # type: ignore
-                desc="Running Ref Motion",
-            ):
-                state = walk_ref.get_state_ref(path_pos, path_quat, phase, command)
-                joint_angles = np.asarray(state[13 : 13 + len(robot.joint_ordering)])  # type: ignore
-                motor_angles = robot.joint_to_motor_angles(
-                    dict(zip(robot.joint_ordering, joint_angles))
-                )
-                sim.set_motor_angles(motor_angles)
-                sim.step()
+            for _ in tqdm(
+                range(5), desc="Running Ref Motion"
+            ):  # Run the same command for 10 cycles
+                for phase in np.arange(0, 1, sim.control_dt):  # type: ignore
+                    state = motion_ref.get_state_ref(
+                        path_pos, path_quat, phase, command
+                    )
+                    joint_angles = np.asarray(
+                        state[13 : 13 + len(robot.joint_ordering)]
+                    )  # type: ignore
+                    motor_angles = robot.joint_to_motor_angles(
+                        dict(zip(robot.joint_ordering, joint_angles))
+                    )
+                    sim.set_motor_angles(motor_angles)
+                    sim.step()
 
     except KeyboardInterrupt:
         print("KeyboardInterrupt: Stopping the simulation...")
@@ -79,7 +81,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--ref",
         type=str,
-        default="zmp",
+        default="walk_simple",
         help="The name of the task.",
     )
     args = parser.parse_args()
@@ -93,29 +95,31 @@ if __name__ == "__main__":
     else:
         raise ValueError("Unknown simulator")
 
-    if args.ref == "simple":
+    from toddlerbot.envs.mjx_config import MJXConfig
+
+    cfg = MJXConfig()
+
+    if args.ref == "walk_simple":
         from toddlerbot.ref_motion.walk_simple_ref import WalkSimpleReference
 
-        walk_ref = WalkSimpleReference(
+        motion_ref = WalkSimpleReference(
             robot,
+            cfg.action.cycle_time,
             default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
         )
 
-    elif args.ref == "limp":
+    elif args.ref == "walk_limp":
         from toddlerbot.ref_motion.walk_lipm_ref import WalkLIPMReference
 
-        walk_ref = WalkLIPMReference(
+        motion_ref = WalkLIPMReference(
             robot,
             default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
         )
 
-    else:
-        from toddlerbot.envs.mjx_config import MJXConfig
+    elif args.ref == "walk_zmp":
         from toddlerbot.ref_motion.walk_zmp_ref import WalkZMPReference
 
-        cfg = MJXConfig()
-
-        walk_ref = WalkZMPReference(
+        motion_ref = WalkZMPReference(
             robot,
             [
                 cfg.commands.ranges.lin_vel_x,
@@ -126,4 +130,32 @@ if __name__ == "__main__":
             default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
         )
 
-    test_walk_ref(robot, sim, walk_ref)
+    elif args.ref == "squat":
+        from toddlerbot.ref_motion.squat_ref import SquatReference
+
+        motion_ref = SquatReference(
+            robot,
+            default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
+        )
+
+    else:
+        raise ValueError("Unknown ref motion")
+
+    if "walk" in args.ref:
+        command_list = [
+            np.array([0.3, 0, 0], dtype=np.float32),
+            # np.array([0, -0.1, 0], dtype=np.float32),
+            np.array([0.0, 0, 0.2], dtype=np.float32),
+            np.array([0, 0, 0], dtype=np.float32),
+        ]
+
+    elif args.ref == "squat":
+        command_list = [
+            np.array([1, 0, 0], dtype=np.float32),
+            np.array([-1, 0, 0], dtype=np.float32),
+        ]
+
+    else:
+        command_list = [np.zeros(3, dtype=np.float32)]
+
+    test_motion_ref(robot, sim, motion_ref, command_list)

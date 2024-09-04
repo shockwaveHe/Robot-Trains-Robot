@@ -25,6 +25,8 @@ def test_mass_properties():
     sim = MuJoCoSim(robot)
     sim.forward()
 
+    print(sim.get_mass())
+
     assert abs(sim.get_mass() - 2.53174268) < 1e-6
     assert arrays_are_close(
         sim.get_com(), np.array([-0.0020665, 0.00086725, 0.31932396])
