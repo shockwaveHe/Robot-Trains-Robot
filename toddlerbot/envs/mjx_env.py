@@ -225,6 +225,15 @@ class MuJoCoEnv(PipelineEnv):
                     ),
                     control_dt=float(self.dt),
                 )
+            elif self.ref_motion_name == "squat":
+                from toddlerbot.ref_motion.squat_ref import SquatReference
+
+                self.motion_ref = SquatReference(
+                    self.robot,
+                    default_joint_pos=jnp.array(  # type:ignore
+                        list(self.robot.default_joint_angles.values())
+                    ),
+                )
             else:
                 raise ValueError(f"Unknown env {self.name}")
 

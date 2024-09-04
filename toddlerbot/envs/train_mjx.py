@@ -426,6 +426,16 @@ if __name__ == "__main__":
         # test_command = jnp.array([0.0, 0.0, 0.0])  # type:ignore
         test_command = jnp.array([0.3, 0.0, 0.0])  # type:ignore
 
+    elif args.env == "squat":
+        cfg = MJXConfig(rewards=RewardsConfig(healthy_z_range=[0.15, 0.4]))
+        train_cfg = PPOConfig(
+            num_timesteps=10_000_000,
+            num_evals=100,
+            transition_steps=1_000_000,
+            learning_rate=1e-4,
+        )
+        test_command = jnp.array([0.3, 0.0, 0.0])  # type:ignore
+
     else:
         raise ValueError(f"Unknown env: {args.env}")
 
