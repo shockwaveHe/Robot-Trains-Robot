@@ -354,6 +354,12 @@ if __name__ == "__main__":
         default="",
         help="The policy checkpoint to load.",
     )
+    parser.add_argument(
+        "--ref-motion",
+        type=str,
+        default="",
+        help="The reference motion to track."
+    )
     args = parser.parse_args()
 
     robot = Robot(args.robot)
@@ -386,7 +392,7 @@ if __name__ == "__main__":
     elif args.policy == "squat":
         from toddlerbot.policies.squat import SquatPolicy
 
-        policy = SquatPolicy(robot)
+        policy = SquatPolicy(robot, init_motor_pos)
 
     elif args.policy == "walk_fixed":
         from toddlerbot.policies.walk_fixed import WalkFixedPolicy
@@ -405,9 +411,13 @@ if __name__ == "__main__":
 
         policy = SysIDFixedPolicy(robot, init_motor_pos)
 
+    elif args.policy == "ref":
+        from toddlerbot.policies.ref_policy import RefPolicy
+        assert len(args.ref_motion) > 0, "Please provide a reference motion to track."
+        policy = RefPolicy(robot, init_motor_pos, args.ref_motion)
     else:
         raise ValueError("Unknown policy")
 
-    debug_config: Dict[str, Any] = {"log": False, "plot": True, "render": True}
+    debug_config: Dict[str, Any] = {"log": False, "plot": False, "render": True}
 
     main(robot, sim, policy, debug_config)

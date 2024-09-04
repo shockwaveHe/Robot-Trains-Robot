@@ -11,8 +11,8 @@ from toddlerbot.utils.misc_utils import set_seed
 
 
 class SquatPolicy(BasePolicy):
-    def __init__(self, robot: Robot):
-        super().__init__(robot)
+    def __init__(self, robot: Robot, init_motor_pos: npt.NDArray[np.float32]):
+        super().__init__(robot, init_motor_pos)
         self.name = "squat"
         self.control_dt = 0.02
 
@@ -21,7 +21,7 @@ class SquatPolicy(BasePolicy):
         self.default_q = np.array(
             list(robot.init_joint_angles.values()), dtype=np.float32
         )
-
+        import ipdb; ipdb.set_trace()
         prep_duration = 10.0
         warm_up_duration = 1.0
         squat_duration = 4.0
