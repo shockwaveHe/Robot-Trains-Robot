@@ -472,6 +472,9 @@ if __name__ == "__main__":
         )
         env_cfg = RotateTorsoCfg()
 
+        if "fixed" in args.env:
+            env_cfg.rewards.healthy_z_range = [-0.2, 0.2]
+
         env = RotateTorsoEnv(
             "rotate_torso", robot, env_cfg, fixed_base="fixed" in args.env
         )
