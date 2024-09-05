@@ -461,7 +461,7 @@ if __name__ == "__main__":
             add_noise=False,
         )
 
-    elif args.env == "rotate_torso":
+    elif "rotate_torso" in args.env:
         from toddlerbot.envs.rotate_torso_env import RotateTorsoCfg, RotateTorsoEnv
 
         train_cfg = PPOConfig(
