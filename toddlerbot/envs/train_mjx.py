@@ -459,6 +459,27 @@ if __name__ == "__main__":
             add_noise=False,
         )
 
+    elif args.env == "rotate_torso":
+        from toddlerbot.envs.rotate_torso_env import RotateTorsoCfg, RotateTorsoEnv
+
+        train_cfg = PPOConfig(
+            num_timesteps=10_000_000,
+            num_evals=100,
+            transition_steps=1_000_000,
+            learning_rate=1e-4,
+        )
+        env_cfg = RotateTorsoCfg()
+
+        env = RotateTorsoEnv("rotate_torso", robot, env_cfg)
+        eval_env = RotateTorsoEnv("rotate_torso", robot, env_cfg)
+        test_env = RotateTorsoEnv(
+            "rotate_torso",
+            robot,
+            env_cfg,
+            fixed_command=jnp.array([0.2, 0.0]),  # type:ignore
+            add_noise=False,
+        )
+
     else:
         raise ValueError(f"Unknown env: {args.env}")
 

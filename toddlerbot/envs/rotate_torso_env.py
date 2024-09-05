@@ -25,8 +25,8 @@ class RotateTorsoCfg(MJXConfig):
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):
         num_commands: int = 2
-        ang_vel_x_range: List[float] = field(default_factory=lambda: [-0.05, 0.05])
-        ang_vel_z_range: List[float] = field(default_factory=lambda: [-0.2, 0.2])
+        ang_vel_x_range: List[float] = field(default_factory=lambda: [-0.2, 0.2])
+        ang_vel_z_range: List[float] = field(default_factory=lambda: [-1.0, 1.0])
 
     @dataclass
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
@@ -44,7 +44,7 @@ class RotateTorsoCfg(MJXConfig):
         self.rewards.scales = self.RewardScales()
 
 
-class SquatEnv(MJXEnv):
+class RotateTorsoEnv(MJXEnv):
     def __init__(
         self,
         name: str,
