@@ -161,6 +161,7 @@ class MJXEnv(PipelineEnv):
         self.default_motor_pos = jnp.array(  # type:ignore
             list(self.robot.default_motor_angles.values())
         )
+        self.action_scale = self.cfg.action.action_scale
 
         # commands
         # x vel, y vel, yaw vel, heading
@@ -258,7 +259,7 @@ class MJXEnv(PipelineEnv):
             "step": 0,
         }
         state_info["command"] = self._sample_command(pipeline_state, rng2)
-        state_info["time_total"] = self._get_total_time(state_info)
+        state_info["time_total"] = self._get_total_time(state_info["command"])
 
         state_info["phase_signal"], state_info["state_ref"] = (  # type:ignore
             self.motion_ref.get_state_ref(
@@ -294,11 +295,11 @@ class MJXEnv(PipelineEnv):
         # placeholder
         return jnp.zeros(1)  # type:ignore
 
-    def _get_total_time(self, info: dict[str, Any]) -> jax.Array:
+    def _get_total_time(self, command: jax.Array) -> jax.Array:
         # placeholder
         return jnp.zeros(1)  # type:ignore
 
-    def _extract_command(self, info: dict[str, Any]) -> Tuple[jax.Array, jax.Array]:
+    def _extract_command(self, command: jax.Array) -> Tuple[jax.Array, jax.Array]:
         # placeholder
         return jnp.zeros(3), jnp.zeros(3)  # type:ignore
 
@@ -320,9 +321,13 @@ class MJXEnv(PipelineEnv):
         motor_target = jnp.where(  # type:ignore
             action < 0,
             self.default_motor_pos
-            + action * (self.default_motor_pos - self.motor_limits[:, 0]),
+            + self.action_scale
+            * action
+            * (self.default_motor_pos - self.motor_limits[:, 0]),
             self.default_motor_pos
-            + action * (self.motor_limits[:, 1] - self.default_motor_pos),
+            + self.action_scale
+            * action
+            * (self.motor_limits[:, 1] - self.default_motor_pos),
         )
         motor_target = jnp.clip(  # type:ignore
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
@@ -397,7 +402,7 @@ class MJXEnv(PipelineEnv):
         )
         state.info["time_total"] = jnp.where(  # type:ignore
             state.info["step"] > self.resample_steps,
-            self._get_total_time(state.info),
+            self._get_total_time(state.info["command"]),  # type:ignore
             state.info["time_total"],
         )
 
@@ -421,7 +426,7 @@ class MJXEnv(PipelineEnv):
         pos = info["path_pos"]
         quat = info["path_quat"]
 
-        lin_vel, ang_vel = self._extract_command(info)
+        lin_vel, ang_vel = self._extract_command(info["command"])
 
         # Update position
         pos += lin_vel * self.dt  # type:ignore

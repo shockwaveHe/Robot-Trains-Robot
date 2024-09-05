@@ -1,5 +1,6 @@
 import functools
 import os
+from typing import List, Optional
 
 import jax
 import jax.numpy as jnp
@@ -26,10 +27,14 @@ class RLPolicy(BasePolicy):
         robot: Robot,
         init_motor_pos: npt.NDArray[np.float32],
         ckpt: str,
+        command_ranges: List[List[float]],
+        fixed_command: Optional[npt.NDArray[np.float32]] = None,
     ) -> None:
         super().__init__(name, robot, init_motor_pos)
 
-        cfg = MJXConfig()
+        self.command_ranges = command_ranges
+        self.fixed_command = fixed_command
+
         train_cfg = PPOConfig()
         make_networks_factory = functools.partial(
             ppo_networks.make_ppo_networks,
@@ -47,10 +52,16 @@ class RLPolicy(BasePolicy):
         self.neck_motor_indices = motor_indices[motor_groups == "neck"]
         self.waist_motor_indices = motor_indices[motor_groups == "waist"]
 
+        self.motor_limits = np.array(
+            [robot.joint_limits[name] for name in robot.motor_ordering]
+        )
+
+        cfg = MJXConfig()
         self.obs_scales = cfg.obs.scales  # Assume all the envs have the same scales
         self.default_motor_pos = np.array(
             list(robot.default_motor_angles.values()), dtype=np.float32
         )
+        self.action_scale = cfg.action.action_scale
 
         self.last_action = np.zeros(robot.nu, dtype=np.float32)
         self.obs_history = np.zeros(
@@ -89,6 +100,9 @@ class RLPolicy(BasePolicy):
             end_time=5.0,
         )
 
+    def get_phase_signal(self, time_curr: float) -> npt.NDArray[np.float32]:
+        return np.zeros(2, dtype=np.float32)
+
     # @profile()
     def step(self, obs: Obs) -> npt.NDArray[np.float32]:
         if obs.time < self.prep_duration:
@@ -99,13 +113,12 @@ class RLPolicy(BasePolicy):
             return action
 
         time_curr = self.step_curr * self.control_dt
-        phase_signal = np.array(  # type:ignore
-            [np.sin(2 * np.pi * phase), np.cos(2 * np.pi * phase)]  # type:ignore
-        )
+        phase_signal = self.get_phase_signal(time_curr)
+
         motor_pos_delta = obs.motor_pos - self.default_motor_pos
 
         if self.joystick is None:
-            controller_input = [0.3, 0.0, 0.0]
+            controller_input = self.fixed_command
         else:
             controller_input = get_controller_input(self.joystick, self.command_ranges)
 
@@ -135,6 +148,19 @@ class RLPolicy(BasePolicy):
         self.last_action = action
         self.step_curr += 1
 
-        motor_target = self.default_motor_pos + action * self.action_scale
+        motor_target = np.where(  # type:ignore
+            action < 0,
+            self.default_motor_pos
+            + self.action_scale
+            * action
+            * (self.default_motor_pos - self.motor_limits[:, 0]),
+            self.default_motor_pos
+            + self.action_scale
+            * action
+            * (self.motor_limits[:, 1] - self.default_motor_pos),
+        )
+        motor_target = np.clip(  # type:ignore
+            motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
+        )
 
         return motor_target

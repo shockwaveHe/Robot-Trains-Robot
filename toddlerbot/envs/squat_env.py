@@ -93,12 +93,12 @@ class SquatEnv(MJXEnv):
 
         return commands
 
-    def _get_total_time(self, info: dict[str, Any]) -> jax.Array:
-        time_total = jnp.max(self.knee_limits / info["command"][0])  # type:ignore
+    def _get_total_time(self, command: jax.Array) -> jax.Array:
+        time_total = jnp.max(self.knee_limits / command[0])  # type:ignore
         return time_total
 
-    def _extract_command(self, info: dict[str, Any]) -> Tuple[jax.Array, jax.Array]:
-        z_vel = info["command"][0]
+    def _extract_command(self, command: jax.Array) -> Tuple[jax.Array, jax.Array]:
+        z_vel = command[0]
 
         lin_vel = jnp.array([0.0, 0.0, z_vel])  # type:ignore
         ang_vel = jnp.array([0.0, 0.0, 0.0])  # type:ignore

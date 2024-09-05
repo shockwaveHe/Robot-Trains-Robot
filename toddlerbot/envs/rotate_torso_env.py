@@ -102,20 +102,20 @@ class RotateTorsoEnv(MJXEnv):
 
         return commands
 
-    def _get_total_time(self, info: dict[str, Any]) -> jax.Array:
+    def _get_total_time(self, command: jax.Array) -> jax.Array:
         time_total = jnp.max(  # type:ignore
             jnp.concatenate(  # type:ignore
                 [
-                    self.waist_roll_limits / info["command"][0],
-                    self.waist_yaw_limits / info["command"][1],
+                    self.waist_roll_limits / command[0],
+                    self.waist_yaw_limits / command[1],
                 ]
             )
         )
         return time_total
 
-    def _extract_command(self, info: dict[str, Any]) -> Tuple[jax.Array, jax.Array]:
-        ang_vel_x = info["command"][0]
-        ang_vel_z = info["command"][1]
+    def _extract_command(self, command: jax.Array) -> Tuple[jax.Array, jax.Array]:
+        ang_vel_x = command[0]
+        ang_vel_z = command[1]
 
         lin_vel = jnp.array([0.0, 0.0, 0.0])  # type:ignore
         ang_vel = jnp.array([ang_vel_x, 0.0, ang_vel_z])  # type:ignore

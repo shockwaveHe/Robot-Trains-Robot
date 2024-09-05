@@ -126,13 +126,13 @@ class WalkEnv(MJXEnv):
 
         return commands
 
-    def _get_total_time(self, info: dict[str, Any]) -> jax.Array:
+    def _get_total_time(self, command: jax.Array) -> jax.Array:
         return self.cycle_time
 
-    def _extract_command(self, info: dict[str, Any]) -> Tuple[jax.Array, jax.Array]:
-        x_vel = info["command"][0]
-        y_vel = info["command"][1]
-        yaw_vel = info["command"][2]
+    def _extract_command(self, command: jax.Array) -> Tuple[jax.Array, jax.Array]:
+        x_vel = command[0]
+        y_vel = command[1]
+        yaw_vel = command[2]
 
         lin_vel = jnp.array([x_vel, y_vel, 0.0])  # type:ignore
         ang_vel = jnp.array([0.0, 0.0, yaw_vel])  # type:ignore
