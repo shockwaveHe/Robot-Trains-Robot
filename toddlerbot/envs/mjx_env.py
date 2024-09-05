@@ -45,10 +45,10 @@ class MJXEnv(PipelineEnv):
         sys = mjcf.load(xml_path)  # type: ignore
         sys = sys.tree_replace(  # type: ignore
             {
-                "opt.timestep": cfg.mj.timestep,
-                "opt.solver": cfg.mj.solver,
-                "opt.iterations": cfg.mj.iterations,
-                "opt.ls_iterations": cfg.mj.ls_iterations,
+                "opt.timestep": cfg.sim.timestep,
+                "opt.solver": cfg.sim.solver,
+                "opt.iterations": cfg.sim.iterations,
+                "opt.ls_iterations": cfg.sim.ls_iterations,
             }
         )
 
@@ -263,7 +263,14 @@ class MJXEnv(PipelineEnv):
             "step": 0,
         }
 
-        state_info["phase_signal"], state_info["state_ref"] = self.motion_ref.get_state_ref(state_info["path_pos"],state_info["path_quat"], 0.0, state_info["command"])  # type:ignore
+        state_info["phase_signal"], state_info["state_ref"] = (  # type:ignore
+            self.motion_ref.get_state_ref(
+                state_info["path_pos"],  # type:ignore
+                state_info["path_quat"],  # type:ignore
+                0.0,
+                state_info["command"],  # type:ignore
+            )
+        )
 
         obs_history = jnp.zeros(self.num_obs_history * self.obs_size)  # type:ignore
         privileged_obs_history = jnp.zeros(  # type:ignore

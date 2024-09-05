@@ -105,7 +105,7 @@ class MJXConfig:
         euler: float = 1.0
 
     def __init__(self):
-        self.mj = self.SimConfig()
+        self.sim = self.SimConfig()
         self.obs = self.ObsConfig()
         self.action = self.ActionConfig()
         self.rewards = self.RewardsConfig()

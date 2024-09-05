@@ -77,7 +77,7 @@ class WalkEnv(MJXEnv):
                 default_joint_pos=jnp.array(  # type:ignore
                     list(robot.default_joint_angles.values())
                 ),
-                control_dt=float(self.dt),
+                control_dt=cfg.sim.timestep * cfg.action.n_frames,
             )
         else:
             raise ValueError(f"Unknown ref_motion_type: {ref_motion_type}")
