@@ -388,57 +388,54 @@ if __name__ == "__main__":
 
     robot = Robot(args.robot)
 
-    if args.env == "walk":
+    if "walk" in args.env:
         from toddlerbot.envs.walk_env import WalkCfg, WalkEnv
 
-        train_cfg = PPOConfig()
-        env_cfg = WalkCfg()
+        if "fixed" in args.env:
+            train_cfg = PPOConfig(
+                num_timesteps=10_000_000,
+                num_evals=100,
+                transition_steps=1_000_000,
+                learning_rate=1e-4,
+            )
+            env_cfg = WalkCfg()
+            env_cfg.rewards.scales.reset()
+            # reward_scales.feet_distance = 0.5
+            env_cfg.rewards.scales.leg_joint_pos = 5.0
+            env_cfg.rewards.scales.waist_joint_pos = 5.0
+            env_cfg.rewards.scales.joint_torque = 5e-2
+            env_cfg.rewards.scales.joint_acc = 5e-6
+            env_cfg.rewards.scales.leg_action_rate = 1e-2
+            env_cfg.rewards.scales.leg_action_acc = 1e-2
+        else:
+            train_cfg = PPOConfig()
+            env_cfg = WalkCfg()
 
-        env = WalkEnv("walk", robot, env_cfg, ref_motion_type="zmp")
-        eval_env = WalkEnv("walk", robot, env_cfg, ref_motion_type="zmp")
-        test_env = WalkEnv(
+        env = WalkEnv(
             "walk",
             robot,
             env_cfg,
             ref_motion_type="zmp",
-            fixed_command=jnp.array([0.3, 0.0, 0.0]),  # type:ignore
-            add_noise=False,
+            fixed_base="fixed" in args.env,
         )
-
-    elif args.env == "walk_fixed":
-        from toddlerbot.envs.walk_env import WalkCfg, WalkEnv
-
-        train_cfg = PPOConfig(
-            num_timesteps=10_000_000,
-            num_evals=100,
-            transition_steps=1_000_000,
-            learning_rate=1e-4,
-        )
-        env_cfg = WalkCfg()
-        env_cfg.rewards.scales.reset()
-        # reward_scales.feet_distance = 0.5
-        env_cfg.rewards.scales.leg_joint_pos = 5.0
-        env_cfg.rewards.scales.waist_joint_pos = 5.0
-        env_cfg.rewards.scales.joint_torque = 5e-2
-        env_cfg.rewards.scales.joint_acc = 5e-6
-        env_cfg.rewards.scales.leg_action_rate = 1e-2
-        env_cfg.rewards.scales.leg_action_acc = 1e-2
-
-        env = WalkEnv("walk", robot, env_cfg, ref_motion_type="zmp", fixed_base=True)
         eval_env = WalkEnv(
-            "walk", robot, env_cfg, ref_motion_type="zmp", fixed_base=True
+            "walk",
+            robot,
+            env_cfg,
+            ref_motion_type="zmp",
+            fixed_base="fixed" in args.env,
         )
         test_env = WalkEnv(
             "walk",
             robot,
             env_cfg,
             ref_motion_type="zmp",
-            fixed_base=True,
+            fixed_base="fixed" in args.env,
             fixed_command=jnp.array([0.3, 0.0, 0.0]),  # type:ignore
             add_noise=False,
         )
 
-    elif args.env == "squat":
+    elif "squat" in args.env:
         from toddlerbot.envs.squat_env import SquatCfg, SquatEnv
 
         train_cfg = PPOConfig(
@@ -449,12 +446,13 @@ if __name__ == "__main__":
         )
         env_cfg = SquatCfg()
 
-        env = SquatEnv("squat", robot, env_cfg)
-        eval_env = SquatEnv("squat", robot, env_cfg)
+        env = SquatEnv("squat", robot, env_cfg, fixed_base="fixed" in args.env)
+        eval_env = SquatEnv("squat", robot, env_cfg, fixed_base="fixed" in args.env)
         test_env = SquatEnv(
             "squat",
             robot,
             env_cfg,
+            fixed_base="fixed" in args.env,
             fixed_command=jnp.array([-1.0]),  # type:ignore
             add_noise=False,
         )
@@ -470,12 +468,17 @@ if __name__ == "__main__":
         )
         env_cfg = RotateTorsoCfg()
 
-        env = RotateTorsoEnv("rotate_torso", robot, env_cfg)
-        eval_env = RotateTorsoEnv("rotate_torso", robot, env_cfg)
+        env = RotateTorsoEnv(
+            "rotate_torso", robot, env_cfg, fixed_base="fixed" in args.env
+        )
+        eval_env = RotateTorsoEnv(
+            "rotate_torso", robot, env_cfg, fixed_base="fixed" in args.env
+        )
         test_env = RotateTorsoEnv(
             "rotate_torso",
             robot,
             env_cfg,
+            fixed_base="fixed" in args.env,
             fixed_command=jnp.array([0.2, 0.0]),  # type:ignore
             add_noise=False,
         )

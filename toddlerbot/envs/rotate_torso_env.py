@@ -93,7 +93,7 @@ class RotateTorsoEnv(MJXEnv):
             minval=self.ang_vel_z_range[0],
             maxval=self.ang_vel_z_range[1],
         )
-        commands = jnp.array([ang_vel_x, ang_vel_z])  # type:ignore
+        commands = jnp.concatenate([ang_vel_x, ang_vel_z])  # type:ignore
 
         return commands
 
