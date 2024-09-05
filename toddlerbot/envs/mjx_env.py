@@ -293,7 +293,12 @@ class MJXEnv(PipelineEnv):
         )
 
     def _sample_command(self, pipeline_state: base.State, rng: jax.Array) -> jax.Array:
+        # placeholder
         return jnp.zeros(1)  # type:ignore
+
+    def _extract_command(self, info: dict[str, Any]) -> Tuple[jax.Array, jax.Array]:
+        # placeholder
+        return jnp.zeros(3), jnp.zeros(3)  # type:ignore
 
     def step(self, state: State, action: jax.Array) -> State:
         """Runs one timestep of the environment's dynamics."""
@@ -399,21 +404,33 @@ class MJXEnv(PipelineEnv):
     ) -> Tuple[jax.Array, jax.Array]:
         pos = info["path_pos"]
         quat = info["path_quat"]
-        x_vel = info["command"][0]
-        y_vel = info["command"][1]
-        yaw_vel = info["command"][2]
+
+        lin_vel, ang_vel = self._extract_command(info)
 
         # Update position
-        pos += jnp.array([x_vel, y_vel, 0.0]) * self.dt  # type:ignore
+        pos += lin_vel * self.dt  # type:ignore
 
-        # Update quaternion for yaw rotation
-        theta = yaw_vel * self.dt / 2.0
-        yaw_quat = jnp.array(  # type:ignore
-            [jnp.cos(theta), 0.0, 0.0, jnp.sin(theta)],  # type:ignore
-        )
+        # Compute the angle of rotation for each axis
+        theta_roll = ang_vel[0] * self.dt / 2.0
+        theta_pitch = ang_vel[1] * self.dt / 2.0
+        theta_yaw = ang_vel[2] * self.dt / 2.0
+
+        # Compute the quaternion for each rotational axis
+        roll_quat = jnp.array([jnp.cos(theta_roll), jnp.sin(theta_roll), 0.0, 0.0])  # type:ignore
+        pitch_quat = jnp.array([jnp.cos(theta_pitch), 0.0, jnp.sin(theta_pitch), 0.0])  # type:ignore
+        yaw_quat = jnp.array([jnp.cos(theta_yaw), 0.0, 0.0, jnp.sin(theta_yaw)])  # type:ignore
+
+        # Normalize each quaternion
+        roll_quat /= jnp.linalg.norm(roll_quat)  # type:ignore
+        pitch_quat /= jnp.linalg.norm(pitch_quat)  # type:ignore
         yaw_quat /= jnp.linalg.norm(yaw_quat)  # type:ignore
-        quat = math.quat_mul(quat, yaw_quat)  # type:ignore
-        quat /= jnp.linalg.norm(quat)  #   type:ignore
+
+        # Combine the quaternions to get the full rotation (roll * pitch * yaw)
+        full_quat = math.quat_mul(math.quat_mul(roll_quat, pitch_quat), yaw_quat)  # type:ignore
+
+        # Update the current quaternion by applying the new rotation
+        quat = math.quat_mul(quat, full_quat)
+        quat /= jnp.linalg.norm(quat)  # type:ignore
 
         return pos, quat  # type:ignore
 

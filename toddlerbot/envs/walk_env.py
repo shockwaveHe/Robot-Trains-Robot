@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -24,22 +24,20 @@ class WalkCfg(MJXConfig):
         ang_vel_yaw_range: List[float] = field(default_factory=lambda: [-0.2, 0.2])
 
     @dataclass
-    class RewardsConfig(MJXConfig.RewardsConfig):
-        @dataclass
-        class RewardScales(MJXConfig.RewardsConfig.RewardScales):
-            # Walk specific rewards
-            feet_air_time: float = 50.0
-            feet_clearance: float = 0.0  # 1.0 # Doesn't help
-            feet_contact: float = 0.5
-            feet_distance: float = 1.0
-            feet_slip: float = 0.1
-            stand_still: float = 0.0  # 1.0
+    class RewardScales(MJXConfig.RewardsConfig.RewardScales):
+        # Walk specific rewards
+        feet_air_time: float = 50.0
+        feet_clearance: float = 0.0  # 1.0 # Doesn't help
+        feet_contact: float = 0.5
+        feet_distance: float = 1.0
+        feet_slip: float = 0.1
+        stand_still: float = 0.0  # 1.0
 
     def __init__(self):
         super().__init__()
         self.action = self.ActionConfig()
         self.commands = self.CommandsConfig()
-        self.rewards = self.RewardsConfig()
+        self.rewards.scales = self.RewardScales()
 
 
 class WalkEnv(MJXEnv):
@@ -125,6 +123,15 @@ class WalkEnv(MJXEnv):
         commands = commands.at[:2].set(commands[:2] * mask)  # type:ignore
 
         return commands
+
+    def _extract_command(self, info: dict[str, Any]) -> Tuple[jax.Array, jax.Array]:
+        x_vel = info["command"][0]
+        y_vel = info["command"][1]
+        yaw_vel = info["command"][2]
+
+        lin_vel = jnp.array([x_vel, y_vel, 0.0])  # type:ignore
+        ang_vel = jnp.array([0.0, 0.0, yaw_vel])  # type:ignore
+        return lin_vel, ang_vel
 
     def _reward_feet_air_time(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array

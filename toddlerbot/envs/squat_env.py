@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -29,18 +29,17 @@ class SquatCfg(MJXConfig):
         squat_depth_range: List[float] = field(default_factory=lambda: [-1, 1])
 
     @dataclass
-    class RewardsConfig(MJXConfig.RewardsConfig):
-        @dataclass
-        class RewardScales(MJXConfig.RewardsConfig.RewardScales):
-            # Squat specific rewards
-            pass
+    class RewardScales(MJXConfig.RewardsConfig.RewardScales):
+        # Squat specific rewards
+        lin_vel_xy: float = 0.5
+        lin_vel_z: float = 1.5
 
     def __init__(self):
         super().__init__()
         self.obs = self.ObsConfig()
         self.action = self.ActionConfig()
         self.commands = self.CommandsConfig()
-        self.rewards = self.RewardsConfig()
+        self.rewards.scales = self.RewardScales()
 
 
 class SquatEnv(MJXEnv):
@@ -57,11 +56,10 @@ class SquatEnv(MJXEnv):
         motion_ref = SquatReference(
             robot,
             episode_time=cfg.action.episode_time,
-            default_joint_pos=jnp.array(  # type:ignore
-                list(robot.default_joint_angles.values())
-            ),
+            default_joint_pos=jnp.array(list(robot.default_joint_angles.values())),  # type:ignore
         )
 
+        self.num_commands = cfg.commands.num_commands
         self.squat_depth_range = cfg.commands.squat_depth_range
 
         super().__init__(
@@ -77,6 +75,7 @@ class SquatEnv(MJXEnv):
 
     def _sample_command(self, pipeline_state: base.State, rng: jax.Array) -> jax.Array:
         if self.fixed_command is not None:
+            assert self.fixed_command.shape[0] == self.num_commands
             return self.fixed_command
 
         rng, rng_1 = jax.random.split(rng)  # type:ignore
@@ -89,3 +88,11 @@ class SquatEnv(MJXEnv):
         commands = squat_depth  # type:ignore
 
         return commands
+
+    def _extract_command(self, info: dict[str, Any]) -> Tuple[jax.Array, jax.Array]:
+        z_vel = info["command"][0]
+
+        lin_vel = jnp.array([0.0, 0.0, z_vel])  # type:ignore
+        ang_vel = jnp.array([0.0, 0.0, 0.0])  # type:ignore
+
+        return lin_vel, ang_vel

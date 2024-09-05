@@ -455,7 +455,7 @@ if __name__ == "__main__":
             "squat",
             robot,
             env_cfg,
-            fixed_command=jnp.array([1.0, 0.0, 0.0]),  # type:ignore
+            fixed_command=jnp.array([-1.0]),  # type:ignore
             add_noise=False,
         )
 
