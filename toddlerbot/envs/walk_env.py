@@ -80,6 +80,8 @@ class WalkEnv(MJXEnv):
         else:
             raise ValueError(f"Unknown ref_motion_type: {ref_motion_type}")
 
+        self.cycle_time = jnp.array(cfg.action.cycle_time)  # type:ignore
+
         super().__init__(
             name,
             robot,
@@ -123,6 +125,9 @@ class WalkEnv(MJXEnv):
         commands = commands.at[:2].set(commands[:2] * mask)  # type:ignore
 
         return commands
+
+    def _get_total_time(self, info: dict[str, Any]) -> jax.Array:
+        return self.cycle_time
 
     def _extract_command(self, info: dict[str, Any]) -> Tuple[jax.Array, jax.Array]:
         x_vel = info["command"][0]

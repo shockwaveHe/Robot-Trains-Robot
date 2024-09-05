@@ -55,8 +55,8 @@ class WalkZMPReference(MotionReference):
             )
 
         self.leg_joint_slice = slice(
-            self.get_joint_idx("left_hip_yaw_driven"),
-            self.get_joint_idx("right_ank_pitch") + 1,
+            self.robot.joint_ordering.index("left_hip_yaw_driven"),
+            self.robot.joint_ordering.index("right_ank_pitch") + 1,
         )
 
         self.footstep_planner = FootStepPlanner(self.stride_max, self.foot_to_com_y)
@@ -73,6 +73,7 @@ class WalkZMPReference(MotionReference):
         path_pos: ArrayType,
         path_quat: ArrayType,
         time_curr: Optional[float | ArrayType] = None,
+        time_total: Optional[float | ArrayType] = None,
         command: Optional[ArrayType] = None,
     ) -> Tuple[ArrayType, ArrayType]:
         if time_curr is None:
@@ -83,8 +84,8 @@ class WalkZMPReference(MotionReference):
 
         phase_signal = np.array(  # type:ignore
             [
-                np.sin(2 * np.pi * time_curr / self.cycle_time),  # type:ignore
-                np.cos(2 * np.pi * time_curr / self.cycle_time),  # type:ignore
+                np.sin(2 * np.pi * time_curr / time_total),  # type:ignore
+                np.cos(2 * np.pi * time_curr / time_total),  # type:ignore
             ],
             dtype=np.float32,
         )
@@ -306,13 +307,6 @@ class WalkZMPReference(MotionReference):
         #     file_name="footsteps.png",
         # )()
 
-        # double_support_phase = duration / (
-        #     (num_footsteps - 1) * (1 + self.single_double_ratio) + 1
-        # )
-        # double_support_phase = (
-        #     np.ceil(double_support_phase / self.control_dt) * self.control_dt  # type: ignore
-        # )
-        # single_support_phase = double_support_phase * self.single_double_ratio
         time_list = np.array(  # type: ignore
             [0, self.double_support_phase]
             + [self.single_support_phase, self.double_support_phase]

@@ -10,15 +10,12 @@ class WalkSimpleReference(MotionReference):
     def __init__(
         self,
         robot: Robot,
-        cycle_time: float,
         default_joint_pos: Optional[ArrayType] = None,
         default_joint_vel: Optional[ArrayType] = None,
         max_knee_pitch: float = np.pi / 3,
         double_support_phase: float = 0.1,
     ):
         super().__init__("walk_simple", "periodic", robot)
-
-        self.cycle_time = cycle_time
 
         self.default_joint_pos = default_joint_pos
         self.default_joint_vel = default_joint_vel
@@ -29,7 +26,7 @@ class WalkSimpleReference(MotionReference):
             self.knee_pitch_default = 0.0
         else:
             self.knee_pitch_default = self.default_joint_pos[
-                self.get_joint_idx("left_knee_pitch")
+                self.robot.joint_ordering.index("left_knee_pitch")
             ]
         self.max_knee_pitch = max_knee_pitch
         self.double_support_phase = double_support_phase
@@ -40,11 +37,19 @@ class WalkSimpleReference(MotionReference):
             / self.robot.data_dict["offsets"]["hip_pitch_to_knee_z"]
         )
 
+        self.left_hip_pitch_idx = self.robot.joint_ordering.index("left_hip_pitch")
+        self.left_knee_pitch_idx = self.robot.joint_ordering.index("left_knee_pitch")
+        self.left_ank_pitch_idx = self.robot.joint_ordering.index("left_ank_pitch")
+        self.right_hip_pitch_idx = self.robot.joint_ordering.index("right_hip_pitch")
+        self.right_knee_pitch_idx = self.robot.joint_ordering.index("right_knee_pitch")
+        self.right_ank_pitch_idx = self.robot.joint_ordering.index("right_ank_pitch")
+
     def get_state_ref(
         self,
         path_pos: ArrayType,
         path_quat: ArrayType,
         time_curr: Optional[float | ArrayType] = None,
+        time_total: Optional[float | ArrayType] = None,
         command: Optional[ArrayType] = None,
     ) -> Tuple[ArrayType, ArrayType]:
         if time_curr is None:
@@ -55,12 +60,12 @@ class WalkSimpleReference(MotionReference):
 
         phase_signal = np.array(  # type:ignore
             [
-                np.sin(2 * np.pi * time_curr / self.cycle_time),  # type:ignore
-                np.cos(2 * np.pi * time_curr / self.cycle_time),  # type:ignore
+                np.sin(2 * np.pi * time_curr / time_total),  # type:ignore
+                np.cos(2 * np.pi * time_curr / time_total),  # type:ignore
             ],
             dtype=np.float32,
         )
-        sin_phase_signal = np.sin(2 * np.pi * time_curr / self.cycle_time)  # type: ignore
+        sin_phase_signal = np.sin(2 * np.pi * time_curr / time_total)  # type: ignore
         signal_left = np.clip(sin_phase_signal, 0, None)  # type: ignore
         signal_right = np.clip(sin_phase_signal, None, 0)  # type: ignore
 
@@ -75,13 +80,13 @@ class WalkSimpleReference(MotionReference):
         else:
             joint_vel = self.default_joint_vel.copy()  # type: ignore
 
-        left_leg_angles = self.calculate_leg_angles(signal_left, True)
-        right_leg_angles = self.calculate_leg_angles(signal_right, False)
+        left_leg_angles = self.calculate_leg_angles(signal_left, True)  # type: ignore
+        right_leg_angles = self.calculate_leg_angles(signal_right, False)  # type: ignore
 
         leg_angles = {**left_leg_angles, **right_leg_angles}
 
-        for name, angle in leg_angles.items():
-            joint_pos = inplace_update(joint_pos, self.get_joint_idx(name), angle)
+        for idx, angle in leg_angles.items():
+            joint_pos = inplace_update(joint_pos, idx, angle)
 
         double_support_mask = np.abs(sin_phase_signal) < self.double_support_phase  # type: ignore
         joint_pos = np.where(  # type: ignore
@@ -118,13 +123,13 @@ class WalkSimpleReference(MotionReference):
 
         if is_left:
             return {
-                "left_hip_pitch": -hip_pitch_angle,
-                "left_knee_pitch": knee_angle,
-                "left_ank_pitch": -ank_pitch_angle,
+                self.left_hip_pitch_idx: -hip_pitch_angle,
+                self.left_knee_pitch_idx: knee_angle,
+                self.left_ank_pitch_idx: -ank_pitch_angle,
             }
         else:
             return {
-                "right_hip_pitch": hip_pitch_angle,
-                "right_knee_pitch": -knee_angle,
-                "right_ank_pitch": -ank_pitch_angle,
+                self.right_hip_pitch_idx: hip_pitch_angle,
+                self.right_knee_pitch_idx: -knee_angle,
+                self.right_ank_pitch_idx: -ank_pitch_angle,
             }
