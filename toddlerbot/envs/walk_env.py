@@ -55,12 +55,7 @@ class WalkEnv(MJXEnv):
         if ref_motion_type == "simple":
             from toddlerbot.ref_motion.walk_simple_ref import WalkSimpleReference
 
-            motion_ref = WalkSimpleReference(
-                robot,
-                default_joint_pos=jnp.array(  # type:ignore
-                    list(robot.default_joint_angles.values())
-                ),
-            )
+            motion_ref = WalkSimpleReference(robot, cfg.action.cycle_time)
         elif ref_motion_type == "zmp":
             from toddlerbot.ref_motion.walk_zmp_ref import WalkZMPReference
 
@@ -72,9 +67,6 @@ class WalkEnv(MJXEnv):
                     cfg.commands.lin_vel_y_range,
                     cfg.commands.ang_vel_yaw_range,
                 ],
-                default_joint_pos=jnp.array(  # type:ignore
-                    list(robot.default_joint_angles.values())
-                ),
                 control_dt=cfg.sim.timestep * cfg.action.n_frames,
             )
         else:

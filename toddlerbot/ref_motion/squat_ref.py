@@ -11,26 +11,19 @@ class SquatReference(MotionReference):
     def __init__(
         self,
         robot: Robot,
-        default_joint_pos: Optional[ArrayType] = None,
-        default_joint_vel: Optional[ArrayType] = None,
         max_knee_pitch: float = np.pi / 2,
         min_knee_pitch: float = 0.0,
     ):
         super().__init__("squat", "episodic", robot)
 
-        if default_joint_pos is None:
-            self.default_joint_pos = np.zeros(  # type: ignore
-                len(self.robot.joint_ordering), dtype=np.float32
-            )
-            self.knee_pitch_default = 0.0
-        else:
-            self.default_joint_pos = default_joint_pos
-            self.knee_pitch_default = default_joint_pos[
-                self.robot.joint_ordering.index("left_knee_pitch")
-            ]
+        self.default_joint_pos = np.array(  # type: ignore
+            list(robot.default_joint_angles.values()), dtype=np.float32
+        )
+        self.default_joint_vel = np.zeros_like(self.default_joint_pos)  # type: ignore
 
-        self.default_joint_vel = default_joint_vel
-
+        self.knee_pitch_default = self.default_joint_pos[
+            self.robot.joint_ordering.index("left_knee_pitch")
+        ]
         self.max_knee_pitch = max_knee_pitch
         self.min_knee_pitch = min_knee_pitch
 
@@ -90,19 +83,14 @@ class SquatReference(MotionReference):
         linear_vel = np.array([0.0, 0.0, command[0]], dtype=np.float32)  # type: ignore
         angular_vel = np.array([0.0, 0.0, 0.0], dtype=np.float32)  # type: ignore
 
-        assert self.default_joint_pos is not None
         joint_pos = self.default_joint_pos.copy()  # type: ignore
-
         leg_angles = self.calculate_leg_angles(
             np.array(command[0] * time_curr, dtype=np.float32)  # type: ignore
         )
         for idx, angle in leg_angles.items():
             joint_pos = inplace_update(joint_pos, idx, angle)
 
-        if self.default_joint_vel is None:
-            joint_vel = np.zeros(self.num_joints, dtype=np.float32)  # type: ignore
-        else:
-            joint_vel = self.default_joint_vel.copy()  # type: ignore
+        joint_vel = self.default_joint_vel.copy()  # type: ignore
 
         stance_mask = np.ones(2, dtype=np.float32)  # type: ignore
 

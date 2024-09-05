@@ -20,8 +20,6 @@ class WalkZMPReference(MotionReference):
         robot: Robot,
         cycle_time: float,
         command_ranges: List[List[float]],
-        default_joint_pos: Optional[ArrayType] = None,
-        default_joint_vel: Optional[ArrayType] = None,
         stride_max: List[float] = [0.12, 0.04, np.pi / 16],
         single_double_ratio: float = 2.0,
         foot_step_height: float = 0.03,
@@ -32,8 +30,6 @@ class WalkZMPReference(MotionReference):
         super().__init__("walk_zmp", "periodic", robot)
 
         self.cycle_time = cycle_time
-        self.default_joint_pos = default_joint_pos
-        self.default_joint_vel = default_joint_vel
         self.stride_max = np.array(stride_max, dtype=np.float32)  # type: ignore
         self.double_support_phase = cycle_time / 2 / (single_double_ratio + 1)
         self.single_support_phase = single_double_ratio * self.double_support_phase
@@ -47,12 +43,14 @@ class WalkZMPReference(MotionReference):
         self.foot_to_com_x = float(robot.data_dict["offsets"]["foot_to_com_x"])
         self.foot_to_com_y = float(robot.data_dict["offsets"]["foot_to_com_y"])
 
-        if self.default_joint_pos is None:
-            self.default_target_z = 0.0
-        else:
-            self.default_target_z = (
-                float(robot.config["general"]["offsets"]["torso_z"]) - self.com_z
-            )
+        self.default_joint_pos = np.array(  # type: ignore
+            list(robot.default_joint_angles.values()), dtype=np.float32
+        )
+        self.default_joint_vel = np.zeros_like(self.default_joint_pos)  # type: ignore
+
+        self.default_target_z = (
+            float(robot.config["general"]["offsets"]["torso_z"]) - self.com_z
+        )
 
         self.leg_joint_slice = slice(
             self.robot.joint_ordering.index("left_hip_yaw_driven"),
@@ -96,31 +94,12 @@ class WalkZMPReference(MotionReference):
         linear_vel = np.array([command[0], command[1], 0.0], dtype=np.float32)  # type: ignore
         angular_vel = np.array([0.0, 0.0, command[2]], dtype=np.float32)  # type: ignore
 
-        if self.default_joint_vel is None:
-            joint_vel = np.zeros(len(self.robot.joint_ordering), dtype=np.float32)  # type: ignore
-        else:
-            joint_vel = self.default_joint_vel.copy()  # type: ignore
-
         # is_zero_commmand = np.linalg.norm(command) < 1e-6  # type: ignore
         nearest_command_idx = np.argmin(  # type: ignore
             np.linalg.norm(self.lookup_keys - command, axis=1)  # type: ignore
         )
         idx = np.round(time_curr / self.control_dt).astype(int)  # type: ignore
         joint_pos = self.default_joint_pos.copy()  # type: ignore
-        # joint_pos = np.where(  # type: ignore
-        #     is_zero_commmand,  # type: ignore
-        #     joint_pos,
-        #     inplace_update(
-        #         joint_pos,
-        #         self.leg_joint_slice,
-        #         self.leg_joint_pos_lookup[nearest_command_idx][idx],
-        #     ),
-        # )
-        # stance_mask = np.where(  # type: ignore
-        #     is_zero_commmand,  # type: ignore
-        #     np.ones(2, dtype=np.float32),  # type: ignore
-        #     self.stance_mask_lookup[nearest_command_idx][idx],
-        # )
         joint_pos = inplace_update(
             joint_pos,
             self.leg_joint_slice,
@@ -128,6 +107,9 @@ class WalkZMPReference(MotionReference):
                 (idx % self.lookup_length[nearest_command_idx]).astype(int)  # type: ignore
             ],
         )
+
+        joint_vel = self.default_joint_vel.copy()  # type: ignore
+
         stance_mask = self.stance_mask_lookup[nearest_command_idx][
             (idx % self.lookup_length[nearest_command_idx]).astype(int)  # type: ignore
         ]

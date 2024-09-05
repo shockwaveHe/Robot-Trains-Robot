@@ -27,14 +27,14 @@ class MJXPolicy(BasePolicy):
         name: str,
         robot: Robot,
         init_motor_pos: npt.NDArray[np.float32],
-        ref_motion: MotionReference,
+        motion_ref: MotionReference,
         ckpt: str,
         command_ranges: List[List[float]],
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
     ) -> None:
         super().__init__(name, robot, init_motor_pos)
 
-        self.ref_motion = ref_motion
+        self.motion_ref = motion_ref
         self.command_ranges = command_ranges
         self.fixed_command = fixed_command
 
@@ -122,7 +122,7 @@ class MJXPolicy(BasePolicy):
             )
 
         time_curr = self.step_curr * self.control_dt
-        phase_signal = self.ref_motion.get_phase_signal(time_curr, command)
+        phase_signal = self.motion_ref.get_phase_signal(time_curr, command)
         motor_pos_delta = obs.motor_pos - self.default_motor_pos
 
         obs_arr = np.concatenate(  # type:ignore

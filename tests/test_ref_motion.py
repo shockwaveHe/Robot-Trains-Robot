@@ -99,10 +99,7 @@ if __name__ == "__main__":
         from toddlerbot.ref_motion.walk_simple_ref import WalkSimpleReference
 
         cfg = WalkCfg()
-        motion_ref = WalkSimpleReference(
-            robot,
-            default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
-        )
+        motion_ref = WalkSimpleReference(robot, cfg.action.cycle_time)
 
     elif args.ref == "walk_zmp":
         from toddlerbot.envs.walk_env import WalkCfg
@@ -117,7 +114,6 @@ if __name__ == "__main__":
                 cfg.commands.lin_vel_y_range,
                 cfg.commands.ang_vel_yaw_range,
             ],
-            default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
         )
 
     elif args.ref == "squat":
@@ -125,20 +121,14 @@ if __name__ == "__main__":
         from toddlerbot.ref_motion.squat_ref import SquatReference
 
         cfg = SquatCfg()
-        motion_ref = SquatReference(
-            robot,
-            default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
-        )
+        motion_ref = SquatReference(robot)
 
     elif args.ref == "rotate_torso":
         from toddlerbot.envs.rotate_torso_env import RotateTorsoCfg
         from toddlerbot.ref_motion.rotate_torso_ref import RotateTorsoReference
 
         cfg = RotateTorsoCfg()
-        motion_ref = RotateTorsoReference(
-            robot,
-            default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
-        )
+        motion_ref = RotateTorsoReference(robot)
 
     else:
         raise ValueError("Unknown ref motion")

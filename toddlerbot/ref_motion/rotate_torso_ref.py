@@ -8,25 +8,20 @@ from toddlerbot.utils.math_utils import gaussian_basis_functions
 
 
 class RotateTorsoReference(MotionReference):
-    def __init__(
-        self,
-        robot: Robot,
-        default_joint_pos: Optional[ArrayType] = None,
-        default_joint_vel: Optional[ArrayType] = None,
-    ):
+    def __init__(self, robot: Robot):
         super().__init__("rotate_torso", "episodic", robot)
 
-        if default_joint_pos is None:
-            self.default_joint_pos = np.zeros(  # type: ignore
-                len(self.robot.joint_ordering), dtype=np.float32
-            )
-        else:
-            self.default_joint_pos = default_joint_pos
+        self.default_joint_pos = np.array(  # type: ignore
+            list(robot.default_joint_angles.values()), dtype=np.float32
+        )
+        self.default_joint_vel = np.zeros_like(self.default_joint_pos)  # type: ignore
 
-        self.default_joint_vel = default_joint_vel
-
-        self.waist_roll_limits = self.robot.joint_limits["waist_roll"]
-        self.waist_yaw_limits = self.robot.joint_limits["waist_yaw"]
+        self.waist_roll_limits = np.array(  # type: ignore
+            self.robot.joint_limits["waist_roll"], dtype=np.float32
+        )
+        self.waist_yaw_limits = np.array(  # type: ignore
+            self.robot.joint_limits["waist_yaw"], dtype=np.float32
+        )
         self.waist_roll_idx = self.robot.joint_ordering.index("waist_roll")
         self.waist_yaw_idx = self.robot.joint_ordering.index("waist_yaw")
 
@@ -63,9 +58,6 @@ class RotateTorsoReference(MotionReference):
         linear_vel = np.array([0.0, 0.0, 0.0], dtype=np.float32)  # type: ignore
         angular_vel = np.array([command[0], 0.0, command[1]], dtype=np.float32)  # type: ignore
 
-        assert self.default_joint_pos is not None
-        joint_pos = self.default_joint_pos.copy()  # type: ignore
-
         waist_roll = np.clip(  # type: ignore
             command[0] * time_curr,
             self.waist_roll_limits[0],
@@ -77,12 +69,11 @@ class RotateTorsoReference(MotionReference):
             self.waist_yaw_limits[1],
         )
 
+        joint_pos = self.default_joint_pos.copy()  # type: ignore
         joint_pos = inplace_update(joint_pos, self.waist_roll_idx, waist_roll)
         joint_pos = inplace_update(joint_pos, self.waist_yaw_idx, waist_yaw)
-        if self.default_joint_vel is None:
-            joint_vel = np.zeros(self.num_joints, dtype=np.float32)  # type: ignore
-        else:
-            joint_vel = self.default_joint_vel.copy()  # type: ignore
+
+        joint_vel = self.default_joint_vel.copy()  # type: ignore
 
         stance_mask = np.ones(2, dtype=np.float32)  # type: ignore
 

@@ -20,10 +20,11 @@ class SquatCfg(MJXConfig):
 
     @dataclass
     class ActionConfig(MJXConfig.ActionConfig):
-        resample_time: float = 2.0
+        action_scale: float = 1.0
 
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):
+        resample_time: float = 2.0
         num_commands: int = 1
         lin_vel_z_range: List[float] = field(default_factory=lambda: [-0.05, 0.05])
 
@@ -52,10 +53,7 @@ class SquatEnv(MJXEnv):
         add_noise: bool = True,
         **kwargs: Any,
     ):
-        motion_ref = SquatReference(
-            robot,
-            default_joint_pos=jnp.array(list(robot.default_joint_angles.values())),  # type:ignore
-        )
+        motion_ref = SquatReference(robot)
 
         self.num_commands = cfg.commands.num_commands
         self.lin_vel_z_range = cfg.commands.lin_vel_z_range
