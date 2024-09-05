@@ -42,6 +42,14 @@ class SquatReference(MotionReference):
         self.knee_to_ank_pitch_z = self.robot.data_dict["offsets"][
             "knee_to_ank_pitch_z"
         ]
+        self.hip_pitch_to_ank_pitch_z = np.sqrt(  # type: ignore
+            self.hip_pitch_to_knee_z**2
+            + self.knee_to_ank_pitch_z**2
+            - 2
+            * self.hip_pitch_to_knee_z
+            * self.knee_to_ank_pitch_z
+            * np.cos(np.pi - self.knee_pitch_default)  # type: ignore
+        )
         self.shin_thigh_ratio = self.knee_to_ank_pitch_z / self.hip_pitch_to_knee_z
 
     def get_state_ref(
@@ -66,7 +74,7 @@ class SquatReference(MotionReference):
         joint_pos = self.default_joint_pos.copy()  # type: ignore
 
         leg_angles = self.calculate_leg_angles(
-            np.array(command[0] * time_curr / self.episode_time, dtype=np.float32)  # type: ignore
+            np.array(command[0] * time_curr, dtype=np.float32)  # type: ignore
         )
         for name, angle in leg_angles.items():
             joint_pos = inplace_update(joint_pos, self.get_joint_idx(name), angle)
@@ -90,15 +98,15 @@ class SquatReference(MotionReference):
             )  # type: ignore
         )
 
-    def calculate_leg_angles(self, signal: ArrayType):
-        signal_sign = (signal < 0).astype(int)  # type: ignore
-        delta_knee_pitch = (
-            self.knee_pitch_default - self.min_knee_pitch
-        ) * signal_sign + (self.max_knee_pitch - self.knee_pitch_default) * (
-            1 - signal_sign
-        )
-
-        knee_angle = np.abs(signal * delta_knee_pitch + self.knee_pitch_default)  # type: ignore
+    def calculate_leg_angles(self, delta_z: ArrayType):
+        knee_angle_cos = (
+            self.hip_pitch_to_knee_z**2
+            + self.knee_to_ank_pitch_z**2
+            - (self.hip_pitch_to_ank_pitch_z + delta_z) ** 2
+        ) / (2 * self.hip_pitch_to_knee_z * self.knee_to_ank_pitch_z)
+        knee_angle_cos = np.clip(knee_angle_cos, -1.0, 1.0)  # type: ignore
+        knee_angle = np.abs(np.pi - np.arccos(knee_angle_cos))  # type: ignore
+        knee_angle = np.clip(knee_angle, self.min_knee_pitch, self.max_knee_pitch)  # type: ignore
 
         ank_pitch_angle = np.arctan2(  # type: ignore
             np.sin(knee_angle),  # type: ignore

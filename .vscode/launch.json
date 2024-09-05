@@ -163,8 +163,10 @@
             "program": "tests/test_ref_motion.py",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": [],
-            // "python": "/Users/haochen/opt/miniconda3/envs/toddlerbot/bin/mjpython"
+            "args": [
+                "--ref", 
+                "squat",
+            ],
         },
         {
             "name": "Python: calibrate_toddlerbot_real",

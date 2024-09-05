@@ -26,7 +26,7 @@ class SquatCfg(MJXConfig):
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):
         num_commands: int = 1
-        squat_depth_range: List[float] = field(default_factory=lambda: [-1, 1])
+        lin_vel_z_range: List[float] = field(default_factory=lambda: [-0.05, 0.05])
 
     @dataclass
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
@@ -60,7 +60,7 @@ class SquatEnv(MJXEnv):
         )
 
         self.num_commands = cfg.commands.num_commands
-        self.squat_depth_range = cfg.commands.squat_depth_range
+        self.lin_vel_z_range = cfg.commands.lin_vel_z_range
 
         super().__init__(
             name,
@@ -82,8 +82,8 @@ class SquatEnv(MJXEnv):
         squat_depth = jax.random.uniform(  # type:ignore
             rng_1,
             (1,),
-            minval=self.squat_depth_range[0],
-            maxval=self.squat_depth_range[1],
+            minval=self.lin_vel_z_range[0],
+            maxval=self.lin_vel_z_range[1],
         )
         commands = squat_depth  # type:ignore
 

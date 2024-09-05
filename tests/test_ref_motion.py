@@ -146,8 +146,8 @@ if __name__ == "__main__":
 
     elif args.ref == "squat":
         command_list = [
-            np.array([1, 0, 0], dtype=np.float32),
-            np.array([-1, 0, 0], dtype=np.float32),
+            np.array([0.05, 0, 0], dtype=np.float32),
+            np.array([-0.05, 0, 0], dtype=np.float32),
         ]
 
     else:
