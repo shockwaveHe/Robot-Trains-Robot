@@ -63,6 +63,8 @@ class SquatReference(MotionReference):
             raise ValueError(f"command is required for {self.name}")
 
         phase_signal = gaussian_basis_functions(np.array(time_curr, dtype=np.float32))  # type: ignore
+        # TODO: Fix this
+        phase_signal = np.zeros_like(phase_signal)  # type: ignore
 
         linear_vel = np.array([0.0, 0.0, command[0]], dtype=np.float32)  # type: ignore
         angular_vel = np.array([0.0, 0.0, 0.0], dtype=np.float32)  # type: ignore
