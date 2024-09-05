@@ -374,24 +374,23 @@ if __name__ == "__main__":
         raise ValueError("Unknown simulator")
 
     if args.policy == "stand":
-        from toddlerbot.policies.stand import StandPolicy
+        from toddlerbot.policies.stand_open import StandPolicy
 
         policy = StandPolicy(robot, init_motor_pos)
 
     elif args.policy == "rotate_torso":
-        from toddlerbot.policies.rotate_torso import RotateTorsoPolicy
+        from toddlerbot.policies.rotate_torso_open import RotateTorsoPolicy
 
         policy = RotateTorsoPolicy(robot, init_motor_pos)
 
     elif args.policy == "squat":
-        from toddlerbot.policies.squat import SquatPolicy
+        from toddlerbot.policies.squat_open import SquatPolicy
 
         policy = SquatPolicy(robot)
 
     elif args.policy == "walk_fixed":
         from toddlerbot.policies.walk_fixed import WalkFixedPolicy
 
-        run_name = f"{args.robot}_{args.policy}_ppo_{args.ckpt}"
         policy = WalkFixedPolicy(robot, init_motor_pos, run_name)
 
     elif args.policy == "walk":

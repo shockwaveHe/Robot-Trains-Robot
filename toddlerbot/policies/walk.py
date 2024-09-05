@@ -84,7 +84,7 @@ class WalkPolicy(BasePolicy):
         self.joystick = initialize_joystick()
 
         self.prep_duration = 7.0
-        self.prep_time, self.prep_action = self.reset(
+        self.prep_time, self.prep_action = self.move(
             -self.control_dt,
             init_motor_pos,
             self.default_motor_pos,

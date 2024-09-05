@@ -48,7 +48,7 @@ class RotateTorsoPolicy(BasePolicy):
         action_list: List[npt.NDArray[np.float32]] = []
         self.time_mark_dict: Dict[str, float] = {}
 
-        prep_time, prep_action = self.reset(
+        prep_time, prep_action = self.move(
             -self.control_dt,
             init_motor_pos,
             np.zeros_like(init_motor_pos),
@@ -73,7 +73,7 @@ class RotateTorsoPolicy(BasePolicy):
                     warm_up_act[robot.joint_ordering.index(name)] = angle
 
             if not np.allclose(warm_up_act, action_list[-1][-1], 1e-6):
-                warm_up_time, warm_up_action = self.reset(
+                warm_up_time, warm_up_action = self.move(
                     time_list[-1][-1],
                     action_list[-1][-1],
                     warm_up_act,
@@ -119,7 +119,7 @@ class RotateTorsoPolicy(BasePolicy):
             time_list.append(rotate_time)
             action_list.append(rotate_action)
 
-            reset_time, reset_action = self.reset(
+            reset_time, reset_action = self.move(
                 time_list[-1][-1],
                 action_list[-1][-1],
                 warm_up_act,

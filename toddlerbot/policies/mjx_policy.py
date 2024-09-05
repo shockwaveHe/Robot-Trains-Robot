@@ -19,12 +19,15 @@ from toddlerbot.utils.math_utils import interpolate_action
 # from toddlerbot.utils.misc_utils import profile
 
 
-class WalkFixedPolicy(BasePolicy):
+class RLPolicy(BasePolicy):
     def __init__(
-        self, robot: Robot, init_motor_pos: npt.NDArray[np.float32], run_name: str
-    ):
-        super().__init__(robot, init_motor_pos)
-        self.name = "walk_fixed"
+        self,
+        name: str,
+        robot: Robot,
+        init_motor_pos: npt.NDArray[np.float32],
+        ckpt: str,
+    ) -> None:
+        super().__init__(name, robot, init_motor_pos)
 
         cfg = MJXConfig()
         train_cfg = PPOConfig()
@@ -44,8 +47,7 @@ class WalkFixedPolicy(BasePolicy):
         self.neck_motor_indices = motor_indices[motor_groups == "neck"]
         self.waist_motor_indices = motor_indices[motor_groups == "waist"]
 
-        self.action_scale = cfg.action.action_scale
-        self.obs_scales = cfg.obs.scales
+        self.obs_scales = cfg.obs.scales  # Assume all the envs have the same scales
         self.default_motor_pos = np.array(
             list(robot.default_motor_angles.values()), dtype=np.float32
         )
@@ -54,13 +56,7 @@ class WalkFixedPolicy(BasePolicy):
         self.obs_history = np.zeros(
             cfg.obs.frame_stack * cfg.obs.num_single_obs, dtype=np.float32
         )
-        self.cycle_time = cfg.action.cycle_time
         self.step_curr = 0
-        self.command_ranges = [
-            cfg.commands.ranges.lin_vel_x,
-            cfg.commands.ranges.lin_vel_y,
-            cfg.commands.ranges.ang_vel_yaw,
-        ]
 
         ppo_network = make_networks_factory(  # type: ignore
             cfg.obs.num_single_obs,
@@ -69,6 +65,7 @@ class WalkFixedPolicy(BasePolicy):
         )
         make_policy = ppo_networks.make_inference_fn(ppo_network)  # type: ignore
 
+        run_name = f"{robot.name}_{self.name}_ppo_{ckpt}"
         policy_path = os.path.join("results", run_name, "best_policy")
         if not os.path.exists(policy_path):
             policy_path = os.path.join("results", run_name, "policy")
@@ -101,15 +98,11 @@ class WalkFixedPolicy(BasePolicy):
 
             return action
 
-        phase = self.step_curr * self.control_dt / self.cycle_time
+        time_curr = self.step_curr * self.control_dt
         phase_signal = np.array(  # type:ignore
             [np.sin(2 * np.pi * phase), np.cos(2 * np.pi * phase)]  # type:ignore
         )
         motor_pos_delta = obs.motor_pos - self.default_motor_pos
-
-        # obs.lin_vel = np.zeros(3, dtype=np.float32)
-        obs.ang_vel = np.zeros(3, dtype=np.float32)
-        obs.euler = np.zeros(3, dtype=np.float32)
 
         if self.joystick is None:
             controller_input = [0.3, 0.0, 0.0]

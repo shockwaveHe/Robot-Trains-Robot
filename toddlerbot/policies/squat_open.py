@@ -102,7 +102,7 @@ class SquatPolicy(BasePolicy):
             time_list.append(squat_time)
             action_list.append(squat_action)
 
-            pause_time, pause_action = self.reset(
+            pause_time, pause_action = self.move(
                 time_list[-1][-1],
                 action_list[-1][-1],
                 action_list[-1][-1],
@@ -116,7 +116,7 @@ class SquatPolicy(BasePolicy):
             rise_act[robot.motor_ordering.index("left_sho_pitch")] = 0.0
             rise_act[robot.motor_ordering.index("right_sho_pitch")] = 0.0
 
-            rise_time, rise_action = self.reset(
+            rise_time, rise_action = self.move(
                 time_list[-1][-1],
                 action_list[-1][-1],
                 rise_act,
@@ -126,7 +126,7 @@ class SquatPolicy(BasePolicy):
             time_list.append(rise_time)
             action_list.append(rise_action)
 
-            reset_time, reset_action = self.reset(
+            reset_time, reset_action = self.move(
                 time_list[-1][-1],
                 action_list[-1][-1],
                 warm_up_act,
@@ -136,7 +136,7 @@ class SquatPolicy(BasePolicy):
             time_list.append(reset_time)
             action_list.append(reset_action)
 
-        rise_time, rise_action = self.reset(
+        rise_time, rise_action = self.move(
             time_list[-1][-1],
             action_list[-1][-1],
             np.zeros_like(action_list[-1][-1]),
