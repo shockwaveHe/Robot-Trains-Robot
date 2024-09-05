@@ -399,6 +399,7 @@ if __name__ == "__main__":
                 learning_rate=1e-4,
             )
             env_cfg = WalkCfg()
+            env_cfg.rewards.healthy_z_range = [-0.2, 0.2]
             env_cfg.rewards.scales.reset()
             # reward_scales.feet_distance = 0.5
             env_cfg.rewards.scales.leg_joint_pos = 5.0
@@ -445,6 +446,9 @@ if __name__ == "__main__":
             learning_rate=1e-4,
         )
         env_cfg = SquatCfg()
+
+        if "fixed" in args.env:
+            env_cfg.rewards.healthy_z_range = [-0.2, 0.2]
 
         env = SquatEnv("squat", robot, env_cfg, fixed_base="fixed" in args.env)
         eval_env = SquatEnv("squat", robot, env_cfg, fixed_base="fixed" in args.env)

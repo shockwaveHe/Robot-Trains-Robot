@@ -35,6 +35,8 @@ class RotateTorsoCfg(MJXConfig):
         lin_vel_z: float = 0.5
         ang_vel_xy: float = 1.0
         ang_vel_z: float = 1.0
+        leg_joint_pos: float = 0.0
+        waist_joint_pos: float = 5.0
 
     def __init__(self):
         super().__init__()
