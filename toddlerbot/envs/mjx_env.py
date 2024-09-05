@@ -160,9 +160,6 @@ class MJXEnv(PipelineEnv):
         self.q_start_idx = 0 if self.fixed_base else 7
         self.qd_start_idx = 0 if self.fixed_base else 6
 
-        # actions
-        self.action_scale = self.cfg.action.action_scale
-
         # noise
         self.obs_noise_scale = self.cfg.noise.obs_noise_scale * jnp.concatenate(  # type:ignore
             [
@@ -301,13 +298,17 @@ class MJXEnv(PipelineEnv):
         action = action.at[self.arm_motor_indices].set(0)  # type:ignore
         action = action.at[self.neck_motor_indices].set(0)  # type:ignore
         # action = action.at[self.waist_motor_indices[-1]].set(0)  # type:ignore
-        motor_target = self.default_motor_pos + action * self.action_scale
 
+        motor_target = jnp.where(  # type:ignore
+            action < 0,
+            self.default_motor_pos
+            + action * (self.default_motor_pos - self.motor_limits[:, 0]),
+            self.default_motor_pos
+            + action * (self.motor_limits[:, 1] - self.default_motor_pos),
+        )
         motor_target = jnp.clip(  # type:ignore
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
         )
-
-        # jax.debug.breakpoint()
 
         pipeline_state = self.pipeline_step(state.pipeline_state, motor_target)
 
