@@ -31,10 +31,10 @@ class WalkZMPReference(MotionReference):
     ):
         super().__init__("walk_zmp", "periodic", robot)
 
+        self.cycle_time = cycle_time
         self.default_joint_pos = default_joint_pos
         self.default_joint_vel = default_joint_vel
         self.stride_max = np.array(stride_max, dtype=np.float32)  # type: ignore
-        self.cycle_time = cycle_time
         self.double_support_phase = cycle_time / 2 / (single_double_ratio + 1)
         self.single_support_phase = single_double_ratio * self.double_support_phase
         self.footstep_height = foot_step_height
@@ -67,28 +67,31 @@ class WalkZMPReference(MotionReference):
         )
         self.build_lookup_table(command_ranges)
 
+    def get_phase_signal(
+        self, time_curr: float | ArrayType, command: ArrayType
+    ) -> ArrayType:
+        phase_signal = np.array(  # type:ignore
+            [
+                np.sin(2 * np.pi * time_curr / self.cycle_time),  # type:ignore
+                np.cos(2 * np.pi * time_curr / self.cycle_time),  # type:ignore
+            ],
+            dtype=np.float32,
+        )
+        return phase_signal
+
     # @profile()
     def get_state_ref(
         self,
         path_pos: ArrayType,
         path_quat: ArrayType,
         time_curr: Optional[float | ArrayType] = None,
-        time_total: Optional[float | ArrayType] = None,
         command: Optional[ArrayType] = None,
-    ) -> Tuple[ArrayType, ArrayType]:
+    ) -> ArrayType:
         if time_curr is None:
             raise ValueError(f"time_curr is required for {self.name}")
 
         if command is None:
             raise ValueError(f"command is required for {self.name}")
-
-        phase_signal = np.array(  # type:ignore
-            [
-                np.sin(2 * np.pi * time_curr / time_total),  # type:ignore
-                np.cos(2 * np.pi * time_curr / time_total),  # type:ignore
-            ],
-            dtype=np.float32,
-        )
 
         linear_vel = np.array([command[0], command[1], 0.0], dtype=np.float32)  # type: ignore
         angular_vel = np.array([0.0, 0.0, command[2]], dtype=np.float32)  # type: ignore
@@ -129,7 +132,7 @@ class WalkZMPReference(MotionReference):
             (idx % self.lookup_length[nearest_command_idx]).astype(int)  # type: ignore
         ]
 
-        return phase_signal, np.concatenate(  # type: ignore
+        return np.concatenate(  # type: ignore
             (
                 path_pos,
                 path_quat,

@@ -12,6 +12,7 @@ from brax.training.agents.ppo import networks as ppo_networks  # type: ignore
 from toddlerbot.envs.mjx_config import MJXConfig
 from toddlerbot.envs.ppo_config import PPOConfig
 from toddlerbot.policies import BasePolicy
+from toddlerbot.ref_motion import MotionReference
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.teleop.joystick import get_controller_input, initialize_joystick
@@ -20,18 +21,20 @@ from toddlerbot.utils.math_utils import interpolate_action
 # from toddlerbot.utils.misc_utils import profile
 
 
-class RLPolicy(BasePolicy):
+class MJXPolicy(BasePolicy):
     def __init__(
         self,
         name: str,
         robot: Robot,
         init_motor_pos: npt.NDArray[np.float32],
+        ref_motion: MotionReference,
         ckpt: str,
         command_ranges: List[List[float]],
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
     ) -> None:
         super().__init__(name, robot, init_motor_pos)
 
+        self.ref_motion = ref_motion
         self.command_ranges = command_ranges
         self.fixed_command = fixed_command
 
@@ -100,9 +103,6 @@ class RLPolicy(BasePolicy):
             end_time=5.0,
         )
 
-    def get_phase_signal(self, time_curr: float) -> npt.NDArray[np.float32]:
-        return np.zeros(2, dtype=np.float32)
-
     # @profile()
     def step(self, obs: Obs) -> npt.NDArray[np.float32]:
         if obs.time < self.prep_duration:
@@ -112,20 +112,23 @@ class RLPolicy(BasePolicy):
 
             return action
 
-        time_curr = self.step_curr * self.control_dt
-        phase_signal = self.get_phase_signal(time_curr)
-
-        motor_pos_delta = obs.motor_pos - self.default_motor_pos
-
         if self.joystick is None:
-            controller_input = self.fixed_command
+            assert self.fixed_command is not None
+            command = self.fixed_command
         else:
-            controller_input = get_controller_input(self.joystick, self.command_ranges)
+            command = np.array(
+                get_controller_input(self.joystick, self.command_ranges),
+                dtype=np.float32,
+            )
+
+        time_curr = self.step_curr * self.control_dt
+        phase_signal = self.ref_motion.get_phase_signal(time_curr, command)
+        motor_pos_delta = obs.motor_pos - self.default_motor_pos
 
         obs_arr = np.concatenate(  # type:ignore
             [
                 phase_signal,
-                np.array(controller_input),  # type:ignore
+                command,  # type:ignore
                 motor_pos_delta * self.obs_scales.dof_pos,
                 obs.motor_vel * self.obs_scales.dof_vel,
                 self.last_action,

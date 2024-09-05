@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Tuple
+from typing import Optional
 
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.array_utils import ArrayType
@@ -12,12 +12,17 @@ class MotionReference(ABC):
         self.robot = robot
 
     @abstractmethod
+    def get_phase_signal(
+        self, time_curr: float | ArrayType, command: ArrayType
+    ) -> ArrayType:
+        pass
+
+    @abstractmethod
     def get_state_ref(
         self,
         path_pos: ArrayType,
         path_quat: ArrayType,
         time_curr: Optional[float | ArrayType] = None,
-        time_total: Optional[float | ArrayType] = None,
         command: Optional[ArrayType] = None,
-    ) -> Tuple[ArrayType, ArrayType]:
+    ) -> ArrayType:
         pass

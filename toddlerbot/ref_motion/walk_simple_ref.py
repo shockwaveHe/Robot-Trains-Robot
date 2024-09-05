@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Optional
 
 from toddlerbot.ref_motion import MotionReference
 from toddlerbot.sim.robot import Robot
@@ -10,6 +10,7 @@ class WalkSimpleReference(MotionReference):
     def __init__(
         self,
         robot: Robot,
+        cycle_time: float,
         default_joint_pos: Optional[ArrayType] = None,
         default_joint_vel: Optional[ArrayType] = None,
         max_knee_pitch: float = np.pi / 3,
@@ -17,6 +18,7 @@ class WalkSimpleReference(MotionReference):
     ):
         super().__init__("walk_simple", "periodic", robot)
 
+        self.cycle_time = cycle_time
         self.default_joint_pos = default_joint_pos
         self.default_joint_vel = default_joint_vel
         if self.default_joint_pos is None:
@@ -44,28 +46,32 @@ class WalkSimpleReference(MotionReference):
         self.right_knee_pitch_idx = self.robot.joint_ordering.index("right_knee_pitch")
         self.right_ank_pitch_idx = self.robot.joint_ordering.index("right_ank_pitch")
 
+    def get_phase_signal(
+        self, time_curr: float | ArrayType, command: ArrayType
+    ) -> ArrayType:
+        phase_signal = np.array(  # type:ignore
+            [
+                np.sin(2 * np.pi * time_curr / self.cycle_time),  # type:ignore
+                np.cos(2 * np.pi * time_curr / self.cycle_time),  # type:ignore
+            ],
+            dtype=np.float32,
+        )
+        return phase_signal
+
     def get_state_ref(
         self,
         path_pos: ArrayType,
         path_quat: ArrayType,
         time_curr: Optional[float | ArrayType] = None,
-        time_total: Optional[float | ArrayType] = None,
         command: Optional[ArrayType] = None,
-    ) -> Tuple[ArrayType, ArrayType]:
+    ) -> ArrayType:
         if time_curr is None:
             raise ValueError(f"time_curr is required for {self.name}")
 
         if command is None:
             raise ValueError(f"command is required for {self.name}")
 
-        phase_signal = np.array(  # type:ignore
-            [
-                np.sin(2 * np.pi * time_curr / time_total),  # type:ignore
-                np.cos(2 * np.pi * time_curr / time_total),  # type:ignore
-            ],
-            dtype=np.float32,
-        )
-        sin_phase_signal = np.sin(2 * np.pi * time_curr / time_total)  # type: ignore
+        sin_phase_signal = np.sin(2 * np.pi * time_curr / self.cycle_time)  # type: ignore
         signal_left = np.clip(sin_phase_signal, 0, None)  # type: ignore
         signal_right = np.clip(sin_phase_signal, None, 0)  # type: ignore
 
@@ -98,7 +104,7 @@ class WalkSimpleReference(MotionReference):
         stance_mask = inplace_update(stance_mask, 1, np.any(sin_phase_signal < 0))  # type: ignore
         stance_mask = np.where(double_support_mask, 1, stance_mask)  # type: ignore
 
-        return phase_signal, np.concatenate(  # type: ignore
+        return np.concatenate(  # type: ignore
             (
                 path_pos,
                 path_quat,

@@ -12,6 +12,7 @@ from toddlerbot.utils.misc_utils import set_seed
 
 class SquatPolicy(BasePolicy):
     def __init__(self, robot: Robot):
+        # TODO: Fix this script
         super().__init__(robot)
         self.name = "squat"
         self.control_dt = 0.02
@@ -33,7 +34,7 @@ class SquatPolicy(BasePolicy):
         action_list: List[npt.NDArray[np.float32]] = []
 
         prep_act = np.array(list(robot.init_motor_angles.values()), dtype=np.float32)
-        prep_time, prep_action = self.warm_up(prep_act, prep_duration)
+        prep_time, prep_action = self.move(prep_act, prep_duration)
 
         time_list.append(prep_time)
         action_list.append(prep_action)
@@ -44,7 +45,7 @@ class SquatPolicy(BasePolicy):
         # warm_up_act[robot.motor_ordering.index("left_sho_yaw_drive")] = -np.pi / 2
         # warm_up_act[robot.motor_ordering.index("right_sho_yaw_drive")] = np.pi / 2
 
-        warm_up_time, warm_up_action = self.warm_up(warm_up_act, warm_up_duration)
+        warm_up_time, warm_up_action = self.move(warm_up_act, warm_up_duration)
         warm_up_time += time_list[-1][-1] + self.control_dt
 
         time_list.append(warm_up_time)
@@ -152,7 +153,6 @@ class SquatPolicy(BasePolicy):
     def step(self, obs: Obs) -> npt.NDArray[np.float32]:
         action = np.array(interpolate_action(obs.time, self.time_arr, self.action_arr))
 
-        # TODO: Fix this
         left_knee_pitch = obs.motor_pos[
             self.robot.joint_ordering.index("left_knee_pitch")
         ]
@@ -172,27 +172,5 @@ class SquatPolicy(BasePolicy):
         action[self.robot.joint_ordering.index("right_hip_pitch")] = (
             right_ank_pitch - right_knee_pitch
         )
-
-        # time_curr = obs_dict["time"].item()
-        # action = np.array(interpolate_arr(time_curr, self.time_arr, self.action_arr))
-
-        # c = (
-        #     self.robot.data_dict["offsets"]["knee_to_ank_pitch_z"]
-        #     / self.robot.data_dict["offsets"]["hip_pitch_to_knee_z"]
-        # )
-        # knee_angle = abs(
-        #     obs_dict["q"][self.robot.joint_ordering.index("left_knee_pitch")]
-        # )
-        # ank_pitch_angle = np.arctan2(np.sin(knee_angle), np.cos(knee_angle) + c)
-        # hip_pitch_angle = knee_angle - ank_pitch_angle
-
-        # ank_act = self.robot.ankle_ik([0.0, -ank_pitch_angle])
-
-        # action[self.robot.motor_ordering.index("left_hip_pitch")] = -hip_pitch_angle
-        # action[self.robot.motor_ordering.index("right_hip_pitch")] = hip_pitch_angle
-        # action[self.robot.motor_ordering.index("left_ank_act_1")] = ank_act[0]
-        # action[self.robot.motor_ordering.index("left_ank_act_2")] = ank_act[1]
-        # action[self.robot.motor_ordering.index("right_ank_act_1")] = -ank_act[0]
-        # action[self.robot.motor_ordering.index("right_ank_act_2")] = -ank_act[1]
 
         return action

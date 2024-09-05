@@ -33,8 +33,8 @@ def test_motion_ref(
                 np.arange(0, time_total, sim.control_dt),  # type: ignore
                 desc="Running Ref Motion",
             ):
-                _, state = motion_ref.get_state_ref(
-                    path_pos, path_quat, time_curr, time_total, command
+                state = motion_ref.get_state_ref(
+                    path_pos, path_quat, time_curr, command
                 )
                 joint_angles = np.asarray(state[13 : 13 + len(robot.joint_ordering)])  # type: ignore
                 motor_angles = robot.joint_to_motor_angles(

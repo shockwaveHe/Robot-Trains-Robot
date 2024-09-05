@@ -259,14 +259,14 @@ class MJXEnv(PipelineEnv):
             "step": 0,
         }
         state_info["command"] = self._sample_command(pipeline_state, rng2)
-        state_info["time_total"] = self._get_total_time(state_info["command"])
-
-        state_info["phase_signal"], state_info["state_ref"] = (  # type:ignore
+        state_info["phase_signal"] = self.motion_ref.get_phase_signal(  # type:ignore
+            0.0, state_info["command"]
+        )  # type:ignore
+        state_info["state_ref"] = (  # type:ignore
             self.motion_ref.get_state_ref(
                 state_info["path_pos"],  # type:ignore
                 state_info["path_quat"],  # type:ignore
                 0.0,
-                state_info["time_total"],
                 state_info["command"],
             )
         )
@@ -345,11 +345,13 @@ class MJXEnv(PipelineEnv):
         path_pos, path_quat = self._integrate_path_frame(state.info)
 
         time_curr = state.info["step"] * self.dt
-        phase_signal, state_ref = self.motion_ref.get_state_ref(
+        phase_signal = self.motion_ref.get_phase_signal(
+            time_curr, state.info["command"]
+        )
+        state_ref = self.motion_ref.get_state_ref(
             path_pos,
             path_quat,
             time_curr,
-            state.info["time_total"],
             state.info["command"],
         )
         contact_forces, stance_mask = self._get_contact_forces(
@@ -399,11 +401,6 @@ class MJXEnv(PipelineEnv):
             state.info["step"] > self.resample_steps,
             self._sample_command(pipeline_state, cmd_rng),
             state.info["command"],
-        )
-        state.info["time_total"] = jnp.where(  # type:ignore
-            state.info["step"] > self.resample_steps,
-            self._get_total_time(state.info["command"]),  # type:ignore
-            state.info["time_total"],
         )
 
         # reset the step counter when done

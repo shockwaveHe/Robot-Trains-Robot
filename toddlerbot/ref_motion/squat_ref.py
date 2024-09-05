@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Optional
 
 from toddlerbot.ref_motion import MotionReference
 from toddlerbot.sim.robot import Robot
@@ -50,6 +50,13 @@ class SquatReference(MotionReference):
         )
         self.shin_thigh_ratio = self.knee_to_ank_pitch_z / self.hip_pitch_to_knee_z
 
+        self.knee_limits = np.array(  # type:ignore
+            [
+                self.knee_pitch_default - min_knee_pitch,
+                max_knee_pitch - self.knee_pitch_default,
+            ]
+        )
+
         self.left_hip_pitch_idx = self.robot.joint_ordering.index("left_hip_pitch")
         self.left_knee_pitch_idx = self.robot.joint_ordering.index("left_knee_pitch")
         self.left_ank_pitch_idx = self.robot.joint_ordering.index("left_ank_pitch")
@@ -59,25 +66,26 @@ class SquatReference(MotionReference):
 
         self.num_joints = len(self.robot.joint_ordering)
 
+    def get_phase_signal(
+        self, time_curr: float | ArrayType, command: ArrayType
+    ) -> ArrayType:
+        time_total = np.max(self.knee_limits / command[0])  # type:ignore
+        phase = np.clip(time_curr / time_total, 0.0, 1.0)  # type: ignore
+        phase_signal = gaussian_basis_functions(phase)
+        return phase_signal
+
     def get_state_ref(
         self,
         path_pos: ArrayType,
         path_quat: ArrayType,
         time_curr: Optional[float | ArrayType] = None,
-        time_total: Optional[float | ArrayType] = None,
         command: Optional[ArrayType] = None,
-    ) -> Tuple[ArrayType, ArrayType]:
+    ) -> ArrayType:
         if time_curr is None:
             raise ValueError(f"time_curr is required for {self.name}")
 
-        if time_total is None:
-            raise ValueError(f"time_total is required for {self.name}")
-
         if command is None:
             raise ValueError(f"command is required for {self.name}")
-
-        phase = np.clip(time_curr / time_total, 0.0, 1.0)  # type: ignore
-        phase_signal = gaussian_basis_functions(phase)
 
         linear_vel = np.array([0.0, 0.0, command[0]], dtype=np.float32)  # type: ignore
         angular_vel = np.array([0.0, 0.0, 0.0], dtype=np.float32)  # type: ignore
@@ -98,7 +106,7 @@ class SquatReference(MotionReference):
 
         stance_mask = np.ones(2, dtype=np.float32)  # type: ignore
 
-        return phase_signal, np.concatenate(  # type: ignore
+        return np.concatenate(  # type: ignore
             (
                 path_pos,
                 path_quat,
