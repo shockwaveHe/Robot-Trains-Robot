@@ -129,7 +129,6 @@ if __name__ == "__main__":
         cfg = SquatCfg()
         motion_ref = SquatReference(
             robot,
-            cfg.action.episode_time,
             default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
         )
 

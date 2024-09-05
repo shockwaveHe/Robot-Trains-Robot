@@ -11,15 +11,12 @@ class SquatReference(MotionReference):
     def __init__(
         self,
         robot: Robot,
-        episode_time: float,
         default_joint_pos: Optional[ArrayType] = None,
         default_joint_vel: Optional[ArrayType] = None,
         max_knee_pitch: float = np.pi / 2,
         min_knee_pitch: float = 0.0,
     ):
         super().__init__("squat", "episodic", robot)
-
-        self.episode_time = episode_time
 
         self.default_joint_pos = default_joint_pos
         self.default_joint_vel = default_joint_vel

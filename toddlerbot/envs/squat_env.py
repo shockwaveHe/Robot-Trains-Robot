@@ -20,8 +20,7 @@ class SquatCfg(MJXConfig):
 
     @dataclass
     class ActionConfig(MJXConfig.ActionConfig):
-        resample_time: float = 1.5
-        episode_time: float = 2.0
+        resample_time: float = 2.0
 
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):
@@ -55,7 +54,6 @@ class SquatEnv(MJXEnv):
     ):
         motion_ref = SquatReference(
             robot,
-            episode_time=cfg.action.episode_time,
             default_joint_pos=jnp.array(list(robot.default_joint_angles.values())),  # type:ignore
         )
 
