@@ -109,15 +109,33 @@ class MJXEnv(PipelineEnv):
         # self.jit_contact_force = jax.jit(support.contact_force, static_argnums=(2, 3))  # type:ignore
         self.jit_contact_force = support.contact_force
 
+        self.joint_indices = jnp.array(  # type:ignore
+            [
+                support.name2id(self.sys, mujoco.mjtObj.mjOBJ_JOINT, name)  # type:ignore
+                for name in self.robot.joint_ordering
+            ]
+        )
+        if not self.fixed_base:
+            # Disregard the free joint
+            self.joint_indices -= 1
+
+        joint_groups = np.array(  # type:ignore
+            [self.robot.joint_groups[name] for name in self.robot.joint_ordering]
+        )
+        self.leg_joint_indices = self.joint_indices[joint_groups == "leg"]
+        self.arm_joint_indices = self.joint_indices[joint_groups == "arm"]
+        self.neck_joint_indices = self.joint_indices[joint_groups == "neck"]
+        self.waist_joint_indices = self.joint_indices[joint_groups == "waist"]
+
         motor_indices = np.array(  # type:ignore
             [
                 support.name2id(self.sys, mujoco.mjtObj.mjOBJ_ACTUATOR, name)  # type:ignore
-                for name in self.robot.motor_ordering
+                for name in self.robot.joint_ordering
             ]
         )
         self.motor_indices = jnp.array(motor_indices)  # type:ignore
         motor_groups = np.array(  # type:ignore
-            [self.robot.joint_groups[name] for name in self.robot.motor_ordering]
+            [self.robot.joint_groups[name] for name in self.robot.joint_ordering]
         )
         self.leg_motor_indices = self.motor_indices[motor_groups == "leg"]
         self.arm_motor_indices = self.motor_indices[motor_groups == "arm"]
@@ -131,11 +149,11 @@ class MJXEnv(PipelineEnv):
             ]
         )
 
-        joint_ref_indices = jnp.arange(len(self.robot.motor_ordering))  # type:ignore
-        self.leg_ref_indices = joint_ref_indices[motor_groups == "leg"]  # type:ignore
-        self.arm_ref_indices = joint_ref_indices[motor_groups == "arm"]  # type:ignore
-        self.neck_ref_indices = joint_ref_indices[motor_groups == "neck"]  # type:ignore
-        self.waist_ref_indices = joint_ref_indices[motor_groups == "waist"]  # type:ignore
+        joint_ref_indices = jnp.arange(len(self.robot.joint_ordering))  # type:ignore
+        self.leg_ref_indices = joint_ref_indices[joint_groups == "leg"]  # type:ignore
+        self.arm_ref_indices = joint_ref_indices[joint_groups == "arm"]  # type:ignore
+        self.neck_ref_indices = joint_ref_indices[joint_groups == "neck"]  # type:ignore
+        self.waist_ref_indices = joint_ref_indices[joint_groups == "waist"]  # type:ignore
 
         # default qpos
         self.default_qpos = jnp.array(self.sys.mj_model.keyframe("home").qpos)  # type:ignore
@@ -479,8 +497,9 @@ class MJXEnv(PipelineEnv):
         )
         motor_vel = pipeline_state.qd[self.qd_start_idx + self.motor_indices]
 
-        motor_pos_error = (
-            motor_pos
+        joint_pos = pipeline_state.q[self.q_start_idx + self.joint_indices]
+        joint_pos_error = (
+            joint_pos
             - info["state_ref"][self.ref_start_idx : self.ref_start_idx + self.nu]
         )
 
@@ -515,7 +534,7 @@ class MJXEnv(PipelineEnv):
                 torso_lin_vel * self.obs_scales.lin_vel,
                 torso_ang_vel * self.obs_scales.ang_vel,
                 torso_euler * self.obs_scales.euler,
-                motor_pos_error,
+                joint_pos_error,
                 info["stance_mask"],
                 info["state_ref"][-2:],
                 info["push"],
@@ -646,7 +665,7 @@ class MJXEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
         """Reward for tracking leg joint positions"""
-        joint_pos = pipeline_state.q[self.q_start_idx + self.leg_motor_indices]
+        joint_pos = pipeline_state.q[self.q_start_idx + self.leg_joint_indices]
         joint_pos_ref = info["state_ref"][self.ref_start_idx + self.leg_ref_indices]
         error = joint_pos - joint_pos_ref
         reward = -jnp.mean(error**2)  # type:ignore
@@ -656,7 +675,7 @@ class MJXEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
         """Reward for tracking leg joint velocities"""
-        joint_vel = pipeline_state.qd[self.qd_start_idx + self.leg_motor_indices]
+        joint_vel = pipeline_state.qd[self.qd_start_idx + self.leg_joint_indices]
         joint_vel_ref = info["state_ref"][
             self.ref_start_idx + self.nu + self.leg_ref_indices
         ]
@@ -668,7 +687,7 @@ class MJXEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
         """Reward for tracking arm joint positions"""
-        joint_pos = pipeline_state.q[self.q_start_idx + self.arm_motor_indices]
+        joint_pos = pipeline_state.q[self.q_start_idx + self.arm_joint_indices]
         joint_pos_ref = info["state_ref"][self.ref_start_idx + self.arm_ref_indices]
         error = joint_pos - joint_pos_ref
         reward = -jnp.mean(error**2)  # type:ignore
@@ -678,7 +697,7 @@ class MJXEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
         """Reward for tracking arm joint velocities"""
-        joint_vel = pipeline_state.qd[self.qd_start_idx + self.arm_motor_indices]
+        joint_vel = pipeline_state.qd[self.qd_start_idx + self.arm_joint_indices]
         joint_vel_ref = info["state_ref"][
             self.ref_start_idx + self.nu + self.arm_ref_indices
         ]
@@ -690,7 +709,7 @@ class MJXEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
         """Reward for tracking neck joint positions"""
-        joint_pos = pipeline_state.q[self.q_start_idx + self.neck_motor_indices]
+        joint_pos = pipeline_state.q[self.q_start_idx + self.neck_joint_indices]
         joint_pos_ref = info["state_ref"][self.ref_start_idx + self.neck_ref_indices]
         error = joint_pos - joint_pos_ref
         reward = -jnp.mean(error**2)  # type:ignore
@@ -700,7 +719,7 @@ class MJXEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
         """Reward for tracking neck joint velocities"""
-        joint_vel = pipeline_state.qd[self.qd_start_idx + self.neck_motor_indices]
+        joint_vel = pipeline_state.qd[self.qd_start_idx + self.neck_joint_indices]
         joint_vel_ref = info["state_ref"][
             self.ref_start_idx + self.nu + self.neck_ref_indices
         ]
@@ -712,7 +731,7 @@ class MJXEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
         """Reward for tracking waist joint positions"""
-        joint_pos = pipeline_state.q[self.q_start_idx + self.waist_motor_indices]
+        joint_pos = pipeline_state.q[self.q_start_idx + self.waist_joint_indices]
         joint_pos_ref = info["state_ref"][self.ref_start_idx + self.waist_ref_indices]
         error = joint_pos - joint_pos_ref
         reward = -jnp.mean(error**2)  # type:ignore
@@ -722,7 +741,7 @@ class MJXEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
         """Reward for tracking waist joint velocities"""
-        joint_vel = pipeline_state.qd[self.qd_start_idx + self.waist_motor_indices]
+        joint_vel = pipeline_state.qd[self.qd_start_idx + self.waist_joint_indices]
         joint_vel_ref = info["state_ref"][
             self.ref_start_idx + self.nu + self.waist_ref_indices
         ]
@@ -750,12 +769,12 @@ class MJXEnv(PipelineEnv):
         reward = -jnp.mean(error)  # type:ignore
         return reward  # type:ignore
 
-    def _reward_motor_acc(
+    def _reward_joint_acc(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
         """Reward for minimizing joint accelerations"""
-        motor_acc = pipeline_state.qacc[self.qd_start_idx + self.motor_indices]  # type:ignore
-        error = jnp.square(motor_acc)  # type:ignore
+        joint_acc = pipeline_state.qacc[self.qd_start_idx + self.joint_indices]  # type:ignore
+        error = jnp.square(joint_acc)  # type:ignore
         reward = -jnp.mean(error)  # type:ignore
         return reward  # type:ignore
 

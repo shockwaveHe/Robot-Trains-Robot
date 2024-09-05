@@ -405,7 +405,7 @@ if __name__ == "__main__":
             env_cfg.rewards.scales.leg_joint_pos = 5.0
             env_cfg.rewards.scales.waist_joint_pos = 5.0
             env_cfg.rewards.scales.motor_torque = 5e-2
-            env_cfg.rewards.scales.motor_acc = 5e-6
+            env_cfg.rewards.scales.joint_acc = 5e-6
             env_cfg.rewards.scales.leg_action_rate = 1e-2
             env_cfg.rewards.scales.leg_action_acc = 1e-2
         else:

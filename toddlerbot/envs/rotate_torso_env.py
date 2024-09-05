@@ -35,7 +35,7 @@ class RotateTorsoCfg(MJXConfig):
         lin_vel_z: float = 0.5
         ang_vel_xy: float = 1.0
         ang_vel_z: float = 1.0
-        leg_joint_pos: float = 0.0
+        leg_joint_pos: float = 5.0
         waist_joint_pos: float = 5.0
 
     def __init__(self):
@@ -59,7 +59,7 @@ class RotateTorsoEnv(MJXEnv):
     ):
         motion_ref = RotateTorsoReference(
             robot,
-            default_motor_pos=jnp.array(list(robot.default_motor_angles.values())),  # type:ignore
+            default_joint_pos=jnp.array(list(robot.default_joint_angles.values())),  # type:ignore
         )
 
         self.num_commands = cfg.commands.num_commands

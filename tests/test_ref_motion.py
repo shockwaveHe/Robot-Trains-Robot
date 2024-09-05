@@ -36,7 +36,10 @@ def test_motion_ref(
                 _, state = motion_ref.get_state_ref(
                     path_pos, path_quat, time_curr, time_total, command
                 )
-                motor_angles = np.asarray(state[13 : 13 + len(robot.motor_ordering)])  # type: ignore
+                joint_angles = np.asarray(state[13 : 13 + len(robot.joint_ordering)])  # type: ignore
+                motor_angles = robot.joint_to_motor_angles(
+                    dict(zip(robot.joint_ordering, joint_angles))
+                )
                 sim.set_motor_angles(motor_angles)
                 sim.step()
 
@@ -98,7 +101,7 @@ if __name__ == "__main__":
         cfg = WalkCfg()
         motion_ref = WalkSimpleReference(
             robot,
-            default_motor_pos=np.array(list(robot.default_motor_angles.values())),  # type: ignore
+            default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
         )
 
     elif args.ref == "walk_zmp":
@@ -113,7 +116,7 @@ if __name__ == "__main__":
                 cfg.commands.lin_vel_y_range,
                 cfg.commands.ang_vel_yaw_range,
             ],
-            default_motor_pos=np.array(list(robot.default_motor_angles.values())),  # type: ignore
+            default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
         )
 
     elif args.ref == "squat":
@@ -123,7 +126,7 @@ if __name__ == "__main__":
         cfg = SquatCfg()
         motion_ref = SquatReference(
             robot,
-            default_motor_pos=np.array(list(robot.default_motor_angles.values())),  # type: ignore
+            default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
         )
 
     elif args.ref == "rotate_torso":
@@ -133,7 +136,7 @@ if __name__ == "__main__":
         cfg = RotateTorsoCfg()
         motion_ref = RotateTorsoReference(
             robot,
-            default_motor_pos=np.array(list(robot.default_motor_angles.values())),  # type: ignore
+            default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
         )
 
     else:

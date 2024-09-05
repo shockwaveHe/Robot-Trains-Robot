@@ -56,6 +56,12 @@ class SquatEnv(MJXEnv):
             robot,
             default_joint_pos=jnp.array(list(robot.default_joint_angles.values())),  # type:ignore
         )
+        self.knee_limits = jnp.array(  # type:ignore
+            [
+                motion_ref.knee_pitch_default - motion_ref.min_knee_pitch,
+                motion_ref.max_knee_pitch - motion_ref.knee_pitch_default,
+            ]
+        )
 
         self.num_commands = cfg.commands.num_commands
         self.lin_vel_z_range = cfg.commands.lin_vel_z_range
@@ -86,6 +92,10 @@ class SquatEnv(MJXEnv):
         commands = lin_vel_z  # type:ignore
 
         return commands
+
+    def _get_total_time(self, info: dict[str, Any]) -> jax.Array:
+        time_total = jnp.max(jnp.concatenate(self.knee_limits / info["command"][0]))  # type:ignore
+        return time_total
 
     def _extract_command(self, info: dict[str, Any]) -> Tuple[jax.Array, jax.Array]:
         z_vel = info["command"][0]
