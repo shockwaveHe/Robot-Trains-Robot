@@ -130,12 +130,12 @@ class MJXEnv(PipelineEnv):
         motor_indices = np.array(  # type:ignore
             [
                 support.name2id(self.sys, mujoco.mjtObj.mjOBJ_ACTUATOR, name)  # type:ignore
-                for name in self.robot.joint_ordering
+                for name in self.robot.motor_ordering
             ]
         )
         self.motor_indices = jnp.array(motor_indices)  # type:ignore
         motor_groups = np.array(  # type:ignore
-            [self.robot.joint_groups[name] for name in self.robot.joint_ordering]
+            [self.robot.joint_groups[name] for name in self.robot.motor_ordering]
         )
         self.leg_motor_indices = self.motor_indices[motor_groups == "leg"]
         self.arm_motor_indices = self.motor_indices[motor_groups == "arm"]
