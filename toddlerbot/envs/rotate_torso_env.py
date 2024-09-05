@@ -59,12 +59,15 @@ class RotateTorsoEnv(MJXEnv):
     ):
         motion_ref = RotateTorsoReference(
             robot,
-            default_joint_pos=jnp.array(list(robot.default_joint_angles.values())),  # type:ignore
+            default_motor_pos=jnp.array(list(robot.default_motor_angles.values())),  # type:ignore
         )
 
         self.num_commands = cfg.commands.num_commands
         self.ang_vel_x_range = cfg.commands.ang_vel_x_range
         self.ang_vel_z_range = cfg.commands.ang_vel_z_range
+
+        self.waist_roll_limits = jnp.array(robot.joint_limits["waist_roll"])  # type:ignore
+        self.waist_yaw_limits = jnp.array(robot.joint_limits["waist_yaw"])  # type:ignore
 
         super().__init__(
             name,
@@ -98,6 +101,17 @@ class RotateTorsoEnv(MJXEnv):
         commands = jnp.concatenate([ang_vel_x, ang_vel_z])  # type:ignore
 
         return commands
+
+    def _get_total_time(self, info: dict[str, Any]) -> jax.Array:
+        time_total = jnp.max(  # type:ignore
+            jnp.concatenate(  # type:ignore
+                [
+                    self.waist_roll_limits / info["command"][0],
+                    self.waist_yaw_limits / info["command"][1],
+                ]
+            )
+        )
+        return time_total
 
     def _extract_command(self, info: dict[str, Any]) -> Tuple[jax.Array, jax.Array]:
         ang_vel_x = info["command"][0]

@@ -11,15 +11,13 @@ class MotionReference(ABC):
         self.motion_type = motion_type
         self.robot = robot
 
-    def get_joint_idx(self, joint_name: str) -> int:
-        return self.robot.joint_ordering.index(joint_name)
-
     @abstractmethod
     def get_state_ref(
         self,
         path_pos: ArrayType,
         path_quat: ArrayType,
         time_curr: Optional[float | ArrayType] = None,
+        time_total: Optional[float | ArrayType] = None,
         command: Optional[ArrayType] = None,
     ) -> Tuple[ArrayType, ArrayType]:
         pass

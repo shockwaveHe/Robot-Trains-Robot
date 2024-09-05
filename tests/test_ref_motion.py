@@ -18,6 +18,7 @@ def test_motion_ref(
     sim: MuJoCoSim,
     motion_ref: MotionReference,
     command_list: List[npt.NDArray[np.float32]],
+    time_total: float = 5.0,
 ):
     exp_name: str = f"{robot.name}_{motion_ref.name}_{sim.name}_test"
     time_str = time.strftime("%Y%m%d_%H%M%S")
@@ -29,16 +30,13 @@ def test_motion_ref(
     try:
         for command in command_list:
             for time_curr in tqdm(
-                np.arange(0, 5, sim.control_dt),  # type: ignore
+                np.arange(0, time_total, sim.control_dt),  # type: ignore
                 desc="Running Ref Motion",
             ):
                 _, state = motion_ref.get_state_ref(
-                    path_pos, path_quat, time_curr, command
+                    path_pos, path_quat, time_curr, time_total, command
                 )
-                joint_angles = np.asarray(state[13 : 13 + len(robot.joint_ordering)])  # type: ignore
-                motor_angles = robot.joint_to_motor_angles(
-                    dict(zip(robot.joint_ordering, joint_angles))
-                )
+                motor_angles = np.asarray(state[13 : 13 + len(robot.motor_ordering)])  # type: ignore
                 sim.set_motor_angles(motor_angles)
                 sim.step()
 
@@ -100,8 +98,7 @@ if __name__ == "__main__":
         cfg = WalkCfg()
         motion_ref = WalkSimpleReference(
             robot,
-            cfg.action.cycle_time,
-            default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
+            default_motor_pos=np.array(list(robot.default_motor_angles.values())),  # type: ignore
         )
 
     elif args.ref == "walk_zmp":
@@ -111,13 +108,12 @@ if __name__ == "__main__":
         cfg = WalkCfg()
         motion_ref = WalkZMPReference(
             robot,
-            cfg.action.cycle_time,
             [
                 cfg.commands.lin_vel_x_range,
                 cfg.commands.lin_vel_y_range,
                 cfg.commands.ang_vel_yaw_range,
             ],
-            default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
+            default_motor_pos=np.array(list(robot.default_motor_angles.values())),  # type: ignore
         )
 
     elif args.ref == "squat":
@@ -127,7 +123,7 @@ if __name__ == "__main__":
         cfg = SquatCfg()
         motion_ref = SquatReference(
             robot,
-            default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
+            default_motor_pos=np.array(list(robot.default_motor_angles.values())),  # type: ignore
         )
 
     elif args.ref == "rotate_torso":
@@ -137,7 +133,7 @@ if __name__ == "__main__":
         cfg = RotateTorsoCfg()
         motion_ref = RotateTorsoReference(
             robot,
-            default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
+            default_motor_pos=np.array(list(robot.default_motor_angles.values())),  # type: ignore
         )
 
     else:
