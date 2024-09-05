@@ -7,16 +7,16 @@ from brax import base  # type: ignore  # type: ignore
 
 from toddlerbot.envs.mjx_config import MJXConfig
 from toddlerbot.envs.mjx_env import MJXEnv
-from toddlerbot.ref_motion.squat_ref import SquatReference
+from toddlerbot.ref_motion.rotate_torso_ref import RotateTorsoReference
 from toddlerbot.sim.robot import Robot
 
 
 @dataclass
-class SquatCfg(MJXConfig):
+class RotateTorsoCfg(MJXConfig):
     @dataclass
     class ObsConfig(MJXConfig.ObsConfig):
-        num_single_obs: int = 147
-        num_single_privileged_obs: int = 186
+        num_single_obs: int = 148
+        num_single_privileged_obs: int = 187
 
     @dataclass
     class ActionConfig(MJXConfig.ActionConfig):
@@ -24,14 +24,17 @@ class SquatCfg(MJXConfig):
 
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):
-        num_commands: int = 1
-        lin_vel_z_range: List[float] = field(default_factory=lambda: [-0.05, 0.05])
+        num_commands: int = 2
+        ang_vel_x_range: List[float] = field(default_factory=lambda: [-0.05, 0.05])
+        ang_vel_z_range: List[float] = field(default_factory=lambda: [-0.2, 0.2])
 
     @dataclass
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
         # Squat specific rewards
         lin_vel_xy: float = 0.5
-        lin_vel_z: float = 1.5
+        lin_vel_z: float = 0.5
+        ang_vel_xy: float = 1.0
+        ang_vel_z: float = 1.0
 
     def __init__(self):
         super().__init__()
@@ -46,19 +49,20 @@ class SquatEnv(MJXEnv):
         self,
         name: str,
         robot: Robot,
-        cfg: SquatCfg,
+        cfg: RotateTorsoCfg,
         fixed_base: bool = False,
         fixed_command: Optional[jax.Array] = None,
         add_noise: bool = True,
         **kwargs: Any,
     ):
-        motion_ref = SquatReference(
+        motion_ref = RotateTorsoReference(
             robot,
             default_joint_pos=jnp.array(list(robot.default_joint_angles.values())),  # type:ignore
         )
 
         self.num_commands = cfg.commands.num_commands
-        self.lin_vel_z_range = cfg.commands.lin_vel_z_range
+        self.ang_vel_x_range = cfg.commands.ang_vel_x_range
+        self.ang_vel_z_range = cfg.commands.ang_vel_z_range
 
         super().__init__(
             name,
@@ -76,21 +80,28 @@ class SquatEnv(MJXEnv):
             assert self.fixed_command.shape[0] == self.num_commands
             return self.fixed_command
 
-        rng, rng_1 = jax.random.split(rng)  # type:ignore
-        lin_vel_z = jax.random.uniform(  # type:ignore
+        rng, rng_1, rng_2 = jax.random.split(rng, 3)  # type:ignore
+        ang_vel_x = jax.random.uniform(  # type:ignore
             rng_1,
             (1,),
-            minval=self.lin_vel_z_range[0],
-            maxval=self.lin_vel_z_range[1],
+            minval=self.ang_vel_x_range[0],
+            maxval=self.ang_vel_x_range[1],
         )
-        commands = lin_vel_z  # type:ignore
+        ang_vel_z = jax.random.uniform(  # type:ignore
+            rng_2,
+            (1,),
+            minval=self.ang_vel_z_range[0],
+            maxval=self.ang_vel_z_range[1],
+        )
+        commands = jnp.array([ang_vel_x, ang_vel_z])  # type:ignore
 
         return commands
 
     def _extract_command(self, info: dict[str, Any]) -> Tuple[jax.Array, jax.Array]:
-        z_vel = info["command"][0]
+        ang_vel_x = info["command"][0]
+        ang_vel_z = info["command"][1]
 
-        lin_vel = jnp.array([0.0, 0.0, z_vel])  # type:ignore
-        ang_vel = jnp.array([0.0, 0.0, 0.0])  # type:ignore
+        lin_vel = jnp.array([0.0, 0.0, 0.0])  # type:ignore
+        ang_vel = jnp.array([ang_vel_x, 0.0, ang_vel_z])  # type:ignore
 
         return lin_vel, ang_vel

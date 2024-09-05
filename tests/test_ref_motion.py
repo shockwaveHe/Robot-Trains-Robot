@@ -28,21 +28,19 @@ def test_motion_ref(
     path_quat = np.array([1, 0, 0, 0], dtype=np.float32)
     try:
         for command in command_list:
-            for _ in tqdm(
-                range(5), desc="Running Ref Motion"
-            ):  # Run the same command for 10 cycles
-                for phase in np.arange(0, 1, sim.control_dt):  # type: ignore
-                    _, state = motion_ref.get_state_ref(
-                        path_pos, path_quat, phase, command
-                    )
-                    joint_angles = np.asarray(
-                        state[13 : 13 + len(robot.joint_ordering)]
-                    )  # type: ignore
-                    motor_angles = robot.joint_to_motor_angles(
-                        dict(zip(robot.joint_ordering, joint_angles))
-                    )
-                    sim.set_motor_angles(motor_angles)
-                    sim.step()
+            for time_curr in tqdm(
+                np.arange(0, 5, sim.control_dt),  # type: ignore
+                desc="Running Ref Motion",
+            ):
+                _, state = motion_ref.get_state_ref(
+                    path_pos, path_quat, time_curr, command
+                )
+                joint_angles = np.asarray(state[13 : 13 + len(robot.joint_ordering)])  # type: ignore
+                motor_angles = robot.joint_to_motor_angles(
+                    dict(zip(robot.joint_ordering, joint_angles))
+                )
+                sim.set_motor_angles(motor_angles)
+                sim.step()
 
     except KeyboardInterrupt:
         print("KeyboardInterrupt: Stopping the simulation...")
@@ -132,6 +130,16 @@ if __name__ == "__main__":
             default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
         )
 
+    elif args.ref == "rotate_torso":
+        from toddlerbot.envs.rotate_torso_env import RotateTorsoCfg
+        from toddlerbot.ref_motion.rotate_torso_ref import RotateTorsoReference
+
+        cfg = RotateTorsoCfg()
+        motion_ref = RotateTorsoReference(
+            robot,
+            default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
+        )
+
     else:
         raise ValueError("Unknown ref motion")
 
@@ -143,10 +151,16 @@ if __name__ == "__main__":
             np.array([0, 0, 0], dtype=np.float32),
         ]
 
-    elif args.ref == "squat":
+    elif "squat" in args.ref:
         command_list = [
             np.array([0.05, 0, 0], dtype=np.float32),
             np.array([-0.05, 0, 0], dtype=np.float32),
+        ]
+
+    elif "rotate_torso" in args.ref:
+        command_list = [
+            np.array([0.2, 0], dtype=np.float32),
+            np.array([0, 1.0], dtype=np.float32),
         ]
 
     else:
