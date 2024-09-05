@@ -53,9 +53,16 @@ class WalkSimpleReference(MotionReference):
         if command is None:
             raise ValueError(f"command is required for {self.name}")
 
-        phase_signal = np.sin(2 * np.pi * time_curr / self.cycle_time)  # type: ignore
-        signal_left = np.clip(phase_signal, 0, None)  # type: ignore
-        signal_right = np.clip(phase_signal, None, 0)  # type: ignore
+        phase_signal = np.array(  # type:ignore
+            [
+                np.sin(2 * np.pi * time_curr / self.cycle_time),  # type:ignore
+                np.cos(2 * np.pi * time_curr / self.cycle_time),  # type:ignore
+            ],
+            dtype=np.float32,
+        )
+        sin_phase_signal = np.sin(2 * np.pi * time_curr / self.cycle_time)  # type: ignore
+        signal_left = np.clip(sin_phase_signal, 0, None)  # type: ignore
+        signal_right = np.clip(sin_phase_signal, None, 0)  # type: ignore
 
         linear_vel = np.array([command[0], command[1], 0.0], dtype=np.float32)  # type: ignore
         angular_vel = np.array([0.0, 0.0, command[2]], dtype=np.float32)  # type: ignore
@@ -76,14 +83,14 @@ class WalkSimpleReference(MotionReference):
         for name, angle in leg_angles.items():
             joint_pos = inplace_update(joint_pos, self.get_joint_idx(name), angle)
 
-        double_support_mask = np.abs(phase_signal) < self.double_support_phase  # type: ignore
+        double_support_mask = np.abs(sin_phase_signal) < self.double_support_phase  # type: ignore
         joint_pos = np.where(  # type: ignore
             double_support_mask, self.default_joint_pos, joint_pos
         )
 
         stance_mask = np.zeros(2, dtype=np.float32)  # type: ignore
-        stance_mask = inplace_update(stance_mask, 0, np.any(phase_signal >= 0))  # type: ignore
-        stance_mask = inplace_update(stance_mask, 1, np.any(phase_signal < 0))  # type: ignore
+        stance_mask = inplace_update(stance_mask, 0, np.any(sin_phase_signal >= 0))  # type: ignore
+        stance_mask = inplace_update(stance_mask, 1, np.any(sin_phase_signal < 0))  # type: ignore
         stance_mask = np.where(double_support_mask, 1, stance_mask)  # type: ignore
 
         return phase_signal, np.concatenate(  # type: ignore

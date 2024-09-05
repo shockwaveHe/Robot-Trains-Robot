@@ -81,7 +81,13 @@ class WalkZMPReference(MotionReference):
         if command is None:
             raise ValueError(f"command is required for {self.name}")
 
-        phase_signal = np.sin(2 * np.pi * time_curr / self.cycle_time)  # type: ignore
+        phase_signal = np.array(  # type:ignore
+            [
+                np.sin(2 * np.pi * time_curr / self.cycle_time),  # type:ignore
+                np.cos(2 * np.pi * time_curr / self.cycle_time),  # type:ignore
+            ],
+            dtype=np.float32,
+        )
 
         linear_vel = np.array([command[0], command[1], 0.0], dtype=np.float32)  # type: ignore
         angular_vel = np.array([0.0, 0.0, command[2]], dtype=np.float32)  # type: ignore
