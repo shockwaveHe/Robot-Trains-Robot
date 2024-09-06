@@ -295,34 +295,26 @@ class MJXEnv(PipelineEnv):
             pipeline_state, obs, privileged_obs, reward, done, metrics, state_info
         )
 
-    def _sample_command(self, pipeline_state: base.State, rng: jax.Array) -> jax.Array:
-        # placeholder
-        return jnp.zeros(1)  # type:ignore
-
-    def _get_total_time(self, command: jax.Array) -> jax.Array:
-        # placeholder
-        return jnp.zeros(1)  # type:ignore
-
-    def _extract_command(self, command: jax.Array) -> Tuple[jax.Array, jax.Array]:
-        # placeholder
-        return jnp.zeros(3), jnp.zeros(3)  # type:ignore
-
     def step(self, state: State, action: jax.Array) -> State:
         """Runs one timestep of the environment's dynamics."""
         rng, cmd_rng, push_rng = jax.random.split(state.info["rng"], 3)  # type:ignore
 
-        if self.add_push:
-            push_theta = jax.random.uniform(push_rng, maxval=2 * jnp.pi)  # type:ignore
-            push = jnp.array([jnp.cos(push_theta), jnp.sin(push_theta)])  # type:ignore
-            push *= jnp.mod(state.info["step"], self.push_interval) == 0  # type:ignore
-            qvel = state.pipeline_state.qd  # type:ignore
-            qvel = qvel.at[:2].set(push * self.push_vel + qvel[:2])  # type:ignore
-            state = state.tree_replace({"pipeline_state.qd": qvel})  # type:ignore
-            state.info["push"] = push
+        time_curr = state.info["step"] * self.dt
+        path_pos, path_quat = self._integrate_path_frame(state.info)
+        phase_signal = self.motion_ref.get_phase_signal(
+            time_curr, state.info["command"]
+        )
+        state_ref = self.motion_ref.get_state_ref(
+            path_pos,
+            path_quat,
+            time_curr,
+            state.info["command"],
+        )
 
-        action = action.at[self.arm_motor_indices].set(0)  # type:ignore
-        action = action.at[self.neck_motor_indices].set(0)  # type:ignore
-        # action = action.at[self.waist_motor_indices[-1]].set(0)  # type:ignore
+        state.info["path_pos"] = path_pos
+        state.info["path_quat"] = path_quat
+        state.info["phase_signal"] = phase_signal
+        state.info["state_ref"] = state_ref
         state.info["action_buffer"] = (
             jnp.roll(state.info["action_buffer"], self.nu).at[: self.nu].set(action)  # type:ignore
         )
@@ -339,9 +331,20 @@ class MJXEnv(PipelineEnv):
             * action_delay
             * (self.motor_limits[:, 1] - self.default_motor_pos),
         )
+        motor_target = self._override_motor_target(motor_target, state_ref)
         motor_target = jnp.clip(  # type:ignore
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
         )
+
+        if self.add_push:
+            push_theta = jax.random.uniform(push_rng, maxval=2 * jnp.pi)  # type:ignore
+            push = jnp.array([jnp.cos(push_theta), jnp.sin(push_theta)])  # type:ignore
+            push *= jnp.mod(state.info["step"], self.push_interval) == 0  # type:ignore
+            qvel = state.pipeline_state.qd  # type:ignore
+            qvel = qvel.at[:2].set(push * self.push_vel + qvel[:2])  # type:ignore
+            state = state.tree_replace({"pipeline_state.qd": qvel})  # type:ignore
+            state.info["push"] = push
+
         pipeline_state = self.pipeline_step(state.pipeline_state, motor_target)
 
         # jax.debug.print(
@@ -351,18 +354,6 @@ class MJXEnv(PipelineEnv):
         # jax.debug.print("stance_mask: {}", state.info["stance_mask"])
         # jax.debug.print("feet_air_time: {}", state.info["feet_air_time"])
 
-        path_pos, path_quat = self._integrate_path_frame(state.info)
-
-        time_curr = state.info["step"] * self.dt
-        phase_signal = self.motion_ref.get_phase_signal(
-            time_curr, state.info["command"]
-        )
-        state_ref = self.motion_ref.get_state_ref(
-            path_pos,
-            path_quat,
-            time_curr,
-            state.info["command"],
-        )
         contact_forces, stance_mask = self._get_contact_forces(
             pipeline_state  # type:ignore
         )
@@ -372,11 +363,6 @@ class MJXEnv(PipelineEnv):
             torso_height < self.healthy_z_range[0],  # type:ignore
             torso_height > self.healthy_z_range[1],  # type:ignore
         )
-
-        state.info["path_pos"] = path_pos
-        state.info["path_quat"] = path_quat
-        state.info["phase_signal"] = phase_signal
-        state.info["state_ref"] = state_ref
         state.info["contact_forces"] = contact_forces
         state.info["stance_mask"] = stance_mask
         state.info["done"] = done
@@ -424,6 +410,25 @@ class MJXEnv(PipelineEnv):
             reward=reward,
             done=done.astype(jnp.float32),  # type:ignore
         )
+
+    def _sample_command(self, pipeline_state: base.State, rng: jax.Array) -> jax.Array:
+        # placeholder
+        return jnp.zeros(1)  # type:ignore
+
+    def _extract_command(self, command: jax.Array) -> Tuple[jax.Array, jax.Array]:
+        # placeholder
+        return jnp.zeros(3), jnp.zeros(3)  # type:ignore
+
+    def _override_motor_target(
+        self, motor_target: jax.Array, state_ref: jax.Array
+    ) -> jax.Array:
+        motor_target = motor_target.at[self.arm_motor_indices].set(  # type:ignore
+            self.default_motor_pos[self.arm_motor_indices]
+        )
+        motor_target = motor_target.at[self.neck_motor_indices].set(  # type:ignore
+            self.default_motor_pos[self.neck_motor_indices]
+        )
+        return motor_target
 
     def _integrate_path_frame(
         self, info: Dict[str, Any]
