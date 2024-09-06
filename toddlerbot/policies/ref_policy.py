@@ -37,23 +37,23 @@ class RefPolicy(BasePolicy):
 
 
         warm_up_act = np.zeros_like(init_motor_pos)
-        warm_up_angles={
-            "left_sho_roll": -np.pi / 6,
-            "right_sho_roll": -np.pi / 6,
-        }
-        for name, angle in warm_up_angles.items():
-            warm_up_act[robot.joint_ordering.index(name)] = angle
+        # warm_up_angles={
+        #     "left_sho_roll": -np.pi / 6,
+        #     "right_sho_roll": -np.pi / 6,
+        # }
+        # for name, angle in warm_up_angles.items():
+        #     warm_up_act[robot.joint_ordering.index(name)] = angle
 
-        if not np.allclose(warm_up_act, action_list[-1][-1], 1e-6):
-            warm_up_time, warm_up_action = self.reset(
-                time_list[-1][-1],
-                action_list[-1][-1],
-                warm_up_act,
-                warm_up_duration,
-            )
+        # if not np.allclose(warm_up_act, action_list[-1][-1], 1e-6):
+        #     warm_up_time, warm_up_action = self.reset(
+        #         time_list[-1][-1],
+        #         action_list[-1][-1],
+        #         warm_up_act,
+        #         warm_up_duration,
+        #     )
 
-            time_list.append(warm_up_time)
-            action_list.append(warm_up_action)
+        #     time_list.append(warm_up_time)
+        #     action_list.append(warm_up_action)
     
         ref_data = np.load(f"toddlerbot/ref_motion/{ref_motion}.npz", allow_pickle=True)
         ref_time = ref_data["time"] + time_list[-1][-1] + self.control_dt

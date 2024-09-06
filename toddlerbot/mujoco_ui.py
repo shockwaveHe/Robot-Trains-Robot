@@ -86,8 +86,8 @@ class MuJoCoApp:
         self.rev_mirror_checkbox.bind("<Button-1>", lambda event: self.mirror_checked.set(False))
         self.rev_mirror_checkbox.grid(row=1, column=5, padx=5, pady=5)
         # Gravity toggle button
-        self.gravity_button = tk.Button(self.button_frame, text="Toggle Gravity", command=self.toggle_gravity)
-        self.gravity_button.grid(row=1, column=5, padx=5, pady=5)
+        # self.gravity_button = tk.Button(self.button_frame, text="Toggle Gravity", command=self.toggle_gravity)
+        # self.gravity_button.grid(row=1, column=5, padx=5, pady=5)
 
         self.sequence_list = []
         # Horizontal frame to hold both the keyframe list and sequence list
@@ -121,15 +121,15 @@ class MuJoCoApp:
 
         # Total time , Arrival Time, and Interpolation Steps input
         self.total_time_label = tk.Label(self.button_frame, text="Total time:")
-        self.total_time_label.grid(row=2, column=0, padx=3, pady=5)
+        self.total_time_label.grid(row=2, column=2, padx=3, pady=5)
         self.total_time_entry = tk.Entry(self.button_frame, width=5)
-        self.total_time_entry.grid(row=2, column=1, padx=3, pady=5)
+        self.total_time_entry.grid(row=2, column=3, padx=3, pady=5)
         self.total_time_entry.insert(0, "5")
 
         self.arrival_time_label = tk.Label(self.button_frame, text="Arrival Time:")
-        self.arrival_time_label.grid(row=2, column=2, padx=3, pady=5)
+        self.arrival_time_label.grid(row=2, column=0, padx=3, pady=5)
         self.arrival_time_entry = tk.Entry(self.button_frame, width=5)
-        self.arrival_time_entry.grid(row=2, column=3, padx=3, pady=5)
+        self.arrival_time_entry.grid(row=2, column=1, padx=3, pady=5)
         self.arrival_time_entry.insert(0, "0")
 
         self.interpolation_steps_label = tk.Label(self.button_frame, text="Interpolation Steps:")
@@ -137,11 +137,16 @@ class MuJoCoApp:
         self.interpolation_steps_entry = tk.Entry(self.button_frame, width=5)
         self.interpolation_steps_entry.grid(row=2, column=5, padx=3, pady=5)
         self.interpolation_steps_entry.insert(0, "500")
+
+        self.exit_button = tk.Button(self.button_frame, text="Exit", command=self.root.quit)
+        self.exit_button.grid(row=2, column=6, padx=5, pady=5)
     
     def load_xml(self):
         # xml_file = filedialog.askopenfilename(initialdir = "toddlerbot/robot_descriptions/toddlerbot", filetypes=[("XML files", "*.xml")])
         xml_file = "toddlerbot/robot_descriptions/toddlerbot/toddlerbot_scene.xml"
+        # xml_file = "toddlerbot/robot_descriptions/franka_sim/franka_panda.xml"
         if xml_file:
+            print(xml_file)
             self.model = mujoco.MjModel.from_xml_path(xml_file)
             self.data = mujoco.MjData(self.model)
             self.viewer = viewer.launch_passive(self.model, self.data)
@@ -161,7 +166,7 @@ class MuJoCoApp:
             if not self.paused:
                 mujoco.mj_step(self.model, self.data)
             self.viewer.sync()
-            self.root.after(20, self.update_viewer)
+            self.root.after(5, self.update_viewer)
     
     def update_sliders(self):
         for i in range(self.model.njnt):
@@ -200,28 +205,54 @@ class MuJoCoApp:
             # Slider
             slider = tk.Scale(self.joint_sliders_frame, from_=joint_range[0], to=joint_range[1],
                             orient=tk.HORIZONTAL, resolution=0.01, length=150,
-                            command=lambda val, idx=i: self.update_joint_position(idx, val))
-            slider.grid(row=row, column=column*(self.slider_columns - 1)+1, sticky="ew")
+                            command=lambda val, idx=i: self.update_joint_position(idx, val, self.qpos_offset))
+            slider.grid(row=row, column=column * (self.slider_columns - 1) + 1, sticky="ew")
 
             # Store the slider in the dictionary
-            self.joint_sliders[i] = slider
+            self.joint_sliders[i + self.qpos_offset] = slider
 
             # Double-click event binding to reset joint to initial position
-            slider.bind("<Double-Button-1>", lambda event, idx=i: self.reset_joint(idx))
+            slider.bind("<Double-Button-1>", lambda event, idx=i + self.qpos_offset: self.reset_joint(idx))
 
             # Initial value
             slider.set(self.data.qpos[i + self.qpos_offset])
             self.num_sliders += 1
 
-        # TODO: add whole body pitch and roll sliders
+        # add whole body pitch z sliders
+        self.create_joint_slider(2, (0, 0.5), "torso_z")
+        self.create_joint_slider(5, (-3.14, 3.14), "torso_pitch")
 
         # import ipdb; ipdb.set_trace()
         # Start periodic slider update
         self.update_sliders_periodically()
 
+    def create_joint_slider(self, qpos_index, joint_range, joint_name):
+        # create joint slider mannually
+        label = tk.Label(self.joint_sliders_frame, text=joint_name)
+        # Determine column and row for grid layout
+        column = self.num_sliders % self.slider_columns
+        row = self.num_sliders // self.slider_columns
+        label.grid(row=row, column=column*(self.slider_columns - 1), sticky="w")
+
+        # Slider
+        slider = tk.Scale(self.joint_sliders_frame, from_=joint_range[0], to=joint_range[1],
+                        orient=tk.HORIZONTAL, resolution=0.01, length=150,
+                        command=lambda val, idx=qpos_index: self.update_joint_position(idx, val))
+        slider.grid(row=row, column=column * (self.slider_columns - 1) + 1, sticky="ew")
+
+        # Store the slider in the dictionary
+        self.joint_sliders[qpos_index] = slider
+
+        # Double-click event binding to reset joint to initial position
+        slider.bind("<Double-Button-1>", lambda event, idx=qpos_index: self.reset_joint(idx))
+
+        # Initial value
+        slider.set(self.data.qpos[qpos_index])
+        self.num_sliders += 1
+
     def update_sliders_periodically(self):
         for i, slider in self.joint_sliders.items():
-            current_value = self.data.qpos[i + self.qpos_offset]
+            current_value = self.data.qpos[i]
             if slider.get() != current_value:
                 slider.set(current_value)
         
@@ -229,14 +260,14 @@ class MuJoCoApp:
         self.root.after(100, self.update_sliders_periodically)
    
     def reset_joint(self, joint_index):
-        initial_position = self.model.qpos0[joint_index + self.qpos_offset]
-        self.data.qpos[joint_index + self.qpos_offset] = initial_position
+        initial_position = self.model.qpos0[joint_index]
+        self.data.qpos[joint_index] = initial_position
         # self.data.qvel[joint_index + self.qpos_offset] = 0.0
         mujoco.mj_forward(self.model, self.data)
         self.viewer.sync()
 
-    def update_joint_position(self, joint_index, value):
-        self.data.qpos[joint_index + self.qpos_offset] = float(value)
+    def update_joint_position(self, joint_index, value, qpos_offset=0):
+        self.data.qpos[joint_index + qpos_offset] = float(value)
         mirror_checked, rev_mirror_checked = self.mirror_checked.get(), self.rev_mirror_checked.get()
         if mirror_checked or rev_mirror_checked:
             joint_name = mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_JOINT, joint_index)
@@ -284,7 +315,7 @@ class MuJoCoApp:
         # Save keyframe to file
         keyframe_path = os.path.join(self.key_frame_dir, f"{self.current_index}_{keyframe_name}.txt")
         with open(keyframe_path, "w") as f:
-            for value in self.data.qpos[self.qpos_offset:]:
+            for value in self.data.qpos:
                 f.write(f"{value}\n")
         self.current_index += 1
     
@@ -296,10 +327,10 @@ class MuJoCoApp:
     def load_keyframe(self):
         if hasattr(self, 'selected_keyframe'):
             index, keyframe_name, qpos = self.keyframes[self.selected_keyframe]
-            self.data.qpos[self.qpos_offset:] = qpos
-            self.data.qpos[:self.qpos_offset] = self.model.qpos0[:self.qpos_offset]
+            self.data.qpos = qpos
             mujoco.mj_forward(self.model, self.data)
             self.viewer.sync()
+            # import ipdb; ipdb.set_trace()
             self.update_sliders()
     
     def rename_keyframe(self):
@@ -343,7 +374,6 @@ class MuJoCoApp:
         
         elif hasattr(self, 'selected_sequence') and self.sequence_listbox.curselection():
             del self.sequence_list[self.selected_sequence]
-            print(self.sequence_list)
             self.update_sequence_listbox()
     
     def update_keyframe(self):
@@ -460,10 +490,9 @@ class MuJoCoApp:
         self.trajectory = [spline(t) for t in self.trajectory_times]
 
     def store_trajectory(self):
-        if not hasattr(self, 'trajectory'):
-            self.generate_trajectory()
+        assert hasattr(self, 'trajectory'), "Please generate a trajectory first"
         joint_indexs = [mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, joint_name) for joint_name in self.robot.joint_ordering]
-        joint_action = np.array(self.trajectory)[:, joint_indexs]
+        joint_action = np.array(self.trajectory)[:, self.qpos_offset:][:, joint_indexs]
         motor_action = np.zeros_like(joint_action)
         for i, joint_pos in enumerate(joint_action):
             motor_action[i] = np.array(
@@ -479,11 +508,10 @@ class MuJoCoApp:
         np.savez(f"toddlerbot/ref_motion/{trajectory_name}", time=self.trajectory_times, action=motor_action)
 
     def display_trajectory(self):
-        if not hasattr(self, 'trajectory'):
-            self.generate_trajectory()
+        self.generate_trajectory()
 
         for qpos in self.trajectory:
-            self.data.qpos[self.qpos_offset:] = qpos
+            self.data.qpos = qpos
             mujoco.mj_forward(self.model, self.data)
             self.viewer.sync()
             self.root.after(int(float(self.total_time_entry.get()) * 1000 / len(self.trajectory)))
