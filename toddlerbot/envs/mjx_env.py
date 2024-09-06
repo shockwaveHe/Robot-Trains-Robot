@@ -251,7 +251,7 @@ class MJXEnv(PipelineEnv):
             "last_stance_mask": jnp.zeros(2),  # type:ignore
             "feet_air_time": jnp.zeros(2),  # type:ignore
             "init_feet_height": pipeline_state.x.pos[self.feet_link_ids, 2],
-            "action_buffer": jnp.zeros(self.n_steps_delay * self.nu),  # type:ignore
+            "action_buffer": jnp.zeros((self.n_steps_delay + 1) * self.nu),  # type:ignore
             "last_last_act": jnp.zeros(self.nu),  # type:ignore
             "last_act": jnp.zeros(self.nu),  # type:ignore
             "last_torso_euler": jnp.zeros(3),  # type:ignore
