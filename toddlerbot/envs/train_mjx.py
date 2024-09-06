@@ -403,7 +403,7 @@ if __name__ == "__main__":
         env_cfg = SquatCfg()
         train_cfg = PPOConfig()
         env_class = SquatEnv
-        fixed_command = jnp.array([-1.0])  # type:ignore
+        fixed_command = jnp.array([-0.0])  # type:ignore
         kwargs = {}
 
     elif "rotate_torso" in args.env:

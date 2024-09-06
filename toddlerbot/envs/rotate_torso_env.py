@@ -56,6 +56,7 @@ class RotateTorsoEnv(MJXEnv):
         fixed_base: bool = False,
         fixed_command: Optional[jax.Array] = None,
         add_noise: bool = True,
+        add_push: bool = True,
         **kwargs: Any,
     ):
         motion_ref = RotateTorsoReference(robot)
@@ -72,6 +73,7 @@ class RotateTorsoEnv(MJXEnv):
             fixed_base=fixed_base,
             fixed_command=fixed_command,
             add_noise=add_noise,
+            add_push=add_push,
             **kwargs,
         )
 

@@ -419,7 +419,7 @@ if __name__ == "__main__":
             robot,
             init_motor_pos,
             args.ckpt,
-            fixed_command=np.array([-1], dtype=np.float32),
+            fixed_command=np.array([-0.05], dtype=np.float32),
         )
 
     else:

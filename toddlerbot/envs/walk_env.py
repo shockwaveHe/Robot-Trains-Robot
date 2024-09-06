@@ -49,6 +49,7 @@ class WalkEnv(MJXEnv):
         fixed_base: bool = False,
         fixed_command: Optional[jax.Array] = None,
         add_noise: bool = True,
+        add_push: bool = True,
         **kwargs: Any,
     ):
         if ref_motion_type == "simple":
@@ -81,6 +82,7 @@ class WalkEnv(MJXEnv):
             fixed_base=fixed_base,
             fixed_command=fixed_command,
             add_noise=add_noise,
+            add_push=add_push,
             **kwargs,
         )
 

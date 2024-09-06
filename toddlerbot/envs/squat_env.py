@@ -20,11 +20,10 @@ class SquatCfg(MJXConfig):
 
     @dataclass
     class ActionConfig(MJXConfig.ActionConfig):
-        action_scale: float = 1.0
+        action_scale: float = 0.25
 
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):
-        resample_time: float = 2.0
         num_commands: int = 1
         lin_vel_z_range: List[float] = field(default_factory=lambda: [-0.05, 0.05])
 
@@ -53,6 +52,7 @@ class SquatEnv(MJXEnv):
         fixed_base: bool = False,
         fixed_command: Optional[jax.Array] = None,
         add_noise: bool = True,
+        add_push: bool = True,
         **kwargs: Any,
     ):
         motion_ref = SquatReference(robot)
@@ -68,6 +68,7 @@ class SquatEnv(MJXEnv):
             fixed_base=fixed_base,
             fixed_command=fixed_command,
             add_noise=add_noise,
+            add_push=add_push,
             **kwargs,
         )
 
