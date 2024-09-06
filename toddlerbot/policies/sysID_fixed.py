@@ -16,8 +16,7 @@ from toddlerbot.utils.misc_utils import set_seed
 
 class SysIDFixedPolicy(BasePolicy):
     def __init__(self, robot: Robot, init_motor_pos: npt.NDArray[np.float32]):
-        super().__init__(robot, init_motor_pos)
-        self.name = "sysID_fixed"
+        super().__init__("sysID_fixed", robot, init_motor_pos)
 
         set_seed(0)
 
@@ -60,7 +59,7 @@ class SysIDFixedPolicy(BasePolicy):
                     "left_sho_roll": -np.pi / 12,
                     "right_sho_roll": -np.pi / 12,
                     "left_hip_roll": np.pi / 8,
-                    "right_hip_roll": -np.pi / 8,
+                    "right_hip_roll": np.pi / 8,
                 },
             ),
             "knee_pitch": SysIDSpecs(
@@ -68,7 +67,7 @@ class SysIDFixedPolicy(BasePolicy):
                     "left_sho_roll": -np.pi / 12,
                     "right_sho_roll": -np.pi / 12,
                     "left_hip_roll": np.pi / 8,
-                    "right_hip_roll": -np.pi / 8,
+                    "right_hip_roll": np.pi / 8,
                 },
                 direction=-1,
             ),
@@ -224,7 +223,7 @@ class SysIDFixedPolicy(BasePolicy):
         self.action_arr = np.concatenate(action_list)  # type: ignore
         self.num_total_steps = len(self.time_arr)
 
-    def step(self, obs: Obs) -> npt.NDArray[np.float32]:
+    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         action = np.asarray(
             interpolate_action(obs.time, self.time_arr, self.action_arr)
         )
