@@ -32,7 +32,7 @@ ASSEMBLY_LIST="toddlerbot left_leg_XM430 right_leg_XM430 left_arm_hand right_arm
 # ASSEMBLY_LIST="toddlerbot_arms"
 
 ##### sysID_device #####
-# MOTOR_TYPE="XM430"
+# MOTOR_TYPE="XC330"
 # ROBOT_NAME="sysID_$MOTOR_TYPE"
 # BODY_NAME="sysID_$MOTOR_TYPE"
 # DOC_ID_LIST="4b8df5a39fb5e7db7afa93b4"

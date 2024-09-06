@@ -10,11 +10,10 @@ from toddlerbot.utils.math_utils import interpolate, interpolate_action
 from toddlerbot.utils.misc_utils import set_seed
 
 
-class SquatPolicy(BasePolicy):
-    def __init__(self, robot: Robot):
+class SquatOpenPolicy(BasePolicy):
+    def __init__(self, robot: Robot, init_motor_angles: npt.NDArray[np.float32]):
         # TODO: Fix this script
-        super().__init__(robot)
-        self.name = "squat"
+        super().__init__("squat", robot, init_motor_angles)
         self.control_dt = 0.02
 
         set_seed(0)

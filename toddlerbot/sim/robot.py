@@ -170,8 +170,8 @@ class Robot:
         self.motor_to_joint_name = dict(zip(self.motor_ordering, self.joint_ordering))
         self.joint_to_motor_name = dict(zip(self.joint_ordering, self.motor_ordering))
 
-        self.foot_name = self.config["general"]["foot_name"]
-        self.foot_z = self.config["general"]["offsets"]["foot_z"]
+        if "foot_name" in self.config["general"]:
+            self.foot_name = self.config["general"]["foot_name"]
 
         self.collider_names: List[str] = []
         for link_name, link_config in self.collision_config.items():
@@ -489,15 +489,20 @@ class Robot:
             elif transmission == "none":
                 joint_angles[motor_name] = motor_pos
 
-        joint_angles["waist_roll"], joint_angles["waist_yaw"] = self.waist_fk(
-            waist_act_pos
-        )
-        joint_angles["left_ank_roll"], joint_angles["left_ank_pitch"] = self.ankle_fk(
-            left_ank_act_pos, "left"
-        )
-        joint_angles["right_ank_roll"], joint_angles["right_ank_pitch"] = self.ankle_fk(
-            right_ank_act_pos, "right"
-        )
+        if len(waist_act_pos) > 0:
+            joint_angles["waist_roll"], joint_angles["waist_yaw"] = self.waist_fk(
+                waist_act_pos
+            )
+
+        if len(left_ank_act_pos) > 0:
+            joint_angles["left_ank_roll"], joint_angles["left_ank_pitch"] = (
+                self.ankle_fk(left_ank_act_pos, "left")
+            )
+
+        if len(right_ank_act_pos) > 0:
+            joint_angles["right_ank_roll"], joint_angles["right_ank_pitch"] = (
+                self.ankle_fk(right_ank_act_pos, "right")
+            )
 
         return joint_angles
 
@@ -534,15 +539,20 @@ class Robot:
             elif transmission == "none":
                 motor_angles[joint_name] = joint_pos
 
-        motor_angles["waist_act_1"], motor_angles["waist_act_2"] = self.waist_ik(
-            waist_pos
-        )
-        motor_angles["left_ank_act_1"], motor_angles["left_ank_act_2"] = self.ankle_ik(
-            left_ankle_pos, "left"
-        )
-        motor_angles["right_ank_act_1"], motor_angles["right_ank_act_2"] = (
-            self.ankle_ik(right_ankle_pos, "right")
-        )
+        if len(waist_pos) > 0:
+            motor_angles["waist_act_1"], motor_angles["waist_act_2"] = self.waist_ik(
+                waist_pos
+            )
+
+        if len(left_ankle_pos) > 0:
+            motor_angles["left_ank_act_1"], motor_angles["left_ank_act_2"] = (
+                self.ankle_ik(left_ankle_pos, "left")
+            )
+
+        if len(right_ankle_pos) > 0:
+            motor_angles["right_ank_act_1"], motor_angles["right_ank_act_2"] = (
+                self.ankle_ik(right_ankle_pos, "right")
+            )
 
         return motor_angles
 

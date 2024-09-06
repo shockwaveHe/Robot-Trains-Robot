@@ -1,0 +1,8 @@
+{
+    "xc330": {
+        "has_collision": false
+    },
+    "arm_330": {
+        "has_collision": false
+    }
+}

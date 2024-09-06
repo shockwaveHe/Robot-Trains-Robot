@@ -856,7 +856,8 @@ def process_mjcf_fixed_file(root: ET.Element, robot: Robot):
     if robot.config["general"]["is_ankle_closed_loop"]:
         add_ankle_constraints(root, robot.config["general"])
 
-    add_keyframes(root, True, "arms" not in robot.name, "legs" not in robot.name)
+    if "sysID" not in robot.name:
+        add_keyframes(root, True, "arms" not in robot.name, "legs" not in robot.name)
 
     add_default_settings(root, robot.config["general"])
 

@@ -7,10 +7,10 @@ from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.math_utils import interpolate_action
 
 
-class StandPolicy(BasePolicy):
+class StandOpenPolicy(BasePolicy):
     def __init__(self, robot: Robot, init_motor_pos: npt.NDArray[np.float32]):
         super().__init__("stand", robot, init_motor_pos)
-        
+
         self.default_motor_pos = np.array(
             list(robot.default_motor_angles.values()), dtype=np.float32
         )

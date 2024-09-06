@@ -3,7 +3,6 @@ import json
 import os
 import pickle
 import time
-from multiprocessing import Pool
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -56,9 +55,9 @@ def load_datasets(robot: Robot, data_path: str):
 
         last_idx = 0
         for symmetric_name, idx in zip(joint_names, obs_indices):
-            if "waist_yaw" not in symmetric_name:
-                last_idx = idx
-                continue
+            # if symmetric_name not in ["hip_pitch", "hip_roll", "knee_pitch"]:
+            #     last_idx = idx
+            #     continue
 
             if symmetric_name in robot.joint_ordering:
                 set_obs_and_action(symmetric_name, slice(last_idx, idx))

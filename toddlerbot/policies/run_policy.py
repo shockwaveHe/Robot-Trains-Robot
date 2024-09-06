@@ -213,7 +213,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
 
             if "real" in sim.name:
                 assert isinstance(sim, RealWorld)
-                if not is_prepared and obs.time > policy.prep_duration:
+                if not is_prepared and obs.time > policy.prep_duration and sim.has_imu:
                     is_prepared = True
                     sim.imu.set_zero_pose()
             else:
@@ -370,19 +370,19 @@ if __name__ == "__main__":
         raise ValueError("Unknown simulator")
 
     if "stand_open" in args.policy:
-        from toddlerbot.policies.stand_open import StandPolicy
+        from toddlerbot.policies.stand_open import StandOpenPolicy
 
-        policy = StandPolicy(robot, init_motor_pos)
+        policy = StandOpenPolicy(robot, init_motor_pos)
 
     elif "rotate_torso_open" in args.policy:
-        from toddlerbot.policies.rotate_torso_open import RotateTorsoPolicy
+        from toddlerbot.policies.rotate_torso_open import RotateTorsoOpenPolicy
 
-        policy = RotateTorsoPolicy(robot, init_motor_pos)
+        policy = RotateTorsoOpenPolicy(robot, init_motor_pos)
 
     elif "squat_open" in args.policy:
-        from toddlerbot.policies.squat_open import SquatPolicy
+        from toddlerbot.policies.squat_open import SquatOpenPolicy
 
-        policy = SquatPolicy(robot, init_motor_pos)
+        policy = SquatOpenPolicy(robot, init_motor_pos)
 
     elif "sysID_fixed" in args.policy:
         from toddlerbot.policies.sysID_fixed import SysIDFixedPolicy

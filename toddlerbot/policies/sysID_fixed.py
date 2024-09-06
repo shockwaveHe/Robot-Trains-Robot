@@ -25,95 +25,100 @@ class SysIDFixedPolicy(BasePolicy):
         signal_duraion = 10.0
         reset_duration = 2.0
 
-        joint_sysID_specs = {
-            # "neck_yaw_driven": SysIDSpecs(amplitude_max=np.pi / 2),
-            # "neck_pitch_driven": SysIDSpecs(),
-            "waist_roll": SysIDSpecs(
-                warm_up_angles={
-                    "left_sho_roll": -np.pi / 6,
-                    "right_sho_roll": -np.pi / 6,
-                },
-            ),
-            "waist_yaw": SysIDSpecs(
-                warm_up_angles={
-                    "left_sho_roll": -np.pi / 6,
-                    "right_sho_roll": -np.pi / 6,
-                }
-            ),
-            "hip_yaw_driven": SysIDSpecs(
-                amplitude_ratio=0.5,
-                warm_up_angles={
-                    "left_sho_roll": -np.pi / 6,
-                    "right_sho_roll": -np.pi / 6,
-                },
-            ),
-            "hip_roll": SysIDSpecs(
-                warm_up_angles={
-                    "left_sho_roll": -np.pi / 6,
-                    "right_sho_roll": -np.pi / 6,
-                },
-                direction=-1,
-            ),
-            "hip_pitch": SysIDSpecs(
-                warm_up_angles={
-                    "left_sho_roll": -np.pi / 12,
-                    "right_sho_roll": -np.pi / 12,
-                    "left_hip_roll": np.pi / 8,
-                    "right_hip_roll": np.pi / 8,
-                },
-            ),
-            "knee_pitch": SysIDSpecs(
-                warm_up_angles={
-                    "left_sho_roll": -np.pi / 12,
-                    "right_sho_roll": -np.pi / 12,
-                    "left_hip_roll": np.pi / 8,
-                    "right_hip_roll": np.pi / 8,
-                },
-                direction=-1,
-            ),
-            # "sho_yaw_driven": SysIDSpecs(
-            #     amplitude_max=np.pi / 4,
-            #     warm_up_angles={
-            #         "left_sho_roll": -np.pi / 6,
-            #         "right_sho_roll": -np.pi / 6,
-            #     },
-            #     direction=-1,
-            # ),
-            # "elbow_yaw_driven": SysIDSpecs(
-            #     amplitude_max=np.pi / 4,
-            #     warm_up_angles={
-            #         "left_sho_roll": -np.pi / 6,
-            #         "right_sho_roll": -np.pi / 6,
-            #     },
-            #     direction=-1,
-            # ),
-            # "wrist_pitch": SysIDSpecs(
-            #     warm_up_angles={
-            #         "left_sho_roll": -np.pi / 6,
-            #         "right_sho_roll": -np.pi / 6,
-            #     },
-            # ),
-            # "elbow_roll": SysIDSpecs(
-            #     warm_up_angles={
-            #         "left_sho_roll": -np.pi / 6,
-            #         "right_sho_roll": -np.pi / 6,
-            #         "left_sho_yaw_driven": -np.pi / 2,
-            #         "right_sho_yaw_driven": -np.pi / 2,
-            #     },
-            # ),
-            # "wrist_roll_driven": SysIDSpecs(
-            #     warm_up_angles={
-            #         "left_sho_roll": -np.pi / 6,
-            #         "right_sho_roll": -np.pi / 6,
-            #         "left_sho_yaw_driven": -np.pi / 2,
-            #         "right_sho_yaw_driven": -np.pi / 2,
-            #     },
-            # ),
-            "ank_roll": SysIDSpecs(),
-            "ank_pitch": SysIDSpecs(),
-            # "sho_pitch": SysIDSpecs(amplitude_max=np.pi / 4),
-            # "sho_roll": SysIDSpecs(amplitude_max=np.pi / 4),
-        }
+        if "sysID" in robot.name:
+            joint_sysID_specs = {
+                "joint_0": SysIDSpecs(),
+            }
+        else:
+            joint_sysID_specs = {
+                # "neck_yaw_driven": SysIDSpecs(amplitude_max=np.pi / 2),
+                # "neck_pitch_driven": SysIDSpecs(),
+                "waist_roll": SysIDSpecs(
+                    warm_up_angles={
+                        "left_sho_roll": -np.pi / 6,
+                        "right_sho_roll": -np.pi / 6,
+                    },
+                ),
+                "waist_yaw": SysIDSpecs(
+                    warm_up_angles={
+                        "left_sho_roll": -np.pi / 6,
+                        "right_sho_roll": -np.pi / 6,
+                    }
+                ),
+                "hip_yaw_driven": SysIDSpecs(
+                    amplitude_ratio=0.5,
+                    warm_up_angles={
+                        "left_sho_roll": -np.pi / 6,
+                        "right_sho_roll": -np.pi / 6,
+                    },
+                ),
+                "hip_roll": SysIDSpecs(
+                    warm_up_angles={
+                        "left_sho_roll": -np.pi / 6,
+                        "right_sho_roll": -np.pi / 6,
+                    },
+                    direction=-1,
+                ),
+                "hip_pitch": SysIDSpecs(
+                    warm_up_angles={
+                        "left_sho_roll": -np.pi / 12,
+                        "right_sho_roll": -np.pi / 12,
+                        "left_hip_roll": np.pi / 8,
+                        "right_hip_roll": np.pi / 8,
+                    },
+                ),
+                "knee_pitch": SysIDSpecs(
+                    warm_up_angles={
+                        "left_sho_roll": -np.pi / 12,
+                        "right_sho_roll": -np.pi / 12,
+                        "left_hip_roll": np.pi / 8,
+                        "right_hip_roll": np.pi / 8,
+                    },
+                    direction=-1,
+                ),
+                # "sho_yaw_driven": SysIDSpecs(
+                #     amplitude_max=np.pi / 4,
+                #     warm_up_angles={
+                #         "left_sho_roll": -np.pi / 6,
+                #         "right_sho_roll": -np.pi / 6,
+                #     },
+                #     direction=-1,
+                # ),
+                # "elbow_yaw_driven": SysIDSpecs(
+                #     amplitude_max=np.pi / 4,
+                #     warm_up_angles={
+                #         "left_sho_roll": -np.pi / 6,
+                #         "right_sho_roll": -np.pi / 6,
+                #     },
+                #     direction=-1,
+                # ),
+                # "wrist_pitch": SysIDSpecs(
+                #     warm_up_angles={
+                #         "left_sho_roll": -np.pi / 6,
+                #         "right_sho_roll": -np.pi / 6,
+                #     },
+                # ),
+                # "elbow_roll": SysIDSpecs(
+                #     warm_up_angles={
+                #         "left_sho_roll": -np.pi / 6,
+                #         "right_sho_roll": -np.pi / 6,
+                #         "left_sho_yaw_driven": -np.pi / 2,
+                #         "right_sho_yaw_driven": -np.pi / 2,
+                #     },
+                # ),
+                # "wrist_roll_driven": SysIDSpecs(
+                #     warm_up_angles={
+                #         "left_sho_roll": -np.pi / 6,
+                #         "right_sho_roll": -np.pi / 6,
+                #         "left_sho_yaw_driven": -np.pi / 2,
+                #         "right_sho_yaw_driven": -np.pi / 2,
+                #     },
+                # ),
+                "ank_roll": SysIDSpecs(),
+                "ank_pitch": SysIDSpecs(),
+                # "sho_pitch": SysIDSpecs(amplitude_max=np.pi / 4),
+                # "sho_roll": SysIDSpecs(amplitude_max=np.pi / 4),
+            }
 
         time_list: List[npt.NDArray[np.float32]] = []
         action_list: List[npt.NDArray[np.float32]] = []
