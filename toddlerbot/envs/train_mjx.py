@@ -457,6 +457,7 @@ if __name__ == "__main__":
         fixed_base="fixed" in args.env,
         fixed_command=fixed_command,
         add_noise=False,
+        add_push=False,
         **kwargs,  # type:ignore
     )
 

@@ -27,6 +27,7 @@ class MJXEnv(PipelineEnv):
         fixed_base: bool = False,
         fixed_command: Optional[jax.Array] = None,
         add_noise: bool = True,
+        add_push: bool = True,
         **kwargs: Any,
     ):
         self.name = name
@@ -36,6 +37,7 @@ class MJXEnv(PipelineEnv):
         self.fixed_base = fixed_base
         self.fixed_command = fixed_command
         self.add_noise = add_noise
+        self.add_push = add_push
 
         if fixed_base:
             xml_path = find_robot_file_path(robot.name, suffix="_fixed_scene.xml")
@@ -309,12 +311,14 @@ class MJXEnv(PipelineEnv):
         """Runs one timestep of the environment's dynamics."""
         rng, cmd_rng, push_rng = jax.random.split(state.info["rng"], 3)  # type:ignore
 
-        push_theta = jax.random.uniform(push_rng, maxval=2 * jnp.pi)  # type:ignore
-        push = jnp.array([jnp.cos(push_theta), jnp.sin(push_theta)])  # type:ignore
-        push *= jnp.mod(state.info["step"], self.push_interval) == 0  # type:ignore
-        qvel = state.pipeline_state.qd  # type:ignore
-        qvel = qvel.at[:2].set(push * self.push_vel + qvel[:2])  # type:ignore
-        state = state.tree_replace({"pipeline_state.qd": qvel})  # type:ignore
+        if self.add_push:
+            push_theta = jax.random.uniform(push_rng, maxval=2 * jnp.pi)  # type:ignore
+            push = jnp.array([jnp.cos(push_theta), jnp.sin(push_theta)])  # type:ignore
+            push *= jnp.mod(state.info["step"], self.push_interval) == 0  # type:ignore
+            qvel = state.pipeline_state.qd  # type:ignore
+            qvel = qvel.at[:2].set(push * self.push_vel + qvel[:2])  # type:ignore
+            state = state.tree_replace({"pipeline_state.qd": qvel})  # type:ignore
+            state.info["push"] = push
 
         action = action.at[self.arm_motor_indices].set(0)  # type:ignore
         action = action.at[self.neck_motor_indices].set(0)  # type:ignore
@@ -390,7 +394,6 @@ class MJXEnv(PipelineEnv):
         reward = sum(reward_dict.values()) * self.dt  # type:ignore
         # reward = jnp.clip(reward, 0.0)  # type:ignore
 
-        state.info["push"] = push
         state.info["last_last_act"] = state.info["last_act"].copy()
         state.info["last_act"] = action_delay.copy()
         state.info["last_torso_euler"] = torso_euler
