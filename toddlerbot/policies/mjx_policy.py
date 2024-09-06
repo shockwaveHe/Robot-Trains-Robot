@@ -39,12 +39,12 @@ class MJXPolicy(BasePolicy):
         self.command_ranges = command_ranges
         self.fixed_command = fixed_command
 
-        train_cfg = PPOConfig()
-        make_networks_factory = functools.partial(
-            ppo_networks.make_ppo_networks,
-            policy_hidden_layer_sizes=train_cfg.policy_hidden_layer_sizes,
-            value_hidden_layer_sizes=train_cfg.value_hidden_layer_sizes,
+        self.obs_scales = cfg.obs.scales  # Assume all the envs have the same scales
+        self.default_motor_pos = np.array(
+            list(robot.default_motor_angles.values()), dtype=np.float32
         )
+        self.action_scale = cfg.action.action_scale
+        self.n_steps_delay = cfg.action.n_steps_delay
 
         # joint indices
         motor_indices = np.arange(robot.nu)  # type:ignore
@@ -60,17 +60,21 @@ class MJXPolicy(BasePolicy):
             [robot.joint_limits[name] for name in robot.motor_ordering]
         )
 
-        self.obs_scales = cfg.obs.scales  # Assume all the envs have the same scales
-        self.default_motor_pos = np.array(
-            list(robot.default_motor_angles.values()), dtype=np.float32
-        )
-        self.action_scale = cfg.action.action_scale
-
         self.last_action = np.zeros(robot.nu, dtype=np.float32)
+        self.action_buffer = np.zeros(
+            ((self.n_steps_delay + 1) * robot.nu), dtype=np.float32
+        )
         self.obs_history = np.zeros(
             cfg.obs.frame_stack * cfg.obs.num_single_obs, dtype=np.float32
         )
         self.step_curr = 0
+
+        train_cfg = PPOConfig()
+        make_networks_factory = functools.partial(
+            ppo_networks.make_ppo_networks,
+            policy_hidden_layer_sizes=train_cfg.policy_hidden_layer_sizes,
+            value_hidden_layer_sizes=train_cfg.value_hidden_layer_sizes,
+        )
 
         ppo_network = make_networks_factory(  # type: ignore
             cfg.obs.num_single_obs,
@@ -104,7 +108,7 @@ class MJXPolicy(BasePolicy):
         )
 
     # @profile()
-    def step(self, obs: Obs) -> npt.NDArray[np.float32]:
+    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         if obs.time < self.prep_duration:
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
@@ -148,21 +152,28 @@ class MJXPolicy(BasePolicy):
         action[self.arm_motor_indices] = 0.0
         action[self.neck_motor_indices] = 0.0
 
+        if is_real:
+            action_delay = action
+        else:
+            self.action_buffer = np.roll(self.action_buffer, action.size)  # type:ignore
+            self.action_buffer[: action.size] = action
+            action_delay = self.action_buffer[-self.robot.nu :]
+
         motor_target = np.where(  # type:ignore
-            action < 0,
+            action_delay < 0,
             self.default_motor_pos
             + self.action_scale
-            * action
+            * action_delay
             * (self.default_motor_pos - self.motor_limits[:, 0]),
             self.default_motor_pos
             + self.action_scale
-            * action
+            * action_delay
             * (self.motor_limits[:, 1] - self.default_motor_pos),
         )
         motor_target = np.clip(  # type:ignore
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
         )
-        self.last_action = action
+        self.last_action = action  # action_delay
         self.step_curr += 1
 
         return motor_target

@@ -17,17 +17,17 @@ class BasePolicy(ABC):
         init_motor_pos: npt.NDArray[np.float32],
         control_dt: float = 6 * 0.002,
         prep_duration: float = 2.0,
-        num_total_steps: float = float("inf"),
+        n_steps_total: float = float("inf"),
     ):
         self.name = name
         self.robot = robot
         self.init_motor_pos = init_motor_pos
         self.control_dt = control_dt
         self.prep_duration = prep_duration
-        self.num_total_steps = num_total_steps
+        self.n_steps_total = n_steps_total
 
     @abstractmethod
-    def step(self, obs: Obs) -> npt.NDArray[np.float32]:
+    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         pass
 
     def move(

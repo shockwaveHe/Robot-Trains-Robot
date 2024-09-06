@@ -185,10 +185,6 @@ def plot_results(
         )
 
 
-def run_policy(policy: BasePolicy, obs: Obs) -> npt.NDArray[np.float32]:
-    return policy.step(obs)
-
-
 # @profile()
 def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
     header_name = snake2camel(sim.name)
@@ -201,7 +197,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
     num_total_steps = (
         float("inf")
         if "real" in sim.name and "fixed" not in policy.name
-        else policy.num_total_steps
+        else policy.n_steps_total
     )
     p_bar = tqdm(total=num_total_steps, desc="Running the policy")
     start_time = time.time()
@@ -225,12 +221,12 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
 
             obs_time = time.time()
 
-            action = run_policy(policy, obs)
+            motor_target = policy.step(obs, "real" in sim.name)
             inference_time = time.time()
 
             motor_angles: Dict[str, float] = {}
-            for motor_name, act in zip(robot.motor_ordering, action):
-                motor_angles[motor_name] = act
+            for motor_name, motor_angle in zip(robot.motor_ordering, motor_target):
+                motor_angles[motor_name] = motor_angle
 
             sim.set_motor_angles(motor_angles)
             set_action_time = time.time()
@@ -392,11 +388,6 @@ if __name__ == "__main__":
         from toddlerbot.policies.sysID_fixed import SysIDFixedPolicy
 
         policy = SysIDFixedPolicy(robot, init_motor_pos)
-
-    elif "walk_fixed" in args.policy:
-        from toddlerbot.policies.walk_fixed import WalkFixedPolicy
-
-        policy = WalkFixedPolicy(robot, init_motor_pos, args.ckpt)
 
     elif "walk" in args.policy:
         from toddlerbot.policies.walk import WalkPolicy

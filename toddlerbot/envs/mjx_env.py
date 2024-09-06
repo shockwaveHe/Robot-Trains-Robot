@@ -392,7 +392,7 @@ class MJXEnv(PipelineEnv):
 
         state.info["push"] = push
         state.info["last_last_act"] = state.info["last_act"].copy()
-        state.info["last_act"] = action.copy()
+        state.info["last_act"] = action_delay.copy()
         state.info["last_torso_euler"] = torso_euler
         state.info["last_stance_mask"] = stance_mask.copy()
         state.info["feet_air_time"] += self.dt
