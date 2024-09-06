@@ -62,7 +62,7 @@ class SquatReference(MotionReference):
     def get_phase_signal(
         self, time_curr: float | ArrayType, command: ArrayType
     ) -> ArrayType:
-        time_total = np.max(self.knee_limits / command[0])  # type:ignore
+        time_total = np.max(self.knee_limits / (command[0] + 1e-6))  # type:ignore
         phase = np.clip(time_curr / time_total, 0.0, 1.0)  # type: ignore
         phase_signal = gaussian_basis_functions(phase)
         return phase_signal
