@@ -668,6 +668,15 @@ class MJXEnv(PipelineEnv):
         reward = jnp.exp(-self.tracking_sigma / 4 * error**2)  # type:ignore
         return reward
 
+    def _reward_feet_contact(
+        self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
+    ):
+        """Reward for contact"""
+        reward = jnp.sum(info["stance_mask"] == info["state_ref"][-2:]).astype(  # type:ignore
+            jnp.float32
+        )
+        return reward
+
     def _reward_leg_joint_pos(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
