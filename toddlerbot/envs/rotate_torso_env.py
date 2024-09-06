@@ -107,3 +107,17 @@ class RotateTorsoEnv(MJXEnv):
         ang_vel = jnp.array([ang_vel_x, 0.0, ang_vel_z])  # type:ignore
 
         return lin_vel, ang_vel
+
+    def _override_motor_target(
+        self, motor_target: jax.Array, state_ref: jax.Array
+    ) -> jax.Array:
+        assert isinstance(self.motion_ref, RotateTorsoReference)
+        waist_roll_ref = state_ref[self.ref_start_idx + self.motion_ref.waist_roll_idx]
+        waist_yaw_ref = state_ref[self.ref_start_idx + self.motion_ref.waist_yaw_idx]
+        waist_act_1_ref, waist_act_2_ref = self.motion_ref.waist_ik(
+            waist_roll_ref, waist_yaw_ref
+        )
+        motor_target = motor_target.at[self.waist_motor_indices[0]].set(waist_act_1_ref)  # type:ignore
+        motor_target = motor_target.at[self.waist_motor_indices[1]].set(waist_act_2_ref)  # type:ignore
+
+        return super()._override_motor_target(motor_target, state_ref)

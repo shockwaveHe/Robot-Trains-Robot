@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Tuple
 
 from toddlerbot.ref_motion import MotionReference
 from toddlerbot.sim.robot import Robot
@@ -24,6 +24,12 @@ class RotateTorsoReference(MotionReference):
         )
         self.waist_roll_idx = self.robot.joint_ordering.index("waist_roll")
         self.waist_yaw_idx = self.robot.joint_ordering.index("waist_yaw")
+        self.waist_roll_coef = float(
+            self.robot.config["general"]["offsets"]["waist_roll_coef"]
+        )
+        self.waist_yaw_coef = float(
+            self.robot.config["general"]["offsets"]["waist_yaw_coef"]
+        )
 
         self.num_joints = len(self.robot.joint_ordering)
 
@@ -88,3 +94,12 @@ class RotateTorsoReference(MotionReference):
                 stance_mask,
             )  # type: ignore
         )
+
+    def waist_ik(
+        self, waist_roll: ArrayType, waist_yaw: ArrayType
+    ) -> Tuple[ArrayType, ArrayType]:
+        roll = waist_roll / self.waist_roll_coef
+        yaw = waist_yaw / self.waist_yaw_coef
+        waist_act_1 = (-roll + yaw) / 2
+        waist_act_2 = (roll + yaw) / 2
+        return waist_act_1, waist_act_2
