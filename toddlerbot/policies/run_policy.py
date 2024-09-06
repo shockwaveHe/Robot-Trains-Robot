@@ -310,16 +310,16 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
         prof_path = os.path.join(exp_folder_path, "profile_output.lprof")
         dump_profiling_data(prof_path)
 
-        if debug["plot"]:
-            log("Visualizing...", header="Walking")
-            plot_results(
-                robot,
-                loop_time_list,
-                obs_list,
-                motor_angles_list,
-                policy.control_dt,
-                exp_folder_path,
-            )
+        # if debug["plot"]:
+        #     log("Visualizing...", header="Walking")
+        #     plot_results(
+        #         robot,
+        #         loop_time_list,
+        #         obs_list,
+        #         motor_angles_list,
+        #         policy.control_dt,
+        #         exp_folder_path,
+        #     )
 
 
 if __name__ == "__main__":
@@ -373,36 +373,45 @@ if __name__ == "__main__":
     else:
         raise ValueError("Unknown simulator")
 
-    if args.policy == "stand":
+    if "stand_open" in args.policy:
         from toddlerbot.policies.stand_open import StandPolicy
 
         policy = StandPolicy(robot, init_motor_pos)
 
-    elif args.policy == "rotate_torso":
+    elif "rotate_torso_open" in args.policy:
         from toddlerbot.policies.rotate_torso_open import RotateTorsoPolicy
 
         policy = RotateTorsoPolicy(robot, init_motor_pos)
 
-    elif args.policy == "squat":
+    elif "squat_open" in args.policy:
         from toddlerbot.policies.squat_open import SquatPolicy
 
         policy = SquatPolicy(robot)
 
-    elif args.policy == "walk_fixed":
-        from toddlerbot.policies.walk_fixed import WalkFixedPolicy
-
-        policy = WalkFixedPolicy(robot, init_motor_pos, run_name)
-
-    elif args.policy == "walk":
-        from toddlerbot.policies.walk import WalkPolicy
-
-        run_name = f"{args.robot}_{args.policy}_ppo_{args.ckpt}"
-        policy = WalkPolicy(robot, init_motor_pos, run_name)
-
-    elif args.policy == "sysID_fixed":
+    elif "sysID_fixed" in args.policy:
         from toddlerbot.policies.sysID_fixed import SysIDFixedPolicy
 
         policy = SysIDFixedPolicy(robot, init_motor_pos)
+
+    elif "walk_fixed" in args.policy:
+        from toddlerbot.policies.walk_fixed import WalkFixedPolicy
+
+        policy = WalkFixedPolicy(robot, init_motor_pos, args.ckpt)
+
+    elif "walk" in args.policy:
+        from toddlerbot.policies.walk import WalkPolicy
+
+        policy = WalkPolicy(robot, init_motor_pos, args.ckpt)
+
+    elif "rotate_torso" in args.policy:
+        from toddlerbot.policies.rotate_torso import RotateTorsoPolicy
+
+        policy = RotateTorsoPolicy(args.policy, robot, init_motor_pos, args.ckpt)
+
+    elif "squat" in args.policy:
+        from toddlerbot.policies.squat import SquatPolicy
+
+        policy = SquatPolicy(args.policy, robot, init_motor_pos, args.ckpt)
 
     else:
         raise ValueError("Unknown policy")

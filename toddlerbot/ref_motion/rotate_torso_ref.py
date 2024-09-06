@@ -33,8 +33,8 @@ class RotateTorsoReference(MotionReference):
         time_total = np.max(  # type:ignore
             np.concatenate(  # type:ignore
                 [
-                    self.waist_roll_limits / command[0],
-                    self.waist_yaw_limits / command[1],
+                    self.waist_roll_limits / (command[0] + 1e-6),
+                    self.waist_yaw_limits / (command[1] + 1e-6),
                 ]
             )
         )

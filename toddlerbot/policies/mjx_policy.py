@@ -27,6 +27,7 @@ class MJXPolicy(BasePolicy):
         name: str,
         robot: Robot,
         init_motor_pos: npt.NDArray[np.float32],
+        cfg: MJXConfig,
         motion_ref: MotionReference,
         ckpt: str,
         command_ranges: List[List[float]],
@@ -59,7 +60,6 @@ class MJXPolicy(BasePolicy):
             [robot.joint_limits[name] for name in robot.motor_ordering]
         )
 
-        cfg = MJXConfig()
         self.obs_scales = cfg.obs.scales  # Assume all the envs have the same scales
         self.default_motor_pos = np.array(
             list(robot.default_motor_angles.values()), dtype=np.float32

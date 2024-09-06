@@ -12,6 +12,7 @@ from toddlerbot.sim.robot import Robot
 class SquatPolicy(MJXPolicy):
     def __init__(
         self,
+        name: str,
         robot: Robot,
         init_motor_pos: npt.NDArray[np.float32],
         ckpt: str,
@@ -22,9 +23,10 @@ class SquatPolicy(MJXPolicy):
         motion_ref = SquatReference(robot)
 
         super().__init__(
-            "squat",
+            name,
             robot,
             init_motor_pos,
+            env_cfg,
             motion_ref,
             ckpt,
             command_ranges,

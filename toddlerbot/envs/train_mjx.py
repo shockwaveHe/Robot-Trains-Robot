@@ -392,24 +392,7 @@ if __name__ == "__main__":
         from toddlerbot.envs.walk_env import WalkCfg, WalkEnv
 
         env_cfg = WalkCfg()
-        if "fixed" in args.env:
-            train_cfg = PPOConfig(
-                num_timesteps=10_000_000,
-                num_evals=100,
-                transition_steps=1_000_000,
-                learning_rate=1e-4,
-            )
-            env_cfg.rewards.healthy_z_range = [-0.2, 0.2]
-            env_cfg.rewards.scales.reset()
-            # reward_scales.feet_distance = 0.5
-            env_cfg.rewards.scales.leg_joint_pos = 5.0
-            env_cfg.rewards.scales.waist_joint_pos = 5.0
-            env_cfg.rewards.scales.motor_torque = 5e-2
-            env_cfg.rewards.scales.joint_acc = 5e-6
-            env_cfg.rewards.scales.leg_action_rate = 1e-2
-            env_cfg.rewards.scales.leg_action_acc = 1e-2
-        else:
-            train_cfg = PPOConfig()
+        train_cfg = PPOConfig()
 
         env = WalkEnv(
             "walk",
@@ -439,24 +422,7 @@ if __name__ == "__main__":
         from toddlerbot.envs.squat_env import SquatCfg, SquatEnv
 
         env_cfg = SquatCfg()
-        if "fixed" in args.env:
-            train_cfg = PPOConfig(
-                num_timesteps=10_000_000,
-                num_evals=100,
-                transition_steps=1_000_000,
-                learning_rate=1e-4,
-            )
-            env_cfg.rewards.healthy_z_range = [-0.2, 0.2]
-            env_cfg.rewards.scales.reset()
-            # reward_scales.feet_distance = 0.5
-            env_cfg.rewards.scales.leg_joint_pos = 5.0
-            env_cfg.rewards.scales.waist_joint_pos = 5.0
-            env_cfg.rewards.scales.motor_torque = 5e-2
-            env_cfg.rewards.scales.joint_acc = 5e-6
-            env_cfg.rewards.scales.leg_action_rate = 1e-2
-            env_cfg.rewards.scales.leg_action_acc = 1e-2
-        else:
-            train_cfg = PPOConfig()
+        train_cfg = PPOConfig()
 
         env = SquatEnv("squat", robot, env_cfg, fixed_base="fixed" in args.env)
         eval_env = SquatEnv("squat", robot, env_cfg, fixed_base="fixed" in args.env)
@@ -473,24 +439,7 @@ if __name__ == "__main__":
         from toddlerbot.envs.rotate_torso_env import RotateTorsoCfg, RotateTorsoEnv
 
         env_cfg = RotateTorsoCfg()
-        if "fixed" in args.env:
-            train_cfg = PPOConfig(
-                num_timesteps=10_000_000,
-                num_evals=100,
-                transition_steps=1_000_000,
-                learning_rate=1e-4,
-            )
-            env_cfg.rewards.healthy_z_range = [-0.2, 0.2]
-            env_cfg.rewards.scales.reset()
-            # reward_scales.feet_distance = 0.5
-            env_cfg.rewards.scales.leg_joint_pos = 5.0
-            env_cfg.rewards.scales.waist_joint_pos = 5.0
-            env_cfg.rewards.scales.motor_torque = 5e-2
-            env_cfg.rewards.scales.joint_acc = 5e-6
-            env_cfg.rewards.scales.waist_action_rate = 1e-2
-            env_cfg.rewards.scales.waist_action_acc = 1e-2
-        else:
-            train_cfg = PPOConfig()
+        train_cfg = PPOConfig()
 
         env = RotateTorsoEnv(
             "rotate_torso", robot, env_cfg, fixed_base="fixed" in args.env
@@ -509,6 +458,24 @@ if __name__ == "__main__":
 
     else:
         raise ValueError(f"Unknown env: {args.env}")
+
+    if "fixed" in args.env:
+        train_cfg.num_timesteps = 10_000_000
+        train_cfg.num_evals = 100
+        train_cfg.transition_steps = 1_000_000
+        train_cfg.learning_rate = 1e-4
+
+        env_cfg.rewards.healthy_z_range = [-0.2, 0.2]
+        env_cfg.rewards.scales.reset()
+        # reward_scales.feet_distance = 0.5
+        env_cfg.rewards.scales.leg_joint_pos = 5.0
+        env_cfg.rewards.scales.waist_joint_pos = 5.0
+        env_cfg.rewards.scales.motor_torque = 5e-2
+        env_cfg.rewards.scales.joint_acc = 5e-6
+        env_cfg.rewards.scales.leg_action_rate = 1e-2
+        env_cfg.rewards.scales.leg_action_acc = 1e-2
+        env_cfg.rewards.scales.waist_action_rate = 1e-2
+        env_cfg.rewards.scales.waist_action_acc = 1e-2
 
     make_networks_factory = functools.partial(
         ppo_networks.make_ppo_networks,
