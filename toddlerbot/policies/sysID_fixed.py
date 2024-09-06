@@ -26,6 +26,7 @@ class SysIDFixedPolicy(BasePolicy):
         reset_duration = 2.0
 
         if "sysID" in robot.name:
+            signal_duraion = 30.0
             joint_sysID_specs = {
                 "joint_0": SysIDSpecs(),
             }

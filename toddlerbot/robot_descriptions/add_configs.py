@@ -233,16 +233,19 @@ def main():
         ]
         for motor_name in motor_name_list:
             sysID_result_path = os.path.join(
-                "toddlerbot", "robot_descriptions", f"sysID_{motor_name}", "config.json"
+                "toddlerbot",
+                "robot_descriptions",
+                f"sysID_{motor_name}",
+                "config_dynamics.json",
             )
             with open(sysID_result_path, "r") as f:
                 sysID_result = json.load(f)
 
             joint_dyn_config[motor_name] = {}
             for param_name in ["damping", "armature"]:  # , "frictionloss"]:
-                joint_dyn_config[motor_name][param_name] = sysID_result["joints"][
-                    "joint_0"
-                ][param_name]
+                joint_dyn_config[motor_name][param_name] = sysID_result["joint_0"][
+                    param_name
+                ]
 
         dynamics_config_path = os.path.join(robot_dir, "config_dynamics.json")
         if os.path.exists(dynamics_config_path):
