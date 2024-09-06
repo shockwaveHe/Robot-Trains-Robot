@@ -251,7 +251,7 @@ class MJXEnv(PipelineEnv):
             "last_stance_mask": jnp.zeros(2),  # type:ignore
             "feet_air_time": jnp.zeros(2),  # type:ignore
             "init_feet_height": pipeline_state.x.pos[self.feet_link_ids, 2],
-            "motor_target_buffer": jnp.zeros(self.n_frames_delay * self.nu),  # type:ignore
+            "action_buffer": jnp.zeros(self.n_frames_delay * self.nu),  # type:ignore
             "last_last_act": jnp.zeros(self.nu),  # type:ignore
             "last_act": jnp.zeros(self.nu),  # type:ignore
             "last_torso_euler": jnp.zeros(3),  # type:ignore
@@ -316,31 +316,28 @@ class MJXEnv(PipelineEnv):
         qvel = qvel.at[:2].set(push * self.push_vel + qvel[:2])  # type:ignore
         state = state.tree_replace({"pipeline_state.qd": qvel})  # type:ignore
 
-        motor_target_delay = state.info["motor_target_buffer"][-self.nu :]
-        pipeline_state = self.pipeline_step(state.pipeline_state, motor_target_delay)
-
-        action = action.at[self.arm_motor_indices].set(0)  # type:ignore
-        action = action.at[self.neck_motor_indices].set(0)  # type:ignore
-        # action = action.at[self.waist_motor_indices[-1]].set(0)  # type:ignore
-
+        action_delay: jax.Array = state.info["action_buffer"][-self.nu :]
         motor_target = jnp.where(  # type:ignore
-            action < 0,
+            action_delay < 0,
             self.default_motor_pos
             + self.action_scale
-            * action
+            * action_delay
             * (self.default_motor_pos - self.motor_limits[:, 0]),
             self.default_motor_pos
             + self.action_scale
-            * action
+            * action_delay
             * (self.motor_limits[:, 1] - self.default_motor_pos),
         )
         motor_target = jnp.clip(  # type:ignore
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
         )
-        state.info["motor_target_buffer"] = (
-            jnp.roll(state.info["motor_target_buffer"], self.nu)  # type:ignore
-            .at[: self.nu]
-            .set(motor_target)
+        pipeline_state = self.pipeline_step(state.pipeline_state, motor_target)
+
+        action = action.at[self.arm_motor_indices].set(0)  # type:ignore
+        action = action.at[self.neck_motor_indices].set(0)  # type:ignore
+        # action = action.at[self.waist_motor_indices[-1]].set(0)  # type:ignore
+        state.info["action_buffer"] = (
+            jnp.roll(state.info["action_buffer"], self.nu).at[: self.nu].set(action)  # type:ignore
         )
 
         # jax.debug.print(
