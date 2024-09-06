@@ -126,6 +126,22 @@ class WalkZMPReference(MotionReference):
             )
         )
 
+    def override_motor_target(
+        self, motor_target: ArrayType, state_ref: ArrayType
+    ) -> ArrayType:
+        motor_target = inplace_update(
+            motor_target,
+            self.neck_motor_indices,  # type: ignore
+            self.default_motor_pos[self.neck_motor_indices],
+        )
+        motor_target = inplace_update(
+            motor_target,
+            self.arm_motor_indices,  # type: ignore
+            self.default_motor_pos[self.arm_motor_indices],
+        )
+
+        return motor_target
+
     def build_lookup_table(
         self, command_ranges: List[List[float]], interval: float = 0.01
     ):

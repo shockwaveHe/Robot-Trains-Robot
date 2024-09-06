@@ -37,7 +37,10 @@ class MJXPolicy(BasePolicy):
 
         self.motion_ref = motion_ref
         self.command_ranges = command_ranges
-        self.fixed_command = fixed_command
+        if fixed_command is None:
+            self.fixed_command = np.zeros(cfg.commands.num_commands, dtype=np.float32)
+        else:
+            self.fixed_command = fixed_command
 
         self.obs_scales = cfg.obs.scales  # Assume all the envs have the same scales
         self.default_motor_pos = np.array(
@@ -117,7 +120,6 @@ class MJXPolicy(BasePolicy):
             return action
 
         if self.joystick is None:
-            assert self.fixed_command is not None
             command = self.fixed_command
         else:
             command = np.array(

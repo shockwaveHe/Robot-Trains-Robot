@@ -127,3 +127,19 @@ class WalkSimpleReference(MotionReference):
                 self.right_knee_pitch_idx: -knee_angle,
                 self.right_ank_pitch_idx: -ank_pitch_angle,
             }
+
+    def override_motor_target(
+        self, motor_target: ArrayType, state_ref: ArrayType
+    ) -> ArrayType:
+        motor_target = inplace_update(
+            motor_target,
+            self.neck_motor_indices,  # type: ignore
+            self.default_motor_pos[self.neck_motor_indices],
+        )
+        motor_target = inplace_update(
+            motor_target,
+            self.arm_motor_indices,  # type: ignore
+            self.default_motor_pos[self.arm_motor_indices],
+        )
+
+        return motor_target
