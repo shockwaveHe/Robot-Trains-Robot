@@ -393,68 +393,27 @@ if __name__ == "__main__":
 
         env_cfg = WalkCfg()
         train_cfg = PPOConfig()
-
-        env = WalkEnv(
-            "walk",
-            robot,
-            env_cfg,
-            ref_motion_type="zmp",
-            fixed_base="fixed" in args.env,
-        )
-        eval_env = WalkEnv(
-            "walk",
-            robot,
-            env_cfg,
-            ref_motion_type="zmp",
-            fixed_base="fixed" in args.env,
-        )
-        test_env = WalkEnv(
-            "walk",
-            robot,
-            env_cfg,
-            ref_motion_type="zmp",
-            fixed_base="fixed" in args.env,
-            fixed_command=jnp.array([0.3, 0.0, 0.0]),  # type:ignore
-            add_noise=False,
-        )
+        env_class = WalkEnv
+        fixed_command = jnp.array([0.3, 0.0, 0.0])  # type:ignore
+        kwargs = {"ref_motion_type": "zmp"}
 
     elif "squat" in args.env:
         from toddlerbot.envs.squat_env import SquatCfg, SquatEnv
 
         env_cfg = SquatCfg()
         train_cfg = PPOConfig()
-
-        env = SquatEnv("squat", robot, env_cfg, fixed_base="fixed" in args.env)
-        eval_env = SquatEnv("squat", robot, env_cfg, fixed_base="fixed" in args.env)
-        test_env = SquatEnv(
-            "squat",
-            robot,
-            env_cfg,
-            fixed_base="fixed" in args.env,
-            fixed_command=jnp.array([-1.0]),  # type:ignore
-            add_noise=False,
-        )
+        env_class = SquatEnv
+        fixed_command = jnp.array([-1.0])  # type:ignore
+        kwargs = {}
 
     elif "rotate_torso" in args.env:
         from toddlerbot.envs.rotate_torso_env import RotateTorsoCfg, RotateTorsoEnv
 
         env_cfg = RotateTorsoCfg()
         train_cfg = PPOConfig()
-
-        env = RotateTorsoEnv(
-            "rotate_torso", robot, env_cfg, fixed_base="fixed" in args.env
-        )
-        eval_env = RotateTorsoEnv(
-            "rotate_torso", robot, env_cfg, fixed_base="fixed" in args.env
-        )
-        test_env = RotateTorsoEnv(
-            "rotate_torso",
-            robot,
-            env_cfg,
-            fixed_base="fixed" in args.env,
-            fixed_command=jnp.array([0.2, 0.0]),  # type:ignore
-            add_noise=False,
-        )
+        env_class = RotateTorsoEnv
+        fixed_command = jnp.array([0.2, 0.0])  # type:ignore
+        kwargs = {}
 
     else:
         raise ValueError(f"Unknown env: {args.env}")
@@ -476,6 +435,30 @@ if __name__ == "__main__":
         env_cfg.rewards.scales.leg_action_acc = 1e-2
         env_cfg.rewards.scales.waist_action_rate = 1e-2
         env_cfg.rewards.scales.waist_action_acc = 1e-2
+
+    env = env_class(
+        "walk",
+        robot,
+        env_cfg,  # type:ignore
+        fixed_base="fixed" in args.env,
+        **kwargs,  # type:ignore
+    )
+    eval_env = env_class(
+        "walk",
+        robot,
+        env_cfg,  # type:ignore
+        fixed_base="fixed" in args.env,
+        **kwargs,  # type:ignore
+    )
+    test_env = env_class(
+        "walk",
+        robot,
+        env_cfg,  # type:ignore
+        fixed_base="fixed" in args.env,
+        fixed_command=fixed_command,
+        add_noise=False,
+        **kwargs,  # type:ignore
+    )
 
     make_networks_factory = functools.partial(
         ppo_networks.make_ppo_networks,
