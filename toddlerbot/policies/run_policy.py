@@ -310,16 +310,16 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
         prof_path = os.path.join(exp_folder_path, "profile_output.lprof")
         dump_profiling_data(prof_path)
 
-        # if debug["plot"]:
-        #     log("Visualizing...", header="Walking")
-        #     plot_results(
-        #         robot,
-        #         loop_time_list,
-        #         obs_list,
-        #         motor_angles_list,
-        #         policy.control_dt,
-        #         exp_folder_path,
-        #     )
+        if debug["plot"]:
+            log("Visualizing...", header="Walking")
+            plot_results(
+                robot,
+                loop_time_list,
+                obs_list,
+                motor_angles_list,
+                policy.control_dt,
+                exp_folder_path,
+            )
 
 
 if __name__ == "__main__":
@@ -401,17 +401,35 @@ if __name__ == "__main__":
     elif "walk" in args.policy:
         from toddlerbot.policies.walk import WalkPolicy
 
-        policy = WalkPolicy(robot, init_motor_pos, args.ckpt)
+        policy = WalkPolicy(
+            args.policy,
+            robot,
+            init_motor_pos,
+            args.ckpt,
+            fixed_command=np.array([0.3, 0, 0], dtype=np.float32),
+        )
 
     elif "rotate_torso" in args.policy:
         from toddlerbot.policies.rotate_torso import RotateTorsoPolicy
 
-        policy = RotateTorsoPolicy(args.policy, robot, init_motor_pos, args.ckpt)
+        policy = RotateTorsoPolicy(
+            args.policy,
+            robot,
+            init_motor_pos,
+            args.ckpt,
+            fixed_command=np.array([0.2, 0], dtype=np.float32),
+        )
 
     elif "squat" in args.policy:
         from toddlerbot.policies.squat import SquatPolicy
 
-        policy = SquatPolicy(args.policy, robot, init_motor_pos, args.ckpt)
+        policy = SquatPolicy(
+            args.policy,
+            robot,
+            init_motor_pos,
+            args.ckpt,
+            fixed_command=np.array([-1], dtype=np.float32),
+        )
 
     else:
         raise ValueError("Unknown policy")

@@ -12,12 +12,7 @@ from toddlerbot.sim import BaseSim, Obs
 from toddlerbot.sim.mujoco_utils import MuJoCoRenderer, MuJoCoViewer
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
-from toddlerbot.utils.math_utils import (
-    exponential_moving_average,
-    quat2euler,
-    quat_inv,
-    rotate_vec,
-)
+from toddlerbot.utils.math_utils import quat2euler, quat_inv, rotate_vec
 
 
 class MuJoCoSim(BaseSim):
@@ -214,16 +209,17 @@ class MuJoCoSim(BaseSim):
         #     0, self.imu_gyro_noise_std, size=obs.ang_vel.shape
         # )
 
-        filtered_motor_vel = np.asarray(
-            exponential_moving_average(0.1, motor_vel_arr, self.motor_vel_prev),
-            dtype=np.float32,
-        )
-        self.motor_vel_prev = motor_vel_arr
+        # TODO: Implement motor vel smoothing
+        # filtered_motor_vel = np.asarray(
+        #     exponential_moving_average(0.1, motor_vel_arr, self.motor_vel_prev),
+        #     dtype=np.float32,
+        # )
+        # self.motor_vel_prev = motor_vel_arr
 
         obs = Obs(
             time=time,
             motor_pos=motor_pos_arr,
-            motor_vel=filtered_motor_vel,
+            motor_vel=motor_vel_arr,
             # lin_vel=torso_lin_vel,
             ang_vel=torso_ang_vel,
             euler=torso_euler,

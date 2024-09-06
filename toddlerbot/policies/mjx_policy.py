@@ -89,7 +89,7 @@ class MJXPolicy(BasePolicy):
         # jit_inference_fn = inference_fn
         self.jit_inference_fn = jax.jit(inference_fn)  # type: ignore
         self.rng = jax.random.PRNGKey(0)  # type: ignore
-        act_rng, _ = jax.random.split(self.rng)  # type: ignore
+        _, act_rng = jax.random.split(self.rng)  # type: ignore
         self.jit_inference_fn(self.obs_history, act_rng)[0].block_until_ready()  # type: ignore
 
         self.joystick = initialize_joystick()
@@ -141,15 +141,12 @@ class MJXPolicy(BasePolicy):
         self.obs_history = np.roll(self.obs_history, obs_arr.size)  # type:ignore
         self.obs_history[: obs_arr.size] = obs_arr
 
-        act_rng, self.rng = jax.random.split(self.rng)  # type: ignore
+        self.rng, act_rng = jax.random.split(self.rng)  # type: ignore
         jit_action, _ = self.jit_inference_fn(jnp.asarray(self.obs_history), act_rng)  # type: ignore
 
         action = np.asarray(jit_action, dtype=np.float32).copy()
         action[self.arm_motor_indices] = 0.0
         action[self.neck_motor_indices] = 0.0
-
-        self.last_action = action
-        self.step_curr += 1
 
         motor_target = np.where(  # type:ignore
             action < 0,
@@ -165,5 +162,7 @@ class MJXPolicy(BasePolicy):
         motor_target = np.clip(  # type:ignore
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
         )
+        self.last_action = action
+        self.step_curr += 1
 
         return motor_target

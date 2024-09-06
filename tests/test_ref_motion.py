@@ -112,7 +112,7 @@ if __name__ == "__main__":
             [
                 cfg.commands.lin_vel_x_range,
                 cfg.commands.lin_vel_y_range,
-                cfg.commands.ang_vel_yaw_range,
+                cfg.commands.ang_vel_z_range,
             ],
         )
 
