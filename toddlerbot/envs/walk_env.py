@@ -28,7 +28,6 @@ class WalkCfg(MJXConfig):
         # Walk specific rewards
         feet_air_time: float = 50.0
         feet_clearance: float = 0.0  # 1.0 # Doesn't help
-        feet_contact: float = 0.5
         feet_distance: float = 1.0
         feet_slip: float = 0.1
         stand_still: float = 0.0  # 1.0

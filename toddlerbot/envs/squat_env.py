@@ -33,6 +33,8 @@ class SquatCfg(MJXConfig):
         # Squat specific rewards
         lin_vel_xy: float = 0.5
         lin_vel_z: float = 1.5
+        leg_joint_pos: float = 5.0
+        waist_joint_pos: float = 5.0
 
     def __init__(self):
         super().__init__()
