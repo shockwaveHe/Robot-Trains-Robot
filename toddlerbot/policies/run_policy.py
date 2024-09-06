@@ -382,7 +382,7 @@ if __name__ == "__main__":
     elif "squat_open" in args.policy:
         from toddlerbot.policies.squat_open import SquatPolicy
 
-        policy = SquatPolicy(robot)
+        policy = SquatPolicy(robot, init_motor_pos)
 
     elif "sysID_fixed" in args.policy:
         from toddlerbot.policies.sysID_fixed import SysIDFixedPolicy
