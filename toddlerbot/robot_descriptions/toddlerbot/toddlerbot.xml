@@ -422,36 +422,36 @@
     <flag eulerdamp="disable" />
   </option>
   <actuator>
-    <position name="neck_yaw_drive" joint="neck_yaw_drive" kp="18.75" ctrlrange="-2.87979 2.87979" class="XC330" />
-    <position name="neck_pitch_drive" joint="neck_pitch_drive" kp="18.75" ctrlrange="-2.17495 2.17495" class="XC330" />
-    <position name="waist_act_1" joint="waist_act_1" kp="18.75" ctrlrange="-4.67748 4.67748" class="XC330" />
-    <position name="waist_act_2" joint="waist_act_2" kp="18.75" ctrlrange="-4.67748 4.67748" class="XC330" />
-    <position name="left_hip_yaw_drive" joint="left_hip_yaw_drive" kp="18.75" ctrlrange="-1.73614 1.73614" class="XC330" />
-    <position name="left_hip_roll" joint="left_hip_roll" kp="18.75" ctrlrange="-0.785398 0.785398" class="2XC430" />
-    <position name="left_hip_pitch" joint="left_hip_pitch" kp="18.75" ctrlrange="-1.5708 1.5708" class="2XC430" />
-    <position name="left_knee_act" joint="left_knee_act" kp="18.75" ctrlrange="0 1.91986" class="XM430" />
-    <position name="left_ank_act_1" joint="left_ank_act_1" kp="18.75" ctrlrange="-1.309 1.309" class="XC330" />
-    <position name="left_ank_act_2" joint="left_ank_act_2" kp="18.75" ctrlrange="-1.309 1.309" class="XC330" />
-    <position name="right_hip_yaw_drive" joint="right_hip_yaw_drive" kp="18.75" ctrlrange="-1.73614 1.73614" class="XC330" />
-    <position name="right_hip_roll" joint="right_hip_roll" kp="18.75" ctrlrange="-0.785398 0.785398" class="2XC430" />
-    <position name="right_hip_pitch" joint="right_hip_pitch" kp="18.75" ctrlrange="-1.5708 1.5708" class="2XC430" />
-    <position name="right_knee_act" joint="right_knee_act" kp="18.75" ctrlrange="-1.91986 0" class="XM430" />
-    <position name="right_ank_act_1" joint="right_ank_act_1" kp="18.75" ctrlrange="-1.309 1.309" class="XC330" />
-    <position name="right_ank_act_2" joint="right_ank_act_2" kp="18.75" ctrlrange="-1.309 1.309" class="XC330" />
-    <position name="left_sho_pitch" joint="left_sho_pitch" kp="18.75" ctrlrange="-3.14159 1.5708" class="XC430" />
-    <position name="left_sho_roll" joint="left_sho_roll" kp="18.75" ctrlrange="-1.5708 0" class="2XL430" />
-    <position name="left_sho_yaw_drive" joint="left_sho_yaw_drive" kp="18.75" ctrlrange="-1.5708 1.5708" class="2XL430" />
-    <position name="left_elbow_roll" joint="left_elbow_roll" kp="18.75" ctrlrange="-1.5708 1.5708" class="2XL430" />
-    <position name="left_elbow_yaw_drive" joint="left_elbow_yaw_drive" kp="18.75" ctrlrange="-1.5708 1.5708" class="2XL430" />
-    <position name="left_wrist_roll_drive" joint="left_wrist_roll_drive" kp="18.75" ctrlrange="-1.5708 1.5708" class="2XL430" />
-    <position name="left_wrist_pitch" joint="left_wrist_pitch" kp="18.75" ctrlrange="-1.5708 1.5708" class="2XL430" />
-    <position name="right_sho_pitch" joint="right_sho_pitch" kp="18.75" ctrlrange="-1.5708 3.14159" class="XC430" />
-    <position name="right_sho_roll" joint="right_sho_roll" kp="18.75" ctrlrange="-1.5708 0" class="2XL430" />
-    <position name="right_sho_yaw_drive" joint="right_sho_yaw_drive" kp="18.75" ctrlrange="-1.5708 1.5708" class="2XL430" />
-    <position name="right_elbow_roll" joint="right_elbow_roll" kp="18.75" ctrlrange="-1.5708 1.5708" class="2XL430" />
-    <position name="right_elbow_yaw_drive" joint="right_elbow_yaw_drive" kp="18.75" ctrlrange="-1.5708 1.5708" class="2XL430" />
-    <position name="right_wrist_roll_drive" joint="right_wrist_roll_drive" kp="18.75" ctrlrange="-1.5708 1.5708" class="2XL430" />
-    <position name="right_wrist_pitch" joint="right_wrist_pitch" kp="18.75" ctrlrange="-1.5708 1.5708" class="2XL430" />
+    <position name="neck_yaw_drive" joint="neck_yaw_drive" kp="7.03125" ctrlrange="-2.87979 2.87979" class="XC330" />
+    <position name="neck_pitch_drive" joint="neck_pitch_drive" kp="7.03125" ctrlrange="-2.17495 2.17495" class="XC330" />
+    <position name="waist_act_1" joint="waist_act_1" kp="7.03125" ctrlrange="-4.67748 4.67748" class="XC330" />
+    <position name="waist_act_2" joint="waist_act_2" kp="7.03125" ctrlrange="-4.67748 4.67748" class="XC330" />
+    <position name="left_hip_yaw_drive" joint="left_hip_yaw_drive" kp="7.03125" ctrlrange="-1.73614 1.73614" class="XC330" />
+    <position name="left_hip_roll" joint="left_hip_roll" kp="14.0625" ctrlrange="-0.785398 0.785398" class="2XC430" />
+    <position name="left_hip_pitch" joint="left_hip_pitch" kp="14.0625" ctrlrange="-1.5708 1.5708" class="2XC430" />
+    <position name="left_knee_act" joint="left_knee_act" kp="21.09375" ctrlrange="0 1.91986" class="XM430" />
+    <position name="left_ank_act_1" joint="left_ank_act_1" kp="7.03125" ctrlrange="-1.309 1.309" class="XC330" />
+    <position name="left_ank_act_2" joint="left_ank_act_2" kp="7.03125" ctrlrange="-1.309 1.309" class="XC330" />
+    <position name="right_hip_yaw_drive" joint="right_hip_yaw_drive" kp="7.03125" ctrlrange="-1.73614 1.73614" class="XC330" />
+    <position name="right_hip_roll" joint="right_hip_roll" kp="14.0625" ctrlrange="-0.785398 0.785398" class="2XC430" />
+    <position name="right_hip_pitch" joint="right_hip_pitch" kp="14.0625" ctrlrange="-1.5708 1.5708" class="2XC430" />
+    <position name="right_knee_act" joint="right_knee_act" kp="21.09375" ctrlrange="-1.91986 0" class="XM430" />
+    <position name="right_ank_act_1" joint="right_ank_act_1" kp="7.03125" ctrlrange="-1.309 1.309" class="XC330" />
+    <position name="right_ank_act_2" joint="right_ank_act_2" kp="7.03125" ctrlrange="-1.309 1.309" class="XC330" />
+    <position name="left_sho_pitch" joint="left_sho_pitch" kp="14.0625" ctrlrange="-3.14159 1.5708" class="XC430" />
+    <position name="left_sho_roll" joint="left_sho_roll" kp="14.0625" ctrlrange="-1.5708 0" class="2XL430" />
+    <position name="left_sho_yaw_drive" joint="left_sho_yaw_drive" kp="14.0625" ctrlrange="-1.5708 1.5708" class="2XL430" />
+    <position name="left_elbow_roll" joint="left_elbow_roll" kp="14.0625" ctrlrange="-1.5708 1.5708" class="2XL430" />
+    <position name="left_elbow_yaw_drive" joint="left_elbow_yaw_drive" kp="14.0625" ctrlrange="-1.5708 1.5708" class="2XL430" />
+    <position name="left_wrist_roll_drive" joint="left_wrist_roll_drive" kp="14.0625" ctrlrange="-1.5708 1.5708" class="2XL430" />
+    <position name="left_wrist_pitch" joint="left_wrist_pitch" kp="14.0625" ctrlrange="-1.5708 1.5708" class="2XL430" />
+    <position name="right_sho_pitch" joint="right_sho_pitch" kp="14.0625" ctrlrange="-1.5708 3.14159" class="XC430" />
+    <position name="right_sho_roll" joint="right_sho_roll" kp="14.0625" ctrlrange="-1.5708 0" class="2XL430" />
+    <position name="right_sho_yaw_drive" joint="right_sho_yaw_drive" kp="14.0625" ctrlrange="-1.5708 1.5708" class="2XL430" />
+    <position name="right_elbow_roll" joint="right_elbow_roll" kp="14.0625" ctrlrange="-1.5708 1.5708" class="2XL430" />
+    <position name="right_elbow_yaw_drive" joint="right_elbow_yaw_drive" kp="14.0625" ctrlrange="-1.5708 1.5708" class="2XL430" />
+    <position name="right_wrist_roll_drive" joint="right_wrist_roll_drive" kp="14.0625" ctrlrange="-1.5708 1.5708" class="2XL430" />
+    <position name="right_wrist_pitch" joint="right_wrist_pitch" kp="14.0625" ctrlrange="-1.5708 1.5708" class="2XL430" />
   </actuator>
   <equality>
     <joint joint1="neck_yaw_driven" joint2="neck_yaw_drive" polycoef="0 -0.722222 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
