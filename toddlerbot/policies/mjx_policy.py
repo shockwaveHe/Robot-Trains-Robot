@@ -127,6 +127,12 @@ class MJXPolicy(BasePolicy):
 
         time_curr = self.step_curr * self.control_dt
         phase_signal = self.motion_ref.get_phase_signal(time_curr, command)
+        state_ref = self.motion_ref.get_state_ref(
+            np.zeros(3, dtype=np.float32),  # type:ignore
+            np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),  # type:ignore
+            time_curr,
+            command,
+        )
         motor_pos_delta = obs.motor_pos - self.default_motor_pos
 
         obs_arr = np.concatenate(  # type:ignore
@@ -149,9 +155,6 @@ class MJXPolicy(BasePolicy):
         jit_action, _ = self.jit_inference_fn(jnp.asarray(self.obs_history), act_rng)  # type: ignore
 
         action = np.asarray(jit_action, dtype=np.float32).copy()
-        action[self.arm_motor_indices] = 0.0
-        action[self.neck_motor_indices] = 0.0
-
         if is_real:
             action_delay = action
         else:
@@ -170,6 +173,7 @@ class MJXPolicy(BasePolicy):
             * action_delay
             * (self.motor_limits[:, 1] - self.default_motor_pos),
         )
+        motor_target = self.motion_ref.override_motor_target(motor_target, state_ref)
         motor_target = np.clip(  # type:ignore
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
         )

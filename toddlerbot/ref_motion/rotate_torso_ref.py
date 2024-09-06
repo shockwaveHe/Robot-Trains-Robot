@@ -11,11 +11,6 @@ class RotateTorsoReference(MotionReference):
     def __init__(self, robot: Robot):
         super().__init__("rotate_torso", "episodic", robot)
 
-        self.default_joint_pos = np.array(  # type: ignore
-            list(robot.default_joint_angles.values()), dtype=np.float32
-        )
-        self.default_joint_vel = np.zeros_like(self.default_joint_pos)  # type: ignore
-
         self.waist_roll_limits = np.array(  # type: ignore
             self.robot.joint_limits["waist_roll"], dtype=np.float32
         )
@@ -94,6 +89,32 @@ class RotateTorsoReference(MotionReference):
                 stance_mask,
             )  # type: ignore
         )
+
+    def override_motor_target(
+        self, motor_target: ArrayType, state_ref: ArrayType
+    ) -> ArrayType:
+        motor_target = inplace_update(
+            motor_target,
+            self.neck_motor_indices,  # type: ignore
+            self.default_motor_pos[self.neck_motor_indices],
+        )
+        motor_target = inplace_update(
+            motor_target,
+            self.arm_motor_indices,  # type: ignore
+            self.default_motor_pos[self.arm_motor_indices],
+        )
+
+        waist_roll_ref = state_ref[13 + self.waist_roll_idx]
+        waist_yaw_ref = state_ref[13 + self.waist_yaw_idx]
+        waist_act_1_ref, waist_act_2_ref = self.waist_ik(waist_roll_ref, waist_yaw_ref)
+        motor_target = inplace_update(
+            motor_target, self.waist_motor_indices[0], waist_act_1_ref
+        )
+        motor_target = inplace_update(
+            motor_target, self.waist_motor_indices[1], waist_act_2_ref
+        )
+
+        return motor_target
 
     def waist_ik(
         self, waist_roll: ArrayType, waist_yaw: ArrayType

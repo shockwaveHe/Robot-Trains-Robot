@@ -331,7 +331,7 @@ class MJXEnv(PipelineEnv):
             * action_delay
             * (self.motor_limits[:, 1] - self.default_motor_pos),
         )
-        motor_target = self._override_motor_target(motor_target, state_ref)
+        motor_target = self.motion_ref.override_motor_target(motor_target, state_ref)
         motor_target = jnp.clip(  # type:ignore
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
         )
@@ -418,17 +418,6 @@ class MJXEnv(PipelineEnv):
     def _extract_command(self, command: jax.Array) -> Tuple[jax.Array, jax.Array]:
         # placeholder
         return jnp.zeros(3), jnp.zeros(3)  # type:ignore
-
-    def _override_motor_target(
-        self, motor_target: jax.Array, state_ref: jax.Array
-    ) -> jax.Array:
-        motor_target = motor_target.at[self.arm_motor_indices].set(  # type:ignore
-            self.default_motor_pos[self.arm_motor_indices]
-        )
-        motor_target = motor_target.at[self.neck_motor_indices].set(  # type:ignore
-            self.default_motor_pos[self.neck_motor_indices]
-        )
-        return motor_target
 
     def _integrate_path_frame(
         self, info: Dict[str, Any]
