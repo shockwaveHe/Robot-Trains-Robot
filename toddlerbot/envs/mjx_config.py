@@ -32,7 +32,7 @@ class MJXConfig:
     class ActionConfig:
         action_scale: float = 0.25
         contact_force_threshold: float = 5.0
-        n_frames_delay: int = 10
+        n_steps_delay: int = 2
         n_frames: int = 6
 
     @dataclass
