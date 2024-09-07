@@ -236,12 +236,8 @@ class SysIDFixedPolicy(BasePolicy):
                 time_list.append(reset_time)
                 action_list.append(reset_action)
 
-                motor_names: List[str] = []
-                for joint_name in joint_names:
-                    motor_names += robot.joint_to_motor_name[joint_name]
-
                 self.ckpt_dict[time_list[-1][-1]] = dict(
-                    zip(motor_names, [kp] * len(motor_names))
+                    zip(joint_names, [kp] * len(joint_names))
                 )
 
             if sysID_specs.kp_list is None:
