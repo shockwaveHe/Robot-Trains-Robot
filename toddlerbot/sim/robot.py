@@ -165,10 +165,38 @@ class Robot:
             self.default_motor_angles
         )
 
+        joints_config = self.config["joints"]
         self.motor_ordering = list(self.init_motor_angles.keys())
         self.joint_ordering = list(self.init_joint_angles.keys())
-        self.motor_to_joint_name = dict(zip(self.motor_ordering, self.joint_ordering))
-        self.joint_to_motor_name = dict(zip(self.joint_ordering, self.motor_ordering))
+        self.motor_to_joint_name: Dict[str, str | List[str]] = {}
+        self.joint_to_motor_name: Dict[str, str | List[str]] = {}
+        for motor_name, joint_name in zip(self.motor_ordering, self.joint_ordering):
+            transmission = joints_config[motor_name]["transmission"]
+            if transmission == "ankle":
+                if "left" in motor_name:
+                    self.motor_to_joint_name[motor_name] = [
+                        "left_ank_roll",
+                        "left_ank_pitch",
+                    ]
+                    self.joint_to_motor_name[joint_name] = [
+                        "left_ank_act_1",
+                        "left_ank_act_2",
+                    ]
+                elif "right" in motor_name:
+                    self.motor_to_joint_name[motor_name] = [
+                        "right_ank_roll",
+                        "right_ank_pitch",
+                    ]
+                    self.joint_to_motor_name[joint_name] = [
+                        "right_ank_act_1",
+                        "right_ank_act_2",
+                    ]
+            elif transmission == "waist":
+                self.motor_to_joint_name[motor_name] = ["waist_roll", "waist_yaw"]
+                self.joint_to_motor_name[joint_name] = ["waist_act_1", "waist_act_2"]
+            else:
+                self.motor_to_joint_name[motor_name] = joint_name
+                self.joint_to_motor_name[joint_name] = motor_name
 
         if "foot_name" in self.config["general"]:
             self.foot_name = self.config["general"]["foot_name"]

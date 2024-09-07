@@ -144,18 +144,6 @@ class MuJoCoSim(BaseSim):
         motor_pos: List[float] = []
         motor_vel: List[float] = []
         for motor_name in motor_state_dict:
-            # transmission = joints_config[motor_name]["transmission"]
-            # if transmission == "gears":
-            #     joint_name = self.robot.motor_to_joint_name[motor_name]
-            #     motor_pos.append(
-            #         joint_state_dict[joint_name].pos
-            #         / joints_config[motor_name]["gear_ratio"]
-            #     )
-            #     motor_vel.append(
-            #         joint_state_dict[joint_name].vel
-            #         * joints_config[motor_name]["gear_ratio"]
-            #     )
-            # else:
             motor_pos.append(motor_state_dict[motor_name].pos)
             motor_vel.append(motor_state_dict[motor_name].vel)
 
@@ -313,24 +301,16 @@ class MuJoCoSim(BaseSim):
         # mjSTATE_TIME ｜ mjSTATE_QPOS | mjSTATE_QVEL | mjSTATE_ACT
 
         # joints_config = self.robot.config["joints"]
-        motor_state_list: List[Dict[str, JointState]] = []
+        joint_state_list: List[Dict[str, JointState]] = []
         for state in state_traj:
-            motor_state: Dict[str, JointState] = {}
-            for motor_name in self.robot.motor_ordering:
-                # transmission = joints_config[motor_name]["transmission"]
-                # if transmission == "gears":
-                #     joint_name = self.robot.motor_to_joint_name[motor_name]
-                #     motor_pos = (
-                #         state[1 + self.model.joint(joint_name).id]  # type: ignore
-                #         / joints_config[motor_name]["gear_ratio"]
-                #     )
-                # else:
-                motor_pos = state[1 + self.model.joint(motor_name).id]  # type: ignore
-                motor_state[motor_name] = JointState(time=state[0], pos=motor_pos)
+            joint_state: Dict[str, JointState] = {}
+            for joint_name in self.robot.joint_ordering:
+                joint_pos = state[1 + self.model.joint(joint_name).id]  # type: ignore
+                joint_state[joint_name] = JointState(time=state[0], pos=joint_pos)
 
-            motor_state_list.append(motor_state)
+            joint_state_list.append(joint_state)
 
-        return motor_state_list
+        return joint_state_list
 
     def save_recording(
         self,

@@ -70,8 +70,6 @@ def plot_results(
     time_seq_ref_dict: Dict[str, List[float]] = {}
     motor_pos_dict: Dict[str, List[float]] = {}
     motor_vel_dict: Dict[str, List[float]] = {}
-    joint_pos_dict: Dict[str, List[float]] = {}
-    joint_vel_dict: Dict[str, List[float]] = {}
     for i, obs in enumerate(obs_list):
         time_obs_list.append(obs.time)
         # lin_vel_obs_list.append(obs.lin_vel)
@@ -90,20 +88,6 @@ def plot_results(
             time_seq_ref_dict[motor_name].append(i * control_dt)
             motor_pos_dict[motor_name].append(obs.motor_pos[j])
             motor_vel_dict[motor_name].append(obs.motor_vel[j])
-
-            joint_name = robot.motor_to_joint_name[motor_name]
-
-            if obs.joint_pos is not None:
-                if joint_name not in joint_pos_dict:
-                    joint_pos_dict[joint_name] = []
-
-                joint_pos_dict[joint_name].append(obs.joint_pos[j])
-
-            if obs.joint_vel is not None:
-                if joint_name not in joint_vel_dict:
-                    joint_vel_dict[joint_name] = []
-
-                joint_vel_dict[joint_name].append(obs.joint_vel[j])
 
     action_dict: Dict[str, List[float]] = {}
     joint_pos_ref_dict: Dict[str, List[float]] = {}
@@ -167,23 +151,6 @@ def plot_results(
         motor_vel_dict,
         save_path=exp_folder_path,
     )
-    if len(joint_pos_dict) > 0:
-        time_seq_dict_joint: Dict[str, List[float]] = {}
-        time_seq_ref_dict_joint: Dict[str, List[float]] = {}
-        for motor_name, time_seq_ref in time_seq_ref_dict.items():
-            joint_name = robot.joint_ordering[robot.motor_ordering.index(motor_name)]
-            time_seq_dict_joint[joint_name] = time_seq_dict[motor_name]
-            time_seq_ref_dict_joint[joint_name] = time_seq_ref
-
-        plot_joint_tracking(
-            time_seq_dict_joint,
-            time_seq_ref_dict_joint,
-            joint_pos_dict,
-            joint_pos_ref_dict,
-            robot.joint_limits,
-            save_path=exp_folder_path,
-            file_name="joint_pos_tracking",
-        )
 
 
 # @profile()
@@ -229,7 +196,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
                 ckpt_idx = bisect.bisect_left(ckpt_times, obs.time)
                 if ckpt_idx != last_ckpt_idx:
                     motor_kps = policy.ckpt_dict[ckpt_times[ckpt_idx]]
-                    if np.any(list(motor_kps.values())):
+                    if np.any(list(motor_kps.values())):  # type: ignore
                         sim.set_motor_kps(motor_kps)
                         last_ckpt_idx = ckpt_idx
 
