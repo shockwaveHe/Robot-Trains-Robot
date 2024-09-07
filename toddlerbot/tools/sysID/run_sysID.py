@@ -9,6 +9,7 @@ import numpy as np
 import numpy.typing as npt
 import optuna
 
+from toddlerbot.actuation import JointState
 from toddlerbot.sim import Obs
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.robot import Robot
@@ -28,56 +29,83 @@ def load_datasets(robot: Robot, data_path: str):
     obs_list: List[Obs] = data_dict["obs_list"]
     motor_angles_list: List[Dict[str, float]] = data_dict["motor_angles_list"]
 
-    obs_time_dict: Dict[str, npt.NDArray[np.float32]] = {}
-    obs_pos_dict: Dict[str, npt.NDArray[np.float32]] = {}
-    action_dict: Dict[str, npt.NDArray[np.float32]] = {}
+    obs_time_dict: Dict[str, List[npt.NDArray[np.float32]]] = {}
+    obs_pos_dict: Dict[str, List[npt.NDArray[np.float32]]] = {}
+    action_dict: Dict[str, List[npt.NDArray[np.float32]]] = {}
+    kp_dict: Dict[str, List[float]] = {}
 
-    def set_obs_and_action(joint_name: str, idx_range: slice):
-        obs_time_dict[joint_name] = np.array([obs.time for obs in obs_list[idx_range]])
-        obs_time_dict[joint_name] -= obs_time_dict[joint_name][0]
+    def set_obs_and_action(
+        joint_name: str, motor_kps: Dict[str, float], idx_range: slice
+    ):
+        kp = motor_kps.get(joint_name, 0)
 
-        obs_pos_dict[joint_name] = np.array(
-            [obs.motor_pos for obs in obs_list[idx_range]]
-        )
-        action_dict[joint_name] = np.array(
+        if kp < 1200:
+            return
+
+        obs_time = np.array([obs.time for obs in obs_list[idx_range]])
+        obs_pos = np.array([obs.motor_pos for obs in obs_list[idx_range]])
+        action = np.array(
             [
                 list(motor_angles.values())
                 for motor_angles in motor_angles_list[idx_range]
             ]
         )
 
+        if joint_name not in obs_time_dict:
+            obs_time_dict[joint_name] = []
+            obs_pos_dict[joint_name] = []
+            action_dict[joint_name] = []
+            kp_dict[joint_name] = []
+
+        obs_time_dict[joint_name].append(obs_time)
+        obs_pos_dict[joint_name].append(obs_pos)
+        action_dict[joint_name].append(action)
+        kp_dict[joint_name].append(kp)
+
     if "ckpt_dict" in data_dict:
-        ckpt_dict: Dict[str, float] = data_dict["ckpt_dict"]
-        joint_names = list(ckpt_dict.keys())
-        time_mark_list = list(ckpt_dict.values())
+        ckpt_dict: Dict[str, Dict[str, float]] = data_dict["ckpt_dict"]
+        ckpt_times = list(ckpt_dict.keys())
+        motor_kps_list: List[Dict[str, float]] = []
+        symm_joint_names: List[str] = []
+        for d in list(ckpt_dict.values()):
+            motor_kps_list.append(d)
+            symm_joint_names.append(list(d.keys())[0])
+
         obs_time = [obs.time for obs in obs_list]
-        obs_indices = np.searchsorted(obs_time, time_mark_list)  # type: ignore
+        obs_indices = np.searchsorted(obs_time, ckpt_times)  # type: ignore
 
         last_idx = 0
-        for symmetric_name, idx in zip(joint_names, obs_indices):
+        for symm_joint_name, motor_kps, obs_idx in zip(
+            symm_joint_names, motor_kps_list, obs_indices
+        ):
             # if symmetric_name not in ["ank_pitch"]:
             #     last_idx = idx
             #     continue
 
-            if symmetric_name in robot.joint_ordering:
-                set_obs_and_action(symmetric_name, slice(last_idx, idx))
+            if symm_joint_name in robot.joint_ordering:
+                set_obs_and_action(symm_joint_name, motor_kps, slice(last_idx, obs_idx))
             else:
-                set_obs_and_action(f"left_{symmetric_name}", slice(last_idx, idx))
-                set_obs_and_action(f"right_{symmetric_name}", slice(last_idx, idx))
+                set_obs_and_action(
+                    f"left_{symm_joint_name}", motor_kps, slice(last_idx, obs_idx)
+                )
+                set_obs_and_action(
+                    f"right_{symm_joint_name}", motor_kps, slice(last_idx, obs_idx)
+                )
 
-            last_idx = idx
+            last_idx = obs_idx
     else:
-        set_obs_and_action("all", slice(None))
+        set_obs_and_action("all", {}, slice(None))
 
-    return obs_time_dict, obs_pos_dict, action_dict
+    return obs_time_dict, obs_pos_dict, action_dict, kp_dict
 
 
 def optimize_parameters(
     robot: Robot,
     sim_name: str,
     joint_name: str,
-    obs: npt.NDArray[np.float32],
-    action: npt.NDArray[np.float32],
+    obs_list: List[npt.NDArray[np.float32]],
+    action_list: List[npt.NDArray[np.float32]],
+    kp_list: List[float],
     n_iters: int = 1000,
     sampler_name: str = "CMA",
     # gain_range: Tuple[float, float, float] = (0, 50, 0.1),
@@ -98,7 +126,7 @@ def optimize_parameters(
     joint_idx = robot.joint_ordering.index(joint_name)
     motor_name = robot.joint_to_motor_name[joint_name]
 
-    motor_pos_real = obs[:, joint_idx]
+    motor_pos_real = np.concatenate([obs[:, joint_idx] for obs in obs_list])  # type: ignore
 
     def objective(trial: optuna.Trial):
         # gain = trial.suggest_float("gain", *gain_range[:2], step=gain_range[2])
@@ -122,10 +150,18 @@ def optimize_parameters(
 
         sim.set_joint_dynamics(joint_dyn)
 
-        motor_state_list = sim.rollout(action)
-        motor_pos_sim = np.array(
-            [motor_state[motor_name].pos for motor_state in motor_state_list]
-        )
+        motor_state_list: List[Dict[str, JointState]] = []
+        motor_pos_sim_list: List[npt.NDArray[np.float32]] = []
+        for action, kp in zip(action_list, kp_list):
+            sim.set_motor_kps({motor_name: kp})
+            motor_state_list = sim.rollout(action)
+            motor_pos_sim_list.append(
+                np.array(
+                    [motor_state[motor_name].pos for motor_state in motor_state_list]
+                )
+            )
+
+        motor_pos_sim = np.concatenate(motor_pos_sim_list)  # type: ignore
 
         error = np.sqrt(np.mean((motor_pos_real - motor_pos_sim) ** 2))
 
@@ -164,8 +200,9 @@ def optimize_parameters(
 def multiprocessing_optimization(
     robot: Robot,
     sim_name: str,
-    obs_pos_dict: Dict[str, npt.NDArray[np.float32]],
-    action_dict: Dict[str, npt.NDArray[np.float32]],
+    obs_pos_dict: Dict[str, List[npt.NDArray[np.float32]]],
+    action_dict: Dict[str, List[npt.NDArray[np.float32]]],
+    kp_dict: Dict[str, List[float]],
     n_iters: int,
 ):
     # return sysID_file_path
@@ -174,8 +211,9 @@ def multiprocessing_optimization(
             Robot,
             str,
             str,
-            npt.NDArray[np.float32],
-            npt.NDArray[np.float32],
+            List[npt.NDArray[np.float32]],
+            List[npt.NDArray[np.float32]],
+            List[float],
             int,
         ]
     ] = [
@@ -185,6 +223,7 @@ def multiprocessing_optimization(
             joint_name,
             obs_pos_dict[joint_name],
             action_dict[joint_name],
+            kp_dict[joint_name],
             n_iters,
         )
         for joint_name in obs_pos_dict
@@ -214,9 +253,10 @@ def multiprocessing_optimization(
 def evaluate(
     robot: Robot,
     sim_name: str,
-    obs_time_dict: Dict[str, npt.NDArray[np.float32]],
-    obs_pos_dict: Dict[str, npt.NDArray[np.float32]],
-    action_dict: Dict[str, npt.NDArray[np.float32]],
+    obs_time_dict: Dict[str, List[npt.NDArray[np.float32]]],
+    obs_pos_dict: Dict[str, List[npt.NDArray[np.float32]]],
+    action_dict: Dict[str, List[npt.NDArray[np.float32]]],
+    kp_dict: Dict[str, List[float]],
     opt_params_dict: Dict[str, Dict[str, float]],
     opt_values_dict: Dict[str, float],
     exp_folder_path: str,
@@ -255,13 +295,14 @@ def evaluate(
     action_real_dict: Dict[str, List[float]] = {}
 
     for joint_name in obs_pos_dict:
-        obs = obs_pos_dict[joint_name]
-        action = action_dict[joint_name]
+        obs_list = obs_pos_dict[joint_name]
+        action_list = action_dict[joint_name]
+        kp_list = kp_dict[joint_name]
 
         joint_idx = robot.joint_ordering.index(joint_name)
         motor_name = robot.joint_to_motor_name[joint_name]
 
-        obs_real = obs[:, joint_idx]
+        motor_pos_real = np.concatenate([obs[:, joint_idx] for obs in obs_list])  # type: ignore
 
         if sim_name == "mujoco":
             sim = MuJoCoSim(robot, fixed_base=True)
@@ -276,12 +317,23 @@ def evaluate(
         }
         sim.set_joint_dynamics(joint_dyn)
 
-        motor_state_list = sim.rollout(action)
-        obs_sim = np.array(
-            [motor_state[motor_name].pos for motor_state in motor_state_list]
-        )
+        obs_time_sim_list: List[float] = []
+        motor_pos_sim_list: List[npt.NDArray[np.float32]] = []
+        for action, kp in zip(action_list, kp_list):
+            sim.set_motor_kps({motor_name: kp})
+            motor_state_list = sim.rollout(action)
+            obs_time_sim_list.extend(
+                [motor_state[motor_name].time for motor_state in motor_state_list]
+            )
+            motor_pos_sim_list.append(
+                np.array(
+                    [motor_state[motor_name].pos for motor_state in motor_state_list]
+                )
+            )
 
-        error = np.sqrt(np.mean((obs_real - obs_sim) ** 2))
+        motor_pos_sim = np.concatenate(motor_pos_sim_list)  # type: ignore
+
+        error = np.sqrt(np.mean((motor_pos_real - motor_pos_sim) ** 2))
 
         log(
             f"{motor_name} root mean squared error: {error}",
@@ -289,17 +341,22 @@ def evaluate(
             level="info",
         )
 
-        time_seq_ref_dict[joint_name] = np.arange(len(action)) * (sim.n_frames * sim.dt)  # type: ignore
-        time_seq_sim_dict[joint_name] = [
-            motor_state[motor_name].time for motor_state in motor_state_list
-        ]
-        time_seq_real_dict[joint_name] = obs_time_dict[joint_name].tolist()
+        time_seq_ref_dict[joint_name] = np.arange(  # type: ignore
+            sum([len(action) for action in action_list])
+        ) * (sim.n_frames * sim.dt)
+        time_seq_sim_dict[joint_name] = obs_time_sim_list
+        obs_time_real = np.concatenate(obs_time_dict[joint_name])  # type: ignore
+        obs_time_real -= obs_time_real[0]
+        time_seq_real_dict[joint_name] = obs_time_real.tolist()
 
-        motor_pos_sim_dict[joint_name] = obs_sim.tolist()
-        motor_pos_real_dict[joint_name] = obs_real.tolist()
+        motor_pos_sim_dict[joint_name] = motor_pos_sim.tolist()
+        motor_pos_real_dict[joint_name] = motor_pos_real.tolist()
 
-        action_sim_dict[joint_name] = action[:, joint_idx].tolist()
-        action_real_dict[joint_name] = action[:, joint_idx].tolist()
+        action_all = np.concatenate(  # type: ignore
+            [action[:, joint_idx] for action in action_list]
+        ).tolist()
+        action_sim_dict[joint_name] = action_all
+        action_real_dict[joint_name] = action_all
 
         sim.close()
 
@@ -331,6 +388,7 @@ def evaluate(
         robot.joint_limits,
         save_path=exp_folder_path,
         file_name="sim2real_motor_pos",
+        line_suffix=["_sim", "_real"],
     )
 
 
@@ -380,7 +438,7 @@ def main():
     with open(os.path.join(exp_folder_path, "opt_config.json"), "w") as f:
         json.dump(vars(args), f, indent=4)
 
-    obs_time_dict, obs_pos_dict, action_dict = load_datasets(robot, data_path)
+    obs_time_dict, obs_pos_dict, action_dict, kp_dict = load_datasets(robot, data_path)
 
     ###### Optimize the hyperparameters ######
     # optimize_parameters(
@@ -393,7 +451,7 @@ def main():
     # )
 
     opt_params_dict, opt_values_dict = multiprocessing_optimization(
-        robot, args.sim, obs_pos_dict, action_dict, args.n_iters
+        robot, args.sim, obs_pos_dict, action_dict, kp_dict, args.n_iters
     )
 
     ##### Evaluate the optimized parameters in the simulation ######
@@ -403,6 +461,7 @@ def main():
         obs_time_dict,
         obs_pos_dict,
         action_dict,
+        kp_dict,
         opt_params_dict,
         opt_values_dict,
         exp_folder_path,
