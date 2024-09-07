@@ -138,8 +138,8 @@
                 "toddlerbot",
                 "--sim",
                 "mujoco",
-                "--run-name",
-                "toddlerbot_sysID_fixed_real_world_20240822_213614"
+                "--time-str",
+                "20240906_235413"
             ]
         },
         {
@@ -190,44 +190,6 @@
             "args": [
                 "--robot",
                 "toddlerbot",
-            ],
-        },
-        {
-            "name": "Python: sysID_single_motor_collect_data",
-            "type": "python",
-            "request": "launch",
-            "program": "toddlerbot/tools/sysID/collect_data.py",
-            "console": "integratedTerminal",
-            "justMyCode": true,
-            "args": [
-                "--robot",
-                "sysID_XC430",
-                "--joint-names",
-                "joint_0",
-                "--n-trials",
-                "1",
-                "--n-loads",
-                "4"
-            ],
-        },
-        {
-            "name": "Python: sysID_single_motor_optimize",
-            "type": "python",
-            "request": "launch",
-            "program": "toddlerbot/tools/sysID/optimize_parameters.py",
-            "console": "integratedTerminal",
-            "justMyCode": true,
-            "args": [
-                "--robot",
-                "sysID_2XC430",
-                "--sim",
-                "mujoco",
-                "--joint-names",
-                "joint_0",
-                "--n-iters",
-                "500",
-                "--exp-folder-path",
-                "results/20240703_201739_sysID_2XC430_joint_0"
             ],
         },
     ]

@@ -82,12 +82,9 @@ def load_datasets(robot: Robot, data_path: str):
             joint_names_list, motor_kps_list, obs_indices
         ):
             for joint_name in joint_names:
-                # if "ank" not in joint_name:
-                #     last_idx = obs_idx
-                #     continue
-
                 set_obs_and_action(joint_name, motor_kps, slice(last_idx, obs_idx))
-                last_idx = obs_idx
+
+            last_idx = obs_idx
     else:
         set_obs_and_action("all", {}, slice(None))
 
