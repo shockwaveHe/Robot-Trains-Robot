@@ -394,7 +394,7 @@ if __name__ == "__main__":
         env_cfg = WalkCfg()
         train_cfg = PPOConfig()
         env_class = WalkEnv
-        fixed_command = jnp.array([0.3, 0.0, 0.0])  # type:ignore
+        fixed_command = jnp.array([0.1, 0.0, 0.0])  # type:ignore
         kwargs = {"ref_motion_type": "zmp"}
 
     elif "squat" in args.env:
