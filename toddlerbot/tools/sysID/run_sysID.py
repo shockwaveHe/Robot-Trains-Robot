@@ -55,7 +55,7 @@ def load_datasets(robot: Robot, data_path: str):
 
         last_idx = 0
         for symmetric_name, idx in zip(joint_names, obs_indices):
-            # if symmetric_name not in ["hip_pitch", "hip_roll", "knee_pitch"]:
+            # if symmetric_name not in ["ank_pitch"]:
             #     last_idx = idx
             #     continue
 
@@ -351,7 +351,7 @@ def main():
     parser.add_argument(
         "--n-iters",
         type=int,
-        default=1000,
+        default=500,
         help="The number of iterations to optimize the parameters.",
     )
     parser.add_argument(
