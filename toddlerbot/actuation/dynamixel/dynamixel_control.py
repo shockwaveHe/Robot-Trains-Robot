@@ -185,16 +185,6 @@ class DynamixelController(BaseController):
         # log(f"Vel: {np.round(vel_arr, 4)}", header="Dynamixel", level="debug")  # type: ignore
         # log(f"Cur: {np.round(cur_arr, 4)}", header="Dynamixel", level="debug")  # type: ignore
 
-        # self.waist_act_1_max_current = max(
-        #     self.waist_act_1_max_current, abs(cur_arr[2])
-        # )
-        # self.waist_act_2_max_current = max(
-        #     self.waist_act_2_max_current, abs(cur_arr[3])
-        # )
-        # print(
-        #     f"Max current: {self.waist_act_1_max_current:.2f}, {self.waist_act_2_max_current:.2f}"
-        # )
-
         pos_arr -= self.init_pos
 
         for i, motor_id in enumerate(self.motor_ids):

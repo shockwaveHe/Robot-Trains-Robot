@@ -158,6 +158,7 @@ def plot_results(
         time_seq_dict,
         motor_tor_dict,
         save_path=exp_folder_path,
+        y_label="Torque (Nm) or Current (A)",
         file_name="motor_tor_tracking",
     )
 
