@@ -387,7 +387,7 @@ if __name__ == "__main__":
             robot,
             init_motor_pos,
             args.ckpt,
-            fixed_command=np.array([0.3, 0, 0], dtype=np.float32),
+            fixed_command=np.array([0.1, 0, 0], dtype=np.float32),
         )
 
     elif "rotate_torso" in args.policy:
