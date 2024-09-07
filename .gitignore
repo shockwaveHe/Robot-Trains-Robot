@@ -168,3 +168,5 @@ cython_debug/
 #.idea/
 *.txt
 *.npz
+*.png
+standard_bot

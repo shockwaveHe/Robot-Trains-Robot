@@ -1,6 +1,6 @@
 {
     "torso": {
-        "has_collision": false,
+        "has_collision": true,
         "contact_pairs": [
             "floor",
             "2xl430_gears_2",
@@ -11,7 +11,7 @@
         "type": "box",
         "scale": [
             1.0,
-            1.0,
+            0.8,
             1.0
         ]
     },
@@ -41,7 +41,7 @@
         ]
     },
     "left_hip_pitch_link_xm430": {
-        "has_collision": false,
+        "has_collision": true,
         "contact_pairs": [
             "hand"
         ],
@@ -78,7 +78,7 @@
         ]
     },
     "right_hip_pitch_link_xm430": {
-        "has_collision": false,
+        "has_collision": true,
         "contact_pairs": [
             "hand_2"
         ],
@@ -124,7 +124,7 @@
         ]
     },
     "hand": {
-        "has_collision": false,
+        "has_collision": true,
         "contact_pairs": [
             "floor",
             "torso",
@@ -161,7 +161,7 @@
         ]
     },
     "hand_2": {
-        "has_collision": false,
+        "has_collision": true,
         "contact_pairs": [
             "floor",
             "torso",
