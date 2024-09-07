@@ -256,8 +256,32 @@ class TeleopPolicy(BasePolicy):
             ]
         )
 
+        self.start_zmq()
+
         # Start a listener for the spacebar
         self._start_spacebar_listener()
+
+    def start_zmq(self):
+        # Set up ZeroMQ context and socket for receiving data
+        self.zmq_context = zmq.Context()
+        self.socket = self.zmq_context.socket(zmq.PUSH)
+        # Set high water mark and enable non-blocking send
+        self.socket.setsockopt(zmq.SNDHWM, 10)  # Limit queue to 10 messages
+        self.socket.setsockopt(
+            zmq.IMMEDIATE, 1
+        )  # Prevent blocking if receiver is not available
+        self.socket.connect("tcp://10.5.6.212:5555")
+
+    def send_msg(self, send_dict):
+        # Serialize the numpy array using pickle
+        serialized_array = pickle.dumps(send_dict)
+        # Send the serialized data
+        try:
+            # Send the serialized data with non-blocking to avoid hanging if the queue is full
+            self.socket.send(serialized_array, zmq.NOBLOCK)
+            # print("Message sent!")
+        except zmq.Again:
+            pass
 
     def _start_spacebar_listener(self):
         def on_press(key):
@@ -298,6 +322,10 @@ class TeleopPolicy(BasePolicy):
         # action = state_dict_to_action(state_dict)
         # print(self.default_action)
         # return self.default_action
+
+        # compile data to send to follower
+        send_dict = {"time": time.time(), "log": self.log, "sim_action": sim_action}
+        self.send_msg(send_dict)
 
         # Log the data
         if self.log:
@@ -494,7 +522,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--policy",
         type=str,
-        default="replay_fixed",
+        default="teleop_fixed",
         help="The name of the task. [replay_fixed, teleop_fixed]",
     )
     parser.add_argument(

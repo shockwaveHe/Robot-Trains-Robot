@@ -19,8 +19,11 @@ while True:
     send_dict = pickle.loads(serialized_array)
 
     tm = send_dict["time"]
-    nparr = np.frombuffer(send_dict["image"], np.uint8)
-    img = np.array(cv2.imdecode(nparr, cv2.IMREAD_COLOR))
+    img = np.array(send_dict["image"], dtype=np.uint8)
+    # print(img.shape)
+
+    cv2.imshow("Received Image", img)
+    cv2.waitKey(1)
 
     t_rcv = time.time()
     print(f"Received array:\n{tm}, timenow: {t_rcv}")
