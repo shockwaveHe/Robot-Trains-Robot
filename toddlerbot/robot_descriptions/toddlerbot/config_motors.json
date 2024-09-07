@@ -1,7 +1,7 @@
 {
     "neck_yaw_drive": {
         "motor": "XC330",
-        "init_pos": 0.480135977268219,
+        "init_pos": 0.49854376912117004,
         "default_pos": 0,
         "gear_ratio": 1.3846153846153846,
         "kp": 1500.0,
@@ -9,7 +9,7 @@
     },
     "neck_pitch_drive": {
         "motor": "XC330",
-        "init_pos": 3.256641149520874,
+        "init_pos": 5.819922924041748,
         "default_pos": 0,
         "gear_ratio": 1.1,
         "kp": 1500.0,
