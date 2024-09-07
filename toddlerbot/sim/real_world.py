@@ -136,6 +136,7 @@ class RealWorld(BaseSim):
         time_curr = 0.0
         motor_pos = np.zeros(len(self.robot.motor_ordering), dtype=np.float32)
         motor_vel = np.zeros(len(self.robot.motor_ordering), dtype=np.float32)
+        motor_cur = np.zeros(len(self.robot.motor_ordering), dtype=np.float32)
         for i, motor_name in enumerate(self.robot.motor_ordering):
             if i == 0:
                 time_curr = motor_state_dict_unordered[motor_name].time
@@ -147,7 +148,14 @@ class RealWorld(BaseSim):
                 motor_pos[i] = motor_state_dict_unordered[motor_name].pos
                 motor_vel[i] = motor_state_dict_unordered[motor_name].vel
 
-        obs = Obs(time=time_curr, motor_pos=motor_pos, motor_vel=motor_vel)
+            motor_cur[i] = abs(motor_state_dict_unordered[motor_name].tor)
+
+        obs = Obs(
+            time=time_curr,
+            motor_pos=motor_pos,
+            motor_vel=motor_vel,
+            motor_torque=motor_cur,
+        )
         return obs
 
     def step(self):

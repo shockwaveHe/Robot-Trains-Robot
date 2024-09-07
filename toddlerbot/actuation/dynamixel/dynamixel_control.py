@@ -176,10 +176,10 @@ class DynamixelController(BaseController):
         state_dict: Dict[int, JointState] = {}
         with self.lock:
             # time, pos_arr = self.client.read_pos(retries=retries)
-            time, pos_arr, vel_arr = self.client.read_pos_vel(retries=retries)
-            # time, pos_arr, vel_arr, cur_arr = self.client.read_pos_vel_cur(
-            #     retries=retries
-            # )
+            # time, pos_arr, vel_arr = self.client.read_pos_vel(retries=retries)
+            time, pos_arr, vel_arr, cur_arr = self.client.read_pos_vel_cur(
+                retries=retries
+            )
 
         # log(f"Pos: {np.round(pos_arr, 4)}", header="Dynamixel", level="debug")  # type: ignore
         # log(f"Vel: {np.round(vel_arr, 4)}", header="Dynamixel", level="debug")  # type: ignore
@@ -198,7 +198,9 @@ class DynamixelController(BaseController):
         pos_arr -= self.init_pos
 
         for i, motor_id in enumerate(self.motor_ids):
-            state_dict[motor_id] = JointState(time=time, pos=pos_arr[i], vel=vel_arr[i])
+            state_dict[motor_id] = JointState(
+                time=time, pos=pos_arr[i], vel=vel_arr[i], tor=cur_arr[i]
+            )
 
         # log(f"End... {time.time()}", header="Dynamixel", level="warning")
 
