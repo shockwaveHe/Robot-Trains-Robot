@@ -229,6 +229,13 @@ class RealWorld(BaseSim):
                 self.sunny_sky_controller.set_pos, sunny_sky_pos, interp=False
             )
 
+    def set_motor_kp(self, motor_kp: Dict[str, float]):
+        if self.has_dynamixel:
+            dynamixel_kp = [
+                motor_kp[k] for k in self.robot.get_joint_attrs("type", "dynamixel")
+            ]
+            self.executor.submit(self.dynamixel_controller.set_kp, dynamixel_kp)
+
     def close(self):
         if self.has_dynamixel:
             self.executor.submit(self.dynamixel_controller.close_motors)

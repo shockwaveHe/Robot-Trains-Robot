@@ -7,10 +7,7 @@ from toddlerbot.policies import BasePolicy
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.sysID import SysIDSpecs
-from toddlerbot.utils.math_utils import (
-    get_chirp_signal,
-    interpolate_action,
-)
+from toddlerbot.utils.math_utils import get_chirp_signal, interpolate_action
 from toddlerbot.utils.misc_utils import set_seed
 
 
@@ -28,7 +25,9 @@ class SysIDFixedPolicy(BasePolicy):
         if "sysID" in robot.name:
             signal_duraion = 30.0
             joint_sysID_specs = {
-                "joint_0": SysIDSpecs(),
+                "joint_0": SysIDSpecs(
+                    final_frequency=1.5, kp_list=list(range(300, 3000, 300))
+                )
             }
         else:
             joint_sysID_specs = {
@@ -123,6 +122,7 @@ class SysIDFixedPolicy(BasePolicy):
 
         time_list: List[npt.NDArray[np.float32]] = []
         action_list: List[npt.NDArray[np.float32]] = []
+        kp_list: List[npt.NDArray[np.float32]] = []
         self.time_mark_dict: Dict[str, float] = {}
 
         prep_time, prep_action = self.move(
@@ -136,6 +136,8 @@ class SysIDFixedPolicy(BasePolicy):
         action_list.append(prep_action)
 
         for symm_name, sysID_specs in joint_sysID_specs.items():
+            trial_time_list: List[npt.NDArray[np.float32]] = []
+            trial_action_list: List[npt.NDArray[np.float32]] = []
             if symm_name in robot.joint_ordering:
                 joint_name = symm_name
                 joint_idx = robot.joint_ordering.index(joint_name)
