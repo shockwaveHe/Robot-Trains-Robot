@@ -208,6 +208,13 @@ def exponential_moving_average(
     return alpha * current_value + (1 - alpha) * previous_filtered_value
 
 
+def gaussian_basis_functions(phase: ArrayType, N: int = 50):
+    centers = np.linspace(0, 1, N)  # type: ignore
+    # Compute the Gaussian basis functions
+    basis = np.exp(-np.square(phase - centers) / (2 * N**2))  # type: ignore
+    return basis
+
+
 def wrap_to_pi(angle: ArrayType) -> ArrayType:
     """Wrap angles to the range [-pi, pi]."""
     return (angle + np.pi) % (2 * np.pi) - np.pi

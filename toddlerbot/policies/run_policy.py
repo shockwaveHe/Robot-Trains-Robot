@@ -1,4 +1,5 @@
 import argparse
+import bisect
 import os
 import pickle
 import time
@@ -69,8 +70,7 @@ def plot_results(
     time_seq_ref_dict: Dict[str, List[float]] = {}
     motor_pos_dict: Dict[str, List[float]] = {}
     motor_vel_dict: Dict[str, List[float]] = {}
-    joint_pos_dict: Dict[str, List[float]] = {}
-    joint_vel_dict: Dict[str, List[float]] = {}
+    motor_tor_dict: Dict[str, List[float]] = {}
     for i, obs in enumerate(obs_list):
         time_obs_list.append(obs.time)
         # lin_vel_obs_list.append(obs.lin_vel)
@@ -83,26 +83,14 @@ def plot_results(
                 time_seq_dict[motor_name] = []
                 motor_pos_dict[motor_name] = []
                 motor_vel_dict[motor_name] = []
+                motor_tor_dict[motor_name] = []
 
             # Assume the state fetching is instantaneous
             time_seq_dict[motor_name].append(float(obs.time))
             time_seq_ref_dict[motor_name].append(i * control_dt)
             motor_pos_dict[motor_name].append(obs.motor_pos[j])
             motor_vel_dict[motor_name].append(obs.motor_vel[j])
-
-            joint_name = robot.motor_to_joint_name[motor_name]
-
-            if obs.joint_pos is not None:
-                if joint_name not in joint_pos_dict:
-                    joint_pos_dict[joint_name] = []
-
-                joint_pos_dict[joint_name].append(obs.joint_pos[j])
-
-            if obs.joint_vel is not None:
-                if joint_name not in joint_vel_dict:
-                    joint_vel_dict[joint_name] = []
-
-                joint_vel_dict[joint_name].append(obs.joint_vel[j])
+            motor_tor_dict[motor_name].append(obs.motor_tor[j])
 
     action_dict: Dict[str, List[float]] = {}
     joint_pos_ref_dict: Dict[str, List[float]] = {}
@@ -166,27 +154,13 @@ def plot_results(
         motor_vel_dict,
         save_path=exp_folder_path,
     )
-    if len(joint_pos_dict) > 0:
-        time_seq_dict_joint: Dict[str, List[float]] = {}
-        time_seq_ref_dict_joint: Dict[str, List[float]] = {}
-        for motor_name, time_seq_ref in time_seq_ref_dict.items():
-            joint_name = robot.joint_ordering[robot.motor_ordering.index(motor_name)]
-            time_seq_dict_joint[joint_name] = time_seq_dict[motor_name]
-            time_seq_ref_dict_joint[joint_name] = time_seq_ref
-
-        plot_joint_tracking(
-            time_seq_dict_joint,
-            time_seq_ref_dict_joint,
-            joint_pos_dict,
-            joint_pos_ref_dict,
-            robot.joint_limits,
-            save_path=exp_folder_path,
-            file_name="joint_pos_tracking",
-        )
-
-
-def run_policy(policy: BasePolicy, obs: Obs) -> npt.NDArray[np.float32]:
-    return policy.step(obs)
+    plot_joint_tracking_single(
+        time_seq_dict,
+        motor_tor_dict,
+        save_path=exp_folder_path,
+        y_label="Torque (Nm) or Current (mA)",
+        file_name="motor_tor_tracking",
+    )
 
 
 # @profile()
@@ -198,17 +172,18 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
     motor_angles_list: List[Dict[str, float]] = []
 
     is_prepared = False
-    num_total_steps = (
+    n_steps_total = (
         float("inf")
         if "real" in sim.name and "fixed" not in policy.name
-        else policy.num_total_steps
+        else policy.n_steps_total
     )
-    p_bar = tqdm(total=num_total_steps, desc="Running the policy")
+    p_bar = tqdm(total=n_steps_total, desc="Running the policy")
     start_time = time.time()
     step_idx = 0
     time_until_next_step = 0
+    last_ckpt_idx = -1
     try:
-        while step_idx < num_total_steps:
+        while step_idx < n_steps_total:
             step_start = time.time()
 
             # Get the latest state from the queue
@@ -217,7 +192,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
 
             if "real" in sim.name:
                 assert isinstance(sim, RealWorld)
-                if not is_prepared and obs.time > policy.prep_duration:
+                if not is_prepared and obs.time > policy.prep_duration and sim.has_imu:
                     is_prepared = True
                     sim.imu.set_zero_pose()
             else:
@@ -225,12 +200,23 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
 
             obs_time = time.time()
 
-            action = run_policy(policy, obs)
+            if "sysID" in policy.name:
+                assert isinstance(policy, SysIDFixedPolicy)
+                ckpt_times = list(policy.ckpt_dict.keys())
+                ckpt_idx = bisect.bisect_left(ckpt_times, obs.time)
+                if ckpt_idx != last_ckpt_idx:
+                    motor_kps = policy.ckpt_dict[ckpt_times[ckpt_idx]]
+                    if np.any(list(motor_kps.values())):  # type: ignore
+                        sim.set_motor_kps(motor_kps)
+                        last_ckpt_idx = ckpt_idx
+
+            motor_target = policy.step(obs, "real" in sim.name)
+
             inference_time = time.time()
 
             motor_angles: Dict[str, float] = {}
-            for motor_name, act in zip(robot.motor_ordering, action):
-                motor_angles[motor_name] = act
+            for motor_name, motor_angle in zip(robot.motor_ordering, motor_target):
+                motor_angles[motor_name] = motor_angle
 
             sim.set_motor_angles(motor_angles)
             set_action_time = time.time()
@@ -295,7 +281,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
         }
         if "sysID" in policy.name:
             assert isinstance(policy, SysIDFixedPolicy)
-            log_data_dict["time_mark_dict"] = policy.time_mark_dict
+            log_data_dict["ckpt_dict"] = policy.ckpt_dict
 
         log_data_path = os.path.join(exp_folder_path, "log_data.pkl")
         with open(log_data_path, "wb") as f:
@@ -379,34 +365,22 @@ if __name__ == "__main__":
     else:
         raise ValueError("Unknown simulator")
 
-    if args.policy == "stand":
-        from toddlerbot.policies.stand import StandPolicy
+    if "stand_open" in args.policy:
+        from toddlerbot.policies.stand_open import StandOpenPolicy
 
-        policy = StandPolicy(robot, init_motor_pos)
+        policy = StandOpenPolicy(robot, init_motor_pos)
 
-    elif args.policy == "rotate_torso":
-        from toddlerbot.policies.rotate_torso import RotateTorsoPolicy
+    elif "rotate_torso_open" in args.policy:
+        from toddlerbot.policies.rotate_torso_open import RotateTorsoOpenPolicy
 
-        policy = RotateTorsoPolicy(robot, init_motor_pos)
+        policy = RotateTorsoOpenPolicy(robot, init_motor_pos)
 
-    elif args.policy == "squat":
-        from toddlerbot.policies.squat import SquatPolicy
+    elif "squat_open" in args.policy:
+        from toddlerbot.policies.squat_open import SquatOpenPolicy
 
-        policy = SquatPolicy(robot, init_motor_pos)
+        policy = SquatOpenPolicy(robot, init_motor_pos)
 
-    elif args.policy == "walk_fixed":
-        from toddlerbot.policies.walk_fixed import WalkFixedPolicy
-
-        run_name = f"{args.robot}_{args.policy}_ppo_{args.ckpt}"
-        policy = WalkFixedPolicy(robot, init_motor_pos, run_name)
-
-    elif args.policy == "walk":
-        from toddlerbot.policies.walk import WalkPolicy
-
-        run_name = f"{args.robot}_{args.policy}_ppo_{args.ckpt}"
-        policy = WalkPolicy(robot, init_motor_pos, run_name)
-
-    elif args.policy == "sysID_fixed":
+    elif "sysID_fixed" in args.policy:
         from toddlerbot.policies.sysID_fixed import SysIDFixedPolicy
 
         policy = SysIDFixedPolicy(robot, init_motor_pos)
@@ -415,6 +389,39 @@ if __name__ == "__main__":
         from toddlerbot.policies.ref_policy import RefPolicy
         assert len(args.ref_motion) > 0, "Please provide a reference motion to track."
         policy = RefPolicy(robot, init_motor_pos, args.ref_motion)
+    elif "walk" in args.policy:
+        from toddlerbot.policies.walk import WalkPolicy
+
+        policy = WalkPolicy(
+            args.policy,
+            robot,
+            init_motor_pos,
+            args.ckpt,
+            fixed_command=np.array([0.3, 0, 0], dtype=np.float32),
+        )
+
+    elif "rotate_torso" in args.policy:
+        from toddlerbot.policies.rotate_torso import RotateTorsoPolicy
+
+        policy = RotateTorsoPolicy(
+            args.policy,
+            robot,
+            init_motor_pos,
+            args.ckpt,
+            fixed_command=np.array([0.2, 0], dtype=np.float32),
+        )
+
+    elif "squat" in args.policy:
+        from toddlerbot.policies.squat import SquatPolicy
+
+        policy = SquatPolicy(
+            args.policy,
+            robot,
+            init_motor_pos,
+            args.ckpt,
+            fixed_command=np.array([-0.05], dtype=np.float32),
+        )
+
     else:
         raise ValueError("Unknown policy")
 

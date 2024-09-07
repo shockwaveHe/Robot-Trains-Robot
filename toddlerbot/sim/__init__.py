@@ -11,6 +11,7 @@ class Obs:
     time: float
     motor_pos: npt.NDArray[np.float32]
     motor_vel: npt.NDArray[np.float32]
+    motor_tor: npt.NDArray[np.float32]
     # lin_vel: npt.NDArray[np.float32] = np.zeros(3, dtype=np.float32)
     ang_vel: npt.NDArray[np.float32] = np.zeros(3, dtype=np.float32)
     euler: npt.NDArray[np.float32] = np.zeros(3, dtype=np.float32)
@@ -26,6 +27,10 @@ class BaseSim(ABC):
 
     @abstractmethod
     def set_motor_angles(self, motor_angles: Dict[str, float]):
+        pass
+
+    @abstractmethod
+    def set_motor_kps(self, motor_kps: Dict[str, float]):
         pass
 
     @abstractmethod

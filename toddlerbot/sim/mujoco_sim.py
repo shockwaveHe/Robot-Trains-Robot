@@ -59,10 +59,7 @@ class MuJoCoSim(BaseSim):
 
         # Assume imu is the first site
         self.torso_euler_prev = np.zeros(3, dtype=np.float32)
-        # self.imu_euler_noise_std = self.robot.config["general"]["imu"][
-        #     "euler_noise_std"
-        # ]
-        # self.imu_gyro_noise_std = self.robot.config["general"]["imu"]["gyro_noise_std"]
+        self.motor_vel_prev = np.zeros(self.model.nu, dtype=np.float32)  # type: ignore
 
         self.visualizer = None
         if vis_type == "render":
@@ -122,6 +119,7 @@ class MuJoCoSim(BaseSim):
                 time=time.time(),
                 pos=self.data.joint(name).qpos.item(),  # type: ignore
                 vel=self.data.joint(name).qvel.item(),  # type: ignore
+                tor=self.data.joint(name).qfrc_actuator.item(),  # type: ignore
             )
 
         return motor_state_dict
@@ -146,27 +144,24 @@ class MuJoCoSim(BaseSim):
         # joints_config = self.robot.config["joints"]
         motor_pos: List[float] = []
         motor_vel: List[float] = []
+        motor_tor: List[float] = []
         for motor_name in motor_state_dict:
-            # transmission = joints_config[motor_name]["transmission"]
-            # if transmission == "gears":
-            #     joint_name = self.robot.motor_to_joint_name[motor_name]
-            #     motor_pos.append(
-            #         joint_state_dict[joint_name].pos
-            #         / joints_config[motor_name]["gear_ratio"]
-            #     )
-            #     motor_vel.append(
-            #         joint_state_dict[joint_name].vel
-            #         * joints_config[motor_name]["gear_ratio"]
-            #     )
-            # else:
             motor_pos.append(motor_state_dict[motor_name].pos)
             motor_vel.append(motor_state_dict[motor_name].vel)
+            motor_tor.append(motor_state_dict[motor_name].tor)
+
+        motor_pos_arr = np.array(motor_pos, dtype=np.float32)
+        motor_vel_arr = np.array(motor_vel, dtype=np.float32)
+        motor_tor_arr = np.array(motor_tor, dtype=np.float32)
 
         joint_pos: List[float] = []
         joint_vel: List[float] = []
         for joint_name in joint_state_dict:
             joint_pos.append(joint_state_dict[joint_name].pos)
             joint_vel.append(joint_state_dict[joint_name].vel)
+
+        joint_pos_arr = np.array(motor_pos, dtype=np.float32)
+        joint_vel_arr = np.array(motor_vel, dtype=np.float32)
 
         if self.fixed_base:
             # torso_lin_vel = np.zeros(3, dtype=np.float32)
@@ -206,15 +201,23 @@ class MuJoCoSim(BaseSim):
         #     0, self.imu_gyro_noise_std, size=obs.ang_vel.shape
         # )
 
+        # TODO: Implement motor vel smoothing
+        # filtered_motor_vel = np.asarray(
+        #     exponential_moving_average(0.1, motor_vel_arr, self.motor_vel_prev),
+        #     dtype=np.float32,
+        # )
+        # self.motor_vel_prev = motor_vel_arr
+
         obs = Obs(
             time=time,
-            motor_pos=np.array(motor_pos, dtype=np.float32),
-            motor_vel=np.array(motor_vel, dtype=np.float32),
+            motor_pos=motor_pos_arr,
+            motor_vel=motor_vel_arr,
+            motor_tor=motor_tor_arr,
             # lin_vel=torso_lin_vel,
             ang_vel=torso_ang_vel,
             euler=torso_euler,
-            joint_pos=np.array(joint_pos, dtype=np.float32),
-            joint_vel=np.array(joint_vel, dtype=np.float32),
+            joint_pos=joint_pos_arr,
+            joint_vel=joint_vel_arr,
         )
         return obs
 
@@ -225,6 +228,11 @@ class MuJoCoSim(BaseSim):
     def get_com(self) -> npt.NDArray[np.float32]:
         subtree_com = np.array(self.data.body(0).subtree_com, dtype=np.float32)  # type: ignore
         return subtree_com
+
+    def set_motor_kps(self, motor_kps: Dict[str, float]):
+        for name, kp in motor_kps.items():
+            self.model.actuator(name).gainprm[0] = kp / 128  # type: ignore
+            self.model.actuator(name).biasprm[1] = -kp / 128  # type: ignore
 
     def set_motor_angles(
         self, motor_angles: Dict[str, float] | npt.NDArray[np.float32]
@@ -298,24 +306,16 @@ class MuJoCoSim(BaseSim):
         # mjSTATE_TIME ｜ mjSTATE_QPOS | mjSTATE_QVEL | mjSTATE_ACT
 
         # joints_config = self.robot.config["joints"]
-        motor_state_list: List[Dict[str, JointState]] = []
+        joint_state_list: List[Dict[str, JointState]] = []
         for state in state_traj:
-            motor_state: Dict[str, JointState] = {}
-            for motor_name in self.robot.motor_ordering:
-                # transmission = joints_config[motor_name]["transmission"]
-                # if transmission == "gears":
-                #     joint_name = self.robot.motor_to_joint_name[motor_name]
-                #     motor_pos = (
-                #         state[1 + self.model.joint(joint_name).id]  # type: ignore
-                #         / joints_config[motor_name]["gear_ratio"]
-                #     )
-                # else:
-                motor_pos = state[1 + self.model.joint(motor_name).id]  # type: ignore
-                motor_state[motor_name] = JointState(time=state[0], pos=motor_pos)
+            joint_state: Dict[str, JointState] = {}
+            for joint_name in self.robot.joint_ordering:
+                joint_pos = state[1 + self.model.joint(joint_name).id]  # type: ignore
+                joint_state[joint_name] = JointState(time=state[0], pos=joint_pos)
 
-            motor_state_list.append(motor_state)
+            joint_state_list.append(joint_state)
 
-        return motor_state_list
+        return joint_state_list
 
     def save_recording(
         self,

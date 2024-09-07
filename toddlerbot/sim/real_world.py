@@ -136,6 +136,7 @@ class RealWorld(BaseSim):
         time_curr = 0.0
         motor_pos = np.zeros(len(self.robot.motor_ordering), dtype=np.float32)
         motor_vel = np.zeros(len(self.robot.motor_ordering), dtype=np.float32)
+        motor_tor = np.zeros(len(self.robot.motor_ordering), dtype=np.float32)
         for i, motor_name in enumerate(self.robot.motor_ordering):
             if i == 0:
                 time_curr = motor_state_dict_unordered[motor_name].time
@@ -147,7 +148,14 @@ class RealWorld(BaseSim):
                 motor_pos[i] = motor_state_dict_unordered[motor_name].pos
                 motor_vel[i] = motor_state_dict_unordered[motor_name].vel
 
-        obs = Obs(time=time_curr, motor_pos=motor_pos, motor_vel=motor_vel)
+            motor_tor[i] = abs(motor_state_dict_unordered[motor_name].tor)
+
+        obs = Obs(
+            time=time_curr,
+            motor_pos=motor_pos,
+            motor_vel=motor_vel,
+            motor_tor=motor_tor,
+        )
         return obs
 
     def step(self):
@@ -228,6 +236,17 @@ class RealWorld(BaseSim):
             self.executor.submit(
                 self.sunny_sky_controller.set_pos, sunny_sky_pos, interp=False
             )
+
+    def set_motor_kps(self, motor_kps: Dict[str, float]):
+        if self.has_dynamixel:
+            dynamixel_kps: List[float] = []
+            for k in self.robot.get_joint_attrs("type", "dynamixel"):
+                if k in motor_kps:
+                    dynamixel_kps.append(motor_kps[k])
+                else:
+                    dynamixel_kps.append(self.robot.config["joints"][k]["kp_real"])
+
+            self.executor.submit(self.dynamixel_controller.set_kp, dynamixel_kps)
 
     def close(self):
         if self.has_dynamixel:

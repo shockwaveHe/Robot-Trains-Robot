@@ -320,9 +320,12 @@ def plot_joint_tracking_single(
     time_seq_dict: Dict[str, List[float]],
     joint_data_dict: Dict[str, List[float]],
     save_path: str,
+    x_label: str = "Time (s)",
+    y_label: str = "Velocity (rad/s)",
     file_name: str = "motor_vel_tracking",
     file_suffix: str = "",
     title_list: List[str] = [],
+    set_ylim: bool = False,
 ):
     x_list: List[List[float]] = []
     y_list: List[List[float]] = []
@@ -344,14 +347,15 @@ def plot_joint_tracking_single(
             ax.set_visible(False)  # type: ignore
             continue
 
-        ax.set_ylim(-5, 5)  # type: ignore
+        if set_ylim:
+            ax.set_ylim(-5, 5)  # type: ignore
 
         plot_line_graph(
             y_list[i],
             x_list[i],
             title=f"{legend_labels[i]}" if len(title_list) == 0 else title_list[i],
-            x_label="Time (s)",
-            y_label="Velocity (rad/s)",
+            x_label=x_label,
+            y_label=y_label,
             save_config=True if i == n_plots - 1 else False,
             save_path=save_path if i == n_plots - 1 else "",
             file_name=file_name if i == n_plots - 1 else "",

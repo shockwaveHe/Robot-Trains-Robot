@@ -5,6 +5,10 @@
         "has_dynamixel": true,
         "dynamixel_baudrate": 4000000,
         "has_sunny_sky": false,
+        "solref": [
+            0.004,
+            1
+        ],
         "is_waist_closed_loop": false,
         "is_knee_closed_loop": false,
         "is_ankle_closed_loop": false
@@ -13,45 +17,25 @@
         "joint_0": {
             "is_passive": false,
             "transmission": "none",
-            "group": "default",
-            "default_pos": 0.0,
+            "group": "none",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
-            "damping": 0.099,
-            "armature": 0.002,
-            "frictionloss": 0.239,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0,
             "id": 0,
             "type": "dynamixel",
             "spec": "XC330",
-            "control_mode": "current_based_position",
+            "control_mode": "extended_position",
             "init_pos": 3.141592653589793,
-            "kp_real": 2400.0,
+            "default_pos": 0.0,
+            "kp_real": 1500.0,
             "ki_real": 0.0,
-            "kd_real": 2400.0,
+            "kd_real": 160.0,
             "kff2_real": 0.0,
             "kff1_real": 0.0,
-            "kp_sim": 18.75,
+            "kp_sim": 7.03125,
             "kd_sim": 0.0
-        }
-    },
-    "links": {
-        "xc330": {
-            "has_collision": false,
-            "collision_type": "box",
-            "collision_scale": [
-                1.0,
-                1.0,
-                1.0
-            ]
-        },
-        "arm_330": {
-            "has_collision": false,
-            "collision_type": "box",
-            "collision_scale": [
-                1.0,
-                1.0,
-                1.0
-            ]
         }
     }
 }

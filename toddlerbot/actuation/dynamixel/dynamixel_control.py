@@ -130,6 +130,10 @@ class DynamixelController(BaseController):
     def reboot_motors(self):
         self.client.reboot(self.motor_ids)
 
+    def set_kp(self, kP: List[float]):
+        with self.lock:
+            self.client.sync_write(self.motor_ids, kP, 84, 2)
+
     # @profile()
     def set_pos(
         self,
@@ -172,29 +176,21 @@ class DynamixelController(BaseController):
         state_dict: Dict[int, JointState] = {}
         with self.lock:
             # time, pos_arr = self.client.read_pos(retries=retries)
-            time, pos_arr, vel_arr = self.client.read_pos_vel(retries=retries)
-            # time, pos_arr, vel_arr, cur_arr = self.client.read_pos_vel_cur(
-            #     retries=retries
-            # )
+            # time, pos_arr, vel_arr = self.client.read_pos_vel(retries=retries)
+            time, pos_arr, vel_arr, cur_arr = self.client.read_pos_vel_cur(
+                retries=retries
+            )
 
         # log(f"Pos: {np.round(pos_arr, 4)}", header="Dynamixel", level="debug")  # type: ignore
         # log(f"Vel: {np.round(vel_arr, 4)}", header="Dynamixel", level="debug")  # type: ignore
         # log(f"Cur: {np.round(cur_arr, 4)}", header="Dynamixel", level="debug")  # type: ignore
 
-        # self.waist_act_1_max_current = max(
-        #     self.waist_act_1_max_current, abs(cur_arr[2])
-        # )
-        # self.waist_act_2_max_current = max(
-        #     self.waist_act_2_max_current, abs(cur_arr[3])
-        # )
-        # print(
-        #     f"Max current: {self.waist_act_1_max_current:.2f}, {self.waist_act_2_max_current:.2f}"
-        # )
-
         pos_arr -= self.init_pos
 
         for i, motor_id in enumerate(self.motor_ids):
-            state_dict[motor_id] = JointState(time=time, pos=pos_arr[i], vel=vel_arr[i])
+            state_dict[motor_id] = JointState(
+                time=time, pos=pos_arr[i], vel=vel_arr[i], tor=cur_arr[i]
+            )
 
         # log(f"End... {time.time()}", header="Dynamixel", level="warning")
 

@@ -18,6 +18,7 @@ def test_motion_ref(
     sim: MuJoCoSim,
     motion_ref: MotionReference,
     command_list: List[npt.NDArray[np.float32]],
+    time_total: float = 5.0,
 ):
     exp_name: str = f"{robot.name}_{motion_ref.name}_{sim.name}_test"
     time_str = time.strftime("%Y%m%d_%H%M%S")
@@ -28,21 +29,19 @@ def test_motion_ref(
     path_quat = np.array([1, 0, 0, 0], dtype=np.float32)
     try:
         for command in command_list:
-            for _ in tqdm(
-                range(5), desc="Running Ref Motion"
-            ):  # Run the same command for 10 cycles
-                for phase in np.arange(0, 1, sim.control_dt):  # type: ignore
-                    state = motion_ref.get_state_ref(
-                        path_pos, path_quat, phase, command
-                    )
-                    joint_angles = np.asarray(
-                        state[13 : 13 + len(robot.joint_ordering)]
-                    )  # type: ignore
-                    motor_angles = robot.joint_to_motor_angles(
-                        dict(zip(robot.joint_ordering, joint_angles))
-                    )
-                    sim.set_motor_angles(motor_angles)
-                    sim.step()
+            for time_curr in tqdm(
+                np.arange(0, time_total, sim.control_dt),  # type: ignore
+                desc="Running Ref Motion",
+            ):
+                state = motion_ref.get_state_ref(
+                    path_pos, path_quat, time_curr, command
+                )
+                joint_angles = np.asarray(state[13 : 13 + len(robot.joint_ordering)])  # type: ignore
+                motor_angles = robot.joint_to_motor_angles(
+                    dict(zip(robot.joint_ordering, joint_angles))
+                )
+                sim.set_motor_angles(motor_angles)
+                sim.step()
 
     except KeyboardInterrupt:
         print("KeyboardInterrupt: Stopping the simulation...")
@@ -95,48 +94,41 @@ if __name__ == "__main__":
     else:
         raise ValueError("Unknown simulator")
 
-    from toddlerbot.envs.mjx_config import MJXConfig
-
-    cfg = MJXConfig()
-
     if args.ref == "walk_simple":
+        from toddlerbot.envs.walk_env import WalkCfg
         from toddlerbot.ref_motion.walk_simple_ref import WalkSimpleReference
 
-        motion_ref = WalkSimpleReference(
-            robot,
-            cfg.action.cycle_time,
-            default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
-        )
-
-    elif args.ref == "walk_limp":
-        from toddlerbot.ref_motion.walk_lipm_ref import WalkLIPMReference
-
-        motion_ref = WalkLIPMReference(
-            robot,
-            default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
-        )
+        cfg = WalkCfg()
+        motion_ref = WalkSimpleReference(robot, cfg.action.cycle_time)
 
     elif args.ref == "walk_zmp":
+        from toddlerbot.envs.walk_env import WalkCfg
         from toddlerbot.ref_motion.walk_zmp_ref import WalkZMPReference
 
+        cfg = WalkCfg()
         motion_ref = WalkZMPReference(
             robot,
-            [
-                cfg.commands.ranges.lin_vel_x,
-                cfg.commands.ranges.lin_vel_y,
-                cfg.commands.ranges.ang_vel_yaw,
-            ],
             cfg.action.cycle_time,
-            default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
+            [
+                cfg.commands.lin_vel_x_range,
+                cfg.commands.lin_vel_y_range,
+                cfg.commands.ang_vel_z_range,
+            ],
         )
 
     elif args.ref == "squat":
+        from toddlerbot.envs.squat_env import SquatCfg
         from toddlerbot.ref_motion.squat_ref import SquatReference
 
-        motion_ref = SquatReference(
-            robot,
-            default_joint_pos=np.array(list(robot.default_joint_angles.values())),  # type: ignore
-        )
+        cfg = SquatCfg()
+        motion_ref = SquatReference(robot)
+
+    elif args.ref == "rotate_torso":
+        from toddlerbot.envs.rotate_torso_env import RotateTorsoCfg
+        from toddlerbot.ref_motion.rotate_torso_ref import RotateTorsoReference
+
+        cfg = RotateTorsoCfg()
+        motion_ref = RotateTorsoReference(robot)
 
     else:
         raise ValueError("Unknown ref motion")
@@ -149,10 +141,16 @@ if __name__ == "__main__":
             np.array([0, 0, 0], dtype=np.float32),
         ]
 
-    elif args.ref == "squat":
+    elif "squat" in args.ref:
         command_list = [
-            np.array([1, 0, 0], dtype=np.float32),
-            np.array([-1, 0, 0], dtype=np.float32),
+            np.array([0.05, 0, 0], dtype=np.float32),
+            np.array([-0.05, 0, 0], dtype=np.float32),
+        ]
+
+    elif "rotate_torso" in args.ref:
+        command_list = [
+            np.array([0.2, 0], dtype=np.float32),
+            np.array([0, 1.0], dtype=np.float32),
         ]
 
     else:

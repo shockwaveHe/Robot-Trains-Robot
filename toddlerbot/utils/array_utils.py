@@ -15,7 +15,9 @@ expm = jax.scipy.linalg.expm if USE_JAX else scipy.linalg.expm
 
 
 def inplace_update(
-    array: ArrayType, idx: int | slice | tuple[int | slice, ...], value: Any
+    array: ArrayType,
+    idx: int | slice | ArrayType | tuple[int | slice | ArrayType, ...],
+    value: Any,
 ) -> ArrayType:
     """Updates the array at the specified index with the given value."""
     if USE_JAX:

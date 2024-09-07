@@ -8,7 +8,7 @@ import functools
 import json
 import shutil
 import time
-from dataclasses import asdict, replace
+from dataclasses import asdict
 from typing import Any, Dict, List, Optional, Tuple
 
 import jax
@@ -25,14 +25,13 @@ from orbax import checkpoint as ocp  # type: ignore
 from tqdm import tqdm
 
 import wandb
-from toddlerbot.envs.mjx_config import MJXConfig, RewardScales, RewardsConfig
-from toddlerbot.envs.mjx_env import MuJoCoEnv
+from toddlerbot.envs.mjx_env import MJXEnv
 from toddlerbot.envs.ppo_config import PPOConfig
 from toddlerbot.sim.robot import Robot
 
 
 def render_video(
-    env: MuJoCoEnv,
+    env: MJXEnv,
     rollout: List[Any],
     run_name: str,
     render_every: int = 2,
@@ -203,8 +202,8 @@ def domain_randomize(
 
 
 def train(
-    env: MuJoCoEnv,
-    eval_env: MuJoCoEnv,
+    env: MJXEnv,
+    eval_env: MJXEnv,
     make_networks_factory: Any,
     train_cfg: PPOConfig,
     run_name: str,
@@ -248,10 +247,10 @@ def train(
 
     domain_randomize_fn = functools.partial(
         domain_randomize,
-        friction_range=cfg.domain_rand.friction_range,
-        gain_range=cfg.domain_rand.gain_range,
-        damping_range=cfg.domain_rand.damping_range,
-        armature_range=cfg.domain_rand.armature_range,
+        friction_range=env.cfg.domain_rand.friction_range,
+        gain_range=env.cfg.domain_rand.gain_range,
+        damping_range=env.cfg.domain_rand.damping_range,
+        armature_range=env.cfg.domain_rand.armature_range,
     )
 
     train_fn = functools.partial(  # type: ignore
@@ -313,7 +312,7 @@ def train(
 
 
 def evaluate(
-    env: MuJoCoEnv,
+    env: MJXEnv,
     make_networks_factory: Any,
     run_name: str,
     num_steps: int = 1000,
@@ -374,12 +373,6 @@ if __name__ == "__main__":
         help="The name of the env.",
     )
     parser.add_argument(
-        "--ref",
-        type=str,
-        default="walk_zmp",
-        help="The name of the env.",
-    )
-    parser.add_argument(
         "--eval",
         type=str,
         default="",
@@ -395,56 +388,77 @@ if __name__ == "__main__":
 
     robot = Robot(args.robot)
 
-    if args.env == "walk":
-        cfg = MJXConfig()
+    if "walk" in args.env:
+        from toddlerbot.envs.walk_env import WalkCfg, WalkEnv
+
+        env_cfg = WalkCfg()
         train_cfg = PPOConfig()
-        # test_command = jnp.array([0.0, 0.0, 0.0])  # type:ignore
-        test_command = jnp.array([0.3, 0.0, 0.0])  # type:ignore
+        env_class = WalkEnv
+        fixed_command = jnp.array([0.1, 0.0, 0.0])  # type:ignore
+        kwargs = {"ref_motion_type": "zmp"}
 
-    elif args.env == "walk_fixed":
-        reward_scales = replace(
-            RewardScales(),
-            **{field: 0.0 for field in RewardScales.__dataclass_fields__},
-        )
-        # reward_scales.feet_distance = 0.5
-        reward_scales.leg_joint_pos = 5.0
-        reward_scales.waist_joint_pos = 5.0
-        reward_scales.joint_torque = 5e-2
-        reward_scales.joint_acc = 5e-6
-        reward_scales.leg_action_rate = 1e-2
-        reward_scales.leg_action_acc = 1e-2
+    elif "squat" in args.env:
+        from toddlerbot.envs.squat_env import SquatCfg, SquatEnv
 
-        cfg = MJXConfig(
-            rewards=RewardsConfig(healthy_z_range=[-0.2, 0.2], scales=reward_scales)
-        )
-        train_cfg = PPOConfig(
-            num_timesteps=10_000_000,
-            num_evals=100,
-            transition_steps=1_000_000,
-            learning_rate=1e-4,
-        )
-        # test_command = jnp.array([0.0, 0.0, 0.0])  # type:ignore
-        test_command = jnp.array([0.3, 0.0, 0.0])  # type:ignore
+        env_cfg = SquatCfg()
+        train_cfg = PPOConfig()
+        env_class = SquatEnv
+        fixed_command = jnp.array([-0.0])  # type:ignore
+        kwargs = {}
+
+    elif "rotate_torso" in args.env:
+        from toddlerbot.envs.rotate_torso_env import RotateTorsoCfg, RotateTorsoEnv
+
+        env_cfg = RotateTorsoCfg()
+        train_cfg = PPOConfig()
+        env_class = RotateTorsoEnv
+        fixed_command = jnp.array([0.2, 0.0])  # type:ignore
+        kwargs = {}
 
     else:
         raise ValueError(f"Unknown env: {args.env}")
 
-    # Need to a separate env for evaluation, otherwise the domain randomization will cause tracer leak errors.
-    env = MuJoCoEnv(
-        args.env, cfg, robot, ref_motion_name=args.ref, fixed_base="fixed" in args.env
-    )
-    eval_env = MuJoCoEnv(
-        args.env, cfg, robot, ref_motion_name=args.ref, fixed_base="fixed" in args.env
-    )
+    if "fixed" in args.env:
+        train_cfg.num_timesteps = 10_000_000
+        train_cfg.num_evals = 100
+        train_cfg.transition_steps = 1_000_000
+        train_cfg.learning_rate = 1e-4
 
-    test_env = MuJoCoEnv(
-        args.env,
-        cfg,
+        env_cfg.rewards.healthy_z_range = [-0.2, 0.2]
+        env_cfg.rewards.scales.reset()
+        # reward_scales.feet_distance = 0.5
+        env_cfg.rewards.scales.leg_joint_pos = 5.0
+        env_cfg.rewards.scales.waist_joint_pos = 5.0
+        env_cfg.rewards.scales.motor_torque = 5e-2
+        env_cfg.rewards.scales.joint_acc = 5e-6
+        env_cfg.rewards.scales.leg_action_rate = 1e-2
+        env_cfg.rewards.scales.leg_action_acc = 1e-2
+        env_cfg.rewards.scales.waist_action_rate = 1e-2
+        env_cfg.rewards.scales.waist_action_acc = 1e-2
+
+    env = env_class(
+        "walk",
         robot,
-        ref_motion_name=args.ref,
+        env_cfg,  # type:ignore
         fixed_base="fixed" in args.env,
-        fixed_command=test_command,
+        **kwargs,  # type:ignore
+    )
+    eval_env = env_class(
+        "walk",
+        robot,
+        env_cfg,  # type:ignore
+        fixed_base="fixed" in args.env,
+        **kwargs,  # type:ignore
+    )
+    test_env = env_class(
+        "walk",
+        robot,
+        env_cfg,  # type:ignore
+        fixed_base="fixed" in args.env,
+        fixed_command=fixed_command,
         add_noise=False,
+        add_push=False,
+        **kwargs,  # type:ignore
     )
 
     make_networks_factory = functools.partial(

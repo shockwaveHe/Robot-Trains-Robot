@@ -172,50 +172,39 @@ def main():
     args = parser.parse_args()
 
     robot_dir = os.path.join("toddlerbot", "robot_descriptions", args.robot)
-
-    if "sysID" in args.robot:
-        general_config: Dict[str, Any] = {
-            "is_fixed": True,
-            "has_imu": False,
-            "has_dynamixel": True,
-            "dynamixel_baudrate": 4000000,
-            "has_sunny_sky": False,
+    general_config: Dict[str, Any] = {
+        "is_fixed": True,
+        "has_imu": False,
+        "has_dynamixel": True,
+        "dynamixel_baudrate": 4000000,
+        "has_sunny_sky": False,
+        "solref": [0.004, 1],
+    }
+    if "sysID" not in args.robot and "arms" not in args.robot:
+        general_config["is_fixed"] = False
+        general_config["has_imu"] = True
+        general_config["smooth_alpha"] = 0.9
+        general_config["fd_smooth_alpha"] = 0.2
+        general_config["waist_roll_backlash"] = 0.03
+        general_config["waist_yaw_backlash"] = 0.001
+        general_config["ank_solimp_0"] = 0.9999
+        general_config["ank_solref_0"] = 0.004
+        general_config["foot_name"] = "ank_roll_link"
+        general_config["offsets"] = {
+            "torso_z": 0.3442,
+            "imu_x": 0.0282,
+            "imu_y": 0.0,
+            "imu_z": 0.105483,
+            "imu_zaxis": "-1 0 0",
+            "waist_roll_coef": 0.29166667,
+            "waist_yaw_coef": 0.20833333,
+            "ank_act_arm_y": 0.00582666,
+            "ank_act_arm_r": 0.02,
+            "ank_long_rod_len": 0.05900847,
+            "ank_short_rod_len": 0.03951266,
+            "ank_rev_r": 0.01,
+            "foot_z": 0.039,
         }
-    else:
-        general_config: Dict[str, Any] = {
-            "is_fixed": True,
-            "has_imu": False,
-            "has_dynamixel": True,
-            "dynamixel_baudrate": 4000000,
-            "has_sunny_sky": False,
-            "solref": [0.004, 1],
-        }
-
-        if "arms" not in args.robot:
-            general_config["is_fixed"] = False
-            general_config["has_imu"] = True
-            general_config["smooth_alpha"] = 0.9
-            general_config["fd_smooth_alpha"] = 0.2
-            general_config["waist_roll_backlash"] = 0.03
-            general_config["waist_yaw_backlash"] = 0.001
-            general_config["ank_solimp_0"] = 0.9999
-            general_config["ank_solref_0"] = 0.004
-            general_config["foot_name"] = "ank_roll_link"
-            general_config["offsets"] = {
-                "torso_z": 0.3442,
-                "imu_x": 0.0282,
-                "imu_y": 0.0,
-                "imu_z": 0.105483,
-                "imu_zaxis": "-1 0 0",
-                "waist_roll_coef": 0.29166667,
-                "waist_yaw_coef": 0.20833333,
-                "ank_act_arm_y": 0.00582666,
-                "ank_act_arm_r": 0.02,
-                "ank_long_rod_len": 0.05900847,
-                "ank_short_rod_len": 0.03951266,
-                "ank_rev_r": 0.01,
-                "foot_z": 0.039,
-            }
 
     # if general_config["has_imu"]:
     #     imu_config_path = os.path.join(robot_dir, "config_imu.json")
@@ -244,16 +233,19 @@ def main():
         ]
         for motor_name in motor_name_list:
             sysID_result_path = os.path.join(
-                "toddlerbot", "robot_descriptions", f"sysID_{motor_name}", "config.json"
+                "toddlerbot",
+                "robot_descriptions",
+                f"sysID_{motor_name}",
+                "config_dynamics.json",
             )
             with open(sysID_result_path, "r") as f:
                 sysID_result = json.load(f)
 
             joint_dyn_config[motor_name] = {}
             for param_name in ["damping", "armature"]:  # , "frictionloss"]:
-                joint_dyn_config[motor_name][param_name] = sysID_result["joints"][
-                    "joint_0"
-                ][param_name]
+                joint_dyn_config[motor_name][param_name] = sysID_result["joint_0"][
+                    param_name
+                ]
 
         dynamics_config_path = os.path.join(robot_dir, "config_dynamics.json")
         if os.path.exists(dynamics_config_path):

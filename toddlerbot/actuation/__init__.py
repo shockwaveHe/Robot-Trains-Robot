@@ -8,6 +8,7 @@ class JointState:
     time: float
     pos: float
     vel: float = 0.0
+    tor: float = 0.0
 
 
 class BaseController(ABC):
