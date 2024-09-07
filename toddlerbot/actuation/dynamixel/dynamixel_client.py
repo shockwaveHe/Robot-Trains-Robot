@@ -112,7 +112,7 @@ class DynamixelClient:
         )
         for motor_id in self.motor_ids:
             success = self._bulk_reader.addParam(  # type: ignore
-                motor_id, ADDR_PRESENT_POS_VEL, LEN_PRESENT_POS_VEL
+                motor_id, ADDR_PRESENT_POS_VEL_CUR, LEN_PRESENT_POS_VEL_CUR
             )
             if not success:
                 raise OSError(
@@ -347,7 +347,7 @@ class DynamixelClient:
         for i, motor_id in enumerate(self.motor_ids):
             # Check if the data is available.
             available = self._bulk_reader.isAvailable(  # type: ignore
-                motor_id, ADDR_PRESENT_POS_VEL, LEN_PRESENT_POS_VEL
+                motor_id, ADDR_PRESENT_POS_VEL_CUR, LEN_PRESENT_POS_VEL_CUR
             )
             if not available:
                 errored_ids.append(motor_id)
