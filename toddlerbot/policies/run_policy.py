@@ -70,7 +70,7 @@ def plot_results(
     time_seq_ref_dict: Dict[str, List[float]] = {}
     motor_pos_dict: Dict[str, List[float]] = {}
     motor_vel_dict: Dict[str, List[float]] = {}
-    motor_torque_dict: Dict[str, List[float]] = {}
+    motor_tor_dict: Dict[str, List[float]] = {}
     for i, obs in enumerate(obs_list):
         time_obs_list.append(obs.time)
         # lin_vel_obs_list.append(obs.lin_vel)
@@ -83,14 +83,14 @@ def plot_results(
                 time_seq_dict[motor_name] = []
                 motor_pos_dict[motor_name] = []
                 motor_vel_dict[motor_name] = []
-                motor_torque_dict[motor_name] = []
+                motor_tor_dict[motor_name] = []
 
             # Assume the state fetching is instantaneous
             time_seq_dict[motor_name].append(float(obs.time))
             time_seq_ref_dict[motor_name].append(i * control_dt)
             motor_pos_dict[motor_name].append(obs.motor_pos[j])
             motor_vel_dict[motor_name].append(obs.motor_vel[j])
-            motor_torque_dict[motor_name].append(obs.motor_torque[j])
+            motor_tor_dict[motor_name].append(obs.motor_tor[j])
 
     action_dict: Dict[str, List[float]] = {}
     joint_pos_ref_dict: Dict[str, List[float]] = {}
@@ -156,8 +156,9 @@ def plot_results(
     )
     plot_joint_tracking_single(
         time_seq_dict,
-        motor_torque_dict,
+        motor_tor_dict,
         save_path=exp_folder_path,
+        file_name="motor_tor_tracking",
     )
 
 

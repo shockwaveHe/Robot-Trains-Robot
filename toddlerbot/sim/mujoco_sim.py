@@ -119,6 +119,7 @@ class MuJoCoSim(BaseSim):
                 time=time.time(),
                 pos=self.data.joint(name).qpos.item(),  # type: ignore
                 vel=self.data.joint(name).qvel.item(),  # type: ignore
+                tor=self.data.joint(name).qfrc_actuator.item(),  # type: ignore
             )
 
         return motor_state_dict
@@ -143,12 +144,15 @@ class MuJoCoSim(BaseSim):
         # joints_config = self.robot.config["joints"]
         motor_pos: List[float] = []
         motor_vel: List[float] = []
+        motor_tor: List[float] = []
         for motor_name in motor_state_dict:
             motor_pos.append(motor_state_dict[motor_name].pos)
             motor_vel.append(motor_state_dict[motor_name].vel)
+            motor_tor.append(motor_state_dict[motor_name].tor)
 
         motor_pos_arr = np.array(motor_pos, dtype=np.float32)
         motor_vel_arr = np.array(motor_vel, dtype=np.float32)
+        motor_tor_arr = np.array(motor_tor, dtype=np.float32)
 
         joint_pos: List[float] = []
         joint_vel: List[float] = []
@@ -208,6 +212,7 @@ class MuJoCoSim(BaseSim):
             time=time,
             motor_pos=motor_pos_arr,
             motor_vel=motor_vel_arr,
+            motor_tor=motor_tor_arr,
             # lin_vel=torso_lin_vel,
             ang_vel=torso_ang_vel,
             euler=torso_euler,
