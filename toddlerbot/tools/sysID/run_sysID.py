@@ -9,7 +9,6 @@ import numpy as np
 import numpy.typing as npt
 import optuna
 
-from toddlerbot.actuation import JointState
 from toddlerbot.sim import Obs
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.robot import Robot
@@ -70,33 +69,25 @@ def load_datasets(robot: Robot, data_path: str):
         ckpt_dict: Dict[str, Dict[str, float]] = data_dict["ckpt_dict"]
         ckpt_times = list(ckpt_dict.keys())
         motor_kps_list: List[Dict[str, float]] = []
-        symm_joint_names: List[str] = []
+        joint_names_list: List[List[str]] = []
         for d in list(ckpt_dict.values()):
             motor_kps_list.append(d)
-            symm_joint_names.append(list(d.keys())[0])
+            joint_names_list.append(list(d.keys()))
 
         obs_time = [obs.time for obs in obs_list]
         obs_indices = np.searchsorted(obs_time, ckpt_times)  # type: ignore
 
         last_idx = 0
-        for symm_joint_name, motor_kps, obs_idx in zip(
-            symm_joint_names, motor_kps_list, obs_indices
+        for joint_names, motor_kps, obs_idx in zip(
+            joint_names_list, motor_kps_list, obs_indices
         ):
-            if symm_joint_name not in ["waist_yaw"]:
+            for joint_name in joint_names:
+                # if "ank" not in joint_name:
+                #     last_idx = obs_idx
+                #     continue
+
+                set_obs_and_action(joint_name, motor_kps, slice(last_idx, obs_idx))
                 last_idx = obs_idx
-                continue
-
-            if symm_joint_name in robot.joint_ordering:
-                set_obs_and_action(symm_joint_name, motor_kps, slice(last_idx, obs_idx))
-            else:
-                set_obs_and_action(
-                    f"left_{symm_joint_name}", motor_kps, slice(last_idx, obs_idx)
-                )
-                set_obs_and_action(
-                    f"right_{symm_joint_name}", motor_kps, slice(last_idx, obs_idx)
-                )
-
-            last_idx = obs_idx
     else:
         set_obs_and_action("all", {}, slice(None))
 
@@ -128,7 +119,7 @@ def optimize_parameters(
         "armature": float(sim.model.joint(joint_name).armature),  # type: ignore
     }
     joint_idx = robot.joint_ordering.index(joint_name)
-    motor_name = robot.joint_to_motor_name[joint_name]
+    motor_names = robot.joint_to_motor_name[joint_name]
 
     joint_pos_real = np.concatenate([obs[:, joint_idx] for obs in obs_list])  # type: ignore
 
@@ -156,10 +147,7 @@ def optimize_parameters(
 
         joint_pos_sim_list: List[npt.NDArray[np.float32]] = []
         for action, kp in zip(action_list, kp_list):
-            if isinstance(motor_name, list):
-                sim.set_motor_kps(dict(zip(motor_name, [kp] * len(motor_name))))
-            else:
-                sim.set_motor_kps({motor_name: kp})
+            sim.set_motor_kps(dict(zip(motor_names, [kp] * len(motor_names))))
 
             joint_state_list = sim.rollout(action)
             joint_pos_sim_list.append(
@@ -307,7 +295,7 @@ def evaluate(
         kp_list = kp_dict[joint_name]
 
         joint_idx = robot.joint_ordering.index(joint_name)
-        motor_name = robot.joint_to_motor_name[joint_name]
+        motor_names = robot.joint_to_motor_name[joint_name]
 
         joint_pos_real = np.concatenate([obs[:, joint_idx] for obs in obs_list])  # type: ignore
 
@@ -327,10 +315,7 @@ def evaluate(
         obs_time_sim_list: List[float] = []
         joint_pos_sim_list: List[npt.NDArray[np.float32]] = []
         for action, kp in zip(action_list, kp_list):
-            if isinstance(motor_name, list):
-                sim.set_motor_kps(dict(zip(motor_name, [kp] * len(motor_name))))
-            else:
-                sim.set_motor_kps({motor_name: kp})
+            sim.set_motor_kps(dict(zip(motor_names, [kp] * len(motor_names))))
 
             joint_state_list = sim.rollout(action)
             obs_time_sim_list.extend(
