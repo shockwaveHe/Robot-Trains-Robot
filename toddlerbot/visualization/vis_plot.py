@@ -323,6 +323,7 @@ def plot_joint_tracking_single(
     file_name: str = "motor_vel_tracking",
     file_suffix: str = "",
     title_list: List[str] = [],
+    set_ylim: bool = False,
 ):
     x_list: List[List[float]] = []
     y_list: List[List[float]] = []
@@ -344,7 +345,8 @@ def plot_joint_tracking_single(
             ax.set_visible(False)  # type: ignore
             continue
 
-        ax.set_ylim(-5, 5)  # type: ignore
+        if set_ylim:
+            ax.set_ylim(-5, 5)  # type: ignore
 
         plot_line_graph(
             y_list[i],
