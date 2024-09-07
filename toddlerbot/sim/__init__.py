@@ -29,6 +29,10 @@ class BaseSim(ABC):
         pass
 
     @abstractmethod
+    def set_motor_kps(self, motor_kps: Dict[str, float]):
+        pass
+
+    @abstractmethod
     def step(self):
         pass
 

@@ -131,7 +131,8 @@ class DynamixelController(BaseController):
         self.client.reboot(self.motor_ids)
 
     def set_kp(self, kP: List[float]):
-        self.client.sync_write(self.motor_ids, kP, 84, 2)
+        with self.lock:
+            self.client.sync_write(self.motor_ids, kP, 84, 2)
 
     # @profile()
     def set_pos(

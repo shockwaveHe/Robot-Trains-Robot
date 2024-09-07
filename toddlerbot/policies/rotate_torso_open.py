@@ -44,7 +44,7 @@ class RotateTorsoOpenPolicy(BasePolicy):
 
         time_list: List[npt.NDArray[np.float32]] = []
         action_list: List[npt.NDArray[np.float32]] = []
-        self.time_mark_dict: Dict[str, float] = {}
+        self.ckpt_dict: Dict[str, float] = {}
 
         prep_time, prep_action = self.move(
             -self.control_dt,
@@ -127,13 +127,13 @@ class RotateTorsoOpenPolicy(BasePolicy):
 
             time_list.append(reset_time)
             action_list.append(reset_action)
-            self.time_mark_dict[joint_name] = time_list[-1][-1]
+            self.ckpt_dict[joint_name] = time_list[-1][-1]
 
         self.time_arr = np.concatenate(time_list)  # type: ignore
         self.action_arr = np.concatenate(action_list)  # type: ignore
-        self.num_total_steps = len(self.time_arr)
+        self.n_steps_total = len(self.time_arr)
 
-    def step(self, obs: Obs) -> npt.NDArray[np.float32]:
+    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         action = np.asarray(
             interpolate_action(obs.time, self.time_arr, self.action_arr)
         )

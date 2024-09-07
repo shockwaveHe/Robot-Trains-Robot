@@ -236,14 +236,10 @@ class MuJoCoSim(BaseSim):
         subtree_com = np.array(self.data.body(0).subtree_com, dtype=np.float32)  # type: ignore
         return subtree_com
 
-    def set_motor_kp(self, motor_kp: Dict[str, float] | npt.NDArray[np.float32]):
-        if isinstance(motor_kp, dict):
-            for name, kp in motor_kp.items():
-                self.model.actuator(name).gainprm = kp  # type: ignore
-                self.model.actuator(name).biasprm = -kp  # type: ignore
-        else:
-            self.model.actuator_gainprm[:, 0] = motor_kp  # type: ignore
-            self.model.actuator_biasprm[:, 1] = motor_kp  # type: ignore
+    def set_motor_kps(self, motor_kps: Dict[str, float]):
+        for name, kp in motor_kps.items():
+            self.model.actuator(name).gainprm[0] = kp / 128  # type: ignore
+            self.model.actuator(name).biasprm[1] = -kp / 128  # type: ignore
 
     def set_motor_angles(
         self, motor_angles: Dict[str, float] | npt.NDArray[np.float32]

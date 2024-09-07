@@ -23,7 +23,6 @@ class SysIDFixedPolicy(BasePolicy):
         reset_duration = 2.0
 
         if "sysID" in robot.name:
-            signal_duraion = 30.0
             joint_sysID_specs = {
                 "joint_0": SysIDSpecs(
                     final_frequency=1.5, kp_list=list(range(300, 3000, 300))
@@ -43,7 +42,7 @@ class SysIDFixedPolicy(BasePolicy):
                     warm_up_angles={
                         "left_sho_roll": -np.pi / 6,
                         "right_sho_roll": -np.pi / 6,
-                    }
+                    },
                 ),
                 "hip_yaw_driven": SysIDSpecs(
                     amplitude_ratio=0.5,
@@ -122,8 +121,7 @@ class SysIDFixedPolicy(BasePolicy):
 
         time_list: List[npt.NDArray[np.float32]] = []
         action_list: List[npt.NDArray[np.float32]] = []
-        kp_list: List[npt.NDArray[np.float32]] = []
-        self.time_mark_dict: Dict[str, float] = {}
+        self.ckpt_dict: Dict[float, Dict[str, float]] = {}
 
         prep_time, prep_action = self.move(
             -self.control_dt,
@@ -135,21 +133,20 @@ class SysIDFixedPolicy(BasePolicy):
         time_list.append(prep_time)
         action_list.append(prep_action)
 
-        for symm_name, sysID_specs in joint_sysID_specs.items():
-            trial_time_list: List[npt.NDArray[np.float32]] = []
-            trial_action_list: List[npt.NDArray[np.float32]] = []
-            if symm_name in robot.joint_ordering:
-                joint_name = symm_name
-                joint_idx = robot.joint_ordering.index(joint_name)
+        for symm_joint_name, sysID_specs in joint_sysID_specs.items():
+            if symm_joint_name in robot.joint_ordering:
+                joint_names = [symm_joint_name]
+                joint_idx = robot.joint_ordering.index(joint_names[0])
             else:
-                joint_name = f"left_{symm_name}"
+                joint_names = [f"left_{symm_joint_name}", f"right_{symm_joint_name}"]
                 joint_idx = [
-                    robot.joint_ordering.index(joint_name),
-                    robot.joint_ordering.index(f"right_{symm_name}"),
+                    robot.joint_ordering.index(joint_names[0]),
+                    robot.joint_ordering.index(joint_names[1]),
                 ]
 
             mean = (
-                robot.joint_limits[joint_name][0] + robot.joint_limits[joint_name][1]
+                robot.joint_limits[joint_names[0]][0]
+                + robot.joint_limits[joint_names[0]][1]
             ) / 2
             warm_up_act = np.zeros_like(init_motor_pos)
 
@@ -159,77 +156,87 @@ class SysIDFixedPolicy(BasePolicy):
                 warm_up_act[joint_idx[0]] = mean
                 warm_up_act[joint_idx[1]] = mean * sysID_specs.direction
 
-            if len(sysID_specs.warm_up_angles) > 0:
+            if sysID_specs.warm_up_angles is not None:
                 for name, angle in sysID_specs.warm_up_angles.items():
                     warm_up_act[robot.joint_ordering.index(name)] = angle
 
-            if not np.allclose(warm_up_act, action_list[-1][-1], 1e-6):
-                warm_up_time, warm_up_action = self.move(
+            amplitude_max = robot.joint_limits[joint_names[0]][1] - mean
+            amplitude = sysID_specs.amplitude_ratio * amplitude_max
+
+            def build_episode(kp: float):
+                if not np.allclose(warm_up_act, action_list[-1][-1], 1e-6):
+                    warm_up_time, warm_up_action = self.move(
+                        time_list[-1][-1],
+                        action_list[-1][-1],
+                        warm_up_act,
+                        warm_up_duration,
+                    )
+
+                    time_list.append(warm_up_time)
+                    action_list.append(warm_up_action)
+
+                rotate_time, signal = get_chirp_signal(
+                    signal_duraion,
+                    self.control_dt,
+                    0.0,
+                    sysID_specs.initial_frequency,
+                    sysID_specs.final_frequency,
+                    amplitude,
+                )
+                rotate_time = np.asarray(rotate_time)
+                signal = np.asarray(signal)
+
+                rotate_time += time_list[-1][-1] + self.control_dt
+
+                rotate_pos = np.zeros(
+                    (signal.shape[0], len(robot.joint_ordering)), np.float32
+                )
+
+                if isinstance(joint_idx, int):
+                    rotate_pos[:, joint_idx] = signal
+                else:
+                    rotate_pos[:, joint_idx[0]] = signal
+                    rotate_pos[:, joint_idx[1]] = signal * sysID_specs.direction
+
+                rotate_action = np.zeros_like(rotate_pos)
+                for j, pos in enumerate(rotate_pos):
+                    signal_action = np.array(
+                        list(
+                            robot.joint_to_motor_angles(
+                                dict(zip(robot.joint_ordering, pos))
+                            ).values()
+                        ),
+                        dtype=np.float32,
+                    )
+                    rotate_action[j] = signal_action + warm_up_act
+
+                time_list.append(rotate_time)
+                action_list.append(rotate_action)
+
+                reset_time, reset_action = self.move(
                     time_list[-1][-1],
                     action_list[-1][-1],
                     warm_up_act,
-                    warm_up_duration,
+                    reset_duration,
+                    end_time=0.5,
                 )
 
-                time_list.append(warm_up_time)
-                action_list.append(warm_up_action)
+                time_list.append(reset_time)
+                action_list.append(reset_action)
 
-            amplitude_max = robot.joint_limits[joint_name][1] - mean
-            amplitude = sysID_specs.amplitude_ratio * amplitude_max
+                self.ckpt_dict[time_list[-1][-1]] = dict(
+                    zip(joint_names, [kp] * len(joint_names))
+                )
 
-            rotate_time, signal = get_chirp_signal(
-                signal_duraion,
-                self.control_dt,
-                0.0,
-                sysID_specs.initial_frequency,
-                sysID_specs.final_frequency,
-                amplitude,
-            )
-            rotate_time = np.asarray(rotate_time)
-            signal = np.asarray(signal)
-
-            rotate_time += time_list[-1][-1] + self.control_dt
-
-            rotate_pos = np.zeros(
-                (signal.shape[0], len(robot.joint_ordering)), np.float32
-            )
-
-            if isinstance(joint_idx, int):
-                rotate_pos[:, joint_idx] = signal
+            if sysID_specs.kp_list is None:
+                build_episode(0.0)
             else:
-                rotate_pos[:, joint_idx[0]] = signal
-                rotate_pos[:, joint_idx[1]] = signal * sysID_specs.direction
-
-            rotate_action = np.zeros_like(rotate_pos)
-            for j, pos in enumerate(rotate_pos):
-                signal_action = np.array(
-                    list(
-                        robot.joint_to_motor_angles(
-                            dict(zip(robot.joint_ordering, pos))
-                        ).values()
-                    ),
-                    dtype=np.float32,
-                )
-                rotate_action[j] = signal_action + warm_up_act
-
-            time_list.append(rotate_time)
-            action_list.append(rotate_action)
-
-            reset_time, reset_action = self.move(
-                time_list[-1][-1],
-                action_list[-1][-1],
-                warm_up_act,
-                reset_duration,
-                end_time=0.5,
-            )
-
-            time_list.append(reset_time)
-            action_list.append(reset_action)
-            self.time_mark_dict[symm_name] = time_list[-1][-1]
+                for kp in sysID_specs.kp_list:
+                    build_episode(kp)
 
         self.time_arr = np.concatenate(time_list)  # type: ignore
         self.action_arr = np.concatenate(action_list)  # type: ignore
-        self.num_total_steps = len(self.time_arr)
+        self.n_steps_total = len(self.time_arr)
 
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         action = np.asarray(

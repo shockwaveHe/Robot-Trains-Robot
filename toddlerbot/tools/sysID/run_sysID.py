@@ -46,10 +46,10 @@ def load_datasets(robot: Robot, data_path: str):
             ]
         )
 
-    if "time_mark_dict" in data_dict:
-        time_mark_dict: Dict[str, float] = data_dict["time_mark_dict"]
-        joint_names = list(time_mark_dict.keys())
-        time_mark_list = list(time_mark_dict.values())
+    if "ckpt_dict" in data_dict:
+        ckpt_dict: Dict[str, float] = data_dict["ckpt_dict"]
+        joint_names = list(ckpt_dict.keys())
+        time_mark_list = list(ckpt_dict.values())
         obs_time = [obs.time for obs in obs_list]
         obs_indices = np.searchsorted(obs_time, time_mark_list)  # type: ignore
 

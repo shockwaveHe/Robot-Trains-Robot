@@ -1,4 +1,5 @@
 import argparse
+import bisect
 import os
 import pickle
 import time
@@ -194,17 +195,18 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
     motor_angles_list: List[Dict[str, float]] = []
 
     is_prepared = False
-    num_total_steps = (
+    n_steps_total = (
         float("inf")
         if "real" in sim.name and "fixed" not in policy.name
         else policy.n_steps_total
     )
-    p_bar = tqdm(total=num_total_steps, desc="Running the policy")
+    p_bar = tqdm(total=n_steps_total, desc="Running the policy")
     start_time = time.time()
     step_idx = 0
     time_until_next_step = 0
+    last_ckpt_idx = -1
     try:
-        while step_idx < num_total_steps:
+        while step_idx < n_steps_total:
             step_start = time.time()
 
             # Get the latest state from the queue
@@ -221,7 +223,18 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
 
             obs_time = time.time()
 
+            if "sysID" in policy.name:
+                assert isinstance(policy, SysIDFixedPolicy)
+                ckpt_times = list(policy.ckpt_dict.keys())
+                ckpt_idx = bisect.bisect_left(ckpt_times, obs.time)
+                if ckpt_idx != last_ckpt_idx:
+                    motor_kps = policy.ckpt_dict[ckpt_times[ckpt_idx]]
+                    if np.any(list(motor_kps.values())):
+                        sim.set_motor_kps(motor_kps)
+                        last_ckpt_idx = ckpt_idx
+
             motor_target = policy.step(obs, "real" in sim.name)
+
             inference_time = time.time()
 
             motor_angles: Dict[str, float] = {}
@@ -291,7 +304,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
         }
         if "sysID" in policy.name:
             assert isinstance(policy, SysIDFixedPolicy)
-            log_data_dict["time_mark_dict"] = policy.time_mark_dict
+            log_data_dict["ckpt_dict"] = policy.ckpt_dict
 
         log_data_path = os.path.join(exp_folder_path, "log_data.pkl")
         with open(log_data_path, "wb") as f:
