@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import platform
 import xml.etree.ElementTree as ET
 from typing import Any, Dict
 
@@ -177,13 +178,19 @@ def main():
         help="The name of the robot. Need to match the name in robot_descriptions.",
     )
     # baud is either 3 or 4 int
-    parser.add_argument(
-        "--baud",
-        type=int,
-        default=4,
-        help="The baudrate of motors, unit in Mbps",
-    )
+    # parser.add_argument(
+    #     "--baud",
+    #     type=int,
+    #     default=4,
+    #     help="The baudrate of motors, unit in Mbps",
+    # )
     args = parser.parse_args()
+
+    # if macos, use 3
+    if platform.system() == "Darwin":
+        baud = 3
+    else:
+        baud = 4
 
     robot_dir = os.path.join("toddlerbot", "robot_descriptions", args.robot)
 
@@ -193,7 +200,7 @@ def main():
             "use_torso_site": False,
             "has_imu": False,
             "has_dynamixel": True,
-            "dynamixel_baudrate": args.baud * 1000000,
+            "dynamixel_baudrate": baud * 1000000,
             "has_sunny_sky": False,
         }
     else:
@@ -202,7 +209,7 @@ def main():
             "use_torso_site": True,
             "has_imu": False,
             "has_dynamixel": True,
-            "dynamixel_baudrate": args.baud * 1000000,
+            "dynamixel_baudrate": baud * 1000000,
             "has_sunny_sky": False,
         }
 
