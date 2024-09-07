@@ -20,10 +20,10 @@ config = DynamixelConfig(
     kFF1=[0.0],
     init_pos=[0.0],
 )
-controller = DynamixelController(config, motor_ids=[22, 29])
+controller = DynamixelController(config, motor_ids=[1, 2])  # 22,29
 
 # Configure the serial connection
-serial_port = "/dev/tty.usbmodem21401"
+serial_port = "/dev/tty.usbmodem21301"
 baud_rate = 115200  # Baud rate for the serial communication
 
 # Open the serial port
