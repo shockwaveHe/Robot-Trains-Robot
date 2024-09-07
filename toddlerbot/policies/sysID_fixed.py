@@ -154,17 +154,24 @@ class SysIDFixedPolicy(BasePolicy):
                 robot.joint_limits[joint_names[0]][0]
                 + robot.joint_limits[joint_names[0]][1]
             ) / 2
-            warm_up_act = np.zeros_like(init_motor_pos)
+            warm_up_pos = np.zeros_like(init_motor_pos)
 
             if isinstance(joint_idx, int):
-                warm_up_act[joint_idx] = mean
+                warm_up_pos[joint_idx] = mean
             else:
-                warm_up_act[joint_idx[0]] = mean
-                warm_up_act[joint_idx[1]] = mean * sysID_specs.direction
+                warm_up_pos[joint_idx[0]] = mean
+                warm_up_pos[joint_idx[1]] = mean * sysID_specs.direction
 
             if sysID_specs.warm_up_angles is not None:
                 for name, angle in sysID_specs.warm_up_angles.items():
-                    warm_up_act[robot.joint_ordering.index(name)] = angle
+                    warm_up_pos[robot.joint_ordering.index(name)] = angle
+
+            warm_up_motor_angles = robot.joint_to_motor_angles(
+                dict(zip(robot.joint_ordering, warm_up_pos))
+            )
+            warm_up_act = np.array(
+                list(warm_up_motor_angles.values()), dtype=np.float32
+            )
 
             amplitude_max = robot.joint_limits[joint_names[0]][1] - mean
             amplitude = sysID_specs.amplitude_ratio * amplitude_max
@@ -206,14 +213,13 @@ class SysIDFixedPolicy(BasePolicy):
 
                 rotate_action = np.zeros_like(rotate_pos)
                 for j, pos in enumerate(rotate_pos):
-                    signal_action = np.array(
-                        list(
-                            robot.joint_to_motor_angles(
-                                dict(zip(robot.joint_ordering, pos))
-                            ).values()
-                        ),
-                        dtype=np.float32,
+                    rotate_motor_angles = robot.joint_to_motor_angles(
+                        dict(zip(robot.joint_ordering, pos))
                     )
+                    signal_action = np.array(
+                        list(rotate_motor_angles.values()), dtype=np.float32
+                    )
+
                     rotate_action[j] = signal_action + warm_up_act
 
                 time_list.append(rotate_time)
