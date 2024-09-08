@@ -37,22 +37,23 @@ class SysIDFixedPolicy(BasePolicy):
                         "left_sho_roll": -np.pi / 6,
                         "right_sho_roll": -np.pi / 6,
                     },
-                    kp_list=list(range(1200, 2400, 300)),
+                    kp_list=list(range(600, 1800, 300)),
                 ),
                 "waist_yaw": SysIDSpecs(
                     warm_up_angles={
                         "left_sho_roll": -np.pi / 6,
                         "right_sho_roll": -np.pi / 6,
                     },
-                    kp_list=list(range(1200, 2400, 300)),
+                    kp_list=list(range(600, 1800, 300)),
                 ),
                 "hip_yaw_driven": SysIDSpecs(
                     amplitude_ratio=0.5,
+                    final_frequency=2.0, 
                     warm_up_angles={
                         "left_sho_roll": -np.pi / 6,
                         "right_sho_roll": -np.pi / 6,
                     },
-                    kp_list=list(range(1200, 2400, 300)),
+                    kp_list=list(range(600, 1800, 300)),
                 ),
                 "hip_roll": SysIDSpecs(
                     warm_up_angles={
@@ -60,7 +61,7 @@ class SysIDFixedPolicy(BasePolicy):
                         "right_sho_roll": -np.pi / 6,
                     },
                     direction=-1,
-                    kp_list=list(range(1800, 3000, 300)),
+                    kp_list=list(range(1200, 2400, 300)),
                 ),
                 "hip_pitch": SysIDSpecs(
                     warm_up_angles={
@@ -69,7 +70,7 @@ class SysIDFixedPolicy(BasePolicy):
                         "left_hip_roll": np.pi / 8,
                         "right_hip_roll": np.pi / 8,
                     },
-                    kp_list=list(range(1800, 3000, 300)),
+                    kp_list=list(range(1200, 2400, 300)),
                 ),
                 "knee_pitch": SysIDSpecs(
                     warm_up_angles={
@@ -119,8 +120,8 @@ class SysIDFixedPolicy(BasePolicy):
                 #         "right_sho_yaw_driven": -np.pi / 2,
                 #     },
                 # ),
-                "ank_roll": SysIDSpecs(kp_list=list(range(1200, 2400, 300))),
-                "ank_pitch": SysIDSpecs(kp_list=list(range(1200, 2400, 300))),
+                "ank_roll": SysIDSpecs(final_frequency=2.0, kp_list=list(range(600, 1800, 300))),
+                "ank_pitch": SysIDSpecs(final_frequency=2.0, kp_list=list(range(600, 1800, 300))),
                 # "sho_pitch": SysIDSpecs(amplitude_max=np.pi / 4),
                 # "sho_roll": SysIDSpecs(amplitude_max=np.pi / 4),
             }

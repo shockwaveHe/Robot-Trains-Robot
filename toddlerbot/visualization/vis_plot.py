@@ -575,6 +575,7 @@ def plot_line_graph(
                     sub_y,
                     style,
                     color=color,
+                    alpha=0.7,
                     label=legend_labels[i] if legend_labels else None,
                 )
 
@@ -588,6 +589,7 @@ def plot_line_graph(
                 y,
                 line_styles_local[0],
                 color=line_colors_local[0],
+                alpha=0.7,
                 label=legend_labels[0] if legend_labels else None,
             )
 
