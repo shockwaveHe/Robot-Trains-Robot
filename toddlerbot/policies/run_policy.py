@@ -184,7 +184,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
     step_idx = 0
     time_until_next_step = 0
     last_ckpt_idx = -1
-    last_motor_target = np.zeros(robot.nu, dtype=np.float32)
+    last_motor_target = None
     try:
         while step_idx < n_steps_total:
             step_start = time.time()
