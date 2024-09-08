@@ -93,7 +93,6 @@ def plot_results(
             motor_pos_dict[motor_name].append(obs.motor_pos[j])
             motor_vel_dict[motor_name].append(obs.motor_vel[j])
             motor_tor_dict[motor_name].append(obs.motor_tor[j])
-            
 
     action_dict: Dict[str, List[float]] = {}
     joint_pos_ref_dict: Dict[str, List[float]] = {}
@@ -357,6 +356,7 @@ if __name__ == "__main__":
         from toddlerbot.sim.real_world import RealWorld
 
         sim = RealWorld(robot)
+        sim.has_imu = "fixed" not in args.policy
         init_motor_pos = sim.get_observation(retries=-1).motor_pos
 
     else:
@@ -390,7 +390,7 @@ if __name__ == "__main__":
             robot,
             init_motor_pos,
             args.ckpt,
-            fixed_command=np.array([0.1, 0, 0], dtype=np.float32),
+            fixed_command=np.array([0.0, 0, 0], dtype=np.float32),
         )
 
     elif "rotate_torso" in args.policy:
