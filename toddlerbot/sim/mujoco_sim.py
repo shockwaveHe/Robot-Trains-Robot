@@ -14,6 +14,10 @@ from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.math_utils import quat2euler, quat_inv, rotate_vec
 
+"""
+vis_type: ["render", "view"]
+"""
+
 
 class MuJoCoSim(BaseSim):
     def __init__(

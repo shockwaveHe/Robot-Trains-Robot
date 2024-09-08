@@ -4,6 +4,7 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
             "cwd": "${workspaceRoot}",
             "executable": "toddlerbot/actuation/sunny_sky/knee_esc/motorcontrol.elf",
@@ -26,6 +27,14 @@
             "console": "integratedTerminal",
             "justMyCode": true
         },
+        {
+            "name": "MJPython: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "python": "/Users/weizhuo2/mambaforge/envs/toddlerbot/bin/mjpython"        },
         {
             "name": "Python: stand_toddlerbot_mujoco",
             "type": "python",
