@@ -12,7 +12,7 @@ from tqdm import tqdm
 from toddlerbot.policies import BasePolicy
 from toddlerbot.sim import BaseSim, Obs
 from toddlerbot.sim.robot import Robot
-from toddlerbot.utils.math_utils import round_floats
+from toddlerbot.utils.math_utils import exponential_moving_average, round_floats
 from toddlerbot.utils.misc_utils import (
     dump_profiling_data,
     log,
@@ -184,6 +184,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
     step_idx = 0
     time_until_next_step = 0
     last_ckpt_idx = -1
+    last_motor_target = np.zeros(robot.nu, dtype=np.float32)
     try:
         while step_idx < n_steps_total:
             step_start = time.time()
@@ -213,6 +214,11 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
                         last_ckpt_idx = ckpt_idx
 
             motor_target = policy.step(obs, "real" in sim.name)
+
+            motor_target: npt.NDArray[np.float32] = exponential_moving_average(  # type: ignore
+                0.44, motor_target, last_motor_target
+            )
+            last_motor_target = motor_target.copy()
 
             inference_time = time.time()
 
