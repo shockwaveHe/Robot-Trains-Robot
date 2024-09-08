@@ -3,17 +3,21 @@ import json
 import os
 import pickle
 import time
+from functools import partial
 from typing import Dict, List, Tuple
 
 import numpy as np
 import numpy.typing as npt
 import optuna
+from optuna.logging import _get_library_root_logger  # type: ignore
 
 from toddlerbot.sim import Obs
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.misc_utils import log
 from toddlerbot.visualization.vis_plot import plot_joint_tracking
+
+logger = _get_library_root_logger()
 
 
 def load_datasets(robot: Robot, data_path: str):
@@ -88,7 +92,13 @@ def load_datasets(robot: Robot, data_path: str):
 
             last_idx = obs_idx
     else:
-        set_obs_and_action("all", {}, slice(None))
+        start_idx = 500
+        for joint_name in reversed(robot.joint_ordering):
+            joints_config = robot.config["joints"]
+            if joints_config[joint_name]["group"] == "leg":
+                motor_names = robot.joint_to_motor_name[joint_name]
+                motor_kps = {joint_name: joints_config[motor_names[0]]["kp_real"]}
+                set_obs_and_action(joint_name, motor_kps, slice(start_idx, None))
 
     return obs_time_dict, obs_pos_dict, action_dict, kp_dict
 
@@ -101,6 +111,7 @@ def optimize_parameters(
     action_list: List[npt.NDArray[np.float32]],
     kp_list: List[float],
     n_iters: int = 1000,
+    early_stopping_rounds: int = 100,
     sampler_name: str = "CMA",
     # gain_range: Tuple[float, float, float] = (0, 50, 0.1),
     damping_range: Tuple[float, float, float] = (0, 10, 1e-3),
@@ -121,6 +132,18 @@ def optimize_parameters(
     motor_names = robot.joint_to_motor_name[joint_name]
 
     joint_pos_real = np.concatenate([obs[:, joint_idx] for obs in obs_list])  # type: ignore
+
+    def early_stopping_check(
+        study: optuna.Study, trial: optuna.Trial, early_stopping_rounds: int
+    ):
+        current_trial_number = trial.number
+        best_trial_number = study.best_trial.number  # type: ignore
+        should_stop = (  # type: ignore
+            current_trial_number - best_trial_number
+        ) >= early_stopping_rounds
+        if should_stop:
+            logger.debug(f"early stopping detected: {should_stop}")
+            study.stop()
 
     def objective(trial: optuna.Trial):
         # gain = trial.suggest_float("gain", *gain_range[:2], step=gain_range[2])
@@ -178,7 +201,15 @@ def optimize_parameters(
     )
 
     study.enqueue_trial(initial_trial)
-    study.optimize(objective, n_trials=n_iters, n_jobs=1, show_progress_bar=True)
+    study.optimize(
+        objective,
+        n_trials=n_iters,
+        n_jobs=1,
+        show_progress_bar=True,
+        callbacks=[
+            partial(early_stopping_check, early_stopping_rounds=early_stopping_rounds)  # type: ignore
+        ],
+    )
 
     log(
         f"Best parameters: {study.best_params}; best value: {study.best_value}",
@@ -402,6 +433,12 @@ def main():
         help="The simulator to use.",
     )
     parser.add_argument(
+        "--policy",
+        type=str,
+        default="sysID_fixed",
+        help="The name of the task.",
+    )
+    parser.add_argument(
         "--n-iters",
         type=int,
         default=500,
@@ -417,7 +454,7 @@ def main():
     args = parser.parse_args()
 
     data_path = os.path.join(
-        "results", f"{args.robot}_sysID_fixed_real_world_{args.time_str}"
+        "results", f"{args.robot}_{args.policy}_real_world_{args.time_str}"
     )
     if not os.path.exists(data_path):
         raise ValueError("Invalid experiment folder path")
