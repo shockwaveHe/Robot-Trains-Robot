@@ -14,6 +14,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import jax
 import jax.numpy as jnp
 import mediapy as media
+import mujoco  # type: ignore
+import numpy as np
 import optax  # type: ignore
 from brax import base  # type: ignore
 from brax.io import model  # type: ignore
@@ -28,6 +30,7 @@ import wandb
 from toddlerbot.envs.mjx_env import MJXEnv
 from toddlerbot.envs.ppo_config import PPOConfig
 from toddlerbot.sim.robot import Robot
+from toddlerbot.utils.file_utils import find_robot_file_path
 
 
 def render_video(
@@ -117,6 +120,40 @@ def log_metrics(
     return log_data
 
 
+def get_body_mass_attr_range(robot: Robot, body_mass_range: List[float], num_envs: int):
+    xml_path = find_robot_file_path(robot.name, suffix="_scene.xml")
+
+    model = mujoco.MjModel.from_xml_path(xml_path)  # type: ignore
+    data = mujoco.MjData(model)  # type: ignore
+
+    body_mass_attr_range: List[Dict[str, jax.Array]] = []
+    body_mass_delta_range = np.linspace(
+        body_mass_range[0], body_mass_range[1], num_envs
+    )
+    body_mass = np.array(model.body("torso").mass).copy()  # type: ignore
+    body_inertia = np.array(model.body("torso").inertia).copy()  # type: ignore
+    for body_mass_delta in body_mass_delta_range:
+        model.body("torso").mass = body_mass + body_mass_delta  # type: ignore
+        model.body("torso").inertia = (  # type: ignore
+            (body_mass + body_mass_delta) / body_mass * body_inertia
+        )
+        mujoco.mj_setConst(model, data)  # type: ignore
+        body_mass_attr_range.append(
+            {
+                "body_mass": jnp.array(model.body_mass),  # type: ignore
+                "body_inertia": jnp.array(model.body_inertia),  # type: ignore
+                "actuator_acc0": jnp.array(model.actuator_acc0),  # type: ignore
+                "body_invweight0": jnp.array(model.body_invweight0),  # type: ignore
+                "body_subtreemass": jnp.array(model.body_subtreemass),  # type: ignore
+                "dof_M0": jnp.array(model.dof_M0),  # type: ignore
+                "dof_invweight0": jnp.array(model.dof_invweight0),  # type: ignore
+                "tendon_invweight0": jnp.array(model.tendon_invweight0),  # type: ignore
+            }
+        )
+
+    return body_mass_attr_range
+
+
 def domain_randomize(
     sys: base.System,
     rng: jax.Array,
@@ -124,9 +161,14 @@ def domain_randomize(
     gain_range: Optional[List[float]],
     damping_range: Optional[List[float]],
     armature_range: Optional[List[float]],
+    body_mass_attr_range: Optional[List[Dict[str, jax.Array]]],
 ) -> Tuple[base.System, base.System]:
     @jax.vmap
-    def rand(rng: jax.Array) -> Tuple[jax.Array, ...]:
+    def rand(
+        rng: jax.Array,
+    ) -> Tuple[
+        jax.Array, jax.Array, jax.Array, jax.Array, jax.Array, Dict[str, jax.Array]
+    ]:
         _, key = jax.random.split(rng, 2)  # type: ignore
 
         if friction_range is None:
@@ -134,8 +176,11 @@ def domain_randomize(
         else:
             # Friction
             friction = jax.random.uniform(  # type: ignore
-                key, (1,), minval=friction_range[0], maxval=friction_range[1]
-            )  # type: ignore
+                key,
+                (1,),
+                minval=friction_range[0],
+                maxval=friction_range[1],
+            )
             friction = sys.geom_friction.at[:, 0].set(friction)  # type: ignore
 
         if gain_range is None:
@@ -173,9 +218,24 @@ def domain_randomize(
                 * sys.dof_armature
             )
 
-        return friction, gain, bias, damping, armature
+        if body_mass_attr_range is None:
+            body_mass_attr: Dict[str, jax.Array] = {
+                "body_mass": sys.body_mass,
+                "body_inertia": sys.body_inertia,
+                "actuator_acc0": sys.actuator_acc0,  # type: ignore
+                "body_invweight0": sys.body_invweight0,
+                "body_subtreemass": sys.body_subtreemass,
+                "dof_M0": sys.dof_M0,
+                "dof_invweight0": sys.dof_invweight0,
+                "tendon_invweight0": sys.tendon_invweight0,
+            }
+        else:
+            idx = jax.random.randint(key, (1,), 0, len(body_mass_attr_range))[0]  # type: ignore
+            body_mass_attr = body_mass_attr_range[idx]
 
-    friction, gain, bias, damping, armature = rand(rng)
+        return friction, gain, bias, damping, armature, body_mass_attr
+
+    friction, gain, bias, damping, armature, body_mass_attr = rand(rng)
 
     in_axes = jax.tree.map(lambda x: None, sys)  # type: ignore
     in_axes = in_axes.tree_replace(
@@ -185,6 +245,7 @@ def domain_randomize(
             "actuator_biasprm": 0,
             "dof_damping": 0,
             "dof_armature": 0,
+            **dict(zip(body_mass_attr.keys(), [0] * len(body_mass_attr.keys()))),
         }
     )
 
@@ -195,6 +256,7 @@ def domain_randomize(
             "actuator_biasprm": bias,
             "dof_damping": damping,
             "dof_armature": armature,
+            **body_mass_attr,
         }
     )
 
@@ -245,12 +307,19 @@ def train(
         transition_steps=train_cfg.num_timesteps,
     )
 
+    body_mass_attr_range = None
+    if env.cfg.domain_rand.added_mass_range is not None:
+        get_body_mass_attr_range(
+            env.robot, env.cfg.domain_rand.added_mass_range, train_cfg.num_envs
+        )
+
     domain_randomize_fn = functools.partial(
         domain_randomize,
         friction_range=env.cfg.domain_rand.friction_range,
         gain_range=env.cfg.domain_rand.gain_range,
         damping_range=env.cfg.domain_rand.damping_range,
         armature_range=env.cfg.domain_rand.armature_range,
+        body_mass_attr_range=body_mass_attr_range,
     )
 
     train_fn = functools.partial(  # type: ignore

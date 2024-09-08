@@ -93,8 +93,9 @@ class MJXConfig:
         armature_range: Optional[List[float]] = field(
             default_factory=lambda: [0.8, 1.2]
         )
-        # TODO: add mass_range
-        added_mass_range: Optional[List[float]] = None
+        added_mass_range: Optional[List[float]] = field(
+            default_factory=lambda: [-0.5, 0.5]
+        )
         push_interval_s: int = 2  # seconds
         push_vel: float = 0.05
 
