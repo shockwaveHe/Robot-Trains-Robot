@@ -75,7 +75,7 @@ class MJXConfig:
         tracking_sigma: float = 5.0
         min_feet_distance: float = 0.06
         max_feet_distance: float = 0.15
-        target_feet_z_delta: float = 0.03
+        target_feet_z_delta: float = 0.02
         scales: RewardScales = RewardScales()
 
     @dataclass

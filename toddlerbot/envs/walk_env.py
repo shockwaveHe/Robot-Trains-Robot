@@ -27,7 +27,7 @@ class WalkCfg(MJXConfig):
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
         # Walk specific rewards
         feet_air_time: float = 50.0
-        feet_clearance: float = 0.0  # 1.0 # Doesn't help
+        feet_clearance: float = 1.0  # Doesn't help
         feet_distance: float = 1.0
         feet_slip: float = 0.1
         stand_still: float = 0.0  # 1.0
@@ -111,7 +111,7 @@ class WalkEnv(MJXEnv):
         # )
 
         # TODO: Add command back
-        commands = jnp.concatenate([jnp.array([0.1]), jnp.zeros(1), jnp.zeros(1)])  # type:ignore
+        commands = jnp.concatenate([jnp.array([0.0]), jnp.zeros(1), jnp.zeros(1)])  # type:ignore
 
         # Set small commands to zero based on norm condition
         mask = (jnp.linalg.norm(commands[:2]) > 0.05).astype(jnp.float32)  # type:ignore
@@ -142,7 +142,6 @@ class WalkEnv(MJXEnv):
     def _reward_feet_clearance(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
-        # TODO: Fix this
         feet_height = pipeline_state.x.pos[self.feet_link_ids, 2]
         feet_z_delta = feet_height - info["init_feet_height"]
         is_close = jnp.abs(feet_z_delta - self.target_feet_z_delta) < 0.01  # type:ignore
@@ -173,7 +172,6 @@ class WalkEnv(MJXEnv):
     def _reward_stand_still(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
-        # TODO: Fix this
         # Penalize motion at zero commands
         qpos_diff = jnp.sum(  # type:ignore
             jnp.abs(  # type:ignore
