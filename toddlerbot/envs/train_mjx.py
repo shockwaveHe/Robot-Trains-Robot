@@ -16,6 +16,7 @@ import jax.numpy as jnp
 import mediapy as media
 import mujoco  # type: ignore
 import numpy as np
+import numpy.typing as npt
 import optax  # type: ignore
 from brax import base  # type: ignore
 from brax.io import model  # type: ignore
@@ -121,35 +122,57 @@ def log_metrics(
 
 
 def get_body_mass_attr_range(robot: Robot, body_mass_range: List[float], num_envs: int):
-    xml_path = find_robot_file_path(robot.name, suffix="_scene.xml")
+    xml_path: str = find_robot_file_path(robot.name, suffix="_scene.xml")
 
     model = mujoco.MjModel.from_xml_path(xml_path)  # type: ignore
     data = mujoco.MjData(model)  # type: ignore
 
-    body_mass_attr_range: List[Dict[str, jax.Array]] = []
+    body_mass = np.array(model.body("torso").mass).copy()  # type: ignore
+    body_inertia = np.array(model.body("torso").inertia).copy()  # type: ignore
     body_mass_delta_range = np.linspace(
         body_mass_range[0], body_mass_range[1], num_envs
     )
-    body_mass = np.array(model.body("torso").mass).copy()  # type: ignore
-    body_inertia = np.array(model.body("torso").inertia).copy()  # type: ignore
+    # Randomize the order of the body mass deltas
+    body_mass_delta_range = np.random.permutation(body_mass_delta_range)
+
+    # Create lists to store attributes for all environments
+    body_mass_list = []
+    body_inertia_list = []
+    actuator_acc0_list = []
+    body_invweight0_list = []
+    body_subtreemass_list = []
+    dof_M0_list = []
+    dof_invweight0_list = []
+    tendon_invweight0_list = []
     for body_mass_delta in body_mass_delta_range:
+        # Update body mass and inertia in the model
         model.body("torso").mass = body_mass + body_mass_delta  # type: ignore
         model.body("torso").inertia = (  # type: ignore
             (body_mass + body_mass_delta) / body_mass * body_inertia
         )
         mujoco.mj_setConst(model, data)  # type: ignore
-        body_mass_attr_range.append(
-            {
-                "body_mass": jnp.array(model.body_mass),  # type: ignore
-                "body_inertia": jnp.array(model.body_inertia),  # type: ignore
-                "actuator_acc0": jnp.array(model.actuator_acc0),  # type: ignore
-                "body_invweight0": jnp.array(model.body_invweight0),  # type: ignore
-                "body_subtreemass": jnp.array(model.body_subtreemass),  # type: ignore
-                "dof_M0": jnp.array(model.dof_M0),  # type: ignore
-                "dof_invweight0": jnp.array(model.dof_invweight0),  # type: ignore
-                "tendon_invweight0": jnp.array(model.tendon_invweight0),  # type: ignore
-            }
-        )
+
+        # Append the values to corresponding lists
+        body_mass_list.append(jnp.array(model.body_mass))  # type: ignore
+        body_inertia_list.append(jnp.array(model.body_inertia))  # type: ignore
+        actuator_acc0_list.append(np.array(model.actuator_acc0))  # type: ignore
+        body_invweight0_list.append(jnp.array(model.body_invweight0))  # type: ignore
+        body_subtreemass_list.append(jnp.array(model.body_subtreemass))  # type: ignore
+        dof_M0_list.append(jnp.array(model.dof_M0))  # type: ignore
+        dof_invweight0_list.append(jnp.array(model.dof_invweight0))  # type: ignore
+        tendon_invweight0_list.append(jnp.array(model.tendon_invweight0))  # type: ignore
+
+    # Return a dictionary where each key has a JAX array of all values across environments
+    body_mass_attr_range: Dict[str, jax.Array | npt.NDArray[np.float32]] = {
+        "body_mass": jnp.stack(body_mass_list),  # type: ignore
+        "body_inertia": jnp.stack(body_inertia_list),  # type: ignore
+        "actuator_acc0": np.stack(actuator_acc0_list),  # type: ignore
+        "body_invweight0": jnp.stack(body_invweight0_list),  # type: ignore
+        "body_subtreemass": jnp.stack(body_subtreemass_list),  # type: ignore
+        "dof_M0": jnp.stack(dof_M0_list),  # type: ignore
+        "dof_invweight0": jnp.stack(dof_invweight0_list),  # type: ignore
+        "tendon_invweight0": jnp.stack(tendon_invweight0_list),  # type: ignore
+    }
 
     return body_mass_attr_range
 
@@ -161,7 +184,7 @@ def domain_randomize(
     gain_range: Optional[List[float]],
     damping_range: Optional[List[float]],
     armature_range: Optional[List[float]],
-    body_mass_attr_range: Optional[List[Dict[str, jax.Array]]],
+    body_mass_attr_range: Optional[Dict[str, jax.Array | npt.NDArray[np.float32]]],
 ) -> Tuple[base.System, base.System]:
     @jax.vmap
     def rand(
@@ -219,10 +242,9 @@ def domain_randomize(
             )
 
         if body_mass_attr_range is None:
-            body_mass_attr: Dict[str, jax.Array] = {
+            body_mass_attr = {
                 "body_mass": sys.body_mass,
                 "body_inertia": sys.body_inertia,
-                "actuator_acc0": sys.actuator_acc0,  # type: ignore
                 "body_invweight0": sys.body_invweight0,
                 "body_subtreemass": sys.body_subtreemass,
                 "dof_M0": sys.dof_M0,
@@ -230,35 +252,70 @@ def domain_randomize(
                 "tendon_invweight0": sys.tendon_invweight0,
             }
         else:
-            idx = jax.random.randint(key, (1,), 0, len(body_mass_attr_range))[0]  # type: ignore
-            body_mass_attr = body_mass_attr_range[idx]
+            body_mass_attr = {
+                "body_mass": body_mass_attr_range["body_mass"][0],
+                "body_inertia": body_mass_attr_range["body_inertia"][0],
+                "body_invweight0": body_mass_attr_range["body_invweight0"][0],
+                "body_subtreemass": body_mass_attr_range["body_subtreemass"][0],
+                "dof_M0": body_mass_attr_range["dof_M0"][0],
+                "dof_invweight0": body_mass_attr_range["dof_invweight0"][0],
+                "tendon_invweight0": body_mass_attr_range["tendon_invweight0"][0],
+            }
+
+            body_mass_attr_range["body_mass"] = body_mass_attr_range["body_mass"][1:]
+            body_mass_attr_range["body_inertia"] = body_mass_attr_range["body_inertia"][
+                1:
+            ]
+            body_mass_attr_range["body_invweight0"] = body_mass_attr_range[
+                "body_invweight0"
+            ][1:]
+            body_mass_attr_range["body_subtreemass"] = body_mass_attr_range[
+                "body_subtreemass"
+            ][1:]
+            body_mass_attr_range["dof_M0"] = body_mass_attr_range["dof_M0"][1:]
+            body_mass_attr_range["dof_invweight0"] = body_mass_attr_range[
+                "dof_invweight0"
+            ][1:]
+            body_mass_attr_range["tendon_invweight0"] = body_mass_attr_range[
+                "tendon_invweight0"
+            ][1:]
 
         return friction, gain, bias, damping, armature, body_mass_attr
 
     friction, gain, bias, damping, armature, body_mass_attr = rand(rng)
 
-    in_axes = jax.tree.map(lambda x: None, sys)  # type: ignore
-    in_axes = in_axes.tree_replace(
-        {
-            "geom_friction": 0,
-            "actuator_gainprm": 0,
-            "actuator_biasprm": 0,
-            "dof_damping": 0,
-            "dof_armature": 0,
-            **dict(zip(body_mass_attr.keys(), [0] * len(body_mass_attr.keys()))),
-        }
-    )
+    in_axes_dict = {
+        "geom_friction": 0,
+        "actuator_gainprm": 0,
+        "actuator_biasprm": 0,
+        "dof_damping": 0,
+        "dof_armature": 0,
+        **{key: 0 for key in body_mass_attr.keys()},
+    }
 
-    sys = sys.tree_replace(  # type: ignore
-        {
-            "geom_friction": friction,
-            "actuator_gainprm": gain,
-            "actuator_biasprm": bias,
-            "dof_damping": damping,
-            "dof_armature": armature,
-            **body_mass_attr,
-        }
-    )
+    sys_dict = {
+        "geom_friction": friction,
+        "actuator_gainprm": gain,
+        "actuator_biasprm": bias,
+        "dof_damping": damping,
+        "dof_armature": armature,
+        **body_mass_attr,
+    }
+
+    # jax.debug.breakpoint()
+    # for key, value in body_mass_attr.items():
+    #     in_axes_dict[key] = 0
+    #     sys_dict[key] = value
+
+    if body_mass_attr_range is not None:
+        sys = sys.replace(actuator_acc0=body_mass_attr_range["actuator_acc0"][0])  # type: ignore
+        body_mass_attr_range["actuator_acc0"] = body_mass_attr_range["actuator_acc0"][
+            1:
+        ]
+
+    in_axes = jax.tree.map(lambda x: None, sys)  # type: ignore
+    in_axes = in_axes.tree_replace(in_axes_dict)  # type: ignore
+    sys = sys.tree_replace(sys_dict)  # type: ignore
 
     return sys, in_axes
 
@@ -308,8 +365,8 @@ def train(
     )
 
     body_mass_attr_range = None
-    if env.cfg.domain_rand.added_mass_range is not None:
-        get_body_mass_attr_range(
+    if env.cfg.domain_rand.added_mass_range is not None and not env.fixed_base:
+        body_mass_attr_range = get_body_mass_attr_range(
             env.robot, env.cfg.domain_rand.added_mass_range, train_cfg.num_envs
         )
 
