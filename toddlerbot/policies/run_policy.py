@@ -66,6 +66,7 @@ def plot_results(
     # lin_vel_obs_list: List[npt.NDArray[np.float32]] = []
     ang_vel_obs_list: List[npt.NDArray[np.float32]] = []
     euler_obs_list: List[npt.NDArray[np.float32]] = []
+    tor_obs_total_list: List[float] = []
     time_seq_dict: Dict[str, List[float]] = {}
     time_seq_ref_dict: Dict[str, List[float]] = {}
     motor_pos_dict: Dict[str, List[float]] = {}
@@ -76,6 +77,7 @@ def plot_results(
         # lin_vel_obs_list.append(obs.lin_vel)
         ang_vel_obs_list.append(obs.ang_vel)
         euler_obs_list.append(obs.euler)
+        tor_obs_total_list.append(sum(obs.motor_tor))
 
         for j, motor_name in enumerate(robot.motor_ordering):
             if motor_name not in time_seq_dict:
@@ -91,6 +93,7 @@ def plot_results(
             motor_pos_dict[motor_name].append(obs.motor_pos[j])
             motor_vel_dict[motor_name].append(obs.motor_vel[j])
             motor_tor_dict[motor_name].append(obs.motor_tor[j])
+            
 
     action_dict: Dict[str, List[float]] = {}
     joint_pos_ref_dict: Dict[str, List[float]] = {}
@@ -108,17 +111,17 @@ def plot_results(
 
     plot_loop_time(loop_time_dict, exp_folder_path)
 
-    # plot_line_graph(
-    #     np.array(lin_vel_obs_list).T,
-    #     time_obs_list,
-    #     legend_labels=["X", "Y", "Z"],
-    #     title="Linear Velocities Over Time",
-    #     x_label="Time (s)",
-    #     y_label="Linear Velocity (m/s)",
-    #     save_config=True,
-    #     save_path=exp_folder_path,
-    #     file_name="lin_vel_tracking",
-    # )()
+    plot_line_graph(
+        tor_obs_total_list,
+        time_obs_list,
+        legend_labels=["Torque (Nm) or Current (mA)"],
+        title="Total Torque or Current  Over Time",
+        x_label="Time (s)",
+        y_label="Torque (Nm) or Current (mA)",
+        save_config=True,
+        save_path=exp_folder_path,
+        file_name="total_tor_tracking",
+    )()
     plot_line_graph(
         np.array(ang_vel_obs_list).T,
         time_obs_list,
