@@ -160,8 +160,8 @@
             "group": "leg",
             "lower_limit": -0.7853981633974483,
             "upper_limit": 0.7853981633974483,
-            "damping": 0.453,
-            "armature": 0.008,
+            "damping": 0.381,
+            "armature": 0.006,
             "frictionloss": 0.0,
             "id": 5,
             "type": "dynamixel",
@@ -183,8 +183,8 @@
             "group": "leg",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
-            "damping": 0.44,
-            "armature": 0.007,
+            "damping": 0.305,
+            "armature": 0.006,
             "frictionloss": 0.0,
             "id": 6,
             "type": "dynamixel",
@@ -299,8 +299,8 @@
             "group": "leg",
             "lower_limit": -0.7853981633974483,
             "upper_limit": 0.7853981633974483,
-            "damping": 0.453,
-            "armature": 0.008,
+            "damping": 0.381,
+            "armature": 0.006,
             "frictionloss": 0.0,
             "id": 11,
             "type": "dynamixel",
@@ -322,8 +322,8 @@
             "group": "leg",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
-            "damping": 0.44,
-            "armature": 0.007,
+            "damping": 0.305,
+            "armature": 0.006,
             "frictionloss": 0.0,
             "id": 12,
             "type": "dynamixel",
@@ -762,8 +762,8 @@
             "group": "leg",
             "lower_limit": -1.0471975511965976,
             "upper_limit": 0.7853981633974483,
-            "damping": 0.852,
-            "armature": 0.012,
+            "damping": 0.193,
+            "armature": 0.0,
             "frictionloss": 0.0
         },
         "left_ank_roll": {
@@ -772,8 +772,8 @@
             "group": "leg",
             "lower_limit": -0.7853981633974483,
             "upper_limit": 0.7853981633974483,
-            "damping": 0.955,
-            "armature": 0.0,
+            "damping": 0.264,
+            "armature": 0.002,
             "frictionloss": 0.0
         },
         "left_ank_short_rev_1": {
@@ -932,8 +932,8 @@
             "group": "leg",
             "lower_limit": -1.0471975511965976,
             "upper_limit": 0.7853981633974483,
-            "damping": 0.852,
-            "armature": 0.012,
+            "damping": 0.193,
+            "armature": 0.0,
             "frictionloss": 0.0
         },
         "right_ank_roll": {
@@ -942,8 +942,8 @@
             "group": "leg",
             "lower_limit": -0.7853981633974483,
             "upper_limit": 0.7853981633974483,
-            "damping": 0.955,
-            "armature": 0.0,
+            "damping": 0.264,
+            "armature": 0.002,
             "frictionloss": 0.0
         },
         "right_ank_short_rev_1": {
@@ -1062,8 +1062,8 @@
             "group": "waist",
             "lower_limit": -0.5235987755982988,
             "upper_limit": 0.5235987755982988,
-            "damping": 1.513,
-            "armature": 0.048,
+            "damping": 0.548,
+            "armature": 0.003,
             "frictionloss": 0.0
         },
         "waist_yaw": {
@@ -1072,8 +1072,8 @@
             "group": "waist",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
-            "damping": 0.077,
-            "armature": 0.008,
+            "damping": 0.011,
+            "armature": 0.014,
             "frictionloss": 0.0
         }
     }
