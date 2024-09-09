@@ -162,7 +162,6 @@
                       <inertial pos="-3.22063e-10 0.0304877 0.00477926" quat="0.706988 -0.0129711 0.0129711 0.706988" mass="0.0272" diaginertia="2.53038e-05 2.29435e-05 5.07044e-06" />
                       <joint name="left_ank_roll" pos="0 0 0" axis="0 0 1" range="-0.785398 0.785398" damping="0.544" armature="0.016" />
                       <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="left_ank_roll_link_visual" class="visual" />
-                      <geom name="ank_roll_link_collision" size="0.021 0.0225 0.06" pos="0 0.0165 0.0084" type="box" rgba="0.615686 0.811765 0.929412 1" class="collision" />
                       <body name="ank_rr_link" pos="-0.018 0.016 -0.0206" quat="0.00911142 0 0 0.999958">
                         <inertial pos="-4.52496e-05 0.00630964 0" quat="0.473509 0.525157 -0.473509 0.525157" mass="0.00145" diaginertia="4.29219e-08 2.97647e-08 2.74049e-08" />
                         <joint name="left_ank_long_rev_1" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.0" armature="0.0" />
@@ -183,6 +182,10 @@
                           <geom type="mesh" rgba="0.412226 0.583391 0.811073 1" mesh="left_ank_motor_rod_short_visual" class="visual" />
                         </body>
                       </body>
+                      <geom name="ank_roll_link_collision_ball_1" type="sphere" size="0.004" pos="-0.017 0.035 -0.0476" rgba="0.615686 0.811765 0.929412 1" class="collision" />
+                      <geom name="ank_roll_link_collision_ball_2" type="sphere" size="0.004" pos="0.017 0.035 -0.0476" rgba="0.615686 0.811765 0.929412 1" class="collision" />
+                      <geom name="ank_roll_link_collision_ball_3" type="sphere" size="0.004" pos="-0.017 0.035 0.0644" rgba="0.615686 0.811765 0.929412 1" class="collision" />
+                      <geom name="ank_roll_link_collision_ball_4" type="sphere" size="0.004" pos="0.017 0.035 0.0644" rgba="0.615686 0.811765 0.929412 1" class="collision" />
                     </body>
                   </body>
                   <body name="ank_motor_arm" pos="0.0135 -0.0445 0.004" quat="0.994401 0 0 -0.105669">
@@ -254,7 +257,6 @@
                       <inertial pos="-3.22063e-10 0.0304877 0.00477926" quat="0.706988 -0.0129711 0.0129711 0.706988" mass="0.0272" diaginertia="2.53038e-05 2.29435e-05 5.07044e-06" />
                       <joint name="right_ank_roll" pos="0 0 0" axis="0 0 1" range="-0.785398 0.785398" damping="0.765" armature="0.02" />
                       <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="right_ank_roll_link_visual" class="visual" />
-                      <geom name="ank_roll_link_2_collision" size="0.021 0.0225 0.06" pos="0 0.0165 0.0084" type="box" rgba="0.615686 0.811765 0.929412 1" class="collision" />
                       <body name="ank_rr_link_3" pos="0.018 0.016 -0.0206" quat="0.999958 0 0 0.00911142">
                         <inertial pos="-4.52496e-05 -0.00630964 0" quat="0.525157 0.473509 -0.525157 0.473509" mass="0.00145" diaginertia="4.29219e-08 2.97647e-08 2.74049e-08" />
                         <joint name="right_ank_long_rev_1" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.0" armature="0.0" />
@@ -275,6 +277,10 @@
                           <geom type="mesh" rgba="0.412226 0.583391 0.811073 1" mesh="right_ank_motor_rod_short_visual" class="visual" />
                         </body>
                       </body>
+                      <geom name="ank_roll_link_2_collision_ball_1" type="sphere" size="0.004" pos="-0.017 0.035 -0.0476" rgba="0.615686 0.811765 0.929412 1" class="collision" />
+                      <geom name="ank_roll_link_2_collision_ball_2" type="sphere" size="0.004" pos="0.017 0.035 -0.0476" rgba="0.615686 0.811765 0.929412 1" class="collision" />
+                      <geom name="ank_roll_link_2_collision_ball_3" type="sphere" size="0.004" pos="-0.017 0.035 0.0644" rgba="0.615686 0.811765 0.929412 1" class="collision" />
+                      <geom name="ank_roll_link_2_collision_ball_4" type="sphere" size="0.004" pos="0.017 0.035 0.0644" rgba="0.615686 0.811765 0.929412 1" class="collision" />
                     </body>
                   </body>
                   <body name="ank_motor_arm_3" pos="0.0135 0.0445 0.004" quat="0.994401 0 0 0.105669">
@@ -516,7 +522,13 @@
     <key name="home" qpos="0 0 0.336 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -0.267268 0.523599 -0.523599 -0.523599 -0.25637 0 0 0.248043 0 -0.246445 -0.253132 0.256023 0.523599 -0.523599 -0.523599 0 0 0 0.267268 -0.523599 0.523599 0.523599 -0.25637 0 0 -0.248043 0 0.246445 0.253132 -0.256023 -0.523599 0.523599 0.523599 0.174533 -0.261799 1.0472 -1.0472 0.523599 0.5235990 -0.5235990 -1.0472 1.0472 0 -0.174533 -0.261799 -1.0472 1.0472 0.523599 -0.523599 0.523599 1.0472 -1.0472 0" ctrl="0 0 0 0 0 0 -0.267268 0.523599 -0.253132 0.256023 0 0 0.267268 -0.523599 0.253132 -0.256023 0.174533 -0.261799 1.0472 0.523599 0.523599 1.0472 0 -0.174533 -0.261799 -1.0472 0.523599 -0.523599 -1.0472 0" />
   </keyframe>
   <contact>
-    <pair geom1="ank_roll_link_collision" geom2="floor" />
-    <pair geom1="ank_roll_link_2_collision" geom2="floor" />
+    <pair geom1="ank_roll_link_collision_ball_1" geom2="floor" />
+    <pair geom1="ank_roll_link_collision_ball_2" geom2="floor" />
+    <pair geom1="ank_roll_link_collision_ball_3" geom2="floor" />
+    <pair geom1="ank_roll_link_collision_ball_4" geom2="floor" />
+    <pair geom1="ank_roll_link_2_collision_ball_1" geom2="floor" />
+    <pair geom1="ank_roll_link_2_collision_ball_2" geom2="floor" />
+    <pair geom1="ank_roll_link_2_collision_ball_3" geom2="floor" />
+    <pair geom1="ank_roll_link_2_collision_ball_4" geom2="floor" />
   </contact>
 </mujoco>
