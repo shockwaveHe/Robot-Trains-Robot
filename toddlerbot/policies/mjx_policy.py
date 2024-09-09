@@ -16,7 +16,7 @@ from toddlerbot.ref_motion import MotionReference
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.teleop.joystick import get_controller_input, initialize_joystick
-from toddlerbot.utils.math_utils import interpolate_action
+from toddlerbot.utils.math_utils import exponential_moving_average, interpolate_action
 
 # from toddlerbot.utils.misc_utils import profile
 
@@ -48,6 +48,10 @@ class MJXPolicy(BasePolicy):
         )
         self.action_scale = cfg.action.action_scale
         self.n_steps_delay = cfg.action.n_steps_delay
+        self.action_smooth_alpha = float(
+            cfg.action.action_smooth_rate
+            / (cfg.action.action_smooth_rate + 1 / (self.control_dt * 2 * np.pi))
+        )
 
         # joint indices
         motor_indices = np.arange(robot.nu)  # type:ignore
@@ -63,6 +67,7 @@ class MJXPolicy(BasePolicy):
             [robot.joint_limits[name] for name in robot.motor_ordering]
         )
 
+        self.last_motor_target = None
         self.last_action = np.zeros(robot.nu, dtype=np.float32)
         self.action_buffer = np.zeros(
             ((self.n_steps_delay + 1) * robot.nu), dtype=np.float32
@@ -179,7 +184,14 @@ class MJXPolicy(BasePolicy):
         motor_target = np.clip(  # type:ignore
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
         )
+        motor_target = exponential_moving_average(  # type: ignore
+            self.action_smooth_alpha,
+            motor_target,
+            self.last_motor_target,  # type:ignore
+        )
+        assert isinstance(motor_target, np.ndarray)
 
+        self.last_motor_target = motor_target.copy()  # type:ignore
         self.last_action = action_delay
         self.step_curr += 1
 
