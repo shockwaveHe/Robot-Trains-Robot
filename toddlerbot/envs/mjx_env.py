@@ -357,25 +357,26 @@ class MJXEnv(PipelineEnv):
         # jax.debug.print("stance_mask: {}", state.info["stance_mask"])
         # jax.debug.print("feet_air_time: {}", state.info["feet_air_time"])
 
-        contact_forces, left_foot_contact_mask, right_foot_contact_mask = (
-            self._get_contact_forces(
-                pipeline_state  # type:ignore
+        if not self.fixed_base:
+            contact_forces, left_foot_contact_mask, right_foot_contact_mask = (
+                self._get_contact_forces(
+                    pipeline_state  # type:ignore
+                )
             )
-        )
-        stance_mask = jnp.array(  # type:ignore
-            [jnp.any(left_foot_contact_mask), jnp.any(right_foot_contact_mask)]  # type:ignore
-        ).astype(jnp.float32)
+            stance_mask = jnp.array(  # type:ignore
+                [jnp.any(left_foot_contact_mask), jnp.any(right_foot_contact_mask)]  # type:ignore
+            ).astype(jnp.float32)
+
+            state.info["contact_forces"] = contact_forces
+            state.info["left_foot_contact_mask"] = left_foot_contact_mask
+            state.info["right_foot_contact_mask"] = right_foot_contact_mask
+            state.info["stance_mask"] = stance_mask
 
         torso_height = pipeline_state.x.pos[0, 2]
         done = jnp.logical_or(  # type:ignore
             torso_height < self.healthy_z_range[0],  # type:ignore
             torso_height > self.healthy_z_range[1],  # type:ignore
         )
-
-        state.info["contact_forces"] = contact_forces
-        state.info["left_foot_contact_mask"] = left_foot_contact_mask
-        state.info["right_foot_contact_mask"] = right_foot_contact_mask
-        state.info["stance_mask"] = stance_mask
         state.info["done"] = done
 
         obs, privileged_obs = self._get_obs(
@@ -391,12 +392,14 @@ class MJXEnv(PipelineEnv):
         reward = sum(reward_dict.values()) * self.dt  # type:ignore
         # reward = jnp.clip(reward, 0.0)  # type:ignore
 
+        if not self.fixed_base:
+            state.info["last_stance_mask"] = stance_mask.copy()  # type:ignore
+            state.info["feet_air_time"] += self.dt
+            state.info["feet_air_time"] *= 1.0 - stance_mask  # type:ignore
+
         state.info["last_last_act"] = state.info["last_act"].copy()
         state.info["last_act"] = action_delay.copy()
         state.info["last_torso_euler"] = torso_euler
-        state.info["last_stance_mask"] = stance_mask.copy()
-        state.info["feet_air_time"] += self.dt
-        state.info["feet_air_time"] *= 1.0 - stance_mask
         state.info["rewards"] = reward_dict
         state.info["rng"] = rng
         state.info["step"] += 1
