@@ -129,7 +129,7 @@ def get_body_mass_attr_range(robot: Robot, body_mass_range: List[float], num_env
 
     body_mass = np.array(model.body("torso").mass).copy()  # type: ignore
     body_inertia = np.array(model.body("torso").inertia).copy()  # type: ignore
-    body_mass_delta_range = np.linspace(
+    body_mass_delta_range = np.linspace(  # type: ignore
         body_mass_range[0], body_mass_range[1], num_envs
     )
     # Randomize the order of the body mass deltas

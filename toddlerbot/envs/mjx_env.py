@@ -15,6 +15,7 @@ from toddlerbot.envs.mjx_config import MJXConfig
 from toddlerbot.ref_motion import MotionReference
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
+from toddlerbot.utils.math_utils import exponential_moving_average
 
 
 class MJXEnv(PipelineEnv):
@@ -152,6 +153,11 @@ class MJXEnv(PipelineEnv):
         )
         self.action_scale = self.cfg.action.action_scale
         self.n_steps_delay = self.cfg.action.n_steps_delay
+        self.action_smooth_alpha = float(
+            self.cfg.action.action_smooth_rate
+            / (self.cfg.action.action_smooth_rate + 1 / (self.dt * 2 * jnp.pi))
+        )
+        self.last_motor_target = None
 
         # commands
         # x vel, y vel, yaw vel, heading
@@ -325,6 +331,11 @@ class MJXEnv(PipelineEnv):
         motor_target = jnp.clip(  # type:ignore
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
         )
+        motor_target = exponential_moving_average(  # type: ignore
+            self.action_smooth_alpha, motor_target, self.last_motor_target
+        )
+        assert isinstance(motor_target, jax.Array)
+        self.last_motor_target = motor_target.copy()  # type:ignore
 
         if self.add_push:
             push_theta = jax.random.uniform(push_rng, maxval=2 * jnp.pi)  # type:ignore
