@@ -25,7 +25,9 @@ class SysIDFixedPolicy(BasePolicy):
         if "sysID" in robot.name:
             joint_sysID_specs = {
                 "joint_0": SysIDSpecs(
-                    final_frequency=1.5, kp_list=list(range(300, 3000, 300))
+                    amplitude_ratio=0.5,
+                    final_frequency=10.0,
+                    kp_list=list(range(300, 2700, 300)),
                 )
             }
         else:
@@ -48,7 +50,7 @@ class SysIDFixedPolicy(BasePolicy):
                 ),
                 "hip_yaw_driven": SysIDSpecs(
                     amplitude_ratio=0.5,
-                    final_frequency=2.0, 
+                    final_frequency=2.0,
                     warm_up_angles={
                         "left_sho_roll": -np.pi / 6,
                         "right_sho_roll": -np.pi / 6,
@@ -120,8 +122,12 @@ class SysIDFixedPolicy(BasePolicy):
                 #         "right_sho_yaw_driven": -np.pi / 2,
                 #     },
                 # ),
-                "ank_roll": SysIDSpecs(final_frequency=2.0, kp_list=list(range(600, 1800, 300))),
-                "ank_pitch": SysIDSpecs(final_frequency=2.0, kp_list=list(range(600, 1800, 300))),
+                "ank_roll": SysIDSpecs(
+                    final_frequency=2.0, kp_list=list(range(600, 1800, 300))
+                ),
+                "ank_pitch": SysIDSpecs(
+                    final_frequency=2.0, kp_list=list(range(600, 1800, 300))
+                ),
                 # "sho_pitch": SysIDSpecs(amplitude_max=np.pi / 4),
                 # "sho_roll": SysIDSpecs(amplitude_max=np.pi / 4),
             }

@@ -34,7 +34,7 @@
   </asset>
 
   <worldbody>
-    <site name="torso" fromto="0.01 0 0.4 -0.01 0 0.4" type="cylinder" size="0.005 0.005 1" group="3" /><geom type="mesh" rgba="0.575684 0.733467 0.856322 1" mesh="torso_visual" class="visual" />
+    <geom type="mesh" rgba="0.575684 0.733467 0.856322 1" mesh="torso_visual" class="visual" />
     <body name="sho_pitch_link" pos="-0.003 0.062 0.104237" quat="0.707107 -0.707107 0 0">
       <inertial pos="5.82542e-11 -5.12646e-05 0.00824408" quat="0.0155166 0.706937 0.0155166 0.706937" mass="0.0086" diaginertia="3.08064e-06 2.9104e-06 1.22729e-06" />
       <joint name="left_sho_pitch" pos="0 0 0" axis="0 0 1" range="-3.14159 1.5708" damping="0.195" armature="0.002" />
@@ -144,4 +144,62 @@
       </body>
     </body>
   </worldbody>
-<option><flag eulerdamp="disable" /></option><actuator><position name="left_sho_pitch" joint="left_sho_pitch" kp="18.75" ctrlrange="-3.14159 1.5708" class="XC430" /><position name="left_sho_roll" joint="left_sho_roll" kp="18.75" ctrlrange="-1.5708 0" class="2XL430" /><position name="left_sho_yaw_drive" joint="left_sho_yaw_driven" kp="18.75" gear="1.0" ctrlrange="-1.5708 1.5708" class="2XL430" /><position name="left_elbow_roll" joint="left_elbow_roll" kp="18.75" ctrlrange="-1.5708 1.5708" class="2XL430" /><position name="left_elbow_yaw_drive" joint="left_elbow_yaw_driven" kp="18.75" gear="1.0" ctrlrange="-1.5708 1.5708" class="2XL430" /><position name="left_wrist_roll_drive" joint="left_wrist_roll_driven" kp="18.75" gear="1.0" ctrlrange="-1.5708 1.5708" class="2XL430" /><position name="left_wrist_pitch" joint="left_wrist_pitch" kp="18.75" ctrlrange="-1.5708 1.5708" class="2XL430" /><position name="right_sho_pitch" joint="right_sho_pitch" kp="18.75" ctrlrange="-1.5708 3.14159" class="XC430" /><position name="right_sho_roll" joint="right_sho_roll" kp="18.75" ctrlrange="-1.5708 0" class="2XL430" /><position name="right_sho_yaw_drive" joint="right_sho_yaw_driven" kp="18.75" gear="1.0" ctrlrange="-1.5708 1.5708" class="2XL430" /><position name="right_elbow_roll" joint="right_elbow_roll" kp="18.75" ctrlrange="-1.5708 1.5708" class="2XL430" /><position name="right_elbow_yaw_drive" joint="right_elbow_yaw_driven" kp="18.75" gear="1.0" ctrlrange="-1.5708 1.5708" class="2XL430" /><position name="right_wrist_roll_drive" joint="right_wrist_roll_driven" kp="18.75" gear="1.0" ctrlrange="-1.5708 1.5708" class="2XL430" /><position name="right_wrist_pitch" joint="right_wrist_pitch" kp="18.75" ctrlrange="-1.5708 1.5708" class="2XL430" /></actuator><keyframe><key name="home" qpos="0.174533 -0.261799 0 -1.0472 0.523599 0 -0.523599 -1.0472 0 0 -0.174533 -0.261799 0 1.0472 0.523599 0 0.523599 1.0472 0 0" ctrl="0.174533 -0.261799 -1.0472 0.523599 -0.523599 -1.0472 0 -0.174533 -0.261799 1.0472 0.523599 0.523599 1.0472 0" /></keyframe><default><default class="XM430"><position forcerange="-3 3" /></default><default class="XC430"><position forcerange="-2 2" /></default><default class="2XC430"><position forcerange="-2 2" /></default><default class="XL430"><position forcerange="-2 2" /></default><default class="2XL430"><position forcerange="-2 2" /></default><default class="XC330"><position forcerange="-1 1" /></default><default class="visual"><geom type="mesh" contype="0" conaffinity="0" group="2" /></default><default class="collision"><geom type="sphere" group="3" /></default></default><contact /></mujoco>
+  <option>
+    <flag eulerdamp="disable" />
+  </option>
+  <actuator>
+    <position name="left_sho_pitch" joint="left_sho_pitch" kp="14.0625" ctrlrange="-3.14159 1.5708" class="XC430" />
+    <position name="left_sho_roll" joint="left_sho_roll" kp="14.0625" ctrlrange="-1.5708 0" class="2XL430" />
+    <position name="left_sho_yaw_drive" joint="left_sho_yaw_drive" kp="14.0625" ctrlrange="-1.5708 1.5708" class="2XL430" />
+    <position name="left_elbow_roll" joint="left_elbow_roll" kp="14.0625" ctrlrange="-1.5708 1.5708" class="2XL430" />
+    <position name="left_elbow_yaw_drive" joint="left_elbow_yaw_drive" kp="14.0625" ctrlrange="-1.5708 1.5708" class="2XL430" />
+    <position name="left_wrist_roll_drive" joint="left_wrist_roll_drive" kp="14.0625" ctrlrange="-1.5708 1.5708" class="2XL430" />
+    <position name="left_wrist_pitch" joint="left_wrist_pitch" kp="14.0625" ctrlrange="-1.5708 1.5708" class="2XL430" />
+    <position name="right_sho_pitch" joint="right_sho_pitch" kp="14.0625" ctrlrange="-1.5708 3.14159" class="XC430" />
+    <position name="right_sho_roll" joint="right_sho_roll" kp="14.0625" ctrlrange="-1.5708 0" class="2XL430" />
+    <position name="right_sho_yaw_drive" joint="right_sho_yaw_drive" kp="14.0625" ctrlrange="-1.5708 1.5708" class="2XL430" />
+    <position name="right_elbow_roll" joint="right_elbow_roll" kp="14.0625" ctrlrange="-1.5708 1.5708" class="2XL430" />
+    <position name="right_elbow_yaw_drive" joint="right_elbow_yaw_drive" kp="14.0625" ctrlrange="-1.5708 1.5708" class="2XL430" />
+    <position name="right_wrist_roll_drive" joint="right_wrist_roll_drive" kp="14.0625" ctrlrange="-1.5708 1.5708" class="2XL430" />
+    <position name="right_wrist_pitch" joint="right_wrist_pitch" kp="14.0625" ctrlrange="-1.5708 1.5708" class="2XL430" />
+  </actuator>
+  <equality>
+    <joint joint1="left_sho_yaw_driven" joint2="left_sho_yaw_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <joint joint1="left_elbow_yaw_driven" joint2="left_elbow_yaw_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <joint joint1="left_wrist_roll_driven" joint2="left_wrist_roll_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <joint joint1="right_sho_yaw_driven" joint2="right_sho_yaw_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <joint joint1="right_elbow_yaw_driven" joint2="right_elbow_yaw_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <joint joint1="right_wrist_roll_driven" joint2="right_wrist_roll_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+  </equality>
+  <keyframe>
+    <key name="home" qpos="0.174533 -0.261799 1.0472 -1.0472 0.523599 0.5235990 -0.5235990 -1.0472 1.0472 0 -0.174533 -0.261799 -1.0472 1.0472 0.523599 -0.523599 0.523599 1.0472 -1.0472 0" ctrl="0.174533 -0.261799 1.0472 0.523599 0.523599 1.0472 0 -0.174533 -0.261799 -1.0472 0.523599 -0.523599 -1.0472 0" />
+  </keyframe>
+  <default>
+    <geom type="mesh" solref="0.004 1" />
+    <default class="XM430">
+      <position forcerange="-3 3" />
+    </default>
+    <default class="XC430">
+      <position forcerange="-2 2" />
+    </default>
+    <default class="2XC430">
+      <position forcerange="-2 2" />
+    </default>
+    <default class="XL430">
+      <position forcerange="-2 2" />
+    </default>
+    <default class="2XL430">
+      <position forcerange="-2 2" />
+    </default>
+    <default class="XC330">
+      <position forcerange="-1 1" />
+    </default>
+    <default class="visual">
+      <geom type="mesh" contype="0" conaffinity="0" group="2" />
+    </default>
+    <default class="collision">
+      <geom group="3" />
+    </default>
+  </default>
+  <contact />
+</mujoco>

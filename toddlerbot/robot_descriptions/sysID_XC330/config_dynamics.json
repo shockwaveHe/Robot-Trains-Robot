@@ -1,6 +1,6 @@
 {
     "joint_0": {
-        "damping": 0.158,
-        "armature": 0.002
+        "damping": 0.154,
+        "armature": 0.004
     }
 }
