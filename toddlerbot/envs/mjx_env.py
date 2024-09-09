@@ -68,45 +68,32 @@ class MJXEnv(PipelineEnv):
         self.nv = self.sys.nv  # type:ignore
 
         # colliders
-        collider_names = ["floor"] + self.robot.collider_names
-        self.num_colliders = len(collider_names)
-        indices = jnp.arange(self.num_colliders)  # type:ignore
-
-        foot_mask = jnp.array(  # type:ignore
-            np.char.find(collider_names, self.robot.foot_name) >= 0
-        )
-        self.feet_indices = indices[foot_mask]
-        self.collision_contact_indices = indices[~foot_mask]
-
-        self.collider_link_ids = jnp.zeros(self.num_colliders, dtype=jnp.int32)  # type:ignore
-        for link_id, link_name in enumerate(self.sys.link_names):  # type:ignore
-            if link_name in collider_names:
-                self.collider_link_ids = self.collider_link_ids.at[
-                    collider_names.index(link_name)
-                ].set(link_id)  # type:ignore
-
-        self.feet_link_ids = self.collider_link_ids[self.feet_indices]
-
-        self.collider_geom_ids = jnp.zeros(self.num_colliders, dtype=jnp.int32)  # type:ignore
-        for geom_id in range(self.sys.ngeom):  # type:ignore
+        pair_geom1 = self.sys.pair_geom1  # type:ignore
+        pair_geom2 = self.sys.pair_geom2  # type:ignore
+        self.collider_geom_ids = np.unique(np.concatenate([pair_geom1, pair_geom2]))  # type:ignore
+        self.num_colliders = self.collider_geom_ids.shape[0]  # type:ignore
+        left_foot_collider_indices: List[int] = []
+        right_foot_collider_indices: List[int] = []
+        for i, geom_id in enumerate(self.collider_geom_ids):  # type:ignore
             geom_name = support.id2name(self.sys, mujoco.mjtObj.mjOBJ_GEOM, geom_id)  # type:ignore
             if geom_name is None:
                 continue
 
-            if "floor" in geom_name:
-                body_name = "floor"
-            elif "collision" in geom_name:
-                link_id = self.sys.geom_bodyid[geom_id]  # type:ignore
-                body_name = support.id2name(self.sys, mujoco.mjtObj.mjOBJ_BODY, link_id)  # type:ignore
-            else:
-                continue
+            if f"{self.robot.foot_name}_2" in geom_name:
+                right_foot_collider_indices.append(i)
+            elif f"{self.robot.foot_name}" in geom_name:
+                left_foot_collider_indices.append(i)
 
-            if body_name in collider_names:
-                self.collider_geom_ids = self.collider_geom_ids.at[
-                    collider_names.index(body_name)
-                ].set(geom_id)  # type:ignore
+        self.left_foot_collider_indices = jnp.array(left_foot_collider_indices)  # type:ignore
+        self.right_foot_collider_indices = jnp.array(right_foot_collider_indices)  # type:ignore
+
+        foot_link_mask = jnp.array(  # type:ignore
+            np.char.find(self.sys.link_names, self.robot.foot_name) >= 0
+        )
+        self.feet_link_ids = jnp.arange(self.sys.num_links())[foot_link_mask]  # type:ignore
 
         self.contact_force_threshold = self.cfg.action.contact_force_threshold
+
         # This leads to CPU memory leak
         # self.jit_contact_force = jax.jit(support.contact_force, static_argnums=(2, 3))  # type:ignore
         self.jit_contact_force = support.contact_force
@@ -354,16 +341,24 @@ class MJXEnv(PipelineEnv):
         # jax.debug.print("stance_mask: {}", state.info["stance_mask"])
         # jax.debug.print("feet_air_time: {}", state.info["feet_air_time"])
 
-        contact_forces, stance_mask = self._get_contact_forces(
-            pipeline_state  # type:ignore
+        contact_forces, left_foot_contact_mask, right_foot_contact_mask = (
+            self._get_contact_forces(
+                pipeline_state  # type:ignore
+            )
         )
+        stance_mask = jnp.array(  # type:ignore
+            [jnp.any(left_foot_contact_mask), jnp.any(right_foot_contact_mask)]  # type:ignore
+        ).astype(jnp.float32)
 
         torso_height = pipeline_state.x.pos[0, 2]
         done = jnp.logical_or(  # type:ignore
             torso_height < self.healthy_z_range[0],  # type:ignore
             torso_height > self.healthy_z_range[1],  # type:ignore
         )
+
         state.info["contact_forces"] = contact_forces
+        state.info["left_foot_contact_mask"] = left_foot_contact_mask
+        state.info["right_foot_contact_mask"] = right_foot_contact_mask
         state.info["stance_mask"] = stance_mask
         state.info["done"] = done
 
@@ -480,12 +475,16 @@ class MJXEnv(PipelineEnv):
                 body_indices_2[i], body_indices_1[i]
             ].add(contact_force)  # type:ignore
 
-        stance_mask = (
-            contact_forces_global[0, self.feet_indices, 2]
+        left_foot_contact_mask = (
+            contact_forces_global[0, self.left_foot_collider_indices, 2]
+            > self.contact_force_threshold
+        ).astype(jnp.float32)  # type:ignore
+        right_foot_contact_mask = (
+            contact_forces_global[0, self.right_foot_collider_indices, 2]
             > self.contact_force_threshold
         ).astype(jnp.float32)  # type:ignore
 
-        return contact_forces_global, stance_mask
+        return contact_forces_global, left_foot_contact_mask, right_foot_contact_mask
 
     def _get_obs(
         self,
@@ -670,6 +669,18 @@ class MJXEnv(PipelineEnv):
     ):
         """Reward for contact"""
         reward = jnp.sum(info["stance_mask"] == info["state_ref"][-2:]).astype(  # type:ignore
+            jnp.float32
+        )
+        return reward
+
+    def _reward_feet_contact_number(
+        self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
+    ):
+        """Reward for contact"""
+        left_contact_numbers = jnp.sum(info["left_foot_contact_mask"])  # type:ignore
+        right_contact_numbers = jnp.sum(info["right_foot_contact_mask"])  # type:ignore
+        contact_numbers = jnp.array([left_contact_numbers, right_contact_numbers])  # type:ignore
+        reward = jnp.sum(contact_numbers * info["state_ref"][-2:]).astype(  # type:ignore
             jnp.float32
         )
         return reward

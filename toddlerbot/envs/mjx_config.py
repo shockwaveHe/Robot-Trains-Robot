@@ -31,7 +31,7 @@ class MJXConfig:
     @dataclass
     class ActionConfig:
         action_scale: float = 0.25
-        contact_force_threshold: float = 5.0
+        contact_force_threshold: float = 1.0
         n_steps_delay: int = 1
         n_frames: int = 6
 
@@ -64,6 +64,7 @@ class MJXConfig:
             waist_action_rate: float = 1e-2
             waist_action_acc: float = 1e-2
             feet_contact: float = 0.5
+            feet_contact_number: float = 0.1
             collision: float = 0.0  # 1.0
             survival: float = 10.0
 
