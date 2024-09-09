@@ -199,7 +199,7 @@ def rotate_vec(vector: ArrayType, quat: ArrayType):
 
 
 def exponential_moving_average(
-    alpha: float,
+    alpha: ArrayType | float,
     current_value: ArrayType | float,
     previous_filtered_value: Optional[ArrayType | float] = None,
 ) -> ArrayType | float:

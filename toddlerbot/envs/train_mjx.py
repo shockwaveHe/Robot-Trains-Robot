@@ -456,12 +456,12 @@ def evaluate(
     inference_fn = make_policy(params)
 
     # initialize the state
-    # jit_reset = env.reset
-    # jit_step = env.step
-    # jit_inference_fn = inference_fn
     jit_reset = jax.jit(env.reset)  # type: ignore
+    # jit_reset = env.reset
     jit_step = jax.jit(env.step)  # type: ignore
+    # jit_step = env.step
     jit_inference_fn = jax.jit(inference_fn)  # type: ignore
+    # jit_inference_fn = inference_fn
 
     rng = jax.random.PRNGKey(0)  # type: ignore
     state = jit_reset(rng)  # type: ignore
@@ -582,8 +582,8 @@ if __name__ == "__main__":
         env_cfg,  # type:ignore
         fixed_base="fixed" in args.env,
         fixed_command=fixed_command,
-        add_noise=False,
-        add_push=False,
+        add_noise=True,
+        add_push=True,
         **kwargs,  # type:ignore
     )
 

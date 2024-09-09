@@ -157,7 +157,6 @@ class MJXEnv(PipelineEnv):
             self.cfg.action.action_smooth_rate
             / (self.cfg.action.action_smooth_rate + 1 / (self.dt * 2 * jnp.pi))
         )
-        self.last_motor_target = None
 
         # commands
         # x vel, y vel, yaw vel, heading
@@ -249,6 +248,7 @@ class MJXEnv(PipelineEnv):
             "last_stance_mask": jnp.zeros(2),  # type:ignore
             "feet_air_time": jnp.zeros(2),  # type:ignore
             "init_feet_height": pipeline_state.x.pos[self.feet_link_ids, 2],
+            "last_motor_target": None,
             "action_buffer": jnp.zeros((self.n_steps_delay + 1) * self.nu),  # type:ignore
             "last_last_act": jnp.zeros(self.nu),  # type:ignore
             "last_act": jnp.zeros(self.nu),  # type:ignore
@@ -332,10 +332,10 @@ class MJXEnv(PipelineEnv):
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
         )
         motor_target = exponential_moving_average(  # type: ignore
-            self.action_smooth_alpha, motor_target, self.last_motor_target
+            self.action_smooth_alpha, motor_target, state.info["last_motor_target"]
         )
         assert isinstance(motor_target, jax.Array)
-        self.last_motor_target = motor_target.copy()  # type:ignore
+        state.info["last_motor_target"] = motor_target.copy()  # type:ignore
 
         if self.add_push:
             push_theta = jax.random.uniform(push_rng, maxval=2 * jnp.pi)  # type:ignore
