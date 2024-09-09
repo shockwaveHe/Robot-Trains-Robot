@@ -346,6 +346,8 @@ class MJXEnv(PipelineEnv):
             state = state.tree_replace({"pipeline_state.qd": qvel})  # type:ignore
             state.info["push"] = push
 
+        # jax.debug.breakpoint()
+
         pipeline_state = self.pipeline_step(state.pipeline_state, motor_target)
 
         # jax.debug.print(

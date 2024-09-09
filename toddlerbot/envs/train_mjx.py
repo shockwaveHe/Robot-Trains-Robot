@@ -582,8 +582,8 @@ if __name__ == "__main__":
         env_cfg,  # type:ignore
         fixed_base="fixed" in args.env,
         fixed_command=fixed_command,
-        add_noise=True,
-        add_push=True,
+        add_noise=False,
+        add_push=False,
         **kwargs,  # type:ignore
     )
 
