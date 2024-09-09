@@ -216,7 +216,7 @@ def domain_randomize(
                 jax.random.uniform(  # type: ignore
                     key, (1,), minval=gain_range[0], maxval=gain_range[1]
                 )
-                + sys.actuator_gainprm[:, 0]
+                * sys.actuator_gainprm[:, 0]
             )
             gain = sys.actuator_gainprm.at[:, 0].set(param)  # type: ignore
             bias = sys.actuator_biasprm.at[:, 1].set(-param)  # type: ignore
@@ -226,7 +226,7 @@ def domain_randomize(
         else:
             damping = (
                 jax.random.uniform(  # type: ignore
-                    key, (sys.nv,), minval=damping_range[0], maxval=damping_range[1]
+                    key, (1,), minval=damping_range[0], maxval=damping_range[1]
                 )
                 * sys.dof_damping
             )
@@ -236,7 +236,7 @@ def domain_randomize(
         else:
             armature = (
                 jax.random.uniform(  # type: ignore
-                    key, (sys.nv,), minval=armature_range[0], maxval=armature_range[1]
+                    key, (1,), minval=armature_range[0], maxval=armature_range[1]
                 )
                 * sys.dof_armature
             )

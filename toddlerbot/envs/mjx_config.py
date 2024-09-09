@@ -89,12 +89,12 @@ class MJXConfig:
     @dataclass
     class DomainRandConfig:
         friction_range: Optional[List[float]] = field(
-            default_factory=lambda: [0.5, 2.0]
+            default_factory=lambda: [0.5, 1.5]
         )
-        gain_range: Optional[List[float]] = field(default_factory=lambda: [-5, 5])
-        damping_range: Optional[List[float]] = field(default_factory=lambda: [0.5, 2.0])
+        gain_range: Optional[List[float]] = field(default_factory=lambda: [0.5, 1.5])
+        damping_range: Optional[List[float]] = field(default_factory=lambda: [0.5, 1.5])
         armature_range: Optional[List[float]] = field(
-            default_factory=lambda: [0.5, 2.0]
+            default_factory=lambda: [0.5, 1.5]
         )
         added_mass_range: Optional[List[float]] = field(
             default_factory=lambda: [-0.5, 0.5]
