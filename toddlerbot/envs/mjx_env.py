@@ -236,6 +236,8 @@ class MJXEnv(PipelineEnv):
             "contact_forces": jnp.zeros(  # type:ignore
                 (self.num_colliders, self.num_colliders, 3)
             ),
+            "left_foot_contact_mask": jnp.zeros(len(self.left_foot_collider_indices)),  # type:ignore
+            "right_foot_contact_mask": jnp.zeros(len(self.right_foot_collider_indices)),  # type:ignore
             "stance_mask": jnp.zeros(2),  # type:ignore
             "last_stance_mask": jnp.zeros(2),  # type:ignore
             "feet_air_time": jnp.zeros(2),  # type:ignore
