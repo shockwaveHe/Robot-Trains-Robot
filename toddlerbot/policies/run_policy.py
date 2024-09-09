@@ -340,7 +340,13 @@ if __name__ == "__main__":
         "--ckpt",
         type=str,
         default="",
-        help="The policy checkpoint to load.",
+        help="The policy checkpoint to load for RL policies.",
+    )
+    parser.add_argument(
+        "--run-name",
+        type=str,
+        default="",
+        help="The policy run to replay.",
     )
     args = parser.parse_args()
 
@@ -362,7 +368,12 @@ if __name__ == "__main__":
     else:
         raise ValueError("Unknown simulator")
 
-    if "stand_open" in args.policy:
+    if "replay" in args.policy:
+        from toddlerbot.policies.replay import ReplayPolicy
+
+        policy = ReplayPolicy(args.policy, robot, init_motor_pos, args.run_name)
+
+    elif "stand_open" in args.policy:
         from toddlerbot.policies.stand_open import StandOpenPolicy
 
         policy = StandOpenPolicy(robot, init_motor_pos)
