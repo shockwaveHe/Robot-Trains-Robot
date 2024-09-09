@@ -30,6 +30,8 @@ class BasePolicy(ABC):
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         pass
 
+    # duration: total length of the motion
+    # end_time: when motion should end, end time < time < duration will be static
     def move(
         self,
         time_curr: float,

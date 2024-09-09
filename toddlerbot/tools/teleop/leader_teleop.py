@@ -35,20 +35,20 @@ from toddlerbot.utils.misc_utils import (
 
 default_pose = np.array(
     [
-        -0.8590293,
-        -0.5307572,
-        -0.00153399,
-        0.8789711,
-        1.1581554,
-        -0.8406215,
-        -1.0937283,
-        0.8805051,
-        -0.52615523,
-        -0.05062127,
-        0.8759031,
-        -1.2394564,
-        0.79613614,
-        -1.1366798,
+        -0.719437,
+        -0.4249127,
+        0.44025254,
+        0.7992041,
+        -1.6030097,
+        0.9664078,
+        -1.1090682,
+        0.9081166,
+        -0.5798447,
+        0.11198044,
+        0.9387963,
+        1.12134,
+        -0.7271068,
+        -1.0921943,
     ]
 )
 
@@ -76,12 +76,11 @@ Replay Policy loads the dataset logged and follows the same trajectory
 
 class ReplayPolicy(BasePolicy):
     def __init__(self, robot: Robot, log_path: str, replay_dest: str):
-        super().__init__(robot)
-        self.name = "replay_fixed"
+        super().__init__(name="replay_fixed", robot=robot, init_motor_pos=default_pose)
 
-        self.default_action = np.array(
-            list(robot.default_motor_angles.values()), dtype=np.float32
-        )
+        # self.default_action = np.array(
+        #     list(robot.default_motor_angles.values()), dtype=np.float32
+        # )
 
         self.log_path = log_path
         self.toggle_motor = False
@@ -115,8 +114,9 @@ class ReplayPolicy(BasePolicy):
         listener.start()
 
     def reset_slowly(self, obs_real):
-        leader_action = self.default_pose * self.blend_percentage + obs_real.q * (
-            1 - self.blend_percentage
+        leader_action = (
+            self.default_pose * self.blend_percentage
+            + obs_real.motor_pos * (1 - self.blend_percentage)
         )
         self.blend_percentage += 0.002
         self.blend_percentage = min(1, self.blend_percentage)
@@ -149,12 +149,13 @@ class ReplayPolicy(BasePolicy):
 
 class TeleopFollowerPolicy(BasePolicy):
     def __init__(self, robot: Robot):
-        super().__init__(robot)
-        self.name = "teleop_follower_fixed"
-
-        self.default_action = np.array(
-            list(robot.default_motor_angles.values()), dtype=np.float32
+        super().__init__(
+            name="teleop_follower_fixed", robot=robot, init_motor_pos=default_pose
         )
+
+        # self.default_action = np.array(
+        #     list(robot.default_motor_angles.values()), dtype=np.float32
+        # )
         self.log = False
         self.toggle_motor = True
         self.blend_percentage = 0.0
@@ -188,7 +189,7 @@ class TeleopFollowerPolicy(BasePolicy):
     # note: zero points can be accessed in config_motors.json
 
     def step(self, obs: Obs, obs_real: Obs) -> npt.NDArray[np.float32]:
-        sim_action = obs_real.q
+        sim_action = obs_real.motor_pos
         # state_dict = self.controller.get_motor_state()
         # print(np.array(list(state_dict.values())))
         # action = state_dict_to_action(state_dict)
@@ -203,14 +204,15 @@ class TeleopFollowerPolicy(BasePolicy):
             t2 = time.time()
             print(f"camera_frame: {t2 - t1:.2f} s, current_time: {obs_real.time}")
             self.dataset_logger.log_entry(
-                obs_real.time, obs_real.q, [fsrL, fsrR], camera_frame
+                obs_real.time, obs_real.motor_pos, [fsrL, fsrR], camera_frame
             )
         else:
             # clean up the log when not logging.
             self.dataset_logger.maintain_log()
 
-        leader_action = self.default_pose * self.blend_percentage + obs_real.q * (
-            1 - self.blend_percentage
+        leader_action = (
+            self.default_pose * self.blend_percentage
+            + obs_real.motor_pos * (1 - self.blend_percentage)
         )
         self.blend_percentage += 0.002
         self.blend_percentage = min(1, self.blend_percentage)
@@ -219,12 +221,11 @@ class TeleopFollowerPolicy(BasePolicy):
 
 class TeleopPolicy(BasePolicy):
     def __init__(self, robot: Robot):
-        super().__init__(robot)
-        self.name = "teleop_fixed"
+        super().__init__(name="teleop_fixed", robot=robot, init_motor_pos=default_pose)
 
-        self.default_action = np.array(
-            list(robot.default_motor_angles.values()), dtype=np.float32
-        )
+        # self.default_action = np.array(
+        #     list(robot.default_motor_angles.values()), dtype=np.float32
+        # )
         self.log = False
         self.toggle_motor = True
         self.blend_percentage = 0.0
@@ -237,24 +238,7 @@ class TeleopPolicy(BasePolicy):
         self.follower_camera = Camera(camera_id=0)
         self.fsr = FSR()
 
-        self.default_pose = np.array(
-            [
-                -0.8590293,
-                -0.5307572,
-                -0.00153399,
-                0.8789711,
-                1.1581554,
-                -0.8406215,
-                -1.0937283,
-                0.8805051,
-                -0.52615523,
-                -0.05062127,
-                0.8759031,
-                -1.2394564,
-                0.79613614,
-                -1.1366798,
-            ]
-        )
+        self.default_pose = default_pose
 
         self.start_zmq()
 
@@ -305,8 +289,9 @@ class TeleopPolicy(BasePolicy):
         listener.start()
 
     def reset_slowly(self, obs_real):
-        leader_action = self.default_pose * self.blend_percentage + obs_real.q * (
-            1 - self.blend_percentage
+        leader_action = (
+            self.default_pose * self.blend_percentage
+            + obs_real.motor_pos * (1 - self.blend_percentage)
         )
         self.blend_percentage += 0.002
         self.blend_percentage = min(1, self.blend_percentage)
@@ -316,7 +301,8 @@ class TeleopPolicy(BasePolicy):
     # note: zero points can be accessed in config_motors.json
 
     def step(self, obs: Obs, obs_real: Obs) -> npt.NDArray[np.float32]:
-        sim_action = obs_real.q
+        # print("f")
+        sim_action = obs_real.motor_pos
         # state_dict = self.controller.get_motor_state()
         # print(np.array(list(state_dict.values())))
         # action = state_dict_to_action(state_dict)
@@ -335,7 +321,7 @@ class TeleopPolicy(BasePolicy):
             t2 = time.time()
             print(f"camera_frame: {t2 - t1:.2f} s, current_time: {obs_real.time}")
             self.dataset_logger.log_entry(
-                obs_real.time, obs_real.q, [fsrL, fsrR], camera_frame
+                obs_real.time, obs_real.motor_pos, [fsrL, fsrR], camera_frame
             )
         else:
             # clean up the log when not logging.
@@ -522,7 +508,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--policy",
         type=str,
-        default="teleop_fixed",
+        default="replay_fixed",
         help="The name of the task. [replay_fixed, teleop_fixed]",
     )
     parser.add_argument(
@@ -548,7 +534,8 @@ if __name__ == "__main__":
         policy: BasePolicy = TeleopPolicy(robot_leader)
     elif args.policy == "replay_fixed":
         # path = "/Users/weizhuo2/Documents/gits/toddleroid/results/toddlerbot_arms_teleop_fixed_mujoco_20240904_202637/dataset.lz4"
-        path = "/Users/weizhuo2/Documents/gits/toddleroid/results/toddlerbot_arms_teleop_fixed_mujoco_20240906_175139/dataset.lz4"
+        # path = "/Users/weizhuo2/Documents/gits/toddleroid/results/toddlerbot_arms_teleop_fixed_mujoco_20240906_175139/dataset.lz4"
+        path = "/Users/weizhuo2/Documents/gits/toddleroid/results/toddlerbot_arms_teleop_fixed_mujoco_20240909_162250/dataset.lz4"
         policy: BasePolicy = ReplayPolicy(
             robot_leader, log_path=path, replay_dest=args.replay_env
         )
