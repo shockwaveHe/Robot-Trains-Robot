@@ -210,6 +210,7 @@ class MJXEnv(PipelineEnv):
         self.min_feet_distance = self.cfg.rewards.min_feet_distance
         self.max_feet_distance = self.cfg.rewards.max_feet_distance
         self.target_feet_z_delta = self.cfg.rewards.target_feet_z_delta
+        self.torso_pitch_range = self.cfg.rewards.torso_pitch_range
 
     def reset(self, rng: jax.Array) -> State:
         """Resets the environment to an initial state."""
@@ -612,6 +613,20 @@ class MJXEnv(PipelineEnv):
         # Quaternion angle difference
         angle_diff = 2.0 * jnp.arccos(jnp.abs(dot_product))  # type:ignore
         reward = jnp.exp(-20.0 * (angle_diff**2))  # type:ignore
+        return reward
+
+    def _reward_torso_pitch(
+        self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
+    ):
+        """Reward for torso pitch"""
+        torso_quat = pipeline_state.x.rot[0]
+        torso_pitch = math.quat_to_euler(torso_quat)[1]
+
+        pitch_min = jnp.clip(torso_pitch - self.torso_pitch_range[0], max=0.0)  # type:ignore
+        pitch_max = jnp.clip(torso_pitch - self.torso_pitch_range[1], min=0.0)  # type:ignore
+        reward = (
+            jnp.exp(-jnp.abs(pitch_min) * 100) + jnp.exp(-jnp.abs(pitch_max) * 100)  # type:ignore
+        ) / 2
         return reward
 
     def _reward_lin_vel_xy(

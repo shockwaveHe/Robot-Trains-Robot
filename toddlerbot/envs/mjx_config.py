@@ -41,6 +41,7 @@ class MJXConfig:
         class RewardScales:
             torso_pos: float = 0.0  # 1.0
             torso_quat: float = 1.5
+            torso_pitch: float = 1.0
             lin_vel_xy: float = 1.5
             lin_vel_z: float = 0.5
             ang_vel_xy: float = 0.5
@@ -77,6 +78,7 @@ class MJXConfig:
         min_feet_distance: float = 0.06
         max_feet_distance: float = 0.15
         target_feet_z_delta: float = 0.02
+        torso_pitch_range: List[float] = field(default_factory=lambda: [-0.1, 0.1])
         scales: RewardScales = RewardScales()
 
     @dataclass
