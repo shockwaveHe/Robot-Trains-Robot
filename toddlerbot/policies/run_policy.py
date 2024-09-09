@@ -215,8 +215,9 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
 
             motor_target = policy.step(obs, "real" in sim.name)
 
+            # TODO: Remove this. Now we filter the motor targets in the policy
             motor_target: npt.NDArray[np.float32] = exponential_moving_average(  # type: ignore
-                0.44, motor_target, last_motor_target
+                0.1, motor_target, last_motor_target
             )
             last_motor_target = motor_target.copy()
 
