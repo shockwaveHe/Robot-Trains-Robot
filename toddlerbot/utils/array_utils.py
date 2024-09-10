@@ -79,3 +79,29 @@ def loop_update(
         final_traj_x = x
 
     return final_traj_x
+
+
+# Binary search using lax.while_loop
+def binary_search(arr: ArrayType, t: ArrayType | float) -> ArrayType:
+    def cond_fun(state: Tuple[ArrayType, ...]):
+        low, high, _ = state
+        return low <= high
+
+    def body_fun(state: Tuple[ArrayType, ...]):
+        low, high, mid = state
+        mid = (low + high) // 2
+        new_low = np.where(arr[mid] < t, mid + 1, low)  # type: ignore
+        new_high = np.where(arr[mid] > t, mid - 1, high)  # type: ignore
+        return (new_low, new_high, mid)
+
+    low, high = 0, len(arr) - 1
+    initial_state = (low, high, 0)
+    if USE_JAX:
+        final_state = jax.lax.while_loop(cond_fun, body_fun, initial_state)  # type: ignore
+    else:
+        final_state = initial_state
+        while cond_fun(final_state):  # type: ignore
+            final_state = body_fun(final_state)  # type: ignore
+
+    low, _, _ = final_state
+    return np.maximum(0, low - 1)  # type: ignore

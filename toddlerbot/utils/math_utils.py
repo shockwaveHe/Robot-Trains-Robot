@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from scipy.signal import chirp  # type: ignore
 
-from toddlerbot.utils.array_utils import ArrayType
+from toddlerbot.utils.array_utils import ArrayType, binary_search  # type: ignore
 from toddlerbot.utils.array_utils import array_lib as np
 
 
@@ -240,11 +240,8 @@ def interpolate(
     Returns:
     - Position at time t.
     """
-    if t <= 0:
-        return p_start
-
-    if t >= duration:
-        return p_end
+    t = np.where(t <= p_start, p_start, t)  # type: ignore
+    t = np.where(t >= p_end, p_end, t)  # type: ignore
 
     if interp_type == "linear":
         return p_start + (p_end - p_start) * (t / duration)
@@ -260,34 +257,18 @@ def interpolate(
         raise ValueError("Unsupported interpolation type: {}".format(interp_type))
 
 
-def binary_search(arr: ArrayType, t: ArrayType | float) -> int:
-    # Implement binary search using either NumPy or JAX.
-    low, high = 0, len(arr) - 1
-    while low <= high:
-        mid = (low + high) // 2
-        if arr[mid] < t:
-            low = mid + 1
-        elif arr[mid] > t:
-            high = mid - 1
-        else:
-            return mid
-    return low - 1
-
-
 def interpolate_action(
     t: ArrayType | float,
     time_arr: ArrayType,
     action_arr: ArrayType,
     interp_type: str = "linear",
 ):
-    if t <= time_arr[0]:
-        return action_arr[0]
-    elif t >= time_arr[-1]:
-        return action_arr[-1]
+    t = np.where(t <= time_arr[0], time_arr[0], t)  # type: ignore
+    t = np.where(t >= time_arr[-1], time_arr[-1], t)  # type: ignore
 
     # Use binary search to find the segment containing current_time
     idx = binary_search(time_arr, t)
-    idx = max(0, min(idx, len(time_arr) - 2))  # Ensure idx is within valid range
+    idx = np.maximum(0, np.minimum(idx, len(time_arr) - 2))  # type: ignore
 
     p_start = action_arr[idx]
     p_end = action_arr[idx + 1]
