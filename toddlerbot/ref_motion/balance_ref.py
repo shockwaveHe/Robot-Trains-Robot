@@ -11,7 +11,7 @@ from toddlerbot.utils.math_utils import interpolate_action
 
 
 class BalanceReference(MotionReference):
-    def __init__(self, robot: Robot, run_name: str):
+    def __init__(self, robot: Robot):
         super().__init__("balance", "perceptual", robot)
 
         arm_motor_names: List[str] = [
@@ -23,7 +23,7 @@ class BalanceReference(MotionReference):
             if motor_config["transmission"] == "gears":
                 self.arm_coef[i] = -motor_config["gear_ratio"]
 
-        data_path = os.path.join("results", run_name, "dataset.lz4")
+        data_path = os.path.join("toddlerbot", "ref_motion", "balance_dataset.lz4")
         data_dict = joblib.load(data_path)  # type: ignore
 
         # state_array: [time(1), motor_pos(14), fsrL(1), fsrR(1), camera_frame_idx(1)]
@@ -62,7 +62,7 @@ class BalanceReference(MotionReference):
         linear_vel = np.array([0.0, 0.0, 0.0], dtype=np.float32)  # type: ignore
         angular_vel = np.array([0.0, 0.0, 0.0], dtype=np.float32)  # type: ignore
 
-        ref_idx = (command[0] * self.ref_size).astype(int)  # type: ignore
+        ref_idx = (command[0] * (self.ref_size - 1)).astype(int)  # type: ignore
         arm_joint_pos = interpolate_action(  # type: ignore
             self.time_ref[ref_idx] + time_curr, self.time_ref, self.arm_joint_pos_ref
         )

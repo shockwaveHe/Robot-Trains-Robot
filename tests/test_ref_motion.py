@@ -135,9 +135,7 @@ if __name__ == "__main__":
         from toddlerbot.ref_motion.balance_ref import BalanceReference
 
         cfg = BalanceCfg()
-        motion_ref = BalanceReference(
-            robot, "toddlerbot_teleop_follower_fixed_real_world_20240909_193055"
-        )
+        motion_ref = BalanceReference(robot)
 
     else:
         raise ValueError("Unknown ref motion")

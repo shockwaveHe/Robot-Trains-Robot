@@ -46,7 +46,7 @@ class BalanceEnv(MJXEnv):
         add_noise: bool = True,
         **kwargs: Any,
     ):
-        motion_ref = BalanceReference(robot, )
+        motion_ref = BalanceReference(robot)
 
         self.num_commands = cfg.commands.num_commands
 
