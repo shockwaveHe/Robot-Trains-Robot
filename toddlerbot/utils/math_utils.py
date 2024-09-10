@@ -223,8 +223,8 @@ def wrap_to_pi(angle: ArrayType) -> ArrayType:
 def interpolate(
     p_start: ArrayType | float,
     p_end: ArrayType | float,
-    duration: float,
-    t: float,
+    duration: ArrayType | float,
+    t: ArrayType | float,
     interp_type: str = "linear",
 ) -> ArrayType | float:
     """
@@ -273,9 +273,7 @@ def interpolate_action(
     p_start = action_arr[idx]
     p_end = action_arr[idx + 1]
     duration = time_arr[idx + 1] - time_arr[idx]
-    return interpolate(
-        p_start, p_end, float(duration), float(t - time_arr[idx]), interp_type
-    )
+    return interpolate(p_start, p_end, duration, t - time_arr[idx], interp_type)
 
 
 # def interpolate_pos(
