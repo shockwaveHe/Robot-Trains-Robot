@@ -90,8 +90,8 @@ def binary_search(arr: ArrayType, t: ArrayType | float) -> ArrayType:
     def body_fun(state: Tuple[ArrayType, ...]):
         low, high, mid = state
         mid = (low + high) // 2
-        new_low = np.where(arr[mid] < t, mid + 1, low)  # type: ignore
-        new_high = np.where(arr[mid] > t, mid - 1, high)  # type: ignore
+        new_low = array_lib.where(arr[mid] < t, mid + 1, low)  # type: ignore
+        new_high = array_lib.where(arr[mid] > t, mid - 1, high)  # type: ignore
         return (new_low, new_high, mid)
 
     low, high = 0, len(arr) - 1
@@ -104,4 +104,4 @@ def binary_search(arr: ArrayType, t: ArrayType | float) -> ArrayType:
             final_state = body_fun(final_state)  # type: ignore
 
     low, _, _ = final_state
-    return np.maximum(0, low - 1)  # type: ignore
+    return array_lib.maximum(0, low - 1)  # type: ignore
