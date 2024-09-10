@@ -69,6 +69,14 @@ This allows the user `youruser` to run echo and tee without a password. Ensure y
 
 Install miniforge: Download `Linux aarch64 (arm64)` from [their website](https://github.com/conda-forge/miniforge). Do NOT run the install script with sudo. Answer `yes` to all the options.
 
+For the accuracy of teleoperation and logging over network, we need to install ntp package to sync time of the jetson to server.
+```
+sudo apt install ntp
+sudo systemctl enable ntp
+sudo service ntp start
+```
+
+
 ### Linux Systems
 ```
 conda create --name toddlerbot python=3.10

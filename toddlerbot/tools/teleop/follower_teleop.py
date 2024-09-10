@@ -72,12 +72,7 @@ Replay Policy loads the dataset logged and follows the same trajectory
 
 class ReplayFollowerPolicy(BasePolicy):
     def __init__(self, robot: Robot, log_path: str, replay_dest: str):
-        super().__init__(robot)
-        self.name = "replay_fixed"
-
-        self.default_action = np.array(
-            list(robot.default_motor_angles.values()), dtype=np.float32
-        )
+        super().__init__(name="replay_fixed", robot=robot, init_motor_pos=default_pose)
 
         self.log_path = log_path
         self.toggle_motor = False
@@ -111,8 +106,9 @@ class ReplayFollowerPolicy(BasePolicy):
         listener.start()
 
     def reset_slowly(self, obs_real):
-        leader_action = self.default_pose * self.blend_percentage + obs_real.q * (
-            1 - self.blend_percentage
+        leader_action = (
+            self.default_pose * self.blend_percentage
+            + obs_real.motor_pos * (1 - self.blend_percentage)
         )
         self.blend_percentage += 0.002
         self.blend_percentage = min(1, self.blend_percentage)
@@ -145,12 +141,13 @@ class ReplayFollowerPolicy(BasePolicy):
 
 class TeleopFollowerPolicy(BasePolicy):
     def __init__(self, robot: Robot):
-        super().__init__(robot)
-        self.name = "teleop_follower_fixed"
-
+        super().__init__(
+            name="teleop_follower_fixed", robot=robot, init_motor_pos=default_pose
+        )
         self.default_action = np.array(
             list(robot.default_motor_angles.values()), dtype=np.float32
         )
+
         self.log = False
         self.toggle_motor = True
         self.blend_percentage = 0.0
@@ -164,6 +161,11 @@ class TeleopFollowerPolicy(BasePolicy):
 
         self.default_pose = default_pose
 
+        # remote variables
+        self.remote_log = self.log
+        self.remote_action = None
+        self.remote_fsr = None
+
         # start a zmq listener
         self.start_zmq()
 
@@ -174,6 +176,7 @@ class TeleopFollowerPolicy(BasePolicy):
         self.zmq_context = zmq.Context()
         self.socket = self.zmq_context.socket(zmq.PULL)
         self.socket.bind("tcp://0.0.0.0:5555")  # Listen on all interfaces
+        self.socket.setsockopt(zmq.RCVHWM, 1)  # Limit receiver's queue to 1 message
         self.get_zmq_data()
 
     def get_zmq_data(self):
@@ -184,13 +187,16 @@ class TeleopFollowerPolicy(BasePolicy):
             return send_dict
         except zmq.Again:
             # No data is available
-            print("No message available right now")
+            # print("No message available right now")
             return None
 
     # note: calibrate zero at: toddlerbot/tools/calibration/calibrate_zero.py --robot toddlerbot_arms
     # note: zero points can be accessed in config_motors.json
 
     def step(self, obs_real: Obs) -> npt.NDArray[np.float32]:
+        tstart = time.time()
+
+        sim_action = self.default_action
         remote_state = self.get_zmq_data()
         if remote_state is not None:
             curr_t = time.time()
@@ -201,25 +207,37 @@ class TeleopFollowerPolicy(BasePolicy):
                     "ms",
                 )
             else:
-                print(remote_state)
-
-        # sim_action = remote_state["action"]
-        sim_action = obs_real.q
+                # print(
+                #     "Time diff: ",
+                #     (curr_t - remote_state["time"]) * 1000,
+                #     "ms",
+                # )
+                self.remote_log, self.remote_action, self.remote_fsr = (
+                    remote_state["log"],
+                    remote_state["sim_action"],
+                    remote_state["fsr"],
+                )
+                sim_action[16:30] = self.remote_action
+                self.log = self.remote_log
 
         # Log the data
         if self.log:
             t1 = time.time()
-            camera_frame = self.follower_camera.get_state()
+            # camera_frame = self.follower_camera.get_state()
+            camera_frame = None
             # fsrL, fsrR = self.fsr.get_state()
-            fsrL, fsrR = [0, 0]
+            fsrL, fsrR = self.remote_fsr[0], self.remote_fsr[1]
             t2 = time.time()
             print(f"camera_frame: {t2 - t1:.2f} s, current_time: {obs_real.time}")
             self.dataset_logger.log_entry(
-                obs_real.time, obs_real.q, [fsrL, fsrR], camera_frame
+                obs_real.time, obs_real.motor_pos, [fsrL, fsrR], camera_frame
             )
         else:
             # clean up the log when not logging.
             self.dataset_logger.maintain_log()
+
+        tend = time.time()
+        print(f"Time taken: {1000*(tend - tstart):.2f} ms")
 
         return sim_action
 
@@ -248,6 +266,7 @@ def main(
     start_time = time.time()
     step_idx = 0
     p_bar = tqdm(total=n_steps, desc="Running the policy")
+
     try:
         while step_idx < n_steps:
             step_start = time.time()
@@ -307,7 +326,7 @@ def main(
             time_until_next_step = start_time + policy.control_dt * step_idx - step_end
             # print(f"time_until_next_step: {time_until_next_step * 1000:.2f} ms")
             if time_until_next_step > 0:
-                precise_sleep(time_until_next_step)
+                time.sleep(time_until_next_step)
 
     except KeyboardInterrupt:
         log("KeyboardInterrupt recieved. Closing...", header=header_name)
