@@ -136,6 +136,24 @@
             ]
         },
         {
+            "name": "Python: balance_toddlerbot_mujoco",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/policies/run_policy.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot",
+                "toddlerbot",
+                "--sim",
+                "mujoco",
+                "--policy",
+                "balance",
+                "--ckpt",
+                "20240910_085635"
+            ]
+        },
+        {
             "name": "Python: sysid_toddlerbot_optim",
             "type": "python",
             "request": "launch",

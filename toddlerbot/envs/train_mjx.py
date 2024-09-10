@@ -547,7 +547,7 @@ if __name__ == "__main__":
         env_cfg = BalanceCfg()
         train_cfg = PPOConfig()
         env_class = BalanceEnv
-        fixed_command = jnp.array([0.5])  # type:ignore
+        fixed_command = jnp.array([0.0])  # type:ignore
         kwargs = {}
 
     else:
