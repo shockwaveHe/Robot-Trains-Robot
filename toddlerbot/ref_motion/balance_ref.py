@@ -21,7 +21,9 @@ class BalanceReference(MotionReference):
         for i, motor_name in enumerate(arm_motor_names):
             motor_config = robot.config["joints"][motor_name]
             if motor_config["transmission"] == "gears":
-                self.arm_coef[i] = -motor_config["gear_ratio"]
+                self.arm_coef = inplace_update(
+                    self.arm_coef, i, -motor_config["gear_ratio"]
+                )
 
         data_path = os.path.join("toddlerbot", "ref_motion", "balance_dataset.lz4")
         data_dict = joblib.load(data_path)  # type: ignore
