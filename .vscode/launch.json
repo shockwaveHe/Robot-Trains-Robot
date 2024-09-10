@@ -166,6 +166,22 @@
             ],
         },
         {
+            "name": "Python: balance_toddlerbot_mjx",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/envs/train_mjx.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot",
+                "toddlerbot",
+                "--env",
+                "balance",
+                "--eval",
+                "20240909_115042"
+            ],
+        },
+        {
             "name": "Python: test_reference_motion",
             "type": "python",
             "request": "launch",

@@ -82,6 +82,7 @@ def loop_update(
 
 
 # Binary search using lax.while_loop
+# TODO: This is likely to make jax.jit super slow
 def binary_search(arr: ArrayType, t: ArrayType | float) -> ArrayType:
     def cond_fun(state: Tuple[ArrayType, ...]):
         low, high, _ = state

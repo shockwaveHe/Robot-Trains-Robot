@@ -7,7 +7,6 @@ from toddlerbot.ref_motion import MotionReference
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.array_utils import ArrayType, inplace_update
 from toddlerbot.utils.array_utils import array_lib as np
-from toddlerbot.utils.math_utils import interpolate_action
 
 
 class BalanceReference(MotionReference):
@@ -64,10 +63,19 @@ class BalanceReference(MotionReference):
         linear_vel = np.array([0.0, 0.0, 0.0], dtype=np.float32)  # type: ignore
         angular_vel = np.array([0.0, 0.0, 0.0], dtype=np.float32)  # type: ignore
 
-        ref_idx = (command[0] * (self.ref_size - 1)).astype(int)  # type: ignore
-        arm_joint_pos = interpolate_action(  # type: ignore
-            self.time_ref[ref_idx] + time_curr, self.time_ref, self.arm_joint_pos_ref
+        command_ref_idx = (command[0] * (self.ref_size - 2)).astype(int)  # type: ignore
+        t = self.time_ref[command_ref_idx] + time_curr
+        ref_idx = np.minimum(  # type: ignore
+            np.searchsorted(self.time_ref, t, side="right") - 1,  # type: ignore
+            self.ref_size - 2,
         )
+        # Linearly interpolate between p_start and p_end
+        arm_joint_pos_start = self.arm_joint_pos_ref[ref_idx]
+        arm_joint_pos_end = self.arm_joint_pos_ref[ref_idx + 1]
+        duration = self.time_ref[ref_idx + 1] - self.time_ref[ref_idx]
+        arm_joint_pos = arm_joint_pos_start + (
+            arm_joint_pos_end - arm_joint_pos_start
+        ) * ((t - self.time_ref[ref_idx]) / duration)
 
         joint_pos = self.default_joint_pos.copy()  # type: ignore
         joint_pos = inplace_update(
