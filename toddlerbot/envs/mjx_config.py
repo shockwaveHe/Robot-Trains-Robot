@@ -66,7 +66,7 @@ class MJXConfig:
             waist_action_rate: float = 1e-2
             waist_action_acc: float = 1e-2
             feet_contact: float = 0.5
-            feet_contact_number: float = 0.1
+            feet_contact_number: float = 0.0
             collision: float = 0.0  # 1.0
             survival: float = 10.0
 
