@@ -548,6 +548,7 @@ if __name__ == "__main__":
         train_cfg = PPOConfig()
         env_class = BalanceEnv
         fixed_command = jnp.array([0.5])  # type:ignore
+        kwargs = {}
 
     else:
         raise ValueError(f"Unknown env: {args.env}")
