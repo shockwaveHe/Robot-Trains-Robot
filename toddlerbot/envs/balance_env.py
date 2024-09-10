@@ -6,7 +6,7 @@ import jax.numpy as jnp
 
 from toddlerbot.envs.mjx_config import MJXConfig
 from toddlerbot.envs.mjx_env import MJXEnv
-from toddlerbot.ref_motion.squat_ref import SquatReference
+from toddlerbot.ref_motion.balance_ref import BalanceReference
 from toddlerbot.sim.robot import Robot
 
 
@@ -46,7 +46,7 @@ class BalanceEnv(MJXEnv):
         add_noise: bool = True,
         **kwargs: Any,
     ):
-        motion_ref = SquatReference(robot)
+        motion_ref = BalanceReference(robot, )
 
         self.num_commands = cfg.commands.num_commands
 
