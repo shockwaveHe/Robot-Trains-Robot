@@ -139,11 +139,11 @@ class MJXEnv(PipelineEnv):
             ]
         )
 
-        joint_ref_indices = jnp.arange(len(self.robot.joint_ordering))  # type:ignore
-        self.leg_ref_indices = joint_ref_indices[joint_groups == "leg"]  # type:ignore
-        self.arm_ref_indices = joint_ref_indices[joint_groups == "arm"]  # type:ignore
-        self.neck_ref_indices = joint_ref_indices[joint_groups == "neck"]  # type:ignore
-        self.waist_ref_indices = joint_ref_indices[joint_groups == "waist"]  # type:ignore
+        self.joint_ref_indices = jnp.arange(len(self.robot.joint_ordering))  # type:ignore
+        self.leg_ref_indices = self.joint_ref_indices[joint_groups == "leg"]  # type:ignore
+        self.arm_ref_indices = self.joint_ref_indices[joint_groups == "arm"]  # type:ignore
+        self.neck_ref_indices = self.joint_ref_indices[joint_groups == "neck"]  # type:ignore
+        self.waist_ref_indices = self.joint_ref_indices[joint_groups == "waist"]  # type:ignore
 
         # default qpos
         self.default_qpos = jnp.array(self.sys.mj_model.keyframe("home").qpos)  # type:ignore
@@ -221,20 +221,6 @@ class MJXEnv(PipelineEnv):
         """Resets the environment to an initial state."""
         rng, rng1, rng2 = jax.random.split(rng, 3)  # type:ignore
 
-        qpos = self.default_qpos
-
-        if self.add_noise:
-            noise_pos = jax.random.uniform(  # type:ignore
-                rng1,
-                (self.nq - self.q_start_idx,),
-                minval=-self.reset_noise_pos,
-                maxval=self.reset_noise_pos,
-            )
-            qpos = qpos.at[self.q_start_idx :].add(noise_pos)
-
-        qvel = jnp.zeros(self.nv)  # type:ignore
-        pipeline_state = self.pipeline_init(qpos, qvel)
-
         state_info = {
             "rng": rng,
             "path_pos": jnp.zeros(3),  # type:ignore
@@ -244,11 +230,9 @@ class MJXEnv(PipelineEnv):
             ),
             "left_foot_contact_mask": jnp.zeros(len(self.left_foot_collider_indices)),  # type:ignore
             "right_foot_contact_mask": jnp.zeros(len(self.right_foot_collider_indices)),  # type:ignore
-            "stance_mask": jnp.zeros(2),  # type:ignore
-            "last_stance_mask": jnp.zeros(2),  # type:ignore
+            "stance_mask": jnp.ones(2),  # type:ignore
+            "last_stance_mask": jnp.ones(2),  # type:ignore
             "feet_air_time": jnp.zeros(2),  # type:ignore
-            "init_feet_height": pipeline_state.x.pos[self.feet_link_ids, 2],
-            "last_motor_target": self.default_motor_pos, # type:ignore
             "action_buffer": jnp.zeros((self.n_steps_delay + 1) * self.nu),  # type:ignore
             "last_last_act": jnp.zeros(self.nu),  # type:ignore
             "last_act": jnp.zeros(self.nu),  # type:ignore
@@ -258,18 +242,35 @@ class MJXEnv(PipelineEnv):
             "done": False,
             "step": 0,
         }
-        state_info["command"] = self._sample_command(pipeline_state, rng2)
+        state_info["command"] = self._sample_command(rng2)
         state_info["phase_signal"] = self.motion_ref.get_phase_signal(  # type:ignore
             0.0, state_info["command"]
-        )  # type:ignore
-        state_info["state_ref"] = (  # type:ignore
-            self.motion_ref.get_state_ref(
-                state_info["path_pos"],  # type:ignore
-                state_info["path_quat"],  # type:ignore
-                0.0,
-                state_info["command"],
-            )
         )
+        state_ref = self.motion_ref.get_state_ref(
+            state_info["path_pos"],  # type:ignore
+            state_info["path_quat"],  # type:ignore
+            0.0,
+            state_info["command"],
+        )
+        state_info["state_ref"] = jnp.asarray(state_ref)  # type:ignore
+
+        qpos = state_ref[self.ref_start_idx + self.joint_ref_indices]
+        qvel = state_ref[self.ref_start_idx + self.nu + self.joint_ref_indices]
+        if self.add_noise:
+            noise_pos = jax.random.uniform(  # type:ignore
+                rng1,
+                (self.nq - self.q_start_idx,),
+                minval=-self.reset_noise_pos,
+                maxval=self.reset_noise_pos,
+            )
+            qpos = qpos.at[self.q_start_idx :].add(noise_pos)
+
+        pipeline_state = self.pipeline_init(qpos, qvel)
+
+        state_info["last_motor_target"] = pipeline_state.qpos[  # type:ignore
+            self.q_start_idx + self.motor_indices
+        ]
+        state_info["init_feet_height"] = pipeline_state.x.pos[self.feet_link_ids, 2]
 
         obs_history = jnp.zeros(self.num_obs_history * self.obs_size)  # type:ignore
         privileged_obs_history = jnp.zeros(  # type:ignore
@@ -407,7 +408,7 @@ class MJXEnv(PipelineEnv):
         # sample new command if more than 500 timesteps achieved
         state.info["command"] = jnp.where(  # type:ignore
             state.info["step"] > self.resample_steps,
-            self._sample_command(pipeline_state, cmd_rng),
+            self._sample_command(cmd_rng),
             state.info["command"],
         )
 
@@ -425,7 +426,7 @@ class MJXEnv(PipelineEnv):
             done=done.astype(jnp.float32),  # type:ignore
         )
 
-    def _sample_command(self, pipeline_state: base.State, rng: jax.Array) -> jax.Array:
+    def _sample_command(self, rng: jax.Array) -> jax.Array:
         # placeholder
         return jnp.zeros(1)  # type:ignore
 

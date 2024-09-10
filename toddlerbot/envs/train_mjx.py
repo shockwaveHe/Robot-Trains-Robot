@@ -541,6 +541,14 @@ if __name__ == "__main__":
         fixed_command = jnp.array([0.2, 0.0])  # type:ignore
         kwargs = {}
 
+    elif "balance" in args.env:
+        from toddlerbot.envs.balance_env import BalanceCfg, BalanceEnv
+
+        env_cfg = BalanceCfg()
+        train_cfg = PPOConfig()
+        env_class = BalanceEnv
+        fixed_command = jnp.array([0.5])  # type:ignore
+
     else:
         raise ValueError(f"Unknown env: {args.env}")
 

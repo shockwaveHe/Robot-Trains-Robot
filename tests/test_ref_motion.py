@@ -130,6 +130,15 @@ if __name__ == "__main__":
         cfg = RotateTorsoCfg()
         motion_ref = RotateTorsoReference(robot)
 
+    elif args.ref == "balance":
+        from toddlerbot.envs.balance_env import BalanceCfg
+        from toddlerbot.ref_motion.balance_ref import BalanceReference
+
+        cfg = BalanceCfg()
+        motion_ref = BalanceReference(
+            robot, "toddlerbot_teleop_follower_fixed_real_world_20240909_193055"
+        )
+
     else:
         raise ValueError("Unknown ref motion")
 
@@ -154,6 +163,10 @@ if __name__ == "__main__":
         ]
 
     else:
-        command_list = [np.zeros(3, dtype=np.float32)]
+        command_list = [
+            np.array([0.0], dtype=np.float32),
+            np.array([0.5], dtype=np.float32),
+            np.array([1.0], dtype=np.float32),
+        ]
 
     test_motion_ref(robot, sim, motion_ref, command_list)

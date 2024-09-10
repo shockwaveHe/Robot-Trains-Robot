@@ -86,7 +86,7 @@ class WalkEnv(MJXEnv):
             **kwargs,
         )
 
-    def _sample_command(self, pipeline_state: base.State, rng: jax.Array) -> jax.Array:
+    def _sample_command(self, rng: jax.Array) -> jax.Array:
         if self.fixed_command is not None:
             return self.fixed_command
 

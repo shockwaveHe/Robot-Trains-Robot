@@ -260,7 +260,7 @@ def interpolate(
         raise ValueError("Unsupported interpolation type: {}".format(interp_type))
 
 
-def binary_search(arr: ArrayType, t: float) -> int:
+def binary_search(arr: ArrayType, t: ArrayType | float) -> int:
     # Implement binary search using either NumPy or JAX.
     low, high = 0, len(arr) - 1
     while low <= high:
@@ -275,7 +275,7 @@ def binary_search(arr: ArrayType, t: float) -> int:
 
 
 def interpolate_action(
-    t: float,
+    t: ArrayType | float,
     time_arr: ArrayType,
     action_arr: ArrayType,
     interp_type: str = "linear",

@@ -3,7 +3,6 @@ from typing import Any, List, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
-from brax import base  # type: ignore  # type: ignore
 
 from toddlerbot.envs.mjx_config import MJXConfig
 from toddlerbot.envs.mjx_env import MJXEnv
@@ -76,7 +75,7 @@ class RotateTorsoEnv(MJXEnv):
             **kwargs,
         )
 
-    def _sample_command(self, pipeline_state: base.State, rng: jax.Array) -> jax.Array:
+    def _sample_command(self, rng: jax.Array) -> jax.Array:
         if self.fixed_command is not None:
             assert self.fixed_command.shape[0] == self.num_commands
             return self.fixed_command
