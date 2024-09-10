@@ -428,6 +428,17 @@ if __name__ == "__main__":
             fixed_command=np.array([-0.05], dtype=np.float32),
         )
 
+    elif "balance" in args.policy:
+        from toddlerbot.policies.balance import BalancePolicy
+
+        policy = BalancePolicy(
+            args.policy,
+            robot,
+            init_motor_pos,
+            args.ckpt,
+            fixed_command=np.array([0.0], dtype=np.float32),
+        )
+
     else:
         raise ValueError("Unknown policy")
 
