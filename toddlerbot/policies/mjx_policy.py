@@ -53,16 +53,6 @@ class MJXPolicy(BasePolicy):
             / (cfg.action.action_smooth_rate + 1 / (self.control_dt * 2 * np.pi))
         )
 
-        # joint indices
-        motor_indices = np.arange(robot.nu)  # type:ignore
-        motor_groups = np.array(
-            [robot.joint_groups[name] for name in robot.motor_ordering]
-        )
-        self.leg_motor_indices = motor_indices[motor_groups == "leg"]
-        self.arm_motor_indices = motor_indices[motor_groups == "arm"]
-        self.neck_motor_indices = motor_indices[motor_groups == "neck"]
-        self.waist_motor_indices = motor_indices[motor_groups == "waist"]
-
         self.motor_limits = np.array(
             [robot.joint_limits[name] for name in robot.motor_ordering]
         )

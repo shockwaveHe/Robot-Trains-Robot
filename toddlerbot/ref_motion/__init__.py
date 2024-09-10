@@ -23,14 +23,14 @@ class MotionReference(ABC):
             list(robot.default_motor_angles.values()), dtype=np.float32
         )
 
-        motor_indices = np.arange(robot.nu)  # type:ignore
+        actuator_indices = np.arange(robot.nu)  # type:ignore
         motor_groups = numpy.array(  # type:ignore
             [robot.joint_groups[name] for name in robot.motor_ordering]
         )
-        self.leg_motor_indices = motor_indices[motor_groups == "leg"]
-        self.arm_motor_indices = motor_indices[motor_groups == "arm"]
-        self.neck_motor_indices = motor_indices[motor_groups == "neck"]
-        self.waist_motor_indices = motor_indices[motor_groups == "waist"]
+        self.leg_actuator_indices = actuator_indices[motor_groups == "leg"]
+        self.arm_actuator_indices = actuator_indices[motor_groups == "arm"]
+        self.neck_actuator_indices = actuator_indices[motor_groups == "neck"]
+        self.waist_actuator_indices = actuator_indices[motor_groups == "waist"]
 
     @abstractmethod
     def get_phase_signal(

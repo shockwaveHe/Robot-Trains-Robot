@@ -62,6 +62,10 @@ class BalanceEnv(MJXEnv):
         )
 
     def _sample_command(self, rng: jax.Array) -> jax.Array:
+        if self.fixed_command is not None:
+            assert self.fixed_command.shape[0] == self.num_commands
+            return self.fixed_command
+
         rng, rng_1 = jax.random.split(rng)  # type:ignore
         commands = jax.random.uniform(  # type:ignore
             rng_1,

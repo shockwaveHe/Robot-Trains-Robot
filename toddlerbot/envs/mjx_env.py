@@ -117,27 +117,51 @@ class MJXEnv(PipelineEnv):
         self.neck_joint_indices = self.joint_indices[joint_groups == "neck"]
         self.waist_joint_indices = self.joint_indices[joint_groups == "waist"]
 
-        motor_indices = np.array(  # type:ignore
+        self.motor_indices = jnp.array(  # type:ignore
+            [
+                support.name2id(self.sys, mujoco.mjtObj.mjOBJ_JOINT, name)  # type:ignore
+                for name in self.robot.motor_ordering
+            ]
+        )
+        if not self.fixed_base:
+            # Disregard the free joint
+            self.motor_indices -= 1
+
+        motor_groups = np.array(  # type:ignore
+            [self.robot.joint_groups[name] for name in self.robot.motor_ordering]
+        )
+        self.leg_motor_indices = self.motor_indices[joint_groups == "leg"]
+        self.arm_motor_indices = self.motor_indices[joint_groups == "arm"]
+        self.neck_motor_indices = self.motor_indices[joint_groups == "neck"]
+        self.waist_motor_indices = self.motor_indices[joint_groups == "waist"]
+
+        self.actuator_indices = jnp.array(  # type:ignore
             [
                 support.name2id(self.sys, mujoco.mjtObj.mjOBJ_ACTUATOR, name)  # type:ignore
                 for name in self.robot.motor_ordering
             ]
         )
-        self.motor_indices = jnp.array(motor_indices)  # type:ignore
-        motor_groups = np.array(  # type:ignore
-            [self.robot.joint_groups[name] for name in self.robot.motor_ordering]
-        )
-        self.leg_motor_indices = self.motor_indices[motor_groups == "leg"]
-        self.arm_motor_indices = self.motor_indices[motor_groups == "arm"]
-        self.neck_motor_indices = self.motor_indices[motor_groups == "neck"]
-        self.waist_motor_indices = self.motor_indices[motor_groups == "waist"]
-
+        self.leg_actuator_indices = self.actuator_indices[motor_groups == "leg"]
+        self.arm_actuator_indices = self.actuator_indices[motor_groups == "arm"]
+        self.neck_actuator_indices = self.actuator_indices[motor_groups == "neck"]
+        self.waist_actuator_indices = self.actuator_indices[motor_groups == "waist"]
         self.motor_limits = jnp.array(  # type:ignore
             [
                 self.sys.actuator_ctrlrange[motor_id]  # type:ignore
-                for motor_id in self.motor_indices
+                for motor_id in self.actuator_indices
             ]
         )
+
+        arm_motor_names: List[str] = [
+            self.robot.motor_ordering[i] for i in self.arm_actuator_indices
+        ]
+        self.arm_joint_coef = jnp.ones(len(arm_motor_names), dtype=np.float32)  # type: ignore
+        for i, motor_name in enumerate(arm_motor_names):
+            motor_config = self.robot.config["joints"][motor_name]
+            if motor_config["transmission"] == "gears":
+                self.arm_joint_coef = self.arm_joint_coef.at[i].set(  # type:ignore
+                    -motor_config["gear_ratio"]
+                )
 
         self.joint_ref_indices = jnp.arange(len(self.robot.joint_ordering))  # type:ignore
         self.leg_ref_indices = self.joint_ref_indices[joint_groups == "leg"]  # type:ignore
@@ -178,9 +202,9 @@ class MJXEnv(PipelineEnv):
         self.obs_noise_scale = self.cfg.noise.obs_noise_scale * jnp.concatenate(  # type:ignore
             [
                 jnp.zeros(self.obs_size - 3 * self.nu - 6),  # type:ignore
-                jnp.ones_like(self.motor_indices) * self.cfg.noise.dof_pos,  # type:ignore
-                jnp.ones_like(self.motor_indices) * self.cfg.noise.dof_vel,  # type:ignore
-                jnp.zeros_like(self.motor_indices),  # type:ignore
+                jnp.ones_like(self.actuator_indices) * self.cfg.noise.dof_pos,  # type:ignore
+                jnp.ones_like(self.actuator_indices) * self.cfg.noise.dof_vel,  # type:ignore
+                jnp.zeros_like(self.actuator_indices),  # type:ignore
                 # jnp.ones(3) * self.cfg.noise.lin_vel,  # type:ignore
                 jnp.ones(3) * self.cfg.noise.ang_vel,  # type:ignore
                 jnp.ones(3) * self.cfg.noise.euler,  # type:ignore
@@ -254,10 +278,12 @@ class MJXEnv(PipelineEnv):
         )
         state_info["state_ref"] = jnp.asarray(state_ref)  # type:ignore
 
-        qpos = self.default_qpos.at[self.q_start_idx + self.joint_indices].set(  # type:ignore
-            state_ref[self.ref_start_idx + self.joint_ref_indices]
-        )
-        qvel = jnp.zeros(self.nv)  # type:ignore
+        qpos = self.default_qpos
+        arm_joint_pos = state_ref[self.ref_start_idx + self.arm_ref_indices]
+        arm_motor_pos = arm_joint_pos * self.arm_joint_coef
+        qpos = qpos.at[self.q_start_idx + self.arm_joint_indices].set(arm_joint_pos)  # type:ignore
+        qpos = qpos.at[self.q_start_idx + self.arm_motor_indices].set(arm_motor_pos)  # type:ignore
+
         if self.add_noise:
             noise_pos = jax.random.uniform(  # type:ignore
                 rng1,
@@ -266,6 +292,8 @@ class MJXEnv(PipelineEnv):
                 maxval=self.reset_noise_pos,
             )
             qpos = qpos.at[self.q_start_idx :].add(noise_pos)
+
+        qvel = jnp.zeros(self.nv)  # type:ignore
 
         pipeline_state = self.pipeline_init(qpos, qvel)
 
@@ -842,8 +870,8 @@ class MJXEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
         """Reward for tracking leg action rates"""
-        leg_action = action[self.leg_motor_indices]
-        last_leg_action = info["last_act"][self.leg_motor_indices]
+        leg_action = action[self.leg_actuator_indices]
+        last_leg_action = info["last_act"][self.leg_actuator_indices]
         error = jnp.square(leg_action - last_leg_action)  # type:ignore
         reward = -jnp.mean(error)  # type:ignore
         return reward  # type:ignore
@@ -852,9 +880,9 @@ class MJXEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
         """Reward for tracking leg action accelerations"""
-        leg_action = action[self.leg_motor_indices]
-        last_leg_action = info["last_act"][self.leg_motor_indices]
-        last_last_leg_action = info["last_last_act"][self.leg_motor_indices]
+        leg_action = action[self.leg_actuator_indices]
+        last_leg_action = info["last_act"][self.leg_actuator_indices]
+        last_last_leg_action = info["last_last_act"][self.leg_actuator_indices]
         error = jnp.square(  # type:ignore
             leg_action - 2 * last_leg_action + last_last_leg_action
         )
@@ -865,8 +893,8 @@ class MJXEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
         """Reward for tracking arm action rates"""
-        arm_action = action[self.arm_motor_indices]
-        last_arm_action = info["last_act"][self.arm_motor_indices]
+        arm_action = action[self.arm_actuator_indices]
+        last_arm_action = info["last_act"][self.arm_actuator_indices]
         error = jnp.square(arm_action - last_arm_action)  # type:ignore
         reward = -jnp.mean(error)  # type:ignore
         return reward  # type:ignore
@@ -875,9 +903,9 @@ class MJXEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
         """Reward for tracking arm action accelerations"""
-        arm_action = action[self.arm_motor_indices]
-        last_arm_action = info["last_act"][self.arm_motor_indices]
-        last_last_arm_action = info["last_last_act"][self.arm_motor_indices]
+        arm_action = action[self.arm_actuator_indices]
+        last_arm_action = info["last_act"][self.arm_actuator_indices]
+        last_last_arm_action = info["last_last_act"][self.arm_actuator_indices]
         error = jnp.square(  # type:ignore
             arm_action - 2 * last_arm_action + last_last_arm_action
         )
@@ -888,8 +916,8 @@ class MJXEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
         """Reward for tracking neck action rates"""
-        neck_action = action[self.neck_motor_indices]
-        last_neck_action = info["last_act"][self.neck_motor_indices]
+        neck_action = action[self.neck_actuator_indices]
+        last_neck_action = info["last_act"][self.neck_actuator_indices]
         error = jnp.square(neck_action - last_neck_action)  # type:ignore
         reward = -jnp.mean(error)  # type:ignore
         return reward  # type:ignore
@@ -898,9 +926,9 @@ class MJXEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
         """Reward for tracking neck action accelerations"""
-        neck_action = action[self.neck_motor_indices]
-        last_neck_action = info["last_act"][self.neck_motor_indices]
-        last_last_neck_action = info["last_last_act"][self.neck_motor_indices]
+        neck_action = action[self.neck_actuator_indices]
+        last_neck_action = info["last_act"][self.neck_actuator_indices]
+        last_last_neck_action = info["last_last_act"][self.neck_actuator_indices]
         error = jnp.square(  # type:ignore
             neck_action - 2 * last_neck_action + last_last_neck_action
         )
@@ -911,8 +939,8 @@ class MJXEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
         """Reward for tracking waist action rates"""
-        waist_action = action[self.waist_motor_indices]
-        last_waist_action = info["last_act"][self.waist_motor_indices]
+        waist_action = action[self.waist_actuator_indices]
+        last_waist_action = info["last_act"][self.waist_actuator_indices]
         error = jnp.square(waist_action - last_waist_action)  # type:ignore
         reward = -jnp.mean(error)  # type:ignore
         return reward  # type:ignore
@@ -921,9 +949,9 @@ class MJXEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
         """Reward for tracking waist action accelerations"""
-        waist_action = action[self.waist_motor_indices]
-        last_waist_action = info["last_act"][self.waist_motor_indices]
-        last_last_waist_action = info["last_last_act"][self.waist_motor_indices]
+        waist_action = action[self.waist_actuator_indices]
+        last_waist_action = info["last_act"][self.waist_actuator_indices]
+        last_last_waist_action = info["last_last_act"][self.waist_actuator_indices]
         error = jnp.square(  # type:ignore
             waist_action - 2 * last_waist_action + last_last_waist_action
         )

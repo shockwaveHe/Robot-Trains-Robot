@@ -14,14 +14,14 @@ class BalanceReference(MotionReference):
         super().__init__("balance", "perceptual", robot)
 
         arm_motor_names: List[str] = [
-            robot.motor_ordering[i] for i in self.arm_motor_indices
+            robot.motor_ordering[i] for i in self.arm_actuator_indices
         ]
-        self.arm_coef = np.ones(len(arm_motor_names), dtype=np.float32)  # type: ignore
+        self.arm_joint_coef = np.ones(len(arm_motor_names), dtype=np.float32)  # type: ignore
         for i, motor_name in enumerate(arm_motor_names):
             motor_config = robot.config["joints"][motor_name]
             if motor_config["transmission"] == "gears":
-                self.arm_coef = inplace_update(
-                    self.arm_coef, i, -motor_config["gear_ratio"]
+                self.arm_joint_coef = inplace_update(
+                    self.arm_joint_coef, i, -motor_config["gear_ratio"]
                 )
 
         data_path = os.path.join("toddlerbot", "ref_motion", "balance_dataset.lz4")
@@ -36,7 +36,7 @@ class BalanceReference(MotionReference):
         self.arm_joint_pos_ref = np.array(  # type: ignore
             [
                 self.arm_fk(arm_motor_pos)
-                for arm_motor_pos in state_arr[:, 1 + self.arm_motor_indices]
+                for arm_motor_pos in state_arr[:, 1 + self.arm_actuator_indices]
             ],
             dtype=np.float32,
         )
@@ -80,7 +80,7 @@ class BalanceReference(MotionReference):
         joint_pos = self.default_joint_pos.copy()  # type: ignore
         joint_pos = inplace_update(
             joint_pos,
-            self.arm_motor_indices,  # type: ignore
+            self.arm_actuator_indices,  # type: ignore
             arm_joint_pos,
         )
 
@@ -105,23 +105,23 @@ class BalanceReference(MotionReference):
     ) -> ArrayType:
         motor_target = inplace_update(
             motor_target,
-            self.neck_motor_indices,  # type: ignore
-            self.default_motor_pos[self.neck_motor_indices],
+            self.neck_actuator_indices,  # type: ignore
+            self.default_motor_pos[self.neck_actuator_indices],
         )
-        arm_joint_pos = state_ref[13 + self.arm_motor_indices]
+        arm_joint_pos = state_ref[13 + self.arm_actuator_indices]
         arm_motor_pos = self.arm_ik(arm_joint_pos)
         motor_target = inplace_update(
             motor_target,
-            self.arm_motor_indices,  # type: ignore
+            self.arm_actuator_indices,  # type: ignore
             arm_motor_pos,
         )
 
         return motor_target
 
     def arm_fk(self, arm_motor_pos: ArrayType) -> ArrayType:
-        arm_joint_pos = arm_motor_pos / self.arm_coef
+        arm_joint_pos = arm_motor_pos / self.arm_joint_coef
         return arm_joint_pos
 
     def arm_ik(self, arm_joint_pos: ArrayType) -> ArrayType:
-        arm_motor_pos = arm_joint_pos * self.arm_coef
+        arm_motor_pos = arm_joint_pos * self.arm_joint_coef
         return arm_motor_pos

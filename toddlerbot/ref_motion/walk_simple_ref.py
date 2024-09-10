@@ -133,13 +133,13 @@ class WalkSimpleReference(MotionReference):
     ) -> ArrayType:
         motor_target = inplace_update(
             motor_target,
-            self.neck_motor_indices,  # type: ignore
-            self.default_motor_pos[self.neck_motor_indices],
+            self.neck_actuator_indices,  # type: ignore
+            self.default_motor_pos[self.neck_actuator_indices],
         )
         motor_target = inplace_update(
             motor_target,
-            self.arm_motor_indices,  # type: ignore
-            self.default_motor_pos[self.arm_motor_indices],
+            self.arm_actuator_indices,  # type: ignore
+            self.default_motor_pos[self.arm_actuator_indices],
         )
 
         return motor_target
