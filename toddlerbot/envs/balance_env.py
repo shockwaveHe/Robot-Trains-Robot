@@ -19,13 +19,13 @@ class BalanceCfg(MJXConfig):
 
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):
-        resample_time: float = 5.0
+        resample_time: float = 100.0  # No resampling
         num_commands: int = 1
 
     @dataclass
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
         # Balance specific rewards
-        pass
+        torso_pitch = 1.0
 
     def __init__(self):
         super().__init__()
