@@ -316,6 +316,87 @@ def plot_joint_tracking(
         )()
 
 
+def plot_joint_tracking_frequency(
+    time_seq_dict: Dict[str, List[float]],
+    time_seq_ref_dict: Dict[str, List[float]],
+    joint_data_dict: Dict[str, List[float]],
+    joint_data_ref_dict: Dict[str, List[float]],
+    save_path: str,
+    x_label: str = "Frequency (Hz)",
+    y_label: str = "Magnitude",
+    file_name: str = "motor_freq_tracking",
+    file_suffix: str = "",
+    title_list: List[str] = [],
+    set_ylim: bool = False,
+    line_suffix: List[str] = ["_obs", "_ref"],
+):
+    x_list: List[List[float]] = []
+    y_list: List[List[float]] = []
+    joint_name_list: List[str] = []
+    legend_labels: List[str] = []
+
+    # For each joint, compute the FFT of the joint data and the reference joint data
+    for name in time_seq_dict.keys():
+        joint_data = joint_data_dict[name]
+        time_seq_ref = time_seq_ref_dict[name]
+        joint_data_ref = joint_data_ref_dict[name]
+
+        # Calculate the time step (assuming uniform sampling)
+        time_step = np.mean(np.diff(time_seq_ref))
+
+        # FFT (Fourier Transform) of the joint position data and reference data
+        joint_data_fft = np.fft.fft(joint_data)
+        freqs = np.fft.fftfreq(len(joint_data), time_step)
+        joint_data_ref_fft = np.fft.fft(joint_data_ref)
+        freqs_ref = np.fft.fftfreq(len(joint_data_ref), time_step)
+
+        # Use only the positive frequencies
+        pos_freqs = freqs[: len(freqs) // 2]
+        pos_freqs_ref = freqs_ref[: len(freqs_ref) // 2]
+        pos_magnitudes = np.abs(joint_data_fft[: len(joint_data_fft) // 2])
+        pos_magnitudes_ref = np.abs(joint_data_ref_fft[: len(joint_data_ref_fft) // 2])
+
+        x_list.append(list(pos_freqs))
+        x_list.append(list(pos_freqs_ref))
+        y_list.append(list(pos_magnitudes))
+        y_list.append(list(pos_magnitudes_ref))
+
+        joint_name_list.append(name)
+        legend_labels.append(name + line_suffix[0])  # Observation label
+        legend_labels.append(name + line_suffix[1])  # Reference label
+
+    n_plots = len(time_seq_dict)
+    n_rows = int(np.ceil(n_plots / 3))
+    n_cols = 3
+
+    fig, axs = plt.subplots(n_rows, n_cols, figsize=(n_cols * 5, n_rows * 3))  # type: ignore
+    plt.subplots_adjust(hspace=0.4, wspace=0.4)  # type: ignore
+
+    for i, ax in enumerate(axs.flat):  # type: ignore
+        if i >= n_plots:
+            ax.set_visible(False)  # type: ignore
+            continue
+
+        if set_ylim:
+            ax.set_ylim(-0.1, 100)  # type: ignore
+
+        ax.set_yscale("log")  # type: ignore
+
+        plot_line_graph(
+            y_list[2 * i : 2 * i + 2],
+            x_list[2 * i : 2 * i + 2],
+            title=f"{joint_name_list[i]}" if len(title_list) == 0 else title_list[i],
+            x_label=x_label,
+            y_label=y_label,
+            save_config=True if i == n_plots - 1 else False,
+            save_path=save_path if i == n_plots - 1 else "",
+            file_name=file_name if i == n_plots - 1 else "",
+            file_suffix=file_suffix,
+            ax=ax,  # type: ignore
+            legend_labels=legend_labels[2 * i : 2 * i + 2],
+        )()
+
+
 def plot_joint_tracking_single(
     time_seq_dict: Dict[str, List[float]],
     joint_data_dict: Dict[str, List[float]],

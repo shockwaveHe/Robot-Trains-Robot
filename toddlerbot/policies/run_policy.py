@@ -13,15 +13,10 @@ from toddlerbot.policies import BasePolicy
 from toddlerbot.sim import BaseSim, Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.math_utils import round_floats
-from toddlerbot.utils.misc_utils import (
-    dump_profiling_data,
-    log,
-    precise_sleep,
-    # profile,
-    snake2camel,
-)
+from toddlerbot.utils.misc_utils import dump_profiling_data, log, snake2camel
 from toddlerbot.visualization.vis_plot import (
     plot_joint_tracking,
+    plot_joint_tracking_frequency,
     plot_joint_tracking_single,
     plot_line_graph,
     plot_loop_time,
@@ -151,6 +146,13 @@ def plot_results(
         robot.joint_limits,
         save_path=exp_folder_path,
     )
+    plot_joint_tracking_frequency(
+        time_seq_dict,
+        time_seq_ref_dict,
+        motor_pos_dict,
+        action_dict,
+        save_path=exp_folder_path,
+    )
     plot_joint_tracking_single(
         time_seq_dict,
         motor_vel_dict,
@@ -263,7 +265,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
             time_until_next_step = start_time + policy.control_dt * step_idx - step_end
             # print(f"time_until_next_step: {time_until_next_step * 1000:.2f} ms")
             if "real" in sim.name and time_until_next_step > 0:
-                precise_sleep(time_until_next_step)
+                time.sleep(time_until_next_step)
 
     except KeyboardInterrupt:
         log("KeyboardInterrupt recieved. Closing...", header=header_name)

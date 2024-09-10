@@ -266,13 +266,13 @@ def main():
                     param_name
                 ]
 
-        dynamics_config_path = os.path.join(robot_dir, "config_dynamics.json")
-        if os.path.exists(dynamics_config_path):
-            with open(dynamics_config_path, "r") as f:
-                passive_joint_dyn_config = json.load(f)
+    dynamics_config_path = os.path.join(robot_dir, "config_dynamics.json")
+    if os.path.exists(dynamics_config_path):
+        with open(dynamics_config_path, "r") as f:
+            passive_joint_dyn_config = json.load(f)
 
-            for joint_name, joint_config in passive_joint_dyn_config.items():
-                joint_dyn_config[joint_name] = joint_config
+        for joint_name, joint_config in passive_joint_dyn_config.items():
+            joint_dyn_config[joint_name] = joint_config
 
     urdf_path = os.path.join(robot_dir, f"{args.robot}.urdf")
     tree = ET.parse(urdf_path)
