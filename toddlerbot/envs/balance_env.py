@@ -62,7 +62,13 @@ class BalanceEnv(MJXEnv):
         )
 
     def _sample_command(self, rng: jax.Array) -> jax.Array:
-        commands = jnp.zeros(1)  # type:ignore
+        rng, rng_1 = jax.random.split(rng)  # type:ignore
+        commands = jax.random.uniform(  # type:ignore
+            rng_1,
+            (1,),
+            minval=0.0,
+            maxval=1.0,
+        )
         return commands
 
     def _extract_command(self, command: jax.Array) -> Tuple[jax.Array, jax.Array]:

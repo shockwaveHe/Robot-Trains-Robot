@@ -254,8 +254,10 @@ class MJXEnv(PipelineEnv):
         )
         state_info["state_ref"] = jnp.asarray(state_ref)  # type:ignore
 
-        qpos = state_ref[self.ref_start_idx + self.joint_ref_indices]
-        qvel = state_ref[self.ref_start_idx + self.nu + self.joint_ref_indices]
+        qpos = self.default_qpos.at[[self.q_start_idx + self.joint_indices]].set(  # type:ignore
+            state_ref[self.ref_start_idx + self.joint_ref_indices]
+        )
+        qvel = jnp.zeros(self.nv)  # type:ignore
         if self.add_noise:
             noise_pos = jax.random.uniform(  # type:ignore
                 rng1,
