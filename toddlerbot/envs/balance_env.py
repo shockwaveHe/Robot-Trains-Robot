@@ -1,5 +1,5 @@
-from dataclasses import dataclass
-from typing import Any, Optional, Tuple
+from dataclasses import dataclass, field
+from typing import Any, List, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -21,6 +21,7 @@ class BalanceCfg(MJXConfig):
     class CommandsConfig(MJXConfig.CommandsConfig):
         resample_time: float = 100.0  # No resampling
         num_commands: int = 1
+        sample_range: List[float] = field(default_factory=lambda: [0.0, 1.0])
 
     @dataclass
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
@@ -49,6 +50,7 @@ class BalanceEnv(MJXEnv):
         motion_ref = BalanceReference(robot)
 
         self.num_commands = cfg.commands.num_commands
+        self.sample_range = cfg.commands.sample_range
 
         super().__init__(
             name,
@@ -70,8 +72,8 @@ class BalanceEnv(MJXEnv):
         commands = jax.random.uniform(
             rng_1,
             (1,),
-            minval=0.0,
-            maxval=1.0,
+            minval=self.sample_range[0],
+            maxval=self.sample_range[1],
         )
         return commands
 

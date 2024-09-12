@@ -14,9 +14,11 @@ from toddlerbot.utils.math_utils import (
 from toddlerbot.utils.misc_utils import set_seed
 
 
-class RotateTorsoOpenPolicy(BasePolicy):
-    def __init__(self, robot: Robot, init_motor_pos: npt.NDArray[np.float32]):
-        super().__init__("rotate_torso", robot, init_motor_pos)
+class RotateTorsoOpenPolicy(BasePolicy, policy_name="rotate_torso_open"):
+    def __init__(
+        self, name: str, robot: Robot, init_motor_pos: npt.NDArray[np.float32]
+    ):
+        super().__init__(name, robot, init_motor_pos)
         set_seed(0)
 
         self.prep_duration = 7.0

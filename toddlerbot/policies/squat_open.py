@@ -1,3 +1,5 @@
+# type: ignore
+
 from typing import List
 
 import numpy as np
@@ -10,10 +12,12 @@ from toddlerbot.utils.math_utils import interpolate, interpolate_action
 from toddlerbot.utils.misc_utils import set_seed
 
 
-class SquatOpenPolicy(BasePolicy):
-    def __init__(self, robot: Robot, init_motor_angles: npt.NDArray[np.float32]):
+class SquatOpenPolicy(BasePolicy, policy_name="squat_open"):
+    def __init__(
+        self, name: str, robot: Robot, init_motor_angles: npt.NDArray[np.float32]
+    ):
         # TODO: Fix this script
-        super().__init__("squat", robot, init_motor_angles)
+        super().__init__(name, robot, init_motor_angles)
         self.control_dt = 0.02
 
         set_seed(0)

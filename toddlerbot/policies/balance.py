@@ -9,7 +9,7 @@ from toddlerbot.ref_motion.balance_ref import BalanceReference
 from toddlerbot.sim.robot import Robot
 
 
-class BalancePolicy(MJXPolicy):
+class BalancePolicy(MJXPolicy, policy_name="balance"):
     def __init__(
         self,
         name: str,
@@ -18,17 +18,12 @@ class BalancePolicy(MJXPolicy):
         ckpt: str,
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
     ):
-        env_cfg = BalanceCfg()
-        command_ranges = [[0.0, 1.0]]
-        motion_ref = BalanceReference(robot)
-
         super().__init__(
             name,
             robot,
             init_motor_pos,
-            env_cfg,
-            motion_ref,
             ckpt,
-            command_ranges,
             fixed_command,
+            BalanceCfg(),
+            BalanceReference(robot),
         )

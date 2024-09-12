@@ -11,9 +11,11 @@ from toddlerbot.utils.math_utils import get_chirp_signal, interpolate_action
 from toddlerbot.utils.misc_utils import set_seed
 
 
-class SysIDFixedPolicy(BasePolicy):
-    def __init__(self, robot: Robot, init_motor_pos: npt.NDArray[np.float32]):
-        super().__init__("sysID_fixed", robot, init_motor_pos)
+class SysIDFixedPolicy(BasePolicy, policy_name="sysID_fixed"):
+    def __init__(
+        self, name: str, robot: Robot, init_motor_pos: npt.NDArray[np.float32]
+    ):
+        super().__init__(name, robot, init_motor_pos)
 
         set_seed(0)
 

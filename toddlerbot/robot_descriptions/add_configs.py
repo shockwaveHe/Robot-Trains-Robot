@@ -208,7 +208,7 @@ def main() -> None:
         general_config["fd_smooth_alpha"] = 0.2
         general_config["waist_roll_backlash"] = 0.03
         general_config["waist_yaw_backlash"] = 0.001
-        general_config["ank_solimp_0"] = 0.99
+        general_config["ank_solimp_0"] = 0.9999
         general_config["ank_solref_0"] = 0.004
         general_config["foot_name"] = "ank_roll_link"
         general_config["offsets"] = {

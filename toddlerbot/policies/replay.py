@@ -10,7 +10,7 @@ from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 
 
-class ReplayPolicy(BasePolicy):
+class ReplayPolicy(BasePolicy, policy_name="replay"):
     def __init__(
         self,
         name: str,

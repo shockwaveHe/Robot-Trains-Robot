@@ -1,7 +1,9 @@
 import argparse
 import bisect
+import importlib
 import os
 import pickle
+import pkgutil
 import time
 from typing import Any, Dict, List
 
@@ -9,7 +11,9 @@ import numpy as np
 import numpy.typing as npt
 from tqdm import tqdm
 
-from toddlerbot.policies import BasePolicy
+from toddlerbot.policies import BasePolicy, get_policy_class
+from toddlerbot.policies.mjx_policy import MJXPolicy
+from toddlerbot.policies.sysID_fixed import SysIDFixedPolicy
 from toddlerbot.sim import BaseSim, Obs
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.real_world import RealWorld
@@ -23,6 +27,21 @@ from toddlerbot.visualization.vis_plot import (
     plot_line_graph,
     plot_loop_time,
 )
+
+
+def dynamic_import_policies(policy_package: str):
+    """Dynamically import all modules in the given package."""
+    package = importlib.import_module(policy_package)
+    package_path = package.__path__
+
+    # Iterate over all modules in the given package directory
+    for _, module_name, _ in pkgutil.iter_modules(package_path):
+        full_module_name = f"{policy_package}.{module_name}"
+        importlib.import_module(full_module_name)
+
+
+# Call this to import all policies dynamically
+dynamic_import_policies("toddlerbot.policies")
 
 
 def plot_results(
@@ -272,7 +291,6 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
     except KeyboardInterrupt:
         log("KeyboardInterrupt recieved. Closing...", header=header_name)
 
-    finally:
         p_bar.close()
 
         exp_name = f"{robot.name}_{policy.name}_{sim.name}"
@@ -347,6 +365,12 @@ if __name__ == "__main__":
         help="The policy checkpoint to load for RL policies.",
     )
     parser.add_argument(
+        "--command",
+        type=str,
+        default="",
+        help="The policy checkpoint to load for RL policies.",
+    )
+    parser.add_argument(
         "--run-name",
         type=str,
         default="",
@@ -369,78 +393,23 @@ if __name__ == "__main__":
     else:
         raise ValueError("Unknown simulator")
 
-    policy: BasePolicy | None = None
+    PolicyClass = get_policy_class(args.policy)
+
     if "replay" in args.policy:
-        from toddlerbot.policies.replay import ReplayPolicy
+        policy = PolicyClass(args.policy, robot, init_motor_pos, args.run_name)
 
-        policy = ReplayPolicy(args.policy, robot, init_motor_pos, args.run_name)
-
-    elif "stand_open" in args.policy:
-        from toddlerbot.policies.stand_open import StandOpenPolicy
-
-        policy = StandOpenPolicy(robot, init_motor_pos)
-
-    elif "rotate_torso_open" in args.policy:
-        from toddlerbot.policies.rotate_torso_open import RotateTorsoOpenPolicy
-
-        policy = RotateTorsoOpenPolicy(robot, init_motor_pos)
-
-    elif "squat_open" in args.policy:
-        from toddlerbot.policies.squat_open import SquatOpenPolicy
-
-        policy = SquatOpenPolicy(robot, init_motor_pos)
-
-    elif "sysID_fixed" in args.policy:
-        from toddlerbot.policies.sysID_fixed import SysIDFixedPolicy
-
-        policy = SysIDFixedPolicy(robot, init_motor_pos)
-
-    elif "walk" in args.policy:
-        from toddlerbot.policies.walk import WalkPolicy
-
-        policy = WalkPolicy(
+    elif issubclass(PolicyClass, MJXPolicy):
+        assert len(args.ckpt) > 0, "Need to provide a checkpoint for MJX policies"
+        assert len(args.command) > 0, "Need to provide a command for MJX policies"
+        policy = PolicyClass(
             args.policy,
             robot,
             init_motor_pos,
             args.ckpt,
-            fixed_command=np.array([0.1, 0, 0], dtype=np.float32),
+            fixed_command=np.array(args.command.split(" "), dtype=np.float32),
         )
-
-    elif "rotate_torso" in args.policy:
-        from toddlerbot.policies.rotate_torso import RotateTorsoPolicy
-
-        policy = RotateTorsoPolicy(
-            args.policy,
-            robot,
-            init_motor_pos,
-            args.ckpt,
-            fixed_command=np.array([0.2, 0], dtype=np.float32),
-        )
-
-    elif "squat" in args.policy:
-        from toddlerbot.policies.squat import SquatPolicy
-
-        policy = SquatPolicy(
-            args.policy,
-            robot,
-            init_motor_pos,
-            args.ckpt,
-            fixed_command=np.array([-0.05], dtype=np.float32),
-        )
-
-    elif "balance" in args.policy:
-        from toddlerbot.policies.balance import BalancePolicy
-
-        policy = BalancePolicy(
-            args.policy,
-            robot,
-            init_motor_pos,
-            args.ckpt,
-            fixed_command=np.array([0.0], dtype=np.float32),
-        )
-
     else:
-        raise ValueError("Unknown policy")
+        policy = PolicyClass(args.policy, robot, init_motor_pos)
 
     debug_config: Dict[str, Any] = {"log": False, "plot": True, "render": True}
 

@@ -1,5 +1,6 @@
 import functools
 import os
+from dataclasses import fields
 from typing import List, Optional
 
 import jax
@@ -21,26 +22,32 @@ from toddlerbot.utils.math_utils import exponential_moving_average, interpolate_
 # from toddlerbot.utils.misc_utils import profile
 
 
-class MJXPolicy(BasePolicy):
+class MJXPolicy(BasePolicy, policy_name="mjx"):
     def __init__(
         self,
         name: str,
         robot: Robot,
         init_motor_pos: npt.NDArray[np.float32],
-        cfg: MJXConfig,
-        motion_ref: MotionReference,
         ckpt: str,
-        command_ranges: List[List[float]],
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
+        cfg: Optional[MJXConfig] = None,
+        motion_ref: Optional[MotionReference] = None,
     ):
         super().__init__(name, robot, init_motor_pos)
 
-        self.motion_ref = motion_ref
-        self.command_ranges = command_ranges
+        assert cfg is not None, "cfg is required in the subclass!"
+        assert motion_ref is not None, "motion_ref is required in the subclass!"
+
         if fixed_command is None:
             self.fixed_command = np.zeros(cfg.commands.num_commands, dtype=np.float32)
         else:
             self.fixed_command = fixed_command
+
+        self.motion_ref = motion_ref
+        self.command_ranges: List[List[float]] = []
+        for field in fields(cfg.commands):
+            if "range" in field.name:
+                self.command_ranges.append(getattr(cfg.commands, field.name))
 
         self.obs_scales = cfg.obs.scales  # Assume all the envs have the same scales
         self.default_motor_pos = np.array(

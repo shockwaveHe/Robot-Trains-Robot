@@ -154,6 +154,22 @@
             ]
         },
         {
+            "name": "Python: teleop_ankle_toddlerbot_mujoco",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/policies/run_policy.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot",
+                "toddlerbot",
+                "--sim",
+                "mujoco",
+                "--policy",
+                "teleop_ankle"
+            ]
+        },
+        {
             "name": "Python: sysid_toddlerbot_optim",
             "type": "python",
             "request": "launch",
