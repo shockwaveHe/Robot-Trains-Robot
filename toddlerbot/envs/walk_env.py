@@ -29,7 +29,7 @@ class WalkCfg(MJXConfig):
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
         # Walk specific rewards
         lin_vel_xy: float = 2.0
-        feet_air_time: float = 500.0
+        feet_air_time: float = 50.0
         feet_clearance: float = 0.0  # Doesn't help
         feet_distance: float = 0.5
         feet_slip: float = 0.1
