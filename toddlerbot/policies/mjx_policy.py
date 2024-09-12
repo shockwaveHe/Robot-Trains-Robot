@@ -94,7 +94,11 @@ class MJXPolicy(BasePolicy):
         act_rng, _ = jax.random.split(self.rng)
         self.jit_inference_fn(self.obs_history, act_rng)[0].block_until_ready()
 
-        self.joystick = initialize_joystick()
+        self.joystick = None
+        try:
+            self.joystick = initialize_joystick()
+        except Exception:
+            pass
 
         self.prep_duration = 7.0
         self.prep_time, self.prep_action = self.move(

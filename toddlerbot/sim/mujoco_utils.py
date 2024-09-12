@@ -22,28 +22,21 @@ class MuJoCoViewer:
         self.viewer = mujoco.viewer.launch_passive(model, data)
         self.model = model
 
-    def visualize(self, data: Any, vis_data: Dict[str, Any] = {}):
-        # with self.viewer.lock():
-        #     self.viewer.user_scn.ngeom = 0
-        #     if "foot_steps" in vis_data:
-        #         self.vis_foot_steps(vis_data["foot_steps"])
-        #     if "com_ref_traj" in vis_data:
-        #         self.vis_com_ref_traj(vis_data["com_ref_traj"])
-        #     if "path" in vis_data:
-        #         self.vis_path(vis_data["path"])
-        #     if "torso" in vis_data:
-        #         self.vis_torso(data)
+    def visualize(self, data: Any, vis_flags: Dict[str, bool] = {"com": True}):
+        with self.viewer.lock():
+            self.viewer.user_scn.ngeom = 0
+            if vis_flags["com"]:
+                self.visualize_com(data)
 
         self.viewer.sync()
 
     def visualize_com(self, data: Any):
         i = self.viewer.user_scn.ngeom
-        com_pos = np.zeros(3)
-        mujoco.mj_getTotalMass(self.model, data, com_pos)  # Compute CoM
+        com_pos = np.array(data.body(0).subtree_com, dtype=np.float32)
         mujoco.mjv_initGeom(
             self.viewer.user_scn.geoms[i],
             type=mujoco.mjtGeom.mjGEOM_SPHERE,
-            size=np.array([0.05, 0.05, 0.05]),  # Adjust size of the sphere
+            size=np.array([0.01, 0.01, 0.01]),  # Adjust size of the sphere
             pos=com_pos,
             mat=np.eye(3).flatten(),
             rgba=[1, 0, 0, 1],
