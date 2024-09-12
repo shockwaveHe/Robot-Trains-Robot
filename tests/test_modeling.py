@@ -13,7 +13,7 @@ from toddlerbot.utils.misc_utils import set_seed
 
 def arrays_are_close(
     arr1: npt.NDArray[np.float32], arr2: npt.NDArray[np.float32], tol: float = 1e-6
-):
+) -> bool:
     """
     Check if two numpy arrays are element-wise equal within a tolerance.
     """
@@ -33,7 +33,7 @@ def test_mass_properties():
     )
 
 
-def test_kinematics():
+def test_kinematics() -> None:
     robot = Robot("toddlerbot")
 
     exp_name: str = "test_kinematics"
@@ -47,12 +47,12 @@ def test_kinematics():
     # plot_ankle_mapping(robot.config["joints"], robot.ankle_ik, exp_folder_path)
 
     sim = MuJoCoSim(robot, fixed_base=True)
-    # sim.simulate(vis_type="render")
-    sim.simulate()
 
     sim.set_motor_angles(robot.init_motor_angles)
-    mujoco_q = sim.get_observation()["q"]
-    init_q = np.array(list(robot.init_joint_angles.values()))
+    sim.step()
+
+    mujoco_q = sim.get_observation().motor_pos
+    init_q = np.array(list(robot.init_motor_angles.values()))
 
     assert arrays_are_close(mujoco_q, init_q, tol=1e-3)
 
@@ -74,9 +74,9 @@ def test_kinematics():
 
         sim.set_motor_angles(random_motor_angles)
         time.sleep(3.0)
-        mujoco_q = sim.get_observation()["q"]
+        mujoco_q = sim.get_observation().motor_pos
 
-        robot_q = np.array(list(random_joint_angles.values()))
+        robot_q = np.array(list(random_motor_angles.values()))
         if not arrays_are_close(mujoco_q, robot_q, tol=2e-2):
             mask = np.abs(mujoco_q - robot_q) > 2e-2
             joint_names: List[str] = [

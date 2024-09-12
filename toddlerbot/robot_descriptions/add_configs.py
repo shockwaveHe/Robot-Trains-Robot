@@ -5,6 +5,8 @@ import platform
 import xml.etree.ElementTree as ET
 from typing import Any, Dict
 
+import numpy as np
+
 
 def get_default_config(
     robot_name: str,
@@ -40,8 +42,8 @@ def get_default_config(
         if joint_limit is None:
             raise ValueError(f"Joint {joint_name} does not have a limit tag.")
         else:
-            lower_limit = float(joint_limit.get("lower"))  # type: ignore
-            upper_limit = float(joint_limit.get("upper"))  # type: ignore
+            lower_limit = float(joint_limit.get("lower", -np.pi))
+            upper_limit = float(joint_limit.get("upper", np.pi))
 
         is_passive = False
         transmission = "none"
@@ -167,7 +169,7 @@ def get_default_config(
     return config_dict
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Get the config.")
     parser.add_argument(
         "--robot",

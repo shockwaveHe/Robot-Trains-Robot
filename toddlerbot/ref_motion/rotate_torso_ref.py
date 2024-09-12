@@ -11,10 +11,10 @@ class RotateTorsoReference(MotionReference):
     def __init__(self, robot: Robot):
         super().__init__("rotate_torso", "episodic", robot)
 
-        self.waist_roll_limits = np.array(  # type: ignore
+        self.waist_roll_limits = np.array(
             self.robot.joint_limits["waist_roll"], dtype=np.float32
         )
-        self.waist_yaw_limits = np.array(  # type: ignore
+        self.waist_yaw_limits = np.array(
             self.robot.joint_limits["waist_yaw"], dtype=np.float32
         )
         self.waist_roll_idx = self.robot.joint_ordering.index("waist_roll")
@@ -31,15 +31,15 @@ class RotateTorsoReference(MotionReference):
     def get_phase_signal(
         self, time_curr: float | ArrayType, command: ArrayType
     ) -> ArrayType:
-        time_total = np.max(  # type:ignore
-            np.concatenate(  # type:ignore
+        time_total = np.max(
+            np.concatenate(
                 [
                     self.waist_roll_limits / (command[0] + 1e-6),
                     self.waist_yaw_limits / (command[1] + 1e-6),
                 ]
             )
         )
-        phase = np.clip(time_curr / time_total, 0.0, 1.0)  # type: ignore
+        phase = np.clip(time_curr / time_total, 0.0, 1.0)
         phase_signal = gaussian_basis_functions(phase)
         return phase_signal
 
@@ -56,29 +56,29 @@ class RotateTorsoReference(MotionReference):
         if command is None:
             raise ValueError(f"command is required for {self.name}")
 
-        linear_vel = np.array([0.0, 0.0, 0.0], dtype=np.float32)  # type: ignore
-        angular_vel = np.array([command[0], 0.0, command[1]], dtype=np.float32)  # type: ignore
+        linear_vel = np.array([0.0, 0.0, 0.0], dtype=np.float32)
+        angular_vel = np.array([command[0], 0.0, command[1]], dtype=np.float32)
 
-        waist_roll = np.clip(  # type: ignore
+        waist_roll = np.clip(
             command[0] * time_curr,
             self.waist_roll_limits[0],
             self.waist_roll_limits[1],
         )
-        waist_yaw = np.clip(  # type: ignore
+        waist_yaw = np.clip(
             command[1] * time_curr,
             self.waist_yaw_limits[0],
             self.waist_yaw_limits[1],
         )
 
-        joint_pos = self.default_joint_pos.copy()  # type: ignore
+        joint_pos = self.default_joint_pos.copy()
         joint_pos = inplace_update(joint_pos, self.waist_roll_idx, waist_roll)
         joint_pos = inplace_update(joint_pos, self.waist_yaw_idx, waist_yaw)
 
-        joint_vel = self.default_joint_vel.copy()  # type: ignore
+        joint_vel = self.default_joint_vel.copy()
 
-        stance_mask = np.ones(2, dtype=np.float32)  # type: ignore
+        stance_mask = np.ones(2, dtype=np.float32)
 
-        return np.concatenate(  # type: ignore
+        return np.concatenate(
             (
                 path_pos,
                 path_quat,
@@ -87,7 +87,7 @@ class RotateTorsoReference(MotionReference):
                 joint_pos,
                 joint_vel,
                 stance_mask,
-            )  # type: ignore
+            )
         )
 
     def override_motor_target(
@@ -95,12 +95,12 @@ class RotateTorsoReference(MotionReference):
     ) -> ArrayType:
         motor_target = inplace_update(
             motor_target,
-            self.neck_actuator_indices,  # type: ignore
+            self.neck_actuator_indices,
             self.default_motor_pos[self.neck_actuator_indices],
         )
         motor_target = inplace_update(
             motor_target,
-            self.arm_actuator_indices,  # type: ignore
+            self.arm_actuator_indices,
             self.default_motor_pos[self.arm_actuator_indices],
         )
 

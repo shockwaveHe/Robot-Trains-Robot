@@ -17,10 +17,10 @@ class WalkSimpleReference(MotionReference):
         super().__init__("walk_simple", "periodic", robot)
 
         self.cycle_time = cycle_time
-        self.default_joint_pos = np.array(  # type: ignore
+        self.default_joint_pos = np.array(
             list(robot.default_joint_angles.values()), dtype=np.float32
         )
-        self.default_joint_vel = np.zeros_like(self.default_joint_pos)  # type: ignore
+        self.default_joint_vel = np.zeros_like(self.default_joint_pos)
 
         self.knee_pitch_default = self.default_joint_pos[
             self.robot.joint_ordering.index("left_knee_pitch")
@@ -44,10 +44,10 @@ class WalkSimpleReference(MotionReference):
     def get_phase_signal(
         self, time_curr: float | ArrayType, command: ArrayType
     ) -> ArrayType:
-        phase_signal = np.array(  # type:ignore
+        phase_signal = np.array(
             [
-                np.sin(2 * np.pi * time_curr / self.cycle_time),  # type:ignore
-                np.cos(2 * np.pi * time_curr / self.cycle_time),  # type:ignore
+                np.sin(2 * np.pi * time_curr / self.cycle_time),
+                np.cos(2 * np.pi * time_curr / self.cycle_time),
             ],
             dtype=np.float32,
         )
@@ -66,33 +66,33 @@ class WalkSimpleReference(MotionReference):
         if command is None:
             raise ValueError(f"command is required for {self.name}")
 
-        sin_phase_signal = np.sin(2 * np.pi * time_curr / self.cycle_time)  # type: ignore
-        signal_left = np.clip(sin_phase_signal, 0, None)  # type: ignore
-        signal_right = np.clip(sin_phase_signal, None, 0)  # type: ignore
+        sin_phase_signal = np.sin(2 * np.pi * time_curr / self.cycle_time)
+        signal_left = np.clip(sin_phase_signal, 0, None)
+        signal_right = np.clip(sin_phase_signal, None, 0)
 
-        linear_vel = np.array([command[0], command[1], 0.0], dtype=np.float32)  # type: ignore
-        angular_vel = np.array([0.0, 0.0, command[2]], dtype=np.float32)  # type: ignore
+        linear_vel = np.array([command[0], command[1], 0.0], dtype=np.float32)
+        angular_vel = np.array([0.0, 0.0, command[2]], dtype=np.float32)
 
-        joint_pos = self.default_joint_pos.copy()  # type: ignore
+        joint_pos = self.default_joint_pos.copy()
 
-        left_leg_angles = self.calculate_leg_angles(signal_left, True)  # type: ignore
-        right_leg_angles = self.calculate_leg_angles(signal_right, False)  # type: ignore
+        left_leg_angles = self.calculate_leg_angles(signal_left, True)
+        right_leg_angles = self.calculate_leg_angles(signal_right, False)
         leg_angles = {**left_leg_angles, **right_leg_angles}
 
         for idx, angle in leg_angles.items():
             joint_pos = inplace_update(joint_pos, idx, angle)
 
-        double_support_mask = np.abs(sin_phase_signal) < self.double_support_phase  # type: ignore
-        joint_pos = np.where(double_support_mask, self.default_joint_pos, joint_pos)  # type: ignore
+        double_support_mask = np.abs(sin_phase_signal) < self.double_support_phase
+        joint_pos = np.where(double_support_mask, self.default_joint_pos, joint_pos)
 
-        joint_vel = self.default_joint_vel.copy()  # type: ignore
+        joint_vel = self.default_joint_vel.copy()
 
-        stance_mask = np.zeros(2, dtype=np.float32)  # type: ignore
-        stance_mask = inplace_update(stance_mask, 0, np.any(sin_phase_signal >= 0))  # type: ignore
-        stance_mask = inplace_update(stance_mask, 1, np.any(sin_phase_signal < 0))  # type: ignore
-        stance_mask = np.where(double_support_mask, 1, stance_mask)  # type: ignore
+        stance_mask = np.zeros(2, dtype=np.float32)
+        stance_mask = inplace_update(stance_mask, 0, np.any(sin_phase_signal >= 0))
+        stance_mask = inplace_update(stance_mask, 1, np.any(sin_phase_signal < 0))
+        stance_mask = np.where(double_support_mask, 1, stance_mask)
 
-        return np.concatenate(  # type: ignore
+        return np.concatenate(
             (
                 path_pos,
                 path_quat,
@@ -101,17 +101,17 @@ class WalkSimpleReference(MotionReference):
                 joint_pos,
                 joint_vel,
                 stance_mask,
-            )  # type: ignore
+            )
         )
 
     def calculate_leg_angles(self, signal: ArrayType, is_left: bool):
-        knee_angle = np.abs(  # type: ignore
+        knee_angle = np.abs(
             signal * (self.max_knee_pitch - self.knee_pitch_default)
             + (2 * int(is_left) - 1) * self.knee_pitch_default
         )
-        ank_pitch_angle = np.arctan2(  # type: ignore
-            np.sin(knee_angle),  # type: ignore
-            np.cos(knee_angle) + self.shin_thigh_ratio,  # type: ignore
+        ank_pitch_angle = np.arctan2(
+            np.sin(knee_angle),
+            np.cos(knee_angle) + self.shin_thigh_ratio,
         )
         hip_pitch_angle = knee_angle - ank_pitch_angle
 
@@ -133,12 +133,12 @@ class WalkSimpleReference(MotionReference):
     ) -> ArrayType:
         motor_target = inplace_update(
             motor_target,
-            self.neck_actuator_indices,  # type: ignore
+            self.neck_actuator_indices,
             self.default_motor_pos[self.neck_actuator_indices],
         )
         motor_target = inplace_update(
             motor_target,
-            self.arm_actuator_indices,  # type: ignore
+            self.arm_actuator_indices,
             self.default_motor_pos[self.arm_actuator_indices],
         )
 

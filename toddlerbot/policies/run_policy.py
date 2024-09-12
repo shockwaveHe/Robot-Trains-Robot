@@ -11,6 +11,8 @@ from tqdm import tqdm
 
 from toddlerbot.policies import BasePolicy
 from toddlerbot.sim import BaseSim, Obs
+from toddlerbot.sim.mujoco_sim import MuJoCoSim
+from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.math_utils import round_floats
 from toddlerbot.utils.misc_utils import dump_profiling_data, log, snake2camel
@@ -184,7 +186,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
     p_bar = tqdm(total=n_steps_total, desc="Running the policy")
     start_time = time.time()
     step_idx = 0
-    time_until_next_step = 0
+    time_until_next_step = 0.0
     last_ckpt_idx = -1
     try:
         while step_idx < n_steps_total:
@@ -210,7 +212,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
                 ckpt_idx = bisect.bisect_left(ckpt_times, obs.time)
                 if ckpt_idx != last_ckpt_idx:
                     motor_kps = policy.ckpt_dict[ckpt_times[ckpt_idx]]
-                    if np.any(list(motor_kps.values())):  # type: ignore
+                    if np.any(list(motor_kps.values())):
                         sim.set_motor_kps(motor_kps)
                         last_ckpt_idx = ckpt_idx
 
@@ -354,15 +356,12 @@ if __name__ == "__main__":
 
     robot = Robot(args.robot)
 
+    sim: BaseSim | None = None
     if args.sim == "mujoco":
-        from toddlerbot.sim.mujoco_sim import MuJoCoSim
-
         sim = MuJoCoSim(robot, vis_type=args.vis, fixed_base="fixed" in args.policy)
         init_motor_pos = sim.get_observation().motor_pos
 
     elif args.sim == "real":
-        from toddlerbot.sim.real_world import RealWorld
-
         sim = RealWorld(robot)
         sim.has_imu = "fixed" not in args.policy
         init_motor_pos = sim.get_observation(retries=-1).motor_pos
@@ -370,6 +369,7 @@ if __name__ == "__main__":
     else:
         raise ValueError("Unknown simulator")
 
+    policy: BasePolicy | None = None
     if "replay" in args.policy:
         from toddlerbot.policies.replay import ReplayPolicy
 

@@ -147,6 +147,7 @@ class SysIDFixedPolicy(BasePolicy):
         action_list.append(prep_action)
 
         for symm_joint_name, sysID_specs in joint_sysID_specs.items():
+            joint_idx: int | List[int] | None = None
             if symm_joint_name in robot.joint_ordering:
                 joint_names = [symm_joint_name]
                 joint_idx = robot.joint_ordering.index(joint_names[0])
@@ -253,8 +254,8 @@ class SysIDFixedPolicy(BasePolicy):
                 for kp in sysID_specs.kp_list:
                     build_episode(kp)
 
-        self.time_arr = np.concatenate(time_list)  # type: ignore
-        self.action_arr = np.concatenate(action_list)  # type: ignore
+        self.time_arr = np.concatenate(time_list)
+        self.action_arr = np.concatenate(action_list)
         self.n_steps_total = len(self.time_arr)
 
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:

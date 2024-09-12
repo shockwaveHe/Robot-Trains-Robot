@@ -9,7 +9,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 import numpy.typing as npt
 import optuna
-from optuna.logging import _get_library_root_logger  # type: ignore
+from optuna.logging import _get_library_root_logger
 
 from toddlerbot.sim import Obs
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
@@ -79,7 +79,7 @@ def load_datasets(robot: Robot, data_path: str):
             joint_names_list.append(list(d.keys()))
 
         obs_time = [obs.time for obs in obs_list]
-        obs_indices = np.searchsorted(obs_time, ckpt_times)  # type: ignore
+        obs_indices = np.searchsorted(obs_time, ckpt_times)
 
         last_idx = 0
         for joint_names, motor_kps, obs_idx in zip(
@@ -125,20 +125,20 @@ def optimize_parameters(
         raise ValueError("Invalid simulator")
 
     initial_trial = {
-        "damping": float(sim.model.joint(joint_name).damping),  # type: ignore
-        "armature": float(sim.model.joint(joint_name).armature),  # type: ignore
+        "damping": float(sim.model.joint(joint_name).damping),
+        "armature": float(sim.model.joint(joint_name).armature),
     }
     joint_idx = robot.joint_ordering.index(joint_name)
     motor_names = robot.joint_to_motor_name[joint_name]
 
-    joint_pos_real = np.concatenate([obs[:, joint_idx] for obs in obs_list])  # type: ignore
+    joint_pos_real = np.concatenate([obs[:, joint_idx] for obs in obs_list])
 
     def early_stopping_check(
         study: optuna.Study, trial: optuna.Trial, early_stopping_rounds: int
     ):
         current_trial_number = trial.number
-        best_trial_number = study.best_trial.number  # type: ignore
-        should_stop = (  # type: ignore
+        best_trial_number = study.best_trial.number
+        should_stop = (
             current_trial_number - best_trial_number
         ) >= early_stopping_rounds
         if should_stop:
@@ -178,12 +178,13 @@ def optimize_parameters(
                 )
             )
 
-        joint_pos_sim = np.concatenate(joint_pos_sim_list)  # type: ignore
+        joint_pos_sim = np.concatenate(joint_pos_sim_list)
 
         error = np.sqrt(np.mean((joint_pos_real - joint_pos_sim) ** 2))
 
         return error
 
+    sampler: optuna.samplers.BaseSampler | None = None
     if sampler_name == "TPE":
         sampler = optuna.samplers.TPESampler()
     elif sampler_name == "CMA":
@@ -207,7 +208,7 @@ def optimize_parameters(
         n_jobs=1,
         show_progress_bar=True,
         callbacks=[
-            partial(early_stopping_check, early_stopping_rounds=early_stopping_rounds)  # type: ignore
+            partial(early_stopping_check, early_stopping_rounds=early_stopping_rounds)
         ],
     )
 
@@ -327,7 +328,7 @@ def evaluate(
         joint_idx = robot.joint_ordering.index(joint_name)
         motor_names = robot.joint_to_motor_name[joint_name]
 
-        joint_pos_real = np.concatenate([obs[:, joint_idx] for obs in obs_list])  # type: ignore
+        joint_pos_real = np.concatenate([obs[:, joint_idx] for obs in obs_list])
 
         if sim_name == "mujoco":
             sim = MuJoCoSim(robot, fixed_base=True)
@@ -357,7 +358,7 @@ def evaluate(
                 )
             )
 
-        joint_pos_sim = np.concatenate(joint_pos_sim_list)  # type: ignore
+        joint_pos_sim = np.concatenate(joint_pos_sim_list)
 
         error = np.sqrt(np.mean((joint_pos_real - joint_pos_sim) ** 2))
 
@@ -367,18 +368,19 @@ def evaluate(
             level="info",
         )
 
-        time_seq_ref_dict[joint_name] = np.arange(  # type: ignore
-            sum([len(action) for action in action_list])
-        ) * (sim.n_frames * sim.dt)
+        time_seq_ref_dict[joint_name] = list(
+            np.arange(sum([len(action) for action in action_list]))
+            * (sim.n_frames * sim.dt)
+        )
         time_seq_sim_dict[joint_name] = obs_time_sim_list
-        obs_time_real = np.concatenate(obs_time_dict[joint_name])  # type: ignore
+        obs_time_real = np.concatenate(obs_time_dict[joint_name])
         obs_time_real -= obs_time_real[0]
         time_seq_real_dict[joint_name] = obs_time_real.tolist()
 
         joint_pos_sim_dict[joint_name] = joint_pos_sim.tolist()
         joint_pos_real_dict[joint_name] = joint_pos_real.tolist()
 
-        action_all = np.concatenate(  # type: ignore
+        action_all = np.concatenate(
             [action[:, joint_idx] for action in action_list]
         ).tolist()
         action_sim_dict[joint_name] = action_all

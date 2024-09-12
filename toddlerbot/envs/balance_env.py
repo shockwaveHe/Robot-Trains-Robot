@@ -66,8 +66,8 @@ class BalanceEnv(MJXEnv):
             assert self.fixed_command.shape[0] == self.num_commands
             return self.fixed_command
 
-        rng, rng_1 = jax.random.split(rng)  # type:ignore
-        commands = jax.random.uniform(  # type:ignore
+        rng, rng_1 = jax.random.split(rng)
+        commands = jax.random.uniform(
             rng_1,
             (1,),
             minval=0.0,
@@ -76,7 +76,7 @@ class BalanceEnv(MJXEnv):
         return commands
 
     def _extract_command(self, command: jax.Array) -> Tuple[jax.Array, jax.Array]:
-        lin_vel = jnp.array([0.0, 0.0, 0.0])  # type:ignore
-        ang_vel = jnp.array([0.0, 0.0, 0.0])  # type:ignore
+        lin_vel = jnp.array([0.0, 0.0, 0.0])
+        ang_vel = jnp.array([0.0, 0.0, 0.0])
 
         return lin_vel, ang_vel

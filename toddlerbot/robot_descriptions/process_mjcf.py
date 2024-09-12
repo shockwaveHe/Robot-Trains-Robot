@@ -4,7 +4,7 @@ import shutil
 import xml.etree.ElementTree as ET
 from typing import Any, Dict, List, Tuple
 
-from transforms3d.euler import euler2quat  # type: ignore
+from transforms3d.euler import euler2quat
 
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.math_utils import round_to_sig_digits
@@ -354,6 +354,7 @@ def add_contacts(
     # Add all <pair> elements first
     for body1_name, body2_name in pairs:
         geom1_name = collision_bodies[body1_name].get("name")
+        geom2_name: str | None = None
         if body2_name == "floor":
             geom2_name = "floor"
         else:
@@ -557,7 +558,7 @@ def parse_urdf_body_link(root: ET.Element, root_link_name: str):
         inertia = inertial.find("inertia").attrib  # type: ignore
 
         pos = [float(x) for x in origin["xyz"].split(" ")]
-        quat = euler2quat(*[float(x) for x in origin["rpy"].split(" ")])  # type: ignore
+        quat = euler2quat(*[float(x) for x in origin["rpy"].split(" ")])
         diaginertia = [
             float(x) for x in [inertia["ixx"], inertia["iyy"], inertia["izz"]]
         ]
@@ -735,7 +736,7 @@ def create_scene_xml(mjcf_path: str, general_config: Dict[str, Any], is_fixed: b
         attrib={"pos": "0 0 1.5", "dir": "0 0 -1", "directional": "true"},
     )
 
-    camera_settings = {
+    camera_settings: Dict[str, Dict[str, List[float]]] = {
         "perspective": {"pos": [0.7, -0.7, 0.7], "xy_axes": [1, 1, 0, -1, 1, 3]},
         "side": {"pos": [0, -1, 0.6], "xy_axes": [1, 0, 0, 0, 1, 3]},
         "top": {"pos": [0, 0, 1], "xy_axes": [0, 1, 0, -1, 0, 0]},

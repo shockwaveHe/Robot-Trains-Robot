@@ -66,7 +66,7 @@ class RotateTorsoOpenPolicy(BasePolicy):
             warm_up_act = np.zeros_like(init_motor_pos)
             warm_up_act[joint_idx] = mean
 
-            if len(sysID_specs.warm_up_angles) > 0:
+            if sysID_specs.warm_up_angles is not None:
                 for name, angle in sysID_specs.warm_up_angles.items():
                     warm_up_act[robot.joint_ordering.index(name)] = angle
 
@@ -129,8 +129,8 @@ class RotateTorsoOpenPolicy(BasePolicy):
             action_list.append(reset_action)
             self.ckpt_dict[joint_name] = time_list[-1][-1]
 
-        self.time_arr = np.concatenate(time_list)  # type: ignore
-        self.action_arr = np.concatenate(action_list)  # type: ignore
+        self.time_arr = np.concatenate(time_list)
+        self.action_arr = np.concatenate(action_list)
         self.n_steps_total = len(self.time_arr)
 
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:

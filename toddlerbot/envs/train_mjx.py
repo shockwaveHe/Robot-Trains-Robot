@@ -9,27 +9,31 @@ import json
 import shutil
 import time
 from dataclasses import asdict
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Type
 
 import jax
 import jax.numpy as jnp
 import mediapy as media
-import mujoco  # type: ignore
+import mujoco
 import numpy as np
 import numpy.typing as npt
-import optax  # type: ignore
-from brax import base  # type: ignore
-from brax.io import model  # type: ignore
-from brax.training.agents.ppo import networks as ppo_networks  # type: ignore
-from brax.training.agents.ppo import train as ppo  # type: ignore
+import optax
+from brax import base
+from brax.io import model
+from brax.training.agents.ppo import networks as ppo_networks
+from brax.training.agents.ppo import train as ppo
 from flax.training import orbax_utils
-from moviepy.editor import VideoFileClip, clips_array  # type: ignore
-from orbax import checkpoint as ocp  # type: ignore
+from moviepy.editor import VideoFileClip, clips_array
+from orbax import checkpoint as ocp
 from tqdm import tqdm
 
 import wandb
+from toddlerbot.envs.balance_env import BalanceCfg, BalanceEnv
 from toddlerbot.envs.mjx_env import MJXEnv
 from toddlerbot.envs.ppo_config import PPOConfig
+from toddlerbot.envs.rotate_torso_env import RotateTorsoCfg, RotateTorsoEnv
+from toddlerbot.envs.squat_env import SquatCfg, SquatEnv
+from toddlerbot.envs.walk_env import WalkCfg, WalkEnv
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
 
@@ -50,7 +54,7 @@ def render_video(
         video_path = os.path.join("results", run_name, f"{camera}.mp4")
         media.write_video(
             video_path,
-            env.render(  # type: ignore
+            env.render(
                 rollout[::render_every], height=height, width=width, camera=camera
             ),
             fps=1.0 / env.dt / render_every,
@@ -124,12 +128,12 @@ def log_metrics(
 def get_body_mass_attr_range(robot: Robot, body_mass_range: List[float], num_envs: int):
     xml_path: str = find_robot_file_path(robot.name, suffix="_scene.xml")
 
-    model = mujoco.MjModel.from_xml_path(xml_path)  # type: ignore
-    data = mujoco.MjData(model)  # type: ignore
+    model = mujoco.MjModel.from_xml_path(xml_path)
+    data = mujoco.MjData(model)
 
-    body_mass = np.array(model.body("torso").mass).copy()  # type: ignore
-    body_inertia = np.array(model.body("torso").inertia).copy()  # type: ignore
-    body_mass_delta_range = np.linspace(  # type: ignore
+    body_mass = np.array(model.body("torso").mass).copy()
+    body_inertia = np.array(model.body("torso").inertia).copy()
+    body_mass_delta_range = np.linspace(
         body_mass_range[0], body_mass_range[1], num_envs
     )
     # Randomize the order of the body mass deltas
@@ -146,32 +150,32 @@ def get_body_mass_attr_range(robot: Robot, body_mass_range: List[float], num_env
     tendon_invweight0_list = []
     for body_mass_delta in body_mass_delta_range:
         # Update body mass and inertia in the model
-        model.body("torso").mass = body_mass + body_mass_delta  # type: ignore
-        model.body("torso").inertia = (  # type: ignore
+        model.body("torso").mass = body_mass + body_mass_delta
+        model.body("torso").inertia = (
             (body_mass + body_mass_delta) / body_mass * body_inertia
         )
-        mujoco.mj_setConst(model, data)  # type: ignore
+        mujoco.mj_setConst(model, data)
 
         # Append the values to corresponding lists
-        body_mass_list.append(jnp.array(model.body_mass))  # type: ignore
-        body_inertia_list.append(jnp.array(model.body_inertia))  # type: ignore
-        actuator_acc0_list.append(np.array(model.actuator_acc0))  # type: ignore
-        body_invweight0_list.append(jnp.array(model.body_invweight0))  # type: ignore
-        body_subtreemass_list.append(jnp.array(model.body_subtreemass))  # type: ignore
-        dof_M0_list.append(jnp.array(model.dof_M0))  # type: ignore
-        dof_invweight0_list.append(jnp.array(model.dof_invweight0))  # type: ignore
-        tendon_invweight0_list.append(jnp.array(model.tendon_invweight0))  # type: ignore
+        body_mass_list.append(jnp.array(model.body_mass))
+        body_inertia_list.append(jnp.array(model.body_inertia))
+        actuator_acc0_list.append(np.array(model.actuator_acc0))
+        body_invweight0_list.append(jnp.array(model.body_invweight0))
+        body_subtreemass_list.append(jnp.array(model.body_subtreemass))
+        dof_M0_list.append(jnp.array(model.dof_M0))
+        dof_invweight0_list.append(jnp.array(model.dof_invweight0))
+        tendon_invweight0_list.append(jnp.array(model.tendon_invweight0))
 
     # Return a dictionary where each key has a JAX array of all values across environments
     body_mass_attr_range: Dict[str, jax.Array | npt.NDArray[np.float32]] = {
-        "body_mass": jnp.stack(body_mass_list),  # type: ignore
-        "body_inertia": jnp.stack(body_inertia_list),  # type: ignore
-        "actuator_acc0": np.stack(actuator_acc0_list),  # type: ignore
-        "body_invweight0": jnp.stack(body_invweight0_list),  # type: ignore
-        "body_subtreemass": jnp.stack(body_subtreemass_list),  # type: ignore
-        "dof_M0": jnp.stack(dof_M0_list),  # type: ignore
-        "dof_invweight0": jnp.stack(dof_invweight0_list),  # type: ignore
-        "tendon_invweight0": jnp.stack(tendon_invweight0_list),  # type: ignore
+        "body_mass": jnp.stack(body_mass_list),
+        "body_inertia": jnp.stack(body_inertia_list),
+        "actuator_acc0": np.stack(actuator_acc0_list),
+        "body_invweight0": jnp.stack(body_invweight0_list),
+        "body_subtreemass": jnp.stack(body_subtreemass_list),
+        "dof_M0": jnp.stack(dof_M0_list),
+        "dof_invweight0": jnp.stack(dof_invweight0_list),
+        "tendon_invweight0": jnp.stack(tendon_invweight0_list),
     }
 
     return body_mass_attr_range
@@ -192,40 +196,40 @@ def domain_randomize(
     ) -> Tuple[
         jax.Array, jax.Array, jax.Array, jax.Array, jax.Array, Dict[str, jax.Array]
     ]:
-        _, key = jax.random.split(rng, 2)  # type: ignore
+        _, key = jax.random.split(rng, 2)
 
         if friction_range is None:
             friction = sys.geom_friction
         else:
             # Friction
-            friction = jax.random.uniform(  # type: ignore
+            friction = jax.random.uniform(
                 key,
                 (1,),
                 minval=friction_range[0],
                 maxval=friction_range[1],
             )
-            friction = sys.geom_friction.at[:, 0].set(friction)  # type: ignore
+            friction = sys.geom_friction.at[:, 0].set(friction)
 
         if gain_range is None:
             gain = sys.actuator_gainprm
             bias = sys.actuator_biasprm
         else:
             # Actuator
-            _, key = jax.random.split(key, 2)  # type: ignore
+            _, key = jax.random.split(key, 2)
             param = (
-                jax.random.uniform(  # type: ignore
+                jax.random.uniform(
                     key, (1,), minval=gain_range[0], maxval=gain_range[1]
                 )
                 * sys.actuator_gainprm[:, 0]
             )
-            gain = sys.actuator_gainprm.at[:, 0].set(param)  # type: ignore
-            bias = sys.actuator_biasprm.at[:, 1].set(-param)  # type: ignore
+            gain = sys.actuator_gainprm.at[:, 0].set(param)
+            bias = sys.actuator_biasprm.at[:, 1].set(-param)
 
         if damping_range is None:
             damping = sys.dof_damping
         else:
             damping = (
-                jax.random.uniform(  # type: ignore
+                jax.random.uniform(
                     key, (1,), minval=damping_range[0], maxval=damping_range[1]
                 )
                 * sys.dof_damping
@@ -235,7 +239,7 @@ def domain_randomize(
             armature = sys.dof_armature
         else:
             armature = (
-                jax.random.uniform(  # type: ignore
+                jax.random.uniform(
                     key, (1,), minval=armature_range[0], maxval=armature_range[1]
                 )
                 * sys.dof_armature
@@ -308,14 +312,14 @@ def domain_randomize(
     #     sys_dict[key] = value
 
     if body_mass_attr_range is not None:
-        sys = sys.replace(actuator_acc0=body_mass_attr_range["actuator_acc0"][0])  # type: ignore
+        sys = sys.replace(actuator_acc0=body_mass_attr_range["actuator_acc0"][0])
         body_mass_attr_range["actuator_acc0"] = body_mass_attr_range["actuator_acc0"][
             1:
         ]
 
-    in_axes = jax.tree.map(lambda x: None, sys)  # type: ignore
-    in_axes = in_axes.tree_replace(in_axes_dict)  # type: ignore
-    sys = sys.tree_replace(sys_dict)  # type: ignore
+    in_axes = jax.tree.map(lambda x: None, sys)
+    in_axes = in_axes.tree_replace(in_axes_dict)
+    sys = sys.tree_replace(sys_dict)
 
     return sys, in_axes
 
@@ -341,7 +345,7 @@ def train(
     with open(os.path.join(exp_folder_path, "env_config.json"), "w") as f:
         json.dump(asdict(env.cfg), f, indent=4)
 
-    wandb.init(  # type: ignore
+    wandb.init(
         project="ToddlerBot",
         sync_tensorboard=True,
         name=run_name,
@@ -354,11 +358,11 @@ def train(
         # save checkpoints
         save_args = orbax_utils.save_args_from_target(params)
         path = os.path.abspath(os.path.join(exp_folder_path, f"{current_step}"))
-        orbax_checkpointer.save(path, params, force=True, save_args=save_args)  # type: ignore
+        orbax_checkpointer.save(path, params, force=True, save_args=save_args)
         policy_path = os.path.join(path, "policy")
         model.save_params(policy_path, (params[0], params[1].policy))
 
-    learning_rate_schedule_fn = optax.linear_schedule(  # type: ignore
+    learning_rate_schedule_fn = optax.linear_schedule(
         init_value=train_cfg.learning_rate,
         end_value=train_cfg.min_learning_rate,
         transition_steps=train_cfg.num_timesteps,
@@ -379,7 +383,7 @@ def train(
         body_mass_attr_range=body_mass_attr_range,
     )
 
-    train_fn = functools.partial(  # type: ignore
+    train_fn = functools.partial(
         ppo.train,
         num_timesteps=train_cfg.num_timesteps,
         num_evals=train_cfg.num_evals,
@@ -395,7 +399,7 @@ def train(
         num_envs=train_cfg.num_envs,
         batch_size=train_cfg.batch_size,
         seed=train_cfg.seed,
-        network_factory=make_networks_factory,  # type: ignore
+        network_factory=make_networks_factory,
         randomization_fn=domain_randomize_fn,
         policy_params_fn=policy_params_fn,
         restore_checkpoint_path=restore_checkpoint_path,
@@ -421,9 +425,9 @@ def train(
         )
 
         # Log metrics to wandb
-        wandb.log(log_data)  # type: ignore
+        wandb.log(log_data)
 
-    _, params, _ = train_fn(environment=env, eval_env=eval_env, progress_fn=progress)  # type: ignore
+    _, params, _ = train_fn(environment=env, eval_env=eval_env, progress_fn=progress)
 
     model_path = os.path.join(exp_folder_path, "policy")
     model.save_params(model_path, params)
@@ -447,7 +451,7 @@ def evaluate(
     ppo_network = make_networks_factory(
         env.obs_size, env.privileged_obs_size, env.action_size
     )
-    make_policy = ppo_networks.make_inference_fn(ppo_network)  # type: ignore
+    make_policy = ppo_networks.make_inference_fn(ppo_network)
     policy_path = os.path.join("results", run_name, "best_policy")
     if not os.path.exists(policy_path):
         policy_path = os.path.join("results", run_name, "policy")
@@ -456,27 +460,27 @@ def evaluate(
     inference_fn = make_policy(params)
 
     # initialize the state
-    jit_reset = jax.jit(env.reset)  # type: ignore
+    jit_reset = jax.jit(env.reset)
     # jit_reset = env.reset
-    jit_step = jax.jit(env.step)  # type: ignore
+    jit_step = jax.jit(env.step)
     # jit_step = env.step
-    jit_inference_fn = jax.jit(inference_fn)  # type: ignore
+    jit_inference_fn = jax.jit(inference_fn)
     # jit_inference_fn = inference_fn
 
-    rng = jax.random.PRNGKey(0)  # type: ignore
-    state = jit_reset(rng)  # type: ignore
+    rng = jax.random.PRNGKey(0)
+    state = jit_reset(rng)
 
-    rollout: List[Any] = [state.pipeline_state]  # type: ignore
+    rollout: List[Any] = [state.pipeline_state]
 
     times = [time.time()]
     for i in tqdm(range(num_steps), desc="Evaluating"):
-        act_rng, rng = jax.random.split(rng)  # type: ignore
-        ctrl, _ = jit_inference_fn(state.obs, act_rng)  # type: ignore
-        state = jit_step(state, ctrl)  # type: ignore
+        act_rng, rng = jax.random.split(rng)
+        ctrl, _ = jit_inference_fn(state.obs, act_rng)
+        state = jit_step(state, ctrl)
         times.append(time.time())
-        rollout.append(state.pipeline_state)  # type: ignore
+        rollout.append(state.pipeline_state)
         if i % log_every == 0:
-            log_metrics(state.metrics, times[-1] - times[0])  # type: ignore
+            log_metrics(state.metrics, times[-1] - times[0])
 
     try:
         render_video(env, rollout, run_name)
@@ -514,40 +518,38 @@ if __name__ == "__main__":
 
     robot = Robot(args.robot)
 
-    if "walk" in args.env:
-        from toddlerbot.envs.walk_env import WalkCfg, WalkEnv
+    env_cfg: WalkCfg | SquatCfg | RotateTorsoCfg | BalanceCfg | None = None
+    train_cfg: PPOConfig | None = None
+    env_class: (
+        Type[WalkEnv] | Type[SquatEnv] | Type[RotateTorsoEnv] | Type[BalanceEnv] | None
+    ) = None
 
+    if "walk" in args.env:
         env_cfg = WalkCfg()
         train_cfg = PPOConfig()
         env_class = WalkEnv
-        fixed_command = jnp.array([0.1, 0.0, 0.0])  # type:ignore
+        fixed_command = jnp.array([0.1, 0.0, 0.0])
         kwargs = {"ref_motion_type": "zmp"}
 
     elif "squat" in args.env:
-        from toddlerbot.envs.squat_env import SquatCfg, SquatEnv
-
         env_cfg = SquatCfg()
         train_cfg = PPOConfig()
         env_class = SquatEnv
-        fixed_command = jnp.array([-0.0])  # type:ignore
+        fixed_command = jnp.array([-0.0])
         kwargs = {}
 
     elif "rotate_torso" in args.env:
-        from toddlerbot.envs.rotate_torso_env import RotateTorsoCfg, RotateTorsoEnv
-
         env_cfg = RotateTorsoCfg()
         train_cfg = PPOConfig()
         env_class = RotateTorsoEnv
-        fixed_command = jnp.array([0.2, 0.0])  # type:ignore
+        fixed_command = jnp.array([0.2, 0.0])
         kwargs = {}
 
     elif "balance" in args.env:
-        from toddlerbot.envs.balance_env import BalanceCfg, BalanceEnv
-
         env_cfg = BalanceCfg()
         train_cfg = PPOConfig()
         env_class = BalanceEnv
-        fixed_command = jnp.array([0.0])  # type:ignore
+        fixed_command = jnp.array([0.0])
         kwargs = {}
 
     else:
@@ -574,26 +576,26 @@ if __name__ == "__main__":
     env = env_class(
         "walk",
         robot,
-        env_cfg,  # type:ignore
+        env_cfg,  # type: ignore
         fixed_base="fixed" in args.env,
-        **kwargs,  # type:ignore
+        **kwargs,  # type: ignore
     )
     eval_env = env_class(
         "walk",
         robot,
-        env_cfg,  # type:ignore
+        env_cfg,  # type: ignore
         fixed_base="fixed" in args.env,
-        **kwargs,  # type:ignore
+        **kwargs,  # type: ignore
     )
     test_env = env_class(
         "walk",
         robot,
-        env_cfg,  # type:ignore
+        env_cfg,  # type: ignore
         fixed_base="fixed" in args.env,
         fixed_command=fixed_command,
         add_noise=False,
         add_push=False,
-        **kwargs,  # type:ignore
+        **kwargs,
     )
 
     make_networks_factory = functools.partial(

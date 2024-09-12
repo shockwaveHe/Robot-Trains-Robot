@@ -7,7 +7,17 @@ import numpy as np
 import numpy.typing as npt
 from tqdm import tqdm
 
+from toddlerbot.envs.balance_env import BalanceCfg
+from toddlerbot.envs.mjx_config import MJXConfig
+from toddlerbot.envs.rotate_torso_env import RotateTorsoCfg
+from toddlerbot.envs.squat_env import SquatCfg
+from toddlerbot.envs.walk_env import WalkCfg
 from toddlerbot.ref_motion import MotionReference
+from toddlerbot.ref_motion.balance_ref import BalanceReference
+from toddlerbot.ref_motion.rotate_torso_ref import RotateTorsoReference
+from toddlerbot.ref_motion.squat_ref import SquatReference
+from toddlerbot.ref_motion.walk_simple_ref import WalkSimpleReference
+from toddlerbot.ref_motion.walk_zmp_ref import WalkZMPReference
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.misc_utils import dump_profiling_data
@@ -30,13 +40,13 @@ def test_motion_ref(
     try:
         for command in command_list:
             for time_curr in tqdm(
-                np.arange(0, time_total, sim.control_dt),  # type: ignore
+                np.arange(0, time_total, sim.control_dt),
                 desc="Running Ref Motion",
             ):
                 state = motion_ref.get_state_ref(
                     path_pos, path_quat, time_curr, command
                 )
-                joint_angles = np.asarray(state[13 : 13 + len(robot.joint_ordering)])  # type: ignore
+                joint_angles = np.asarray(state[13 : 13 + len(robot.joint_ordering)])
                 motor_angles = robot.joint_to_motor_angles(
                     dict(zip(robot.joint_ordering, joint_angles))
                 )
@@ -94,17 +104,14 @@ if __name__ == "__main__":
     else:
         raise ValueError("Unknown simulator")
 
-    if args.ref == "walk_simple":
-        from toddlerbot.envs.walk_env import WalkCfg
-        from toddlerbot.ref_motion.walk_simple_ref import WalkSimpleReference
+    cfg: MJXConfig | None = None
+    motion_ref: MotionReference | None = None
 
+    if args.ref == "walk_simple":
         cfg = WalkCfg()
         motion_ref = WalkSimpleReference(robot, cfg.action.cycle_time)
 
     elif args.ref == "walk_zmp":
-        from toddlerbot.envs.walk_env import WalkCfg
-        from toddlerbot.ref_motion.walk_zmp_ref import WalkZMPReference
-
         cfg = WalkCfg()
         motion_ref = WalkZMPReference(
             robot,
@@ -117,23 +124,14 @@ if __name__ == "__main__":
         )
 
     elif args.ref == "squat":
-        from toddlerbot.envs.squat_env import SquatCfg
-        from toddlerbot.ref_motion.squat_ref import SquatReference
-
         cfg = SquatCfg()
         motion_ref = SquatReference(robot)
 
     elif args.ref == "rotate_torso":
-        from toddlerbot.envs.rotate_torso_env import RotateTorsoCfg
-        from toddlerbot.ref_motion.rotate_torso_ref import RotateTorsoReference
-
         cfg = RotateTorsoCfg()
         motion_ref = RotateTorsoReference(robot)
 
     elif args.ref == "balance":
-        from toddlerbot.envs.balance_env import BalanceCfg
-        from toddlerbot.ref_motion.balance_ref import BalanceReference
-
         cfg = BalanceCfg()
         motion_ref = BalanceReference(robot)
 

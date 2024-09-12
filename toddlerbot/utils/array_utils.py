@@ -5,7 +5,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import numpy.typing as npt
-import scipy  # type: ignore
+import scipy
 
 USE_JAX = os.getenv("USE_JAX", "false").lower() == "true"
 
@@ -67,9 +67,9 @@ def loop_update(
     if USE_JAX:
         # Use jax.lax.scan for JAX-compatible looping
         (final_traj_x, _), _ = jax.lax.scan(
-            update_step,
+            update_step,  # type: ignore
             (x, u),
-            jnp.arange(*index_range),  # type: ignore
+            jnp.arange(*index_range),
         )
     else:
         # Use a standard loop for NumPy

@@ -14,17 +14,17 @@ class MotionReference(ABC):
         self.motion_type = motion_type
         self.robot = robot
 
-        self.default_joint_pos = np.array(  # type: ignore
+        self.default_joint_pos = np.array(
             list(robot.default_joint_angles.values()), dtype=np.float32
         )
-        self.default_joint_vel = np.zeros_like(self.default_joint_pos)  # type: ignore
+        self.default_joint_vel = np.zeros_like(self.default_joint_pos)
 
-        self.default_motor_pos = np.array(  # type: ignore
+        self.default_motor_pos = np.array(
             list(robot.default_motor_angles.values()), dtype=np.float32
         )
 
-        actuator_indices = np.arange(robot.nu)  # type:ignore
-        motor_groups = numpy.array(  # type:ignore
+        actuator_indices = np.arange(robot.nu)
+        motor_groups = numpy.array(
             [robot.joint_groups[name] for name in robot.motor_ordering]
         )
         self.leg_actuator_indices = actuator_indices[motor_groups == "leg"]

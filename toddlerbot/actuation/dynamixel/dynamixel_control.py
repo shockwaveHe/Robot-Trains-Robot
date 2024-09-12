@@ -42,8 +42,6 @@ class DynamixelConfig:
 
 class DynamixelController(BaseController):
     def __init__(self, config: DynamixelConfig, motor_ids: List[int]):
-        super().__init__()
-
         self.config = config
         self.motor_ids: List[int] = motor_ids
         self.lock = Lock()
@@ -176,7 +174,7 @@ class DynamixelController(BaseController):
         def set_pos_helper(pos_arr: npt.NDArray[np.float32]):
             pos_arr_drive = self.init_pos + pos_arr
             with self.lock:
-                self.client.write_desired_pos(self.motor_ids, pos_arr_drive)  # type: ignore
+                self.client.write_desired_pos(self.motor_ids, pos_arr_drive)
 
         pos_arr: npt.NDArray[np.float32] = np.array(pos)
 
@@ -212,9 +210,9 @@ class DynamixelController(BaseController):
                 retries=retries
             )
 
-        # log(f"Pos: {np.round(pos_arr, 4)}", header="Dynamixel", level="debug")  # type: ignore
-        # log(f"Vel: {np.round(vel_arr, 4)}", header="Dynamixel", level="debug")  # type: ignore
-        # log(f"Cur: {np.round(cur_arr, 4)}", header="Dynamixel", level="debug")  # type: ignore
+        # log(f"Pos: {np.round(pos_arr, 4)}", header="Dynamixel", level="debug")
+        # log(f"Vel: {np.round(vel_arr, 4)}", header="Dynamixel", level="debug")
+        # log(f"Cur: {np.round(cur_arr, 4)}", header="Dynamixel", level="debug")
 
         pos_arr -= self.init_pos
 
