@@ -257,6 +257,11 @@ class MuJoCoSim(BaseSim):
             for key, value in dyn.items():
                 setattr(self.model.joint(joint_name), key, value)  # type: ignore
 
+    def set_torso_pos(self, torso_pos: npt.NDArray[np.float32]):
+        # assert torso_pos.shape == (6,)
+        self.data.qpos[:] = torso_pos  # type: ignore
+        self.forward()
+
     def forward(self):
         mujoco.mj_forward(self.model, self.data)  # type: ignore
 

@@ -171,6 +171,9 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
     obs_list: List[Obs] = []
     motor_angles_list: List[Dict[str, float]] = []
 
+    if getattr(policy, "torso_pos") is not None and isinstance(sim, MuJoCoSim):
+        sim.set_torso_pos(policy.torso_pos)
+    
     is_prepared = False
     n_steps_total = (
         float("inf")
