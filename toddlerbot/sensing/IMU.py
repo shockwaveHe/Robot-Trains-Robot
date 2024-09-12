@@ -1,16 +1,16 @@
 import time
 from typing import Dict
 
-import board  # type: ignore
-import busio  # type: ignore
+import board
+import busio
 import numpy as np
 import numpy.typing as npt
-from adafruit_bno08x import (  # type: ignore
-    BNO_REPORT_GYROSCOPE,  # type: ignore
-    BNO_REPORT_LINEAR_ACCELERATION,  # type: ignore
-    BNO_REPORT_ROTATION_VECTOR,  # type: ignore
+from adafruit_bno08x import (
+    BNO_REPORT_GYROSCOPE,
+    BNO_REPORT_LINEAR_ACCELERATION,
+    BNO_REPORT_ROTATION_VECTOR,
 )
-from adafruit_bno08x.i2c import BNO08X_I2C  # type: ignore
+from adafruit_bno08x.i2c import BNO08X_I2C
 
 from toddlerbot.utils.math_utils import (
     exponential_moving_average,
@@ -26,13 +26,13 @@ class IMU:
         self.alpha = alpha
 
         # Initialize the I2C bus and sensor
-        self.i2c = busio.I2C(board.SCL, board.SDA)  # type: ignore
+        self.i2c = busio.I2C(board.SCL, board.SDA)
         self.sensor = BNO08X_I2C(self.i2c)
 
         # Enable the gyroscope and rotation vector features
-        self.sensor.enable_feature(BNO_REPORT_LINEAR_ACCELERATION)  # type: ignore
-        self.sensor.enable_feature(BNO_REPORT_GYROSCOPE)  # type: ignore
-        self.sensor.enable_feature(BNO_REPORT_ROTATION_VECTOR)  # type: ignore
+        self.sensor.enable_feature(BNO_REPORT_LINEAR_ACCELERATION)
+        self.sensor.enable_feature(BNO_REPORT_GYROSCOPE)
+        self.sensor.enable_feature(BNO_REPORT_ROTATION_VECTOR)
 
         time.sleep(0.2)
 
@@ -45,7 +45,7 @@ class IMU:
         self.euler_prev = np.zeros(3, dtype=np.float32)
 
     def set_zero_pose(self):
-        self.zero_quat = np.array(self.sensor.quaternion, dtype=np.float32, copy=True)  # type: ignore
+        self.zero_quat = np.array(self.sensor.quaternion, dtype=np.float32, copy=True)
         self.zero_quat_inv = np.asarray(quat_inv(self.zero_quat))
 
     def get_state(self) -> Dict[str, npt.NDArray[np.float32]]:
@@ -55,10 +55,10 @@ class IMU:
         assert self.zero_quat is not None
         assert self.zero_quat_inv is not None
 
-        quat_raw = np.array(self.sensor.quaternion, dtype=np.float32, copy=True)  # type: ignore
+        quat_raw = np.array(self.sensor.quaternion, dtype=np.float32, copy=True)
         # Compute relative rotation based on zero pose
         quat = quat_mult(quat_raw, self.zero_quat_inv)
-        euler = np.asarray(quat2euler(quat))  # type: ignore
+        euler = np.asarray(quat2euler(quat))
         # Ensure the transition is smooth by adjusting for any discontinuities
         euler_delta = euler - self.euler_prev
         euler_delta = (euler_delta + np.pi) % (2 * np.pi) - np.pi

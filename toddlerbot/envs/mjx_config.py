@@ -31,7 +31,8 @@ class MJXConfig:
     @dataclass
     class ActionConfig:
         action_scale: float = 0.25
-        contact_force_threshold: float = 5.0
+        action_smooth_rate: float = 10.0
+        contact_force_threshold: float = 1.0
         n_steps_delay: int = 1
         n_frames: int = 6
 
@@ -40,8 +41,9 @@ class MJXConfig:
         @dataclass
         class RewardScales:
             torso_pos: float = 0.0  # 1.0
-            torso_quat: float = 1.5
-            lin_vel_xy: float = 1.5
+            torso_quat: float = 1.0
+            torso_pitch: float = 0.1
+            lin_vel_xy: float = 1.0
             lin_vel_z: float = 0.5
             ang_vel_xy: float = 0.5
             ang_vel_z: float = 0.5
@@ -64,6 +66,7 @@ class MJXConfig:
             waist_action_rate: float = 1e-2
             waist_action_acc: float = 1e-2
             feet_contact: float = 0.5
+            feet_contact_number: float = 0.0
             collision: float = 0.0  # 1.0
             survival: float = 10.0
 
@@ -75,7 +78,8 @@ class MJXConfig:
         tracking_sigma: float = 5.0
         min_feet_distance: float = 0.06
         max_feet_distance: float = 0.15
-        target_feet_z_delta: float = 0.03
+        target_feet_z_delta: float = 0.02
+        torso_pitch_range: List[float] = field(default_factory=lambda: [-0.2, 0.2])
         scales: RewardScales = RewardScales()
 
     @dataclass
@@ -86,17 +90,18 @@ class MJXConfig:
     @dataclass
     class DomainRandConfig:
         friction_range: Optional[List[float]] = field(
-            default_factory=lambda: [0.6, 1.4]
+            default_factory=lambda: [0.5, 1.5]
         )
-        gain_range: Optional[List[float]] = field(default_factory=lambda: [-5, 5])
-        damping_range: Optional[List[float]] = field(default_factory=lambda: [0.8, 1.2])
+        gain_range: Optional[List[float]] = field(default_factory=lambda: [0.5, 1.5])
+        damping_range: Optional[List[float]] = field(default_factory=lambda: [0.5, 1.5])
         armature_range: Optional[List[float]] = field(
-            default_factory=lambda: [0.8, 1.2]
+            default_factory=lambda: [0.5, 1.5]
         )
-        # TODO: add mass_range
-        added_mass_range: Optional[List[float]] = None
+        added_mass_range: Optional[List[float]] = field(
+            default_factory=lambda: [-0.5, 0.5]
+        )
         push_interval_s: int = 2  # seconds
-        push_vel: float = 0.05
+        push_vel: float = 0.1
 
     @dataclass
     class NoiseConfig:

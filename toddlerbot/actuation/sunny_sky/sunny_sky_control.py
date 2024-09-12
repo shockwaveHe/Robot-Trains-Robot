@@ -48,7 +48,7 @@ class ReadLine:
     def readline(self) -> bytearray:
         i = self.buf.find(b"\n")
         if i >= 0:
-            r = self.buf[: i + 1]
+            r: bytearray = self.buf[: i + 1]
             self.buf = self.buf[i + 1 :]
             return r
         while True:
@@ -56,7 +56,7 @@ class ReadLine:
             data = self.s.read(i)
             i = data.find(b"\n")
             if i >= 0:
-                r: bytearray = self.buf + data[: i + 1]
+                r: bytearray = self.buf + data[: i + 1]  # type: ignore
                 self.buf[0:] = data[i + 1 :]
                 return r
             else:
@@ -65,8 +65,6 @@ class ReadLine:
 
 class SunnySkyController(BaseController):
     def __init__(self, config: SunnySkyConfig, motor_ids: List[int]):
-        super().__init__()
-
         self.config = config
         self.motor_ids: List[int] = motor_ids
         if len(config.init_pos) == 0:
@@ -144,7 +142,7 @@ class SunnySkyController(BaseController):
 
         self.send_commands(byte_commands)
 
-    def calibrate_motors(self):
+    def calibrate_motors(self) -> Dict[int, float]:
         log("Calibrating motors...", header="SunnySky")
         state_dict = self.get_motor_state()
         pos_arr_curr = np.array([state.pos for state in state_dict.values()])
@@ -156,9 +154,9 @@ class SunnySkyController(BaseController):
 
         time.sleep(0.2)
 
-        state_dict: Dict[int, JointState] = self.get_motor_state()
+        state_dict_init: Dict[int, JointState] = self.get_motor_state()
         init_pos: Dict[int, float] = {}
-        for id, state in state_dict.items():
+        for id, state in state_dict_init.items():
             init_pos[id] = state.pos
 
         zero_pos = list(init_pos.values())
@@ -287,7 +285,7 @@ class SunnySkyController(BaseController):
                         continue
 
                     # ID, position, velocity, current, voltage
-                    id, p, v, _, _ = map(float, single_data_str.split(","))
+                    id, p, v, _, _ = map(float, single_data_str.split(","))  # type: ignore
                     id = int(id)
                     state_dict[id] = JointState(
                         time=time.time(),

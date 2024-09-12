@@ -4,7 +4,7 @@ import shutil
 import xml.etree.ElementTree as ET
 from typing import Any, Dict, List, Tuple
 
-from transforms3d.euler import euler2quat  # type: ignore
+from transforms3d.euler import euler2quat
 
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.math_utils import round_to_sig_digits
@@ -354,6 +354,7 @@ def add_contacts(
     # Add all <pair> elements first
     for body1_name, body2_name in pairs:
         geom1_name = collision_bodies[body1_name].get("name")
+        geom2_name: str | None = None
         if body2_name == "floor":
             geom2_name = "floor"
         else:
@@ -557,7 +558,7 @@ def parse_urdf_body_link(root: ET.Element, root_link_name: str):
         inertia = inertial.find("inertia").attrib  # type: ignore
 
         pos = [float(x) for x in origin["xyz"].split(" ")]
-        quat = euler2quat(*[float(x) for x in origin["rpy"].split(" ")])  # type: ignore
+        quat = euler2quat(*[float(x) for x in origin["rpy"].split(" ")])
         diaginertia = [
             float(x) for x in [inertia["ixx"], inertia["iyy"], inertia["izz"]]
         ]
@@ -624,51 +625,38 @@ def replace_box_collision(root: ET.Element, foot_name: str):
         pos = list(map(float, target_geom.attrib["pos"].split()))
         size = list(map(float, target_geom.attrib["size"].split()))
 
-        # Compute positions and sizes for the capsules based on the box
-        size_ratio = 0.8
-        capsule_radius = round_to_sig_digits(size[1] * size_ratio, 6)
-        capsule_length = round_to_sig_digits(size[2] * size_ratio, 6)
-        capsule_1_pos = [
-            pos[0] - size[0] / 2,
-            pos[1] + (1 - size_ratio) * size[1],
-            pos[2],
+        # Compute the radius for the spheres based on the box
+        sphere_radius = 0.004
+        x_offset = size[0] - sphere_radius
+        y_offset = size[1] - sphere_radius
+        z_offset = size[2] - sphere_radius
+
+        # Positions for the four corner balls
+        ball_positions = [
+            [pos[0] - x_offset, pos[1] + y_offset, pos[2] - z_offset],  # Bottom-left
+            [pos[0] + x_offset, pos[1] + y_offset, pos[2] - z_offset],  # Bottom-right
+            [pos[0] - x_offset, pos[1] + y_offset, pos[2] + z_offset],  # Top-left
+            [pos[0] + x_offset, pos[1] + y_offset, pos[2] + z_offset],  # Top-right
         ]
-        capsule_2_pos = [
-            pos[0] + size[0] / 2,
-            pos[1] + (1 - size_ratio) * size[1],
-            pos[2],
-        ]
-        capsule_1_pos = [round_to_sig_digits(x, 6) for x in capsule_1_pos]
-        capsule_2_pos = [round_to_sig_digits(x, 6) for x in capsule_2_pos]
 
-        # Create the new capsule elements
-        capsule_1 = ET.Element(
-            "geom",
-            {
-                "name": f"{name}_1",
-                "type": "capsule",
-                "size": f"{capsule_radius} {capsule_length}",
-                "pos": f"{capsule_1_pos[0]} {capsule_1_pos[1]} {capsule_1_pos[2]}",
-                "rgba": target_geom.attrib["rgba"],
-                "class": target_geom.attrib["class"],
-            },
-        )
+        # Create the new sphere elements at each corner
+        for i, ball_pos in enumerate(ball_positions):
+            ball_pos = [round_to_sig_digits(x, 6) for x in ball_pos]
+            sphere = ET.Element(
+                "geom",
+                {
+                    "name": f"{name}_ball_{i+1}",
+                    "type": "sphere",
+                    "size": f"{sphere_radius}",
+                    "pos": f"{ball_pos[0]} {ball_pos[1]} {ball_pos[2]}",
+                    "rgba": target_geom.attrib["rgba"],
+                    "class": target_geom.attrib["class"],
+                },
+            )
+            parent.append(sphere)
 
-        capsule_2 = ET.Element(
-            "geom",
-            {
-                "name": f"{name}_2",
-                "type": "capsule",
-                "size": f"{capsule_radius} {capsule_length}",
-                "pos": f"{capsule_2_pos[0]} {capsule_2_pos[1]} {capsule_2_pos[2]}",
-                "rgba": target_geom.attrib["rgba"],
-                "class": target_geom.attrib["class"],
-            },
-        )
-
+        # Remove the original box geom
         parent.remove(target_geom)
-        parent.append(capsule_1)
-        parent.append(capsule_2)
 
     # Now update the contact section based on the replacement
     contact = root.find(".//contact")
@@ -687,21 +675,20 @@ def replace_box_collision(root: ET.Element, foot_name: str):
                 # Remove the old contact pair
                 contact.remove(pair)
 
-                # Add new contact pairs with capsule_1 and capsule_2
-                if geom1 in target_names:
-                    contact.append(
-                        ET.Element("pair", {"geom1": f"{geom1}_1", "geom2": geom2})
-                    )
-                    contact.append(
-                        ET.Element("pair", {"geom1": f"{geom1}_2", "geom2": geom2})
-                    )
-                if geom2 in target_names:
-                    contact.append(
-                        ET.Element("pair", {"geom1": geom1, "geom2": f"{geom2}_1"})
-                    )
-                    contact.append(
-                        ET.Element("pair", {"geom1": geom1, "geom2": f"{geom2}_2"})
-                    )
+                # Add new contact pairs with the four balls
+                for i in range(1, 5):
+                    if geom1 in target_names:
+                        contact.append(
+                            ET.Element(
+                                "pair", {"geom1": f"{geom1}_ball_{i}", "geom2": geom2}
+                            )
+                        )
+                    if geom2 in target_names:
+                        contact.append(
+                            ET.Element(
+                                "pair", {"geom1": geom1, "geom2": f"{geom2}_ball_{i}"}
+                            )
+                        )
 
 
 def create_scene_xml(mjcf_path: str, general_config: Dict[str, Any], is_fixed: bool):
@@ -749,7 +736,7 @@ def create_scene_xml(mjcf_path: str, general_config: Dict[str, Any], is_fixed: b
         attrib={"pos": "0 0 1.5", "dir": "0 0 -1", "directional": "true"},
     )
 
-    camera_settings = {
+    camera_settings: Dict[str, Dict[str, List[float]]] = {
         "perspective": {"pos": [0.7, -0.7, 0.7], "xy_axes": [1, 1, 0, -1, 1, 3]},
         "side": {"pos": [0, -1, 0.6], "xy_axes": [1, 0, 0, 0, 1, 3]},
         "top": {"pos": [0, 0, 1], "xy_axes": [0, 1, 0, -1, 0, 0]},
@@ -904,7 +891,7 @@ def get_mjcf_files(robot_name: str):
         add_contacts(
             xml_root, robot.collision_config, robot.config["general"]["foot_name"]
         )
-        # replace_box_collision(xml_root, robot.config["general"]["foot_name"])
+        replace_box_collision(xml_root, robot.config["general"]["foot_name"])
         xml_tree.write(mjcf_path)
 
     create_scene_xml(

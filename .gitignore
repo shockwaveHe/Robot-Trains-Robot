@@ -170,3 +170,5 @@ cython_debug/
 *.npz
 *.png
 standard_bot
+
+**/.DS_Store

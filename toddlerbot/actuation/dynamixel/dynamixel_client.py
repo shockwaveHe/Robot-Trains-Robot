@@ -3,9 +3,9 @@
 ##This is based off of the dynamixel SDK
 import atexit
 import time
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 
-import dynamixel_sdk  # type: ignore
+import dynamixel_sdk
 import numpy as np
 import numpy.typing as npt
 
@@ -70,7 +70,7 @@ class DynamixelClient:
     """
 
     # The currently open clients.
-    OPEN_CLIENTS = set()  # type: ignore
+    OPEN_CLIENTS: Set[Any] = set()
 
     def __init__(
         self,
@@ -105,13 +105,13 @@ class DynamixelClient:
         self.lazy_connect = lazy_connect
 
         self.port_handler = self.dxl.PortHandler(port)
-        self.packet_handler = self.dxl.PacketHandler(PROTOCOL_VERSION)  # type: ignore
+        self.packet_handler = self.dxl.PacketHandler(PROTOCOL_VERSION)
 
         self._bulk_reader = self.dxl.GroupBulkRead(
             self.port_handler, self.packet_handler
         )
         for motor_id in self.motor_ids:
-            success = self._bulk_reader.addParam(  # type: ignore
+            success = self._bulk_reader.addParam(
                 motor_id, ADDR_PRESENT_POS_VEL_CUR, LEN_PRESENT_POS_VEL_CUR
             )
             if not success:
@@ -124,9 +124,9 @@ class DynamixelClient:
         self._sync_readers: Dict[Tuple[int, int], dynamixel_sdk.GroupSyncRead] = {}
         self._sync_writers: Dict[Tuple[int, int], dynamixel_sdk.GroupSyncWrite] = {}
 
-        self._data_dict = None
+        self._data_dict: Dict[str, npt.NDArray[np.float32]] = {}
 
-        self.OPEN_CLIENTS.add(self)  # type: ignore
+        self.OPEN_CLIENTS.add(self)
 
     @property
     def is_connected(self) -> bool:
@@ -150,7 +150,7 @@ class DynamixelClient:
                 ).format(self.port_name)
             )
 
-        if self.port_handler.setBaudRate(self.baudrate):  # type: ignore
+        if self.port_handler.setBaudRate(self.baudrate):
             log(f"Succeeded to set baudrate to {self.baudrate}", header="Dynamixel")
         else:
             raise OSError(
@@ -177,8 +177,8 @@ class DynamixelClient:
         # Ensure motors are disabled at the end.
         self.set_torque_enabled(self.motor_ids, False)
         self.port_handler.closePort()
-        if self in self.OPEN_CLIENTS:  # type: ignore
-            self.OPEN_CLIENTS.remove(self)  # type: ignore
+        if self in self.OPEN_CLIENTS:
+            self.OPEN_CLIENTS.remove(self)
 
     def set_torque_enabled(
         self,
@@ -198,10 +198,12 @@ class DynamixelClient:
         """
         remaining_ids = list(motor_ids)
         while remaining_ids:
-            remaining_ids = self.write_byte(
-                remaining_ids,
-                int(enabled),
-                ADDR_TORQUE_ENABLE,
+            remaining_ids = list(
+                self.write_byte(
+                    remaining_ids,
+                    int(enabled),
+                    ADDR_TORQUE_ENABLE,
+                )
             )
             if remaining_ids:
                 log(
@@ -268,7 +270,9 @@ class DynamixelClient:
 
         # Convert to Dynamixel position space.
         positions /= DEFAULT_POS_SCALE
-        self.sync_write(motor_ids, positions, ADDR_GOAL_POSITION, LEN_GOAL_POSITION)  # type: ignore
+        self.sync_write(
+            motor_ids, list(positions), ADDR_GOAL_POSITION, LEN_GOAL_POSITION
+        )
 
     def write_byte(
         self,
@@ -289,12 +293,12 @@ class DynamixelClient:
         self.check_connected()
         errored_ids: List[int] = []
         for motor_id in motor_ids:
-            comm_result, dxl_error = self.packet_handler.write1ByteTxRx(  # type: ignore
+            comm_result, dxl_error = self.packet_handler.write1ByteTxRx(
                 self.port_handler, motor_id, address, value
             )
             success = self.handle_packet_result(
                 comm_result,
-                dxl_error,  # type: ignore
+                dxl_error,
                 motor_id,
                 context="write_byte",
             )
@@ -318,7 +322,7 @@ class DynamixelClient:
         """
         self.check_connected()
 
-        if self._data_dict is None:
+        if len(self._data_dict) == 0:
             self._data_dict = {
                 attr: np.zeros(len(self.motor_ids), dtype=np.float32)
                 for attr in attr_list
@@ -328,12 +332,12 @@ class DynamixelClient:
         success = False
         while not success:
             # fastSyncRead does not work for 2XL and 2XC
-            comm_result = self._bulk_reader.txPacket()  # type: ignore
+            comm_result = self._bulk_reader.txPacket()
             comm_time = time.time()
             if comm_result == self.dxl.COMM_SUCCESS:
-                comm_result = self._bulk_reader.rxPacket()  # type: ignore
+                comm_result = self._bulk_reader.rxPacket()
 
-            success = self.handle_packet_result(comm_result, context="bulk_read")  # type: ignore
+            success = self.handle_packet_result(comm_result, context="bulk_read")
 
             if retries == 0:
                 break
@@ -346,7 +350,7 @@ class DynamixelClient:
         errored_ids: List[int] = []
         for i, motor_id in enumerate(self.motor_ids):
             # Check if the data is available.
-            available = self._bulk_reader.isAvailable(  # type: ignore
+            available = self._bulk_reader.isAvailable(
                 motor_id, ADDR_PRESENT_POS_VEL_CUR, LEN_PRESENT_POS_VEL_CUR
             )
             if not available:
@@ -354,31 +358,31 @@ class DynamixelClient:
                 continue
 
             if "pos" in attr_list:
-                data_unsigned = self._bulk_reader.getData(  # type: ignore
+                data_unsigned = self._bulk_reader.getData(
                     motor_id, ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION
                 )
                 data_signed = unsigned_to_signed(
-                    data_unsigned,  # type: ignore
+                    data_unsigned,
                     size=LEN_PRESENT_POSITION,
                 )
                 self._data_dict["pos"][i] = float(data_signed) * DEFAULT_POS_SCALE
 
             if "vel" in attr_list:
-                data_unsigned = self._bulk_reader.getData(  # type: ignore
+                data_unsigned = self._bulk_reader.getData(
                     motor_id, ADDR_PRESENT_VELOCITY, LEN_PRESENT_VELOCITY
                 )
                 data_signed = unsigned_to_signed(
-                    data_unsigned,  # type: ignore
+                    data_unsigned,
                     size=LEN_PRESENT_VELOCITY,
                 )
                 self._data_dict["vel"][i] = float(data_signed) * DEFAULT_VEL_SCALE
 
             if "cur" in attr_list:
-                data_unsigned = self._bulk_reader.getData(  # type: ignore
+                data_unsigned = self._bulk_reader.getData(
                     motor_id, ADDR_PRESENT_CURRENT, LEN_PRESENT_CURRENT
                 )
                 data_signed = unsigned_to_signed(
-                    data_unsigned,  # type: ignore
+                    data_unsigned,
                     size=LEN_PRESENT_CURRENT,
                 )
                 self._data_dict["cur"][i] = float(data_signed) * DEFAULT_CUR_SCALE
@@ -412,7 +416,7 @@ class DynamixelClient:
                 self.port_handler, self.packet_handler, address, size
             )
             for motor_id in self.motor_ids:
-                success = self._sync_readers[key].addParam(motor_id)  # type: ignore
+                success = self._sync_readers[key].addParam(motor_id)
                 if not success:
                     raise OSError(
                         "[Motor ID: {}] Could not add parameter to sync read.".format(
@@ -427,26 +431,26 @@ class DynamixelClient:
         while not success:
             # fastSyncRead does not work for 2XL and 2XC
             # time_1 = time.time()
-            comm_result = sync_reader.txPacket()  # type: ignore
+            comm_result = sync_reader.txPacket()
             comm_time = time.time()
             if comm_result == self.dxl.COMM_SUCCESS:
-                comm_result = sync_reader.rxPacket()  # type: ignore
+                comm_result = sync_reader.rxPacket()
             # time_2 = time.time()
             # print(f"RTT: {time_2 - time_1}")
 
-            success = self.handle_packet_result(comm_result, context="sync_read")  # type: ignore
+            success = self.handle_packet_result(comm_result, context="sync_read")
 
         errored_ids: List[int] = []
         data_arr = np.zeros(len(self.motor_ids), dtype=np.float32)
         for i, motor_id in enumerate(self.motor_ids):
             # Check if the data is available.
-            available = sync_reader.isAvailable(motor_id, address, size)  # type: ignore
+            available = sync_reader.isAvailable(motor_id, address, size)
             if not available:
                 errored_ids.append(motor_id)
                 continue
 
-            data_unsigned = sync_reader.getData(motor_id, address, size)  # type: ignore
-            data_signed = unsigned_to_signed(data_unsigned, size=size)  # type: ignore
+            data_unsigned = sync_reader.getData(motor_id, address, size)
+            data_signed = unsigned_to_signed(data_unsigned, size=size)
             data_arr[i] = float(data_signed) * scale
 
         if errored_ids:
@@ -484,8 +488,8 @@ class DynamixelClient:
         errored_ids: List[int] = []
         for motor_id, desired_pos in zip(motor_ids, values):
             value = signed_to_unsigned(int(desired_pos), size=size)
-            value = value.to_bytes(size, byteorder="little")
-            success = sync_writer.addParam(motor_id, value)  # type: ignore
+            value_bytes = value.to_bytes(size, byteorder="little")
+            success = sync_writer.addParam(motor_id, value_bytes)
             if not success:
                 errored_ids.append(motor_id)
 
@@ -496,8 +500,8 @@ class DynamixelClient:
                 level="error",
             )
 
-        comm_result = sync_writer.txPacket()  # type: ignore
-        self.handle_packet_result(comm_result, context="sync_write")  # type: ignore
+        comm_result = sync_writer.txPacket()
+        self.handle_packet_result(comm_result, context="sync_write")
 
         sync_writer.clearParam()
 
@@ -518,9 +522,9 @@ class DynamixelClient:
         """Handles the result from a communication request."""
         error_message = None
         if comm_result != self.dxl.COMM_SUCCESS:
-            error_message = self.packet_handler.getTxRxResult(comm_result)  # type: ignore
+            error_message = self.packet_handler.getTxRxResult(comm_result)
         elif dxl_error is not None:
-            error_message = self.packet_handler.getRxPacketError(dxl_error)  # type: ignore
+            error_message = self.packet_handler.getRxPacketError(dxl_error)
         if error_message:
             if dxl_id is not None:
                 error_message = "[Motor ID: {}] {}".format(dxl_id, error_message)
@@ -535,11 +539,11 @@ class DynamixelClient:
 
     def clear_multi_turn(self, motor_ids: Sequence[int]):
         for motor_id in motor_ids:
-            self.packet_handler.clearMultiTurn(self.port_handler, motor_id)  # type: ignore
+            self.packet_handler.clearMultiTurn(self.port_handler, motor_id)
 
     def reboot(self, motor_ids: Sequence[int]):
         for motor_id in motor_ids:
-            self.packet_handler.reboot(self.port_handler, motor_id)  # type: ignore
+            self.packet_handler.reboot(self.port_handler, motor_id)
 
     def convert_to_unsigned(self, value: int, size: int) -> int:
         """Converts the given value to its unsigned representation."""
@@ -554,7 +558,7 @@ class DynamixelClient:
             self.connect()
         return self
 
-    def __exit__(self, *args):  # type: ignore
+    def __exit__(self, *args):
         """Enables use as a context manager."""
         self.disconnect()
 

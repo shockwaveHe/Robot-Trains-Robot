@@ -27,12 +27,5 @@ class WalkPolicy(MJXPolicy):
         motion_ref = WalkZMPReference(robot, env_cfg.action.cycle_time, command_ranges)
 
         super().__init__(
-            name,
-            robot,
-            init_motor_pos,
-            env_cfg,
-            motion_ref,
-            ckpt,
-            command_ranges,
-            fixed_command,
+            name, robot, init_motor_pos, ckpt, fixed_command, env_cfg, motion_ref
         )

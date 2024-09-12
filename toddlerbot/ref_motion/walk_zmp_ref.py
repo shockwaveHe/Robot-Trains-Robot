@@ -30,7 +30,7 @@ class WalkZMPReference(MotionReference):
         super().__init__("walk_zmp", "periodic", robot)
 
         self.cycle_time = cycle_time
-        self.stride_max = np.array(stride_max, dtype=np.float32)  # type: ignore
+        self.stride_max = np.array(stride_max, dtype=np.float32)
         self.double_support_phase = cycle_time / 2 / (single_double_ratio + 1)
         self.single_support_phase = single_double_ratio * self.double_support_phase
         self.footstep_height = foot_step_height
@@ -43,10 +43,10 @@ class WalkZMPReference(MotionReference):
         self.foot_to_com_x = float(robot.data_dict["offsets"]["foot_to_com_x"])
         self.foot_to_com_y = float(robot.data_dict["offsets"]["foot_to_com_y"])
 
-        self.default_joint_pos = np.array(  # type: ignore
+        self.default_joint_pos = np.array(
             list(robot.default_joint_angles.values()), dtype=np.float32
         )
-        self.default_joint_vel = np.zeros_like(self.default_joint_pos)  # type: ignore
+        self.default_joint_vel = np.zeros_like(self.default_joint_pos)
 
         self.default_target_z = (
             float(robot.config["general"]["offsets"]["torso_z"]) - self.com_z
@@ -68,10 +68,10 @@ class WalkZMPReference(MotionReference):
     def get_phase_signal(
         self, time_curr: float | ArrayType, command: ArrayType
     ) -> ArrayType:
-        phase_signal = np.array(  # type:ignore
+        phase_signal = np.array(
             [
-                np.sin(2 * np.pi * time_curr / self.cycle_time),  # type:ignore
-                np.cos(2 * np.pi * time_curr / self.cycle_time),  # type:ignore
+                np.sin(2 * np.pi * time_curr / self.cycle_time),
+                np.cos(2 * np.pi * time_curr / self.cycle_time),
             ],
             dtype=np.float32,
         )
@@ -91,30 +91,30 @@ class WalkZMPReference(MotionReference):
         if command is None:
             raise ValueError(f"command is required for {self.name}")
 
-        linear_vel = np.array([command[0], command[1], 0.0], dtype=np.float32)  # type: ignore
-        angular_vel = np.array([0.0, 0.0, command[2]], dtype=np.float32)  # type: ignore
+        linear_vel = np.array([command[0], command[1], 0.0], dtype=np.float32)
+        angular_vel = np.array([0.0, 0.0, command[2]], dtype=np.float32)
 
-        # is_zero_commmand = np.linalg.norm(command) < 1e-6  # type: ignore
-        nearest_command_idx = np.argmin(  # type: ignore
-            np.linalg.norm(self.lookup_keys - command, axis=1)  # type: ignore
+        # is_zero_commmand = np.linalg.norm(command) < 1e-6
+        nearest_command_idx = np.argmin(
+            np.linalg.norm(self.lookup_keys - command, axis=1)
         )
-        idx = np.round(time_curr / self.control_dt).astype(int)  # type: ignore
-        joint_pos = self.default_joint_pos.copy()  # type: ignore
+        idx = np.round(time_curr / self.control_dt).astype(int)
+        joint_pos = self.default_joint_pos.copy()
         joint_pos = inplace_update(
             joint_pos,
             self.leg_joint_slice,
             self.leg_joint_pos_lookup[nearest_command_idx][
-                (idx % self.lookup_length[nearest_command_idx]).astype(int)  # type: ignore
+                (idx % self.lookup_length[nearest_command_idx]).astype(int)
             ],
         )
 
-        joint_vel = self.default_joint_vel.copy()  # type: ignore
+        joint_vel = self.default_joint_vel.copy()
 
         stance_mask = self.stance_mask_lookup[nearest_command_idx][
-            (idx % self.lookup_length[nearest_command_idx]).astype(int)  # type: ignore
+            (idx % self.lookup_length[nearest_command_idx]).astype(int)
         ]
 
-        return np.concatenate(  # type: ignore
+        return np.concatenate(
             (
                 path_pos,
                 path_quat,
@@ -131,18 +131,18 @@ class WalkZMPReference(MotionReference):
     ) -> ArrayType:
         motor_target = inplace_update(
             motor_target,
-            self.neck_motor_indices,  # type: ignore
-            self.default_motor_pos[self.neck_motor_indices],
+            self.neck_actuator_indices,
+            self.default_motor_pos[self.neck_actuator_indices],
         )
         motor_target = inplace_update(
             motor_target,
-            self.arm_motor_indices,  # type: ignore
-            self.default_motor_pos[self.arm_motor_indices],
+            self.arm_actuator_indices,
+            self.default_motor_pos[self.arm_actuator_indices],
         )
         motor_target = inplace_update(
             motor_target,
-            self.waist_motor_indices,  # type: ignore
-            self.default_motor_pos[self.waist_motor_indices],
+            self.waist_actuator_indices,
+            self.default_motor_pos[self.waist_actuator_indices],
         )
 
         return motor_target
@@ -153,43 +153,42 @@ class WalkZMPReference(MotionReference):
         """
         Precompute and store the trajectories for a range of commands.
         """
+        lookup_keys: List[Tuple[float, ...]] = []
+        stance_mask_ref_list: List[ArrayType] = []
+        leg_joint_pos_ref_list: List[ArrayType] = []
         if os.path.exists(self.lookup_table_path):
             with open(self.lookup_table_path, "rb") as f:
                 lookup_keys, stance_mask_ref_list, leg_joint_pos_ref_list = pickle.load(
                     f
                 )
         else:
-            lookup_keys: List[Tuple[float, ...]] = []
-            stance_mask_ref_list: List[ArrayType] = []
-            leg_joint_pos_ref_list: List[ArrayType] = []
-
-            path_pos = np.zeros(3, dtype=np.float32)  # type: ignore
-            path_quat = np.array([1, 0, 0, 0], dtype=np.float32)  # type: ignore
+            path_pos = np.zeros(3, dtype=np.float32)
+            path_quat = np.array([1, 0, 0, 0], dtype=np.float32)
 
             # Create linspace arrays for each command range
             linspaces = [
-                np.arange(start, stop + interval, interval, dtype=np.float32)  # type: ignore
+                np.arange(start, stop + interval, interval, dtype=np.float32)
                 for start, stop in command_ranges
             ]
             # Create a meshgrid
-            # meshgrid = np.meshgrid(*linspaces, indexing="ij")  # type: ignore
-            # command_spectrum = np.stack(meshgrid, axis=-1).reshape(-1, 3)  # type: ignore
+            # meshgrid = np.meshgrid(*linspaces, indexing="ij")
+            # command_spectrum = np.stack(meshgrid, axis=-1).reshape(-1, 3)
             # command_spectrum = np.array([[0.0, 0.0, 0.2]])
             # Create zero arrays with the same shape as each linspace
 
-            zeros_x = np.zeros_like(linspaces[0])  # type: ignore
-            zeros_y = np.zeros_like(linspaces[1])  # type: ignore
-            zeros_z = np.zeros_like(linspaces[2])  # type: ignore
+            zeros_x = np.zeros_like(linspaces[0])
+            zeros_y = np.zeros_like(linspaces[1])
+            zeros_z = np.zeros_like(linspaces[2])
 
-            command_spectrum_x = np.stack([linspaces[0], zeros_x, zeros_x], axis=1)  # type: ignore
-            command_spectrum_y = np.stack([zeros_y, linspaces[1], zeros_y], axis=1)  # type: ignore
-            command_spectrum_z = np.stack([zeros_z, zeros_z, linspaces[2]], axis=1)  # type: ignore
+            command_spectrum_x = np.stack([linspaces[0], zeros_x, zeros_x], axis=1)
+            command_spectrum_y = np.stack([zeros_y, linspaces[1], zeros_y], axis=1)
+            command_spectrum_z = np.stack([zeros_z, zeros_z, linspaces[2]], axis=1)
             # Concatenate all command spectrums
-            command_spectrum = np.concatenate(  # type: ignore
+            command_spectrum = np.concatenate(
                 [command_spectrum_x, command_spectrum_y, command_spectrum_z], axis=0
             )
             for command in tqdm(command_spectrum, desc="Building Lookup Table"):
-                # if np.linalg.norm(command) < 1e-6:  # type: ignore
+                # if np.linalg.norm(command) < 1e-6:
                 #     continue
 
                 leg_joint_pos_ref, stance_mask_ref = self.plan(
@@ -204,8 +203,8 @@ class WalkZMPReference(MotionReference):
                     (lookup_keys, stance_mask_ref_list, leg_joint_pos_ref_list), f
                 )
 
-        self.lookup_keys = np.array(lookup_keys, dtype=np.float32)  # type: ignore
-        self.lookup_length = np.array(  # type: ignore
+        self.lookup_keys = np.array(lookup_keys, dtype=np.float32)
+        self.lookup_length = np.array(
             [len(stance_mask_ref) for stance_mask_ref in stance_mask_ref_list],
             dtype=np.float32,
         )
@@ -214,31 +213,31 @@ class WalkZMPReference(MotionReference):
         num_total_steps_max = max(
             [len(stance_mask_ref) for stance_mask_ref in stance_mask_ref_list]
         )
-        self.stance_mask_lookup = np.zeros(  # type: ignore
+        self.stance_mask_lookup = np.zeros(
             (num_commands, num_total_steps_max, 2), dtype=np.float32
         )
-        self.leg_joint_pos_lookup = np.zeros(  # type: ignore
+        self.leg_joint_pos_lookup = np.zeros(
             (num_commands, num_total_steps_max, 12), dtype=np.float32
         )
         for i, (stance_mask_ref, leg_joint_pos_ref) in enumerate(
             zip(stance_mask_ref_list, leg_joint_pos_ref_list)
         ):
-            self.stance_mask_lookup = inplace_update(  # type: ignore
+            self.stance_mask_lookup = inplace_update(
                 self.stance_mask_lookup,
                 (i, slice(None, len(stance_mask_ref))),
                 stance_mask_ref,
             )
-            self.leg_joint_pos_lookup = inplace_update(  # type: ignore
+            self.leg_joint_pos_lookup = inplace_update(
                 self.leg_joint_pos_lookup,
                 (i, slice(None, len(leg_joint_pos_ref))),
                 leg_joint_pos_ref,
             )
 
         if os.environ.get("USE_JAX", "false") == "true":
-            self.lookup_keys = jax.device_put(self.lookup_keys)  # type: ignore
-            self.lookup_length = jax.device_put(self.lookup_length)  # type: ignore
-            self.stance_mask_lookup = jax.device_put(self.stance_mask_lookup)  # type: ignore
-            self.leg_joint_pos_lookup = jax.device_put(self.leg_joint_pos_lookup)  # type: ignore
+            self.lookup_keys = jax.device_put(self.lookup_keys)
+            self.lookup_length = jax.device_put(self.lookup_length)
+            self.stance_mask_lookup = jax.device_put(self.stance_mask_lookup)
+            self.leg_joint_pos_lookup = jax.device_put(self.leg_joint_pos_lookup)
 
     def plan(
         self,
@@ -248,15 +247,15 @@ class WalkZMPReference(MotionReference):
         total_time: float = 20.0,
     ) -> Tuple[ArrayType, ArrayType]:
         path_euler = quat2euler(path_quat)
-        pose_curr = np.array(  # type: ignore
+        pose_curr = np.array(
             [path_pos[0], path_pos[1], path_euler[2]], dtype=np.float32
         )
 
-        if np.linalg.norm(command) < 1e-6:  # type: ignore
+        if np.linalg.norm(command) < 1e-6:
             footsteps: List[ArrayType] = []
-            for _ in range(int(np.ceil(total_time / self.cycle_time))):  # type: ignore
+            for _ in range(int(np.ceil(total_time / self.cycle_time))):
                 footsteps.append(
-                    np.array(  # type: ignore
+                    np.array(
                         [
                             pose_curr[0],
                             pose_curr[1] + self.foot_to_com_y,
@@ -265,9 +264,9 @@ class WalkZMPReference(MotionReference):
                         ],
                         dtype=np.float32,
                     )
-                )  # type: ignore
+                )
                 footsteps.append(
-                    np.array(  # type: ignore
+                    np.array(
                         [
                             pose_curr[0],
                             pose_curr[1] - self.foot_to_com_y,
@@ -281,11 +280,11 @@ class WalkZMPReference(MotionReference):
             spline_x, spline_y, spline_theta = self.sample_spline(
                 pose_curr,
                 command,
-                np.ceil(total_time / self.cycle_time) * self.cycle_time,  # type: ignore
+                np.ceil(total_time / self.cycle_time) * self.cycle_time,
             )
             _, footsteps = self.footstep_planner.compute_steps(
                 pose_curr,
-                np.array(  # type: ignore
+                np.array(
                     [spline_x[-1], spline_y[-1], spline_theta[-1]], dtype=np.float32
                 ),
                 has_start=False,
@@ -313,26 +312,24 @@ class WalkZMPReference(MotionReference):
         #     file_name="footsteps.png",
         # )()
 
-        time_list = np.array(  # type: ignore
+        time_list = np.array(
             [0, self.double_support_phase]
             + [self.single_support_phase, self.double_support_phase]
             * (len(footsteps) - 1),
             dtype=np.float32,
         )
-        time_steps = np.cumsum(time_list)  # type: ignore
+        time_steps = np.cumsum(time_list)
         desired_zmps = [step[:2] for step in footsteps for _ in range(2)]
 
-        x0 = np.array(  # type: ignore
-            [path_pos[0], path_pos[1], 0.0, 0.0], dtype=np.float32
-        )
+        x0 = np.array([path_pos[0], path_pos[1], 0.0, 0.0], dtype=np.float32)
 
         self.zmp_planner.plan(
             time_steps,
             desired_zmps,
             x0,
             self.com_z,
-            Qy=np.eye(2, dtype=np.float32) * self.control_cost_Q,  # type: ignore
-            R=np.eye(2, dtype=np.float32) * self.control_cost_R,  # type: ignore
+            Qy=np.eye(2, dtype=np.float32) * self.control_cost_Q,
+            R=np.eye(2, dtype=np.float32) * self.control_cost_R,
         )
 
         def update_step(
@@ -340,7 +337,7 @@ class WalkZMPReference(MotionReference):
         ) -> Tuple[Tuple[ArrayType, ArrayType], ArrayType]:
             x_traj, u_traj = carry
             t = time_steps[0] + idx * self.control_dt
-            xd = np.hstack((x_traj[idx - 1, 2:], u_traj[idx - 1, :]))  # type: ignore
+            xd = np.hstack((x_traj[idx - 1, 2:], u_traj[idx - 1, :]))
             x_traj = inplace_update(
                 x_traj, idx, x_traj[idx - 1, :] + xd * self.control_dt
             )
@@ -351,16 +348,16 @@ class WalkZMPReference(MotionReference):
 
         # Initialize the arrays
         num_total_steps = int(
-            np.ceil((time_steps[-1] - time_steps[0]) / self.control_dt)  # type: ignore
+            np.ceil((time_steps[-1] - time_steps[0]) / self.control_dt)
         )
-        x_traj = np.zeros((num_total_steps, 4), dtype=np.float32)  # type: ignore
-        u_traj = np.zeros((num_total_steps, 2), dtype=np.float32)  # type: ignore
+        x_traj = np.zeros((num_total_steps, 4), dtype=np.float32)
+        u_traj = np.zeros((num_total_steps, 2), dtype=np.float32)
         # Set the initial conditions
         x_traj = inplace_update(x_traj, 0, x0)
         u_traj = inplace_update(
             u_traj,
             0,
-            self.zmp_planner.get_optim_com_acc(time_steps[0], x0),  # type: ignore
+            self.zmp_planner.get_optim_com_acc(time_steps[0], x0),
         )
         x_traj = loop_update(update_step, x_traj, u_traj, (1, num_total_steps))
 
@@ -372,7 +369,7 @@ class WalkZMPReference(MotionReference):
             stance_mask_ref,
         ) = self.compute_foot_trajectories(
             time_steps,
-            np.repeat(np.stack(footsteps), 2, axis=0),  # type: ignore
+            np.repeat(np.stack(footsteps), 2, axis=0),
         )
 
         leg_joint_pos_ref = self.solve_ik(
@@ -384,12 +381,8 @@ class WalkZMPReference(MotionReference):
         )
 
         first_double_support_idx = int(time_steps[1] // self.control_dt)
-        leg_joint_pos_ref_truncated = leg_joint_pos_ref[  # type: ignore
-            first_double_support_idx:
-        ]
-        stance_mask_ref_truncated = stance_mask_ref[  # type: ignore
-            first_double_support_idx:
-        ]
+        leg_joint_pos_ref_truncated = leg_joint_pos_ref[first_double_support_idx:]
+        stance_mask_ref_truncated = stance_mask_ref[first_double_support_idx:]
         return leg_joint_pos_ref_truncated, stance_mask_ref_truncated
 
     def sample_spline(
@@ -399,26 +392,26 @@ class WalkZMPReference(MotionReference):
         total_time: float,
     ) -> Tuple[ArrayType, ...]:
         # Linear velocities in local frame
-        v_x, v_y, v_yaw = command  # type: ignore = command
+        v_x, v_y, v_yaw = command = command
 
-        timesteps = np.linspace(  # type: ignore
+        timesteps = np.linspace(
             0,
             total_time,
-            int(np.ceil(total_time / self.control_dt)),  # type: ignore
+            int(np.ceil(total_time / self.control_dt)),
             dtype=np.float32,
         )
         yaw_traj = pose_curr[2] + v_yaw * timesteps
 
         # Calculate the differences between consecutive timesteps
-        dt = np.diff(np.concatenate((np.zeros(1, dtype=np.float32), timesteps)))  # type: ignore
+        dt = np.diff(np.concatenate((np.zeros(1, dtype=np.float32), timesteps)))
 
         # Calculate x and y increments
-        delta_x = (v_x * np.cos(yaw_traj) - v_y * np.sin(yaw_traj)) * dt  # type: ignore
-        delta_y = (v_x * np.sin(yaw_traj) + v_y * np.cos(yaw_traj)) * dt  # type: ignore
+        delta_x = (v_x * np.cos(yaw_traj) - v_y * np.sin(yaw_traj)) * dt
+        delta_y = (v_x * np.sin(yaw_traj) + v_y * np.cos(yaw_traj)) * dt
 
         # Compute the full x and y trajectories by cumulative summing the increments
-        x_traj = np.cumsum(delta_x)  # type: ignore
-        y_traj = np.cumsum(delta_y)  # type: ignore
+        x_traj = np.cumsum(delta_x)
+        y_traj = np.cumsum(delta_y)
 
         last_x, last_y, last_theta = pose_curr
         sampled_x = [last_x]
@@ -426,68 +419,61 @@ class WalkZMPReference(MotionReference):
         sampled_theta = [last_theta]
 
         for i in range(1, len(timesteps)):
-            x_dist = (x_traj[i] - last_x) * np.cos(last_theta) - (  # type: ignore
+            x_dist = (x_traj[i] - last_x) * np.cos(last_theta) - (
                 y_traj[i] - last_y
-            ) * np.sin(last_theta)  # type: ignore
-            y_dist = (x_traj[i] - last_x) * np.sin(last_theta) + (  # type: ignore
+            ) * np.sin(last_theta)
+            y_dist = (x_traj[i] - last_x) * np.sin(last_theta) + (
                 y_traj[i] - last_y
-            ) * np.cos(last_theta)  # type: ignore
-            l1_distance = np.abs(  # type: ignore
-                np.array(  # type: ignore
-                    [x_dist, y_dist, yaw_traj[i] - last_theta]
-                )
-            )
+            ) * np.cos(last_theta)
+            l1_distance = np.abs(np.array([x_dist, y_dist, yaw_traj[i] - last_theta]))
 
-            if (
-                np.any(l1_distance >= self.stride_max)  # type: ignore
-                or i == len(timesteps) - 1
-            ):
+            if np.any(l1_distance >= self.stride_max) or i == len(timesteps) - 1:
                 sampled_x.append(x_traj[i])
                 sampled_y.append(y_traj[i])
                 sampled_theta.append(yaw_traj[i])
                 last_x, last_y, last_theta = x_traj[i], y_traj[i], yaw_traj[i]
 
-        return sampled_x, sampled_y, sampled_theta  # type: ignore
+        return np.array(sampled_x), np.array(sampled_y), np.array(sampled_theta)
 
     def compute_foot_trajectories(
         self, time_steps: ArrayType, footsteps: List[ArrayType]
     ) -> Tuple[ArrayType, ...]:
-        offset = np.array(  # type: ignore
+        offset = np.array(
             [
-                -np.sin(footsteps[0][2]) * self.foot_to_com_y,  # type: ignore
-                np.cos(footsteps[0][2]) * self.foot_to_com_y,  # type: ignore
+                -np.sin(footsteps[0][2]) * self.foot_to_com_y,
+                np.cos(footsteps[0][2]) * self.foot_to_com_y,
             ]
         )
-        last_pos = np.concatenate(  # type: ignore
+        last_pos = np.concatenate(
             [
                 footsteps[0][:2] + offset,
-                np.zeros(1, dtype=np.float32),  # type: ignore
+                np.zeros(1, dtype=np.float32),
                 footsteps[0][:2] - offset,
-                np.zeros(1, dtype=np.float32),  # type: ignore
+                np.zeros(1, dtype=np.float32),
             ]
         )
-        last_ori = np.array(  # type: ignore
+        last_ori = np.array(
             [0.0, 0.0, footsteps[0][2], 0.0, 0.0, footsteps[0][2]], dtype=np.float32
         )
 
         num_total_steps = int(
-            np.ceil((time_steps[-1] - time_steps[0]) / self.control_dt)  # type: ignore
+            np.ceil((time_steps[-1] - time_steps[0]) / self.control_dt)
         )
-        left_foot_pos_traj = np.zeros((num_total_steps, 3), dtype=np.float32)  # type: ignore
-        left_foot_ori_traj = np.zeros((num_total_steps, 3), dtype=np.float32)  # type: ignore
-        right_foot_pos_traj = np.zeros((num_total_steps, 3), dtype=np.float32)  # type: ignore
-        right_foot_ori_traj = np.zeros((num_total_steps, 3), dtype=np.float32)  # type: ignore
-        stance_mask_traj = np.zeros((num_total_steps, 2), dtype=np.float32)  # type: ignore
+        left_foot_pos_traj = np.zeros((num_total_steps, 3), dtype=np.float32)
+        left_foot_ori_traj = np.zeros((num_total_steps, 3), dtype=np.float32)
+        right_foot_pos_traj = np.zeros((num_total_steps, 3), dtype=np.float32)
+        right_foot_ori_traj = np.zeros((num_total_steps, 3), dtype=np.float32)
+        stance_mask_traj = np.zeros((num_total_steps, 2), dtype=np.float32)
         step_curr = 0
         for i in range(len(time_steps) - 1):
             num_steps = round((time_steps[i + 1] - time_steps[i]) / self.control_dt)
             if num_steps + step_curr > num_total_steps:
                 num_steps = num_total_steps - step_curr
 
-            stance_mask = np.tile(np.ones(2, dtype=np.float32), (num_steps, 1))  # type: ignore
+            stance_mask = np.tile(np.ones(2, dtype=np.float32), (num_steps, 1))
             if i % 2 == 0:  # Double support
-                foot_pos_traj = np.tile(last_pos, (num_steps, 1))  # type: ignore
-                foot_ori_traj = np.tile(last_ori, (num_steps, 1))  # type: ignore
+                foot_pos_traj = np.tile(last_pos, (num_steps, 1))
+                foot_ori_traj = np.tile(last_ori, (num_steps, 1))
             else:
                 support_leg_curr = int(footsteps[i][-1])
                 support_leg_next = int(footsteps[i + 1][-1])
@@ -509,14 +495,14 @@ class WalkZMPReference(MotionReference):
                     swing_leg = 1 - support_leg_curr
 
                 if support_leg_next == 2:
-                    offset = np.array(  # type: ignore
+                    offset = np.array(
                         [
-                            -np.sin(footsteps[i][2]) * self.foot_to_com_y,  # type: ignore
-                            np.cos(footsteps[i][2]) * self.foot_to_com_y,  # type: ignore
+                            -np.sin(footsteps[i][2]) * self.foot_to_com_y,
+                            np.cos(footsteps[i][2]) * self.foot_to_com_y,
                         ]
                     ) * (-1 if support_leg_curr == 1 else 1)
                 else:
-                    offset = np.zeros(2, dtype=np.float32)  # type: ignore
+                    offset = np.zeros(2, dtype=np.float32)
 
                 target_pos = inplace_update(
                     current_pos,
@@ -530,31 +516,31 @@ class WalkZMPReference(MotionReference):
                 last_ori = target_ori.copy()
 
                 up_delta = self.footstep_height / (num_steps // 2 - 1)
-                up_traj = up_delta * np.concatenate(  # type: ignore
+                up_traj = up_delta * np.concatenate(
                     (
-                        np.arange(num_steps // 2, dtype=np.float32),  # type: ignore
-                        np.arange(  # type: ignore
+                        np.arange(num_steps // 2, dtype=np.float32),
+                        np.arange(
                             num_steps - num_steps // 2 - 1, -1, -1, dtype=np.float32
                         ),
                     )
                 )
                 pos_delta = (target_pos - current_pos) / num_steps
-                foot_pos_traj = current_pos + pos_delta * np.arange(num_steps)[:, None]  # type: ignore
+                foot_pos_traj = current_pos + pos_delta * np.arange(num_steps)[:, None]
                 foot_pos_traj = inplace_update(
-                    foot_pos_traj,  # type: ignore
+                    foot_pos_traj,
                     (slice(None), swing_leg * 3 + 2),
                     up_traj,
                 )
 
                 # TODO: check this
                 ori_delta = (target_ori - current_ori) / num_steps
-                foot_ori_traj = current_ori + ori_delta * np.arange(num_steps)[:, None]  # type: ignore
+                foot_ori_traj = current_ori + ori_delta * np.arange(num_steps)[:, None]
                 foot_ori_traj = inplace_update(
-                    foot_ori_traj,  # type: ignore
+                    foot_ori_traj,
                     (slice(None), swing_leg * 3 + 2),
-                    np.zeros(num_steps, dtype=np.float32),  # type: ignore
+                    np.zeros(num_steps, dtype=np.float32),
                 )
-                stance_mask = inplace_update(stance_mask, (slice(None), swing_leg), 0)  # type: ignore
+                stance_mask = inplace_update(stance_mask, (slice(None), swing_leg), 0)
 
             slice_curr = slice(step_curr, step_curr + num_steps)
             left_foot_pos_traj = inplace_update(
@@ -571,7 +557,7 @@ class WalkZMPReference(MotionReference):
             )
             stance_mask_traj = inplace_update(stance_mask_traj, slice_curr, stance_mask)
 
-            step_curr += num_steps
+            step_curr += int(num_steps)
 
         return (
             left_foot_pos_traj,
@@ -589,33 +575,33 @@ class WalkZMPReference(MotionReference):
         right_foot_ori_traj: ArrayType,
         com_pos_traj: ArrayType,
     ):
-        com_pos_traj_padded = np.hstack(  # type: ignore
-            [com_pos_traj, np.zeros((com_pos_traj.shape[0], 1))]  # type: ignore
+        com_pos_traj_padded = np.hstack(
+            [com_pos_traj, np.zeros((com_pos_traj.shape[0], 1))]
         )
         left_foot_adjusted_pos = (
             left_foot_pos_traj
             - com_pos_traj_padded
-            - np.array([self.foot_to_com_x, self.foot_to_com_y, 0], dtype=np.float32)  # type: ignore
+            - np.array([self.foot_to_com_x, self.foot_to_com_y, 0], dtype=np.float32)
         )
         right_foot_adjusted_pos = (
             right_foot_pos_traj
             - com_pos_traj_padded
-            - np.array([self.foot_to_com_x, -self.foot_to_com_y, 0], dtype=np.float32)  # type: ignore
+            - np.array([self.foot_to_com_x, -self.foot_to_com_y, 0], dtype=np.float32)
         )
 
         left_leg_joint_pos_traj = self.foot_ik(
-            left_foot_adjusted_pos,  # type: ignore
+            left_foot_adjusted_pos,
             left_foot_ori_traj,
             side="left",
         )
         right_leg_joint_pos_traj = self.foot_ik(
-            right_foot_adjusted_pos,  # type: ignore
+            right_foot_adjusted_pos,
             right_foot_ori_traj,
             side="right",
         )
 
         # Combine the results for left and right legs
-        leg_joint_pos_traj = np.hstack(  # type: ignore
+        leg_joint_pos_traj = np.hstack(
             [left_leg_joint_pos_traj, right_leg_joint_pos_traj]
         )
 
@@ -624,7 +610,7 @@ class WalkZMPReference(MotionReference):
     def foot_ik(
         self,
         target_foot_pos: ArrayType,
-        target_foot_ori: ArrayType = np.zeros(3, dtype=np.float32),  # type: ignore
+        target_foot_ori: ArrayType = np.zeros(3, dtype=np.float32),
         side: str = "left",
     ) -> ArrayType:
         target_x = target_foot_pos[:, 0]
@@ -636,8 +622,8 @@ class WalkZMPReference(MotionReference):
 
         offsets = self.robot.data_dict["offsets"]
 
-        transformed_x = target_x * np.cos(hip_yaw) + target_y * np.sin(hip_yaw)  # type: ignore
-        transformed_y = -target_x * np.sin(hip_yaw) + target_y * np.cos(hip_yaw)  # type: ignore
+        transformed_x = target_x * np.cos(hip_yaw) + target_y * np.sin(hip_yaw)
+        transformed_y = -target_x * np.sin(hip_yaw) + target_y * np.cos(hip_yaw)
         transformed_z = (
             offsets["hip_pitch_to_knee_z"]
             + offsets["knee_to_ank_pitch_z"]
@@ -645,30 +631,30 @@ class WalkZMPReference(MotionReference):
             - self.default_target_z
         )
 
-        hip_roll = np.arctan2(  # type: ignore
+        hip_roll = np.arctan2(
             transformed_y, transformed_z + offsets["hip_roll_to_pitch_z"]
         )
 
-        leg_projected_yz_length = np.sqrt(transformed_y**2 + transformed_z**2)  # type: ignore
-        leg_length = np.sqrt(transformed_x**2 + leg_projected_yz_length**2)  # type: ignore
-        leg_pitch = np.arctan2(transformed_x, leg_projected_yz_length)  # type: ignore
+        leg_projected_yz_length = np.sqrt(transformed_y**2 + transformed_z**2)
+        leg_length = np.sqrt(transformed_x**2 + leg_projected_yz_length**2)
+        leg_pitch = np.arctan2(transformed_x, leg_projected_yz_length)
         hip_disp_cos = (
             leg_length**2
             + offsets["hip_pitch_to_knee_z"] ** 2
             - offsets["knee_to_ank_pitch_z"] ** 2
         ) / (2 * leg_length * offsets["hip_pitch_to_knee_z"])
-        hip_disp = np.arccos(np.clip(hip_disp_cos, -1.0, 1.0))  # type: ignore
-        ank_disp = np.arcsin(  # type: ignore
+        hip_disp = np.arccos(np.clip(hip_disp_cos, -1.0, 1.0))
+        ank_disp = np.arcsin(
             offsets["hip_pitch_to_knee_z"]
             / offsets["knee_to_ank_pitch_z"]
-            * np.sin(hip_disp)  # type: ignore
+            * np.sin(hip_disp)
         )
         hip_pitch = -leg_pitch - hip_disp
         knee_pitch = hip_disp + ank_disp
         ank_pitch += knee_pitch + hip_pitch
 
         if side == "left":
-            return np.vstack(  # type: ignore
+            return np.vstack(
                 [
                     -hip_yaw,
                     -hip_roll,
@@ -679,13 +665,13 @@ class WalkZMPReference(MotionReference):
                 ]
             ).T
         else:
-            return np.vstack(  # type: ignore
+            return np.vstack(
                 [
                     -hip_yaw,
                     hip_roll,
                     -hip_pitch,
-                    -knee_pitch,  # type: ignore
+                    -knee_pitch,
                     -ank_roll + hip_roll,
                     -ank_pitch,
-                ]  # type: ignore
+                ]
             ).T

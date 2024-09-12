@@ -2,7 +2,7 @@ import os
 import pickle
 import xml.etree.ElementTree as ET
 
-import bpy  # type: ignore
+import bpy
 
 
 def clear_collections(include_list=["Visual", "Collision"]):

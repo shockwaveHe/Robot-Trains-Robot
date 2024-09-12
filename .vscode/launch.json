@@ -4,6 +4,7 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
             "cwd": "${workspaceRoot}",
             "executable": "toddlerbot/actuation/sunny_sky/knee_esc/motorcontrol.elf",
@@ -26,6 +27,14 @@
             "console": "integratedTerminal",
             "justMyCode": true
         },
+        {
+            "name": "MJPython: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "python": "/Users/weizhuo2/mambaforge/envs/toddlerbot/bin/mjpython"        },
         {
             "name": "Python: stand_toddlerbot_mujoco",
             "type": "python",
@@ -107,7 +116,7 @@
                 "--policy",
                 "walk",
                 "--ckpt",
-                "20240906_085630"
+                "20240908_235416"
             ]
         },
         {
@@ -124,6 +133,40 @@
                 "mujoco",
                 "--policy",
                 "sysID_fixed"
+            ]
+        },
+        {
+            "name": "Python: balance_toddlerbot_mujoco",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/policies/run_policy.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot",
+                "toddlerbot",
+                "--sim",
+                "mujoco",
+                "--policy",
+                "balance",
+                "--ckpt",
+                "20240910_085635"
+            ]
+        },
+        {
+            "name": "Python: teleop_ankle_toddlerbot_mujoco",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/policies/run_policy.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot",
+                "toddlerbot",
+                "--sim",
+                "mujoco",
+                "--policy",
+                "teleop_ankle"
             ]
         },
         {
@@ -157,6 +200,22 @@
             ],
         },
         {
+            "name": "Python: balance_toddlerbot_mjx",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/envs/train_mjx.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot",
+                "toddlerbot",
+                "--env",
+                "balance",
+                "--eval",
+                "20240909_223143"
+            ],
+        },
+        {
             "name": "Python: test_reference_motion",
             "type": "python",
             "request": "launch",
@@ -165,7 +224,7 @@
             "justMyCode": true,
             "args": [
                 "--ref", 
-                "squat",
+                "balance",
             ],
         },
         {

@@ -12,10 +12,10 @@ from toddlerbot.utils.misc_utils import log
 backend_curr = "Agg"
 non_interactive_backends = ["Agg", "SVG", "PDF", "PS"]
 plt.switch_backend(backend_curr)
-sns.set_theme(style="darkgrid")  # type: ignore
+sns.set_theme(style="darkgrid")
 
 
-def make_vis_function(  # type: ignore
+def make_vis_function(
     func: Callable[..., Any],
     ax: Any = None,
     title: str = "",
@@ -39,7 +39,7 @@ def make_vis_function(  # type: ignore
     """
 
     @functools.wraps(func)
-    def wrapped_function(*args, **kwargs):  # type: ignore
+    def wrapped_function(*args, **kwargs) -> Any | None:
         if len(file_suffix) == 0:
             suffix = time.strftime("%Y%m%d_%H%M%S")
         else:
@@ -67,7 +67,7 @@ def make_vis_function(  # type: ignore
                 log(f"Configuration saved to: {config_path}", header="Visualization")
 
         if not blocking:
-            return
+            return None
 
         # Execute the original function
         result = func(*args, **kwargs)
@@ -80,24 +80,24 @@ def make_vis_function(  # type: ignore
             ax.set_ylabel(y_label)
 
         ax.grid(True)
-        plt.tight_layout()  # type: ignore
+        plt.tight_layout()
 
         if save_path:
             if not os.path.exists(save_path):
                 os.makedirs(save_path)
 
             png_file_path = os.path.join(save_path, f"{name}.png")
-            plt.savefig(png_file_path)  # type: ignore
+            plt.savefig(png_file_path)
             svg_file_path = os.path.join(save_path, f"{name}.svg")
-            plt.savefig(svg_file_path)  # type: ignore
+            plt.savefig(svg_file_path)
             log(f"Graph saved as: {png_file_path}", header="Visualization")
         else:
             if backend_curr not in non_interactive_backends:
-                plt.show()  # type: ignore
+                plt.show()
 
         return result
 
-    return wrapped_function  # type: ignore
+    return wrapped_function
 
 
 def load_and_run_visualization(config_path: str):

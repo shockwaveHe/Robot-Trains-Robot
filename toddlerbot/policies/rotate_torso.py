@@ -9,7 +9,7 @@ from toddlerbot.ref_motion.rotate_torso_ref import RotateTorsoReference
 from toddlerbot.sim.robot import Robot
 
 
-class RotateTorsoPolicy(MJXPolicy):
+class RotateTorsoPolicy(MJXPolicy, policy_name="rotate_torso"):
     def __init__(
         self,
         name: str,
@@ -18,20 +18,12 @@ class RotateTorsoPolicy(MJXPolicy):
         ckpt: str,
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
     ):
-        env_cfg = RotateTorsoCfg()
-        command_ranges = [
-            env_cfg.commands.ang_vel_x_range,
-            env_cfg.commands.ang_vel_z_range,
-        ]
-        motion_ref = RotateTorsoReference(robot)
-
         super().__init__(
             name,
             robot,
             init_motor_pos,
-            env_cfg,
-            motion_ref,
             ckpt,
-            command_ranges,
             fixed_command,
+            RotateTorsoCfg(),
+            RotateTorsoReference(robot),
         )

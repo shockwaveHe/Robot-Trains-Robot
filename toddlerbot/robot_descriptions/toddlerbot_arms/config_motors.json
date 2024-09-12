@@ -2,71 +2,99 @@
     "left_sho_pitch": {
         "motor": "XC430",
         "init_pos": 2.356194490192345,
-        "default_pos": 0.174533
+        "default_pos": 0.174533,
+        "kp": 1800.0,
+        "kd": 0.0
     },
     "left_sho_roll": {
         "motor": "2XL430",
         "init_pos": 3.141592653589793,
-        "default_pos": -0.261799
+        "default_pos": -0.261799,
+        "kp": 1800.0,
+        "kd": 0.0
     },
     "left_sho_yaw_drive": {
         "motor": "2XL430",
-        "init_pos": 3.7858645915985107,
-        "default_pos": -1.0472
+        "init_pos": 3.015806198120117,
+        "default_pos": -1.0472,
+        "kp": 1800.0,
+        "kd": 0.0
     },
     "left_elbow_roll": {
         "motor": "2XL430",
-        "init_pos": 0.7853981633974483,
-        "default_pos": 0.523599
+        "init_pos": 3.141592653589793,
+        "default_pos": 0.523599,
+        "kp": 1800.0,
+        "kd": 0.0
     },
     "left_elbow_yaw_drive": {
         "motor": "2XL430",
-        "init_pos": 6.137456893920898,
-        "default_pos": -0.523599
+        "init_pos": 6.128253134089061,
+        "default_pos": -0.523599,
+        "kp": 1800.0,
+        "kd": 0.0
     },
     "left_wrist_roll_drive": {
         "motor": "2XL430",
-        "init_pos": 0.8958447575569153,
-        "default_pos": -1.0472
+        "init_pos": 3.2551071643829346,
+        "default_pos": -1.0472,
+        "kp": 1800.0,
+        "kd": 0.0
     },
     "left_wrist_pitch": {
         "motor": "2XL430",
         "init_pos": 3.141592653589793,
-        "default_pos": 0
+        "default_pos": 0,
+        "kp": 1800.0,
+        "kd": 0.0
     },
     "right_sho_pitch": {
         "motor": "XC430",
-        "init_pos": 0.7853981633974483,
-        "default_pos": -0.174533
+        "init_pos": 2.356194490192345,
+        "default_pos": -0.174533,
+        "kp": 1800.0,
+        "kd": 0.0
     },
     "right_sho_roll": {
         "motor": "2XL430",
         "init_pos": 3.141592653589793,
-        "default_pos": -0.261799
+        "default_pos": -0.261799,
+        "kp": 1800.0,
+        "kd": 0.0
     },
     "right_sho_yaw_drive": {
         "motor": "2XL430",
-        "init_pos": 1.6965827941894531,
-        "default_pos": 1.0472
+        "init_pos": 3.2995927333831787,
+        "default_pos": 1.0472,
+        "kp": 1800.0,
+        "kd": 0.0
     },
     "right_elbow_roll": {
         "motor": "2XL430",
-        "init_pos": 1.5707963267948966,
-        "default_pos": 0.523599
+        "init_pos": 3.141592653589793,
+        "default_pos": 0.523599,
+        "kp": 1800.0,
+        "kd": 0.0
     },
     "right_elbow_yaw_drive": {
         "motor": "2XL430",
-        "init_pos": 5.879748344421387,
-        "default_pos": 0.523599
+        "init_pos": 3.2643110752105713,
+        "default_pos": 0.523599,
+        "kp": 1800.0,
+        "kd": 0.0
     },
     "right_wrist_roll_drive": {
         "motor": "2XL430",
-        "init_pos": 3.041883945465088,
-        "default_pos": 1.0472
+        "init_pos": 2.767301321029663,
+        "default_pos": 1.0472,
+        "kp": 1800.0,
+        "kd": 0.0
     },
     "right_wrist_pitch": {
         "motor": "2XL430",
-        "init_pos": 3.141592653589793,
-        "default_pos": 0
+        "init_pos": 1.5707963267948966,
+        "default_pos": 0,
+        "kp": 1800.0,
+        "kd": 0.0
     }
 }

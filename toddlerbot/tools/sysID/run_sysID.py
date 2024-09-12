@@ -3,17 +3,21 @@ import json
 import os
 import pickle
 import time
+from functools import partial
 from typing import Dict, List, Tuple
 
 import numpy as np
 import numpy.typing as npt
 import optuna
+from optuna.logging import _get_library_root_logger
 
 from toddlerbot.sim import Obs
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.misc_utils import log
 from toddlerbot.visualization.vis_plot import plot_joint_tracking
+
+logger = _get_library_root_logger()
 
 
 def load_datasets(robot: Robot, data_path: str):
@@ -75,18 +79,26 @@ def load_datasets(robot: Robot, data_path: str):
             joint_names_list.append(list(d.keys()))
 
         obs_time = [obs.time for obs in obs_list]
-        obs_indices = np.searchsorted(obs_time, ckpt_times)  # type: ignore
+        obs_indices = np.searchsorted(obs_time, ckpt_times)
 
         last_idx = 0
         for joint_names, motor_kps, obs_idx in zip(
             joint_names_list, motor_kps_list, obs_indices
         ):
             for joint_name in joint_names:
+                # if "ank_roll" in joint_name:
+                #     break
                 set_obs_and_action(joint_name, motor_kps, slice(last_idx, obs_idx))
 
             last_idx = obs_idx
     else:
-        set_obs_and_action("all", {}, slice(None))
+        start_idx = 500
+        for joint_name in reversed(robot.joint_ordering):
+            joints_config = robot.config["joints"]
+            if joints_config[joint_name]["group"] == "leg":
+                motor_names = robot.joint_to_motor_name[joint_name]
+                motor_kps = {joint_name: joints_config[motor_names[0]]["kp_real"]}
+                set_obs_and_action(joint_name, motor_kps, slice(start_idx, None))
 
     return obs_time_dict, obs_pos_dict, action_dict, kp_dict
 
@@ -99,6 +111,7 @@ def optimize_parameters(
     action_list: List[npt.NDArray[np.float32]],
     kp_list: List[float],
     n_iters: int = 1000,
+    early_stopping_rounds: int = 100,
     sampler_name: str = "CMA",
     # gain_range: Tuple[float, float, float] = (0, 50, 0.1),
     damping_range: Tuple[float, float, float] = (0, 10, 1e-3),
@@ -112,13 +125,25 @@ def optimize_parameters(
         raise ValueError("Invalid simulator")
 
     initial_trial = {
-        "damping": float(sim.model.joint(joint_name).damping),  # type: ignore
-        "armature": float(sim.model.joint(joint_name).armature),  # type: ignore
+        "damping": float(sim.model.joint(joint_name).damping),
+        "armature": float(sim.model.joint(joint_name).armature),
     }
     joint_idx = robot.joint_ordering.index(joint_name)
     motor_names = robot.joint_to_motor_name[joint_name]
 
-    joint_pos_real = np.concatenate([obs[:, joint_idx] for obs in obs_list])  # type: ignore
+    joint_pos_real = np.concatenate([obs[:, joint_idx] for obs in obs_list])
+
+    def early_stopping_check(
+        study: optuna.Study, trial: optuna.Trial, early_stopping_rounds: int
+    ):
+        current_trial_number = trial.number
+        best_trial_number = study.best_trial.number
+        should_stop = (
+            current_trial_number - best_trial_number
+        ) >= early_stopping_rounds
+        if should_stop:
+            logger.debug(f"early stopping detected: {should_stop}")
+            study.stop()
 
     def objective(trial: optuna.Trial):
         # gain = trial.suggest_float("gain", *gain_range[:2], step=gain_range[2])
@@ -153,12 +178,13 @@ def optimize_parameters(
                 )
             )
 
-        joint_pos_sim = np.concatenate(joint_pos_sim_list)  # type: ignore
+        joint_pos_sim = np.concatenate(joint_pos_sim_list)
 
         error = np.sqrt(np.mean((joint_pos_real - joint_pos_sim) ** 2))
 
         return error
 
+    sampler: optuna.samplers.BaseSampler | None = None
     if sampler_name == "TPE":
         sampler = optuna.samplers.TPESampler()
     elif sampler_name == "CMA":
@@ -176,7 +202,15 @@ def optimize_parameters(
     )
 
     study.enqueue_trial(initial_trial)
-    study.optimize(objective, n_trials=n_iters, n_jobs=1, show_progress_bar=True)
+    study.optimize(
+        objective,
+        n_trials=n_iters,
+        n_jobs=1,
+        show_progress_bar=True,
+        callbacks=[
+            partial(early_stopping_check, early_stopping_rounds=early_stopping_rounds)
+        ],
+    )
 
     log(
         f"Best parameters: {study.best_params}; best value: {study.best_value}",
@@ -294,7 +328,7 @@ def evaluate(
         joint_idx = robot.joint_ordering.index(joint_name)
         motor_names = robot.joint_to_motor_name[joint_name]
 
-        joint_pos_real = np.concatenate([obs[:, joint_idx] for obs in obs_list])  # type: ignore
+        joint_pos_real = np.concatenate([obs[:, joint_idx] for obs in obs_list])
 
         if sim_name == "mujoco":
             sim = MuJoCoSim(robot, fixed_base=True)
@@ -324,7 +358,7 @@ def evaluate(
                 )
             )
 
-        joint_pos_sim = np.concatenate(joint_pos_sim_list)  # type: ignore
+        joint_pos_sim = np.concatenate(joint_pos_sim_list)
 
         error = np.sqrt(np.mean((joint_pos_real - joint_pos_sim) ** 2))
 
@@ -334,18 +368,19 @@ def evaluate(
             level="info",
         )
 
-        time_seq_ref_dict[joint_name] = np.arange(  # type: ignore
-            sum([len(action) for action in action_list])
-        ) * (sim.n_frames * sim.dt)
+        time_seq_ref_dict[joint_name] = list(
+            np.arange(sum([len(action) for action in action_list]))
+            * (sim.n_frames * sim.dt)
+        )
         time_seq_sim_dict[joint_name] = obs_time_sim_list
-        obs_time_real = np.concatenate(obs_time_dict[joint_name])  # type: ignore
+        obs_time_real = np.concatenate(obs_time_dict[joint_name])
         obs_time_real -= obs_time_real[0]
         time_seq_real_dict[joint_name] = obs_time_real.tolist()
 
         joint_pos_sim_dict[joint_name] = joint_pos_sim.tolist()
         joint_pos_real_dict[joint_name] = joint_pos_real.tolist()
 
-        action_all = np.concatenate(  # type: ignore
+        action_all = np.concatenate(
             [action[:, joint_idx] for action in action_list]
         ).tolist()
         action_sim_dict[joint_name] = action_all
@@ -400,6 +435,12 @@ def main():
         help="The simulator to use.",
     )
     parser.add_argument(
+        "--policy",
+        type=str,
+        default="sysID_fixed",
+        help="The name of the task.",
+    )
+    parser.add_argument(
         "--n-iters",
         type=int,
         default=500,
@@ -415,7 +456,7 @@ def main():
     args = parser.parse_args()
 
     data_path = os.path.join(
-        "results", f"{args.robot}_sysID_fixed_real_world_{args.time_str}"
+        "results", f"{args.robot}_{args.policy}_real_world_{args.time_str}"
     )
     if not os.path.exists(data_path):
         raise ValueError("Invalid experiment folder path")

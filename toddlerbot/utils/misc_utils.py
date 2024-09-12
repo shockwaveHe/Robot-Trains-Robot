@@ -75,12 +75,12 @@ F = TypeVar("F", bound=Callable[..., Any])
 def profile() -> Callable[[F], F]:
     def decorator(func: F) -> F:
         # Register function to the global profiler
-        global_profiler.add_function(func)  # type: ignore
+        global_profiler.add_function(func)
 
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             # Enable profiling
-            global_profiler.enable_by_count()  # type: ignore
+            global_profiler.enable_by_count()
             try:
                 if inspect.iscoroutinefunction(func):
                     # Handle coroutine functions
@@ -90,7 +90,7 @@ def profile() -> Callable[[F], F]:
                     result = func(*args, **kwargs)
             finally:
                 # Disable profiling
-                global_profiler.disable_by_count()  # type: ignore
+                global_profiler.disable_by_count()
 
             return result
 
@@ -101,7 +101,7 @@ def profile() -> Callable[[F], F]:
 
 def dump_profiling_data(prof_path: str = "profile_output.lprof"):
     # Dump all profiling data into a single file
-    global_profiler.dump_stats(prof_path)  # type: ignore
+    global_profiler.dump_stats(prof_path)
     txt_path = prof_path.replace(".lprof", ".txt")
     subprocess.run(f"python -m line_profiler {prof_path} > {txt_path}", shell=True)
 
@@ -144,13 +144,13 @@ def set_seed(seed: int):
     # import torch
 
     if seed == -1:
-        seed = np.random.randint(0, 10000)  # type: ignore
+        seed = np.random.randint(0, 10000)
 
     log(f"Setting seed: {seed}", header="Seed")
 
     random.seed(seed)
     np.random.seed(seed)
-    # torch.manual_seed(seed)  # type: ignore
+    # torch.manual_seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)
     # torch.cuda.manual_seed(seed)
     # torch.cuda.manual_seed_all(seed)

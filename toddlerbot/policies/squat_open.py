@@ -1,3 +1,5 @@
+# type: ignore
+
 from typing import List
 
 import numpy as np
@@ -10,10 +12,12 @@ from toddlerbot.utils.math_utils import interpolate, interpolate_action
 from toddlerbot.utils.misc_utils import set_seed
 
 
-class SquatOpenPolicy(BasePolicy):
-    def __init__(self, robot: Robot, init_motor_angles: npt.NDArray[np.float32]):
+class SquatOpenPolicy(BasePolicy, policy_name="squat_open"):
+    def __init__(
+        self, name: str, robot: Robot, init_motor_angles: npt.NDArray[np.float32]
+    ):
         # TODO: Fix this script
-        super().__init__("squat", robot, init_motor_angles)
+        super().__init__(name, robot, init_motor_angles)
         self.control_dt = 0.02
 
         set_seed(0)
@@ -87,8 +91,8 @@ class SquatOpenPolicy(BasePolicy):
             motor_angles = robot.joint_to_motor_angles(joint_angles)
             action_end = np.array(list(motor_angles.values()), dtype=np.float32)
 
-            squat_time = np.arange(0, squat_duration, self.control_dt, dtype=np.float32)  # type: ignore
-            squat_action = np.tile(action_end.copy(), (squat_time.shape[0], 1))  # type: ignore
+            squat_time = np.arange(0, squat_duration, self.control_dt, dtype=np.float32)
+            squat_action = np.tile(action_end.copy(), (squat_time.shape[0], 1))
             for i, t in enumerate(squat_time):
                 action = interpolate(
                     np.zeros_like(action_end),
@@ -146,8 +150,8 @@ class SquatOpenPolicy(BasePolicy):
         time_list.append(rise_time)
         action_list.append(rise_action)
 
-        self.time_arr = np.concatenate(time_list)  # type: ignore
-        self.action_arr = np.concatenate(action_list)  # type: ignore
+        self.time_arr = np.concatenate(time_list)
+        self.action_arr = np.concatenate(action_list)
 
     def step(self, obs: Obs) -> npt.NDArray[np.float32]:
         action = np.array(interpolate_action(obs.time, self.time_arr, self.action_arr))

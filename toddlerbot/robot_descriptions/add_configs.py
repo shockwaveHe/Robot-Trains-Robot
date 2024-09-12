@@ -1,11 +1,15 @@
 import argparse
 import json
 import os
+import platform
 import xml.etree.ElementTree as ET
 from typing import Any, Dict
 
+import numpy as np
+
 
 def get_default_config(
+    robot_name: str,
     root: ET.Element,
     general_config: Dict[str, Any],
     motor_config: Dict[str, Dict[str, Any]],
@@ -18,7 +22,13 @@ def get_default_config(
     is_knee_closed_loop = False
     is_ankle_closed_loop = False
     config_dict["joints"] = {}
-    id = 0
+
+    # toddlerbot_arm joints should start with id 16
+    if "arms" in robot_name:
+        init_id = 16
+    else:
+        init_id = 0
+
     for joint in root.findall("joint"):
         joint_type = joint.get("type")
         if joint_type is None or joint_type == "fixed":
@@ -32,8 +42,8 @@ def get_default_config(
         if joint_limit is None:
             raise ValueError(f"Joint {joint_name} does not have a limit tag.")
         else:
-            lower_limit = float(joint_limit.get("lower"))  # type: ignore
-            upper_limit = float(joint_limit.get("upper"))  # type: ignore
+            lower_limit = float(joint_limit.get("lower", -np.pi))
+            upper_limit = float(joint_limit.get("upper", np.pi))
 
         is_passive = False
         transmission = "none"
@@ -100,7 +110,7 @@ def get_default_config(
                 raise ValueError(f"{joint_name} not found in the motor config!")
 
             motor_name = motor_config[joint_name]["motor"]
-            joint_dict["id"] = list(motor_config.keys()).index(joint_name)
+            joint_dict["id"] = list(motor_config.keys()).index(joint_name) + init_id
             joint_dict["type"] = "dynamixel"
             joint_dict["spec"] = motor_name
             # joint_dict["control_mode"] = (
@@ -140,8 +150,6 @@ def get_default_config(
                 else:
                     joint_dict["gear_ratio"] = 1.0
 
-            id += 1
-
         config_dict["joints"][joint_name] = joint_dict
 
     joints_list = list(config_dict["joints"].items())
@@ -161,7 +169,7 @@ def get_default_config(
     return config_dict
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Get the config.")
     parser.add_argument(
         "--robot",
@@ -169,14 +177,27 @@ def main():
         default="toddlerbot",
         help="The name of the robot. Need to match the name in robot_descriptions.",
     )
+    # baud is either 3 or 4 int
+    # parser.add_argument(
+    #     "--baud",
+    #     type=int,
+    #     default=4,
+    #     help="The baudrate of motors, unit in Mbps",
+    # )
     args = parser.parse_args()
+
+    # if macos, use 3
+    if platform.system() == "Darwin":
+        baud = 3
+    else:
+        baud = 4
 
     robot_dir = os.path.join("toddlerbot", "robot_descriptions", args.robot)
     general_config: Dict[str, Any] = {
         "is_fixed": True,
         "has_imu": False,
         "has_dynamixel": True,
-        "dynamixel_baudrate": 4000000,
+        "dynamixel_baudrate": baud * 1000000,
         "has_sunny_sky": False,
         "solref": [0.004, 1],
     }
@@ -247,25 +268,26 @@ def main():
                     param_name
                 ]
 
-        dynamics_config_path = os.path.join(robot_dir, "config_dynamics.json")
-        if os.path.exists(dynamics_config_path):
-            with open(dynamics_config_path, "r") as f:
-                passive_joint_dyn_config = json.load(f)
+    dynamics_config_path = os.path.join(robot_dir, "config_dynamics.json")
+    if os.path.exists(dynamics_config_path):
+        with open(dynamics_config_path, "r") as f:
+            passive_joint_dyn_config = json.load(f)
 
-            for joint_name, joint_config in passive_joint_dyn_config.items():
-                joint_dyn_config[joint_name] = joint_config
+        for joint_name, joint_config in passive_joint_dyn_config.items():
+            joint_dyn_config[joint_name] = joint_config
 
     urdf_path = os.path.join(robot_dir, f"{args.robot}.urdf")
     tree = ET.parse(urdf_path)
     root = tree.getroot()
 
     config_dict = get_default_config(
-        root, general_config, motor_config, joint_dyn_config
+        args.robot, root, general_config, motor_config, joint_dyn_config
     )
 
     config_file_path = os.path.join(robot_dir, "config.json")
     with open(config_file_path, "w") as f:
         f.write(json.dumps(config_dict, indent=4))
+        print(f"Config file saved to {config_file_path}")
 
     collision_config_file_path = os.path.join(robot_dir, "config_collision.json")
     if not os.path.exists(collision_config_file_path):
@@ -280,6 +302,9 @@ def main():
 
         with open(collision_config_file_path, "w") as f:
             f.write(json.dumps(collision_config, indent=4))
+            print(f"Collision config file saved to {collision_config_file_path}")
+
+    print("Done")
 
 
 if __name__ == "__main__":

@@ -1,3 +1,5 @@
+# type: ignore
+
 import copy
 from typing import Dict, List, Tuple
 
@@ -25,7 +27,7 @@ class ZMPWalking:
         self.joint_angles_traj = [self.joint_angles]
 
         self.fsp = FootStepPlanner(
-            np.array(config.plan_max_stride),  # type: ignore
+            np.array(config.plan_max_stride),
             config.plan_t_step,
             self.foot_to_com_y,
         )

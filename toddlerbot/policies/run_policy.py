@@ -1,7 +1,9 @@
 import argparse
 import bisect
+import importlib
 import os
 import pickle
+import pkgutil
 import time
 from typing import Any, Dict, List
 
@@ -9,23 +11,37 @@ import numpy as np
 import numpy.typing as npt
 from tqdm import tqdm
 
-from toddlerbot.policies import BasePolicy
+from toddlerbot.policies import BasePolicy, get_policy_class
+from toddlerbot.policies.mjx_policy import MJXPolicy
+from toddlerbot.policies.sysID_fixed import SysIDFixedPolicy
 from toddlerbot.sim import BaseSim, Obs
+from toddlerbot.sim.mujoco_sim import MuJoCoSim
+from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.math_utils import round_floats
-from toddlerbot.utils.misc_utils import (
-    dump_profiling_data,
-    log,
-    precise_sleep,
-    # profile,
-    snake2camel,
-)
+from toddlerbot.utils.misc_utils import dump_profiling_data, log, snake2camel
 from toddlerbot.visualization.vis_plot import (
     plot_joint_tracking,
+    plot_joint_tracking_frequency,
     plot_joint_tracking_single,
     plot_line_graph,
     plot_loop_time,
 )
+
+
+def dynamic_import_policies(policy_package: str):
+    """Dynamically import all modules in the given package."""
+    package = importlib.import_module(policy_package)
+    package_path = package.__path__
+
+    # Iterate over all modules in the given package directory
+    for _, module_name, _ in pkgutil.iter_modules(package_path):
+        full_module_name = f"{policy_package}.{module_name}"
+        importlib.import_module(full_module_name)
+
+
+# Call this to import all policies dynamically
+dynamic_import_policies("toddlerbot.policies")
 
 
 def plot_results(
@@ -66,6 +82,7 @@ def plot_results(
     # lin_vel_obs_list: List[npt.NDArray[np.float32]] = []
     ang_vel_obs_list: List[npt.NDArray[np.float32]] = []
     euler_obs_list: List[npt.NDArray[np.float32]] = []
+    tor_obs_total_list: List[float] = []
     time_seq_dict: Dict[str, List[float]] = {}
     time_seq_ref_dict: Dict[str, List[float]] = {}
     motor_pos_dict: Dict[str, List[float]] = {}
@@ -76,6 +93,7 @@ def plot_results(
         # lin_vel_obs_list.append(obs.lin_vel)
         ang_vel_obs_list.append(obs.ang_vel)
         euler_obs_list.append(obs.euler)
+        tor_obs_total_list.append(sum(obs.motor_tor))
 
         for j, motor_name in enumerate(robot.motor_ordering):
             if motor_name not in time_seq_dict:
@@ -108,17 +126,17 @@ def plot_results(
 
     plot_loop_time(loop_time_dict, exp_folder_path)
 
-    # plot_line_graph(
-    #     np.array(lin_vel_obs_list).T,
-    #     time_obs_list,
-    #     legend_labels=["X", "Y", "Z"],
-    #     title="Linear Velocities Over Time",
-    #     x_label="Time (s)",
-    #     y_label="Linear Velocity (m/s)",
-    #     save_config=True,
-    #     save_path=exp_folder_path,
-    #     file_name="lin_vel_tracking",
-    # )()
+    plot_line_graph(
+        tor_obs_total_list,
+        time_obs_list,
+        legend_labels=["Torque (Nm) or Current (mA)"],
+        title="Total Torque or Current  Over Time",
+        x_label="Time (s)",
+        y_label="Torque (Nm) or Current (mA)",
+        save_config=True,
+        save_path=exp_folder_path,
+        file_name="total_tor_tracking",
+    )()
     plot_line_graph(
         np.array(ang_vel_obs_list).T,
         time_obs_list,
@@ -147,6 +165,13 @@ def plot_results(
         motor_pos_dict,
         action_dict,
         robot.joint_limits,
+        save_path=exp_folder_path,
+    )
+    plot_joint_tracking_frequency(
+        time_seq_dict,
+        time_seq_ref_dict,
+        motor_pos_dict,
+        action_dict,
         save_path=exp_folder_path,
     )
     plot_joint_tracking_single(
@@ -183,7 +208,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
     p_bar = tqdm(total=n_steps_total, desc="Running the policy")
     start_time = time.time()
     step_idx = 0
-    time_until_next_step = 0
+    time_until_next_step = 0.0
     last_ckpt_idx = -1
     try:
         while step_idx < n_steps_total:
@@ -209,7 +234,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
                 ckpt_idx = bisect.bisect_left(ckpt_times, obs.time)
                 if ckpt_idx != last_ckpt_idx:
                     motor_kps = policy.ckpt_dict[ckpt_times[ckpt_idx]]
-                    if np.any(list(motor_kps.values())):  # type: ignore
+                    if np.any(list(motor_kps.values())):
                         sim.set_motor_kps(motor_kps)
                         last_ckpt_idx = ckpt_idx
 
@@ -264,12 +289,11 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
             time_until_next_step = start_time + policy.control_dt * step_idx - step_end
             # print(f"time_until_next_step: {time_until_next_step * 1000:.2f} ms")
             if "real" in sim.name and time_until_next_step > 0:
-                precise_sleep(time_until_next_step)
+                time.sleep(time_until_next_step)
 
     except KeyboardInterrupt:
         log("KeyboardInterrupt recieved. Closing...", header=header_name)
 
-    finally:
         p_bar.close()
 
         exp_name = f"{robot.name}_{policy.name}_{sim.name}"
@@ -341,7 +365,19 @@ if __name__ == "__main__":
         "--ckpt",
         type=str,
         default="",
-        help="The policy checkpoint to load.",
+        help="The policy checkpoint to load for RL policies.",
+    )
+    parser.add_argument(
+        "--command",
+        type=str,
+        default="",
+        help="The policy checkpoint to load for RL policies.",
+    )
+    parser.add_argument(
+        "--run-name",
+        type=str,
+        default="",
+        help="The policy run to replay.",
     )
     parser.add_argument(
         "--ref-motion",
@@ -353,80 +389,36 @@ if __name__ == "__main__":
 
     robot = Robot(args.robot)
 
+    sim: BaseSim | None = None
     if args.sim == "mujoco":
-        from toddlerbot.sim.mujoco_sim import MuJoCoSim
-
         sim = MuJoCoSim(robot, vis_type=args.vis, fixed_base="fixed" in args.policy)
         init_motor_pos = sim.get_observation().motor_pos
 
     elif args.sim == "real":
-        from toddlerbot.sim.real_world import RealWorld
-
         sim = RealWorld(robot)
+        sim.has_imu = "fixed" not in args.policy
         init_motor_pos = sim.get_observation(retries=-1).motor_pos
 
     else:
         raise ValueError("Unknown simulator")
 
-    if "stand_open" in args.policy:
-        from toddlerbot.policies.stand_open import StandOpenPolicy
+    PolicyClass = get_policy_class(args.policy)
 
-        policy = StandOpenPolicy(robot, init_motor_pos)
+    if "replay" in args.policy:
+        policy = PolicyClass(args.policy, robot, init_motor_pos, args.run_name)
 
-    elif "rotate_torso_open" in args.policy:
-        from toddlerbot.policies.rotate_torso_open import RotateTorsoOpenPolicy
-
-        policy = RotateTorsoOpenPolicy(robot, init_motor_pos)
-
-    elif "squat_open" in args.policy:
-        from toddlerbot.policies.squat_open import SquatOpenPolicy
-
-        policy = SquatOpenPolicy(robot, init_motor_pos)
-
-    elif "sysID_fixed" in args.policy:
-        from toddlerbot.policies.sysID_fixed import SysIDFixedPolicy
-
-        policy = SysIDFixedPolicy(robot, init_motor_pos)
-
-    elif args.policy == "ref":
-        from toddlerbot.policies.ref_policy import RefPolicy
-        assert len(args.ref_motion) > 0, "Please provide a reference motion to track."
-        policy = RefPolicy(robot, init_motor_pos, args.ref_motion)
-    elif "walk" in args.policy:
-        from toddlerbot.policies.walk import WalkPolicy
-
-        policy = WalkPolicy(
+    elif issubclass(PolicyClass, MJXPolicy):
+        assert len(args.ckpt) > 0, "Need to provide a checkpoint for MJX policies"
+        assert len(args.command) > 0, "Need to provide a command for MJX policies"
+        policy = PolicyClass(
             args.policy,
             robot,
             init_motor_pos,
             args.ckpt,
-            fixed_command=np.array([0.3, 0, 0], dtype=np.float32),
+            fixed_command=np.array(args.command.split(" "), dtype=np.float32),
         )
-
-    elif "rotate_torso" in args.policy:
-        from toddlerbot.policies.rotate_torso import RotateTorsoPolicy
-
-        policy = RotateTorsoPolicy(
-            args.policy,
-            robot,
-            init_motor_pos,
-            args.ckpt,
-            fixed_command=np.array([0.2, 0], dtype=np.float32),
-        )
-
-    elif "squat" in args.policy:
-        from toddlerbot.policies.squat import SquatPolicy
-
-        policy = SquatPolicy(
-            args.policy,
-            robot,
-            init_motor_pos,
-            args.ckpt,
-            fixed_command=np.array([-0.05], dtype=np.float32),
-        )
-
     else:
-        raise ValueError("Unknown policy")
+        policy = PolicyClass(args.policy, robot, init_motor_pos)
 
     debug_config: Dict[str, Any] = {"log": False, "plot": False, "render": True}
 

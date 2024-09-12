@@ -44,7 +44,7 @@ class RealWorld(BaseSim):
 
         self.initialize()
 
-    def initialize(self):
+    def initialize(self) -> None:
         self.executor = ThreadPoolExecutor()
 
         future_imu = None
@@ -210,10 +210,6 @@ class RealWorld(BaseSim):
 
         motor_angles_updated: Dict[str, float] = {}
         for name, angle in motor_angles.items():
-            # transmission = joints_config[name]["transmission"]
-            # if transmission == "gears":
-            #     angle *= joints_config[name]["gear_ratio"]
-
             if name in self.negated_motor_names:
                 motor_angles_updated[name] = -angle
             else:

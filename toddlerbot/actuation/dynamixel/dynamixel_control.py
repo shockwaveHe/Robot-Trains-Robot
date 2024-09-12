@@ -42,8 +42,6 @@ class DynamixelConfig:
 
 class DynamixelController(BaseController):
     def __init__(self, config: DynamixelConfig, motor_ids: List[int]):
-        super().__init__()
-
         self.config = config
         self.motor_ids: List[int] = motor_ids
         self.lock = Lock()
@@ -134,6 +132,37 @@ class DynamixelController(BaseController):
         with self.lock:
             self.client.sync_write(self.motor_ids, kP, 84, 2)
 
+    # Only disable the torque, but stay connected through comm. If no id is provided, disable all motors
+    def disable_motors(self, ids=None):
+        open_clients: List[DynamixelClient] = list(DynamixelClient.OPEN_CLIENTS)  # type: ignore
+        for open_client in open_clients:
+            if ids is not None:
+                # get the intersecting list between ids and motor_ids
+                ids_to_disable = list(set(open_client.motor_ids) & set(ids))
+                print("Disabling motor id ", ids_to_disable)
+                open_client.set_torque_enabled(ids_to_disable, False)
+            else:
+                print("Disabling all motor")
+                open_client.set_torque_enabled(open_client.motor_ids, False)
+
+    def enable_motors(self, ids=None):
+        open_clients: List[DynamixelClient] = list(DynamixelClient.OPEN_CLIENTS)  # type: ignore
+        for open_client in open_clients:
+            if ids is not None:
+                # get the intersecting list between ids and motor_ids
+                ids_to_enable = list(set(open_client.motor_ids) & set(ids))
+                print("Enabling motor id ", ids_to_enable)
+                open_client.set_torque_enabled(ids_to_enable, True)
+            else:
+                print("Enabling all motor")
+                open_client.set_torque_enabled(open_client.motor_ids, True)
+
+    def set_kp_kd(self, kp, kd, ids=None):
+        log("Setting motor kp kd", header="Dynamixel")
+        with self.lock:
+            self.client.sync_write(self.motor_ids, [kd] * len(self.motor_ids), 80, 2)
+            self.client.sync_write(self.motor_ids, [kp] * len(self.motor_ids), 84, 2)
+
     # @profile()
     def set_pos(
         self,
@@ -145,7 +174,7 @@ class DynamixelController(BaseController):
         def set_pos_helper(pos_arr: npt.NDArray[np.float32]):
             pos_arr_drive = self.init_pos + pos_arr
             with self.lock:
-                self.client.write_desired_pos(self.motor_ids, pos_arr_drive)  # type: ignore
+                self.client.write_desired_pos(self.motor_ids, pos_arr_drive)
 
         pos_arr: npt.NDArray[np.float32] = np.array(pos)
 
@@ -181,9 +210,9 @@ class DynamixelController(BaseController):
                 retries=retries
             )
 
-        # log(f"Pos: {np.round(pos_arr, 4)}", header="Dynamixel", level="debug")  # type: ignore
-        # log(f"Vel: {np.round(vel_arr, 4)}", header="Dynamixel", level="debug")  # type: ignore
-        # log(f"Cur: {np.round(cur_arr, 4)}", header="Dynamixel", level="debug")  # type: ignore
+        # log(f"Pos: {np.round(pos_arr, 4)}", header="Dynamixel", level="debug")
+        # log(f"Vel: {np.round(vel_arr, 4)}", header="Dynamixel", level="debug")
+        # log(f"Cur: {np.round(cur_arr, 4)}", header="Dynamixel", level="debug")
 
         pos_arr -= self.init_pos
 

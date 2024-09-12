@@ -1,9 +1,8 @@
 import time
 
 import mink
-import mujoco  # type: ignore  # type: ignore
-import mujoco.viewer  # type: ignore  # type: ignore
-import numpy as np
+import mujoco
+import mujoco.viewer
 import pygame
 
 from toddlerbot.tools.teleop.joystick import get_controller_input, initialize_joystick

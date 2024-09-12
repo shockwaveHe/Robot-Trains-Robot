@@ -23,7 +23,6 @@ class BaseSim(ABC):
     @abstractmethod
     def __init__(self, name: str):
         self.name = name
-        self.visualizer = None
 
     @abstractmethod
     def set_motor_angles(self, motor_angles: Dict[str, float]):

@@ -5,12 +5,12 @@ import warnings
 from typing import Any, Dict, List
 
 import mediapy as media
-import mujoco  # type: ignore
-import mujoco.rollout  # type: ignore
-import mujoco.viewer  # type: ignore
+import mujoco
+import mujoco.rollout
+import mujoco.viewer
 import numpy as np
 import numpy.typing as npt
-from moviepy.editor import VideoFileClip, clips_array  # type: ignore
+from moviepy.editor import VideoFileClip, clips_array
 
 # Suppress specific warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="moviepy")
@@ -19,100 +19,29 @@ os.environ["MUJOCO_GL"] = "egl"  # For headless rendering
 
 class MuJoCoViewer:
     def __init__(self, model: Any, data: Any):
-        self.viewer = mujoco.viewer.launch_passive(model, data)  # type: ignore
+        self.viewer = mujoco.viewer.launch_passive(model, data)
         self.model = model
 
-    def visualize(self, data: Any, vis_data: Dict[str, Any] = {}):
-        # with self.viewer.lock():
-        #     self.viewer.user_scn.ngeom = 0  # type: ignore
-        #     if "foot_steps" in vis_data:
-        #         self.vis_foot_steps(vis_data["foot_steps"])
-        #     if "com_ref_traj" in vis_data:
-        #         self.vis_com_ref_traj(vis_data["com_ref_traj"])
-        #     if "path" in vis_data:
-        #         self.vis_path(vis_data["path"])
-        #     if "torso" in vis_data:
-        #         self.vis_torso(data)
+    def visualize(self, data: Any, vis_flags: Dict[str, bool] = {"com": True}):
+        with self.viewer.lock():
+            self.viewer.user_scn.ngeom = 0
+            if vis_flags["com"]:
+                self.visualize_com(data)
 
         self.viewer.sync()
 
-    # def vis_foot_steps(self, foot_steps):
-    #     i = self.viewer.user_scn.ngeom
-    #     for foot_step in foot_steps:
-    #         if foot_step.support_leg == "both":
-    #             continue
-
-    #         mujoco.mjv_initGeom(
-    #             self.viewer.user_scn.geoms[i],
-    #             type=mujoco.mjtGeom.mjGEOM_LINEBOX,
-    #             size=[
-    #                 self.foot_size[0] / 2,
-    #                 self.foot_size[1] / 2,
-    #                 self.foot_size[2] / 2,
-    #             ],
-    #             pos=np.array(
-    #                 [
-    #                     foot_step.position[0],
-    #                     foot_step.position[1],
-    #                     self.foot_size[2] / 2,
-    #                 ]
-    #             ),
-    #             mat=euler2mat(0, 0, foot_step.position[2]).flatten(),
-    #             rgba=(
-    #                 [0, 0, 1, 1] if foot_step.support_leg == "left" else [0, 1, 0, 1]
-    #             ),
-    #         )
-    #         i += 1
-    #     self.viewer.user_scn.ngeom = i
-
-    # def vis_com_ref_traj(self, com_ref_traj):
-    #     i = self.viewer.user_scn.ngeom
-    #     for com_pos in com_ref_traj:
-    #         mujoco.mjv_initGeom(
-    #             self.viewer.user_scn.geoms[i],
-    #             type=mujoco.mjtGeom.mjGEOM_SPHERE,
-    #             size=np.array([0.001, 0.001, 0.001]),
-    #             pos=np.array([com_pos[0], com_pos[1], 0.005]),
-    #             mat=np.eye(3).flatten(),
-    #             rgba=[1, 0, 0, 1],
-    #         )
-    #         i += 1
-    #     self.viewer.user_scn.ngeom = i
-
-    # def vis_path(self, path):
-    #     i = self.viewer.user_scn.ngeom
-    #     for j in range(len(path) - 1):
-    #         mujoco.mjv_initGeom(
-    #             self.viewer.user_scn.geoms[i],
-    #             type=mujoco.mjtGeom.mjGEOM_LINE,
-    #             size=np.array([1, 1, 1]),
-    #             pos=np.array([0, 0, 0]),
-    #             mat=np.eye(3).flatten(),
-    #             rgba=[0, 0, 0, 1],
-    #         )
-    #         mujoco.mjv_connector(
-    #             self.viewer.user_scn.geoms[i],
-    #             mujoco.mjtGeom.mjGEOM_LINE,
-    #             100,
-    #             np.array([*path[j], 0.0]),
-    #             np.array([*path[j + 1], 0.0]),
-    #         )
-    #         i += 1
-    #     self.viewer.user_scn.ngeom = i
-
-    # def vis_torso(self, data):
-    #     i = self.viewer.user_scn.ngeom
-    #     torso_pos = data.site("torso").xpos
-    #     torso_mat = data.site("torso").xmat
-    #     mujoco.mjv_initGeom(
-    #         self.viewer.user_scn.geoms[i],
-    #         type=mujoco.mjtGeom.mjGEOM_ARROW,
-    #         size=np.array([0.005, 0.005, 0.15]),
-    #         pos=torso_pos,
-    #         mat=torso_mat,
-    #         rgba=[1, 0, 0, 1],
-    #     )
-    #     self.viewer.user_scn.ngeom = i + 1
+    def visualize_com(self, data: Any):
+        i = self.viewer.user_scn.ngeom
+        com_pos = np.array(data.body(0).subtree_com, dtype=np.float32)
+        mujoco.mjv_initGeom(
+            self.viewer.user_scn.geoms[i],
+            type=mujoco.mjtGeom.mjGEOM_SPHERE,
+            size=np.array([0.01, 0.01, 0.01]),  # Adjust size of the sphere
+            pos=com_pos,
+            mat=np.eye(3).flatten(),
+            rgba=[1, 0, 0, 1],
+        )
+        self.viewer.user_scn.ngeom = i + 1
 
     def close(self):
         self.viewer.close()
@@ -153,11 +82,11 @@ class MuJoCoRenderer:
             for qpos, qvel in zip(
                 self.qpos_data[::render_every], self.qvel_data[::render_every]
             ):
-                d = mujoco.MjData(self.model)  # type: ignore
+                d = mujoco.MjData(self.model)
                 d.qpos, d.qvel = qpos, qvel
-                mujoco.mj_forward(self.model, d)  # type: ignore
-                self.renderer.update_scene(d, camera=camera)  # type: ignore
-                video_frames.append(self.renderer.render())  # type: ignore
+                mujoco.mj_forward(self.model, d)
+                self.renderer.update_scene(d, camera=camera)
+                video_frames.append(self.renderer.render())
 
             media.write_video(video_path, video_frames, fps=1.0 / dt / render_every)
             video_paths.append(video_path)
