@@ -59,6 +59,7 @@ class IMU:
         # Compute relative rotation based on zero pose
         quat = quat_mult(quat_raw, self.zero_quat_inv)
         euler = np.asarray(quat2euler(quat))
+        euler[1] = -euler[1] # left-handed to right-handed
         # Ensure the transition is smooth by adjusting for any discontinuities
         euler_delta = euler - self.euler_prev
         euler_delta = (euler_delta + np.pi) % (2 * np.pi) - np.pi

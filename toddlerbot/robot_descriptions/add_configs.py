@@ -130,7 +130,7 @@ def get_default_config(
                 else 0.0
             )
             joint_dict["kp_real"] = motor_config[joint_name]["kp"]
-            joint_dict["ki_real"] = 0.0
+            joint_dict["ki_real"] = motor_config[joint_name]["ki"]
             joint_dict["kd_real"] = motor_config[joint_name]["kd"]
             joint_dict["kff2_real"] = 0.0
             joint_dict["kff1_real"] = 0.0

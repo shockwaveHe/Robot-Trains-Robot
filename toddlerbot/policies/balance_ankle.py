@@ -20,7 +20,6 @@ class BalanceAnklePolicy(BasePolicy, policy_name="balance_ankle"):
             list(robot.default_joint_angles.values()), dtype=np.float32
         )
 
-        self.ank_pitch_command_range = [-0.1, 0.1]
         self.left_ank_pitch_idx = robot.joint_ordering.index("left_ank_pitch")
         self.right_ank_pitch_idx = robot.joint_ordering.index("right_ank_pitch")
 
@@ -30,8 +29,8 @@ class BalanceAnklePolicy(BasePolicy, policy_name="balance_ankle"):
         )
 
         # PD controller parameters
-        self.kp = -1.0  # Proportional gain
-        self.kd = -0.1  # Derivative gain
+        self.kp = 2.0  # Proportional gain
+        self.kd = 0.2  # Derivative gain
         self.previous_error = 0.0
 
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
@@ -45,7 +44,7 @@ class BalanceAnklePolicy(BasePolicy, policy_name="balance_ankle"):
         # PD controller to maintain torso pitch at 0
         pitch_curr = obs.euler[1]  # Torso pitch angle (obs.euler[1])
         # Calculate the error (difference between desired and current pitch)
-        error = 0.0 - pitch_curr
+        error = pitch_curr
 
         # # Derivative of the error (rate of change of the error)
         error_derivative = (error - self.previous_error) / self.control_dt
@@ -53,10 +52,6 @@ class BalanceAnklePolicy(BasePolicy, policy_name="balance_ankle"):
 
         # PD controller output
         command = self.kp * error + self.kd * error_derivative
-
-        print(
-            f"Current pitch: {pitch_curr:.2f} | Command: {command:.2f} | Error: {error:.2f} | Derivative: {error_derivative:.2f}"
-        )
 
         # Update joint positions based on the PD controller command
         joint_pos = self.default_joint_pos.copy()
