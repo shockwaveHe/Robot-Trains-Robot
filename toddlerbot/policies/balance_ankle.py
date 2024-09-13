@@ -29,7 +29,7 @@ class BalanceAnklePolicy(BasePolicy, policy_name="balance_ankle"):
         )
 
         # PD controller parameters
-        self.kp = 2.0  # Proportional gain
+        self.kp = 1.0  # Proportional gain
         self.kd = 0.2  # Derivative gain
         self.previous_error = 0.0
 
