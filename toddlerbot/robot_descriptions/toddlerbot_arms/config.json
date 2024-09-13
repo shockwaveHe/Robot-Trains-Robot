@@ -62,7 +62,7 @@
         },
         "left_sho_yaw_drive": {
             "is_passive": false,
-            "transmission": "gears",
+            "transmission": "gear",
             "group": "arm",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -109,7 +109,7 @@
         },
         "left_elbow_yaw_drive": {
             "is_passive": false,
-            "transmission": "gears",
+            "transmission": "gear",
             "group": "arm",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -133,7 +133,7 @@
         },
         "left_wrist_roll_drive": {
             "is_passive": false,
-            "transmission": "gears",
+            "transmission": "gear",
             "group": "arm",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -226,7 +226,7 @@
         },
         "right_sho_yaw_drive": {
             "is_passive": false,
-            "transmission": "gears",
+            "transmission": "gear",
             "group": "arm",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -273,7 +273,7 @@
         },
         "right_elbow_yaw_drive": {
             "is_passive": false,
-            "transmission": "gears",
+            "transmission": "gear",
             "group": "arm",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -297,7 +297,7 @@
         },
         "right_wrist_roll_drive": {
             "is_passive": false,
-            "transmission": "gears",
+            "transmission": "gear",
             "group": "arm",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -344,7 +344,7 @@
         },
         "left_elbow_yaw_driven": {
             "is_passive": true,
-            "transmission": "gears",
+            "transmission": "gear",
             "group": "arm",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -354,7 +354,7 @@
         },
         "left_sho_yaw_driven": {
             "is_passive": true,
-            "transmission": "gears",
+            "transmission": "gear",
             "group": "arm",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -364,7 +364,7 @@
         },
         "left_wrist_roll_driven": {
             "is_passive": true,
-            "transmission": "gears",
+            "transmission": "gear",
             "group": "arm",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -374,7 +374,7 @@
         },
         "right_elbow_yaw_driven": {
             "is_passive": true,
-            "transmission": "gears",
+            "transmission": "gear",
             "group": "arm",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -384,7 +384,7 @@
         },
         "right_sho_yaw_driven": {
             "is_passive": true,
-            "transmission": "gears",
+            "transmission": "gear",
             "group": "arm",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
@@ -394,7 +394,7 @@
         },
         "right_wrist_roll_driven": {
             "is_passive": true,
-            "transmission": "gears",
+            "transmission": "gear",
             "group": "arm",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,

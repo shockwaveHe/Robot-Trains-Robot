@@ -494,9 +494,10 @@ class Robot:
         right_ank_act_pos: List[float] = []
         for motor_name, motor_pos in motor_angles.items():
             transmission = joints_config[motor_name]["transmission"]
-            if transmission == "gears":
-                joint_angles[motor_name.replace("_drive", "_driven")] = (
-                    -motor_pos / joints_config[motor_name]["gear_ratio"]
+            if transmission == "gear":
+                joint_name = motor_name.replace("_drive", "_driven")
+                joint_angles[joint_name] = (
+                    -motor_pos * joints_config[motor_name]["gear_ratio"]
                 )
             elif transmission == "waist":
                 # Placeholder to ensure the correct order
@@ -542,10 +543,10 @@ class Robot:
         right_ankle_pos: List[float] = []
         for joint_name, joint_pos in joint_angles.items():
             transmission = joints_config[joint_name]["transmission"]
-            if transmission == "gears":
+            if transmission == "gear":
                 motor_name = joint_name.replace("_driven", "_drive")
                 motor_angles[motor_name] = (
-                    -joint_pos * joints_config[motor_name]["gear_ratio"]
+                    -joint_pos / joints_config[motor_name]["gear_ratio"]
                 )
             elif transmission == "waist":
                 # Placeholder to ensure the correct order

@@ -16,12 +16,12 @@ class BalanceReference(MotionReference):
         arm_motor_names: List[str] = [
             robot.motor_ordering[i] for i in self.arm_actuator_indices
         ]
-        self.arm_joint_coef = np.ones(len(arm_motor_names), dtype=np.float32)
+        self.arm_gear_ratio = np.ones(len(arm_motor_names), dtype=np.float32)  # type: ignore
         for i, motor_name in enumerate(arm_motor_names):
             motor_config = robot.config["joints"][motor_name]
-            if motor_config["transmission"] == "gears":
-                self.arm_joint_coef = inplace_update(
-                    self.arm_joint_coef, i, -motor_config["gear_ratio"]
+            if motor_config["transmission"] == "gear":
+                self.arm_gear_ratio = inplace_update(
+                    self.arm_gear_ratio, i, -motor_config["gear_ratio"]
                 )
 
         data_path = os.path.join("toddlerbot", "ref_motion", "balance_dataset.lz4")
@@ -117,9 +117,9 @@ class BalanceReference(MotionReference):
         return motor_target
 
     def arm_fk(self, arm_motor_pos: ArrayType) -> ArrayType:
-        arm_joint_pos = arm_motor_pos / self.arm_joint_coef
+        arm_joint_pos = arm_motor_pos * self.arm_gear_ratio
         return arm_joint_pos
 
     def arm_ik(self, arm_joint_pos: ArrayType) -> ArrayType:
-        arm_motor_pos = arm_joint_pos * self.arm_joint_coef
+        arm_motor_pos = arm_joint_pos / self.arm_gear_ratio
         return arm_motor_pos

@@ -155,11 +155,11 @@ class MJXEnv(PipelineEnv):
         arm_motor_names: List[str] = [
             self.robot.motor_ordering[i] for i in self.arm_actuator_indices
         ]
-        self.arm_joint_coef = jnp.ones(len(arm_motor_names), dtype=np.float32)
+        self.arm_gear_ratio = jnp.ones(len(arm_motor_names))
         for i, motor_name in enumerate(arm_motor_names):
             motor_config = self.robot.config["joints"][motor_name]
-            if motor_config["transmission"] == "gears":
-                self.arm_joint_coef = self.arm_joint_coef.at[i].set(
+            if motor_config["transmission"] == "gear":
+                self.arm_gear_ratio = self.arm_gear_ratio.at[i].set(
                     -motor_config["gear_ratio"]
                 )
 
@@ -275,10 +275,10 @@ class MJXEnv(PipelineEnv):
 
         qpos = self.default_qpos
         arm_joint_pos = state_ref[self.ref_start_idx + self.arm_ref_indices]
-        arm_motor_pos = arm_joint_pos * self.arm_joint_coef
-        qpos = qpos.at[self.q_start_idx + self.arm_joint_indices].set(arm_joint_pos)
-        qpos = qpos.at[self.q_start_idx + self.arm_motor_indices].set(arm_motor_pos)
 
+        arm_motor_pos = arm_joint_pos / self.arm_gear_ratio
+        qpos = qpos.at[self.q_start_idx + self.arm_joint_indices].set(arm_joint_pos)  # type:ignore
+        qpos = qpos.at[self.q_start_idx + self.arm_motor_indices].set(arm_motor_pos)  # type:ignore
         if self.add_noise:
             noise_pos = jax.random.uniform(
                 rng1,

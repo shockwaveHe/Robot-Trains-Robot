@@ -3,7 +3,7 @@
         "motor": "XC330",
         "init_pos": 0.49854376912117004,
         "default_pos": 0,
-        "gear_ratio": 1.3846153846153846,
+        "gear_ratio": 0.7222222222222222,
         "kp": 900.0,
         "ki": 0.0,
         "kd": 0.0
@@ -12,7 +12,7 @@
         "motor": "XC330",
         "init_pos": 5.819922924041748,
         "default_pos": 0,
-        "gear_ratio": 1.1,
+        "gear_ratio": 0.9090909090909091,
         "kp": 900.0,
         "ki": 0.0,
         "kd": 0.0
@@ -37,7 +37,7 @@
         "motor": "XC330",
         "init_pos": 4.384117126464844,
         "default_pos": 0,
-        "gear_ratio": 1.105263157894737,
+        "gear_ratio": 0.9047619047619047,
         "kp": 900.0,
         "ki": 0.0,
         "kd": 0.0
@@ -86,7 +86,7 @@
         "motor": "XC330",
         "init_pos": 6.123651504516602,
         "default_pos": 0,
-        "gear_ratio": 1.105263157894737,
+        "gear_ratio": 0.9047619047619047,
         "kp": 900.0,
         "ki": 0.0,
         "kd": 0.0
@@ -171,7 +171,7 @@
         "ki": 0.0,
         "kd": 0.0
     },
-    "left_wrist_roll_drive": {
+    "left_wrist_pitch_drive": {
         "motor": "2XL430",
         "init_pos": 0.8958447575569153,
         "default_pos": 1.0472,
@@ -179,7 +179,7 @@
         "ki": 0.0,
         "kd": 0.0
     },
-    "left_wrist_pitch": {
+    "left_wrist_roll": {
         "motor": "2XL430",
         "init_pos": 3.141592653589793,
         "default_pos": 0,
@@ -227,7 +227,15 @@
         "ki": 0.0,
         "kd": 0.0
     },
-    "right_wrist_roll_drive": {
+    "right_wrist_pitch_drive": {
+        "motor": "2XL430",
+        "init_pos": 3.141592653589793,
+        "default_pos": 0,
+        "kp": 1800.0,
+        "ki": 0.0,
+        "kd": 0.0
+    },
+    "right_wrist_roll": {
         "motor": "2XL430",
         "init_pos": 3.041883945465088,
         "default_pos": -1.0472,
@@ -235,11 +243,21 @@
         "ki": 0.0,
         "kd": 0.0
     },
-    "right_wrist_pitch": {
-        "motor": "2XL430",
-        "init_pos": 3.141592653589793,
-        "default_pos": 0,
-        "kp": 1800.0,
+    "left_gripper_rack": {
+        "motor": "XC330",
+        "init_pos": 0.0,
+        "default_pos": 0.0,
+        "gear_ratio": 0.007,
+        "kp": 900.0,
+        "ki": 0.0,
+        "kd": 0.0
+    },
+    "right_gripper_rack": {
+        "motor": "XC330",
+        "init_pos": 0.0,
+        "default_pos": 0.0,
+        "gear_ratio": 0.007,
+        "kp": 900.0,
         "ki": 0.0,
         "kd": 0.0
     }
