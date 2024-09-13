@@ -1,7 +1,11 @@
+import contextlib
 from typing import List
 
 import numpy as np
-import pygame
+
+with contextlib.redirect_stdout(None):
+    import pygame
+
 from pygame.joystick import JoystickType
 
 

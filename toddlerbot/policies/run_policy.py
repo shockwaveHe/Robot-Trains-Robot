@@ -291,6 +291,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
     except KeyboardInterrupt:
         log("KeyboardInterrupt recieved. Closing...", header=header_name)
 
+    finally:
         p_bar.close()
 
         exp_name = f"{robot.name}_{policy.name}_{sim.name}"
@@ -299,37 +300,37 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
 
         os.makedirs(exp_folder_path, exist_ok=True)
 
-        log_data_dict: Dict[str, Any] = {
-            "obs_list": obs_list,
-            "motor_angles_list": motor_angles_list,
-        }
-        if "sysID" in policy.name:
-            assert isinstance(policy, SysIDFixedPolicy)
-            log_data_dict["ckpt_dict"] = policy.ckpt_dict
-
-        log_data_path = os.path.join(exp_folder_path, "log_data.pkl")
-        with open(log_data_path, "wb") as f:
-            pickle.dump(log_data_dict, f)
-
         if debug["render"] and hasattr(sim, "save_recording"):
             assert isinstance(sim, MuJoCoSim)
             sim.save_recording(exp_folder_path, policy.control_dt, 2)
 
         sim.close()
 
-        prof_path = os.path.join(exp_folder_path, "profile_output.lprof")
-        dump_profiling_data(prof_path)
+    log_data_dict: Dict[str, Any] = {
+        "obs_list": obs_list,
+        "motor_angles_list": motor_angles_list,
+    }
+    if "sysID" in policy.name:
+        assert isinstance(policy, SysIDFixedPolicy)
+        log_data_dict["ckpt_dict"] = policy.ckpt_dict
 
-        if debug["plot"]:
-            log("Visualizing...", header="Walking")
-            plot_results(
-                robot,
-                loop_time_list,
-                obs_list,
-                motor_angles_list,
-                policy.control_dt,
-                exp_folder_path,
-            )
+    log_data_path = os.path.join(exp_folder_path, "log_data.pkl")
+    with open(log_data_path, "wb") as f:
+        pickle.dump(log_data_dict, f)
+
+    prof_path = os.path.join(exp_folder_path, "profile_output.lprof")
+    dump_profiling_data(prof_path)
+
+    if debug["plot"]:
+        log("Visualizing...", header="Walking")
+        plot_results(
+            robot,
+            loop_time_list,
+            obs_list,
+            motor_angles_list,
+            policy.control_dt,
+            exp_folder_path,
+        )
 
 
 if __name__ == "__main__":

@@ -95,13 +95,13 @@ def get_default_config(
 
         if is_passive:
             if joint_name in joint_dyn_config:
-                for param_name in ["damping", "armature"]:  # , "frictionloss"]:
+                for param_name in ["damping", "armature", "frictionloss"]:
                     joint_dict[param_name] = joint_dyn_config[joint_name][param_name]
             elif transmission == "gears":
                 joint_drive_name = joint_name.replace("_driven", "_drive")
                 motor_name = motor_config[joint_drive_name]["motor"]
                 gear_ratio = motor_config[joint_drive_name].get("gear_ratio", 1.0)
-                for param_name in ["damping", "armature"]:  # , "frictionloss"]:
+                for param_name in ["damping", "armature", "frictionloss"]:
                     joint_dict[param_name] = joint_dyn_config[motor_name][
                         param_name
                     ] * (gear_ratio**2)
@@ -138,10 +138,10 @@ def get_default_config(
             joint_dict["kd_sim"] = 0.0
 
             if joint_name in joint_dyn_config:
-                for param_name in ["damping", "armature"]:  # , "frictionloss"]:
+                for param_name in ["damping", "armature", "frictionloss"]:
                     joint_dict[param_name] = joint_dyn_config[joint_name][param_name]
             elif motor_name in joint_dyn_config:
-                for param_name in ["damping", "armature"]:  # , "frictionloss"]:
+                for param_name in ["damping", "armature", "frictionloss"]:
                     joint_dict[param_name] = joint_dyn_config[motor_name][param_name]
 
             if transmission == "gears":
@@ -263,7 +263,7 @@ def main() -> None:
                 sysID_result = json.load(f)
 
             joint_dyn_config[motor_name] = {}
-            for param_name in ["damping", "armature"]:  # , "frictionloss"]:
+            for param_name in ["damping", "armature", "frictionloss"]:
                 joint_dyn_config[motor_name][param_name] = sysID_result["joint_0"][
                     param_name
                 ]

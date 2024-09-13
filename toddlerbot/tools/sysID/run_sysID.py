@@ -15,7 +15,10 @@ from toddlerbot.sim import Obs
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.misc_utils import log
-from toddlerbot.visualization.vis_plot import plot_joint_tracking
+from toddlerbot.visualization.vis_plot import (
+    plot_joint_tracking,
+    plot_joint_tracking_frequency,
+)
 
 logger = _get_library_root_logger()
 
@@ -111,12 +114,13 @@ def optimize_parameters(
     action_list: List[npt.NDArray[np.float32]],
     kp_list: List[float],
     n_iters: int = 1000,
-    early_stopping_rounds: int = 100,
+    early_stopping_rounds: int = 1000,
+    freq_max: float = 10,
     sampler_name: str = "CMA",
     # gain_range: Tuple[float, float, float] = (0, 50, 0.1),
-    damping_range: Tuple[float, float, float] = (0, 10, 1e-3),
-    armature_range: Tuple[float, float, float] = (0, 0.1, 1e-3),
-    # friction_range: Tuple[float, float, float] = (0, 1.0, 1e-3),
+    damping_range: Tuple[float, float, float] = (0.001, 10, 1e-3),
+    armature_range: Tuple[float, float, float] = (0.001, 0.1, 1e-3),
+    frictionloss_range: Tuple[float, float, float] = (0.001, 1.0, 1e-3),
 ):
     if sim_name == "mujoco":
         sim = MuJoCoSim(robot, fixed_base=True)
@@ -127,6 +131,7 @@ def optimize_parameters(
     initial_trial = {
         "damping": float(sim.model.joint(joint_name).damping),
         "armature": float(sim.model.joint(joint_name).armature),
+        "frictionloss": float(sim.model.joint(joint_name).frictionloss),
     }
     joint_idx = robot.joint_ordering.index(joint_name)
     motor_names = robot.joint_to_motor_name[joint_name]
@@ -153,15 +158,14 @@ def optimize_parameters(
         armature = trial.suggest_float(
             "armature", *armature_range[:2], step=armature_range[2]
         )
-        # frictionloss = trial.suggest_float(
-        #     "frictionloss", *friction_range[:2], step=friction_range[2]
-        # )
+        frictionloss = trial.suggest_float(
+            "frictionloss", *frictionloss_range[:2], step=frictionloss_range[2]
+        )
         joint_dyn = {
             joint_name: {
-                # "gain": gain,
                 "damping": damping,
                 "armature": armature,
-                # "frictionloss": frictionloss,
+                "frictionloss": frictionloss,
             }
         }
 
@@ -180,9 +184,30 @@ def optimize_parameters(
 
         joint_pos_sim = np.concatenate(joint_pos_sim_list)
 
+        # RMSE
         error = np.sqrt(np.mean((joint_pos_real - joint_pos_sim) ** 2))
 
-        return error
+        # FFT (Fourier Transform) of the joint position data and reference data
+        joint_pos_sim_fft = np.fft.fft(joint_pos_sim)
+        joint_pos_real_fft = np.fft.fft(joint_pos_real)
+
+        joint_pos_sim_fft_freq = np.fft.fftfreq(len(joint_pos_sim_fft), d=sim.dt)
+        joint_pos_real_fft_freq = np.fft.fftfreq(len(joint_pos_real_fft), d=sim.dt)
+
+        magnitude_sim = np.abs(joint_pos_sim_fft[: len(joint_pos_sim_fft) // 2])
+        magnitude_real = np.abs(joint_pos_real_fft[: len(joint_pos_real_fft) // 2])
+
+        magnitude_sim_filtered = magnitude_sim[
+            joint_pos_sim_fft_freq[: len(joint_pos_sim_fft) // 2] < freq_max
+        ]
+        magnitude_real_filtered = magnitude_real[
+            joint_pos_real_fft_freq[: len(joint_pos_real_fft) // 2] < freq_max
+        ]
+        error_fft = np.sqrt(
+            np.mean((magnitude_real_filtered - magnitude_sim_filtered) ** 2)
+        )
+
+        return error + error_fft * 0.01
 
     sampler: optuna.samplers.BaseSampler | None = None
     if sampler_name == "TPE":
@@ -223,7 +248,7 @@ def optimize_parameters(
     return study.best_params, study.best_value
 
 
-def multiprocessing_optimization(
+def optimize_all(
     robot: Robot,
     sim_name: str,
     obs_pos_dict: Dict[str, List[npt.NDArray[np.float32]]],
@@ -339,6 +364,7 @@ def evaluate(
             joint_name: {
                 "damping": opt_params_dict[joint_name]["damping"],
                 "armature": opt_params_dict[joint_name]["armature"],
+                "frictionloss": opt_params_dict[joint_name]["frictionloss"],
             }
         }
         sim.set_joint_dynamics(joint_dyn)
@@ -390,6 +416,25 @@ def evaluate(
 
     plot_joint_tracking(
         time_seq_sim_dict,
+        time_seq_real_dict,
+        joint_pos_sim_dict,
+        joint_pos_real_dict,
+        robot.joint_limits,
+        save_path=exp_folder_path,
+        file_name="sim2real_joint_pos",
+        line_suffix=["_sim", "_real"],
+    )
+    plot_joint_tracking_frequency(
+        time_seq_sim_dict,
+        time_seq_real_dict,
+        joint_pos_sim_dict,
+        joint_pos_real_dict,
+        save_path=exp_folder_path,
+        file_name="sim2real_joint_freq",
+        line_suffix=["_sim", "_real"],
+    )
+    plot_joint_tracking(
+        time_seq_sim_dict,
         time_seq_ref_dict,
         joint_pos_sim_dict,
         action_sim_dict,
@@ -397,7 +442,14 @@ def evaluate(
         save_path=exp_folder_path,
         file_name="sim_tracking",
     )
-
+    plot_joint_tracking_frequency(
+        time_seq_sim_dict,
+        time_seq_ref_dict,
+        joint_pos_sim_dict,
+        action_sim_dict,
+        save_path=exp_folder_path,
+        file_name="sim_tracking_freq",
+    )
     plot_joint_tracking(
         time_seq_real_dict,
         time_seq_ref_dict,
@@ -407,16 +459,13 @@ def evaluate(
         save_path=exp_folder_path,
         file_name="real_tracking",
     )
-
-    plot_joint_tracking(
-        time_seq_sim_dict,
+    plot_joint_tracking_frequency(
         time_seq_real_dict,
-        joint_pos_sim_dict,
+        time_seq_ref_dict,
         joint_pos_real_dict,
-        robot.joint_limits,
+        action_real_dict,
         save_path=exp_folder_path,
-        file_name="sim2real_joint_pos",
-        line_suffix=["_sim", "_real"],
+        file_name="real_tracking_freq",
     )
 
 
@@ -443,7 +492,7 @@ def main():
     parser.add_argument(
         "--n-iters",
         type=int,
-        default=500,
+        default=1000,
         help="The number of iterations to optimize the parameters.",
     )
     parser.add_argument(
@@ -484,7 +533,7 @@ def main():
     #     args.n_iters,
     # )
 
-    opt_params_dict, opt_values_dict = multiprocessing_optimization(
+    opt_params_dict, opt_values_dict = optimize_all(
         robot, args.sim, obs_pos_dict, action_dict, kp_dict, args.n_iters
     )
 

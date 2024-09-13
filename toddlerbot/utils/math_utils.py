@@ -53,15 +53,23 @@ def get_chirp_signal(
     initial_frequency: float,
     final_frequency: float,
     amplitude: float,
+    decay_rate: float,
     method: str = "linear",  # "linear", "quadratic", "logarithmic", etc.
 ) -> Tuple[ArrayType, ArrayType]:
     t = np.linspace(
         0, duration, int(duration / control_dt), endpoint=False, dtype=np.float32
     )
 
-    signal = mean + amplitude * chirp(
+    # Generate chirp signal without amplitude modulation
+    chirp_signal = chirp(
         t, f0=initial_frequency, f1=final_frequency, t1=duration, method=method, phi=-90
     )
+
+    # Apply an amplitude decay envelope based on time (or frequency)
+    amplitude_envelope = amplitude * np.exp(-decay_rate * t)
+
+    # Modulate the chirp signal with the decayed amplitude
+    signal = mean + amplitude_envelope * chirp_signal
 
     return t, signal.astype(np.float32)
 

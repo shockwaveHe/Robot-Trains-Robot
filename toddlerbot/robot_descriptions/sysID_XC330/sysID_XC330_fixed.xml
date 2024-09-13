@@ -10,7 +10,7 @@
     <geom type="mesh" rgba="0.662917 0.7055 0.667299 1" mesh="xc330_visual" class="visual" />
     <body name="arm_330" pos="0.0894 0.0219499 0.0034194" quat="0.5 0.5 0.5 0.5">
       <inertial pos="0.0722101 0 -0.0145" quat="0.707107 0 0 0.707107" mass="0.2345" diaginertia="0.000368542 0.000234351 0.000185029" />
-      <joint name="joint_0" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.154" armature="0.004" />
+      <joint name="joint_0" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.077" armature="0.001" frictionloss="0.467" />
       <geom type="mesh" rgba="0.629995 0.655186 0.678154 1" mesh="arm_330_visual" class="visual" />
     </body>
   </worldbody>
