@@ -114,12 +114,12 @@ def optimize_parameters(
     action_list: List[npt.NDArray[np.float32]],
     kp_list: List[float],
     n_iters: int = 1000,
-    early_stopping_rounds: int = 1000,
+    early_stopping_rounds: int = 200,
     freq_max: float = 10,
     sampler_name: str = "CMA",
     # gain_range: Tuple[float, float, float] = (0, 50, 0.1),
     damping_range: Tuple[float, float, float] = (0.001, 10, 1e-3),
-    armature_range: Tuple[float, float, float] = (0.001, 0.1, 1e-3),
+    armature_range: Tuple[float, float, float] = (0.0, 0.1, 1e-3),
     frictionloss_range: Tuple[float, float, float] = (0.001, 1.0, 1e-3),
 ):
     if sim_name == "mujoco":
@@ -492,7 +492,7 @@ def main():
     parser.add_argument(
         "--n-iters",
         type=int,
-        default=1000,
+        default=500,
         help="The number of iterations to optimize the parameters.",
     )
     parser.add_argument(
