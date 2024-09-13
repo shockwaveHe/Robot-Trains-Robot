@@ -11,7 +11,7 @@ from toddlerbot.utils.math_utils import get_chirp_signal, interpolate_action
 from toddlerbot.utils.misc_utils import set_seed
 
 
-class SysIDFixedPolicy(BasePolicy, policy_name="sysID_fixed"):
+class SysIDFixedPolicy(BasePolicy, policy_name="sysID"):
     def __init__(
         self, name: str, robot: Robot, init_motor_pos: npt.NDArray[np.float32]
     ):
@@ -205,6 +205,7 @@ class SysIDFixedPolicy(BasePolicy, policy_name="sysID_fixed"):
                     sysID_specs.initial_frequency,
                     sysID_specs.final_frequency,
                     amplitude,
+                    sysID_specs.decay_rate,
                 )
                 rotate_time = np.asarray(rotate_time)
                 signal = np.asarray(signal)

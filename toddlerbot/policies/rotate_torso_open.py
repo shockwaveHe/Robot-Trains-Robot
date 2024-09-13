@@ -93,6 +93,7 @@ class RotateTorsoOpenPolicy(BasePolicy, policy_name="rotate_torso_open"):
                 sysID_specs.initial_frequency,
                 sysID_specs.final_frequency,
                 amplitude,
+                sysID_specs.decay_rate,
             )
             rotate_time = np.asarray(rotate_time)
             signal = np.asarray(signal)
