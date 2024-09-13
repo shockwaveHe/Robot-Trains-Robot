@@ -49,7 +49,7 @@ class FSR:
                     posL = float(latest_data.split(",")[1])
                     posR = np.clip(posR, 0.0, 2.0) / 2.0 * 100
                     posL = np.clip(posL, 0.0, 2.0) / 2.0 * 100
-                    print(f"Received: posL={posL}, posR={posR}")
+                    # print(f"Received: posL={posL}, posR={posR}")
                     return posL, posR
                 else:
                     return None, None

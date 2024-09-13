@@ -63,9 +63,16 @@ if send_to_remote:
 
 # Open the camera (0 is the default camera)
 cap = cv2.VideoCapture(0)
+# cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
 # Set the resolution to 640x360
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 360)
+
+# Get the fourcc code of the video format
+fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))
+fourcc_str = "".join([chr((fourcc >> 8 * i) & 0xFF) for i in range(4)])
+
+print(f"Video format (FOURCC): {fourcc_str}")
 
 # Check if the camera opened successfully
 if not cap.isOpened():
