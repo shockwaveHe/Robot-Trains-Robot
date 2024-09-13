@@ -4,12 +4,12 @@
 # NC='\033[0m' # No Color
 
 ##### toddlerbot #####
-# ROBOT_NAME="toddlerbot"
-# BODY_NAME="toddlerbot"
-# ARM_NAME="arm_gripper"
-# LEG_NAME="leg_XM430"
-# DOC_ID_LIST="6f1a2a766fbbc097a49abb91 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
-# ASSEMBLY_LIST="toddlerbot left_leg_XM430 right_leg_XM430 left_arm_gripper right_arm_gripper"
+ROBOT_NAME="toddlerbot"
+BODY_NAME="toddlerbot"
+ARM_NAME="arm_gripper"
+LEG_NAME="leg_XM430"
+DOC_ID_LIST="6f1a2a766fbbc097a49abb91 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
+ASSEMBLY_LIST="toddlerbot left_leg_XM430 right_leg_XM430 left_arm_gripper right_arm_gripper"
 # DOC_ID_LIST="6f1a2a766fbbc097a49abb91"
 # ASSEMBLY_LIST="toddlerbot"
 
@@ -32,11 +32,11 @@
 # ASSEMBLY_LIST="toddlerbot_arms"
 
 ##### sysID_device #####
-MOTOR_TYPE="XC330"
-ROBOT_NAME="sysID_$MOTOR_TYPE"
-BODY_NAME="sysID_$MOTOR_TYPE"
-DOC_ID_LIST="4b8df5a39fb5e7db7afa93b4"
-ASSEMBLY_LIST="sysID_$MOTOR_TYPE"
+# MOTOR_TYPE="XC330"
+# ROBOT_NAME="sysID_$MOTOR_TYPE"
+# BODY_NAME="sysID_$MOTOR_TYPE"
+# DOC_ID_LIST="4b8df5a39fb5e7db7afa93b4"
+# ASSEMBLY_LIST="sysID_$MOTOR_TYPE"
 
 REPO_NAME="toddlerbot"
 URDF_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/$ROBOT_NAME.urdf
