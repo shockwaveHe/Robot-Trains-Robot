@@ -149,7 +149,7 @@ def update_joint_params(root: ET.Element, joints_config: Dict[str, Any]):
 
         if joint_name in joints_config:
             for attr_name in joints_config[joint_name]:
-                if attr_name in ["damping", "armature"]:  # , "frictionloss"]:
+                if attr_name in ["damping", "armature", "frictionloss"]:
                     attr_value = round_to_sig_digits(
                         joints_config[joint_name][attr_name], 6
                     )

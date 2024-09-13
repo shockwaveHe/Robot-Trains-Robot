@@ -116,7 +116,7 @@ def optimize_parameters(
     # gain_range: Tuple[float, float, float] = (0, 50, 0.1),
     damping_range: Tuple[float, float, float] = (0, 10, 1e-3),
     armature_range: Tuple[float, float, float] = (0, 0.1, 1e-3),
-    # friction_range: Tuple[float, float, float] = (0, 1.0, 1e-3),
+    frictionloss_range: Tuple[float, float, float] = (0, 1.0, 1e-3),
 ):
     if sim_name == "mujoco":
         sim = MuJoCoSim(robot, fixed_base=True)
@@ -127,6 +127,7 @@ def optimize_parameters(
     initial_trial = {
         "damping": float(sim.model.joint(joint_name).damping),
         "armature": float(sim.model.joint(joint_name).armature),
+        "frictionloss": float(sim.model.joint(joint_name).frictionloss),
     }
     joint_idx = robot.joint_ordering.index(joint_name)
     motor_names = robot.joint_to_motor_name[joint_name]
@@ -153,15 +154,14 @@ def optimize_parameters(
         armature = trial.suggest_float(
             "armature", *armature_range[:2], step=armature_range[2]
         )
-        # frictionloss = trial.suggest_float(
-        #     "frictionloss", *friction_range[:2], step=friction_range[2]
-        # )
+        frictionloss = trial.suggest_float(
+            "frictionloss", *frictionloss_range[:2], step=frictionloss_range[2]
+        )
         joint_dyn = {
             joint_name: {
-                # "gain": gain,
                 "damping": damping,
                 "armature": armature,
-                # "frictionloss": frictionloss,
+                "frictionloss": frictionloss,
             }
         }
 
@@ -339,6 +339,7 @@ def evaluate(
             joint_name: {
                 "damping": opt_params_dict[joint_name]["damping"],
                 "armature": opt_params_dict[joint_name]["armature"],
+                "frictionloss": opt_params_dict[joint_name]["frictionloss"],
             }
         }
         sim.set_joint_dynamics(joint_dyn)
