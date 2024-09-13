@@ -25,11 +25,17 @@ class SysIDFixedPolicy(BasePolicy, policy_name="sysID"):
         reset_duration = 2.0
 
         if "sysID" in robot.name:
+            kp_list: List[float] = []
+            if "330" in robot.name:
+                kp_list = list(range(300, 2700, 300))
+            elif "430" in robot.name:
+                kp_list = list(range(600, 3000, 300))
+            else:
+                kp_list = list(range(900, 3300, 300))
+
             joint_sysID_specs = {
                 "joint_0": SysIDSpecs(
-                    amplitude_ratio=0.5,
-                    final_frequency=10.0,
-                    kp_list=list(range(300, 2700, 300)),
+                    amplitude_ratio=0.5, final_frequency=10.0, kp_list=kp_list
                 )
             }
         else:
