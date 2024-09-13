@@ -393,7 +393,7 @@ if __name__ == "__main__":
     else:
         raise ValueError("Unknown simulator")
 
-    PolicyClass = get_policy_class(args.policy)
+    PolicyClass = get_policy_class(args.policy.replace("_fixed", ""))
 
     if "replay" in args.policy:
         policy = PolicyClass(args.policy, robot, init_motor_pos, args.run_name)
