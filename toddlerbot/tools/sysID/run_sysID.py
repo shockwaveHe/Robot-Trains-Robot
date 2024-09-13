@@ -118,9 +118,9 @@ def optimize_parameters(
     freq_max: float = 10,
     sampler_name: str = "CMA",
     # gain_range: Tuple[float, float, float] = (0, 50, 0.1),
-    damping_range: Tuple[float, float, float] = (0, 10, 1e-3),
-    armature_range: Tuple[float, float, float] = (0, 0.1, 1e-3),
-    frictionloss_range: Tuple[float, float, float] = (0, 1.0, 1e-3),
+    damping_range: Tuple[float, float, float] = (0.001, 10, 1e-3),
+    armature_range: Tuple[float, float, float] = (0.001, 0.1, 1e-3),
+    frictionloss_range: Tuple[float, float, float] = (0.001, 1.0, 1e-3),
 ):
     if sim_name == "mujoco":
         sim = MuJoCoSim(robot, fixed_base=True)
@@ -185,7 +185,7 @@ def optimize_parameters(
         joint_pos_sim = np.concatenate(joint_pos_sim_list)
 
         # RMSE
-        # error = np.sqrt(np.mean((joint_pos_real - joint_pos_sim) ** 2))
+        error = np.sqrt(np.mean((joint_pos_real - joint_pos_sim) ** 2))
 
         # FFT (Fourier Transform) of the joint position data and reference data
         joint_pos_sim_fft = np.fft.fft(joint_pos_sim)
@@ -203,11 +203,11 @@ def optimize_parameters(
         magnitude_real_filtered = magnitude_real[
             joint_pos_real_fft_freq[: len(joint_pos_real_fft) // 2] < freq_max
         ]
-        error = np.sqrt(
+        error_fft = np.sqrt(
             np.mean((magnitude_real_filtered - magnitude_sim_filtered) ** 2)
         )
 
-        return error
+        return error + error_fft * 0.01
 
     sampler: optuna.samplers.BaseSampler | None = None
     if sampler_name == "TPE":
