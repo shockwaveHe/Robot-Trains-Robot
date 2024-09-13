@@ -177,7 +177,8 @@ class TeleopFollowerPolicy(BasePolicy):
         self.socket = self.zmq_context.socket(zmq.PULL)
         self.socket.bind("tcp://0.0.0.0:5555")  # Listen on all interfaces
         self.socket.setsockopt(zmq.RCVHWM, 1)  # Limit receiver's queue to 1 message
-        self.get_zmq_data()
+        self.socket.setsockopt(zmq.CONFLATE, 1)  # Only keep the latest message
+        self.socket.setsockopt(zmq.RCVBUF, 1024)
 
     def get_zmq_data(self):
         try:
@@ -190,6 +191,23 @@ class TeleopFollowerPolicy(BasePolicy):
             # print("No message available right now")
             return None
 
+    # For some reason a simple get is not working. buffer will blow up when read speed is too slow
+    # So we will read all the way until the buffer if empty to bypass this problem
+    def get_zmq_data_queue(self):
+        messages = []
+        while True:
+            try:
+                # Non-blocking receive
+                serialized_array = self.socket.recv(zmq.NOBLOCK)
+                send_dict = pickle.loads(serialized_array)
+                messages.append(send_dict)
+            except zmq.Again:
+                # No more data is available
+                break
+
+        if messages:
+            return messages[-1] if messages else None
+
     # note: calibrate zero at: toddlerbot/tools/calibration/calibrate_zero.py --robot toddlerbot_arms
     # note: zero points can be accessed in config_motors.json
 
@@ -197,7 +215,7 @@ class TeleopFollowerPolicy(BasePolicy):
         tstart = time.time()
 
         sim_action = self.default_action
-        remote_state = self.get_zmq_data()
+        remote_state = self.get_zmq_data_queue()
         if remote_state is not None:
             curr_t = time.time()
             if curr_t - remote_state["time"] > 0.1:
@@ -223,21 +241,24 @@ class TeleopFollowerPolicy(BasePolicy):
         # Log the data
         if self.log:
             t1 = time.time()
-            # camera_frame = self.follower_camera.get_state()
-            camera_frame = None
+            camera_frame = self.follower_camera.get_state()
+            # camera_frame = None
             # fsrL, fsrR = self.fsr.get_state()
             fsrL, fsrR = self.remote_fsr[0], self.remote_fsr[1]
             t2 = time.time()
-            print(f"camera_frame: {t2 - t1:.2f} s, current_time: {obs_real.time}")
+            nlogs = len(self.dataset_logger.data_dict["episode_ends"])
+            print(
+                f"Logging traj {nlogs} (starts at 0): Camera_frame: {t2 - t1:.2f} s, current_time: {obs_real.time}"
+            )
             self.dataset_logger.log_entry(
-                obs_real.time, obs_real.motor_pos, [fsrL, fsrR], camera_frame
+                time.time(), obs_real.motor_pos, [fsrL, fsrR], camera_frame
             )
         else:
             # clean up the log when not logging.
             self.dataset_logger.maintain_log()
 
         tend = time.time()
-        print(f"Time taken: {1000*(tend - tstart):.2f} ms")
+        # print(f"Time taken: {1000*(tend - tstart):.2f} ms")
 
         return sim_action
 
