@@ -84,8 +84,8 @@ class SquatOpenPolicy(BasePolicy, policy_name="squat_open"):
             )
             # pos_end[robot.joint_ordering.index("left_elbow_roll")] = np.pi / 6
             # pos_end[robot.joint_ordering.index("right_elbow_roll")] = np.pi / 6
-            # pos_end[robot.joint_ordering.index("left_wrist_roll_driven")] = -np.pi / 3
-            # pos_end[robot.joint_ordering.index("right_wrist_roll_driven")] = np.pi / 3
+            # pos_end[robot.joint_ordering.index("left_wrist_pitch_driven")] = -np.pi / 3
+            # pos_end[robot.joint_ordering.index("right_wrist_pitch_driven")] = np.pi / 3
 
             joint_angles = dict(zip(robot.joint_ordering, pos_end))
             motor_angles = robot.joint_to_motor_angles(joint_angles)
