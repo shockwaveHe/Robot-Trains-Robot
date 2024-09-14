@@ -358,23 +358,23 @@
                   <joint name="left_wrist_pitch_drive" pos="0 0 0" axis="0 0 1" range="-1.91986 1.39626" damping="0.195" armature="0.015" frictionloss="0.53" />
                   <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="left_spur_1m_24t_drive_3_visual" class="visual" />
                 </body>
-                <body name="gripper_connector" pos="0.019 -3.58079e-10 -0.027" quat="0 0.707107 0 -0.707107">
-                  <inertial pos="0.00375275 0.0305912 0.0330755" quat="0.859602 0.10508 0.0171382 0.49975" mass="0.068742" diaginertia="5.3912e-05 5.24422e-05 1.50013e-05" />
+                <body name="gripper_connector" pos="0.019 -3.58079e-10 -0.027" quat="0.707107 0 0.707107 0">
+                  <inertial pos="0.00375275 -0.0305912 -0.0330755" quat="0.49975 -0.0171382 -0.10508 0.859602" mass="0.068742" diaginertia="5.3912e-05 5.24422e-05 1.50013e-05" />
                   <joint name="left_wrist_roll" pos="0 0 0" axis="0 0 1" range="-1.91986 1.39626" damping="0.195" armature="0.015" frictionloss="0.53" />
                   <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="left_gripper_connector_visual" class="visual" />
-                  <geom pos="0 0.037 0.036" quat="0.5 0.5 0.5 -0.5" type="mesh" rgba="0.619969 0.813851 0.930071 1" mesh="left_rail_guide_visual" class="visual" />
-                  <geom pos="0.0226 0.0137 0.05795" quat="0.5 0.5 0.5 -0.5" type="mesh" rgba="0.669325 0.729118 0.675479 1" mesh="left_xc330_visual" class="visual" />
-                  <body name="rail" pos="-0.014175 0.04235 0.0648726" quat="-0.707107 0 0 -0.707107">
+                  <geom pos="0 -0.037 -0.036" quat="0.5 -0.5 -0.5 -0.5" type="mesh" rgba="0.619969 0.813851 0.930071 1" mesh="left_rail_guide_visual" class="visual" />
+                  <geom pos="0.0226 -0.0137 -0.05795" quat="0.5 -0.5 -0.5 -0.5" type="mesh" rgba="0.669325 0.729118 0.675479 1" mesh="left_xc330_visual" class="visual" />
+                  <body name="rail" pos="-0.014175 -0.04235 -0.0648726" quat="0 0.707107 -0.707107 0">
                     <inertial pos="0.0227448 -0.0142334 -0.00799071" quat="0.0122447 0.558755 -0.000224909 0.829242" mass="0.0119" diaginertia="4.7734e-06 3.61987e-06 2.61115e-06" />
                     <joint name="left_gripper_pinion_1" pos="0 0 0" axis="0 0 1" type="slide" range="-0.0368726 0" damping="0.0" armature="0.0" frictionloss="0.0" />
                     <geom type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="left_rail_visual" class="visual" />
                   </body>
-                  <body name="rail_2" pos="0.014175 0.04235 -0.0268726" quat="0 0.707107 0.707107 0">
+                  <body name="rail_2" pos="0.014175 -0.04235 0.0268726" quat="0.707107 0 0 -0.707107">
                     <inertial pos="0.0227448 -0.0142334 -0.00799071" quat="0.0122447 0.558755 -0.000224909 0.829242" mass="0.0119" diaginertia="4.7734e-06 3.61987e-06 2.61115e-06" />
                     <joint name="left_gripper_pinion_2" pos="0 0 0" axis="0 0 1" type="slide" range="-0.0368726 0" damping="0.0" armature="0.0" frictionloss="0.0" />
                     <geom type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="left_rail_2_visual" class="visual" />
                   </body>
-                  <body name="spur_gear_(14_teeth)" pos="0.0001 0.0337 0.04995" quat="0.5 0.5 0.5 -0.5">
+                  <body name="spur_gear_(14_teeth)" pos="0.0001 -0.0337 -0.04995" quat="0.5 -0.5 -0.5 -0.5">
                     <inertial pos="5.05201e-09 -3.0587e-09 -0.00690373" quat="0.157349 0.689377 -0.157349 0.689377" mass="0.0013" diaginertia="3.40274e-08 2.6973e-08 2.63232e-08" />
                     <joint name="left_gripper_rack" pos="0 0 0" axis="0 0 1" range="0 5.23599" damping="0.077" armature="0.001" frictionloss="0.467" />
                     <geom type="mesh" rgba="0.917647 0.917647 0.917647 1" mesh="left_spur_gear_(14_teeth)_visual" class="visual" />
