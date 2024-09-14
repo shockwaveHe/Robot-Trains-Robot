@@ -4,3 +4,6 @@
 [submodule "toddlerbot/brax"]
 	path = toddlerbot/brax
 	url = git@github.com:hshi74/brax.git
+[submodule "mujoco"]
+	path = mujoco
+	url = git@github.com:hshi74/mujoco.git
