@@ -10,7 +10,7 @@ matplotlib==3.7.4
 mediapy==1.2.0
 mink==0.0.3
 moviepy==1.0.3
-mujoco-mjx==3.2.2
+mujoco-mjx==3.2.3
 networkx==3.1
 numpy==1.24.4
 opencv-python==4.9.0.80

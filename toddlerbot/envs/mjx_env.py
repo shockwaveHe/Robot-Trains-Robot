@@ -2,15 +2,15 @@ from dataclasses import asdict
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import jax
-import mujoco
 import numpy as np
 from brax import base, math
 from brax.envs.base import PipelineEnv, State
 from brax.io import mjcf
 from jax import numpy as jnp
-from mujoco import mjx
-from mujoco.mjx._src import support
 
+import mujoco
+from mujoco import mjx
+from mujoco.mjx._src import support  # type: ignore
 from toddlerbot.envs.mjx_config import MJXConfig
 from toddlerbot.ref_motion import MotionReference
 from toddlerbot.sim.robot import Robot

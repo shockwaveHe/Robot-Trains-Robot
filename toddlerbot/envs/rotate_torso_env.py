@@ -14,8 +14,8 @@ from toddlerbot.sim.robot import Robot
 class RotateTorsoCfg(MJXConfig):
     @dataclass
     class ObsConfig(MJXConfig.ObsConfig):
-        num_single_obs: int = 148
-        num_single_privileged_obs: int = 187
+        num_single_obs: int = 154
+        num_single_privileged_obs: int = 193
 
     @dataclass
     class ActionConfig(MJXConfig.ActionConfig):
