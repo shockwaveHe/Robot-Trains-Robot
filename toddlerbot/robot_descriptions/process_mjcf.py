@@ -496,8 +496,8 @@ def add_joint_constraints(
                 solref=f"{general_config['solref'][0]} {general_config['solref'][1]}",
             )
         elif transmission == "rack_and_pinion":
-            joint_pinion_1_name = joint_name.replace("_rack", "_pinion_1")
-            joint_pinion_2_name = joint_name.replace("_rack", "_pinion_2")
+            joint_pinion_1_name = joint_name.replace("_rack", "_pinion")
+            joint_pinion_2_name = joint_name.replace("_rack", "_pinion_mirror")
             for joint_pinion_name in [joint_pinion_1_name, joint_pinion_2_name]:
                 joint_pinion: ET.Element | None = root.find(
                     f".//joint[@name='{joint_pinion_name}']"

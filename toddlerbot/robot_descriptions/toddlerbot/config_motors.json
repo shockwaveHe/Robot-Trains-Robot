@@ -173,7 +173,7 @@
     },
     "left_wrist_pitch_drive": {
         "motor": "2XL430",
-        "init_pos": 0.8958447575569153,
+        "init_pos": 5.8597684306457625,
         "default_pos": -1.309,
         "kp": 1800.0,
         "ki": 0.0,
@@ -229,7 +229,7 @@
     },
     "right_wrist_pitch_drive": {
         "motor": "2XL430",
-        "init_pos": 3.141592653589793,
+        "init_pos": 3.041883945465088,
         "default_pos": 1.309,
         "kp": 1800.0,
         "ki": 0.0,
@@ -237,7 +237,7 @@
     },
     "right_wrist_roll": {
         "motor": "2XL430",
-        "init_pos": 3.041883945465088,
+        "init_pos": 3.141592653589793,
         "default_pos": 0.0,
         "kp": 1800.0,
         "ki": 0.0,
@@ -245,7 +245,7 @@
     },
     "left_gripper_rack": {
         "motor": "XC330",
-        "init_pos": 0.0,
+        "init_pos": 5.4042374958752415,
         "default_pos": 0.0,
         "gear_ratio": 0.007,
         "kp": 900.0,
@@ -254,7 +254,7 @@
     },
     "right_gripper_rack": {
         "motor": "XC330",
-        "init_pos": 0.0,
+        "init_pos": 1.9282397576033352,
         "default_pos": 0.0,
         "gear_ratio": 0.007,
         "kp": 900.0,

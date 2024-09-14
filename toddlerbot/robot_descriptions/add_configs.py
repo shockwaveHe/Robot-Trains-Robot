@@ -194,9 +194,9 @@ def main() -> None:
 
     # if macos, use 3
     if platform.system() == "Darwin":
-        baud = 3
+        baud = 2
     else:
-        baud = 4
+        baud = 2
 
     robot_dir = os.path.join("toddlerbot", "robot_descriptions", args.robot)
     general_config: Dict[str, Any] = {
