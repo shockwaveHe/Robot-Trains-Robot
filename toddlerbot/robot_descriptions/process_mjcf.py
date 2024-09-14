@@ -190,6 +190,7 @@ def update_geom_classes(root: ET.Element, geom_keys: List[str]):
 
 def add_keyframes(
     root: ET.Element,
+    default_ctrl: List[float],
     is_fixed: bool,
     has_lower_body: bool,
     has_upper_body: bool,
@@ -207,38 +208,30 @@ def add_keyframes(
     else:
         qpos_str = "0 0 0.336 1 0 0 0 "
 
-    ctrl_str = ""
+    ctrl_str = " ".join(map(str, default_ctrl))
 
     if has_upper_body and has_lower_body:  # neck
         qpos_str += "0 0 0 0 "
-        ctrl_str += "0 0 "
 
-    # TODO: Read from config
     if has_lower_body:  # waist and legs
         qpos_str += (
             "0 0 0 0 "
             + "0 0 0 -0.267268 0.523599 -0.523599 -0.523599 -0.25637 0 0 0.248043 0 -0.246445 -0.253132 0.256023 0.523599 -0.523599 -0.523599 "
             + "0 0 0 0.267268 -0.523599 0.523599 0.523599 -0.25637 0 0 -0.248043 0 0.246445 0.253132 -0.256023 -0.523599 0.523599 0.523599 "
         )
-        ctrl_str += (
-            "0 0 "
-            + "0 0 -0.267268 0.523599 -0.253132 0.256023 "
-            + "0 0 0.267268 -0.523599 0.253132 -0.256023 "
-        )
 
     if has_upper_body:  # arms
         qpos_str += (
-            "0.174533 -0.261799 1.0472 -1.0472 0.523599 0.5235990 -0.5235990 -1.0472 1.0472 0 "
-            + "-0.174533 -0.261799 -1.0472 1.0472 0.523599 -0.523599 0.523599 1.0472 -1.0472 0"
+            "0.174533 -0.261799 1.0472 -1.0472 0.523599 -1.0472 1.0472 1.309 -1.309 0 "
         )
-        ctrl_str += (
-            "0.174533 -0.261799 1.0472 0.523599 0.523599 1.0472 0 "
-            + "-0.174533 -0.261799 -1.0472 0.523599 -0.523599 -1.0472 0"
-        )
+        if has_gripper:
+            qpos_str += "0 0 0 "
 
-    if has_gripper:
-        qpos_str += " 0 0 0 0 0 0"
-        ctrl_str += " 0 0"
+        qpos_str += (
+            "-0.174533 -0.261799 -1.0472 1.0472 0.523599 1.0472 -1.0472 -1.309 1.309 0"
+        )
+        if has_gripper:
+            qpos_str += " 0 0 0"
 
     ET.SubElement(keyframe, "key", {"name": "home", "qpos": qpos_str, "ctrl": ctrl_str})
 
@@ -882,8 +875,14 @@ def process_mjcf_fixed_file(root: ET.Element, robot: Robot):
             if "gripper" in motor_name:
                 has_gripper = True
 
+        default_ctrl = robot.get_joint_attrs("is_passive", False, "default_pos")
         add_keyframes(
-            root, True, "arms" not in robot.name, "legs" not in robot.name, has_gripper
+            root,
+            default_ctrl,
+            True,
+            "arms" not in robot.name,
+            "legs" not in robot.name,
+            has_gripper,
         )
 
     add_default_settings(root, robot.config["general"])
@@ -931,8 +930,10 @@ def get_mjcf_files(robot_name: str):
             if "gripper" in motor_name:
                 has_gripper = True
 
+        default_ctrl = robot.get_joint_attrs("is_passive", False, "default_pos")
         add_keyframes(
             xml_root,
+            default_ctrl,
             False,
             "arms" not in robot.name,
             "legs" not in robot.name,
