@@ -14,9 +14,11 @@ from toddlerbot.utils.math_utils import (
 from toddlerbot.utils.misc_utils import set_seed
 
 
-class RotateTorsoOpenPolicy(BasePolicy):
-    def __init__(self, robot: Robot, init_motor_pos: npt.NDArray[np.float32]):
-        super().__init__("rotate_torso", robot, init_motor_pos)
+class RotateTorsoOpenPolicy(BasePolicy, policy_name="rotate_torso_open"):
+    def __init__(
+        self, name: str, robot: Robot, init_motor_pos: npt.NDArray[np.float32]
+    ):
+        super().__init__(name, robot, init_motor_pos)
         set_seed(0)
 
         self.prep_duration = 7.0
@@ -66,7 +68,7 @@ class RotateTorsoOpenPolicy(BasePolicy):
             warm_up_act = np.zeros_like(init_motor_pos)
             warm_up_act[joint_idx] = mean
 
-            if len(sysID_specs.warm_up_angles) > 0:
+            if sysID_specs.warm_up_angles is not None:
                 for name, angle in sysID_specs.warm_up_angles.items():
                     warm_up_act[robot.joint_ordering.index(name)] = angle
 
@@ -91,6 +93,7 @@ class RotateTorsoOpenPolicy(BasePolicy):
                 sysID_specs.initial_frequency,
                 sysID_specs.final_frequency,
                 amplitude,
+                sysID_specs.decay_rate,
             )
             rotate_time = np.asarray(rotate_time)
             signal = np.asarray(signal)
@@ -129,8 +132,8 @@ class RotateTorsoOpenPolicy(BasePolicy):
             action_list.append(reset_action)
             self.ckpt_dict[joint_name] = time_list[-1][-1]
 
-        self.time_arr = np.concatenate(time_list)  # type: ignore
-        self.action_arr = np.concatenate(action_list)  # type: ignore
+        self.time_arr = np.concatenate(time_list)
+        self.action_arr = np.concatenate(action_list)
         self.n_steps_total = len(self.time_arr)
 
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:

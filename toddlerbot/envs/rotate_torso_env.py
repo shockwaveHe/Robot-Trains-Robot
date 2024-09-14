@@ -3,7 +3,6 @@ from typing import Any, List, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
-from brax import base  # type: ignore  # type: ignore
 
 from toddlerbot.envs.mjx_config import MJXConfig
 from toddlerbot.envs.mjx_env import MJXEnv
@@ -76,25 +75,25 @@ class RotateTorsoEnv(MJXEnv):
             **kwargs,
         )
 
-    def _sample_command(self, pipeline_state: base.State, rng: jax.Array) -> jax.Array:
+    def _sample_command(self, rng: jax.Array) -> jax.Array:
         if self.fixed_command is not None:
             assert self.fixed_command.shape[0] == self.num_commands
             return self.fixed_command
 
-        rng, rng_1, rng_2 = jax.random.split(rng, 3)  # type:ignore
-        ang_vel_x = jax.random.uniform(  # type:ignore
+        rng, rng_1, rng_2 = jax.random.split(rng, 3)
+        ang_vel_x = jax.random.uniform(
             rng_1,
             (1,),
             minval=self.ang_vel_x_range[0],
             maxval=self.ang_vel_x_range[1],
         )
-        ang_vel_z = jax.random.uniform(  # type:ignore
+        ang_vel_z = jax.random.uniform(
             rng_2,
             (1,),
             minval=self.ang_vel_z_range[0],
             maxval=self.ang_vel_z_range[1],
         )
-        commands = jnp.concatenate([ang_vel_x, ang_vel_z])  # type:ignore
+        commands = jnp.concatenate([ang_vel_x, ang_vel_z])
 
         return commands
 
@@ -102,7 +101,7 @@ class RotateTorsoEnv(MJXEnv):
         ang_vel_x = command[0]
         ang_vel_z = command[1]
 
-        lin_vel = jnp.array([0.0, 0.0, 0.0])  # type:ignore
-        ang_vel = jnp.array([ang_vel_x, 0.0, ang_vel_z])  # type:ignore
+        lin_vel = jnp.array([0.0, 0.0, 0.0])
+        ang_vel = jnp.array([ang_vel_x, 0.0, ang_vel_z])
 
         return lin_vel, ang_vel

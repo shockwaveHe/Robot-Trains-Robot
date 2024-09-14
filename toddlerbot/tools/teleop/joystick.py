@@ -1,20 +1,21 @@
+import contextlib
 from typing import List
 
 import numpy as np
-import pygame
+
+with contextlib.redirect_stdout(None):
+    import pygame
+
 from pygame.joystick import JoystickType
 
 
-def initialize_joystick():
+def initialize_joystick() -> JoystickType:
     # Initialize Pygame
-    try:
-        pygame.init()
-        # Initialize the joystick
-        pygame.joystick.init()
-        joystick = pygame.joystick.Joystick(0)
-        joystick.init()
-    except Exception:
-        joystick = None
+    pygame.init()
+    # Initialize the joystick
+    pygame.joystick.init()
+    joystick = pygame.joystick.Joystick(0)
+    joystick.init()
 
     return joystick
 
@@ -46,9 +47,9 @@ def get_controller_input(
     controller_input: List[float] = []
     for i, value in enumerate(axes):
         if value < 0:
-            scaled_value = np.interp(value, [-1, 0], [command_ranges[i][0], 0]).item()  # type:ignore
+            scaled_value = np.interp(value, [-1, 0], [command_ranges[i][0], 0]).item()
         else:
-            scaled_value = np.interp(value, [0, 1], [0, command_ranges[i][1]]).item()  # type:ignore
+            scaled_value = np.interp(value, [0, 1], [0, command_ranges[i][1]]).item()
 
         controller_input.append(scaled_value)
 

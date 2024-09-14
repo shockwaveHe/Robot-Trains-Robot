@@ -31,7 +31,7 @@ class MJXConfig:
     @dataclass
     class ActionConfig:
         action_scale: float = 0.25
-        action_smooth_rate: float = 30.0
+        action_smooth_rate: float = 10.0
         contact_force_threshold: float = 1.0
         n_steps_delay: int = 1
         n_frames: int = 6
@@ -41,9 +41,9 @@ class MJXConfig:
         @dataclass
         class RewardScales:
             torso_pos: float = 0.0  # 1.0
-            torso_quat: float = 1.5
-            torso_pitch: float = 0.5
-            lin_vel_xy: float = 1.5
+            torso_quat: float = 1.0
+            torso_pitch: float = 0.1
+            lin_vel_xy: float = 1.0
             lin_vel_z: float = 0.5
             ang_vel_xy: float = 0.5
             ang_vel_z: float = 0.5
@@ -66,7 +66,7 @@ class MJXConfig:
             waist_action_rate: float = 1e-2
             waist_action_acc: float = 1e-2
             feet_contact: float = 0.5
-            feet_contact_number: float = 0.1
+            feet_contact_number: float = 0.0
             collision: float = 0.0  # 1.0
             survival: float = 10.0
 
@@ -92,13 +92,13 @@ class MJXConfig:
         friction_range: Optional[List[float]] = field(
             default_factory=lambda: [0.5, 1.5]
         )
-        gain_range: Optional[List[float]] = field(default_factory=lambda: [0.5, 1.5])
-        damping_range: Optional[List[float]] = field(default_factory=lambda: [0.5, 1.5])
+        gain_range: Optional[List[float]] = field(default_factory=lambda: [0.8, 1.2])
+        damping_range: Optional[List[float]] = field(default_factory=lambda: [0.8, 1.2])
         armature_range: Optional[List[float]] = field(
-            default_factory=lambda: [0.5, 1.5]
+            default_factory=lambda: [0.8, 1.2]
         )
         added_mass_range: Optional[List[float]] = field(
-            default_factory=lambda: [-0.5, 0.5]
+            default_factory=lambda: [-0.2, 0.2]
         )
         push_interval_s: int = 2  # seconds
         push_vel: float = 0.1

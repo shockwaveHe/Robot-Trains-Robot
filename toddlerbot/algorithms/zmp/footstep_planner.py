@@ -28,7 +28,7 @@ def cubic_hermite_spline(
     h01 = -2 * t3 + 3 * t2
     h11 = t3 - t2
 
-    return h00 * p0 + h10 * m0 + h01 * p1 + h11 * m1  # type: ignore
+    return h00 * p0 + h10 * m0 + h01 * p1 + h11 * m1
 
 
 def generate_hermite_spline(
@@ -38,18 +38,18 @@ def generate_hermite_spline(
     xn, yn, thetan = target_pose
 
     # Calculate tangents
-    path_distance = np.linalg.norm(np.array([xn - x0, yn - y0]))  # type: ignore
+    path_distance = np.linalg.norm(np.array([xn - x0, yn - y0]))
     # For rotation in the same location
-    path_distance = max(path_distance, 1e-2)  # type: ignore
-    t0_vec = np.array([np.cos(theta0), np.sin(theta0)]) * path_distance  # type: ignore
-    tn_vec = np.array([np.cos(thetan), np.sin(thetan)]) * path_distance  # type: ignore
+    path_distance = max(path_distance, 1e-2)
+    t0_vec = np.array([np.cos(theta0), np.sin(theta0)]) * path_distance
+    tn_vec = np.array([np.cos(thetan), np.sin(thetan)]) * path_distance
 
     # Generate parameter values t for interpolation
-    t_values = np.linspace(0, 1, int(path_distance / path_resolution))  # type: ignore
+    t_values = np.linspace(0, 1, int(path_distance / path_resolution))
 
     # Calculate spline for x and y components separately
-    spline_x = cubic_hermite_spline(t_values, x0, xn, t0_vec[0], tn_vec[0])  # type: ignore
-    spline_y = cubic_hermite_spline(t_values, y0, yn, t0_vec[1], tn_vec[1])  # type: ignore
+    spline_x = cubic_hermite_spline(t_values, x0, xn, t0_vec[0], tn_vec[0])
+    spline_y = cubic_hermite_spline(t_values, y0, yn, t0_vec[1], tn_vec[1])
 
     return spline_x, spline_y
 
@@ -70,61 +70,61 @@ class FootStepPlanner:
         footsteps: List[ArrayType] = []
 
         if has_start:
-            footsteps.append(np.array([*curr_pose, 2]))  # type: ignore
+            footsteps.append(np.array([*curr_pose, 2]))
 
         sampled_spline_x, sampled_spline_y = self.generate_and_sample_path(
             curr_pose, target_pose
         )
 
         # Combine x and y components into a single path
-        path = np.vstack((sampled_spline_x, sampled_spline_y)).T  # type: ignore
+        path = np.vstack((sampled_spline_x, sampled_spline_y)).T
 
         # Generate footsteps along the path
-        dx = np.gradient(sampled_spline_x)  # type: ignore
-        dy = np.gradient(sampled_spline_y)  # type: ignore
+        dx = np.gradient(sampled_spline_x)
+        dy = np.gradient(sampled_spline_y)
 
         # Normalize the tangent vectors to get the direction of the tangent at each point
-        norms = np.sqrt(dx**2 + dy**2)  # type: ignore
-        nx = -dy / norms  # type: ignore
+        norms = np.sqrt(dx**2 + dy**2)
+        nx = -dy / norms
         ny = dx / norms
 
-        nx = inplace_update(nx, 0, -np.sin(curr_pose[2]))  # type: ignore
-        ny = inplace_update(ny, 0, np.cos(curr_pose[2]))  # type: ignore
-        nx = inplace_update(nx, -1, -np.sin(target_pose[2]))  # type: ignore
-        ny = inplace_update(ny, -1, np.cos(target_pose[2]))  # type: ignore
+        nx = inplace_update(nx, 0, -np.sin(curr_pose[2]))
+        ny = inplace_update(ny, 0, np.cos(curr_pose[2]))
+        nx = inplace_update(nx, -1, -np.sin(target_pose[2]))
+        ny = inplace_update(ny, -1, np.cos(target_pose[2]))
 
         left_foot_x = sampled_spline_x + nx * y_offset
         left_foot_y = sampled_spline_y + ny * y_offset
         right_foot_x = sampled_spline_x - nx * y_offset
         right_foot_y = sampled_spline_y - ny * y_offset
 
-        left_first_step_length = np.linalg.norm(  # type: ignore
-            np.array([left_foot_x[1] - left_foot_x[0], left_foot_y[1] - left_foot_y[0]])  # type: ignore
+        left_first_step_length = np.linalg.norm(
+            np.array([left_foot_x[1] - left_foot_x[0], left_foot_y[1] - left_foot_y[0]])
         )
-        right_first_step_length = np.linalg.norm(  # type: ignore
-            np.array(  # type: ignore
+        right_first_step_length = np.linalg.norm(
+            np.array(
                 [right_foot_x[1] - right_foot_x[0], right_foot_y[1] - right_foot_y[0]]
             )
         )
         support_leg = 0 if left_first_step_length > right_first_step_length else 1
 
         for i in range(len(left_foot_x)):
-            theta = np.arctan2(-nx[i], ny[i])  # type: ignore
+            theta = np.arctan2(-nx[i], ny[i])
             position = (
                 [left_foot_x[i], left_foot_y[i], theta]
                 if support_leg == 0
                 else [right_foot_x[i], right_foot_y[i], theta]
             )
-            footsteps.append(np.array([*position, support_leg]))  # type: ignore
+            footsteps.append(np.array([*position, support_leg]))
 
             support_leg = 1 - support_leg  # Toggle between 0 and 1
 
         # Add the final step(s) with the foot together or stopped position
         if has_stop:
-            footsteps.append(np.array([*target_pose, 2]))  # type: ignore
+            footsteps.append(np.array([*target_pose, 2]))
 
         # Add another step for the robot to stabilize
-        # footsteps.append(np.array([*target_pose, 2]))  # type: ignore
+        # footsteps.append(np.array([*target_pose, 2]))
 
         return path, footsteps
 
@@ -139,9 +139,9 @@ class FootStepPlanner:
             curr_pose, target_pose, path_resolution=high_res_stride
         )
 
-        dx = np.gradient(sampled_spline_x)  # type: ignore
-        dy = np.gradient(sampled_spline_y)  # type: ignore
-        spline_theta = np.arctan2(dy, dx)  # type: ignore
+        dx = np.gradient(sampled_spline_x)
+        dy = np.gradient(sampled_spline_y)
+        spline_theta = np.arctan2(dy, dx)
 
         # Rest of your sampling logic remains unchanged
         sampled_path_x = [curr_pose[0]]
@@ -149,8 +149,8 @@ class FootStepPlanner:
         last_x, last_y, last_theta = curr_pose
 
         for i in range(1, len(sampled_spline_x)):
-            l1_distance = np.abs(  # type: ignore
-                np.array(  # type: ignore
+            l1_distance = np.abs(
+                np.array(
                     [
                         sampled_spline_x[i] - last_x,
                         sampled_spline_y[i] - last_y,
@@ -159,10 +159,7 @@ class FootStepPlanner:
                 )
             )
 
-            if (
-                np.any(l1_distance >= self.max_stride)  # type: ignore
-                or i == len(sampled_spline_x) - 1
-            ):
+            if np.any(l1_distance >= self.max_stride) or i == len(sampled_spline_x) - 1:
                 sampled_path_x.append(sampled_spline_x[i])
                 sampled_path_y.append(sampled_spline_y[i])
                 last_x, last_y, last_theta = (
@@ -171,15 +168,15 @@ class FootStepPlanner:
                     spline_theta[i],
                 )
 
-        return np.array(sampled_path_x), np.array(sampled_path_y)  # type: ignore
+        return np.array(sampled_path_x), np.array(sampled_path_y)
 
 
 if __name__ == "__main__":
-    planner = FootStepPlanner(np.array(([0.1, 0.05, np.pi / 8])), 0.0364)  # type: ignore
+    planner = FootStepPlanner(np.array(([0.1, 0.05, np.pi / 8])), 0.0364)
 
-    target_pose = np.array([3, 0, 2.6179938])  # type: ignore
+    target_pose = np.array([3, 0, 2.6179938])
     path, footsteps = planner.compute_steps(
-        curr_pose=np.array([0, 0, 0]),  # type: ignore
+        curr_pose=np.array([0, 0, 0]),
         target_pose=target_pose,
     )
 

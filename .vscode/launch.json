@@ -136,6 +136,40 @@
             ]
         },
         {
+            "name": "Python: balance_toddlerbot_mujoco",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/policies/run_policy.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot",
+                "toddlerbot",
+                "--sim",
+                "mujoco",
+                "--policy",
+                "balance",
+                "--ckpt",
+                "20240910_085635"
+            ]
+        },
+        {
+            "name": "Python: teleop_ankle_toddlerbot_mujoco",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/policies/run_policy.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot",
+                "toddlerbot",
+                "--sim",
+                "mujoco",
+                "--policy",
+                "teleop_ankle"
+            ]
+        },
+        {
             "name": "Python: sysid_toddlerbot_optim",
             "type": "python",
             "request": "launch",
@@ -166,6 +200,22 @@
             ],
         },
         {
+            "name": "Python: balance_toddlerbot_mjx",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/envs/train_mjx.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot",
+                "toddlerbot",
+                "--env",
+                "balance",
+                "--eval",
+                "20240909_223143"
+            ],
+        },
+        {
             "name": "Python: test_reference_motion",
             "type": "python",
             "request": "launch",
@@ -174,7 +224,7 @@
             "justMyCode": true,
             "args": [
                 "--ref", 
-                "walk_zmp",
+                "balance",
             ],
         },
         {

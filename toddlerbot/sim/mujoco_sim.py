@@ -1,9 +1,9 @@
 import time
 from typing import Any, Dict, List
 
-import mujoco  # type: ignore
-import mujoco.rollout  # type: ignore
-import mujoco.viewer  # type: ignore
+import mujoco
+import mujoco.rollout
+import mujoco.viewer
 import numpy as np
 import numpy.typing as npt
 
@@ -41,7 +41,7 @@ class MuJoCoSim(BaseSim):
         self.fixed_base = fixed_base
 
         if len(xml_str) > 0 and assets is not None:
-            model = mujoco.MjModel.from_xml_string(xml_str, assets)  # type: ignore
+            model = mujoco.MjModel.from_xml_string(xml_str, assets)
         else:
             if len(xml_path) == 0:
                 if fixed_base:
@@ -51,95 +51,95 @@ class MuJoCoSim(BaseSim):
                 else:
                     xml_path = find_robot_file_path(robot.name, suffix="_scene.xml")
 
-            model = mujoco.MjModel.from_xml_path(xml_path)  # type: ignore
+            model = mujoco.MjModel.from_xml_path(xml_path)
 
-        self.model = model  # type: ignore
-        self.data = mujoco.MjData(model)  # type: ignore
+        self.model = model
+        self.data = mujoco.MjData(model)
 
-        self.model.opt.timestep = self.dt  # type: ignore
-        self.model.opt.solver = mujoco.mjtSolver.mjSOL_NEWTON  # type: ignore
-        self.model.opt.iterations = 1  # type: ignore
-        self.model.opt.ls_iterations = 4  # type: ignore
+        self.model.opt.timestep = self.dt
+        self.model.opt.solver = mujoco.mjtSolver.mjSOL_NEWTON
+        self.model.opt.iterations = 1
+        self.model.opt.ls_iterations = 4
 
         # Assume imu is the first site
         self.torso_euler_prev = np.zeros(3, dtype=np.float32)
-        self.motor_vel_prev = np.zeros(self.model.nu, dtype=np.float32)  # type: ignore
+        self.motor_vel_prev = np.zeros(self.model.nu, dtype=np.float32)
 
-        self.visualizer = None
+        self.visualizer: MuJoCoRenderer | MuJoCoViewer | None = None
         if vis_type == "render":
-            self.visualizer = MuJoCoRenderer(self.model)  # type: ignore
+            self.visualizer = MuJoCoRenderer(self.model)
         elif vis_type == "view":
-            self.visualizer = MuJoCoViewer(self.model, self.data)  # type: ignore
+            self.visualizer = MuJoCoViewer(self.model, self.data)
 
     def load_keyframe(self):
-        default_qpos = np.array(self.model.keyframe("home").qpos, dtype=np.float32)  # type:ignore
-        self.data.qpos = default_qpos.copy()  # type: ignore
-        self.data.qvel = np.zeros(self.model.nv, dtype=np.float32)  # type: ignore
+        default_qpos = np.array(self.model.keyframe("home").qpos, dtype=np.float32)
+        self.data.qpos = default_qpos.copy()
+        self.data.qvel = np.zeros(self.model.nv, dtype=np.float32)
         self.forward()
 
-    def get_root_state(self):
+    def get_root_state(self) -> npt.NDArray[np.float32]:
         root_state = np.zeros(13, dtype=np.float32)
         root_state[:3] = np.array(
-            self.data.sensor("position").data,  # type: ignore
+            self.data.sensor("position").data,
             copy=True,
         )
         root_state[3:7] = np.array(
-            self.data.sensor("orientation").data,  # type: ignore
+            self.data.sensor("orientation").data,
             copy=True,
         )
         root_state[7:10] = np.array(
-            self.data.sensor("linear_velocity").data,  # type: ignore
+            self.data.sensor("linear_velocity").data,
             copy=True,
         )
         root_state[10:] = np.array(
-            self.data.sensor("angular_velocity").data,  # type: ignore
+            self.data.sensor("angular_velocity").data,
             copy=True,
         )
         return root_state
 
-    def get_dof_state(self):
-        dof_state = np.zeros((len(self.robot.joint_ordering), 2), dtype=np.float32)  # type: ignore
+    def get_dof_state(self) -> npt.NDArray[np.float32]:
+        dof_state = np.zeros((len(self.robot.joint_ordering), 2), dtype=np.float32)
         for i, name in enumerate(self.robot.joint_ordering):
-            dof_state[i, 0] = self.data.joint(name).qpos.item()  # type: ignore
-            dof_state[i, 1] = self.data.joint(name).qvel.item()  # type: ignore
+            dof_state[i, 0] = self.data.joint(name).qpos.item()
+            dof_state[i, 1] = self.data.joint(name).qvel.item()
 
         return dof_state
 
-    def get_body_state(self):
+    def get_body_state(self) -> npt.NDArray[np.float32]:
         dof_state = np.zeros((len(self.robot.collider_names), 13), dtype=np.float32)
         for i, name in enumerate(self.robot.collider_names):
-            dof_state[i, :3] = self.data.body(name).xpos.copy()  # type: ignore
-            dof_state[i, 3:7] = self.data.body(name).xquat.copy()  # type: ignore
+            dof_state[i, :3] = self.data.body(name).xpos.copy()
+            dof_state[i, 3:7] = self.data.body(name).xquat.copy()
             # rot goes before lin in cvel
-            dof_state[i, 7:10] = self.data.body(name).cvel[3:].copy()  # type: ignore
-            dof_state[i, 10:] = self.data.body(name).cvel[:3].copy()  # type: ignore
+            dof_state[i, 7:10] = self.data.body(name).cvel[3:].copy()
+            dof_state[i, 10:] = self.data.body(name).cvel[:3].copy()
 
         return dof_state
 
-    def get_motor_state(self):
+    def get_motor_state(self) -> Dict[str, JointState]:
         motor_state_dict: Dict[str, JointState] = {}
         for name in self.robot.motor_ordering:
             motor_state_dict[name] = JointState(
                 time=time.time(),
-                pos=self.data.joint(name).qpos.item(),  # type: ignore
-                vel=self.data.joint(name).qvel.item(),  # type: ignore
-                tor=self.data.joint(name).qfrc_actuator.item(),  # type: ignore
+                pos=self.data.joint(name).qpos.item(),
+                vel=self.data.joint(name).qvel.item(),
+                tor=self.data.joint(name).qfrc_actuator.item(),
             )
 
         return motor_state_dict
 
-    def get_joint_state(self):
+    def get_joint_state(self) -> Dict[str, JointState]:
         joint_state_dict: Dict[str, JointState] = {}
         for name in self.robot.joint_ordering:
             joint_state_dict[name] = JointState(
                 time=time.time(),
-                pos=self.data.joint(name).qpos.item(),  # type: ignore
-                vel=self.data.joint(name).qvel.item(),  # type: ignore
+                pos=self.data.joint(name).qpos.item(),
+                vel=self.data.joint(name).qvel.item(),
             )
 
         return joint_state_dict
 
-    def get_observation(self):
+    def get_observation(self) -> Obs:
         motor_state_dict = self.get_motor_state()
         joint_state_dict = self.get_joint_state()
 
@@ -173,21 +173,21 @@ class MuJoCoSim(BaseSim):
             torso_euler = np.zeros(3, dtype=np.float32)
         else:
             # lin_vel_global = np.array(
-            #     self.data.body("torso").cvel[3:],  # type: ignore
+            #     self.data.body("torso").cvel[3:],
             #     dtype=np.float32,
             #     copy=True,
             # )
             ang_vel_global = np.array(
-                self.data.body("torso").cvel[:3],  # type: ignore
+                self.data.body("torso").cvel[:3],
                 dtype=np.float32,
                 copy=True,
             )
             torso_quat = np.array(
-                self.data.body("torso").xquat,  # type: ignore
+                self.data.body("torso").xquat,
                 dtype=np.float32,
                 copy=True,
             )
-            if np.linalg.norm(torso_quat) == 0:  # type: ignore
+            if np.linalg.norm(torso_quat) == 0:
                 torso_quat = np.array([1, 0, 0, 0], dtype=np.float32)
 
             # torso_lin_vel = np.asarray(rotate_vec(lin_vel_global, quat_inv(torso_quat)))
@@ -226,68 +226,68 @@ class MuJoCoSim(BaseSim):
         return obs
 
     def get_mass(self) -> float:
-        subtree_mass = float(self.model.body(0).subtreemass)  # type: ignore
+        subtree_mass = float(self.model.body(0).subtreemass)
         return subtree_mass
 
     def get_com(self) -> npt.NDArray[np.float32]:
-        subtree_com = np.array(self.data.body(0).subtree_com, dtype=np.float32)  # type: ignore
+        subtree_com = np.array(self.data.body(0).subtree_com, dtype=np.float32)
         return subtree_com
 
     def set_motor_kps(self, motor_kps: Dict[str, float]):
         for name, kp in motor_kps.items():
-            self.model.actuator(name).gainprm[0] = kp / 128  # type: ignore
-            self.model.actuator(name).biasprm[1] = -kp / 128  # type: ignore
+            self.model.actuator(name).gainprm[0] = kp / 128
+            self.model.actuator(name).biasprm[1] = -kp / 128
 
     def set_motor_angles(
         self, motor_angles: Dict[str, float] | npt.NDArray[np.float32]
     ):
         if isinstance(motor_angles, dict):
             for name, ctrl in motor_angles.items():
-                self.data.actuator(name).ctrl = ctrl  # type: ignore
+                self.data.actuator(name).ctrl = ctrl
         else:
-            self.data.ctrl = motor_angles  # type: ignore
+            self.data.ctrl = motor_angles
 
     def set_joint_angles(
         self, joint_angles: Dict[str, float] | npt.NDArray[np.float32]
     ):
         if isinstance(joint_angles, np.ndarray):
-            self.data.qpos = joint_angles.copy()  # type: ignore
+            self.data.qpos = joint_angles.copy()
         else:
             for name in joint_angles:
-                self.data.joint(name).qpos = joint_angles[name]  # type: ignore
+                self.data.joint(name).qpos = joint_angles[name]
 
     def set_joint_dynamics(self, joint_dyn: Dict[str, Dict[str, float]]):
         for joint_name, dyn in joint_dyn.items():
             for key, value in dyn.items():
-                setattr(self.model.joint(joint_name), key, value)  # type: ignore
+                setattr(self.model.joint(joint_name), key, value)
 
     def forward(self):
-        mujoco.mj_forward(self.model, self.data)  # type: ignore
+        mujoco.mj_forward(self.model, self.data)
 
     def step(self):
         for _ in range(self.n_frames):
-            mujoco.mj_step(self.model, self.data)  # type: ignore
+            mujoco.mj_step(self.model, self.data)
 
         if self.visualizer is not None:
-            self.visualizer.visualize(self.data)  # type: ignore
+            self.visualizer.visualize(self.data)
 
     def rollout(
         self,
         motor_angles_list: List[Dict[str, float]]
         | List[npt.NDArray[np.float32]]
         | npt.NDArray[np.float32],
-    ):
-        n_state = mujoco.mj_stateSize(self.model, mujoco.mjtState.mjSTATE_FULLPHYSICS)  # type: ignore
-        initial_state = np.empty(n_state, dtype=np.float64)  # type: ignore
-        mujoco.mj_getState(  # type: ignore
-            self.model,  # type: ignore
-            self.data,  # type: ignore
+    ) -> List[Dict[str, JointState]]:
+        n_state = mujoco.mj_stateSize(self.model, mujoco.mjtState.mjSTATE_FULLPHYSICS)
+        initial_state = np.empty(n_state, dtype=np.float64)
+        mujoco.mj_getState(
+            self.model,
+            self.data,
             initial_state,
-            mujoco.mjtState.mjSTATE_FULLPHYSICS,  # type: ignore
+            mujoco.mjtState.mjSTATE_FULLPHYSICS,
         )
 
         control = np.zeros(
-            (len(motor_angles_list) * self.n_frames, int(self.model.nu)),  # type: ignore
+            (len(motor_angles_list) * self.n_frames, int(self.model.nu)),
             dtype=np.float64,
         )
         for i, motor_angles in enumerate(motor_angles_list):
@@ -297,12 +297,12 @@ class MuJoCoSim(BaseSim):
                 for name, angle in motor_angles.items():
                     control[
                         self.n_frames * i : self.n_frames * (i + 1),
-                        self.model.actuator(name).id,  # type: ignore
+                        self.model.actuator(name).id,
                     ] = angle
 
-        state_traj, _ = mujoco.rollout.rollout(  # type: ignore
-            self.model,  # type: ignore
-            self.data,  # type: ignore
+        state_traj, _ = mujoco.rollout.rollout(
+            self.model,
+            self.data,
             initial_state,
             control,
         )
@@ -314,7 +314,7 @@ class MuJoCoSim(BaseSim):
         for state in state_traj:
             joint_state: Dict[str, JointState] = {}
             for joint_name in self.robot.joint_ordering:
-                joint_pos = state[1 + self.model.joint(joint_name).id]  # type: ignore
+                joint_pos = state[1 + self.model.joint(joint_name).id]
                 joint_state[joint_name] = JointState(time=state[0], pos=joint_pos)
 
             joint_state_list.append(joint_state)

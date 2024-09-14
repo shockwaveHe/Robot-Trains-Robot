@@ -1,13 +1,14 @@
 import functools
 import os
+from dataclasses import fields
 from typing import List, Optional
 
 import jax
 import jax.numpy as jnp
 import numpy as np
 import numpy.typing as npt
-from brax.io import model  # type: ignore
-from brax.training.agents.ppo import networks as ppo_networks  # type: ignore
+from brax.io import model
+from brax.training.agents.ppo import networks as ppo_networks
 
 from toddlerbot.envs.mjx_config import MJXConfig
 from toddlerbot.envs.ppo_config import PPOConfig
@@ -21,26 +22,32 @@ from toddlerbot.utils.math_utils import exponential_moving_average, interpolate_
 # from toddlerbot.utils.misc_utils import profile
 
 
-class MJXPolicy(BasePolicy):
+class MJXPolicy(BasePolicy, policy_name="mjx"):
     def __init__(
         self,
         name: str,
         robot: Robot,
         init_motor_pos: npt.NDArray[np.float32],
-        cfg: MJXConfig,
-        motion_ref: MotionReference,
         ckpt: str,
-        command_ranges: List[List[float]],
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
-    ) -> None:
+        cfg: Optional[MJXConfig] = None,
+        motion_ref: Optional[MotionReference] = None,
+    ):
         super().__init__(name, robot, init_motor_pos)
 
-        self.motion_ref = motion_ref
-        self.command_ranges = command_ranges
+        assert cfg is not None, "cfg is required in the subclass!"
+        assert motion_ref is not None, "motion_ref is required in the subclass!"
+
         if fixed_command is None:
             self.fixed_command = np.zeros(cfg.commands.num_commands, dtype=np.float32)
         else:
             self.fixed_command = fixed_command
+
+        self.motion_ref = motion_ref
+        self.command_ranges: List[List[float]] = []
+        for field in fields(cfg.commands):
+            if "range" in field.name:
+                self.command_ranges.append(getattr(cfg.commands, field.name))
 
         self.obs_scales = cfg.obs.scales  # Assume all the envs have the same scales
         self.default_motor_pos = np.array(
@@ -53,21 +60,11 @@ class MJXPolicy(BasePolicy):
             / (cfg.action.action_smooth_rate + 1 / (self.control_dt * 2 * np.pi))
         )
 
-        # joint indices
-        motor_indices = np.arange(robot.nu)  # type:ignore
-        motor_groups = np.array(
-            [robot.joint_groups[name] for name in robot.motor_ordering]
-        )
-        self.leg_motor_indices = motor_indices[motor_groups == "leg"]
-        self.arm_motor_indices = motor_indices[motor_groups == "arm"]
-        self.neck_motor_indices = motor_indices[motor_groups == "neck"]
-        self.waist_motor_indices = motor_indices[motor_groups == "waist"]
-
         self.motor_limits = np.array(
             [robot.joint_limits[name] for name in robot.motor_ordering]
         )
 
-        self.last_motor_target = None
+        self.last_motor_target: npt.NDArray[np.float32] | None = None
         self.last_action = np.zeros(robot.nu, dtype=np.float32)
         self.action_buffer = np.zeros(
             ((self.n_steps_delay + 1) * robot.nu), dtype=np.float32
@@ -84,12 +81,12 @@ class MJXPolicy(BasePolicy):
             value_hidden_layer_sizes=train_cfg.value_hidden_layer_sizes,
         )
 
-        ppo_network = make_networks_factory(  # type: ignore
+        ppo_network = make_networks_factory(
             cfg.obs.num_single_obs,
             cfg.obs.num_single_privileged_obs,
             robot.nu,
         )
-        make_policy = ppo_networks.make_inference_fn(ppo_network)  # type: ignore
+        make_policy = ppo_networks.make_inference_fn(ppo_network)
 
         run_name = f"{robot.name}_{self.name}_ppo_{ckpt}"
         policy_path = os.path.join("results", run_name, "best_policy")
@@ -99,12 +96,16 @@ class MJXPolicy(BasePolicy):
         params = model.load_params(policy_path)
         inference_fn = make_policy(params)
         # jit_inference_fn = inference_fn
-        self.jit_inference_fn = jax.jit(inference_fn)  # type: ignore
-        self.rng = jax.random.PRNGKey(0)  # type: ignore
-        act_rng, _ = jax.random.split(self.rng)  # type: ignore
-        self.jit_inference_fn(self.obs_history, act_rng)[0].block_until_ready()  # type: ignore
+        self.jit_inference_fn = jax.jit(inference_fn)
+        self.rng = jax.random.PRNGKey(0)
+        act_rng, _ = jax.random.split(self.rng)
+        self.jit_inference_fn(self.obs_history, act_rng)[0].block_until_ready()
 
-        self.joystick = initialize_joystick()
+        self.joystick = None
+        try:
+            self.joystick = initialize_joystick()
+        except Exception:
+            pass
 
         self.prep_duration = 7.0
         self.prep_time, self.prep_action = self.move(
@@ -135,17 +136,17 @@ class MJXPolicy(BasePolicy):
         time_curr = self.step_curr * self.control_dt
         phase_signal = self.motion_ref.get_phase_signal(time_curr, command)
         state_ref = self.motion_ref.get_state_ref(
-            np.zeros(3, dtype=np.float32),  # type:ignore
-            np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),  # type:ignore
+            np.zeros(3, dtype=np.float32),
+            np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),
             time_curr,
             command,
         )
         motor_pos_delta = obs.motor_pos - self.default_motor_pos
 
-        obs_arr = np.concatenate(  # type:ignore
+        obs_arr = np.concatenate(
             [
                 phase_signal,
-                command,  # type:ignore
+                command,
                 motor_pos_delta * self.obs_scales.dof_pos,
                 obs.motor_vel * self.obs_scales.dof_vel,
                 self.last_action,
@@ -155,21 +156,21 @@ class MJXPolicy(BasePolicy):
             ]
         )
 
-        self.obs_history = np.roll(self.obs_history, obs_arr.size)  # type:ignore
+        self.obs_history = np.roll(self.obs_history, obs_arr.size)
         self.obs_history[: obs_arr.size] = obs_arr
 
-        act_rng, self.rng = jax.random.split(self.rng)  # type: ignore
-        jit_action, _ = self.jit_inference_fn(jnp.asarray(self.obs_history), act_rng)  # type: ignore
+        act_rng, self.rng = jax.random.split(self.rng)
+        jit_action, _ = self.jit_inference_fn(jnp.asarray(self.obs_history), act_rng)
 
         action = np.asarray(jit_action, dtype=np.float32).copy()
         if is_real:
             action_delay = action
         else:
-            self.action_buffer = np.roll(self.action_buffer, action.size)  # type:ignore
+            self.action_buffer = np.roll(self.action_buffer, action.size)
             self.action_buffer[: action.size] = action
             action_delay = self.action_buffer[-self.robot.nu :]
 
-        motor_target = np.where(  # type:ignore
+        motor_target = np.where(
             action_delay < 0,
             self.default_motor_pos
             + self.action_scale
@@ -180,18 +181,21 @@ class MJXPolicy(BasePolicy):
             * action_delay
             * (self.motor_limits[:, 1] - self.default_motor_pos),
         )
-        motor_target = self.motion_ref.override_motor_target(motor_target, state_ref)
-        motor_target = np.clip(  # type:ignore
+        motor_target = np.asarray(
+            self.motion_ref.override_motor_target(motor_target, state_ref)
+        )
+        motor_target = np.clip(
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
         )
-        motor_target = exponential_moving_average(  # type: ignore
-            self.action_smooth_alpha,
-            motor_target,
-            self.last_motor_target,  # type:ignore
+        motor_target = np.asarray(
+            exponential_moving_average(
+                self.action_smooth_alpha,
+                motor_target,
+                self.last_motor_target,
+            )
         )
-        assert isinstance(motor_target, np.ndarray)
 
-        self.last_motor_target = motor_target.copy()  # type:ignore
+        self.last_motor_target = motor_target.copy()
         self.last_action = action_delay
         self.step_curr += 1
 

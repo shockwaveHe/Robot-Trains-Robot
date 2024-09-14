@@ -5,6 +5,8 @@ import platform
 import xml.etree.ElementTree as ET
 from typing import Any, Dict
 
+import numpy as np
+
 
 def get_default_config(
     robot_name: str,
@@ -40,14 +42,19 @@ def get_default_config(
         if joint_limit is None:
             raise ValueError(f"Joint {joint_name} does not have a limit tag.")
         else:
-            lower_limit = float(joint_limit.get("lower"))  # type: ignore
-            upper_limit = float(joint_limit.get("upper"))  # type: ignore
+            lower_limit = float(joint_limit.get("lower", -np.pi))
+            upper_limit = float(joint_limit.get("upper", np.pi))
 
         is_passive = False
         transmission = "none"
         if "drive" in joint_name:
-            transmission = "gears"
+            transmission = "gear"
             if "driven" in joint_name:
+                is_passive = True
+
+        if "gripper" in joint_name:
+            transmission = "rack_and_pinion"
+            if "pinion" in joint_name:
                 is_passive = True
 
         if "waist" in joint_name:
@@ -93,13 +100,14 @@ def get_default_config(
 
         if is_passive:
             if joint_name in joint_dyn_config:
-                for param_name in ["damping", "armature"]:  # , "frictionloss"]:
+                for param_name in ["damping", "armature", "frictionloss"]:
                     joint_dict[param_name] = joint_dyn_config[joint_name][param_name]
-            elif transmission == "gears":
+            # TODO: Remove this after doing sysID
+            elif transmission == "gear":
                 joint_drive_name = joint_name.replace("_driven", "_drive")
                 motor_name = motor_config[joint_drive_name]["motor"]
                 gear_ratio = motor_config[joint_drive_name].get("gear_ratio", 1.0)
-                for param_name in ["damping", "armature"]:  # , "frictionloss"]:
+                for param_name in ["damping", "armature", "frictionloss"]:
                     joint_dict[param_name] = joint_dyn_config[motor_name][
                         param_name
                     ] * (gear_ratio**2)
@@ -128,7 +136,7 @@ def get_default_config(
                 else 0.0
             )
             joint_dict["kp_real"] = motor_config[joint_name]["kp"]
-            joint_dict["ki_real"] = 0.0
+            joint_dict["ki_real"] = motor_config[joint_name]["ki"]
             joint_dict["kd_real"] = motor_config[joint_name]["kd"]
             joint_dict["kff2_real"] = 0.0
             joint_dict["kff1_real"] = 0.0
@@ -136,13 +144,13 @@ def get_default_config(
             joint_dict["kd_sim"] = 0.0
 
             if joint_name in joint_dyn_config:
-                for param_name in ["damping", "armature"]:  # , "frictionloss"]:
+                for param_name in ["damping", "armature", "frictionloss"]:
                     joint_dict[param_name] = joint_dyn_config[joint_name][param_name]
             elif motor_name in joint_dyn_config:
-                for param_name in ["damping", "armature"]:  # , "frictionloss"]:
+                for param_name in ["damping", "armature", "frictionloss"]:
                     joint_dict[param_name] = joint_dyn_config[motor_name][param_name]
 
-            if transmission == "gears":
+            if transmission == "gear" or transmission == "rack_and_pinion":
                 if "gear_ratio" in motor_config[joint_name]:
                     joint_dict["gear_ratio"] = motor_config[joint_name]["gear_ratio"]
                 else:
@@ -167,7 +175,7 @@ def get_default_config(
     return config_dict
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Get the config.")
     parser.add_argument(
         "--robot",
@@ -206,7 +214,7 @@ def main():
         general_config["fd_smooth_alpha"] = 0.2
         general_config["waist_roll_backlash"] = 0.03
         general_config["waist_yaw_backlash"] = 0.001
-        general_config["ank_solimp_0"] = 0.99
+        general_config["ank_solimp_0"] = 0.9999
         general_config["ank_solref_0"] = 0.004
         general_config["foot_name"] = "ank_roll_link"
         general_config["offsets"] = {
@@ -261,18 +269,18 @@ def main():
                 sysID_result = json.load(f)
 
             joint_dyn_config[motor_name] = {}
-            for param_name in ["damping", "armature"]:  # , "frictionloss"]:
+            for param_name in ["damping", "armature", "frictionloss"]:
                 joint_dyn_config[motor_name][param_name] = sysID_result["joint_0"][
                     param_name
                 ]
 
-        dynamics_config_path = os.path.join(robot_dir, "config_dynamics.json")
-        if os.path.exists(dynamics_config_path):
-            with open(dynamics_config_path, "r") as f:
-                passive_joint_dyn_config = json.load(f)
+    dynamics_config_path = os.path.join(robot_dir, "config_dynamics.json")
+    if os.path.exists(dynamics_config_path):
+        with open(dynamics_config_path, "r") as f:
+            passive_joint_dyn_config = json.load(f)
 
-            for joint_name, joint_config in passive_joint_dyn_config.items():
-                joint_dyn_config[joint_name] = joint_config
+        for joint_name, joint_config in passive_joint_dyn_config.items():
+            joint_dyn_config[joint_name] = joint_config
 
     urdf_path = os.path.join(robot_dir, f"{args.robot}.urdf")
     tree = ET.parse(urdf_path)

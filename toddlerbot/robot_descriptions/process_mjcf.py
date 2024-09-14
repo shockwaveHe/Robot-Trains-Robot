@@ -4,7 +4,7 @@ import shutil
 import xml.etree.ElementTree as ET
 from typing import Any, Dict, List, Tuple
 
-from transforms3d.euler import euler2quat  # type: ignore
+from transforms3d.euler import euler2quat
 
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.math_utils import round_to_sig_digits
@@ -149,7 +149,7 @@ def update_joint_params(root: ET.Element, joints_config: Dict[str, Any]):
 
         if joint_name in joints_config:
             for attr_name in joints_config[joint_name]:
-                if attr_name in ["damping", "armature"]:  # , "frictionloss"]:
+                if attr_name in ["damping", "armature", "frictionloss"]:
                     attr_value = round_to_sig_digits(
                         joints_config[joint_name][attr_name], 6
                     )
@@ -189,7 +189,12 @@ def update_geom_classes(root: ET.Element, geom_keys: List[str]):
 
 
 def add_keyframes(
-    root: ET.Element, is_fixed: bool, has_lower_body: bool, has_upper_body: bool
+    root: ET.Element,
+    default_ctrl: List[float],
+    is_fixed: bool,
+    has_lower_body: bool,
+    has_upper_body: bool,
+    has_gripper: bool,
 ):
     # Create or find the <default> element
     keyframe = root.find("keyframe")
@@ -203,34 +208,30 @@ def add_keyframes(
     else:
         qpos_str = "0 0 0.336 1 0 0 0 "
 
-    ctrl_str = ""
+    ctrl_str = " ".join(map(str, default_ctrl))
 
     if has_upper_body and has_lower_body:  # neck
         qpos_str += "0 0 0 0 "
-        ctrl_str += "0 0 "
 
-    # TODO: Read from config
     if has_lower_body:  # waist and legs
         qpos_str += (
             "0 0 0 0 "
             + "0 0 0 -0.267268 0.523599 -0.523599 -0.523599 -0.25637 0 0 0.248043 0 -0.246445 -0.253132 0.256023 0.523599 -0.523599 -0.523599 "
             + "0 0 0 0.267268 -0.523599 0.523599 0.523599 -0.25637 0 0 -0.248043 0 0.246445 0.253132 -0.256023 -0.523599 0.523599 0.523599 "
         )
-        ctrl_str += (
-            "0 0 "
-            + "0 0 -0.267268 0.523599 -0.253132 0.256023 "
-            + "0 0 0.267268 -0.523599 0.253132 -0.256023 "
-        )
 
     if has_upper_body:  # arms
         qpos_str += (
-            "0.174533 -0.261799 1.0472 -1.0472 0.523599 0.5235990 -0.5235990 -1.0472 1.0472 0 "
-            + "-0.174533 -0.261799 -1.0472 1.0472 0.523599 -0.523599 0.523599 1.0472 -1.0472 0"
+            "0.174533 -0.261799 1.0472 -1.0472 0.523599 -1.0472 1.0472 1.309 -1.309 0 "
         )
-        ctrl_str += (
-            "0.174533 -0.261799 1.0472 0.523599 0.523599 1.0472 0 "
-            + "-0.174533 -0.261799 -1.0472 0.523599 -0.523599 -1.0472 0"
+        if has_gripper:
+            qpos_str += "0 0 0 "
+
+        qpos_str += (
+            "-0.174533 -0.261799 -1.0472 1.0472 0.523599 1.0472 -1.0472 -1.309 1.309 0"
         )
+        if has_gripper:
+            qpos_str += " 0 0 0"
 
     ET.SubElement(keyframe, "key", {"name": "home", "qpos": qpos_str, "ctrl": ctrl_str})
 
@@ -354,6 +355,7 @@ def add_contacts(
     # Add all <pair> elements first
     for body1_name, body2_name in pairs:
         geom1_name = collision_bodies[body1_name].get("name")
+        geom2_name: str | None = None
         if body2_name == "floor":
             geom2_name = "floor"
         else:
@@ -461,7 +463,7 @@ def add_ankle_constraints(root: ET.Element, general_config: Dict[str, Any]):
         )
 
 
-def add_gear_constraints(
+def add_joint_constraints(
     root: ET.Element, general_config: Dict[str, Any], joints_config: Dict[str, Any]
 ):
     equality = root.find("./equality")
@@ -473,7 +475,7 @@ def add_gear_constraints(
             continue
 
         transmission = joint_config["transmission"]
-        if transmission == "gears":
+        if transmission == "gear":
             joint_driven_name = joint_name.replace("_drive", "_driven")
             joint_driven: ET.Element | None = root.find(
                 f".//joint[@name='{joint_driven_name}']"
@@ -482,7 +484,7 @@ def add_gear_constraints(
                 raise ValueError(f"The driven joint {joint_driven_name} is not found")
 
             gear_ratio = round_to_sig_digits(
-                -1 / joints_config[joint_name]["gear_ratio"], 6
+                -joints_config[joint_name]["gear_ratio"], 6
             )
             ET.SubElement(
                 equality,
@@ -493,6 +495,31 @@ def add_gear_constraints(
                 solimp="0.9999 0.9999 0.001 0.5 2",
                 solref=f"{general_config['solref'][0]} {general_config['solref'][1]}",
             )
+        elif transmission == "rack_and_pinion":
+            joint_pinion_1_name = joint_name.replace("_rack", "_pinion_1")
+            joint_pinion_2_name = joint_name.replace("_rack", "_pinion_2")
+            for joint_pinion_name in [joint_pinion_1_name, joint_pinion_2_name]:
+                joint_pinion: ET.Element | None = root.find(
+                    f".//joint[@name='{joint_pinion_name}']"
+                )
+                if joint_pinion is None:
+                    raise ValueError(
+                        f"The pinion joint {joint_pinion_name} is not found"
+                    )
+
+                gear_ratio = round_to_sig_digits(
+                    -joints_config[joint_name]["gear_ratio"], 6
+                )
+
+                ET.SubElement(
+                    equality,
+                    "joint",
+                    joint1=joint_pinion_name,
+                    joint2=joint_name,
+                    polycoef=f"0 {gear_ratio} 0 0 0",
+                    solimp="0.9999 0.9999 0.001 0.5 2",
+                    solref=f"{general_config['solref'][0]} {general_config['solref'][1]}",
+                )
 
 
 def add_actuators_to_mjcf(root: ET.Element, joints_config: Dict[str, Any]):
@@ -508,7 +535,7 @@ def add_actuators_to_mjcf(root: ET.Element, joints_config: Dict[str, Any]):
             continue
 
         # transmission = joint_config["transmission"]
-        # if transmission == "gears":
+        # if transmission == "gear":
         #     joint_driven_name = joint_name.replace("_drive", "_driven")
         #     joint_driven: ET.Element | None = root.find(
         #         f".//joint[@name='{joint_driven_name}']"
@@ -557,7 +584,7 @@ def parse_urdf_body_link(root: ET.Element, root_link_name: str):
         inertia = inertial.find("inertia").attrib  # type: ignore
 
         pos = [float(x) for x in origin["xyz"].split(" ")]
-        quat = euler2quat(*[float(x) for x in origin["rpy"].split(" ")])  # type: ignore
+        quat = euler2quat(*[float(x) for x in origin["rpy"].split(" ")])
         diaginertia = [
             float(x) for x in [inertia["ixx"], inertia["iyy"], inertia["izz"]]
         ]
@@ -735,7 +762,7 @@ def create_scene_xml(mjcf_path: str, general_config: Dict[str, Any], is_fixed: b
         attrib={"pos": "0 0 1.5", "dir": "0 0 -1", "directional": "true"},
     )
 
-    camera_settings = {
+    camera_settings: Dict[str, Dict[str, List[float]]] = {
         "perspective": {"pos": [0.7, -0.7, 0.7], "xy_axes": [1, 1, 0, -1, 1, 3]},
         "side": {"pos": [0, -1, 0.6], "xy_axes": [1, 0, 0, 0, 1, 3]},
         "top": {"pos": [0, 0, 1], "xy_axes": [0, 1, 0, -1, 0, 0]},
@@ -831,7 +858,7 @@ def process_mjcf_fixed_file(root: ET.Element, robot: Robot):
     update_joint_params(root, robot.config["joints"])
     update_geom_classes(root, ["contype", "conaffinity", "group", "density"])
     add_actuators_to_mjcf(root, robot.config["joints"])
-    add_gear_constraints(root, robot.config["general"], robot.config["joints"])
+    add_joint_constraints(root, robot.config["general"], robot.config["joints"])
 
     if robot.config["general"]["is_waist_closed_loop"]:
         add_waist_constraints(root, robot.config["general"])
@@ -843,7 +870,20 @@ def process_mjcf_fixed_file(root: ET.Element, robot: Robot):
         add_ankle_constraints(root, robot.config["general"])
 
     if "sysID" not in robot.name:
-        add_keyframes(root, True, "arms" not in robot.name, "legs" not in robot.name)
+        has_gripper = False
+        for motor_name in robot.motor_ordering:
+            if "gripper" in motor_name:
+                has_gripper = True
+
+        default_ctrl = robot.get_joint_attrs("is_passive", False, "default_pos")
+        add_keyframes(
+            root,
+            default_ctrl,
+            True,
+            "arms" not in robot.name,
+            "legs" not in robot.name,
+            has_gripper,
+        )
 
     add_default_settings(root, robot.config["general"])
 
@@ -884,8 +924,20 @@ def get_mjcf_files(robot_name: str):
 
         mjcf_path = os.path.join(robot_dir, robot_name + ".xml")
         add_body_link(xml_root, urdf_path, robot.config["general"]["offsets"])
+
+        has_gripper = False
+        for motor_name in robot.motor_ordering:
+            if "gripper" in motor_name:
+                has_gripper = True
+
+        default_ctrl = robot.get_joint_attrs("is_passive", False, "default_pos")
         add_keyframes(
-            xml_root, False, "arms" not in robot.name, "legs" not in robot.name
+            xml_root,
+            default_ctrl,
+            False,
+            "arms" not in robot.name,
+            "legs" not in robot.name,
+            has_gripper,
         )
         add_contacts(
             xml_root, robot.collision_config, robot.config["general"]["foot_name"]

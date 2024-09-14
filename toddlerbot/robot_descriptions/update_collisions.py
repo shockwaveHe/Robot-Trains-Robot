@@ -1,11 +1,10 @@
 import argparse
 import json
 import os
-import shutil
 import xml.etree.ElementTree as ET
 
 import numpy as np
-import trimesh  # type: ignore
+import trimesh
 
 
 def compute_bounding_box(mesh: trimesh.Trimesh):
@@ -27,8 +26,8 @@ def compute_bounding_sphere(mesh: trimesh.Trimesh):
     centroid = mesh.centroid
 
     # Compute the radius as the maximum distance from the centroid to any vertex
-    distances = np.linalg.norm(mesh.vertices - centroid, axis=1)  # type: ignore
-    radius = np.max(distances)  # type: ignore
+    distances = np.linalg.norm(mesh.vertices - centroid, axis=1)
+    radius = np.max(distances)
 
     return radius, centroid
 
@@ -38,14 +37,14 @@ def compute_bounding_cylinder(mesh: trimesh.Trimesh):
         # Project the mesh vertices onto the plane perpendicular to the axis
         axes = [0, 1, 2]
         axes.remove(axis)
-        projection = mesh.vertices[:, axes]  # type: ignore
+        projection = mesh.vertices[:, axes]
 
         # Compute the centroid in the plane of projection (XY, XZ, or YZ plane)
-        centroid_in_plane = np.mean(projection, axis=0)  # type: ignore
+        centroid_in_plane = np.mean(projection, axis=0)
 
         # Compute the radius as the maximum distance from the centroid to any vertex in this plane
-        distances = projection - centroid_in_plane  # type: ignore
-        radius = np.max(np.linalg.norm(distances, axis=1))  # type: ignore
+        distances = projection - centroid_in_plane
+        radius = np.max(np.linalg.norm(distances, axis=1))
 
         # Compute the height as the range along the remaining axis
         height = mesh.bounds[:, axis].ptp()  # ptp() computes the range (max - min)
@@ -57,11 +56,11 @@ def compute_bounding_cylinder(mesh: trimesh.Trimesh):
 
         # Determine the RPY angles based on the axis
         if axis == 0:  # X-axis
-            rpy = (0, np.pi / 2, 0)  # 90 degrees rotation around Y-axis
+            rpy = (0.0, np.pi / 2, 0.0)  # 90 degrees rotation around Y-axis
         elif axis == 1:  # Y-axis
-            rpy = (np.pi / 2, 0, 0)  # 90 degrees rotation around X-axis
+            rpy = (np.pi / 2, 0.0, 0.0)  # 90 degrees rotation around X-axis
         else:  # Z-axis (default)
-            rpy = (0, 0, 0)  # No rotation needed
+            rpy = (0.0, 0.0, 0.0)  # No rotation needed
 
         # Return the radius, height, centroid, and volume of the cylinder
         return radius, height, centroid, rpy, np.pi * radius**2 * height
@@ -112,7 +111,7 @@ def update_collisons(robot_name: str):
 
             if mesh_filename is not None:
                 # Load the mesh and compute the bounding cylinder
-                mesh = trimesh.load(  # type: ignore
+                mesh = trimesh.load(
                     os.path.join(os.path.dirname(urdf_path), mesh_filename)
                 )
                 # Set or create the collision element
@@ -132,7 +131,7 @@ def update_collisons(robot_name: str):
                 geometry = ET.SubElement(collision, "geometry")
 
                 if collision_config[link_name]["type"] == "box":
-                    size, center = compute_bounding_box(mesh)  # type: ignore
+                    size, center = compute_bounding_box(mesh)
                     rpy = [0, 0, 0]
                     size[0] *= collision_config[link_name]["scale"][0]
                     size[1] *= collision_config[link_name]["scale"][1]
@@ -143,12 +142,12 @@ def update_collisons(robot_name: str):
                         {"size": f"{size[0]} {size[1]} {size[2]}"},
                     )
                 elif collision_config[link_name]["type"] == "sphere":
-                    radius, center = compute_bounding_sphere(mesh)  # type: ignore
+                    radius, center = compute_bounding_sphere(mesh)
                     radius *= collision_config[link_name]["scale"][0]
                     rpy = [0, 0, 0]
                     ET.SubElement(geometry, "sphere", {"radius": str(radius)})
                 else:
-                    radius, height, center, rpy = compute_bounding_cylinder(mesh)  # type: ignore
+                    radius, height, center, rpy = compute_bounding_cylinder(mesh)
                     radius *= collision_config[link_name]["scale"][0]
                     height *= collision_config[link_name]["scale"][1]
                     ET.SubElement(

@@ -30,14 +30,14 @@ def plot_waist_mapping(
 
     step_rad = 0.02
     tol = 1e-3
-    roll_range = np.arange(roll_limits[0], roll_limits[1] + step_rad, step_rad)  # type: ignore
-    yaw_range = np.arange(yaw_limits[0], yaw_limits[1] + step_rad, step_rad)  # type: ignore
-    roll_grid, yaw_grid = np.meshgrid(roll_range, yaw_range, indexing="ij")  # type: ignore
+    roll_range = np.arange(roll_limits[0], roll_limits[1] + step_rad, step_rad)
+    yaw_range = np.arange(yaw_limits[0], yaw_limits[1] + step_rad, step_rad)
+    roll_grid, yaw_grid = np.meshgrid(roll_range, yaw_range, indexing="ij")
 
     act_1_grid = np.zeros_like(roll_grid)
     act_2_grid = np.zeros_like(yaw_grid)
-    for i in range(len(roll_range)):  # type: ignore
-        for j in range(len(yaw_range)):  # type: ignore
+    for i in range(len(roll_range)):
+        for j in range(len(yaw_range)):
             act_pos: List[float] = waist_ik([roll_range[i], yaw_range[j]])
             act_1_grid[i, j] = act_pos[0]
             act_2_grid[i, j] = act_pos[1]
@@ -50,13 +50,13 @@ def plot_waist_mapping(
     )
 
     # Create a color array based on the valid_mask
-    colors = np.where(valid_mask.flatten(), "red", "white")  # type: ignore
+    colors = np.where(valid_mask.flatten(), "red", "white")
 
     n_rows = 1
     n_cols = 2
-    fig, axs = plt.subplots(n_rows, n_cols, figsize=(n_cols * 5, n_rows * 3))  # type: ignore
+    fig, axs = plt.subplots(n_rows, n_cols, figsize=(n_cols * 5, n_rows * 3))
 
-    for i, ax in enumerate(axs.flat):  # type: ignore
+    for i, ax in enumerate(axs.flat):
         if i == 0:
             plot_scatter_graph(
                 act_2_grid.flatten(),
@@ -96,14 +96,14 @@ def plot_ankle_mapping(
 
     step_rad = 0.02
     tol = 1e-3
-    roll_range = np.arange(roll_limits[0], roll_limits[1] + step_rad, step_rad)  # type: ignore
-    pitch_range = np.arange(pitch_limits[0], pitch_limits[1] + step_rad, step_rad)  # type: ignore
-    roll_grid, pitch_grid = np.meshgrid(roll_range, pitch_range, indexing="ij")  # type: ignore
+    roll_range = np.arange(roll_limits[0], roll_limits[1] + step_rad, step_rad)
+    pitch_range = np.arange(pitch_limits[0], pitch_limits[1] + step_rad, step_rad)
+    roll_grid, pitch_grid = np.meshgrid(roll_range, pitch_range, indexing="ij")
 
     act_1_grid = np.zeros_like(roll_grid)
     act_2_grid = np.zeros_like(pitch_grid)
-    for i in range(len(roll_range)):  # type: ignore
-        for j in range(len(pitch_range)):  # type: ignore
+    for i in range(len(roll_range)):
+        for j in range(len(pitch_range)):
             act_pos: List[float] = ankle_ik([roll_range[i], pitch_range[j]])
             act_1_grid[i, j] = act_pos[0]
             act_2_grid[i, j] = act_pos[1]
@@ -116,13 +116,13 @@ def plot_ankle_mapping(
     )
 
     # Create a color array based on the valid_mask
-    colors = np.where(valid_mask.flatten(), "red", "white")  # type: ignore
+    colors = np.where(valid_mask.flatten(), "red", "white")
 
     n_rows = 1
     n_cols = 2
-    fig, axs = plt.subplots(n_rows, n_cols, figsize=(n_cols * 5, n_rows * 3))  # type: ignore
+    fig, axs = plt.subplots(n_rows, n_cols, figsize=(n_cols * 5, n_rows * 3))
 
-    for i, ax in enumerate(axs.flat):  # type: ignore
+    for i, ax in enumerate(axs.flat):
         if i == 0:
             plot_scatter_graph(
                 act_2_grid.flatten(),
@@ -154,7 +154,7 @@ def plot_one_footstep(
     size: Tuple[float, float],
     angle: float,
     side: int,
-) -> None:
+):
     length, width = size
     # Calculate the corner points
     dx = np.cos(angle) * length / 2
@@ -180,7 +180,7 @@ def plot_one_footstep(
         ]
     )
     polygon = Polygon(
-        corners,  # type: ignore
+        corners,
         closed=True,
         edgecolor="b" if side == 0 else "g",
         fill=False,
@@ -205,11 +205,11 @@ def plot_footsteps(
     ax: Any = None,
 ) -> Callable[[], None]:
     if ax is None:
-        fig, ax = plt.subplots(figsize=fig_size)  # type: ignore
+        fig, ax = plt.subplots(figsize=fig_size)
         ax.set_aspect("equal")
 
-    def plot() -> None:
-        ax.plot(path[:, 0], path[:, 1], "r-", label="Cubic Hermite Path")  # type: ignore
+    def plot():
+        ax.plot(path[:, 0], path[:, 1], "r-", label="Cubic Hermite Path")
 
         # Draw each footstep
         for foot_pos, support_leg in zip(foot_pos_list, support_leg_list):
@@ -289,17 +289,17 @@ def plot_joint_tracking(
     n_rows = int(np.ceil(n_plots / 3))
     n_cols = 3
 
-    fig, axs = plt.subplots(n_rows, n_cols, figsize=(n_cols * 5, n_rows * 3))  # type: ignore
-    plt.subplots_adjust(hspace=0.4, wspace=0.4)  # type: ignore
+    fig, axs = plt.subplots(n_rows, n_cols, figsize=(n_cols * 5, n_rows * 3))
+    plt.subplots_adjust(hspace=0.4, wspace=0.4)
 
-    for i, ax in enumerate(axs.flat):  # type: ignore
+    for i, ax in enumerate(axs.flat):
         if i >= n_plots:
-            ax.set_visible(False)  # type: ignore
+            ax.set_visible(False)
             continue
 
         if set_ylim:
             y_min, y_max = joint_limits[joint_name_list[i]]
-            ax.set_ylim(y_min - 0.1, y_max + 0.1)  # type: ignore
+            ax.set_ylim(y_min - 0.1, y_max + 0.1)
 
         plot_line_graph(
             y_list[2 * i : 2 * i + 2],
@@ -311,7 +311,88 @@ def plot_joint_tracking(
             save_path=save_path if i == n_plots - 1 else "",
             file_name=file_name if i == n_plots - 1 else "",
             file_suffix=file_suffix,
-            ax=ax,  # type: ignore
+            ax=ax,
+            legend_labels=legend_labels[2 * i : 2 * i + 2],
+        )()
+
+
+def plot_joint_tracking_frequency(
+    time_seq_dict: Dict[str, List[float]],
+    time_seq_ref_dict: Dict[str, List[float]],
+    joint_data_dict: Dict[str, List[float]],
+    joint_data_ref_dict: Dict[str, List[float]],
+    save_path: str,
+    x_label: str = "Frequency (Hz)",
+    y_label: str = "Magnitude",
+    file_name: str = "motor_freq_tracking",
+    file_suffix: str = "",
+    title_list: List[str] = [],
+    set_ylim: bool = False,
+    line_suffix: List[str] = ["_obs", "_ref"],
+):
+    x_list: List[List[float]] = []
+    y_list: List[List[float]] = []
+    joint_name_list: List[str] = []
+    legend_labels: List[str] = []
+
+    # For each joint, compute the FFT of the joint data and the reference joint data
+    for name in time_seq_dict.keys():
+        joint_data = joint_data_dict[name]
+        time_seq_ref = time_seq_ref_dict[name]
+        joint_data_ref = joint_data_ref_dict[name]
+
+        # Calculate the time step (assuming uniform sampling)
+        time_step = np.mean(np.diff(time_seq_ref))
+
+        # FFT (Fourier Transform) of the joint position data and reference data
+        joint_data_fft = np.fft.fft(joint_data)
+        freqs = np.fft.fftfreq(len(joint_data), time_step)
+        joint_data_ref_fft = np.fft.fft(joint_data_ref)
+        freqs_ref = np.fft.fftfreq(len(joint_data_ref), time_step)
+
+        # Use only the positive frequencies
+        pos_freqs = freqs[: len(freqs) // 2]
+        pos_freqs_ref = freqs_ref[: len(freqs_ref) // 2]
+        pos_magnitudes = np.abs(joint_data_fft[: len(joint_data_fft) // 2])
+        pos_magnitudes_ref = np.abs(joint_data_ref_fft[: len(joint_data_ref_fft) // 2])
+
+        x_list.append(list(pos_freqs))
+        x_list.append(list(pos_freqs_ref))
+        y_list.append(list(pos_magnitudes))
+        y_list.append(list(pos_magnitudes_ref))
+
+        joint_name_list.append(name)
+        legend_labels.append(name + line_suffix[0])  # Observation label
+        legend_labels.append(name + line_suffix[1])  # Reference label
+
+    n_plots = len(time_seq_dict)
+    n_rows = int(np.ceil(n_plots / 3))
+    n_cols = 3
+
+    fig, axs = plt.subplots(n_rows, n_cols, figsize=(n_cols * 5, n_rows * 3))
+    plt.subplots_adjust(hspace=0.4, wspace=0.4)
+
+    for i, ax in enumerate(axs.flat):
+        if i >= n_plots:
+            ax.set_visible(False)
+            continue
+
+        if set_ylim:
+            ax.set_ylim(-0.1, 100)
+
+        ax.set_yscale("log")
+
+        plot_line_graph(
+            y_list[2 * i : 2 * i + 2],
+            x_list[2 * i : 2 * i + 2],
+            title=f"{joint_name_list[i]}" if len(title_list) == 0 else title_list[i],
+            x_label=x_label,
+            y_label=y_label,
+            save_config=True if i == n_plots - 1 else False,
+            save_path=save_path if i == n_plots - 1 else "",
+            file_name=file_name if i == n_plots - 1 else "",
+            file_suffix=file_suffix,
+            ax=ax,
             legend_labels=legend_labels[2 * i : 2 * i + 2],
         )()
 
@@ -339,16 +420,16 @@ def plot_joint_tracking_single(
     n_rows = int(np.ceil(n_plots / 3))
     n_cols = 3
 
-    fig, axs = plt.subplots(n_rows, n_cols, figsize=(n_cols * 5, n_rows * 3))  # type: ignore
-    plt.subplots_adjust(hspace=0.4, wspace=0.4)  # type: ignore
+    fig, axs = plt.subplots(n_rows, n_cols, figsize=(n_cols * 5, n_rows * 3))
+    plt.subplots_adjust(hspace=0.4, wspace=0.4)
 
-    for i, ax in enumerate(axs.flat):  # type: ignore
+    for i, ax in enumerate(axs.flat):
         if i >= n_plots:
-            ax.set_visible(False)  # type: ignore
+            ax.set_visible(False)
             continue
 
         if set_ylim:
-            ax.set_ylim(-5, 5)  # type: ignore
+            ax.set_ylim(-5, 5)
 
         plot_line_graph(
             y_list[i],
@@ -360,7 +441,7 @@ def plot_joint_tracking_single(
             save_path=save_path if i == n_plots - 1 else "",
             file_name=file_name if i == n_plots - 1 else "",
             file_suffix=file_suffix,
-            ax=ax,  # type: ignore
+            ax=ax,
             legend_labels=[legend_labels[i]],
         )()
 
@@ -414,7 +495,7 @@ def plot_sim2real_gap_bar(
     # Call the plot_bar_graph function
     plot_bar_graph(
         y=list(rmse_dict.values()),
-        x=np.arange(len(rmse_dict)),  # type: ignore
+        x=np.arange(len(rmse_dict)),
         fig_size=(int(len(rmse_dict) / 3), 6),
         legend_labels=[rmse_label],
         title=title,
@@ -449,8 +530,8 @@ def plot_bar_graph(
     number_font_size: int = 0,
 ):
     if ax is None:
-        plt.figure(figsize=fig_size)  # type: ignore
-        ax = plt.gca()  # type: ignore
+        plt.figure(figsize=fig_size)
+        ax = plt.gca()
 
     def plot():
         # Ensure bar_colors are lists and have sufficient length
@@ -459,7 +540,7 @@ def plot_bar_graph(
         # Determine if x is None and set it to the index of y if so
         if x is None:
             x_local = (
-                np.arange(len(y[0])) if isinstance(y[0], list) else np.arange(len(y))  # type: ignore
+                np.arange(len(y[0])) if isinstance(y[0], list) else np.arange(len(y))
             )
         else:
             x_local = x
@@ -547,8 +628,8 @@ def plot_line_graph(
     checkpoint_period: List[int] = [],
 ):
     if ax is None:
-        plt.figure(figsize=fig_size)  # type: ignore
-        ax = plt.gca()  # type: ignore
+        plt.figure(figsize=fig_size)
+        ax = plt.gca()
 
     def plot():
         # Ensure line_styles and line_colors are lists and have sufficient length
@@ -582,7 +663,7 @@ def plot_line_graph(
                 if checkpoint_period and checkpoint_period[i]:
                     for idx, value in enumerate(sub_y):
                         if idx % checkpoint_period[i] == 0:
-                            ax.plot(xi[idx], value, MARKERS[i], color=color)  # type: ignore
+                            ax.plot(xi[idx], value, MARKERS[i], color=color)
         else:  # Single line
             ax.plot(
                 x_local,
@@ -638,8 +719,8 @@ def plot_scatter_graph(
     ax: Any = None,
 ):
     if ax is None:
-        plt.figure(figsize=fig_size)  # type: ignore
-        ax = plt.gca()  # type: ignore
+        plt.figure(figsize=fig_size)
+        ax = plt.gca()
 
     def plot():
         # Ensure point_styles and point_colors are lists and have sufficient length

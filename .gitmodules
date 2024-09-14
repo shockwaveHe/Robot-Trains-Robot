@@ -1,9 +1,6 @@
 [submodule "toddlerbot/actuation/sunny_sky/knee_esc"]
 	path = toddlerbot/actuation/sunny_sky/knee_esc
 	url = git@github.com:weizhuowang/knee_esc.git
-[submodule "toddlerbot/sim/humanoid_gym"]
-	path = toddlerbot/sim/humanoid_gym
-	url = git@github.com:hshi74/humanoid-gym.git
 [submodule "toddlerbot/brax"]
 	path = toddlerbot/brax
 	url = git@github.com:hshi74/brax.git

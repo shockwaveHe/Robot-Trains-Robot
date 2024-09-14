@@ -364,5 +364,41 @@
     },
     "wrist_bearing_plate_2": {
         "has_collision": false
+    },
+    "gripper_connector": {
+        "has_collision": false
+    },
+    "left_rail_guide": {
+        "has_collision": false
+    },
+    "rail": {
+        "has_collision": false
+    },
+    "rail_2": {
+        "has_collision": false
+    },
+    "xc330": {
+        "has_collision": false
+    },
+    "spur_gear_(14_teeth)": {
+        "has_collision": false
+    },
+    "gripper_connector_2": {
+        "has_collision": false
+    },
+    "right_rail_guide": {
+        "has_collision": false
+    },
+    "rail_3": {
+        "has_collision": false
+    },
+    "rail_4": {
+        "has_collision": false
+    },
+    "xc330_2": {
+        "has_collision": false
+    },
+    "spur_gear_(14_teeth)_2": {
+        "has_collision": false
     }
 }

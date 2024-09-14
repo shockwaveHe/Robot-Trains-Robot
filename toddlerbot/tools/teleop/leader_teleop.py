@@ -1,3 +1,5 @@
+# type: ignore
+
 import argparse
 import os
 import pickle
@@ -576,7 +578,7 @@ if __name__ == "__main__":
         raise ValueError("Unknown policy")
 
     if "real" not in args.sim_follower and hasattr(policy, "time_arr"):
-        n_steps: float = round(policy.time_arr[-1] / policy.control_dt) + 1  # type: ignore
+        n_steps: float = round(policy.time_arr[-1] / policy.control_dt) + 1
     else:
         n_steps = float("inf")
 

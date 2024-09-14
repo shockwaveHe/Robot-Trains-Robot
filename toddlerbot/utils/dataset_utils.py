@@ -10,10 +10,10 @@ images: [n,h,w,3], RGB images uint8
 
 
 class DatasetLogger:
-    def __init__(self) -> None:
+    def __init__(self):
         self.data_dict = {"state_array": [], "images": [], "episode_ends": []}
 
-    def log_entry(self, time, joint_angles, fsr_data, camera_frame) -> None:
+    def log_entry(self, time, joint_angles, fsr_data, camera_frame):
         camera_frame_idx = len(self.data_dict["images"])
         state_entry = [time] + list(joint_angles) + fsr_data + [camera_frame_idx]
 
@@ -24,10 +24,10 @@ class DatasetLogger:
             self.data_dict["images"].append(np.zeros((1, 1, 3), dtype=np.uint8))
 
     # episode end index is the index of the last state entry in the episode +1
-    def log_episode_end(self) -> None:
+    def log_episode_end(self):
         self.data_dict["episode_ends"].append(len(self.data_dict["state_array"]))
 
-    def maintain_log(self) -> None:
+    def maintain_log(self):
         if len(self.data_dict["episode_ends"]) > 0:
             len_dataset = self.data_dict["episode_ends"][-1]
             self.data_dict["state_array"] = self.data_dict["state_array"][:len_dataset]
@@ -49,7 +49,7 @@ class DatasetLogger:
         # self.data_dict["images"] = images.tolist()
         pass
 
-    def save(self, path: str) -> None:
+    def save(self, path: str):
         # watchout for saving time in float32, it will get truncated to 100s accuracy
         self.data_dict["state_array"] = np.array(self.data_dict["state_array"])
         self.data_dict["start_time"] = self.data_dict["state_array"][0, 0]

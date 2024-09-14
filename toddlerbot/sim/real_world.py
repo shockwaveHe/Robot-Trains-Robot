@@ -44,7 +44,7 @@ class RealWorld(BaseSim):
 
         self.initialize()
 
-    def initialize(self):
+    def initialize(self) -> None:
         self.executor = ThreadPoolExecutor()
 
         future_imu = None

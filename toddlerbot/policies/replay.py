@@ -10,7 +10,7 @@ from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 
 
-class ReplayPolicy(BasePolicy):
+class ReplayPolicy(BasePolicy, policy_name="replay"):
     def __init__(
         self,
         name: str,
@@ -29,12 +29,23 @@ class ReplayPolicy(BasePolicy):
 
         motor_angles_list: List[Dict[str, float]] = data_dict["motor_angles_list"]
 
-        self.step_curr = 0
-        self.action_arr = np.array(
+        self.prep_duration = 7.0
+        self.prep_time, self.prep_action = self.move(
+            -self.control_dt,
+            init_motor_pos,
+            np.zeros_like(init_motor_pos),
+            self.prep_duration,
+            end_time=5.0,
+        )
+
+        replay_action = np.array(
             [list(motor_angles.values()) for motor_angles in motor_angles_list],
             dtype=np.float32,
         )
+        self.action_arr = np.concatenate([self.prep_action, replay_action])
+
         self.n_steps_total = self.action_arr.shape[0]
+        self.step_curr = 0
 
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         action = self.action_arr[self.step_curr]

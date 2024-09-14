@@ -12,6 +12,7 @@ from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.visualization.vis_plot import (
     plot_joint_tracking,
+    plot_joint_tracking_frequency,
     # plot_sim2real_gap_bar,
     plot_sim2real_gap_line,
 )
@@ -179,6 +180,16 @@ def evaluate(
         robot.joint_limits,
         save_path=exp_folder_path,
         file_name="sim2real_motor_pos",
+        line_suffix=["_sim", "_real"],
+    )
+
+    plot_joint_tracking_frequency(
+        time_seq_sim_dict,
+        time_seq_real_dict,
+        motor_pos_sim_dict,
+        motor_pos_real_dict,
+        save_path=exp_folder_path,
+        file_name="sim2real_motor_freq",
         line_suffix=["_sim", "_real"],
     )
 

@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Dict, Type
 
 import numpy as np
 import numpy.typing as npt
@@ -6,6 +7,16 @@ import numpy.typing as npt
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.math_utils import interpolate
+
+# Global registry to store policy names and their corresponding classes
+policy_registry: Dict[str, Type["BasePolicy"]] = {}
+
+
+def get_policy_class(policy_name: str) -> Type["BasePolicy"]:
+    if policy_name not in policy_registry:
+        raise ValueError(f"Unknown policy: {policy_name}")
+
+    return policy_registry[policy_name]
 
 
 class BasePolicy(ABC):
@@ -25,6 +36,12 @@ class BasePolicy(ABC):
         self.control_dt = control_dt
         self.prep_duration = prep_duration
         self.n_steps_total = n_steps_total
+
+    # Automatic registration of subclasses
+    def __init_subclass__(cls, policy_name: str = "", **kwargs):
+        super().__init_subclass__(**kwargs)
+        if len(policy_name) > 0:
+            policy_registry[policy_name] = cls
 
     @abstractmethod
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:

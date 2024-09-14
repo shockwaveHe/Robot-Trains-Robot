@@ -2,7 +2,7 @@ import math
 from dataclasses import is_dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
-from scipy.signal import chirp  # type: ignore
+from scipy.signal import chirp
 
 from toddlerbot.utils.array_utils import ArrayType
 from toddlerbot.utils.array_utils import array_lib as np
@@ -15,8 +15,8 @@ def get_random_sine_signal_config(
     frequency_range: List[float],
     amplitude_range: List[float],
 ):
-    frequency = np.random.uniform(*frequency_range)  # type: ignore
-    amplitude = np.random.uniform(*amplitude_range)  # type: ignore
+    frequency = np.random.uniform(*frequency_range)
+    amplitude = np.random.uniform(*amplitude_range)
 
     sine_signal_config: Dict[str, float] = {
         "frequency": frequency,
@@ -33,17 +33,17 @@ def get_sine_signal(sine_signal_config: Dict[str, float]):
     """
     Generates a sinusoidal signal based on the given parameters.
     """
-    t = np.linspace(  # type: ignore
+    t = np.linspace(
         0,
         sine_signal_config["duration"],
         int(sine_signal_config["duration"] / sine_signal_config["control_dt"]),
         endpoint=False,
         dtype=np.float32,
     )
-    signal = sine_signal_config["mean"] + sine_signal_config["amplitude"] * np.sin(  # type: ignore
+    signal = sine_signal_config["mean"] + sine_signal_config["amplitude"] * np.sin(
         2 * np.pi * sine_signal_config["frequency"] * t
     )
-    return t, signal.astype(np.float32)  # type: ignore
+    return t, signal.astype(np.float32)
 
 
 def get_chirp_signal(
@@ -53,15 +53,23 @@ def get_chirp_signal(
     initial_frequency: float,
     final_frequency: float,
     amplitude: float,
+    decay_rate: float,
     method: str = "linear",  # "linear", "quadratic", "logarithmic", etc.
 ) -> Tuple[ArrayType, ArrayType]:
-    t = np.linspace(  # type: ignore
+    t = np.linspace(
         0, duration, int(duration / control_dt), endpoint=False, dtype=np.float32
     )
 
-    signal = mean + amplitude * chirp(
+    # Generate chirp signal without amplitude modulation
+    chirp_signal = chirp(
         t, f0=initial_frequency, f1=final_frequency, t1=duration, method=method, phi=-90
     )
+
+    # Apply an amplitude decay envelope based on time (or frequency)
+    amplitude_envelope = amplitude * np.exp(-decay_rate * t)
+
+    # Modulate the chirp signal with the decayed amplitude
+    signal = mean + amplitude_envelope * chirp_signal
 
     return t, signal.astype(np.float32)
 
@@ -80,15 +88,15 @@ def round_floats(obj: Any, precision: int = 6) -> Any:
     if isinstance(obj, float):
         return round(obj, precision)
     elif isinstance(obj, (list, tuple)):
-        return type(obj)(round_floats(x, precision) for x in obj)  # type: ignore
+        return type(obj)(round_floats(x, precision) for x in obj)
     elif isinstance(obj, np.ndarray):
-        return list(np.round(obj, decimals=precision))  # type: ignore
+        return list(np.round(obj, decimals=precision))
     elif isinstance(obj, dict):
-        return {k: round_floats(v, precision) for k, v in obj.items()}  # type: ignore
+        return {k: round_floats(v, precision) for k, v in obj.items()}
     elif is_dataclass(obj):
-        return type(obj)(
+        return type(obj)(  # type: ignore
             **{
-                field.name: round_floats(getattr(obj, field.name), precision)  # type: ignore
+                field.name: round_floats(getattr(obj, field.name), precision)
                 for field in obj.__dataclass_fields__.values()
             }
         )
@@ -119,17 +127,17 @@ def quat2euler(quat: ArrayType, order: str = "wxyz") -> ArrayType:
 
     t0 = 2.0 * (w * x + y * z)
     t1 = 1.0 - 2.0 * (x * x + y * y)
-    roll = np.arctan2(t0, t1)  # type: ignore
+    roll = np.arctan2(t0, t1)
 
     t2 = 2.0 * (w * y - z * x)
-    t2 = np.clip(t2, -1.0, 1.0)  # type: ignore
-    pitch = np.arcsin(t2)  # type: ignore
+    t2 = np.clip(t2, -1.0, 1.0)
+    pitch = np.arcsin(t2)
 
     t3 = 2.0 * (w * z + x * y)
     t4 = 1.0 - 2.0 * (y * y + z * z)
-    yaw = np.arctan2(t3, t4)  # type: ignore
+    yaw = np.arctan2(t3, t4)
 
-    return np.array([roll, pitch, yaw])  # type: ignore
+    return np.array([roll, pitch, yaw])
 
 
 def euler2quat(euler: ArrayType, order: str = "wxyz") -> ArrayType:
@@ -145,12 +153,12 @@ def euler2quat(euler: ArrayType, order: str = "wxyz") -> ArrayType:
     """
     roll, pitch, yaw = euler
 
-    cy = np.cos(yaw * 0.5)  # type: ignore
-    sy = np.sin(yaw * 0.5)  # type: ignore
-    cp = np.cos(pitch * 0.5)  # type: ignore
-    sp = np.sin(pitch * 0.5)  # type: ignore
-    cr = np.cos(roll * 0.5)  # type: ignore
-    sr = np.sin(roll * 0.5)  # type: ignore
+    cy = np.cos(yaw * 0.5)
+    sy = np.sin(yaw * 0.5)
+    cp = np.cos(pitch * 0.5)
+    sp = np.sin(pitch * 0.5)
+    cr = np.cos(roll * 0.5)
+    sr = np.sin(roll * 0.5)
 
     w = cr * cp * cy + sr * sp * sy
     x = sr * cp * cy - cr * sp * sy
@@ -158,9 +166,9 @@ def euler2quat(euler: ArrayType, order: str = "wxyz") -> ArrayType:
     z = cr * cp * sy - sr * sp * cy
 
     if order == "xyzw":
-        return np.array([x, y, z, w])  # type: ignore
+        return np.array([x, y, z, w])
     else:
-        return np.array([w, x, y, z])  # type: ignore
+        return np.array([w, x, y, z])
 
 
 def quat_inv(quat: ArrayType, order: str = "wxyz") -> ArrayType:
@@ -171,7 +179,7 @@ def quat_inv(quat: ArrayType, order: str = "wxyz") -> ArrayType:
         w, x, y, z = quat
 
     norm = w**2 + x**2 + y**2 + z**2
-    return np.array([w, -x, -y, -z]) / norm  # type: ignore
+    return np.array([w, -x, -y, -z]) / norm
 
 
 def quat_mult(q1: ArrayType, q2: ArrayType, order: str = "wxyz") -> ArrayType:
@@ -187,12 +195,12 @@ def quat_mult(q1: ArrayType, q2: ArrayType, order: str = "wxyz") -> ArrayType:
     x = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2
     y = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2
     z = w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2
-    return np.array([w, x, y, z])  # type: ignore
+    return np.array([w, x, y, z])
 
 
 def rotate_vec(vector: ArrayType, quat: ArrayType):
     """Rotate a vector by a quaternion."""
-    v = np.array([0.0] + list(vector))  # type: ignore
+    v = np.array([0.0] + list(vector))
     q_inv = quat_inv(quat)
     v_rotated = quat_mult(quat_mult(quat, v), q_inv)
     return v_rotated[1:]
@@ -209,9 +217,9 @@ def exponential_moving_average(
 
 
 def gaussian_basis_functions(phase: ArrayType, N: int = 50):
-    centers = np.linspace(0, 1, N)  # type: ignore
+    centers = np.linspace(0, 1, N)
     # Compute the Gaussian basis functions
-    basis = np.exp(-np.square(phase - centers) / (2 * N**2))  # type: ignore
+    basis = np.exp(-np.square(phase - centers) / (2 * N**2))
     return basis
 
 
@@ -223,8 +231,8 @@ def wrap_to_pi(angle: ArrayType) -> ArrayType:
 def interpolate(
     p_start: ArrayType | float,
     p_end: ArrayType | float,
-    duration: float,
-    t: float,
+    duration: ArrayType | float,
+    t: ArrayType | float,
     interp_type: str = "linear",
 ) -> ArrayType | float:
     """
@@ -260,7 +268,7 @@ def interpolate(
         raise ValueError("Unsupported interpolation type: {}".format(interp_type))
 
 
-def binary_search(arr: ArrayType, t: float) -> int:
+def binary_search(arr: ArrayType, t: ArrayType | float) -> int:
     # Implement binary search using either NumPy or JAX.
     low, high = 0, len(arr) - 1
     while low <= high:
@@ -275,7 +283,7 @@ def binary_search(arr: ArrayType, t: float) -> int:
 
 
 def interpolate_action(
-    t: float,
+    t: ArrayType | float,
     time_arr: ArrayType,
     action_arr: ArrayType,
     interp_type: str = "linear",
@@ -292,9 +300,7 @@ def interpolate_action(
     p_start = action_arr[idx]
     p_end = action_arr[idx + 1]
     duration = time_arr[idx + 1] - time_arr[idx]
-    return interpolate(
-        p_start, p_end, float(duration), float(t - time_arr[idx]), interp_type
-    )
+    return interpolate(p_start, p_end, duration, t - time_arr[idx], interp_type)
 
 
 # def interpolate_pos(
@@ -313,7 +319,7 @@ def interpolate_action(
 #         pos_interp = interpolate(
 #             pos_start, pos, duration, time_curr, interp_type=interp_type
 #         )
-#         set_pos(pos_interp)  # type: ignore
+#         set_pos(pos_interp)
 
 #         time_elapsed = time.time() - time_start - time_curr
 #         time_until_next_step = sleep_time - time_elapsed
@@ -344,7 +350,7 @@ def resample_trajectory(
                 for joint_name, p_start in joint_angles_0.items():
                     p_end = joint_angles_1[joint_name]
                     p_interp = interpolate(p_start, p_end, duration, t, interp_type)
-                    interpolated_joint_angles[joint_name] = p_interp  # type: ignore
+                    interpolated_joint_angles[joint_name] = float(p_interp)
                 resampled_trajectory.append((t0 + t, interpolated_joint_angles))
         else:
             # Interval is fine, keep the original point

@@ -5,9 +5,9 @@ from typing import Any, Dict, List
 
 import numpy as np
 import numpy.typing as npt
-from scipy.interpolate import LinearNDInterpolator  # type: ignore
-from scipy.spatial import Delaunay  # type: ignore
-from yourdfpy import URDF  # type: ignore
+from scipy.interpolate import LinearNDInterpolator
+from scipy.spatial import Delaunay
+from yourdfpy import URDF
 
 from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.misc_utils import log  # , profile
@@ -59,15 +59,15 @@ class Robot:
                 f"No collision config file found for robot '{self.name}'."
             )
 
-    def load_robot_cache(self):
+    def load_robot_cache(self) -> None:
         if os.path.exists(self.cache_path):
             with open(self.cache_path, "rb") as f:
                 self.data_dict: Dict[str, Any] = pickle.load(f)
                 log("Loaded cached data.", header="Robot")
         else:
             urdf_path = find_robot_file_path(self.name)
-            urdf: URDF = URDF.load(urdf_path)  # type: ignore
-            self.compute_cache(urdf)
+            urdf: URDF = URDF.load(urdf_path)
+            self.data_dict = self.compute_cache(urdf)
 
             with open(self.cache_path, "wb") as f:
                 pickle.dump(self.data_dict, f)
@@ -80,60 +80,62 @@ class Robot:
             self.ank_act_pos_tri = Delaunay(points)
             self.ank_pos_tri = Delaunay(values)
 
-    def compute_cache(self, urdf: URDF):
-        self.data_dict: Dict[str, Any] = {"name": self.name}
+    def compute_cache(self, urdf: URDF) -> Dict[str, Any]:
+        data_dict: Dict[str, Any] = {"name": self.name}
         if "foot_name" in self.config["general"]:
-            self.data_dict["foot_size"] = self.compute_foot_size(urdf)
-            self.data_dict["offsets"] = self.compute_offsets(urdf)
-            self.data_dict["ank_act_zero"] = self.ankle_ik([0.0, 0.0])
+            data_dict["foot_size"] = self.compute_foot_size(urdf)
+            data_dict["offsets"] = self.compute_offsets(urdf)
+            data_dict["ank_act_zero"] = self.ankle_ik([0.0, 0.0])
             points, values = self.compute_ankle_fk_lookup()
-            self.data_dict["ank_fk_lookup_table"] = (points, values)
+            data_dict["ank_fk_lookup_table"] = (points, values)
+
+        return data_dict
 
     def compute_foot_size(self, urdf: URDF) -> npt.NDArray[np.float32]:
-        foot_bounds = urdf.scene.geometry.get("left_ank_pitch_link_visual.stl").bounds  # type: ignore
-        foot_ori = urdf.scene.graph.get("ank_pitch_link")[0][:3, :3]  # type: ignore
-        foot_bounds_rotated = foot_bounds @ foot_ori.T  # type: ignore
-        foot_size = np.abs(foot_bounds_rotated[1] - foot_bounds_rotated[0])  # type: ignore
+        foot_bounds = urdf.scene.geometry.get("left_ank_pitch_link_visual.stl").bounds
+        foot_ori = urdf.scene.graph.get("ank_pitch_link")[0][:3, :3]
+        foot_bounds_rotated = foot_bounds @ foot_ori.T
+        foot_size = np.abs(foot_bounds_rotated[1] - foot_bounds_rotated[0])
 
         # 0.004 is the thickness of the foot pad
         return np.array([foot_size[0], foot_size[1], 0.004])
 
     def compute_offsets(self, urdf: URDF):
-        graph = urdf.scene.graph  # type: ignore
+        graph = urdf.scene.graph
 
         offsets: Dict[str, Any] = {}
 
         ##### Below are for the leg IK #####
         # from the hip roll joint to the hip pitch joint
         offsets["hip_roll_to_pitch_z"] = (
-            graph.get("hip_roll_link")[0][2, 3]  # type: ignore
-            - graph.get("left_hip_pitch_link_xm430")[0][2, 3]  # type: ignore
+            graph.get("hip_roll_link")[0][2, 3]
+            - graph.get("left_hip_pitch_link_xm430")[0][2, 3]
         )
         # from the hip pitch joint to the knee joint
         offsets["hip_pitch_to_knee_z"] = (
-            graph.get("left_hip_pitch_link_xm430")[0][2, 3]  # type: ignore
-            - graph.get("left_calf_link")[0][2, 3]  # type: ignore
+            graph.get("left_hip_pitch_link_xm430")[0][2, 3]
+            - graph.get("left_calf_link")[0][2, 3]
         )
         # from the knee joint to the ankle roll joint
         offsets["knee_to_ank_pitch_z"] = (
-            graph.get("left_calf_link")[0][2, 3] - graph.get("ank_pitch_link")[0][2, 3]  # type: ignore
+            graph.get("left_calf_link")[0][2, 3] - graph.get("ank_pitch_link")[0][2, 3]
         )
         # from the hip center to the foot
-        offsets["foot_to_com_x"] = graph.get("ank_pitch_link")[0][0, 3]  # type: ignore
-        offsets["foot_to_com_y"] = graph.get("ank_pitch_link")[0][1, 3]  # type: ignore
+        offsets["foot_to_com_x"] = graph.get("ank_pitch_link")[0][0, 3]
+        offsets["foot_to_com_y"] = graph.get("ank_pitch_link")[0][1, 3]
 
         ##### Below are for the ankle IK #####
         ank_origin: npt.NDArray[np.float32] = np.array(
-            graph.get("ank_pitch_link")[0][:3, 3]  # type: ignore
+            graph.get("ank_pitch_link")[0][:3, 3]
         )
 
         offsets["fE"] = [
-            graph.get("ank_rr_link")[0][:3, 3] - ank_origin,  # type: ignore
-            graph.get("ank_rr_link_2")[0][:3, 3] - ank_origin,  # type: ignore
+            graph.get("ank_rr_link")[0][:3, 3] - ank_origin,
+            graph.get("ank_rr_link_2")[0][:3, 3] - ank_origin,
         ]
         offsets["m"] = [
-            graph.get("ank_motor_arm")[0][:3, 3] - ank_origin,  # type: ignore
-            graph.get("ank_motor_arm_2")[0][:3, 3] - ank_origin,  # type: ignore
+            graph.get("ank_motor_arm")[0][:3, 3] - ank_origin,
+            graph.get("ank_motor_arm_2")[0][:3, 3] - ank_origin,
         ]
         ank_act_arm_y = self.config["general"]["offsets"]["ank_act_arm_y"]
         offsets["m"][0][1] += ank_act_arm_y
@@ -148,7 +150,7 @@ class Robot:
 
         return offsets
 
-    def initialize(self):
+    def initialize(self) -> None:
         self.init_motor_angles: Dict[str, float] = {}
         for joint_name, joint_config in self.config["joints"].items():
             if not joint_config["is_passive"]:
@@ -351,8 +353,8 @@ class Robot:
         for i in range(len(ank_act_zero)):
             f = R_ankle @ offsets["fE"][i]
             delta = offsets["m"][i] - f
-            k = delta - np.dot(n_hat, delta) * n_hat  # type: ignore
-            d = delta - offsets["r"] * k / np.linalg.norm(k)  # type: ignore
+            k = delta - np.dot(n_hat, delta) * n_hat
+            d = delta - offsets["r"] * k / np.linalg.norm(k)
             a = 2 * offsets["a"] * d[0]
             b = 2 * offsets["a"] * d[2]
             R = np.sqrt(a**2 + b**2)
@@ -408,14 +410,14 @@ class Robot:
         act_1_limits = self.joint_limits["left_ank_act_1"]
         act_2_limits = self.joint_limits["left_ank_act_2"]
 
-        roll_range = np.arange(roll_limits[0], roll_limits[1] + step_rad, step_rad)  # type: ignore
-        pitch_range = np.arange(pitch_limits[0], pitch_limits[1] + step_rad, step_rad)  # type: ignore
-        roll_grid, pitch_grid = np.meshgrid(roll_range, pitch_range, indexing="ij")  # type: ignore
+        roll_range = np.arange(roll_limits[0], roll_limits[1] + step_rad, step_rad)
+        pitch_range = np.arange(pitch_limits[0], pitch_limits[1] + step_rad, step_rad)
+        roll_grid, pitch_grid = np.meshgrid(roll_range, pitch_range, indexing="ij")
 
         act_1_grid = np.zeros_like(roll_grid)
         act_2_grid = np.zeros_like(pitch_grid)
-        for i in range(len(roll_range)):  # type: ignore
-            for j in range(len(pitch_range)):  # type: ignore
+        for i in range(len(roll_range)):
+            for j in range(len(pitch_range)):
                 act_pos: List[float] = self.ankle_ik([roll_range[i], pitch_range[j]])
                 act_1_grid[i, j] = act_pos[0]
                 act_2_grid[i, j] = act_pos[1]
@@ -428,8 +430,8 @@ class Robot:
         )
 
         # Filter out valid data points
-        points = np.column_stack((act_1_grid[valid_mask], act_2_grid[valid_mask]))  # type: ignore
-        values = np.column_stack((roll_grid[valid_mask], pitch_grid[valid_mask]))  # type: ignore
+        points = np.column_stack((act_1_grid[valid_mask], act_2_grid[valid_mask]))
+        values = np.column_stack((roll_grid[valid_mask], pitch_grid[valid_mask]))
 
         return points, values
 
@@ -442,14 +444,14 @@ class Robot:
         else:
             tri = self.ank_pos_tri
 
-        if tri.find_simplex(point) >= 0:  # type: ignore
+        if tri.find_simplex(point) >= 0:
             if direction == "forward":
                 ankle_pos = self.ankle_fk(point, side)
                 if np.isnan(ankle_pos).any():
                     return False
                 else:
                     ank_act_pos = self.ankle_ik(ankle_pos, side)
-                    if np.allclose(ank_act_pos, point, atol=1e-3):  # type: ignore
+                    if np.allclose(ank_act_pos, point, atol=1e-3):
                         return True
                     else:
                         return False
@@ -492,10 +494,10 @@ class Robot:
         right_ank_act_pos: List[float] = []
         for motor_name, motor_pos in motor_angles.items():
             transmission = joints_config[motor_name]["transmission"]
-            if transmission == "gears":
+            if transmission == "gear":
                 joint_name = motor_name.replace("_drive", "_driven")
                 joint_angles[joint_name] = (
-                    -motor_pos / joints_config[motor_name]["gear_ratio"]
+                    -motor_pos * joints_config[motor_name]["gear_ratio"]
                 )
             elif transmission == "waist":
                 # Placeholder to ensure the correct order
@@ -503,8 +505,7 @@ class Robot:
                 joint_angles["waist_yaw"] = 0.0
                 waist_act_pos.append(motor_pos)
             elif transmission == "knee":
-                joint_name: str = motor_name.replace("_act", "_pitch")
-                joint_angles[joint_name] = motor_pos
+                joint_angles[motor_name.replace("_act", "_pitch")] = motor_pos
             elif transmission == "ankle":
                 if "left" in motor_name:
                     joint_angles["left_ank_roll"] = 0.0
@@ -542,10 +543,10 @@ class Robot:
         right_ankle_pos: List[float] = []
         for joint_name, joint_pos in joint_angles.items():
             transmission = joints_config[joint_name]["transmission"]
-            if transmission == "gears":
+            if transmission == "gear":
                 motor_name = joint_name.replace("_driven", "_drive")
                 motor_angles[motor_name] = (
-                    -joint_pos * joints_config[motor_name]["gear_ratio"]
+                    -joint_pos / joints_config[motor_name]["gear_ratio"]
                 )
             elif transmission == "waist":
                 # Placeholder to ensure the correct order
@@ -553,8 +554,7 @@ class Robot:
                 motor_angles["waist_act_2"] = 0.0
                 waist_pos.append(joint_pos)
             elif transmission == "knee":
-                motor_name: str = joint_name.replace("_pitch", "_act")
-                motor_angles[motor_name] = joint_pos
+                motor_angles[joint_name.replace("_pitch", "_act")] = joint_pos
             elif transmission == "ankle":
                 if "left" in joint_name:
                     motor_angles["left_ank_act_1"] = 0.0

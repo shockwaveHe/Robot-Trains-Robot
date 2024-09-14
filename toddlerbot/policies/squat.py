@@ -9,7 +9,7 @@ from toddlerbot.ref_motion.squat_ref import SquatReference
 from toddlerbot.sim.robot import Robot
 
 
-class SquatPolicy(MJXPolicy):
+class SquatPolicy(MJXPolicy, policy_name="squat"):
     def __init__(
         self,
         name: str,
@@ -18,17 +18,12 @@ class SquatPolicy(MJXPolicy):
         ckpt: str,
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
     ):
-        env_cfg = SquatCfg()
-        command_ranges = [env_cfg.commands.lin_vel_z_range]
-        motion_ref = SquatReference(robot)
-
         super().__init__(
             name,
             robot,
             init_motor_pos,
-            env_cfg,
-            motion_ref,
             ckpt,
-            command_ranges,
             fixed_command,
+            SquatCfg(),
+            SquatReference(robot),
         )
