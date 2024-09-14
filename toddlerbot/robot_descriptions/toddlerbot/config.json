@@ -160,9 +160,9 @@
             "group": "leg",
             "lower_limit": -0.7853981633974483,
             "upper_limit": 0.7853981633974483,
-            "damping": 0.381,
-            "armature": 0.006,
-            "frictionloss": 0.0,
+            "damping": 0.27,
+            "armature": 0.002,
+            "frictionloss": 0.034,
             "id": 5,
             "type": "dynamixel",
             "spec": "2XC430",
@@ -299,9 +299,9 @@
             "group": "leg",
             "lower_limit": -0.7853981633974483,
             "upper_limit": 0.7853981633974483,
-            "damping": 0.381,
-            "armature": 0.006,
-            "frictionloss": 0.0,
+            "damping": 0.228,
+            "armature": 0.002,
+            "frictionloss": 0.027,
             "id": 11,
             "type": "dynamixel",
             "spec": "2XC430",
@@ -810,9 +810,9 @@
             "group": "leg",
             "lower_limit": -1.0471975511965976,
             "upper_limit": 0.7853981633974483,
-            "damping": 0.193,
-            "armature": 0.0,
-            "frictionloss": 0.0
+            "damping": 0.095,
+            "armature": 0.004,
+            "frictionloss": 0.158
         },
         "left_ank_roll": {
             "is_passive": true,
@@ -820,9 +820,9 @@
             "group": "leg",
             "lower_limit": -0.7853981633974483,
             "upper_limit": 0.7853981633974483,
-            "damping": 0.264,
-            "armature": 0.002,
-            "frictionloss": 0.0
+            "damping": 0.153,
+            "armature": 0.004,
+            "frictionloss": 0.003
         },
         "left_ank_short_rev_1": {
             "is_passive": true,
@@ -1000,9 +1000,9 @@
             "group": "leg",
             "lower_limit": -1.0471975511965976,
             "upper_limit": 0.7853981633974483,
-            "damping": 0.193,
-            "armature": 0.0,
-            "frictionloss": 0.0
+            "damping": 0.095,
+            "armature": 0.004,
+            "frictionloss": 0.158
         },
         "right_ank_roll": {
             "is_passive": true,
@@ -1010,9 +1010,9 @@
             "group": "leg",
             "lower_limit": -0.7853981633974483,
             "upper_limit": 0.7853981633974483,
-            "damping": 0.264,
-            "armature": 0.002,
-            "frictionloss": 0.0
+            "damping": 0.161,
+            "armature": 0.004,
+            "frictionloss": 0.004
         },
         "right_ank_short_rev_1": {
             "is_passive": true,
@@ -1150,9 +1150,9 @@
             "group": "waist",
             "lower_limit": -0.5235987755982988,
             "upper_limit": 0.5235987755982988,
-            "damping": 0.548,
-            "armature": 0.003,
-            "frictionloss": 0.0
+            "damping": 0.39,
+            "armature": 0.002,
+            "frictionloss": 0.01
         },
         "waist_yaw": {
             "is_passive": true,
@@ -1160,9 +1160,9 @@
             "group": "waist",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
-            "damping": 0.011,
-            "armature": 0.014,
-            "frictionloss": 0.0
+            "damping": 0.053,
+            "armature": 0.011,
+            "frictionloss": 0.038
         }
     }
 }
