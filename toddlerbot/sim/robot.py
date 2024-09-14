@@ -499,6 +499,11 @@ class Robot:
                 joint_angles[joint_name] = (
                     -motor_pos * joints_config[motor_name]["gear_ratio"]
                 )
+            elif transmission == "rack_and_pinion":
+                joint_pinion_name = motor_name.replace("_rack", "_pinion")
+                joint_angles[joint_pinion_name] = (
+                    -motor_pos * joints_config[motor_name]["gear_ratio"]
+                )
             elif transmission == "waist":
                 # Placeholder to ensure the correct order
                 joint_angles["waist_roll"] = 0.0
@@ -545,6 +550,11 @@ class Robot:
             transmission = joints_config[joint_name]["transmission"]
             if transmission == "gear":
                 motor_name = joint_name.replace("_driven", "_drive")
+                motor_angles[motor_name] = (
+                    -joint_pos / joints_config[motor_name]["gear_ratio"]
+                )
+            elif transmission == "rack_and_pinion":
+                motor_name = joint_name.replace("_pinion", "_rack")
                 motor_angles[motor_name] = (
                     -joint_pos / joints_config[motor_name]["gear_ratio"]
                 )

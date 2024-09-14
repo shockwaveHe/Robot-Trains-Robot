@@ -375,12 +375,12 @@
                     <geom pos="0.0226 -0.0137 -0.05795" quat="0.5 -0.5 -0.5 -0.5" type="mesh" rgba="0.669325 0.729118 0.675479 1" mesh="left_xc330_visual" class="visual" />
                     <body name="rail" pos="-0.014175 -0.04235 -0.0648726" quat="0 0.707107 -0.707107 0">
                       <inertial pos="0.0227448 -0.0142334 -0.00799071" quat="0.0122447 0.558755 -0.000224909 0.829242" mass="0.0119" diaginertia="4.7734e-06 3.61987e-06 2.61115e-06" />
-                      <joint name="left_gripper_pinion_1" pos="0 0 0" axis="0 0 1" type="slide" range="-0.0368726 0" damping="0.0" armature="0.0" frictionloss="0.0" />
+                      <joint name="left_gripper_pinion" pos="0 0 0" axis="0 0 1" type="slide" range="-0.0368726 0" damping="0.0" armature="0.0" frictionloss="0.0" />
                       <geom type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="left_rail_visual" class="visual" />
                     </body>
                     <body name="rail_2" pos="0.014175 -0.04235 0.0268726" quat="0.707107 0 0 -0.707107">
                       <inertial pos="0.0227448 -0.0142334 -0.00799071" quat="0.0122447 0.558755 -0.000224909 0.829242" mass="0.0119" diaginertia="4.7734e-06 3.61987e-06 2.61115e-06" />
-                      <joint name="left_gripper_pinion_2" pos="0 0 0" axis="0 0 1" type="slide" range="-0.0368726 0" damping="0.0" armature="0.0" frictionloss="0.0" />
+                      <joint name="left_gripper_pinion_mirror" pos="0 0 0" axis="0 0 1" type="slide" range="-0.0368726 0" damping="0.0" armature="0.0" frictionloss="0.0" />
                       <geom type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="left_rail_2_visual" class="visual" />
                     </body>
                     <body name="spur_gear_(14_teeth)" pos="0.0001 -0.0337 -0.04995" quat="0.5 -0.5 -0.5 -0.5">
@@ -446,12 +446,12 @@
                     <geom pos="-0.0226 0.0137 0.00395" quat="-0.5 -0.5 0.5 -0.5" type="mesh" rgba="0.669325 0.729118 0.675479 1" mesh="right_xc330_visual" class="visual" />
                     <body name="rail_3" pos="-0.014175 0.04235 0.0268726" quat="0.707107 0 0 0.707107">
                       <inertial pos="0.0227448 -0.0142334 -0.00799071" quat="0.0122447 0.558755 -0.000224909 0.829242" mass="0.0119" diaginertia="4.7734e-06 3.61987e-06 2.61115e-06" />
-                      <joint name="right_gripper_pinion_1" pos="0 0 0" axis="0 0 1" type="slide" range="-0.0368726 0" damping="0.0" armature="0.0" frictionloss="0.0" />
+                      <joint name="right_gripper_pinion" pos="0 0 0" axis="0 0 1" type="slide" range="-0.0368726 0" damping="0.0" armature="0.0" frictionloss="0.0" />
                       <geom type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="right_rail_visual" class="visual" />
                     </body>
                     <body name="rail_4" pos="0.014175 0.04235 -0.0648726" quat="0 0.707107 0.707107 0">
                       <inertial pos="0.0227448 -0.0142334 -0.00799071" quat="0.0122447 0.558755 -0.000224909 0.829242" mass="0.0119" diaginertia="4.7734e-06 3.61987e-06 2.61115e-06" />
-                      <joint name="right_gripper_pinion_2" pos="0 0 0" axis="0 0 1" type="slide" range="-0.0368726 0" damping="0.0" armature="0.0" frictionloss="0.0" />
+                      <joint name="right_gripper_pinion_mirror" pos="0 0 0" axis="0 0 1" type="slide" range="-0.0368726 0" damping="0.0" armature="0.0" frictionloss="0.0" />
                       <geom type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="right_rail_2_visual" class="visual" />
                     </body>
                     <body name="spur_gear_(14_teeth)_2" pos="-0.0001 0.0337 0.01195" quat="-0.5 -0.5 0.5 -0.5">
@@ -516,10 +516,10 @@
     <joint joint1="right_sho_yaw_driven" joint2="right_sho_yaw_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
     <joint joint1="right_elbow_yaw_driven" joint2="right_elbow_yaw_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
     <joint joint1="right_wrist_pitch_driven" joint2="right_wrist_pitch_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
-    <joint joint1="left_gripper_pinion_1" joint2="left_gripper_rack" polycoef="0 -0.007 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
-    <joint joint1="left_gripper_pinion_2" joint2="left_gripper_rack" polycoef="0 -0.007 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
-    <joint joint1="right_gripper_pinion_1" joint2="right_gripper_rack" polycoef="0 -0.007 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
-    <joint joint1="right_gripper_pinion_2" joint2="right_gripper_rack" polycoef="0 -0.007 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <joint joint1="left_gripper_pinion" joint2="left_gripper_rack" polycoef="0 -0.007 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <joint joint1="left_gripper_pinion_mirror" joint2="left_gripper_rack" polycoef="0 -0.007 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <joint joint1="right_gripper_pinion" joint2="right_gripper_rack" polycoef="0 -0.007 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <joint joint1="right_gripper_pinion_mirror" joint2="right_gripper_rack" polycoef="0 -0.007 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
     <weld body1="knee_rod" body2="bearing_683" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
     <weld body1="knee_rod_2" body2="bearing_683_2" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
     <weld body1="knee_rod_3" body2="bearing_683_3" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />

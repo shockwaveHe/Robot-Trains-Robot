@@ -854,7 +854,7 @@
             "armature": 0.015,
             "frictionloss": 0.53
         },
-        "left_gripper_pinion_1": {
+        "left_gripper_pinion": {
             "is_passive": true,
             "transmission": "rack_and_pinion",
             "group": "arm",
@@ -864,7 +864,7 @@
             "armature": 0.0,
             "frictionloss": 0.0
         },
-        "left_gripper_pinion_2": {
+        "left_gripper_pinion_mirror": {
             "is_passive": true,
             "transmission": "rack_and_pinion",
             "group": "arm",
@@ -1044,7 +1044,7 @@
             "armature": 0.015,
             "frictionloss": 0.53
         },
-        "right_gripper_pinion_1": {
+        "right_gripper_pinion": {
             "is_passive": true,
             "transmission": "rack_and_pinion",
             "group": "arm",
@@ -1054,7 +1054,7 @@
             "armature": 0.0,
             "frictionloss": 0.0
         },
-        "right_gripper_pinion_2": {
+        "right_gripper_pinion_mirror": {
             "is_passive": true,
             "transmission": "rack_and_pinion",
             "group": "arm",
