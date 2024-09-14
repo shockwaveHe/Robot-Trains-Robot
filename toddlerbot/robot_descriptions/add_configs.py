@@ -48,8 +48,13 @@ def get_default_config(
         is_passive = False
         transmission = "none"
         if "drive" in joint_name:
-            transmission = "gears"
+            transmission = "gear"
             if "driven" in joint_name:
+                is_passive = True
+
+        if "gripper" in joint_name:
+            transmission = "rack_and_pinion"
+            if "pinion" in joint_name:
                 is_passive = True
 
         if "waist" in joint_name:
@@ -97,7 +102,8 @@ def get_default_config(
             if joint_name in joint_dyn_config:
                 for param_name in ["damping", "armature", "frictionloss"]:
                     joint_dict[param_name] = joint_dyn_config[joint_name][param_name]
-            elif transmission == "gears":
+            # TODO: Remove this after doing sysID
+            elif transmission == "gear":
                 joint_drive_name = joint_name.replace("_driven", "_drive")
                 motor_name = motor_config[joint_drive_name]["motor"]
                 gear_ratio = motor_config[joint_drive_name].get("gear_ratio", 1.0)
@@ -144,7 +150,7 @@ def get_default_config(
                 for param_name in ["damping", "armature", "frictionloss"]:
                     joint_dict[param_name] = joint_dyn_config[motor_name][param_name]
 
-            if transmission == "gears":
+            if transmission == "gear" or transmission == "rack_and_pinion":
                 if "gear_ratio" in motor_config[joint_name]:
                     joint_dict["gear_ratio"] = motor_config[joint_name]["gear_ratio"]
                 else:

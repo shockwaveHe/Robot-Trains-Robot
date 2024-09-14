@@ -117,8 +117,13 @@ def assemble_urdf(urdf_config: URDFConfig):
 
         source_urdf_path = None
         assembly_name = ""
+        child_link_name_words = child_link_name.split("_")
         for name in assembly_list:
-            if name.lower() == child_link_name.lower():
+            name_words = name.split("_")
+            if (
+                name_words[0].lower() == child_link_name_words[0].lower()
+                and name_words[1].lower() == child_link_name_words[1].lower()
+            ):
                 source_urdf_path = os.path.join(assembly_dir, name, name + ".urdf")
                 assembly_name = name
                 break

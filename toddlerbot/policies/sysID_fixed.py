@@ -107,7 +107,7 @@ class SysIDFixedPolicy(BasePolicy, policy_name="sysID"):
                 #     },
                 #     direction=-1,
                 # ),
-                # "wrist_pitch": SysIDSpecs(
+                # "wrist_pitch_driven": SysIDSpecs(
                 #     warm_up_angles={
                 #         "left_sho_roll": -np.pi / 6,
                 #         "right_sho_roll": -np.pi / 6,
@@ -121,7 +121,7 @@ class SysIDFixedPolicy(BasePolicy, policy_name="sysID"):
                 #         "right_sho_yaw_driven": -np.pi / 2,
                 #     },
                 # ),
-                # "wrist_roll_driven": SysIDSpecs(
+                # "wrist_roll": SysIDSpecs(
                 #     warm_up_angles={
                 #         "left_sho_roll": -np.pi / 6,
                 #         "right_sho_roll": -np.pi / 6,

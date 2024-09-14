@@ -10,8 +10,8 @@ ARM_NAME="arm_gripper"
 LEG_NAME="leg_XM430"
 DOC_ID_LIST="6f1a2a766fbbc097a49abb91 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
 ASSEMBLY_LIST="toddlerbot left_leg_XM430 right_leg_XM430 left_arm_gripper right_arm_gripper"
-# DOC_ID_LIST="6f1a2a766fbbc097a49abb91"
-# ASSEMBLY_LIST="toddlerbot"
+# DOC_ID_LIST="cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
+# ASSEMBLY_LIST="left_arm_gripper right_arm_gripper"
 
 #### toddlerbot_legs #####
 # ROBOT_NAME="toddlerbot_legs"
@@ -28,8 +28,8 @@ ASSEMBLY_LIST="toddlerbot left_leg_XM430 right_leg_XM430 left_arm_gripper right_
 # ARM_NAME="arm_hand"
 # DOC_ID_LIST="6f1a2a766fbbc097a49abb91 cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
 # ASSEMBLY_LIST="toddlerbot_arms left_arm_hand right_arm_hand"
-# DOC_ID_LIST="6f1a2a766fbbc097a49abb91"
-# ASSEMBLY_LIST="toddlerbot_arms"
+# DOC_ID_LIST="cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
+# ASSEMBLY_LIST="left_arm_hand right_arm_hand"
 
 ##### sysID_device #####
 # MOTOR_TYPE="XC330"
