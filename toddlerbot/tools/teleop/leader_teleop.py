@@ -38,35 +38,35 @@ from toddlerbot.utils.misc_utils import (
 default_pose = np.array(
     [
         # as drawn
-        # -0.719437,
-        # -0.4249127,
-        # 0.44025254,
-        # 0.7992041,
-        # -1.6030097,
-        # 0.9664078,
-        # -1.1090682,
-        # 0.9081166,
-        # -0.5798447,
-        # 0.11198044,
-        # 0.9387963,
-        # 1.12134,
-        # -0.7271068,
-        # -1.0921943,
+        -0.60745645,
+        -0.9265244,
+        0.02147579,
+        1.2348546,
+        0.52922344,
+        0.49394178,
+        -1.125942,
+        0.5123496,
+        -0.96180606,
+        -0.25003886,
+        1.2195148,
+        -0.35128164,
+        -0.6504078,
+        -1.1535536,
         # wider pose
-        -0.5829127,
-        -0.7393787,
-        0.4356506,
-        0.9464662,
-        -1.5953398,
-        0.9541359,
-        -1.2133789,
-        0.82067966,
-        -0.8390875,
-        0.10737848,
-        1.0016894,
-        1.1121361,
-        -0.7117672,
-        -1.2287186,
+        # -0.5829127,
+        # -0.7393787,
+        # 0.4356506,
+        # 0.9464662,
+        # -1.5953398,
+        # 0.9541359,
+        # -1.2133789,
+        # 0.82067966,
+        # -0.8390875,
+        # 0.10737848,
+        # 1.0016894,
+        # 1.1121361,
+        # -0.7117672,
+        # -1.2287186,
     ]
 )
 
@@ -99,7 +99,7 @@ class InferencePolicy(BasePolicy):
         self.toggle_motor = False
 
         self.log = False
-        self.stop_inference = False
+        self.stop_inference = True
         self.blend_percentage = 0.0
         self.default_pose = default_pose
 
@@ -111,6 +111,11 @@ class InferencePolicy(BasePolicy):
             try:
                 if key == keyboard.Key.space:
                     self.stop_inference = not self.stop_inference
+                    self.blend_percentage = 0.0
+                    if self.stop_inference:
+                        print("\nInference stopped, resetting to default pose\n")
+                    else:
+                        print("\nInference started, leader controlled by model now.\n")
             except AttributeError:
                 pass
 
@@ -139,9 +144,9 @@ class InferencePolicy(BasePolicy):
 
         if self.stop_inference:
             leader_action = self.reset_slowly(obs_real)
-            if self.blend_percentage >= 0.99:
-                self.log = True
-                self.toggle_motor = True
+            # if self.blend_percentage >= 0.99:
+            # self.log = True
+            # self.toggle_motor = True
         # else:
         #     leader_action = sim_action
         return sim_action, leader_action

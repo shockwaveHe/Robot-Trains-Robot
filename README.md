@@ -397,6 +397,7 @@ pigar generate
 1. Don't drag the cables when removing the connector. Use the plastic tips on both sides
 1. Tape the DC power supply voltage and current buttons to avoid accidentally changing the settings
 
+Dynamixel XC330 can not sustain 4Mbps baudrate, it will raise a bunch of warnings (no status packet). Please down grade all xc330 to 2Mbps.
 
 ### Jetson Tips
 - We recommand using jtop to monitor the performance of the system
