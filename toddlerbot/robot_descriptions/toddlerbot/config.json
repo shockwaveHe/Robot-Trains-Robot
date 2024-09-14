@@ -749,7 +749,7 @@
             "type": "dynamixel",
             "spec": "XC330",
             "control_mode": "extended_position",
-            "init_pos": 5.4042374958752415,
+            "init_pos": 0.5429719302954359,
             "default_pos": 0.0,
             "kp_real": 900.0,
             "ki_real": 0.0,
