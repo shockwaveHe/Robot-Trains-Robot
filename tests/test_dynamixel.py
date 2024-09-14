@@ -66,10 +66,8 @@ def get_dynamixel_controller(
 def main(robot: Robot):
     dynamixel_controller = get_dynamixel_controller(
         robot,
-        # 0, 8, 9, 14, 15 lose packets
-        # id_list=[0, 1, 2, 3, 4, 8, 9, 10, 11, 12, 13, 14, 15, *range(16, 30)],
-        # id_list=[8, 14],
-        group="all",
+        id_list=[*range(0, 32)],
+        group="all"
     )
 
     step_idx = 0
