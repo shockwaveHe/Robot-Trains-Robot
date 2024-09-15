@@ -3,23 +3,16 @@
 import argparse
 import os
 import pickle
-import threading
 import time
 from typing import Any, Dict, List
 
 import joblib
-import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
-import redis
 import zmq
 from pynput import keyboard
 from tqdm import tqdm
 
-from toddlerbot.actuation.dynamixel.dynamixel_control import (
-    DynamixelConfig,
-    DynamixelController,
-)
 from toddlerbot.policies import BasePolicy
 from toddlerbot.sensing.Camera import Camera
 from toddlerbot.sensing.FSR import FSR
@@ -30,8 +23,6 @@ from toddlerbot.utils.math_utils import round_floats
 from toddlerbot.utils.misc_utils import (
     dump_profiling_data,
     log,
-    precise_sleep,
-    # profile,
     snake2camel,
 )
 
