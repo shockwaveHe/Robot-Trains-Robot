@@ -5,7 +5,6 @@ from typing import List, Optional, Tuple
 import jax
 from tqdm import tqdm
 
-from toddlerbot.algorithms.zmp.footstep_planner import FootStepPlanner
 from toddlerbot.algorithms.zmp.zmp_planner import ZMPPlanner
 from toddlerbot.ref_motion import MotionReference
 from toddlerbot.sim.robot import Robot
@@ -20,17 +19,16 @@ class WalkZMPReference(MotionReference):
         robot: Robot,
         cycle_time: float,
         command_ranges: List[List[float]],
-        stride_max: List[float] = [0.12, 0.04, np.pi / 16],
         single_double_ratio: float = 2.0,
         foot_step_height: float = 0.03,
-        control_dt: float = 0.012,
+        com_z: float = 0.336,
+        control_dt: float = 0.02,
         control_cost_Q: float = 1.0,
         control_cost_R: float = 0.1,
     ):
         super().__init__("walk_zmp", "periodic", robot)
 
         self.cycle_time = cycle_time
-        self.stride_max = np.array(stride_max, dtype=np.float32)
         self.double_support_phase = cycle_time / 2 / (single_double_ratio + 1)
         self.single_support_phase = single_double_ratio * self.double_support_phase
         self.footstep_height = foot_step_height
@@ -39,7 +37,7 @@ class WalkZMPReference(MotionReference):
         self.control_cost_R = control_cost_R
 
         # TODO: Read from config
-        self.com_z = 0.336
+        self.com_z = com_z
         self.foot_to_com_x = float(robot.data_dict["offsets"]["foot_to_com_x"])
         self.foot_to_com_y = float(robot.data_dict["offsets"]["foot_to_com_y"])
 
@@ -57,7 +55,6 @@ class WalkZMPReference(MotionReference):
             self.robot.joint_ordering.index("right_ank_pitch") + 1,
         )
 
-        self.footstep_planner = FootStepPlanner(self.stride_max, self.foot_to_com_y)
         self.zmp_planner = ZMPPlanner()
 
         self.lookup_table_path = os.path.join(
@@ -167,14 +164,9 @@ class WalkZMPReference(MotionReference):
 
             # Create linspace arrays for each command range
             linspaces = [
-                np.arange(start, stop + interval, interval, dtype=np.float32)
+                np.arange(start, stop + 1e-6, interval, dtype=np.float32)
                 for start, stop in command_ranges
             ]
-            # Create a meshgrid
-            # meshgrid = np.meshgrid(*linspaces, indexing="ij")
-            # command_spectrum = np.stack(meshgrid, axis=-1).reshape(-1, 3)
-            # command_spectrum = np.array([[0.0, 0.0, 0.2]])
-            # Create zero arrays with the same shape as each linspace
 
             zeros_x = np.zeros_like(linspaces[0])
             zeros_y = np.zeros_like(linspaces[1])
@@ -251,65 +243,61 @@ class WalkZMPReference(MotionReference):
             [path_pos[0], path_pos[1], path_euler[2]], dtype=np.float32
         )
 
+        num_cycles = int(np.ceil(total_time / self.cycle_time))
+        footsteps: List[ArrayType] = []
+        left_footstep_init = np.array(
+            [pose_curr[0], pose_curr[1] + self.foot_to_com_y, pose_curr[2], 0],
+            dtype=np.float32,
+        )
+        right_footstep_init = np.array(
+            [pose_curr[0], pose_curr[1] - self.foot_to_com_y, pose_curr[2], 1],
+            dtype=np.float32,
+        )
         if np.linalg.norm(command) < 1e-6:
-            footsteps: List[ArrayType] = []
-            for _ in range(int(np.ceil(total_time / self.cycle_time))):
-                footsteps.append(
-                    np.array(
-                        [
-                            pose_curr[0],
-                            pose_curr[1] + self.foot_to_com_y,
-                            pose_curr[2],
-                            0,
-                        ],
-                        dtype=np.float32,
-                    )
-                )
-                footsteps.append(
-                    np.array(
-                        [
-                            pose_curr[0],
-                            pose_curr[1] - self.foot_to_com_y,
-                            pose_curr[2],
-                            1,
-                        ],
-                        dtype=np.float32,
-                    )
-                )
-        else:
-            spline_x, spline_y, spline_theta = self.sample_spline(
-                pose_curr,
-                command,
-                np.ceil(total_time / self.cycle_time) * self.cycle_time,
-            )
-            _, footsteps = self.footstep_planner.compute_steps(
-                pose_curr,
-                np.array(
-                    [spline_x[-1], spline_y[-1], spline_theta[-1]], dtype=np.float32
-                ),
-                has_start=False,
-                has_stop=False,
-            )
+            for _ in range(num_cycles):
+                footsteps.append(left_footstep_init)
+                footsteps.append(right_footstep_init)
+
+        elif np.abs(command[0]) > 1e-6:
+            stride = command[0] * total_time / (2 * num_cycles - 1)
+            for i in range(num_cycles):
+                left_footstep = left_footstep_init.copy()
+                right_footstep = right_footstep_init.copy()
+                left_footstep[0] += i * 2 * stride
+                right_footstep[0] += (i * 2 + 1) * stride
+                footsteps.append(left_footstep)
+                footsteps.append(right_footstep)
+
+        elif np.abs(command[1]) > 1e-6:
+            stride = command[1] * total_time / (2 * num_cycles - 1)
+            for i in range(num_cycles):
+                left_footstep = left_footstep_init.copy()
+                right_footstep = right_footstep_init.copy()
+                left_footstep[1] += i * 2 * stride
+                right_footstep[1] += (i * 2 + 1) * stride
+                footsteps.append(left_footstep)
+                footsteps.append(right_footstep)
+
+        elif np.abs(command[2]) > 1e-6:
+            raise NotImplementedError("Rotation not implemented")
 
         # import numpy
 
         # from toddlerbot.visualization.vis_plot import plot_footsteps
 
         # plot_footsteps(
-        #     numpy.asarray(path, dtype=numpy.float32),
         #     numpy.array(
         #         [numpy.asarray(fs[:3]) for fs in footsteps], dtype=numpy.float32
         #     ),
         #     [int(fs[-1]) for fs in footsteps],
-        #     (0.1, 0.05),
+        #     (0.12, 0.042),
         #     self.foot_to_com_y,
-        #     fig_size=(8, 8),
         #     title="Footsteps Planning",
         #     x_label="Position X",
         #     y_label="Position Y",
         #     save_config=False,
         #     save_path=".",
-        #     file_name="footsteps.png",
+        #     file_name=f"footsteps_{'_'.join([str(c) for c in command])}.png",
         # )()
 
         time_list = np.array(
@@ -380,60 +368,11 @@ class WalkZMPReference(MotionReference):
             x_traj[:, :2],
         )
 
-        first_double_support_idx = int(time_steps[1] // self.control_dt)
-        leg_joint_pos_ref_truncated = leg_joint_pos_ref[first_double_support_idx:]
-        stance_mask_ref_truncated = stance_mask_ref[first_double_support_idx:]
+        first_cycle_idx = int(self.cycle_time // self.control_dt)
+        leg_joint_pos_ref_truncated = leg_joint_pos_ref[first_cycle_idx:]
+        stance_mask_ref_truncated = stance_mask_ref[first_cycle_idx:]
+
         return leg_joint_pos_ref_truncated, stance_mask_ref_truncated
-
-    def sample_spline(
-        self,
-        pose_curr: ArrayType,
-        command: ArrayType,
-        total_time: float,
-    ) -> Tuple[ArrayType, ...]:
-        # Linear velocities in local frame
-        v_x, v_y, v_yaw = command = command
-
-        timesteps = np.linspace(
-            0,
-            total_time,
-            int(np.ceil(total_time / self.control_dt)),
-            dtype=np.float32,
-        )
-        yaw_traj = pose_curr[2] + v_yaw * timesteps
-
-        # Calculate the differences between consecutive timesteps
-        dt = np.diff(np.concatenate((np.zeros(1, dtype=np.float32), timesteps)))
-
-        # Calculate x and y increments
-        delta_x = (v_x * np.cos(yaw_traj) - v_y * np.sin(yaw_traj)) * dt
-        delta_y = (v_x * np.sin(yaw_traj) + v_y * np.cos(yaw_traj)) * dt
-
-        # Compute the full x and y trajectories by cumulative summing the increments
-        x_traj = np.cumsum(delta_x)
-        y_traj = np.cumsum(delta_y)
-
-        last_x, last_y, last_theta = pose_curr
-        sampled_x = [last_x]
-        sampled_y = [last_y]
-        sampled_theta = [last_theta]
-
-        for i in range(1, len(timesteps)):
-            x_dist = (x_traj[i] - last_x) * np.cos(last_theta) - (
-                y_traj[i] - last_y
-            ) * np.sin(last_theta)
-            y_dist = (x_traj[i] - last_x) * np.sin(last_theta) + (
-                y_traj[i] - last_y
-            ) * np.cos(last_theta)
-            l1_distance = np.abs(np.array([x_dist, y_dist, yaw_traj[i] - last_theta]))
-
-            if np.any(l1_distance >= self.stride_max) or i == len(timesteps) - 1:
-                sampled_x.append(x_traj[i])
-                sampled_y.append(y_traj[i])
-                sampled_theta.append(yaw_traj[i])
-                last_x, last_y, last_theta = x_traj[i], y_traj[i], yaw_traj[i]
-
-        return np.array(sampled_x), np.array(sampled_y), np.array(sampled_theta)
 
     def compute_foot_trajectories(
         self, time_steps: ArrayType, footsteps: List[ArrayType]

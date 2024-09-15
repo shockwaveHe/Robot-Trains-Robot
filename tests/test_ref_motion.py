@@ -47,11 +47,13 @@ def test_motion_ref(
                     path_pos, path_quat, time_curr, command
                 )
                 joint_angles = np.asarray(state[13 : 13 + len(robot.joint_ordering)])
-                motor_angles = robot.joint_to_motor_angles(
-                    dict(zip(robot.joint_ordering, joint_angles))
-                )
-                sim.set_motor_angles(motor_angles)
-                sim.step()
+                # motor_angles = robot.joint_to_motor_angles(
+                #     dict(zip(robot.joint_ordering, joint_angles))
+                # )
+                # sim.set_motor_angles(motor_angles)
+                # sim.step()
+                sim.set_joint_angles(dict(zip(robot.joint_ordering, joint_angles)))
+                sim.forward()
 
     except KeyboardInterrupt:
         print("KeyboardInterrupt: Stopping the simulation...")
@@ -141,9 +143,8 @@ if __name__ == "__main__":
     if "walk" in args.ref:
         command_list = [
             np.array([0.1, 0, 0], dtype=np.float32),
-            # np.array([0, -0.1, 0], dtype=np.float32),
-            # np.array([0.0, 0, 0.2], dtype=np.float32),
-            # np.array([0, 0, 0], dtype=np.float32),
+            np.array([0, -0.05, 0], dtype=np.float32),
+            np.array([0, 0, 0], dtype=np.float32),
         ]
 
     elif "squat" in args.ref:
