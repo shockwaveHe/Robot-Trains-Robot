@@ -218,7 +218,7 @@
             ],
         },
         {
-            "name": "Python: test_reference_motion",
+            "name": "Python: test_walk_zmp_ref",
             "type": "python",
             "request": "launch",
             "program": "tests/test_ref_motion.py",
@@ -227,6 +227,18 @@
             "args": [
                 "--ref", 
                 "walk_zmp",
+            ],
+        },
+        {
+            "name": "Python: test_balance_ref",
+            "type": "python",
+            "request": "launch",
+            "program": "tests/test_ref_motion.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--ref", 
+                "balance",
             ],
         },
         {
