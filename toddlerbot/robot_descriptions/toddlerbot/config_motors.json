@@ -1,7 +1,7 @@
 {
     "neck_yaw_drive": {
         "motor": "XC330",
-        "init_pos": 0.49854376912117004,
+        "init_pos": 0.503145694732666,
         "default_pos": 0,
         "gear_ratio": 0.7222222222222222,
         "kp": 900.0,
@@ -10,7 +10,7 @@
     },
     "neck_pitch_drive": {
         "motor": "XC330",
-        "init_pos": 5.819922924041748,
+        "init_pos": 0.480135977268219,
         "default_pos": 0,
         "gear_ratio": 0.9090909090909091,
         "kp": 900.0,
@@ -245,7 +245,7 @@
     },
     "left_gripper_rack": {
         "motor": "XC330",
-        "init_pos": 0.5429719302954359,
+        "init_pos": 5.339787006378174,
         "default_pos": 0.0,
         "gear_ratio": 0.007,
         "kp": 900.0,
@@ -254,7 +254,7 @@
     },
     "right_gripper_rack": {
         "motor": "XC330",
-        "init_pos": 1.9282397576033352,
+        "init_pos": 0.4218447208404541,
         "default_pos": 0.0,
         "gear_ratio": 0.007,
         "kp": 900.0,
