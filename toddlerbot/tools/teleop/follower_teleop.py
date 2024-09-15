@@ -17,7 +17,6 @@ from tqdm import tqdm
 
 from toddlerbot.policies import BasePolicy
 from toddlerbot.sensing.Camera import Camera
-from toddlerbot.sensing.FSR import FSR
 from toddlerbot.sim import BaseSim, Obs
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.robot import Robot
@@ -26,27 +25,25 @@ from toddlerbot.utils.math_utils import round_floats
 from toddlerbot.utils.misc_utils import (
     dump_profiling_data,
     log,
-    precise_sleep,
-    # profile,
     snake2camel,
 )
 
 default_pose = np.array(
     [
-        -0.8590293,
-        -0.5307572,
-        -0.00153399,
-        0.8789711,
-        1.1581554,
-        -0.8406215,
-        -1.0937283,
-        0.8805051,
-        -0.52615523,
-        -0.05062127,
-        0.8759031,
-        -1.2394564,
-        0.79613614,
-        -1.1366798,
+        -0.60745645,
+        -0.9265244,
+        0.02147579,
+        1.2348546,
+        0.52922344,
+        0.49394178,
+        -1.125942,
+        0.5123496,
+        -0.96180606,
+        -0.25003886,
+        1.2195148,
+        -0.35128164,
+        -0.6504078,
+        -1.1535536,
     ]
 )
 
@@ -237,7 +234,20 @@ class TeleopFollowerPolicy(BasePolicy):
                     remote_state["sim_action"],
                     remote_state["fsr"],
                 )
+                # print(self.remote_action)
                 sim_action[16:30] = self.remote_action
+                # print(self.robot.joint_limits["left_gripper_rack"][1])
+                sim_action[30] = (
+                    self.remote_fsr[0]
+                    / 100.0
+                    * self.robot.joint_limits["left_gripper_rack"][1]
+                )
+                sim_action[31] = (
+                    self.remote_fsr[1]
+                    / 100.0
+                    * self.robot.joint_limits["right_gripper_rack"][1]
+                )
+                # print(sim_action[30], sim_action[31])
                 self.log = self.remote_log
 
         # Log the data
@@ -452,8 +462,10 @@ if __name__ == "__main__":
 
     if args.sim == "real":
         from toddlerbot.sim.real_world import RealWorld
+        # from toddlerbot.sim.mujoco_sim import MuJoCoSim
 
         sim = RealWorld(robot)
+        # sim = MuJoCoSim(robot)
         sim.has_imu = False
 
     else:
