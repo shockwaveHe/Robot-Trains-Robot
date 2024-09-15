@@ -18,7 +18,6 @@ from toddlerbot.sim import BaseSim, Obs
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.sim.robot import Robot
-from toddlerbot.utils.math_utils import round_floats
 from toddlerbot.utils.misc_utils import dump_profiling_data, log, snake2camel
 from toddlerbot.visualization.vis_plot import (
     plot_joint_tracking,
@@ -189,7 +188,7 @@ def plot_results(
 
 
 # @profile()
-def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
+def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
     header_name = snake2camel(sim.name)
 
     loop_time_list: List[List[float]] = []
@@ -220,7 +219,8 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
                 if not is_prepared and obs.time > policy.prep_duration and sim.has_imu:
                     is_prepared = True
                     sim.imu.set_zero_pose()
-            else:
+
+            if "real" not in sim.name and vis_type != "view":
                 obs.time += time_until_next_step
 
             obs_time = time.time()
@@ -258,18 +258,6 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
             if step_idx % p_bar_steps == 0:
                 p_bar.update(p_bar_steps)
 
-            if debug["log"]:
-                log(
-                    f"obs: {round_floats(obs.__dict__, 4)}",
-                    header=header_name,
-                    level="debug",
-                )
-                log(
-                    f"Joint angles: {round_floats(motor_angles,4)}",
-                    header=header_name,
-                    level="debug",
-                )
-
             step_end = time.time()
 
             loop_time_list.append(
@@ -285,7 +273,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
 
             time_until_next_step = start_time + policy.control_dt * step_idx - step_end
             # print(f"time_until_next_step: {time_until_next_step * 1000:.2f} ms")
-            if "real" in sim.name and time_until_next_step > 0:
+            if ("real" in sim.name or vis_type == "view") and time_until_next_step > 0:
                 time.sleep(time_until_next_step)
 
     except KeyboardInterrupt:
@@ -300,7 +288,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
 
         os.makedirs(exp_folder_path, exist_ok=True)
 
-        if debug["render"] and hasattr(sim, "save_recording"):
+        if hasattr(sim, "save_recording"):
             assert isinstance(sim, MuJoCoSim)
             sim.save_recording(exp_folder_path, policy.control_dt, 2)
 
@@ -321,16 +309,15 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
     prof_path = os.path.join(exp_folder_path, "profile_output.lprof")
     dump_profiling_data(prof_path)
 
-    if debug["plot"]:
-        log("Visualizing...", header="Walking")
-        plot_results(
-            robot,
-            loop_time_list,
-            obs_list,
-            motor_angles_list,
-            policy.control_dt,
-            exp_folder_path,
-        )
+    log("Visualizing...", header="Walking")
+    plot_results(
+        robot,
+        loop_time_list,
+        obs_list,
+        motor_angles_list,
+        policy.control_dt,
+        exp_folder_path,
+    )
 
 
 if __name__ == "__main__":
@@ -412,6 +399,4 @@ if __name__ == "__main__":
     else:
         policy = PolicyClass(args.policy, robot, init_motor_pos)
 
-    debug_config: Dict[str, Any] = {"log": False, "plot": True, "render": True}
-
-    main(robot, sim, policy, debug_config)
+    main(robot, sim, policy, args.vis)
