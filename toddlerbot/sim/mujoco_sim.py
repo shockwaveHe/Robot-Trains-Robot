@@ -1,12 +1,12 @@
 import time
 from typing import Any, Dict, List
 
-import mujoco
-import mujoco.rollout
-import mujoco.viewer
 import numpy as np
 import numpy.typing as npt
 
+import mujoco
+import mujoco.rollout
+import mujoco.viewer
 from toddlerbot.actuation import JointState
 from toddlerbot.sim import BaseSim, Obs
 from toddlerbot.sim.mujoco_utils import MuJoCoRenderer, MuJoCoViewer
@@ -23,7 +23,7 @@ class MuJoCoSim(BaseSim):
     def __init__(
         self,
         robot: Robot,
-        n_frames: int = 6,
+        n_frames: int = 10,
         dt: float = 0.002,
         fixed_base: bool = False,
         xml_path: str = "",
@@ -262,7 +262,11 @@ class MuJoCoSim(BaseSim):
                 setattr(self.model.joint(joint_name), key, value)
 
     def forward(self):
-        mujoco.mj_forward(self.model, self.data)
+        for _ in range(self.n_frames):
+            mujoco.mj_forward(self.model, self.data)
+
+        if self.visualizer is not None:
+            self.visualizer.visualize(self.data)
 
     def step(self):
         for _ in range(self.n_frames):

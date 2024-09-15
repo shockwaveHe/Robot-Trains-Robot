@@ -19,7 +19,10 @@ class BalanceReference(MotionReference):
         self.arm_gear_ratio = np.ones(len(arm_motor_names), dtype=np.float32)  # type: ignore
         for i, motor_name in enumerate(arm_motor_names):
             motor_config = robot.config["joints"][motor_name]
-            if motor_config["transmission"] == "gear":
+            if (
+                motor_config["transmission"] == "gear"
+                or motor_config["transmission"] == "rack_and_pinion"
+            ):
                 self.arm_gear_ratio = inplace_update(
                     self.arm_gear_ratio, i, -motor_config["gear_ratio"]
                 )

@@ -158,7 +158,10 @@ class MJXEnv(PipelineEnv):
         self.arm_gear_ratio = jnp.ones(len(arm_motor_names))
         for i, motor_name in enumerate(arm_motor_names):
             motor_config = self.robot.config["joints"][motor_name]
-            if motor_config["transmission"] == "gear":
+            if (
+                motor_config["transmission"] == "gear"
+                or motor_config["transmission"] == "rack_and_pinion"
+            ):
                 self.arm_gear_ratio = self.arm_gear_ratio.at[i].set(
                     -motor_config["gear_ratio"]
                 )
