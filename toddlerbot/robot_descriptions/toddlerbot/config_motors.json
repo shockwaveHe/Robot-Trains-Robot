@@ -10,7 +10,7 @@
     },
     "neck_pitch_drive": {
         "motor": "XC330",
-        "init_pos": 0.480135977268219,
+        "init_pos": 2.820990562438965,
         "default_pos": 0,
         "gear_ratio": 0.9090909090909091,
         "kp": 900.0,
