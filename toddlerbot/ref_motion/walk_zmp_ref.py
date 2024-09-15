@@ -368,7 +368,7 @@ class WalkZMPReference(MotionReference):
             x_traj[:, :2],
         )
 
-        first_cycle_idx = int(self.cycle_time // self.control_dt)
+        first_cycle_idx = int(np.ceil(self.cycle_time / self.control_dt))
         leg_joint_pos_ref_truncated = leg_joint_pos_ref[first_cycle_idx:]
         stance_mask_ref_truncated = stance_mask_ref[first_cycle_idx:]
 

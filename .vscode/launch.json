@@ -196,7 +196,9 @@
                 "--robot",
                 "toddlerbot",
                 "--env",
-                "walk"
+                "walk",
+                "--eval",
+                "20240914_231201"
             ],
         },
         {
