@@ -9,7 +9,7 @@ from toddlerbot.ref_motion.walk_zmp_ref import WalkZMPReference
 from toddlerbot.sim.robot import Robot
 
 
-class WalkPolicy(MJXPolicy):
+class WalkPolicy(MJXPolicy, policy_name="walk"):
     def __init__(
         self,
         name: str,

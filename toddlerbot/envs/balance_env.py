@@ -14,8 +14,8 @@ from toddlerbot.sim.robot import Robot
 class BalanceCfg(MJXConfig):
     @dataclass
     class ObsConfig(MJXConfig.ObsConfig):
-        num_single_obs: int = 98
-        num_single_privileged_obs: int = 137
+        num_single_obs: int = 104
+        num_single_privileged_obs: int = 143
 
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):

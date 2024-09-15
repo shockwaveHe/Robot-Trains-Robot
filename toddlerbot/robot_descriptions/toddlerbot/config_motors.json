@@ -245,7 +245,7 @@
     },
     "left_gripper_rack": {
         "motor": "XC330",
-        "init_pos": 5.4042374958752415,
+        "init_pos": 0.5429719302954359,
         "default_pos": 0.0,
         "gear_ratio": 0.007,
         "kp": 900.0,

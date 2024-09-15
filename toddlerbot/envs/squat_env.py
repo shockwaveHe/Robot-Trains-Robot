@@ -14,8 +14,8 @@ from toddlerbot.sim.robot import Robot
 class SquatCfg(MJXConfig):
     @dataclass
     class ObsConfig(MJXConfig.ObsConfig):
-        num_single_obs: int = 147
-        num_single_privileged_obs: int = 186
+        num_single_obs: int = 153
+        num_single_privileged_obs: int = 192
 
     @dataclass
     class ActionConfig(MJXConfig.ActionConfig):

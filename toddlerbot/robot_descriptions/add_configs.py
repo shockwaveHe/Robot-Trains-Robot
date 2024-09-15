@@ -119,12 +119,12 @@ def get_default_config(
             joint_dict["id"] = list(motor_config.keys()).index(joint_name) + init_id
             joint_dict["type"] = "dynamixel"
             joint_dict["spec"] = motor_name
-            # joint_dict["control_mode"] = (
-            #     "current_based_position"
-            #     if motor_name == "XC330"
-            #     else "extended_position"
-            # )
-            joint_dict["control_mode"] = "extended_position"
+            # joint_dict["control_mode"] = "extended_position"
+            joint_dict["control_mode"] = (
+                "current_based_position"
+                if "gripper" in joint_name
+                else "extended_position"
+            )
             joint_dict["init_pos"] = (
                 motor_config[joint_name]["init_pos"]
                 if "init_pos" in motor_config[joint_name]

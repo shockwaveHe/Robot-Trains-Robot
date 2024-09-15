@@ -14,7 +14,6 @@ from typing import Any, Dict, List, Optional, Tuple, Type
 import jax
 import jax.numpy as jnp
 import mediapy as media
-import mujoco
 import numpy as np
 import numpy.typing as npt
 import optax
@@ -27,6 +26,7 @@ from moviepy.editor import VideoFileClip, clips_array
 from orbax import checkpoint as ocp
 from tqdm import tqdm
 
+import mujoco
 import wandb
 from toddlerbot.envs.balance_env import BalanceCfg, BalanceEnv
 from toddlerbot.envs.mjx_env import MJXEnv
@@ -563,7 +563,10 @@ if __name__ == "__main__":
 
         env_cfg.rewards.healthy_z_range = [-0.2, 0.2]
         env_cfg.rewards.scales.reset()
-        # reward_scales.feet_distance = 0.5
+
+        if "walk" in args.env:
+            env_cfg.rewards.scales.feet_distance = 0.5
+
         env_cfg.rewards.scales.leg_joint_pos = 5.0
         env_cfg.rewards.scales.waist_joint_pos = 5.0
         env_cfg.rewards.scales.motor_torque = 5e-2
