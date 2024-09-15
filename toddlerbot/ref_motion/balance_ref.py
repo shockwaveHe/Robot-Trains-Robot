@@ -32,8 +32,7 @@ class BalanceReference(MotionReference):
 
         # state_array: [time(1), motor_pos(14), fsrL(1), fsrR(1), camera_frame_idx(1)]
         state_arr = data_dict["state_array"]
-        self.time_ref = np.array(state_arr[:, 0], dtype=np.float32)
-        self.time_ref -= self.time_ref[0]
+        self.time_ref = np.array(state_arr[:, 0] - state_arr[0, 0], dtype=np.float32)
         self.arm_joint_pos_ref = np.array(
             [
                 self.arm_fk(arm_motor_pos)
