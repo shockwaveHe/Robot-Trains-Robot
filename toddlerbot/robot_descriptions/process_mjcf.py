@@ -565,6 +565,7 @@ def add_actuators_to_mjcf(root: ET.Element, joints_config: Dict[str, Any]):
             name=joint_name,
             joint=joint_name,
             kp=str(joints_config[joint_name]["kp_sim"]),
+            # kv=str(joints_config[joint_name]["kd_sim"]),
             ctrlrange=joint.get("range", "-3.141592 3.141592"),
         )
 

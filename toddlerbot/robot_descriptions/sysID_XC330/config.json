@@ -3,7 +3,7 @@
         "is_fixed": true,
         "has_imu": false,
         "has_dynamixel": true,
-        "dynamixel_baudrate": 4000000,
+        "dynamixel_baudrate": 2000000,
         "has_sunny_sky": false,
         "solref": [
             0.004,
@@ -27,7 +27,7 @@
             "type": "dynamixel",
             "spec": "XC330",
             "control_mode": "extended_position",
-            "init_pos": 3.141592653589793,
+            "init_pos": 1.5707963267948966,
             "default_pos": 0.0,
             "kp_real": 900.0,
             "ki_real": 0.0,

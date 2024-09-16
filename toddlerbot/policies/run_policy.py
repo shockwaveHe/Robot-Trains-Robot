@@ -229,6 +229,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
                 assert isinstance(policy, SysIDFixedPolicy)
                 ckpt_times = list(policy.ckpt_dict.keys())
                 ckpt_idx = bisect.bisect_left(ckpt_times, obs.time)
+                ckpt_idx = min(ckpt_idx, len(ckpt_times) - 1)
                 if ckpt_idx != last_ckpt_idx:
                     motor_kps = policy.ckpt_dict[ckpt_times[ckpt_idx]]
                     if np.any(list(motor_kps.values())):
