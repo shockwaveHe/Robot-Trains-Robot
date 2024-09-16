@@ -11,9 +11,9 @@ from toddlerbot.utils.math_utils import interpolate_action
 from toddlerbot.utils.misc_utils import set_seed
 
 
-class RefPolicy(BasePolicy):
-    def __init__(self, robot: Robot, init_motor_pos: npt.NDArray[np.float32], ref_motion: str):
-        super().__init__(f"ref_policy_{ref_motion}", robot, init_motor_pos)
+class RefPolicy(BasePolicy, policy_name="ref"):
+    def __init__(self, name:str, robot: Robot, init_motor_pos: npt.NDArray[np.float32], ref_motion: str):
+        super().__init__(f"{name}_{ref_motion}", robot, init_motor_pos)
         set_seed(0)
 
         prep_duration = 3.0
@@ -53,14 +53,16 @@ class RefPolicy(BasePolicy):
         self.time_arr = np.concatenate(time_list)  # type: ignore
         self.action_arr = np.concatenate(action_list)  # type: ignore
         self.n_steps_total = len(self.time_arr)
+        self.step_curr = 0
 
         self.torso_pos = None
-        # self.torso_pos = np.array([
-        #     0.0, 0.0, 0.15, 1.0, 0.0, 1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.17, -1.41, 1.4, 0.0, 0.0, 0.78, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.17, 1.41, -1.4, 0.0, 0.0, 0.78, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.42, 0.0, 0.0, -1.57, 1.46, 0.0, -0.0, -0.32, 0.0, 0.0, 1.42, 0.0, 0.0, 1.57, 1.46, 0.0, 0.0, 0.32, 0.0, -0.0, 
-        # ], dtype=np.float32)
+        self.torso_pos = np.array([
+            0.0, 0.0, 0.15, 1.0, 0.0, 1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.17, -1.41, 1.4, 0.0, 0.0, 0.78, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.17, 1.41, -1.4, 0.0, 0.0, 0.78, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.42, 0.0, 0.0, -1.57, 1.46, 0.0, -0.0, -0.32, 0.0, 0.0, 1.42, 0.0, 0.0, 1.57, 1.46, 0.0, 0.0, 0.32, 0.0, -0.0, 
+        ], dtype=np.float32)
 
     def step(self, obs: Obs, is_real: bool=False) -> npt.NDArray[np.float32]:
         action = np.asarray(
             interpolate_action(obs.time, self.time_arr, self.action_arr)
         )
+        self.step_curr += 1
         return action

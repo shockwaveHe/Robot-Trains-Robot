@@ -196,7 +196,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
     obs_list: List[Obs] = []
     motor_angles_list: List[Dict[str, float]] = []
 
-    if getattr(policy, "torso_pos") is not None and isinstance(sim, MuJoCoSim):
+    if getattr(policy, "torso_pos", None) is not None and isinstance(sim, MuJoCoSim):
         sim.set_torso_pos(policy.torso_pos)
     
     is_prepared = False
@@ -296,43 +296,44 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
 
         p_bar.close()
 
-        exp_name = f"{robot.name}_{policy.name}_{sim.name}"
-        time_str = time.strftime("%Y%m%d_%H%M%S")
-        exp_folder_path = f"results/{exp_name}_{time_str}"
+    exp_name = f"{robot.name}_{policy.name}_{sim.name}"
+    time_str = time.strftime("%Y%m%d_%H%M%S")
+    exp_folder_path = f"results/{exp_name}_{time_str}"
 
-        os.makedirs(exp_folder_path, exist_ok=True)
+    os.makedirs(exp_folder_path, exist_ok=True)
 
-        log_data_dict: Dict[str, Any] = {
-            "obs_list": obs_list,
-            "motor_angles_list": motor_angles_list,
-        }
-        if "sysID" in policy.name:
-            assert isinstance(policy, SysIDFixedPolicy)
-            log_data_dict["ckpt_dict"] = policy.ckpt_dict
+    log_data_dict: Dict[str, Any] = {
+        "obs_list": obs_list,
+        "motor_angles_list": motor_angles_list,
+    }
+    if "sysID" in policy.name:
+        assert isinstance(policy, SysIDFixedPolicy)
+        log_data_dict["ckpt_dict"] = policy.ckpt_dict
 
-        log_data_path = os.path.join(exp_folder_path, "log_data.pkl")
-        with open(log_data_path, "wb") as f:
-            pickle.dump(log_data_dict, f)
+    log_data_path = os.path.join(exp_folder_path, "log_data.pkl")
+    with open(log_data_path, "wb") as f:
+        pickle.dump(log_data_dict, f)
 
-        if debug["render"] and hasattr(sim, "save_recording"):
-            assert isinstance(sim, MuJoCoSim)
-            sim.save_recording(exp_folder_path, policy.control_dt, 2)
+    if debug["render"] and hasattr(sim, "save_recording"):
+        assert isinstance(sim, MuJoCoSim)
+        print(f"Saving recording to {exp_folder_path}")
+        sim.save_recording(exp_folder_path, policy.control_dt, 2)
 
-        sim.close()
+    sim.close()
 
-        prof_path = os.path.join(exp_folder_path, "profile_output.lprof")
-        dump_profiling_data(prof_path)
+    prof_path = os.path.join(exp_folder_path, "profile_output.lprof")
+    dump_profiling_data(prof_path)
 
-        if debug["plot"]:
-            log("Visualizing...", header="Walking")
-            plot_results(
-                robot,
-                loop_time_list,
-                obs_list,
-                motor_angles_list,
-                policy.control_dt,
-                exp_folder_path,
-            )
+    if debug["plot"]:
+        log("Visualizing...", header="Walking")
+        plot_results(
+            robot,
+            loop_time_list,
+            obs_list,
+            motor_angles_list,
+            policy.control_dt,
+            exp_folder_path,
+        )
 
 
 if __name__ == "__main__":
@@ -406,7 +407,8 @@ if __name__ == "__main__":
 
     if "replay" in args.policy:
         policy = PolicyClass(args.policy, robot, init_motor_pos, args.run_name)
-
+    elif "ref" in args.policy:
+        policy = PolicyClass(args.policy, robot, init_motor_pos, args.ref_motion)
     elif issubclass(PolicyClass, MJXPolicy):
         assert len(args.ckpt) > 0, "Need to provide a checkpoint for MJX policies"
         assert len(args.command) > 0, "Need to provide a command for MJX policies"
