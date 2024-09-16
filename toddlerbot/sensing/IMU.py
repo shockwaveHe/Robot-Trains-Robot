@@ -22,7 +22,7 @@ from toddlerbot.utils.math_utils import (
 
 
 class IMU:
-    def __init__(self, alpha: float = 0.1):
+    def __init__(self, alpha: float = 0.6):
         self.alpha = alpha
 
         # Initialize the I2C bus and sensor
