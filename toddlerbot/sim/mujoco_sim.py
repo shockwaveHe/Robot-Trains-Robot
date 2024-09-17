@@ -9,7 +9,11 @@ import mujoco.rollout
 import mujoco.viewer
 from toddlerbot.actuation import JointState
 from toddlerbot.sim import BaseSim, Obs
-from toddlerbot.sim.mujoco_utils import MuJoCoRenderer, MuJoCoViewer
+from toddlerbot.sim.mujoco_utils import (
+    MotorController,
+    MuJoCoRenderer,
+    MuJoCoViewer,
+)
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.math_utils import quat2euler, quat_inv, rotate_vec
@@ -65,6 +69,26 @@ class MuJoCoSim(BaseSim):
         self.torso_euler_prev = np.zeros(3, dtype=np.float32)
         self.motor_vel_prev = np.zeros(self.model.nu, dtype=np.float32)
 
+        # if fixed_base:
+        #     self.controller = PositionController()
+        # else:
+        motor_indices = np.array(
+            [
+                mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, name)
+                for name in self.robot.motor_ordering
+            ]
+        )
+        self.controller = MotorController(
+            motor_indices,
+            np.array(self.robot.get_joint_attrs("type", "dynamixel", "kp_real")),
+            np.array(self.robot.get_joint_attrs("type", "dynamixel", "kd_real")),
+            np.array(self.robot.get_joint_attrs("type", "dynamixel", "tau_max")),
+            np.array(self.robot.get_joint_attrs("type", "dynamixel", "q_dot_tau_max")),
+            np.array(self.robot.get_joint_attrs("type", "dynamixel", "q_dot_max")),
+        )
+
+        self.target_motor_angles = np.zeros(self.model.nu, dtype=np.float32)
+
         self.visualizer: MuJoCoRenderer | MuJoCoViewer | None = None
         if vis_type == "render":
             self.visualizer = MuJoCoRenderer(self.model)
@@ -76,45 +100,6 @@ class MuJoCoSim(BaseSim):
         self.data.qpos = default_qpos.copy()
         self.data.qvel = np.zeros(self.model.nv, dtype=np.float32)
         self.forward()
-
-    def get_root_state(self) -> npt.NDArray[np.float32]:
-        root_state = np.zeros(13, dtype=np.float32)
-        root_state[:3] = np.array(
-            self.data.sensor("position").data,
-            copy=True,
-        )
-        root_state[3:7] = np.array(
-            self.data.sensor("orientation").data,
-            copy=True,
-        )
-        root_state[7:10] = np.array(
-            self.data.sensor("linear_velocity").data,
-            copy=True,
-        )
-        root_state[10:] = np.array(
-            self.data.sensor("angular_velocity").data,
-            copy=True,
-        )
-        return root_state
-
-    def get_dof_state(self) -> npt.NDArray[np.float32]:
-        dof_state = np.zeros((len(self.robot.joint_ordering), 2), dtype=np.float32)
-        for i, name in enumerate(self.robot.joint_ordering):
-            dof_state[i, 0] = self.data.joint(name).qpos.item()
-            dof_state[i, 1] = self.data.joint(name).qvel.item()
-
-        return dof_state
-
-    def get_body_state(self) -> npt.NDArray[np.float32]:
-        dof_state = np.zeros((len(self.robot.collider_names), 13), dtype=np.float32)
-        for i, name in enumerate(self.robot.collider_names):
-            dof_state[i, :3] = self.data.body(name).xpos.copy()
-            dof_state[i, 3:7] = self.data.body(name).xquat.copy()
-            # rot goes before lin in cvel
-            dof_state[i, 7:10] = self.data.body(name).cvel[3:].copy()
-            dof_state[i, 10:] = self.data.body(name).cvel[:3].copy()
-
-        return dof_state
 
     def get_motor_state(self) -> Dict[str, JointState]:
         motor_state_dict: Dict[str, JointState] = {}
@@ -199,19 +184,6 @@ class MuJoCoSim(BaseSim):
             torso_euler = self.torso_euler_prev + torso_euler_delta
             self.torso_euler_prev = np.asarray(torso_euler, dtype=np.float32)
 
-        # Add sensor noise
-        # obs.euler += np.random.normal(0, self.imu_euler_noise_std, size=obs.euler.shape)
-        # obs.ang_vel += np.random.normal(
-        #     0, self.imu_gyro_noise_std, size=obs.ang_vel.shape
-        # )
-
-        # TODO: Implement motor vel smoothing
-        # filtered_motor_vel = np.asarray(
-        #     exponential_moving_average(0.1, motor_vel_arr, self.motor_vel_prev),
-        #     dtype=np.float32,
-        # )
-        # self.motor_vel_prev = motor_vel_arr
-
         obs = Obs(
             time=time,
             motor_pos=motor_pos_arr,
@@ -241,20 +213,11 @@ class MuJoCoSim(BaseSim):
     def set_motor_angles(
         self, motor_angles: Dict[str, float] | npt.NDArray[np.float32]
     ):
-        if isinstance(motor_angles, dict):
-            for name, ctrl in motor_angles.items():
-                self.data.actuator(name).ctrl = ctrl
-        else:
-            self.data.ctrl = motor_angles
+        self.target_motor_angles = motor_angles
 
-    def set_joint_angles(
-        self, joint_angles: Dict[str, float] | npt.NDArray[np.float32]
-    ):
-        if isinstance(joint_angles, np.ndarray):
-            self.data.qpos = joint_angles.copy()
-        else:
-            for name in joint_angles:
-                self.data.joint(name).qpos = joint_angles[name]
+    def set_joint_angles(self, joint_angles: Dict[str, float]):
+        for name in joint_angles:
+            self.data.joint(name).qpos = joint_angles[name]
 
     def set_joint_dynamics(self, joint_dyn: Dict[str, Dict[str, float]]):
         for joint_name, dyn in joint_dyn.items():
@@ -270,6 +233,9 @@ class MuJoCoSim(BaseSim):
 
     def step(self):
         for _ in range(self.n_frames):
+            self.data.ctrl = self.controller.step(
+                self.model, self.data, self.target_motor_angles
+            )
             mujoco.mj_step(self.model, self.data)
 
         if self.visualizer is not None:
@@ -277,7 +243,7 @@ class MuJoCoSim(BaseSim):
 
     def rollout(
         self,
-        motor_angles_list: List[Dict[str, float]]
+        motor_ctrls_list: List[Dict[str, float]]  # Either motor angles or motor torques
         | List[npt.NDArray[np.float32]]
         | npt.NDArray[np.float32],
     ) -> List[Dict[str, JointState]]:
@@ -291,18 +257,18 @@ class MuJoCoSim(BaseSim):
         )
 
         control = np.zeros(
-            (len(motor_angles_list) * self.n_frames, int(self.model.nu)),
+            (len(motor_ctrls_list) * self.n_frames, int(self.model.nu)),
             dtype=np.float64,
         )
-        for i, motor_angles in enumerate(motor_angles_list):
-            if isinstance(motor_angles, np.ndarray):
-                control[self.n_frames * i : self.n_frames * (i + 1)] = motor_angles
+        for i, motor_ctrls in enumerate(motor_ctrls_list):
+            if isinstance(motor_ctrls, np.ndarray):
+                control[self.n_frames * i : self.n_frames * (i + 1)] = motor_ctrls
             else:
-                for name, angle in motor_angles.items():
+                for name, ctrl in motor_ctrls.items():
                     control[
                         self.n_frames * i : self.n_frames * (i + 1),
                         self.model.actuator(name).id,
-                    ] = angle
+                    ] = ctrl
 
         state_traj, _ = mujoco.rollout.rollout(
             self.model,

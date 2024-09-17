@@ -40,7 +40,7 @@ ASSEMBLY_LIST="toddlerbot left_leg_XM430 right_leg_XM430 left_arm_gripper right_
 
 REPO_NAME="toddlerbot"
 URDF_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/$ROBOT_NAME.urdf
-MJCF_FIXED_SCENE_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/${ROBOT_NAME}_fixed_scene.xml
+MJCF_VIS_SCENE_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/${ROBOT_NAME}_vis_scene.xml
 CONFIG_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/config.json
 
 # shellcheck disable=SC1091
@@ -122,7 +122,7 @@ read -r -p " > " run_mujoco
 
 if [ "$run_mujoco" == "y" ]; then
     printf "Simulation running...\n\n"
-    python -m mujoco.viewer --mjcf=$MJCF_FIXED_SCENE_PATH
+    python -m mujoco.viewer --mjcf=$MJCF_VIS_SCENE_PATH
 else
     printf "Simulation skipped.\n\n"
 fi

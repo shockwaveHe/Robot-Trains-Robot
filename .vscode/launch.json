@@ -136,6 +136,22 @@
             ]
         },
         {
+            "name": "Python: sysid_XC330_mujoco",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/policies/run_policy.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot",
+                "sysID_XC330",
+                "--sim",
+                "mujoco",
+                "--policy",
+                "sysID_fixed"
+            ]
+        },
+        {
             "name": "Python: balance_toddlerbot_mujoco",
             "type": "python",
             "request": "launch",

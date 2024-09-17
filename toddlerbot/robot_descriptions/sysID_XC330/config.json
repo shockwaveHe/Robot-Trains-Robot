@@ -35,7 +35,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 7.03125,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0
         }
     }
 }

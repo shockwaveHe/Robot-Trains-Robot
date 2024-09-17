@@ -138,10 +138,13 @@ def get_default_config(
             joint_dict["kp_real"] = motor_config[joint_name]["kp"]
             joint_dict["ki_real"] = motor_config[joint_name]["ki"]
             joint_dict["kd_real"] = motor_config[joint_name]["kd"]
-            joint_dict["kff2_real"] = 0.0
-            joint_dict["kff1_real"] = 0.0
-            joint_dict["kp_sim"] = motor_config[joint_name]["kp"] / 128  # TODO: Update
+            joint_dict["kff2_real"] = motor_config[joint_name]["kff2"]
+            joint_dict["kff1_real"] = motor_config[joint_name]["kff1"]
+            joint_dict["kp_sim"] = motor_config[joint_name]["kp"] / 128
             joint_dict["kd_sim"] = 0.0
+            joint_dict["tau_max"] = motor_config[joint_name]["tau_max"]
+            joint_dict["q_dot_tau_max"] = motor_config[joint_name]["q_dot_tau_max"]
+            joint_dict["q_dot_max"] = motor_config[joint_name]["q_dot_max"]
 
             if joint_name in joint_dyn_config:
                 for param_name in ["damping", "armature", "frictionloss"]:

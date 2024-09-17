@@ -5,16 +5,80 @@ import warnings
 from typing import Any, Dict, List
 
 import mediapy as media
-import mujoco
-import mujoco.rollout
-import mujoco.viewer
 import numpy as np
 import numpy.typing as npt
 from moviepy.editor import VideoFileClip, clips_array
 
+import mujoco
+import mujoco.rollout
+import mujoco.viewer
+
 # Suppress specific warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="moviepy")
-os.environ["MUJOCO_GL"] = "egl"  # For headless rendering
+
+
+class MotorController:
+    def __init__(
+        self,
+        motor_indices: npt.NDArray[np.int32],
+        kp: npt.NDArray[np.float32],
+        kd: npt.NDArray[np.float32],
+        tau_max: npt.NDArray[np.float32],
+        q_dot_tau_max: npt.NDArray[np.float32],
+        q_dot_max: npt.NDArray[np.float32],
+    ):
+        self.motor_indices = motor_indices
+        self.kp = kp
+        self.kd = kd
+        self.tau_max = tau_max
+        self.q_dot_tau_max = q_dot_tau_max
+        self.q_dot_max = q_dot_max
+
+    def step(
+        self,
+        model: Any,
+        data: Any,
+        motor_angles: Dict[str, float] | npt.NDArray[np.float32],
+    ):
+        if isinstance(motor_angles, dict):
+            a = np.array(list(motor_angles.values()), dtype=np.float32)
+        else:
+            a = motor_angles
+
+        q = data.qpos[self.motor_indices].copy()
+        q_dot = data.qvel[self.motor_indices].copy()
+
+        error = a - q
+        tau_m = self.kp * error - self.kd * q_dot
+
+        abs_q_dot = np.abs(q_dot)
+
+        if abs_q_dot <= self.q_dot_tau_max:
+            tau_limit = self.tau_max
+        elif abs_q_dot <= self.q_dot_max:
+            # Linear decrease of torque limit
+            slope = self.tau_max / (self.q_dot_tau_max - self.q_dot_max)
+            tau_limit = slope * (abs_q_dot - self.q_dot_tau_max) + self.tau_max
+        else:
+            tau_limit = 0.0
+
+        tau_m_clamped = np.clip(tau_m, -tau_limit, tau_limit)
+        return tau_m_clamped
+
+
+class PositionController:
+    def step(
+        self,
+        model: Any,
+        data: Any,
+        motor_angles: Dict[str, float] | npt.NDArray[np.float32],
+    ):
+        if isinstance(motor_angles, dict):
+            a = np.array(list(motor_angles.values()), dtype=np.float32)
+        else:
+            a = motor_angles
+
+        return a
 
 
 class MuJoCoViewer:
