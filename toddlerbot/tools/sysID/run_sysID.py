@@ -35,7 +35,6 @@ def load_datasets(robot: Robot, data_path: str):
     obs_list: List[Obs] = data_dict["obs_list"]
     motor_angles_list: List[Dict[str, float]] = data_dict["motor_angles_list"]
 
-    obs_time_dict: Dict[str, List[npt.NDArray[np.float32]]] = {}
     obs_pos_dict: Dict[str, List[npt.NDArray[np.float32]]] = {}
     action_dict: Dict[str, List[npt.NDArray[np.float32]]] = {}
     kp_dict: Dict[str, List[float]] = {}
@@ -45,7 +44,6 @@ def load_datasets(robot: Robot, data_path: str):
     ):
         kp = motor_kps.get(joint_name, 0)
 
-        obs_time = np.array([obs.time for obs in obs_list[idx_range]])
         obs_pos_list: List[List[float]] = []
         for obs in obs_list[idx_range]:
             motor_angles_obs = dict(zip(robot.motor_ordering, obs.motor_pos))
@@ -61,13 +59,11 @@ def load_datasets(robot: Robot, data_path: str):
             ]
         )
 
-        if joint_name not in obs_time_dict:
-            obs_time_dict[joint_name] = []
+        if joint_name not in obs_pos_dict:
             obs_pos_dict[joint_name] = []
             action_dict[joint_name] = []
             kp_dict[joint_name] = []
 
-        obs_time_dict[joint_name].append(obs_time)
         obs_pos_dict[joint_name].append(obs_pos)
         action_dict[joint_name].append(action)
         kp_dict[joint_name].append(kp)
@@ -84,7 +80,7 @@ def load_datasets(robot: Robot, data_path: str):
         obs_time = [obs.time for obs in obs_list]
         obs_indices = np.searchsorted(obs_time, ckpt_times)
 
-        last_idx = 0
+        last_idx = 200
         for joint_names, motor_kps, obs_idx in zip(
             joint_names_list, motor_kps_list, obs_indices
         ):
@@ -95,7 +91,7 @@ def load_datasets(robot: Robot, data_path: str):
 
             last_idx = obs_idx
     else:
-        start_idx = 500
+        start_idx = 300
         for joint_name in reversed(robot.joint_ordering):
             joints_config = robot.config["joints"]
             if joints_config[joint_name]["group"] == "leg":
@@ -103,7 +99,7 @@ def load_datasets(robot: Robot, data_path: str):
                 motor_kps = {joint_name: joints_config[motor_names[0]]["kp_real"]}
                 set_obs_and_action(joint_name, motor_kps, slice(start_idx, None))
 
-    return obs_time_dict, obs_pos_dict, action_dict, kp_dict
+    return obs_pos_dict, action_dict, kp_dict
 
 
 def optimize_parameters(
@@ -118,9 +114,11 @@ def optimize_parameters(
     freq_max: float = 10,
     sampler_name: str = "CMA",
     # gain_range: Tuple[float, float, float] = (0, 50, 0.1),
-    damping_range: Tuple[float, float, float] = (0.0, 10.0, 1e-3),
-    armature_range: Tuple[float, float, float] = (0.0, 0.1, 1e-4),
+    damping_range: Tuple[float, float, float] = (0.0, 0.1, 1e-3),
+    armature_range: Tuple[float, float, float] = (0.0, 0.01, 1e-4),
     frictionloss_range: Tuple[float, float, float] = (0.0, 1.0, 1e-3),
+    q_dot_tau_max_range: Tuple[float, float, float] = (0.0, 5.0, 1e-2),
+    q_dot_max_range: Tuple[float, float, float] = (5.0, 20.0, 1e-2),
 ):
     if sim_name == "mujoco":
         sim = MuJoCoSim(robot, fixed_base=True)
@@ -128,14 +126,16 @@ def optimize_parameters(
     else:
         raise ValueError("Invalid simulator")
 
-    initial_trial = {
-        "damping": float(sim.model.joint(joint_name).damping),
-        "armature": float(sim.model.joint(joint_name).armature),
-        "frictionloss": float(sim.model.joint(joint_name).frictionloss),
-    }
-    joint_idx = robot.joint_ordering.index(joint_name)
-    motor_names = robot.joint_to_motor_name[joint_name]
+    if "sysID" in robot.name:
+        if "XC330" in robot.name:
+            tau_max_range: Tuple[float, float, float] = (0.0, 1.0, 1e-2)
+        elif "XM430" in robot.name:
+            tau_max_range: Tuple[float, float, float] = (0.0, 3.0, 1e-2)
+        else:
+            tau_max_range: Tuple[float, float, float] = (0.0, 2.0, 1e-2)
 
+    motor_names = robot.joint_to_motor_name[joint_name]
+    joint_idx = robot.joint_ordering.index(joint_name)
     joint_pos_real = np.concatenate([obs[:, joint_idx] for obs in obs_list])
 
     def early_stopping_check(
@@ -162,14 +162,25 @@ def optimize_parameters(
             "frictionloss", *frictionloss_range[:2], step=frictionloss_range[2]
         )
         joint_dyn = {
-            joint_name: {
-                "damping": damping,
-                "armature": armature,
-                "frictionloss": frictionloss,
-            }
+            joint_name: dict(
+                damping=damping, armature=armature, frictionloss=frictionloss
+            )
         }
-
         sim.set_joint_dynamics(joint_dyn)
+
+        if "sysID" in robot.name:
+            tau_max = trial.suggest_float(
+                "tau_max", *tau_max_range[:2], step=tau_max_range[2]
+            )
+            q_dot_tau_max = trial.suggest_float(
+                "q_dot_tau_max", *q_dot_tau_max_range[:2], step=q_dot_tau_max_range[2]
+            )
+            q_dot_max = trial.suggest_float(
+                "q_dot_max", *q_dot_max_range[:2], step=q_dot_max_range[2]
+            )
+            sim.set_motor_dynamics(
+                dict(tau_max=tau_max, q_dot_tau_max=q_dot_tau_max, q_dot_max=q_dot_max)
+            )
 
         joint_pos_sim_list: List[npt.NDArray[np.float32]] = []
         for action, kp in zip(action_list, kp_list):
@@ -226,7 +237,21 @@ def optimize_parameters(
         load_if_exists=True,
     )
 
+    initial_trial = dict(
+        damping=float(sim.model.joint(joint_name).damping),
+        armature=float(sim.model.joint(joint_name).armature),
+        frictionloss=float(sim.model.joint(joint_name).frictionloss),
+    )
+    if "sysID" in robot.name:
+        initial_trial.update(
+            dict(
+                tau_max=float(sim.controller.tau_max),
+                q_dot_tau_max=float(sim.controller.q_dot_tau_max),
+                q_dot_max=float(sim.controller.q_dot_max),
+            )
+        )
     study.enqueue_trial(initial_trial)
+
     study.optimize(
         objective,
         n_trials=n_iters,
@@ -304,7 +329,6 @@ def optimize_all(
 def evaluate(
     robot: Robot,
     sim_name: str,
-    obs_time_dict: Dict[str, List[npt.NDArray[np.float32]]],
     obs_pos_dict: Dict[str, List[npt.NDArray[np.float32]]],
     action_dict: Dict[str, List[npt.NDArray[np.float32]]],
     kp_dict: Dict[str, List[float]],
@@ -350,9 +374,8 @@ def evaluate(
         action_list = action_dict[joint_name]
         kp_list = kp_dict[joint_name]
 
-        joint_idx = robot.joint_ordering.index(joint_name)
         motor_names = robot.joint_to_motor_name[joint_name]
-
+        joint_idx = robot.joint_ordering.index(joint_name)
         joint_pos_real = np.concatenate([obs[:, joint_idx] for obs in obs_list])
 
         if sim_name == "mujoco":
@@ -368,6 +391,15 @@ def evaluate(
             }
         }
         sim.set_joint_dynamics(joint_dyn)
+
+        if "sysID" in robot.name:
+            sim.set_motor_dynamics(
+                dict(
+                    tau_max=opt_params_dict[joint_name]["tau_max"],
+                    q_dot_tau_max=opt_params_dict[joint_name]["q_dot_tau_max"],
+                    q_dot_max=opt_params_dict[joint_name]["q_dot_max"],
+                )
+            )
 
         joint_pos_sim_list: List[npt.NDArray[np.float32]] = []
         for action, kp in zip(action_list, kp_list):
@@ -394,9 +426,7 @@ def evaluate(
             * (sim.n_frames * sim.dt)
         )
         time_seq_sim_dict[joint_name] = time_seq_ref_dict[joint_name]
-        obs_time_real = np.concatenate(obs_time_dict[joint_name])
-        obs_time_real -= obs_time_real[0]
-        time_seq_real_dict[joint_name] = obs_time_real.tolist()
+        time_seq_real_dict[joint_name] = time_seq_ref_dict[joint_name]
 
         joint_pos_sim_dict[joint_name] = joint_pos_sim.tolist()
         joint_pos_real_dict[joint_name] = joint_pos_real.tolist()
@@ -516,7 +546,7 @@ def main():
     with open(os.path.join(exp_folder_path, "opt_config.json"), "w") as f:
         json.dump(vars(args), f, indent=4)
 
-    obs_time_dict, obs_pos_dict, action_dict, kp_dict = load_datasets(robot, data_path)
+    obs_pos_dict, action_dict, kp_dict = load_datasets(robot, data_path)
 
     ###### Optimize the hyperparameters ######
     # optimize_parameters(
@@ -536,7 +566,6 @@ def main():
     evaluate(
         robot,
         args.sim,
-        obs_time_dict,
         obs_pos_dict,
         action_dict,
         kp_dict,

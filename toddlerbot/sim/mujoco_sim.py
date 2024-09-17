@@ -108,7 +108,7 @@ class MuJoCoSim(BaseSim):
                 time=time.time(),
                 pos=self.data.joint(name).qpos.item(),
                 vel=self.data.joint(name).qvel.item(),
-                tor=self.data.joint(name).qfrc_actuator.item(),
+                tor=self.data.actuator(name).force.item(),
             )
 
         return motor_state_dict
@@ -227,6 +227,10 @@ class MuJoCoSim(BaseSim):
         for joint_name, dyn in joint_dyn.items():
             for key, value in dyn.items():
                 setattr(self.model.joint(joint_name), key, value)
+
+    def set_motor_dynamics(self, motor_dyn: Dict[str, Dict[str, float]]):
+        for key, value in motor_dyn.items():
+            setattr(self.controller, key, value)
 
     def forward(self):
         for _ in range(self.n_frames):

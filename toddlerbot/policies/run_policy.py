@@ -25,6 +25,7 @@ from toddlerbot.visualization.vis_plot import (
     plot_joint_tracking_single,
     plot_line_graph,
     plot_loop_time,
+    plot_motor_vel_tor_mapping,
 )
 
 
@@ -45,10 +46,10 @@ dynamic_import_policies("toddlerbot.policies")
 
 def plot_results(
     robot: Robot,
+    policy: BasePolicy,
     loop_time_list: List[List[float]],
     obs_list: List[Obs],
     motor_angles_list: List[Dict[str, float]],
-    control_dt: float,
     exp_folder_path: str,
 ):
     loop_time_dict: Dict[str, List[float]] = {
@@ -104,7 +105,7 @@ def plot_results(
 
             # Assume the state fetching is instantaneous
             time_seq_dict[motor_name].append(float(obs.time))
-            time_seq_ref_dict[motor_name].append(i * control_dt)
+            time_seq_ref_dict[motor_name].append(i * policy.control_dt)
             motor_pos_dict[motor_name].append(obs.motor_pos[j])
             motor_vel_dict[motor_name].append(obs.motor_vel[j])
             motor_tor_dict[motor_name].append(obs.motor_tor[j])
@@ -124,6 +125,13 @@ def plot_results(
             joint_pos_ref_dict[joint_name].append(joint_angle)
 
     plot_loop_time(loop_time_dict, exp_folder_path)
+
+    if "sysID" in policy.name:
+        plot_motor_vel_tor_mapping(
+            motor_vel_dict["joint_0"],
+            motor_tor_dict["joint_0"],
+            save_path=exp_folder_path,
+        )
 
     plot_line_graph(
         tor_obs_total_list,
@@ -289,9 +297,9 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
 
         os.makedirs(exp_folder_path, exist_ok=True)
 
-        if hasattr(sim, "save_recording"):
-            assert isinstance(sim, MuJoCoSim)
-            sim.save_recording(exp_folder_path, policy.control_dt, 2)
+        # if hasattr(sim, "save_recording"):
+        #     assert isinstance(sim, MuJoCoSim)
+        #     sim.save_recording(exp_folder_path, policy.control_dt, 2)
 
         sim.close()
 
@@ -313,10 +321,10 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
     log("Visualizing...", header="Walking")
     plot_results(
         robot,
+        policy,
         loop_time_list,
         obs_list,
         motor_angles_list,
-        policy.control_dt,
         exp_folder_path,
     )
 

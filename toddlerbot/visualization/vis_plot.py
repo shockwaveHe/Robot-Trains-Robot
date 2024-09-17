@@ -148,6 +148,25 @@ def plot_ankle_mapping(
             )()
 
 
+def plot_motor_vel_tor_mapping(
+    motor_vel_list: List[float],
+    motor_tor_list: List[float],
+    save_path: str,
+    file_name: str = "motor_vel_tor_mapping",
+):
+    plot_scatter_graph(
+        np.abs(motor_vel_list, dtype=np.float32),
+        np.abs(motor_tor_list, dtype=np.float32),
+        "blue",
+        x_label="Torque (Nm) or Current (mA)",
+        y_label="Velocity (rad/s)",
+        title="Motor Velocity-Torque Mapping",
+        save_config=True,
+        save_path=save_path,
+        file_name=file_name,
+    )()
+
+
 def plot_one_footstep(
     ax: plt.Axes,
     center: npt.NDArray[np.float32],
@@ -721,7 +740,7 @@ def plot_line_graph(
 def plot_scatter_graph(
     y: npt.NDArray[np.float32],
     x: npt.NDArray[np.float32],
-    colors: npt.NDArray[np.float32],
+    colors: npt.NDArray[np.float32] | str,
     fig_size: Tuple[int, int] = (10, 6),
     title: str = "",
     x_label: str = "",
@@ -742,7 +761,9 @@ def plot_scatter_graph(
         ax.scatter(
             x,
             y,
-            color=colors,
+            s=1.0,
+            c=colors,
+            alpha=0.7,
             label=legend_label if len(legend_label) > 0 else None,
         )
 
