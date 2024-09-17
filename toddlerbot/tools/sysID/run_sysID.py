@@ -118,9 +118,9 @@ def optimize_parameters(
     freq_max: float = 10,
     sampler_name: str = "CMA",
     # gain_range: Tuple[float, float, float] = (0, 50, 0.1),
-    damping_range: Tuple[float, float, float] = (0.001, 10, 1e-3),
-    armature_range: Tuple[float, float, float] = (0.0, 0.1, 1e-3),
-    frictionloss_range: Tuple[float, float, float] = (0.001, 1.0, 1e-3),
+    damping_range: Tuple[float, float, float] = (0.0, 10.0, 1e-3),
+    armature_range: Tuple[float, float, float] = (0.0, 0.1, 1e-4),
+    frictionloss_range: Tuple[float, float, float] = (0.0, 1.0, 1e-3),
 ):
     if sim_name == "mujoco":
         sim = MuJoCoSim(robot, fixed_base=True)
@@ -175,12 +175,12 @@ def optimize_parameters(
         for action, kp in zip(action_list, kp_list):
             sim.set_motor_kps(dict(zip(motor_names, [kp] * len(motor_names))))
 
-            joint_state_list = sim.rollout(action)
-            joint_pos_sim_list.append(
-                np.array(
-                    [joint_state[joint_name].pos for joint_state in joint_state_list]
-                )
-            )
+            for a in action:
+                obs = sim.get_observation()
+                sim.set_motor_angles(a)
+                sim.step()
+
+                joint_pos_sim_list.append(obs.joint_pos)
 
         joint_pos_sim = np.concatenate(joint_pos_sim_list)
 
@@ -369,20 +369,15 @@ def evaluate(
         }
         sim.set_joint_dynamics(joint_dyn)
 
-        obs_time_sim_list: List[float] = []
         joint_pos_sim_list: List[npt.NDArray[np.float32]] = []
         for action, kp in zip(action_list, kp_list):
             sim.set_motor_kps(dict(zip(motor_names, [kp] * len(motor_names))))
+            for a in action:
+                obs = sim.get_observation()
+                sim.set_motor_angles(a)
+                sim.step()
 
-            joint_state_list = sim.rollout(action)
-            obs_time_sim_list.extend(
-                [joint_state[joint_name].time for joint_state in joint_state_list]
-            )
-            joint_pos_sim_list.append(
-                np.array(
-                    [joint_state[joint_name].pos for joint_state in joint_state_list]
-                )
-            )
+                joint_pos_sim_list.append(obs.joint_pos)
 
         joint_pos_sim = np.concatenate(joint_pos_sim_list)
 
@@ -398,7 +393,7 @@ def evaluate(
             np.arange(sum([len(action) for action in action_list]))
             * (sim.n_frames * sim.dt)
         )
-        time_seq_sim_dict[joint_name] = obs_time_sim_list
+        time_seq_sim_dict[joint_name] = time_seq_ref_dict[joint_name]
         obs_time_real = np.concatenate(obs_time_dict[joint_name])
         obs_time_real -= obs_time_real[0]
         time_seq_real_dict[joint_name] = obs_time_real.tolist()

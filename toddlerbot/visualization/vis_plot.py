@@ -671,6 +671,7 @@ def plot_line_graph(
                     color=color,
                     alpha=0.7,
                     label=legend_labels[i] if legend_labels else None,
+                    linewidth=0.3,
                 )
 
                 if checkpoint_period and checkpoint_period[i]:
@@ -685,6 +686,7 @@ def plot_line_graph(
                 color=line_colors_local[0],
                 alpha=0.7,
                 label=legend_labels[0] if legend_labels else None,
+                linewidth=0.3,
             )
 
             if checkpoint_period and checkpoint_period[0]:

@@ -149,8 +149,8 @@ class MuJoCoSim(BaseSim):
             joint_pos.append(joint_state_dict[joint_name].pos)
             joint_vel.append(joint_state_dict[joint_name].vel)
 
-        joint_pos_arr = np.array(motor_pos, dtype=np.float32)
-        joint_vel_arr = np.array(motor_vel, dtype=np.float32)
+        joint_pos_arr = np.array(joint_pos, dtype=np.float32)
+        joint_vel_arr = np.array(joint_vel, dtype=np.float32)
 
         if self.fixed_base:
             # torso_lin_vel = np.zeros(3, dtype=np.float32)
@@ -207,8 +207,12 @@ class MuJoCoSim(BaseSim):
 
     def set_motor_kps(self, motor_kps: Dict[str, float]):
         for name, kp in motor_kps.items():
-            self.model.actuator(name).gainprm[0] = kp / 128
-            self.model.actuator(name).biasprm[1] = -kp / 128
+            if isinstance(self.controller, MotorController):
+                idx = self.model.actuator(name).id
+                self.controller.kp[idx] = kp / 128
+            else:
+                self.model.actuator(name).gainprm[0] = kp / 128
+                self.model.actuator(name).biasprm[1] = -kp / 128
 
     def set_motor_angles(
         self, motor_angles: Dict[str, float] | npt.NDArray[np.float32]
