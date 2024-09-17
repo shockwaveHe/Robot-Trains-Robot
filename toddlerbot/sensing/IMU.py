@@ -22,7 +22,7 @@ from toddlerbot.utils.math_utils import (
 
 
 class IMU:
-    def __init__(self, alpha: float = 0.1):
+    def __init__(self, alpha: float = 0.6):
         self.alpha = alpha
 
         # Initialize the I2C bus and sensor
@@ -58,8 +58,8 @@ class IMU:
         quat_raw = np.array(self.sensor.quaternion, dtype=np.float32, copy=True)
         # Compute relative rotation based on zero pose
         quat = quat_mult(quat_raw, self.zero_quat_inv)
+        quat[2] *= -1
         euler = np.asarray(quat2euler(quat))
-        euler[1] = -euler[1] # left-handed to right-handed
         # Ensure the transition is smooth by adjusting for any discontinuities
         euler_delta = euler - self.euler_prev
         euler_delta = (euler_delta + np.pi) % (2 * np.pi) - np.pi
@@ -71,19 +71,8 @@ class IMU:
         )
         self.euler_prev = filtered_euler
 
-        # time_curr = time.time()
-        # lin_acc_raw = np.array(
-        #     self.sensor.linear_acceleration, dtype=np.float32, copy=True
-        # )
-        # lin_acc_global = np.asarray(rotate_vec(lin_acc_raw, self.zero_quat_inv))
-        # lin_acc = np.asarray(rotate_vec(lin_acc_global, quat_inv(quat)))
-        # lin_vel = self.lin_vel_prev + lin_acc * (time_curr - self.time_last)
-        # self.lin_vel_prev = lin_vel
-        # self.time_last = time_curr
-
         ang_vel_raw = np.array(self.sensor.gyro, dtype=np.float32, copy=True)
-        ang_vel_global = np.asarray(rotate_vec(ang_vel_raw, self.zero_quat_inv))
-        ang_vel = np.asarray(rotate_vec(ang_vel_global, quat_inv(quat)))
+        ang_vel = np.asarray(rotate_vec(ang_vel_raw, quat_raw))
         filtered_ang_vel = np.asarray(
             exponential_moving_average(self.alpha, ang_vel, self.ang_vel_prev),
             dtype=np.float32,

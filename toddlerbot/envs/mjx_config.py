@@ -34,7 +34,7 @@ class MJXConfig:
         action_smooth_rate: float = 10.0
         contact_force_threshold: float = 1.0
         n_steps_delay: int = 1
-        n_frames: int = 6
+        n_frames: int = 10
 
     @dataclass
     class RewardsConfig:

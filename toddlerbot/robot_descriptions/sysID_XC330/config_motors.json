@@ -1,10 +1,15 @@
 {
     "joint_0": {
         "motor": "XC330",
-        "init_pos": 3.141592653589793,
+        "init_pos": 1.5707963267948966,
         "default_pos": 0.0,
         "kp": 900.0,
         "ki": 0.0,
-        "kd": 0.0
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0,
+        "tau_max": 0.64,
+        "q_dot_tau_max": 0.45,
+        "q_dot_max": 7.0
     }
 }

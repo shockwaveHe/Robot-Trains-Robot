@@ -49,7 +49,7 @@
             "type": "dynamixel",
             "spec": "XC330",
             "control_mode": "extended_position",
-            "init_pos": 0.49854376912117004,
+            "init_pos": 0.4970097839832306,
             "default_pos": 0,
             "kp_real": 900.0,
             "ki_real": 0.0,
@@ -58,6 +58,9 @@
             "kff1_real": 0.0,
             "kp_sim": 7.03125,
             "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0,
             "gear_ratio": 0.7222222222222222
         },
         "neck_pitch_drive": {
@@ -73,7 +76,7 @@
             "type": "dynamixel",
             "spec": "XC330",
             "control_mode": "extended_position",
-            "init_pos": 5.819922924041748,
+            "init_pos": 2.820990562438965,
             "default_pos": 0,
             "kp_real": 900.0,
             "ki_real": 0.0,
@@ -82,6 +85,9 @@
             "kff1_real": 0.0,
             "kp_sim": 7.03125,
             "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0,
             "gear_ratio": 0.9090909090909091
         },
         "waist_act_1": {
@@ -105,7 +111,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 7.03125,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0
         },
         "waist_act_2": {
             "is_passive": false,
@@ -128,7 +137,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 7.03125,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0
         },
         "left_hip_yaw_drive": {
             "is_passive": false,
@@ -152,6 +164,9 @@
             "kff1_real": 0.0,
             "kp_sim": 7.03125,
             "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0,
             "gear_ratio": 0.9047619047619047
         },
         "left_hip_roll": {
@@ -175,7 +190,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0
         },
         "left_hip_pitch": {
             "is_passive": false,
@@ -198,7 +216,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0
         },
         "left_knee_act": {
             "is_passive": false,
@@ -221,7 +242,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 21.09375,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0
         },
         "left_ank_act_1": {
             "is_passive": false,
@@ -244,7 +268,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 7.03125,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0
         },
         "left_ank_act_2": {
             "is_passive": false,
@@ -267,7 +294,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 7.03125,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0
         },
         "right_hip_yaw_drive": {
             "is_passive": false,
@@ -291,6 +321,9 @@
             "kff1_real": 0.0,
             "kp_sim": 7.03125,
             "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0,
             "gear_ratio": 0.9047619047619047
         },
         "right_hip_roll": {
@@ -314,7 +347,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0
         },
         "right_hip_pitch": {
             "is_passive": false,
@@ -337,7 +373,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0
         },
         "right_knee_act": {
             "is_passive": false,
@@ -360,7 +399,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 21.09375,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0
         },
         "right_ank_act_1": {
             "is_passive": false,
@@ -383,7 +425,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 7.03125,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0
         },
         "right_ank_act_2": {
             "is_passive": false,
@@ -406,7 +451,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 7.03125,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0
         },
         "left_sho_pitch": {
             "is_passive": false,
@@ -429,7 +477,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0
         },
         "left_sho_roll": {
             "is_passive": false,
@@ -452,7 +503,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0
         },
         "left_sho_yaw_drive": {
             "is_passive": false,
@@ -476,6 +530,9 @@
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
             "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0,
             "gear_ratio": 1.0
         },
         "left_elbow_roll": {
@@ -499,7 +556,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0
         },
         "left_elbow_yaw_drive": {
             "is_passive": false,
@@ -523,6 +583,9 @@
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
             "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0,
             "gear_ratio": 1.0
         },
         "left_wrist_pitch_drive": {
@@ -547,6 +610,9 @@
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
             "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0,
             "gear_ratio": 1.0
         },
         "left_wrist_roll": {
@@ -570,7 +636,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0
         },
         "right_sho_pitch": {
             "is_passive": false,
@@ -593,7 +662,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0
         },
         "right_sho_roll": {
             "is_passive": false,
@@ -616,7 +688,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0
         },
         "right_sho_yaw_drive": {
             "is_passive": false,
@@ -640,6 +715,9 @@
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
             "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0,
             "gear_ratio": 1.0
         },
         "right_elbow_roll": {
@@ -663,7 +741,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0
         },
         "right_elbow_yaw_drive": {
             "is_passive": false,
@@ -687,6 +768,9 @@
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
             "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0,
             "gear_ratio": 1.0
         },
         "right_wrist_pitch_drive": {
@@ -711,6 +795,9 @@
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
             "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0,
             "gear_ratio": 1.0
         },
         "right_wrist_roll": {
@@ -734,7 +821,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0
         },
         "left_gripper_rack": {
             "is_passive": false,
@@ -749,15 +839,18 @@
             "type": "dynamixel",
             "spec": "XC330",
             "control_mode": "current_based_position",
-            "init_pos": 0.5429719302954359,
+            "init_pos": 5.3658647537231445,
             "default_pos": 0.0,
             "kp_real": 900.0,
             "ki_real": 0.0,
-            "kd_real": 0.0,
+            "kd_real": 2000.0,
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 7.03125,
             "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0,
             "gear_ratio": 0.007
         },
         "right_gripper_rack": {
@@ -773,15 +866,18 @@
             "type": "dynamixel",
             "spec": "XC330",
             "control_mode": "current_based_position",
-            "init_pos": 1.9282397576033352,
+            "init_pos": 4.818233489990234,
             "default_pos": 0.0,
             "kp_real": 900.0,
             "ki_real": 0.0,
-            "kd_real": 0.0,
+            "kd_real": 2000.0,
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 7.03125,
             "kd_sim": 0.0,
+            "tau_max": 0.64,
+            "q_dot_tau_max": 0.45,
+            "q_dot_max": 7.0,
             "gear_ratio": 0.007
         },
         "left_ank_long_rev_1": {

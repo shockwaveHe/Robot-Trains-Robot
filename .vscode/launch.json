@@ -136,6 +136,22 @@
             ]
         },
         {
+            "name": "Python: sysid_XC330_mujoco",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/policies/run_policy.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot",
+                "sysID_XC330",
+                "--sim",
+                "mujoco",
+                "--policy",
+                "sysID_fixed"
+            ]
+        },
+        {
             "name": "Python: balance_toddlerbot_mujoco",
             "type": "python",
             "request": "launch",
@@ -196,7 +212,9 @@
                 "--robot",
                 "toddlerbot",
                 "--env",
-                "walk"
+                "walk",
+                "--eval",
+                "20240914_231201"
             ],
         },
         {
@@ -216,7 +234,19 @@
             ],
         },
         {
-            "name": "Python: test_reference_motion",
+            "name": "Python: test_walk_zmp_ref",
+            "type": "python",
+            "request": "launch",
+            "program": "tests/test_ref_motion.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--ref", 
+                "walk_zmp",
+            ],
+        },
+        {
+            "name": "Python: test_balance_ref",
             "type": "python",
             "request": "launch",
             "program": "tests/test_ref_motion.py",

@@ -439,6 +439,8 @@ def train(
 
     print(f"time to jit: {times[1] - times[0]}")
     print(f"time to train: {times[-1] - times[1]}")
+    print(f"best checkpoint step: {best_ckpt_step}")
+    print(f"best episode reward: {best_episode_reward}")
 
 
 def evaluate(

@@ -40,6 +40,8 @@ class RealWorld(BaseSim):
             "right_elbow_roll",
             "left_wrist_pitch_drive",
             "right_wrist_pitch_drive",
+            "left_gripper_rack",
+            "right_gripper_rack",
         ]
 
         self.initialize()
