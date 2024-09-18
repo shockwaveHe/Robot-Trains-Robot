@@ -20,9 +20,9 @@
             "group": "none",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
-            "damping": 0.1,
-            "armature": 0.0014,
-            "frictionloss": 0.185,
+            "damping": 0.15,
+            "armature": 0.0019,
+            "frictionloss": 0.027,
             "id": 0,
             "type": "dynamixel",
             "spec": "XM430",
@@ -36,9 +36,9 @@
             "kff1_real": 0.0,
             "kp_sim": 21.09375,
             "kd_sim": 0.0,
-            "tau_max": 2.12,
-            "q_dot_tau_max": 2.08,
-            "q_dot_max": 14.46
+            "tau_max": 2.11,
+            "q_dot_tau_max": 1.19,
+            "q_dot_max": 20.0
         }
     }
 }
