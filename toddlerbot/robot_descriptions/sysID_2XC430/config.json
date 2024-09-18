@@ -27,7 +27,7 @@
             "type": "dynamixel",
             "spec": "2XC430",
             "control_mode": "extended_position",
-            "init_pos": 3.141592653589793,
+            "init_pos": 1.5707963267948966,
             "default_pos": 0.0,
             "kp_real": 2100.0,
             "ki_real": 0.0,
