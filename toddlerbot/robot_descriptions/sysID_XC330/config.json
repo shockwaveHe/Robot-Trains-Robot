@@ -20,9 +20,9 @@
             "group": "none",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
-            "damping": 0.1,
-            "armature": 0.0017,
-            "frictionloss": 0.298,
+            "damping": 0.03,
+            "armature": 0.0038,
+            "frictionloss": 0.795,
             "id": 0,
             "type": "dynamixel",
             "spec": "XC330",
@@ -37,8 +37,8 @@
             "kp_sim": 11.71875,
             "kd_sim": 0.0,
             "tau_max": 1.0,
-            "q_dot_tau_max": 4.6,
-            "q_dot_max": 9.17
+            "q_dot_tau_max": 4.13,
+            "q_dot_max": 11.76
         }
     }
 }

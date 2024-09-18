@@ -3,7 +3,7 @@
         "is_fixed": true,
         "has_imu": false,
         "has_dynamixel": true,
-        "dynamixel_baudrate": 4000000,
+        "dynamixel_baudrate": 2000000,
         "has_sunny_sky": false,
         "solref": [
             0.004,
@@ -27,14 +27,14 @@
             "type": "dynamixel",
             "spec": "XC430",
             "control_mode": "extended_position",
-            "init_pos": 4.71238898038469,
+            "init_pos": 0.0,
             "default_pos": 0.0,
-            "kp_real": 1800.0,
+            "kp_real": 2100.0,
             "ki_real": 0.0,
             "kd_real": 0.0,
             "kff2_real": 0.0,
             "kff1_real": 0.0,
-            "kp_sim": 14.0625,
+            "kp_sim": 16.40625,
             "kd_sim": 0.0
         }
     }

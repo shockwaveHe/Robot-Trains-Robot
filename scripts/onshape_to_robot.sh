@@ -1,42 +1,76 @@
 #!/bin/bash
 
-# YELLOW='\033[0;33m'
-# NC='\033[0m' # No Color
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
 
-##### toddlerbot #####
-# ROBOT_NAME="toddlerbot"
-# BODY_NAME="toddlerbot"
-# ARM_NAME="arm_gripper"
-# LEG_NAME="leg_XM430"
-# DOC_ID_LIST="6f1a2a766fbbc097a49abb91 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
-# ASSEMBLY_LIST="toddlerbot left_leg_XM430 right_leg_XM430 left_arm_gripper right_arm_gripper"
-# DOC_ID_LIST="cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
-# ASSEMBLY_LIST="left_arm_gripper right_arm_gripper"
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --robot)
+        ROBOT_NAME="$2"
+        BODY_NAME="$2"
+        case "$ROBOT_NAME" in
+            toddlerbot)
+            ARM_NAME="arm_gripper"
+            LEG_NAME="leg_XM430"
+            DOC_ID_LIST="6f1a2a766fbbc097a49abb91 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
+            ASSEMBLY_LIST="toddlerbot left_leg_XM430 right_leg_XM430 left_arm_gripper right_arm_gripper"
+            # DOC_ID_LIST="cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
+            # ASSEMBLY_LIST="left_arm_gripper right_arm_gripper"
+            ;;
+            toddlerbot_legs)
+            LEG_NAME="leg_XM430"
+            DOC_ID_LIST="6f1a2a766fbbc097a49abb91 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe"
+            ASSEMBLY_LIST="toddlerbot_legs left_leg_XM430 right_leg_XM430"
+            # DOC_ID_LIST="6f1a2a766fbbc097a49abb91"
+            # ASSEMBLY_LIST="toddlerbot_legs"
+            ;;
+            toddlerbot_arms)
+            # ARM_NAME="arm_hand"
+            DOC_ID_LIST="6f1a2a766fbbc097a49abb91 cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
+            ASSEMBLY_LIST="toddlerbot_arms left_arm_hand right_arm_hand"
+            # DOC_ID_LIST="cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
+            # ASSEMBLY_LIST="left_arm_hand right_arm_hand"
+            ;;
+            sysID_XC330)
+            DOC_ID_LIST="4b8df5a39fb5e7db7afa93b4"
+            ASSEMBLY_LIST="sysID_XC330"
+            ;;
+            sysID_XC430)
+            DOC_ID_LIST="4b8df5a39fb5e7db7afa93b4"
+            ASSEMBLY_LIST="sysID_XC430"
+            ;;
+            sysID_2XC430)
+            DOC_ID_LIST="4b8df5a39fb5e7db7afa93b4"
+            ASSEMBLY_LIST="sysID_2XC430"
+            ;;
+            sysID_2XL430)
+            DOC_ID_LIST="4b8df5a39fb5e7db7afa93b4"
+            ASSEMBLY_LIST="sysID_2XL430"
+            ;;
+            sysID_XM430)
+            DOC_ID_LIST="4b8df5a39fb5e7db7afa93b4"
+            ASSEMBLY_LIST="sysID_XM430"
+            ;;
+            *)
+            echo -e "${YELLOW}Unknown robot name: $ROBOT_NAME.${NC}"
+            ;;
+        esac
+        shift # past argument
+        shift # past value
+        ;;
+        *)
+        echo -e "${YELLOW}Unknown option: $1${NC}"
+        shift # past unknown argument
+        ;;
+    esac
+done
 
-#### toddlerbot_legs #####
-# ROBOT_NAME="toddlerbot_legs"
-# BODY_NAME="toddlerbot_legs"
-# LEG_NAME="leg_XM430"
-# DOC_ID_LIST="6f1a2a766fbbc097a49abb91 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe"
-# ASSEMBLY_LIST="toddlerbot_legs left_leg_XM430 right_leg_XM430"
-# DOC_ID_LIST="6f1a2a766fbbc097a49abb91"
-# ASSEMBLY_LIST="toddlerbot_legs"
-
-#### toddlerbot_arms #####
-# ROBOT_NAME="toddlerbot_arms"
-# BODY_NAME="toddlerbot_arms"
-# ARM_NAME="arm_hand"
-# DOC_ID_LIST="6f1a2a766fbbc097a49abb91 cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
-# ASSEMBLY_LIST="toddlerbot_arms left_arm_hand right_arm_hand"
-# DOC_ID_LIST="cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
-# ASSEMBLY_LIST="left_arm_hand right_arm_hand"
-
-##### sysID_device #####
-MOTOR_TYPE="XC330"
-ROBOT_NAME="sysID_$MOTOR_TYPE"
-BODY_NAME="sysID_$MOTOR_TYPE"
-DOC_ID_LIST="4b8df5a39fb5e7db7afa93b4"
-ASSEMBLY_LIST="sysID_$MOTOR_TYPE"
+# Check if ROBOT_NAME is set
+if [[ -z "$ROBOT_NAME" ]]; then
+    echo -e "${YELLOW}Error: --robot argument is required.${NC}"
+    exit 1
+fi
 
 REPO_NAME="toddlerbot"
 URDF_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/$ROBOT_NAME.urdf

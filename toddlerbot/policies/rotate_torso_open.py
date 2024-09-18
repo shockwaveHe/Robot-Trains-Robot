@@ -26,6 +26,7 @@ class RotateTorsoOpenPolicy(BasePolicy, policy_name="rotate_torso_open"):
         signal_duraion = 10.0
         reset_duration = 2.0
 
+        # TODO: Update to use sine signals
         joint_sysID_specs = {
             "waist_roll": SysIDSpecs(
                 amplitude_ratio=0.5,
