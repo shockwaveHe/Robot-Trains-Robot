@@ -5,13 +5,12 @@ import warnings
 from typing import Any, Dict, List
 
 import mediapy as media
-import numpy as np
-import numpy.typing as npt
-from moviepy.editor import VideoFileClip, clips_array
-
 import mujoco
 import mujoco.rollout
 import mujoco.viewer
+import numpy as np
+import numpy.typing as npt
+from moviepy.editor import VideoFileClip, clips_array
 
 # Suppress specific warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="moviepy")
@@ -38,13 +37,9 @@ class MotorController:
         self,
         model: Any,
         data: Any,
-        motor_angles: Dict[str, float] | npt.NDArray[np.float32],
+        motor_angles: npt.NDArray[np.float32],
     ):
-        if isinstance(motor_angles, dict):
-            a = np.array(list(motor_angles.values()), dtype=np.float32)
-        else:
-            a = motor_angles
-
+        a = motor_angles
         q = data.qpos[self.motor_indices].copy()
         q_dot = data.qvel[self.motor_indices].copy()
 
@@ -60,7 +55,7 @@ class MotorController:
             slope = self.tau_max / (self.q_dot_tau_max - self.q_dot_max)
             tau_limit = slope * (abs_q_dot - self.q_dot_tau_max) + self.tau_max
         else:
-            tau_limit = 0.0
+            tau_limit = np.zeros_like(tau_m)
 
         tau_m_clamped = np.clip(tau_m, -tau_limit, tau_limit)
         return tau_m_clamped
@@ -71,14 +66,9 @@ class PositionController:
         self,
         model: Any,
         data: Any,
-        motor_angles: Dict[str, float] | npt.NDArray[np.float32],
+        motor_angles: npt.NDArray[np.float32],
     ):
-        if isinstance(motor_angles, dict):
-            a = np.array(list(motor_angles.values()), dtype=np.float32)
-        else:
-            a = motor_angles
-
-        return a
+        return motor_angles
 
 
 class MuJoCoViewer:

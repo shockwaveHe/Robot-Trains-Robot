@@ -1,10 +1,10 @@
 {
     "joint_0": {
-        "damping": 0.1,
-        "armature": 0.0017,
-        "frictionloss": 0.298,
+        "damping": 0.097,
+        "armature": 0.0035,
+        "frictionloss": 0.187,
         "tau_max": 1.0,
-        "q_dot_tau_max": 4.6,
-        "q_dot_max": 9.17
+        "q_dot_tau_max": 4.45,
+        "q_dot_max": 18.27
     }
 }

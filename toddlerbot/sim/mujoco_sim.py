@@ -1,12 +1,12 @@
 import time
 from typing import Any, Dict, List
 
-import numpy as np
-import numpy.typing as npt
-
 import mujoco
 import mujoco.rollout
 import mujoco.viewer
+import numpy as np
+import numpy.typing as npt
+
 from toddlerbot.actuation import JointState
 from toddlerbot.sim import BaseSim, Obs
 from toddlerbot.sim.mujoco_utils import (
@@ -217,7 +217,12 @@ class MuJoCoSim(BaseSim):
     def set_motor_angles(
         self, motor_angles: Dict[str, float] | npt.NDArray[np.float32]
     ):
-        self.target_motor_angles = motor_angles
+        if isinstance(motor_angles, dict):
+            self.target_motor_angles = np.array(
+                list(motor_angles.values()), dtype=np.float32
+            )
+        else:
+            self.target_motor_angles = motor_angles
 
     def set_joint_angles(self, joint_angles: Dict[str, float]):
         for name in joint_angles:
@@ -228,7 +233,7 @@ class MuJoCoSim(BaseSim):
             for key, value in dyn.items():
                 setattr(self.model.joint(joint_name), key, value)
 
-    def set_motor_dynamics(self, motor_dyn: Dict[str, Dict[str, float]]):
+    def set_motor_dynamics(self, motor_dyn: Dict[str, float]):
         for key, value in motor_dyn.items():
             setattr(self.controller, key, value)
 

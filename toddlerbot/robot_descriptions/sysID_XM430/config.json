@@ -3,7 +3,7 @@
         "is_fixed": true,
         "has_imu": false,
         "has_dynamixel": true,
-        "dynamixel_baudrate": 4000000,
+        "dynamixel_baudrate": 2000000,
         "has_sunny_sky": false,
         "solref": [
             0.004,

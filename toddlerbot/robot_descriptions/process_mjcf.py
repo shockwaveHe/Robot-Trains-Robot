@@ -285,10 +285,7 @@ def add_default_settings(
                 ET.SubElement(
                     motor_default,
                     actuator_type,
-                    {
-                        "ctrlrange": f"-{torque_limit} {torque_limit}",
-                        "forcerange": f"-{torque_limit} {torque_limit}",
-                    },
+                    {"ctrlrange": f"-{torque_limit} {torque_limit}"},
                 )
             else:
                 ET.SubElement(

@@ -31,7 +31,7 @@
       <geom group="3" />
     </default>
     <default class="XC330">
-      <motor ctrlrange="-1 1" forcerange="-1 1" />
+      <motor ctrlrange="-1 1" />
     </default>
   </default>
 </mujoco>

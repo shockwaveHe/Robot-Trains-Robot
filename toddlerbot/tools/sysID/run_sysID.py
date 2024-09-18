@@ -127,12 +127,11 @@ def optimize_parameters(
         raise ValueError("Invalid simulator")
 
     if "sysID" in robot.name:
+        tau_max_range: Tuple[float, float, float] = (0.0, 2.0, 1e-2)
         if "XC330" in robot.name:
-            tau_max_range: Tuple[float, float, float] = (0.0, 1.0, 1e-2)
+            tau_max_range = (0.0, 1.0, 1e-2)
         elif "XM430" in robot.name:
-            tau_max_range: Tuple[float, float, float] = (0.0, 3.0, 1e-2)
-        else:
-            tau_max_range: Tuple[float, float, float] = (0.0, 2.0, 1e-2)
+            tau_max_range = (0.0, 3.0, 1e-2)
 
     motor_names = robot.joint_to_motor_name[joint_name]
     joint_idx = robot.joint_ordering.index(joint_name)
@@ -191,6 +190,7 @@ def optimize_parameters(
                 sim.set_motor_angles(a)
                 sim.step()
 
+                assert obs.joint_pos is not None
                 joint_pos_sim_list.append(obs.joint_pos)
 
         joint_pos_sim = np.concatenate(joint_pos_sim_list)
@@ -409,6 +409,7 @@ def evaluate(
                 sim.set_motor_angles(a)
                 sim.step()
 
+                assert obs.joint_pos is not None
                 joint_pos_sim_list.append(obs.joint_pos)
 
         joint_pos_sim = np.concatenate(joint_pos_sim_list)
