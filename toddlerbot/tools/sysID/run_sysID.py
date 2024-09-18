@@ -110,11 +110,11 @@ def optimize_parameters(
     action_list: List[npt.NDArray[np.float32]],
     kp_list: List[float],
     n_iters: int = 1000,
-    early_stopping_rounds: int = 200,
+    early_stop_rounds: int = 200,
     freq_max: float = 10,
     sampler_name: str = "CMA",
     # gain_range: Tuple[float, float, float] = (0, 50, 0.1),
-    damping_range: Tuple[float, float, float] = (0.0, 0.1, 1e-3),
+    damping_range: Tuple[float, float, float] = (0.0, 2.0, 1e-3),
     armature_range: Tuple[float, float, float] = (0.0, 0.01, 1e-4),
     frictionloss_range: Tuple[float, float, float] = (0.0, 1.0, 1e-3),
     q_dot_tau_max_range: Tuple[float, float, float] = (0.0, 5.0, 1e-2),
@@ -137,7 +137,7 @@ def optimize_parameters(
     joint_idx = robot.joint_ordering.index(joint_name)
     joint_pos_real = np.concatenate([obs[:, joint_idx] for obs in obs_list])
 
-    def early_stopping_check(
+    def early_stop_check(
         study: optuna.Study, trial: optuna.Trial, early_stopping_rounds: int
     ):
         current_trial_number = trial.number
@@ -257,9 +257,7 @@ def optimize_parameters(
         n_trials=n_iters,
         n_jobs=1,
         show_progress_bar=True,
-        callbacks=[
-            partial(early_stopping_check, early_stopping_rounds=early_stopping_rounds)
-        ],
+        callbacks=[partial(early_stop_check, early_stopping_rounds=early_stop_rounds)],
     )
 
     log(
@@ -280,6 +278,7 @@ def optimize_all(
     action_dict: Dict[str, List[npt.NDArray[np.float32]]],
     kp_dict: Dict[str, List[float]],
     n_iters: int,
+    early_stop_rounds: int,
 ):
     # return sysID_file_path
     optimize_args: List[
@@ -291,6 +290,7 @@ def optimize_all(
             List[npt.NDArray[np.float32]],
             List[float],
             int,
+            int,
         ]
     ] = [
         (
@@ -301,6 +301,7 @@ def optimize_all(
             action_dict[joint_name],
             kp_dict[joint_name],
             n_iters,
+            early_stop_rounds,
         )
         for joint_name in obs_pos_dict
     ]
@@ -522,6 +523,12 @@ def main():
         help="The number of iterations to optimize the parameters.",
     )
     parser.add_argument(
+        "--early-stop",
+        type=int,
+        default=200,
+        help="The number of iterations to early stop the optimization.",
+    )
+    parser.add_argument(
         "--time-str",
         type=str,
         default="",
@@ -560,7 +567,13 @@ def main():
     # )
 
     opt_params_dict, opt_values_dict = optimize_all(
-        robot, args.sim, obs_pos_dict, action_dict, kp_dict, args.n_iters
+        robot,
+        args.sim,
+        obs_pos_dict,
+        action_dict,
+        kp_dict,
+        args.n_iters,
+        args.early_stop,
     )
 
     ##### Evaluate the optimized parameters in the simulation ######
