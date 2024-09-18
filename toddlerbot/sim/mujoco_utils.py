@@ -48,14 +48,19 @@ class MotorController:
 
         abs_q_dot = np.abs(q_dot)
 
-        if abs_q_dot <= self.q_dot_tau_max:
-            tau_limit = self.tau_max
-        elif abs_q_dot <= self.q_dot_max:
-            # Linear decrease of torque limit
-            slope = self.tau_max / (self.q_dot_tau_max - self.q_dot_max)
-            tau_limit = slope * (abs_q_dot - self.q_dot_tau_max) + self.tau_max
-        else:
-            tau_limit = np.zeros_like(tau_m)
+        # Apply vectorized conditions using np.where
+        tau_limit = np.where(
+            abs_q_dot <= self.q_dot_tau_max,  # Condition 1
+            self.tau_max,  # Value when condition 1 is True
+            np.where(
+                abs_q_dot <= self.q_dot_max,  # Condition 2
+                self.tau_max
+                / (self.q_dot_tau_max - self.q_dot_max)
+                * (abs_q_dot - self.q_dot_tau_max)
+                + self.tau_max,  # Value when condition 2 is True
+                np.zeros_like(tau_m),  # Value when all conditions are False
+            ),
+        )
 
         tau_m_clamped = np.clip(tau_m, -tau_limit, tau_limit)
         return tau_m_clamped

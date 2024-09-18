@@ -126,7 +126,7 @@ def plot_results(
 
     plot_loop_time(loop_time_dict, exp_folder_path)
 
-    if "sysID" in policy.name:
+    if "sysID" in robot.name:
         plot_motor_vel_tor_mapping(
             motor_vel_dict["joint_0"],
             motor_tor_dict["joint_0"],
@@ -240,8 +240,13 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
                 ckpt_idx = min(ckpt_idx, len(ckpt_times) - 1)
                 if ckpt_idx != last_ckpt_idx:
                     motor_kps = policy.ckpt_dict[ckpt_times[ckpt_idx]]
-                    if np.any(list(motor_kps.values())):
-                        sim.set_motor_kps(motor_kps)
+                    motor_kps_updated = {}
+                    for joint_name in motor_kps:
+                        for motor_name in robot.joint_to_motor_name[joint_name]:
+                            motor_kps_updated[motor_name] = motor_kps[joint_name]
+
+                    if np.any(list(motor_kps_updated.values())):
+                        sim.set_motor_kps(motor_kps_updated)
                         last_ckpt_idx = ckpt_idx
 
             motor_target = policy.step(obs, "real" in sim.name)
@@ -297,9 +302,9 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
 
         os.makedirs(exp_folder_path, exist_ok=True)
 
-        # if hasattr(sim, "save_recording"):
-        #     assert isinstance(sim, MuJoCoSim)
-        #     sim.save_recording(exp_folder_path, policy.control_dt, 2)
+        if hasattr(sim, "save_recording"):
+            assert isinstance(sim, MuJoCoSim)
+            sim.save_recording(exp_folder_path, policy.control_dt, 2)
 
         sim.close()
 

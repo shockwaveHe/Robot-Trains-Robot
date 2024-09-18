@@ -80,8 +80,8 @@ class MuJoCoSim(BaseSim):
         )
         self.controller = MotorController(
             motor_indices,
-            np.array(self.robot.get_joint_attrs("type", "dynamixel", "kp_real")),
-            np.array(self.robot.get_joint_attrs("type", "dynamixel", "kd_real")),
+            np.array(self.robot.get_joint_attrs("type", "dynamixel", "kp_sim")),
+            np.array(self.robot.get_joint_attrs("type", "dynamixel", "kd_sim")),
             np.array(self.robot.get_joint_attrs("type", "dynamixel", "tau_max")),
             np.array(self.robot.get_joint_attrs("type", "dynamixel", "q_dot_tau_max")),
             np.array(self.robot.get_joint_attrs("type", "dynamixel", "q_dot_max")),
@@ -208,8 +208,7 @@ class MuJoCoSim(BaseSim):
     def set_motor_kps(self, motor_kps: Dict[str, float]):
         for name, kp in motor_kps.items():
             if isinstance(self.controller, MotorController):
-                idx = self.model.actuator(name).id
-                self.controller.kp[idx] = kp / 128
+                self.controller.kp[self.model.actuator(name).id] = kp / 128
             else:
                 self.model.actuator(name).gainprm[0] = kp / 128
                 self.model.actuator(name).biasprm[1] = -kp / 128

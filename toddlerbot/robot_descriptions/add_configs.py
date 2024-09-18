@@ -102,15 +102,6 @@ def get_default_config(
             if joint_name in joint_dyn_config:
                 for param_name in joint_dyn_config[joint_name]:
                     joint_dict[param_name] = joint_dyn_config[joint_name][param_name]
-            # TODO: Remove this after doing sysID
-            elif transmission == "gear":
-                joint_drive_name = joint_name.replace("_driven", "_drive")
-                motor_name = motor_config[joint_drive_name]["motor"]
-                gear_ratio = motor_config[joint_drive_name].get("gear_ratio", 1.0)
-                for param_name in joint_dyn_config[motor_name]:
-                    joint_dict[param_name] = joint_dyn_config[motor_name][
-                        param_name
-                    ] * (gear_ratio**2)
         else:
             if joint_name not in motor_config:
                 raise ValueError(f"{joint_name} not found in the motor config!")
@@ -143,10 +134,7 @@ def get_default_config(
             joint_dict["kp_sim"] = motor_config[joint_name]["kp"] / 128
             joint_dict["kd_sim"] = 0.0
 
-            if joint_name in joint_dyn_config:
-                for param_name in joint_dyn_config[joint_name]:
-                    joint_dict[param_name] = joint_dyn_config[joint_name][param_name]
-            elif motor_name in joint_dyn_config:
+            if motor_name in joint_dyn_config:
                 for param_name in joint_dyn_config[motor_name]:
                     joint_dict[param_name] = joint_dyn_config[motor_name][param_name]
 
