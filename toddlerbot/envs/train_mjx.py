@@ -429,10 +429,7 @@ def train(
         # Log metrics to wandb
         wandb.log(log_data)
 
-    with jax.checking_leaks():
-        _, params, _ = train_fn(
-            environment=env, eval_env=eval_env, progress_fn=progress
-        )
+    _, params, _ = train_fn(environment=env, eval_env=eval_env, progress_fn=progress)
 
     model_path = os.path.join(exp_folder_path, "policy")
     model.save_params(model_path, params)
@@ -563,8 +560,8 @@ if __name__ == "__main__":
         raise ValueError(f"Unknown env: {args.env}")
 
     if "fixed" in args.env:
-        train_cfg.num_timesteps = 20_000_000
-        train_cfg.num_evals = 200
+        train_cfg.num_timesteps = 10_000_000
+        train_cfg.num_evals = 100
 
         env_cfg.rewards.healthy_z_range = [-0.2, 0.2]
         env_cfg.rewards.scales.reset()
