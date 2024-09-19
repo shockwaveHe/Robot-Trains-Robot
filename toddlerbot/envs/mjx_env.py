@@ -323,6 +323,22 @@ class MJXEnv(PipelineEnv):
             pipeline_state, obs, privileged_obs, reward, done, metrics, state_info
         )
 
+    def pipeline_step(self, pipeline_state: Any, action: jax.Array) -> base.State:
+        """Takes a physics step using the physics pipeline."""
+
+        def f(state, _):
+            ctrl = self.controller.step(
+                state.q[self.q_start_idx + self.motor_indices],
+                state.qd[self.qd_start_idx + self.motor_indices],
+                action,
+            )
+            return (
+                self._pipeline.step(self.sys, state, ctrl, self._debug),
+                None,
+            )
+
+        return jax.lax.scan(f, pipeline_state, (), self._n_frames)[0]
+
     def step(self, state: State, action: jax.Array) -> State:
         """Runs one timestep of the environment's dynamics."""
         rng, cmd_rng, push_rng = jax.random.split(state.info["rng"], 3)
@@ -369,12 +385,6 @@ class MJXEnv(PipelineEnv):
         assert isinstance(motor_target, jax.Array)
         state.info["last_motor_target"] = motor_target.copy()
 
-        motor_ctrl = self.controller.step(
-            state.pipeline_state.q[self.q_start_idx + self.motor_indices],
-            state.pipeline_state.qd[self.qd_start_idx + self.motor_indices],
-            motor_target,
-        )
-
         if self.add_push:
             push_theta = jax.random.uniform(push_rng, maxval=2 * jnp.pi)
             push = jnp.array([jnp.cos(push_theta), jnp.sin(push_theta)])
@@ -385,7 +395,7 @@ class MJXEnv(PipelineEnv):
             state.info["push"] = push
 
         # jax.debug.breakpoint()
-        pipeline_state = self.pipeline_step(state.pipeline_state, motor_ctrl)
+        pipeline_state = self.pipeline_step(state.pipeline_state, motor_target)
 
         # jax.debug.print(
         #     "qfrc: {}",
