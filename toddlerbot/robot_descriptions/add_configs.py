@@ -33,6 +33,10 @@ def get_default_config(
         if "ank" in joint_name and "act" in joint_name:
             is_ankle_closed_loop = True
 
+    config_dict["general"]["is_waist_closed_loop"] = is_waist_closed_loop
+    config_dict["general"]["is_knee_closed_loop"] = is_knee_closed_loop
+    config_dict["general"]["is_ankle_closed_loop"] = is_ankle_closed_loop
+
     if is_waist_closed_loop:
         config_dict["general"]["waist_roll_backlash"] = 0.03
         config_dict["general"]["waist_yaw_backlash"] = 0.001
@@ -82,17 +86,17 @@ def get_default_config(
             if "pinion" in joint_name:
                 is_passive = True
 
-        if "waist" in joint_name:
+        if "waist" in joint_name and is_waist_closed_loop:
             transmission = "waist"
             if "act" not in joint_name:
                 is_passive = True
 
-        if "knee" in joint_name:
+        if "knee" in joint_name and is_knee_closed_loop:
             transmission = "knee"
             if "act" not in joint_name:
                 is_passive = True
 
-        if "ank" in joint_name:
+        if "ank" in joint_name and is_ankle_closed_loop:
             transmission = "ankle"
             if "act" not in joint_name:
                 is_passive = True
@@ -180,10 +184,6 @@ def get_default_config(
 
     # Create a new ordered dictionary from the sorted list
     config_dict["joints"] = dict(sorted_joints_list)
-
-    config_dict["general"]["is_waist_closed_loop"] = is_waist_closed_loop
-    config_dict["general"]["is_knee_closed_loop"] = is_knee_closed_loop
-    config_dict["general"]["is_ankle_closed_loop"] = is_ankle_closed_loop
 
     return config_dict
 
