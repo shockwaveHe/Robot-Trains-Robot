@@ -82,20 +82,20 @@
         "kff1": 0.0,
         "kff2": 0.0
     },
-    "left_ank_pitch": {
+    "left_ank_roll": {
         "motor": "XC430",
-        "init_pos": 6.277049541473389,
-        "default_pos": 0.253132,
+        "init_pos": 0.09664078801870346,
+        "default_pos": 0.0,
         "kp": 2100.0,
         "ki": 0.0,
         "kd": 0.0,
         "kff1": 0.0,
         "kff2": 0.0
     },
-    "left_ank_roll": {
+    "left_ank_pitch": {
         "motor": "XC430",
-        "init_pos": 0.09664078801870346,
-        "default_pos": 0.0,
+        "init_pos": 6.277049541473389,
+        "default_pos": 0.253132,
         "kp": 2100.0,
         "ki": 0.0,
         "kd": 0.0,
@@ -143,20 +143,20 @@
         "kff1": 0.0,
         "kff2": 0.0
     },
-    "right_ank_pitch": {
+    "right_ank_roll": {
         "motor": "XC430",
-        "init_pos": 6.277049541473389,
-        "default_pos": 0.253132,
+        "init_pos": 0.09664078801870346,
+        "default_pos": 0.0,
         "kp": 2100.0,
         "ki": 0.0,
         "kd": 0.0,
         "kff1": 0.0,
         "kff2": 0.0
     },
-    "right_ank_roll": {
+    "right_ank_pitch": {
         "motor": "XC430",
-        "init_pos": 0.09664078801870346,
-        "default_pos": 0.0,
+        "init_pos": 6.277049541473389,
+        "default_pos": 0.253132,
         "kp": 2100.0,
         "ki": 0.0,
         "kd": 0.0,

@@ -437,14 +437,14 @@
     <position name="left_hip_roll" joint="left_hip_roll" kp="16.40625" ctrlrange="-0.785398 0.785398" class="2XC430" />
     <position name="left_hip_pitch" joint="left_hip_pitch" kp="16.40625" ctrlrange="-1.5708 1.5708" class="2XC430" />
     <position name="left_knee_act" joint="left_knee_act" kp="21.09375" ctrlrange="0 1.91986" class="XM430" />
-    <position name="left_ank_pitch" joint="left_ank_pitch" kp="16.40625" ctrlrange="-0.785398 1.8326" class="XC430" />
     <position name="left_ank_roll" joint="left_ank_roll" kp="16.40625" ctrlrange="-1.5708 1.5708" class="XC430" />
+    <position name="left_ank_pitch" joint="left_ank_pitch" kp="16.40625" ctrlrange="-0.785398 1.8326" class="XC430" />
     <position name="right_hip_yaw_drive" joint="right_hip_yaw_drive" kp="11.71875" ctrlrange="-1.73614 1.73614" class="XC330" />
     <position name="right_hip_roll" joint="right_hip_roll" kp="16.40625" ctrlrange="-0.785398 0.785398" class="2XC430" />
     <position name="right_hip_pitch" joint="right_hip_pitch" kp="16.40625" ctrlrange="-1.5708 1.5708" class="2XC430" />
     <position name="right_knee_act" joint="right_knee_act" kp="21.09375" ctrlrange="-1.91986 0" class="XM430" />
-    <position name="right_ank_pitch" joint="right_ank_pitch" kp="16.40625" ctrlrange="-0.785398 1.8326" class="XC430" />
     <position name="right_ank_roll" joint="right_ank_roll" kp="16.40625" ctrlrange="-1.5708 1.5708" class="XC430" />
+    <position name="right_ank_pitch" joint="right_ank_pitch" kp="16.40625" ctrlrange="-0.785398 1.8326" class="XC430" />
     <position name="left_sho_pitch" joint="left_sho_pitch" kp="16.40625" ctrlrange="-3.14159 1.5708" class="XC430" />
     <position name="left_sho_roll" joint="left_sho_roll" kp="16.40625" ctrlrange="-1.5708 0.349066" class="2XL430" />
     <position name="left_sho_yaw_drive" joint="left_sho_yaw_drive" kp="16.40625" ctrlrange="-2.61799 2.61799" class="2XL430" />

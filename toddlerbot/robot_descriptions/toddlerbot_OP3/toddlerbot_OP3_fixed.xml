@@ -437,14 +437,14 @@
     <motor name="left_hip_roll" joint="left_hip_roll" class="2XC430" />
     <motor name="left_hip_pitch" joint="left_hip_pitch" class="2XC430" />
     <motor name="left_knee_act" joint="left_knee_act" class="XM430" />
-    <motor name="left_ank_pitch" joint="left_ank_pitch" class="XC430" />
     <motor name="left_ank_roll" joint="left_ank_roll" class="XC430" />
+    <motor name="left_ank_pitch" joint="left_ank_pitch" class="XC430" />
     <motor name="right_hip_yaw_drive" joint="right_hip_yaw_drive" class="XC330" />
     <motor name="right_hip_roll" joint="right_hip_roll" class="2XC430" />
     <motor name="right_hip_pitch" joint="right_hip_pitch" class="2XC430" />
     <motor name="right_knee_act" joint="right_knee_act" class="XM430" />
-    <motor name="right_ank_pitch" joint="right_ank_pitch" class="XC430" />
     <motor name="right_ank_roll" joint="right_ank_roll" class="XC430" />
+    <motor name="right_ank_pitch" joint="right_ank_pitch" class="XC430" />
     <motor name="left_sho_pitch" joint="left_sho_pitch" class="XC430" />
     <motor name="left_sho_roll" joint="left_sho_roll" class="2XL430" />
     <motor name="left_sho_yaw_drive" joint="left_sho_yaw_drive" class="2XL430" />
