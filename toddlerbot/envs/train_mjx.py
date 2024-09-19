@@ -9,7 +9,7 @@ import json
 import shutil
 import time
 from dataclasses import asdict
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import Any, Dict, List, Tuple, Type
 
 import jax
 import jax.numpy as jnp
@@ -184,99 +184,73 @@ def get_body_mass_attr_range(robot: Robot, body_mass_range: List[float], num_env
 def domain_randomize(
     sys: base.System,
     rng: jax.Array,
-    friction_range: Optional[List[float]],
-    damping_range: Optional[List[float]],
-    armature_range: Optional[List[float]],
-    frictionloss_range: Optional[List[float]],
-    body_mass_attr_range: Optional[Dict[str, jax.Array | npt.NDArray[np.float32]]],
+    friction_range: List[float],
+    damping_range: List[float],
+    armature_range: List[float],
+    frictionloss_range: List[float],
+    body_mass_attr_range: Dict[str, jax.Array | npt.NDArray[np.float32]],
 ) -> Tuple[base.System, base.System]:
     @jax.vmap
     def rand(rng: jax.Array):
         _, key = jax.random.split(rng, 2)
 
-        if friction_range is None:
-            friction = sys.geom_friction
-        else:
-            # Friction
-            friction = jax.random.uniform(
+        # Friction
+        friction = jax.random.uniform(
+            key,
+            (1,),
+            minval=friction_range[0],
+            maxval=friction_range[1],
+        )
+        friction = sys.geom_friction.at[:, 0].set(friction)
+
+        damping = (
+            jax.random.uniform(
+                key, (sys.nv,), minval=damping_range[0], maxval=damping_range[1]
+            )
+            * sys.dof_damping
+        )
+
+        armature = (
+            jax.random.uniform(
+                key, (sys.nv,), minval=armature_range[0], maxval=armature_range[1]
+            )
+            * sys.dof_armature
+        )
+
+        frictionloss = (
+            jax.random.uniform(
                 key,
-                (1,),
-                minval=friction_range[0],
-                maxval=friction_range[1],
+                (sys.nv,),
+                minval=frictionloss_range[0],
+                maxval=frictionloss_range[1],
             )
-            friction = sys.geom_friction.at[:, 0].set(friction)
+            * sys.dof_frictionloss
+        )
 
-        if damping_range is None:
-            damping = sys.dof_damping
-        else:
-            damping = (
-                jax.random.uniform(
-                    key, (sys.nv,), minval=damping_range[0], maxval=damping_range[1]
-                )
-                * sys.dof_damping
-            )
-
-        if armature_range is None:
-            armature = sys.dof_armature
-        else:
-            armature = (
-                jax.random.uniform(
-                    key, (sys.nv,), minval=armature_range[0], maxval=armature_range[1]
-                )
-                * sys.dof_armature
-            )
-
-        if frictionloss_range is None:
-            frictionloss = sys.dof_frictionloss
-        else:
-            frictionloss = (
-                jax.random.uniform(
-                    key,
-                    (sys.nv,),
-                    minval=frictionloss_range[0],
-                    maxval=frictionloss_range[1],
-                )
-                * sys.dof_frictionloss
-            )
-
-        if body_mass_attr_range is None:
-            body_mass_attr = {
-                "body_mass": sys.body_mass,
-                "body_inertia": sys.body_inertia,
-                "body_invweight0": sys.body_invweight0,
-                "body_subtreemass": sys.body_subtreemass,
-                "dof_M0": sys.dof_M0,
-                "dof_invweight0": sys.dof_invweight0,
-                "tendon_invweight0": sys.tendon_invweight0,
-            }
-        else:
-            body_mass_attr = {
-                "body_mass": body_mass_attr_range["body_mass"][0],
-                "body_inertia": body_mass_attr_range["body_inertia"][0],
-                "body_invweight0": body_mass_attr_range["body_invweight0"][0],
-                "body_subtreemass": body_mass_attr_range["body_subtreemass"][0],
-                "dof_M0": body_mass_attr_range["dof_M0"][0],
-                "dof_invweight0": body_mass_attr_range["dof_invweight0"][0],
-                "tendon_invweight0": body_mass_attr_range["tendon_invweight0"][0],
-            }
-
-            body_mass_attr_range["body_mass"] = body_mass_attr_range["body_mass"][1:]
-            body_mass_attr_range["body_inertia"] = body_mass_attr_range["body_inertia"][
-                1:
-            ]
-            body_mass_attr_range["body_invweight0"] = body_mass_attr_range[
-                "body_invweight0"
-            ][1:]
-            body_mass_attr_range["body_subtreemass"] = body_mass_attr_range[
-                "body_subtreemass"
-            ][1:]
-            body_mass_attr_range["dof_M0"] = body_mass_attr_range["dof_M0"][1:]
-            body_mass_attr_range["dof_invweight0"] = body_mass_attr_range[
-                "dof_invweight0"
-            ][1:]
-            body_mass_attr_range["tendon_invweight0"] = body_mass_attr_range[
-                "tendon_invweight0"
-            ][1:]
+        body_mass_attr = {
+            "body_mass": body_mass_attr_range["body_mass"][0],
+            "body_inertia": body_mass_attr_range["body_inertia"][0],
+            "body_invweight0": body_mass_attr_range["body_invweight0"][0],
+            "body_subtreemass": body_mass_attr_range["body_subtreemass"][0],
+            "dof_M0": body_mass_attr_range["dof_M0"][0],
+            "dof_invweight0": body_mass_attr_range["dof_invweight0"][0],
+            "tendon_invweight0": body_mass_attr_range["tendon_invweight0"][0],
+        }
+        body_mass_attr_range["body_mass"] = body_mass_attr_range["body_mass"][1:]
+        body_mass_attr_range["body_inertia"] = body_mass_attr_range["body_inertia"][1:]
+        body_mass_attr_range["body_invweight0"] = body_mass_attr_range[
+            "body_invweight0"
+        ][1:]
+        body_mass_attr_range["body_subtreemass"] = body_mass_attr_range[
+            "body_subtreemass"
+        ][1:]
+        body_mass_attr_range["dof_M0"] = body_mass_attr_range["dof_M0"][1:]
+        body_mass_attr_range["dof_invweight0"] = body_mass_attr_range["dof_invweight0"][
+            1:
+        ]
+        body_mass_attr_range["tendon_invweight0"] = body_mass_attr_range[
+            "tendon_invweight0"
+        ][1:]
 
         return friction, damping, armature, frictionloss, body_mass_attr
 
@@ -579,27 +553,27 @@ if __name__ == "__main__":
         env_cfg.rewards.scales.waist_action_acc = 1e-2
 
     env = EnvClass(
-        "walk",
+        args.env,
         robot,
         env_cfg,  # type: ignore
         fixed_base="fixed" in args.env,
         **kwargs,  # type: ignore
     )
     eval_env = EnvClass(
-        "walk",
+        args.env,
         robot,
         env_cfg,  # type: ignore
         fixed_base="fixed" in args.env,
         **kwargs,  # type: ignore
     )
     test_env = EnvClass(
-        "walk",
+        args.env,
         robot,
         env_cfg,  # type: ignore
         fixed_base="fixed" in args.env,
         fixed_command=fixed_command,
         add_noise=False,
-        add_push=False,
+        add_domain_rand=False,
         **kwargs,
     )
 

@@ -29,7 +29,7 @@ class MJXEnv(PipelineEnv):
         fixed_base: bool = False,
         fixed_command: Optional[jax.Array] = None,
         add_noise: bool = True,
-        add_push: bool = True,
+        add_domain_rand: bool = True,
         **kwargs: Any,
     ):
         self.name = name
@@ -39,7 +39,7 @@ class MJXEnv(PipelineEnv):
         self.fixed_base = fixed_base
         self.fixed_command = fixed_command
         self.add_noise = add_noise
-        self.add_push = add_push
+        self.add_domain_rand = add_domain_rand
 
         if fixed_base:
             xml_path = find_robot_file_path(robot.name, suffix="_fixed_scene.xml")
@@ -219,6 +219,7 @@ class MJXEnv(PipelineEnv):
         self.reset_noise_pos = self.cfg.noise.reset_noise_pos
 
         self.kp_range = self.cfg.domain_rand.kp_range
+        self.kd_range = self.cfg.domain_rand.kd_range
         self.tau_max_range = self.cfg.domain_rand.tau_max_range
         self.q_dot_tau_max_range = self.cfg.domain_rand.q_dot_tau_max_range
         self.q_dot_max_range = self.cfg.domain_rand.q_dot_max_range
@@ -307,6 +308,38 @@ class MJXEnv(PipelineEnv):
         ]
         state_info["init_feet_height"] = pipeline_state.x.pos[self.feet_link_ids, 2]
 
+        state_info["controller_kp"] = self.controller.kp.copy()
+        state_info["controller_kd"] = self.controller.kd.copy()
+        state_info["controller_tau_max"] = self.controller.tau_max.copy()
+        state_info["controller_q_dot_tau_max"] = self.controller.q_dot_tau_max.copy()
+        state_info["controller_q_dot_max"] = self.controller.q_dot_max.copy()
+
+        if self.add_domain_rand:
+            state_info["controller_kp"] *= jax.random.uniform(
+                rng3, (self.nu,), minval=self.kp_range[0], maxval=self.kp_range[1]
+            )
+            state_info["controller_kd"] *= jax.random.uniform(
+                rng4, (self.nu,), minval=self.kd_range[0], maxval=self.kd_range[1]
+            )
+            state_info["controller_tau_max"] *= jax.random.uniform(
+                rng4,
+                (self.nu,),
+                minval=self.tau_max_range[0],
+                maxval=self.tau_max_range[1],
+            )
+            state_info["controller_q_dot_tau_max"] *= jax.random.uniform(
+                rng5,
+                (self.nu,),
+                minval=self.q_dot_tau_max_range[0],
+                maxval=self.q_dot_tau_max_range[1],
+            )
+            state_info["controller_q_dot_max"] *= jax.random.uniform(
+                rng6,
+                (self.nu,),
+                minval=self.q_dot_max_range[0],
+                maxval=self.q_dot_max_range[1],
+            )
+
         obs_history = jnp.zeros(self.num_obs_history * self.obs_size)
         privileged_obs_history = jnp.zeros(
             self.num_privileged_obs_history * self.privileged_obs_size
@@ -323,54 +356,30 @@ class MJXEnv(PipelineEnv):
         for k in self.reward_names:
             metrics[k] = zero
 
-        if self.kp_range is not None:
-            self.controller.kp *= jax.random.uniform(
-                rng3, (self.nu,), minval=self.kp_range[0], maxval=self.kp_range[1]
-            )
-
-        if self.tau_max_range is not None:
-            self.controller.tau_max *= jax.random.uniform(
-                rng4,
-                (self.nu,),
-                minval=self.tau_max_range[0],
-                maxval=self.tau_max_range[1],
-            )
-
-        if self.q_dot_tau_max_range is not None:
-            self.controller.q_dot_tau_max *= jax.random.uniform(
-                rng5,
-                (self.nu,),
-                minval=self.q_dot_tau_max_range[0],
-                maxval=self.q_dot_tau_max_range[1],
-            )
-
-        if self.q_dot_max_range is not None:
-            self.controller.q_dot_max *= jax.random.uniform(
-                rng6,
-                (self.nu,),
-                minval=self.q_dot_max_range[0],
-                maxval=self.q_dot_max_range[1],
-            )
-
         return State(
             pipeline_state, obs, privileged_obs, reward, done, metrics, state_info
         )
 
-    def pipeline_step(self, pipeline_state: Any, action: jax.Array) -> base.State:
+    def pipeline_step(self, state: State, action: jax.Array) -> base.State:
         """Takes a physics step using the physics pipeline."""
 
-        def f(state, _):
+        def f(pipeline_state, _):
             ctrl = self.controller.step(
-                state.q[self.q_start_idx + self.motor_indices],
-                state.qd[self.qd_start_idx + self.motor_indices],
+                pipeline_state.q[self.q_start_idx + self.motor_indices],
+                pipeline_state.qd[self.qd_start_idx + self.motor_indices],
                 action,
+                state.info["controller_kp"],
+                state.info["controller_kd"],
+                state.info["controller_tau_max"],
+                state.info["controller_q_dot_tau_max"],
+                state.info["controller_q_dot_max"],
             )
             return (
-                self._pipeline.step(self.sys, state, ctrl, self._debug),
+                self._pipeline.step(self.sys, pipeline_state, ctrl, self._debug),
                 None,
             )
 
-        return jax.lax.scan(f, pipeline_state, (), self._n_frames)[0]
+        return jax.lax.scan(f, state.pipeline_state, (), self._n_frames)[0]
 
     def step(self, state: State, action: jax.Array) -> State:
         """Runs one timestep of the environment's dynamics."""
@@ -418,7 +427,7 @@ class MJXEnv(PipelineEnv):
         assert isinstance(motor_target, jax.Array)
         state.info["last_motor_target"] = motor_target.copy()
 
-        if self.add_push:
+        if self.add_domain_rand:
             push_theta = jax.random.uniform(push_rng, maxval=2 * jnp.pi)
             push = jnp.array([jnp.cos(push_theta), jnp.sin(push_theta)])
             push *= jnp.mod(state.info["step"], self.push_interval) == 0
@@ -428,7 +437,7 @@ class MJXEnv(PipelineEnv):
             state.info["push"] = push
 
         # jax.debug.breakpoint()
-        pipeline_state = self.pipeline_step(state.pipeline_state, motor_target)
+        pipeline_state = self.pipeline_step(state, motor_target)
 
         # jax.debug.print(
         #     "qfrc: {}",

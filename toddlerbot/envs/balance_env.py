@@ -45,6 +45,7 @@ class BalanceEnv(MJXEnv):
         fixed_base: bool = False,
         fixed_command: Optional[jax.Array] = None,
         add_noise: bool = True,
+        add_domain_rand: bool = True,
         **kwargs: Any,
     ):
         motion_ref = BalanceReference(robot)
@@ -60,6 +61,7 @@ class BalanceEnv(MJXEnv):
             fixed_base=fixed_base,
             fixed_command=fixed_command,
             add_noise=add_noise,
+            add_domain_rand=add_domain_rand,
             **kwargs,
         )
 

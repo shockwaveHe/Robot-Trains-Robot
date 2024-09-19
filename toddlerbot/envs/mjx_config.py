@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List
 
 
 @dataclass
@@ -89,27 +89,16 @@ class MJXConfig:
 
     @dataclass
     class DomainRandConfig:
-        friction_range: Optional[List[float]] = field(
-            default_factory=lambda: [0.5, 1.5]
-        )
-        damping_range: Optional[List[float]] = field(default_factory=lambda: [0.8, 1.2])
-        armature_range: Optional[List[float]] = field(
-            default_factory=lambda: [0.8, 1.2]
-        )
-        frictionloss_range: Optional[List[float]] = field(
-            default_factory=lambda: [0.8, 1.2]
-        )
-        added_mass_range: Optional[List[float]] = field(
-            default_factory=lambda: [-0.2, 0.2]
-        )
-        kp_range: Optional[List[float]] = field(default_factory=lambda: [0.8, 1.2])
-        tau_max_range: Optional[List[float]] = field(default_factory=lambda: [0.5, 1.5])
-        q_dot_tau_max_range: Optional[List[float]] = field(
-            default_factory=lambda: [0.5, 1.5]
-        )
-        q_dot_max_range: Optional[List[float]] = field(
-            default_factory=lambda: [0.5, 1.5]
-        )
+        friction_range: List[float] = field(default_factory=lambda: [0.5, 1.5])
+        damping_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
+        armature_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
+        frictionloss_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
+        added_mass_range: List[float] = field(default_factory=lambda: [-0.2, 0.2])
+        kp_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
+        kd_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
+        tau_max_range: List[float] = field(default_factory=lambda: [0.5, 1.5])
+        q_dot_tau_max_range: List[float] = field(default_factory=lambda: [0.5, 1.5])
+        q_dot_max_range: List[float] = field(default_factory=lambda: [0.5, 1.5])
         push_interval_s: int = 2  # seconds
         push_vel: float = 0.1
 
