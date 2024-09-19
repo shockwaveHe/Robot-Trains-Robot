@@ -234,6 +234,22 @@
             ],
         },
         {
+            "name": "Python: walk_toddlerbot_OP3_mjx",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/envs/train_mjx.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot",
+                "toddlerbot_OP3",
+                "--env",
+                "walk",
+                "--eval",
+                "20240919_103340"
+            ],
+        },
+        {
             "name": "Python: balance_toddlerbot_mjx",
             "type": "python",
             "request": "launch",

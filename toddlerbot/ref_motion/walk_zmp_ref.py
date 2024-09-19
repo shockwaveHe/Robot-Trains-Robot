@@ -3,6 +3,7 @@ import pickle
 from typing import List, Optional, Tuple
 
 import jax
+import numpy
 from tqdm import tqdm
 
 from toddlerbot.algorithms.zmp.zmp_planner import ZMPPlanner
@@ -48,10 +49,12 @@ class WalkZMPReference(MotionReference):
             float(robot.config["general"]["offsets"]["torso_z"]) - self.com_z
         )
 
-        self.leg_joint_slice = slice(
-            self.robot.joint_ordering.index("left_hip_yaw_driven"),
-            self.robot.joint_ordering.index("right_ank_pitch") + 1,
+        joint_groups = numpy.array(
+            [robot.joint_groups[name] for name in robot.joint_ordering]
         )
+        self.leg_joint_indices = np.arange(len(robot.joint_ordering))[
+            joint_groups == "leg"
+        ]
 
         self.zmp_planner = ZMPPlanner()
 
@@ -97,7 +100,7 @@ class WalkZMPReference(MotionReference):
         joint_pos = self.default_joint_pos.copy()
         joint_pos = inplace_update(
             joint_pos,
-            self.leg_joint_slice,
+            self.leg_joint_indices,
             self.leg_joint_pos_lookup[nearest_command_idx][
                 (idx % self.lookup_length[nearest_command_idx]).astype(int)
             ],

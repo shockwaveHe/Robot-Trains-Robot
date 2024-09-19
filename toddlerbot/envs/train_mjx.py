@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple, Type
 import jax
 import jax.numpy as jnp
 import mediapy as media
+import mujoco
 import numpy as np
 import numpy.typing as npt
 import optax
@@ -26,7 +27,6 @@ from moviepy.editor import VideoFileClip, clips_array
 from orbax import checkpoint as ocp
 from tqdm import tqdm
 
-import mujoco
 import wandb
 from toddlerbot.envs.balance_env import BalanceCfg, BalanceEnv
 from toddlerbot.envs.mjx_env import MJXEnv
@@ -345,6 +345,11 @@ def train(
     with open(os.path.join(exp_folder_path, "env_config.json"), "w") as f:
         json.dump(asdict(env.cfg), f, indent=4)
 
+    # Copy the Python scripts
+    shutil.copytree(
+        os.path.join("toddlerbot", "envs"), os.path.join(exp_folder_path, "envs")
+    )
+
     wandb.init(
         project="ToddlerBot",
         sync_tensorboard=True,
@@ -362,6 +367,8 @@ def train(
         policy_path = os.path.join(path, "policy")
         model.save_params(policy_path, (params[0], params[1].policy))
 
+    # TODO: Implement adaptive learning rate
+    # TODO: Try cosine decay
     learning_rate_schedule_fn = optax.linear_schedule(
         init_value=train_cfg.learning_rate,
         end_value=train_cfg.min_learning_rate,
@@ -558,9 +565,9 @@ if __name__ == "__main__":
         raise ValueError(f"Unknown env: {args.env}")
 
     if "fixed" in args.env:
-        train_cfg.num_timesteps = 10_000_000
-        train_cfg.num_evals = 100
-        train_cfg.transition_steps = 1_000_000
+        train_cfg.num_timesteps = 20_000_000
+        train_cfg.num_evals = 200
+        train_cfg.transition_steps = 2_000_000
         train_cfg.learning_rate = 1e-4
 
         env_cfg.rewards.healthy_z_range = [-0.2, 0.2]
