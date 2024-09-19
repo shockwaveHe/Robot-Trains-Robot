@@ -429,7 +429,10 @@ def train(
         # Log metrics to wandb
         wandb.log(log_data)
 
-    _, params, _ = train_fn(environment=env, eval_env=eval_env, progress_fn=progress)
+    with jax.checking_leaks():
+        _, params, _ = train_fn(
+            environment=env, eval_env=eval_env, progress_fn=progress
+        )
 
     model_path = os.path.join(exp_folder_path, "policy")
     model.save_params(model_path, params)
@@ -524,35 +527,35 @@ if __name__ == "__main__":
 
     env_cfg: WalkCfg | SquatCfg | RotateTorsoCfg | BalanceCfg | None = None
     train_cfg: PPOConfig | None = None
-    env_class: (
+    EnvClass: (
         Type[WalkEnv] | Type[SquatEnv] | Type[RotateTorsoEnv] | Type[BalanceEnv] | None
     ) = None
 
     if "walk" in args.env:
         env_cfg = WalkCfg()
         train_cfg = PPOConfig()
-        env_class = WalkEnv
+        EnvClass = WalkEnv
         fixed_command = jnp.array([0.1, 0.0, 0.0])
         kwargs = {"ref_motion_type": "zmp"}
 
     elif "squat" in args.env:
         env_cfg = SquatCfg()
         train_cfg = PPOConfig()
-        env_class = SquatEnv
+        EnvClass = SquatEnv
         fixed_command = jnp.array([-0.0])
         kwargs = {}
 
     elif "rotate_torso" in args.env:
         env_cfg = RotateTorsoCfg()
         train_cfg = PPOConfig()
-        env_class = RotateTorsoEnv
+        EnvClass = RotateTorsoEnv
         fixed_command = jnp.array([0.2, 0.0])
         kwargs = {}
 
     elif "balance" in args.env:
         env_cfg = BalanceCfg()
         train_cfg = PPOConfig()
-        env_class = BalanceEnv
+        EnvClass = BalanceEnv
         fixed_command = jnp.array([0.0])
         kwargs = {}
 
@@ -578,21 +581,21 @@ if __name__ == "__main__":
         env_cfg.rewards.scales.waist_action_rate = 1e-2
         env_cfg.rewards.scales.waist_action_acc = 1e-2
 
-    env = env_class(
+    env = EnvClass(
         "walk",
         robot,
         env_cfg,  # type: ignore
         fixed_base="fixed" in args.env,
         **kwargs,  # type: ignore
     )
-    eval_env = env_class(
+    eval_env = EnvClass(
         "walk",
         robot,
         env_cfg,  # type: ignore
         fixed_base="fixed" in args.env,
         **kwargs,  # type: ignore
     )
-    test_env = env_class(
+    test_env = EnvClass(
         "walk",
         robot,
         env_cfg,  # type: ignore
