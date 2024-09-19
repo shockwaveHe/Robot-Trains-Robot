@@ -9,7 +9,7 @@ import json
 import shutil
 import time
 from dataclasses import asdict
-from typing import Any, Dict, List, Tuple, Type
+from typing import Any, Dict, List, Optional, Tuple, Type
 
 import jax
 import jax.numpy as jnp
@@ -188,7 +188,7 @@ def domain_randomize(
     damping_range: List[float],
     armature_range: List[float],
     frictionloss_range: List[float],
-    body_mass_attr_range: Dict[str, jax.Array | npt.NDArray[np.float32]],
+    body_mass_attr_range: Optional[Dict[str, jax.Array | npt.NDArray[np.float32]]],
 ) -> Tuple[base.System, base.System]:
     @jax.vmap
     def rand(rng: jax.Array):
@@ -227,30 +227,43 @@ def domain_randomize(
             * sys.dof_frictionloss
         )
 
-        body_mass_attr = {
-            "body_mass": body_mass_attr_range["body_mass"][0],
-            "body_inertia": body_mass_attr_range["body_inertia"][0],
-            "body_invweight0": body_mass_attr_range["body_invweight0"][0],
-            "body_subtreemass": body_mass_attr_range["body_subtreemass"][0],
-            "dof_M0": body_mass_attr_range["dof_M0"][0],
-            "dof_invweight0": body_mass_attr_range["dof_invweight0"][0],
-            "tendon_invweight0": body_mass_attr_range["tendon_invweight0"][0],
-        }
-        body_mass_attr_range["body_mass"] = body_mass_attr_range["body_mass"][1:]
-        body_mass_attr_range["body_inertia"] = body_mass_attr_range["body_inertia"][1:]
-        body_mass_attr_range["body_invweight0"] = body_mass_attr_range[
-            "body_invweight0"
-        ][1:]
-        body_mass_attr_range["body_subtreemass"] = body_mass_attr_range[
-            "body_subtreemass"
-        ][1:]
-        body_mass_attr_range["dof_M0"] = body_mass_attr_range["dof_M0"][1:]
-        body_mass_attr_range["dof_invweight0"] = body_mass_attr_range["dof_invweight0"][
-            1:
-        ]
-        body_mass_attr_range["tendon_invweight0"] = body_mass_attr_range[
-            "tendon_invweight0"
-        ][1:]
+        if body_mass_attr_range is None:
+            body_mass_attr = {
+                "body_mass": sys.body_mass,
+                "body_inertia": sys.body_inertia,
+                "body_invweight0": sys.body_invweight0,
+                "body_subtreemass": sys.body_subtreemass,
+                "dof_M0": sys.dof_M0,
+                "dof_invweight0": sys.dof_invweight0,
+                "tendon_invweight0": sys.tendon_invweight0,
+            }
+        else:
+            body_mass_attr = {
+                "body_mass": body_mass_attr_range["body_mass"][0],
+                "body_inertia": body_mass_attr_range["body_inertia"][0],
+                "body_invweight0": body_mass_attr_range["body_invweight0"][0],
+                "body_subtreemass": body_mass_attr_range["body_subtreemass"][0],
+                "dof_M0": body_mass_attr_range["dof_M0"][0],
+                "dof_invweight0": body_mass_attr_range["dof_invweight0"][0],
+                "tendon_invweight0": body_mass_attr_range["tendon_invweight0"][0],
+            }
+            body_mass_attr_range["body_mass"] = body_mass_attr_range["body_mass"][1:]
+            body_mass_attr_range["body_inertia"] = body_mass_attr_range["body_inertia"][
+                1:
+            ]
+            body_mass_attr_range["body_invweight0"] = body_mass_attr_range[
+                "body_invweight0"
+            ][1:]
+            body_mass_attr_range["body_subtreemass"] = body_mass_attr_range[
+                "body_subtreemass"
+            ][1:]
+            body_mass_attr_range["dof_M0"] = body_mass_attr_range["dof_M0"][1:]
+            body_mass_attr_range["dof_invweight0"] = body_mass_attr_range[
+                "dof_invweight0"
+            ][1:]
+            body_mass_attr_range["tendon_invweight0"] = body_mass_attr_range[
+                "tendon_invweight0"
+            ][1:]
 
         return friction, damping, armature, frictionloss, body_mass_attr
 
