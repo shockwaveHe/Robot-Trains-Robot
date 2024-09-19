@@ -185,15 +185,13 @@ def domain_randomize(
     sys: base.System,
     rng: jax.Array,
     friction_range: Optional[List[float]],
-    # gain_range: Optional[List[float]],
     damping_range: Optional[List[float]],
     armature_range: Optional[List[float]],
+    frictionloss_range: Optional[List[float]],
     body_mass_attr_range: Optional[Dict[str, jax.Array | npt.NDArray[np.float32]]],
 ) -> Tuple[base.System, base.System]:
     @jax.vmap
-    def rand(
-        rng: jax.Array,
-    ) -> Tuple[jax.Array, jax.Array, jax.Array, Dict[str, jax.Array]]:
+    def rand(rng: jax.Array):
         _, key = jax.random.split(rng, 2)
 
         if friction_range is None:
@@ -208,28 +206,12 @@ def domain_randomize(
             )
             friction = sys.geom_friction.at[:, 0].set(friction)
 
-        # Only applies to the position control
-        # if gain_range is None:
-        #     gain = sys.actuator_gainprm
-        #     bias = sys.actuator_biasprm
-        # else:
-        #     # Actuator
-        #     _, key = jax.random.split(key, 2)
-        #     param = (
-        #         jax.random.uniform(
-        #             key, (1,), minval=gain_range[0], maxval=gain_range[1]
-        #         )
-        #         * sys.actuator_gainprm[:, 0]
-        #     )
-        #     gain = sys.actuator_gainprm.at[:, 0].set(param)
-        #     bias = sys.actuator_biasprm.at[:, 1].set(-param)
-
         if damping_range is None:
             damping = sys.dof_damping
         else:
             damping = (
                 jax.random.uniform(
-                    key, (1,), minval=damping_range[0], maxval=damping_range[1]
+                    key, (sys.nv,), minval=damping_range[0], maxval=damping_range[1]
                 )
                 * sys.dof_damping
             )
@@ -239,9 +221,22 @@ def domain_randomize(
         else:
             armature = (
                 jax.random.uniform(
-                    key, (1,), minval=armature_range[0], maxval=armature_range[1]
+                    key, (sys.nv,), minval=armature_range[0], maxval=armature_range[1]
                 )
                 * sys.dof_armature
+            )
+
+        if frictionloss_range is None:
+            frictionloss = sys.dof_frictionloss
+        else:
+            frictionloss = (
+                jax.random.uniform(
+                    key,
+                    (sys.nv,),
+                    minval=frictionloss_range[0],
+                    maxval=frictionloss_range[1],
+                )
+                * sys.dof_frictionloss
             )
 
         if body_mass_attr_range is None:
@@ -283,9 +278,9 @@ def domain_randomize(
                 "tendon_invweight0"
             ][1:]
 
-        return friction, damping, armature, body_mass_attr
+        return friction, damping, armature, frictionloss, body_mass_attr
 
-    friction, damping, armature, body_mass_attr = rand(rng)
+    friction, damping, armature, frictionloss, body_mass_attr = rand(rng)
 
     in_axes_dict = {
         "geom_friction": 0,
@@ -293,6 +288,7 @@ def domain_randomize(
         # "actuator_biasprm": 0,
         "dof_damping": 0,
         "dof_armature": 0,
+        "dof_frictionloss": 0,
         **{key: 0 for key in body_mass_attr.keys()},
     }
 
@@ -302,6 +298,7 @@ def domain_randomize(
         # "actuator_biasprm": bias,
         "dof_damping": damping,
         "dof_armature": armature,
+        "dof_frictionloss": frictionloss,
         **body_mass_attr,
     }
 
@@ -367,11 +364,10 @@ def train(
         model.save_params(policy_path, (params[0], params[1].policy))
 
     # TODO: Implement adaptive learning rate
-    # TODO: Try cosine decay
-    learning_rate_schedule_fn = optax.linear_schedule(
-        init_value=train_cfg.learning_rate,
-        end_value=train_cfg.min_learning_rate,
-        transition_steps=train_cfg.num_timesteps,
+    learning_rate_schedule_fn = optax.cosine_decay_schedule(
+        train_cfg.learning_rate,
+        train_cfg.decay_steps,
+        train_cfg.alpha,
     )
 
     body_mass_attr_range = None
@@ -383,9 +379,9 @@ def train(
     domain_randomize_fn = functools.partial(
         domain_randomize,
         friction_range=env.cfg.domain_rand.friction_range,
-        # gain_range=env.cfg.domain_rand.gain_range,
         damping_range=env.cfg.domain_rand.damping_range,
         armature_range=env.cfg.domain_rand.armature_range,
+        frictionloss_range=env.cfg.domain_rand.frictionloss_range,
         body_mass_attr_range=body_mass_attr_range,
     )
 
@@ -566,8 +562,6 @@ if __name__ == "__main__":
     if "fixed" in args.env:
         train_cfg.num_timesteps = 20_000_000
         train_cfg.num_evals = 200
-        train_cfg.transition_steps = 2_000_000
-        train_cfg.learning_rate = 1e-4
 
         env_cfg.rewards.healthy_z_range = [-0.2, 0.2]
         env_cfg.rewards.scales.reset()

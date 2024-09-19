@@ -218,6 +218,11 @@ class MJXEnv(PipelineEnv):
         )
         self.reset_noise_pos = self.cfg.noise.reset_noise_pos
 
+        self.kp_range = self.cfg.domain_rand.kp_range
+        self.tau_max_range = self.cfg.domain_rand.tau_max_range
+        self.q_dot_tau_max_range = self.cfg.domain_rand.q_dot_tau_max_range
+        self.q_dot_max_range = self.cfg.domain_rand.q_dot_max_range
+
         self.push_interval = np.ceil(self.cfg.domain_rand.push_interval_s / self.dt)
         self.push_vel = self.cfg.domain_rand.push_vel
 
@@ -225,7 +230,6 @@ class MJXEnv(PipelineEnv):
         """Prepares a list of reward functions, which will be called to compute the total reward.
         Looks for self._reward_<REWARD_NAME>, where <REWARD_NAME> are names of all non zero reward scales in the cfg.
         """
-
         reward_scale_dict = asdict(self.cfg.rewards.scales)
         # Remove zero scales and multiply non-zero ones by dt
         for key in list(reward_scale_dict.keys()):
@@ -249,7 +253,7 @@ class MJXEnv(PipelineEnv):
 
     def reset(self, rng: jax.Array) -> State:
         """Resets the environment to an initial state."""
-        rng, rng1, rng2 = jax.random.split(rng, 3)
+        rng, rng1, rng2, rng3, rng4, rng5, rng6 = jax.random.split(rng, 7)
 
         state_info = {
             "rng": rng,
@@ -271,7 +275,7 @@ class MJXEnv(PipelineEnv):
 
         path_pos = jnp.zeros(3)
         path_quat = jnp.array([1.0, 0.0, 0.0, 0.0])
-        command = self._sample_command(rng2)
+        command = self._sample_command(rng1)
         state_info["phase_signal"] = self.motion_ref.get_phase_signal(0.0, command)
         state_ref = self.motion_ref.get_state_ref(path_pos, path_quat, 0.0, command)
         state_info["path_pos"] = path_pos
@@ -287,7 +291,7 @@ class MJXEnv(PipelineEnv):
         qpos = qpos.at[self.q_start_idx + self.arm_motor_indices].set(arm_motor_pos)  # type:ignore
         if self.add_noise:
             noise_pos = jax.random.uniform(
-                rng1,
+                rng2,
                 (self.nq - self.q_start_idx,),
                 minval=-self.reset_noise_pos,
                 maxval=self.reset_noise_pos,
@@ -318,6 +322,35 @@ class MJXEnv(PipelineEnv):
         metrics: Dict[str, Any] = {}
         for k in self.reward_names:
             metrics[k] = zero
+
+        if self.kp_range is not None:
+            self.controller.kp *= jax.random.uniform(
+                rng3, (self.nu,), minval=self.kp_range[0], maxval=self.kp_range[1]
+            )
+
+        if self.tau_max_range is not None:
+            self.controller.tau_max *= jax.random.uniform(
+                rng4,
+                (self.nu,),
+                minval=self.tau_max_range[0],
+                maxval=self.tau_max_range[1],
+            )
+
+        if self.q_dot_tau_max_range is not None:
+            self.controller.q_dot_tau_max *= jax.random.uniform(
+                rng5,
+                (self.nu,),
+                minval=self.q_dot_tau_max_range[0],
+                maxval=self.q_dot_tau_max_range[1],
+            )
+
+        if self.q_dot_max_range is not None:
+            self.controller.q_dot_max *= jax.random.uniform(
+                rng6,
+                (self.nu,),
+                minval=self.q_dot_max_range[0],
+                maxval=self.q_dot_max_range[1],
+            )
 
         return State(
             pipeline_state, obs, privileged_obs, reward, done, metrics, state_info
