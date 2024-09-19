@@ -118,7 +118,7 @@ def optimize_parameters(
     armature_range: Tuple[float, float, float] = (0.0, 0.01, 1e-4),
     frictionloss_range: Tuple[float, float, float] = (0.0, 1.0, 1e-3),
     q_dot_tau_max_range: Tuple[float, float, float] = (0.0, 5.0, 1e-2),
-    q_dot_max_range: Tuple[float, float, float] = (5.0, 50.0, 1e-1),
+    q_dot_max_range: Tuple[float, float, float] = (5.0, 10.0, 1e-1),
 ):
     if sim_name == "mujoco":
         sim = MuJoCoSim(robot, fixed_base=True)
