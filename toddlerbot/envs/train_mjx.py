@@ -185,7 +185,7 @@ def domain_randomize(
     sys: base.System,
     rng: jax.Array,
     friction_range: Optional[List[float]],
-    gain_range: Optional[List[float]],
+    # gain_range: Optional[List[float]],
     damping_range: Optional[List[float]],
     armature_range: Optional[List[float]],
     body_mass_attr_range: Optional[Dict[str, jax.Array | npt.NDArray[np.float32]]],
@@ -193,9 +193,7 @@ def domain_randomize(
     @jax.vmap
     def rand(
         rng: jax.Array,
-    ) -> Tuple[
-        jax.Array, jax.Array, jax.Array, jax.Array, jax.Array, Dict[str, jax.Array]
-    ]:
+    ) -> Tuple[jax.Array, jax.Array, jax.Array, Dict[str, jax.Array]]:
         _, key = jax.random.split(rng, 2)
 
         if friction_range is None:
@@ -210,20 +208,21 @@ def domain_randomize(
             )
             friction = sys.geom_friction.at[:, 0].set(friction)
 
-        if gain_range is None:
-            gain = sys.actuator_gainprm
-            bias = sys.actuator_biasprm
-        else:
-            # Actuator
-            _, key = jax.random.split(key, 2)
-            param = (
-                jax.random.uniform(
-                    key, (1,), minval=gain_range[0], maxval=gain_range[1]
-                )
-                * sys.actuator_gainprm[:, 0]
-            )
-            gain = sys.actuator_gainprm.at[:, 0].set(param)
-            bias = sys.actuator_biasprm.at[:, 1].set(-param)
+        # Only applies to the position control
+        # if gain_range is None:
+        #     gain = sys.actuator_gainprm
+        #     bias = sys.actuator_biasprm
+        # else:
+        #     # Actuator
+        #     _, key = jax.random.split(key, 2)
+        #     param = (
+        #         jax.random.uniform(
+        #             key, (1,), minval=gain_range[0], maxval=gain_range[1]
+        #         )
+        #         * sys.actuator_gainprm[:, 0]
+        #     )
+        #     gain = sys.actuator_gainprm.at[:, 0].set(param)
+        #     bias = sys.actuator_biasprm.at[:, 1].set(-param)
 
         if damping_range is None:
             damping = sys.dof_damping
@@ -284,14 +283,14 @@ def domain_randomize(
                 "tendon_invweight0"
             ][1:]
 
-        return friction, gain, bias, damping, armature, body_mass_attr
+        return friction, damping, armature, body_mass_attr
 
     friction, gain, bias, damping, armature, body_mass_attr = rand(rng)
 
     in_axes_dict = {
         "geom_friction": 0,
-        "actuator_gainprm": 0,
-        "actuator_biasprm": 0,
+        # "actuator_gainprm": 0,
+        # "actuator_biasprm": 0,
         "dof_damping": 0,
         "dof_armature": 0,
         **{key: 0 for key in body_mass_attr.keys()},
@@ -299,8 +298,8 @@ def domain_randomize(
 
     sys_dict = {
         "geom_friction": friction,
-        "actuator_gainprm": gain,
-        "actuator_biasprm": bias,
+        # "actuator_gainprm": gain,
+        # "actuator_biasprm": bias,
         "dof_damping": damping,
         "dof_armature": armature,
         **body_mass_attr,
@@ -384,7 +383,7 @@ def train(
     domain_randomize_fn = functools.partial(
         domain_randomize,
         friction_range=env.cfg.domain_rand.friction_range,
-        gain_range=env.cfg.domain_rand.gain_range,
+        # gain_range=env.cfg.domain_rand.gain_range,
         damping_range=env.cfg.domain_rand.damping_range,
         armature_range=env.cfg.domain_rand.armature_range,
         body_mass_attr_range=body_mass_attr_range,
