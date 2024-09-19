@@ -285,7 +285,7 @@ def domain_randomize(
 
         return friction, damping, armature, body_mass_attr
 
-    friction, gain, bias, damping, armature, body_mass_attr = rand(rng)
+    friction, damping, armature, body_mass_attr = rand(rng)
 
     in_axes_dict = {
         "geom_friction": 0,
