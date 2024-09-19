@@ -190,6 +190,7 @@ def update_geom_classes(root: ET.Element, geom_keys: List[str]):
 
 def add_keyframes(
     root: ET.Element,
+    general_config: Dict[str, Any],
     is_fixed: bool,
     has_lower_body: bool,
     has_upper_body: bool,
@@ -205,7 +206,7 @@ def add_keyframes(
     if is_fixed:
         qpos_str = ""
     else:
-        qpos_str = "0 0 0.336 1 0 0 0 "
+        qpos_str = f"0 0 {general_config['offsets']['torso_z_default']} 1 0 0 0 "
 
     if has_upper_body and has_lower_body:  # neck
         qpos_str += "0 0 0 0 "
@@ -886,6 +887,7 @@ def process_mjcf_file(root: ET.Element, robot: Robot):
 
         add_keyframes(
             root,
+            robot.config["general"],
             True,
             "arms" not in robot.name,
             "legs" not in robot.name,
@@ -945,6 +947,7 @@ def get_mjcf_files(robot_name: str):
 
         add_keyframes(
             xml_root,
+            robot.config["general"],
             False,
             "arms" not in robot.name,
             "legs" not in robot.name,

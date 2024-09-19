@@ -21,7 +21,6 @@ class WalkZMPReference(MotionReference):
         command_ranges: List[List[float]],
         single_double_ratio: float = 2.0,
         foot_step_height: float = 0.03,
-        com_z: float = 0.336,
         control_dt: float = 0.02,
         control_cost_Q: float = 1.0,
         control_cost_R: float = 0.1,
@@ -36,8 +35,7 @@ class WalkZMPReference(MotionReference):
         self.control_cost_Q = control_cost_Q
         self.control_cost_R = control_cost_R
 
-        # TODO: Read from config
-        self.com_z = com_z
+        self.com_z = robot.config["general"]["offsets"]["torso_z_default"]
         self.foot_to_com_x = float(robot.data_dict["offsets"]["foot_to_com_x"])
         self.foot_to_com_y = float(robot.data_dict["offsets"]["foot_to_com_y"])
 

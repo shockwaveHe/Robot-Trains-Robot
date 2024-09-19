@@ -8,27 +8,38 @@ while [[ $# -gt 0 ]]; do
     case $1 in
         --robot)
         ROBOT_NAME="$2"
-        BODY_NAME="$2"
         case "$ROBOT_NAME" in
             toddlerbot)
+            BODY_NAME="toddlerbot"
             ARM_NAME="arm_gripper"
-            LEG_NAME="leg_XM430"
+            LEG_NAME="leg"
             DOC_ID_LIST="6f1a2a766fbbc097a49abb91 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
-            ASSEMBLY_LIST="toddlerbot left_leg_XM430 right_leg_XM430 left_arm_gripper right_arm_gripper"
+            ASSEMBLY_LIST="$BODY_NAME left_$LEG_NAME right_$LEG_NAME left_$ARM_NAME right_$ARM_NAME"
             # DOC_ID_LIST="cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
-            # ASSEMBLY_LIST="left_arm_gripper right_arm_gripper"
+            # ASSEMBLY_LIST="left_$ARM_NAME right_$ARM_NAME"
+            ;;
+            toddlerbot_OP3)
+            BODY_NAME="toddlerbot"
+            ARM_NAME="arm_gripper"
+            LEG_NAME="leg_OP3"
+            DOC_ID_LIST="6f1a2a766fbbc097a49abb91 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
+            ASSEMBLY_LIST="$BODY_NAME left_$LEG_NAME right_$LEG_NAME left_$ARM_NAME right_$ARM_NAME"
+            DOC_ID_LIST="d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe"
+            ASSEMBLY_LIST="left_$LEG_NAME right_$LEG_NAME"
             ;;
             toddlerbot_legs)
-            LEG_NAME="leg_XM430"
+            BODY_NAME="toddlerbot"
+            LEG_NAME="leg"
             DOC_ID_LIST="6f1a2a766fbbc097a49abb91 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe"
-            ASSEMBLY_LIST="toddlerbot_legs left_leg_XM430 right_leg_XM430"
+            ASSEMBLY_LIST="$BODY_NAME left_$LEG_NAME right_$LEG_NAME"
             # DOC_ID_LIST="6f1a2a766fbbc097a49abb91"
             # ASSEMBLY_LIST="toddlerbot_legs"
             ;;
             toddlerbot_arms)
-            # ARM_NAME="arm_hand"
+            BODY_NAME="toddlerbot"
+            ARM_NAME="arm_hand"
             DOC_ID_LIST="6f1a2a766fbbc097a49abb91 cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
-            ASSEMBLY_LIST="toddlerbot_arms left_arm_hand right_arm_hand"
+            ASSEMBLY_LIST="$BODY_NAME left_$ARM_NAME right_$ARM_NAME"
             # DOC_ID_LIST="cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
             # ASSEMBLY_LIST="left_arm_hand right_arm_hand"
             ;;
