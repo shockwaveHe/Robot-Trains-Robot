@@ -114,11 +114,11 @@ def optimize_parameters(
     freq_max: float = 10,
     sampler_name: str = "CMA",
     # gain_range: Tuple[float, float, float] = (0, 50, 0.1),
-    damping_range: Tuple[float, float, float] = (0.0, 2.0, 1e-3),
+    damping_range: Tuple[float, float, float] = (0.0, 0.5, 1e-3),
     armature_range: Tuple[float, float, float] = (0.0, 0.01, 1e-4),
     frictionloss_range: Tuple[float, float, float] = (0.0, 1.0, 1e-3),
     q_dot_tau_max_range: Tuple[float, float, float] = (0.0, 5.0, 1e-2),
-    q_dot_max_range: Tuple[float, float, float] = (5.0, 20.0, 1e-2),
+    q_dot_max_range: Tuple[float, float, float] = (5.0, 50.0, 1e-2),
 ):
     if sim_name == "mujoco":
         sim = MuJoCoSim(robot, fixed_base=True)
@@ -191,9 +191,9 @@ def optimize_parameters(
                 sim.step()
 
                 assert obs.joint_pos is not None
-                joint_pos_sim_list.append(obs.joint_pos)
+                joint_pos_sim_list.append(obs.joint_pos[joint_idx])
 
-        joint_pos_sim = np.concatenate(joint_pos_sim_list)
+        joint_pos_sim = np.array(joint_pos_sim_list)
 
         # RMSE
         error = np.sqrt(np.mean((joint_pos_real - joint_pos_sim) ** 2))
@@ -411,9 +411,9 @@ def evaluate(
                 sim.step()
 
                 assert obs.joint_pos is not None
-                joint_pos_sim_list.append(obs.joint_pos)
+                joint_pos_sim_list.append(obs.joint_pos[joint_idx])
 
-        joint_pos_sim = np.concatenate(joint_pos_sim_list)
+        joint_pos_sim = np.array(joint_pos_sim_list)
 
         error = np.sqrt(np.mean((joint_pos_real - joint_pos_sim) ** 2))
 
