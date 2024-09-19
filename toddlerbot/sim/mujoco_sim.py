@@ -8,12 +8,9 @@ import numpy as np
 import numpy.typing as npt
 
 from toddlerbot.actuation import JointState
+from toddlerbot.actuation.mujoco.mujoco_control import MotorController
 from toddlerbot.sim import BaseSim, Obs
-from toddlerbot.sim.mujoco_utils import (
-    MotorController,
-    MuJoCoRenderer,
-    MuJoCoViewer,
-)
+from toddlerbot.sim.mujoco_utils import MuJoCoRenderer, MuJoCoViewer
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.math_utils import quat2euler, quat_inv, rotate_vec
@@ -72,7 +69,7 @@ class MuJoCoSim(BaseSim):
         # if fixed_base:
         #     self.controller = PositionController()
         # else:
-        motor_indices = np.array(
+        self.motor_indices = np.array(
             [
                 mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, name)
                 for name in self.robot.motor_ordering
@@ -80,18 +77,12 @@ class MuJoCoSim(BaseSim):
         )
         if not self.fixed_base:
             # Disregard the free joint
-            motor_indices -= 1
+            self.motor_indices -= 1
 
-        self.controller = MotorController(
-            motor_indices,
-            0 if fixed_base else 7,
-            0 if fixed_base else 6,
-            np.array(self.robot.get_joint_attrs("type", "dynamixel", "kp_sim")),
-            np.array(self.robot.get_joint_attrs("type", "dynamixel", "kd_sim")),
-            np.array(self.robot.get_joint_attrs("type", "dynamixel", "tau_max")),
-            np.array(self.robot.get_joint_attrs("type", "dynamixel", "q_dot_tau_max")),
-            np.array(self.robot.get_joint_attrs("type", "dynamixel", "q_dot_max")),
-        )
+        self.q_start_idx = 0 if self.fixed_base else 7
+        self.qd_start_idx = 0 if self.fixed_base else 6
+
+        self.controller = MotorController(robot)
 
         self.target_motor_angles = np.zeros(self.model.nu, dtype=np.float32)
 
@@ -252,7 +243,9 @@ class MuJoCoSim(BaseSim):
     def step(self):
         for _ in range(self.n_frames):
             self.data.ctrl = self.controller.step(
-                self.model, self.data, self.target_motor_angles
+                self.data.qpos[self.q_start_idx + self.motor_indices],
+                self.data.qvel[self.qd_start_idx + self.motor_indices],
+                self.target_motor_angles,
             )
             mujoco.mj_step(self.model, self.data)
 

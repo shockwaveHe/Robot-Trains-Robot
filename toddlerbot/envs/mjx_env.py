@@ -2,15 +2,16 @@ from dataclasses import asdict
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import jax
+import mujoco
 import numpy as np
 from brax import base, math
 from brax.envs.base import PipelineEnv, State
 from brax.io import mjcf
 from jax import numpy as jnp
-
-import mujoco
 from mujoco import mjx
 from mujoco.mjx._src import support  # type: ignore
+
+from toddlerbot.actuation.mujoco.mujoco_control import MotorController
 from toddlerbot.envs.mjx_config import MJXConfig
 from toddlerbot.ref_motion import MotionReference
 from toddlerbot.sim.robot import Robot
@@ -174,6 +175,7 @@ class MJXEnv(PipelineEnv):
 
         # default qpos
         self.default_qpos = jnp.array(self.sys.mj_model.keyframe("home").qpos)
+
         # default action
         self.default_motor_pos = jnp.array(
             list(self.robot.default_motor_angles.values())
@@ -184,6 +186,7 @@ class MJXEnv(PipelineEnv):
             self.cfg.action.action_smooth_rate
             / (self.cfg.action.action_smooth_rate + 1 / (self.dt * 2 * jnp.pi))
         )
+        self.controller = MotorController(self.robot)
 
         # commands
         # x vel, y vel, yaw vel, heading
@@ -366,6 +369,12 @@ class MJXEnv(PipelineEnv):
         assert isinstance(motor_target, jax.Array)
         state.info["last_motor_target"] = motor_target.copy()
 
+        motor_ctrl = self.controller.step(
+            state.pipeline_state.q[self.q_start_idx + self.motor_indices],
+            state.pipeline_state.qd[self.qd_start_idx + self.motor_indices],
+            motor_target,
+        )
+
         if self.add_push:
             push_theta = jax.random.uniform(push_rng, maxval=2 * jnp.pi)
             push = jnp.array([jnp.cos(push_theta), jnp.sin(push_theta)])
@@ -376,8 +385,7 @@ class MJXEnv(PipelineEnv):
             state.info["push"] = push
 
         # jax.debug.breakpoint()
-
-        pipeline_state = self.pipeline_step(state.pipeline_state, motor_target)
+        pipeline_state = self.pipeline_step(state.pipeline_state, motor_ctrl)
 
         # jax.debug.print(
         #     "qfrc: {}",
