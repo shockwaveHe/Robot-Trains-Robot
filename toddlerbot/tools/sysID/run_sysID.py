@@ -85,13 +85,8 @@ def load_datasets(robot: Robot, data_path: str):
             joint_names_list, motor_kps_list, obs_indices
         ):
             for joint_name in joint_names:
-                if (
-                    "ank_roll" in joint_name
-                    or "ank_pitch" in joint_name
-                    or "hip_yaw" in joint_name
-                    or "waist_roll" in joint_name
-                ):
-                    break
+                # if "ank_roll" in joint_name:
+                #     break
                 set_obs_and_action(joint_name, motor_kps, slice(last_idx, obs_idx))
 
             last_idx = obs_idx
