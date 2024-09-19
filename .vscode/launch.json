@@ -48,7 +48,23 @@
                 "--sim",
                 "mujoco",
                 "--policy",
-                "stand",
+                "stand_open",
+            ]
+        },
+        {
+            "name": "Python: stand_toddlerbot_OP3_mujoco",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/policies/run_policy.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot",
+                "toddlerbot_OP3",
+                "--sim",
+                "mujoco",
+                "--policy",
+                "stand_open",
             ]
         },
         {

@@ -154,10 +154,10 @@
                   <joint name="left_ank_pitch" pos="0 0 0" axis="0 0 1" range="-0.785398 1.8326" damping="0.127" armature="0.004" frictionloss="0.069" />
                   <geom type="mesh" rgba="0.428388 0.551287 0.741289 1" mesh="left_ank_pitch_link_visual" class="visual" />
                   <body name="ank_roll_link" pos="0 -0.02275 -0.019" quat="0 0 0.707107 -0.707107">
-                    <inertial pos="-0.0291303 1.66701e-12 -0.0326893" quat="0.705675 0.0449785 0.0449785 0.705675" mass="0.0426" diaginertia="3.59859e-05 3.44137e-05 1.12623e-05" />
+                    <inertial pos="-0.0269812 2.00109e-12 -0.0337332" quat="0.706434 0.0308367 0.0308367 0.706434" mass="0.0426" diaginertia="3.76215e-05 3.74798e-05 9.91691e-06" />
                     <joint name="left_ank_roll" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.127" armature="0.004" frictionloss="0.069" />
                     <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="left_ank_roll_link_visual" class="visual" />
-                    <geom name="ank_roll_link_collision" size="0.027 0.021 0.06" pos="-0.017 0 -0.039" type="box" rgba="0.615686 0.811765 0.929412 1" class="collision" />
+                    <geom name="ank_roll_link_collision" size="0.0245 0.021 0.06" pos="-0.0145 0 -0.039" type="box" rgba="0.615686 0.811765 0.929412 1" class="collision" />
                   </body>
                 </body>
               </body>
@@ -216,10 +216,10 @@
                   <joint name="right_ank_pitch" pos="0 0 0" axis="0 0 1" range="-0.785398 1.8326" damping="0.127" armature="0.004" frictionloss="0.069" />
                   <geom type="mesh" rgba="0.428388 0.551287 0.741289 1" mesh="right_ank_pitch_link_visual" class="visual" />
                   <body name="ank_roll_link_2" pos="0 -0.02275 -0.019" quat="0 0 0.707107 -0.707107">
-                    <inertial pos="-0.0291303 1.66701e-12 -0.0326893" quat="0.705675 0.0449785 0.0449785 0.705675" mass="0.0426" diaginertia="3.59859e-05 3.44137e-05 1.12623e-05" />
+                    <inertial pos="-0.0269812 2.00109e-12 -0.0337332" quat="0.706434 0.0308367 0.0308367 0.706434" mass="0.0426" diaginertia="3.76215e-05 3.74798e-05 9.91691e-06" />
                     <joint name="right_ank_roll" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.127" armature="0.004" frictionloss="0.069" />
                     <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="right_ank_roll_link_visual" class="visual" />
-                    <geom name="ank_roll_link_2_collision" size="0.027 0.021 0.06" pos="-0.017 0 -0.039" type="box" rgba="0.615686 0.811765 0.929412 1" class="collision" />
+                    <geom name="ank_roll_link_2_collision" size="0.0245 0.021 0.06" pos="-0.0145 0 -0.039" type="box" rgba="0.615686 0.811765 0.929412 1" class="collision" />
                   </body>
                 </body>
               </body>

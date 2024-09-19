@@ -652,8 +652,10 @@ def add_body_link(root: ET.Element, urdf_path: str, offsets: Dict[str, float]):
         body_link.append(element)
 
 
-def replace_box_collision(root: ET.Element, foot_name: str):
+def replace_box_collision(root: ET.Element, general_config: Dict[str, Any]):
     # Search for the target geom using the substring condition
+    foot_name = general_config["foot_name"]
+
     target_geoms: Dict[str, Tuple[ET.Element, ET.Element]] = {}
     for parent in root.iter():
         for geom in parent.findall("geom"):
@@ -675,13 +677,22 @@ def replace_box_collision(root: ET.Element, foot_name: str):
         y_offset = size[1] - sphere_radius
         z_offset = size[2] - sphere_radius
 
-        # Positions for the four corner balls
-        ball_positions = [
-            [pos[0] - x_offset, pos[1] + y_offset, pos[2] - z_offset],  # Bottom-left
-            [pos[0] + x_offset, pos[1] + y_offset, pos[2] - z_offset],  # Bottom-right
-            [pos[0] - x_offset, pos[1] + y_offset, pos[2] + z_offset],  # Top-left
-            [pos[0] + x_offset, pos[1] + y_offset, pos[2] + z_offset],  # Top-right
-        ]
+        if general_config["is_ankle_closed_loop"]:
+            # Positions for the four corner balls
+            ball_positions = [
+                [pos[0] - x_offset, pos[1] + y_offset, pos[2] - z_offset],
+                [pos[0] + x_offset, pos[1] + y_offset, pos[2] - z_offset],
+                [pos[0] - x_offset, pos[1] + y_offset, pos[2] + z_offset],
+                [pos[0] + x_offset, pos[1] + y_offset, pos[2] + z_offset],
+            ]
+        else:
+            # Positions for the four corner balls
+            ball_positions = [
+                [pos[0] - x_offset, pos[1] - y_offset, pos[2] - z_offset],
+                [pos[0] - x_offset, pos[1] + y_offset, pos[2] - z_offset],
+                [pos[0] - x_offset, pos[1] - y_offset, pos[2] + z_offset],
+                [pos[0] - x_offset, pos[1] + y_offset, pos[2] + z_offset],
+            ]
 
         # Create the new sphere elements at each corner
         for i, ball_pos in enumerate(ball_positions):
@@ -963,7 +974,7 @@ def get_mjcf_files(robot_name: str):
         add_contacts(
             xml_root, robot.collision_config, robot.config["general"]["foot_name"]
         )
-        replace_box_collision(xml_root, robot.config["general"]["foot_name"])
+        replace_box_collision(xml_root, robot.config["general"])
 
         add_motor_actuators_to_mjcf(xml_root, robot.config["joints"])
         add_default_settings(

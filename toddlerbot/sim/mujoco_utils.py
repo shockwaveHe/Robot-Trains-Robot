@@ -20,6 +20,8 @@ class MotorController:
     def __init__(
         self,
         motor_indices: npt.NDArray[np.int32],
+        q_start_idx: int,
+        qd_start_idx: int,
         kp: npt.NDArray[np.float32],
         kd: npt.NDArray[np.float32],
         tau_max: npt.NDArray[np.float32],
@@ -27,6 +29,8 @@ class MotorController:
         q_dot_max: npt.NDArray[np.float32],
     ):
         self.motor_indices = motor_indices
+        self.q_start_idx = q_start_idx
+        self.qd_start_idx = qd_start_idx
         self.kp = kp
         self.kd = kd
         self.tau_max = tau_max
@@ -40,8 +44,8 @@ class MotorController:
         motor_angles: npt.NDArray[np.float32],
     ):
         a = motor_angles
-        q = data.qpos[self.motor_indices].copy()
-        q_dot = data.qvel[self.motor_indices].copy()
+        q = data.qpos[self.q_start_idx + self.motor_indices].copy()
+        q_dot = data.qvel[self.qd_start_idx + self.motor_indices].copy()
 
         error = a - q
         tau_m = self.kp * error - self.kd * q_dot

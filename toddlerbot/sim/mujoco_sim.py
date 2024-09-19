@@ -78,8 +78,14 @@ class MuJoCoSim(BaseSim):
                 for name in self.robot.motor_ordering
             ]
         )
+        if not self.fixed_base:
+            # Disregard the free joint
+            motor_indices -= 1
+
         self.controller = MotorController(
             motor_indices,
+            0 if fixed_base else 7,
+            0 if fixed_base else 6,
             np.array(self.robot.get_joint_attrs("type", "dynamixel", "kp_sim")),
             np.array(self.robot.get_joint_attrs("type", "dynamixel", "kd_sim")),
             np.array(self.robot.get_joint_attrs("type", "dynamixel", "tau_max")),
