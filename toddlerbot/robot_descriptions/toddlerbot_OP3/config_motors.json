@@ -84,7 +84,7 @@
     },
     "left_ank_roll": {
         "motor": "XC430",
-        "init_pos": 0.09664078801870346,
+        "init_pos": 6.326136589050293,
         "default_pos": 0.0,
         "kp": 2100.0,
         "ki": 0.0,
@@ -94,7 +94,7 @@
     },
     "left_ank_pitch": {
         "motor": "XC430",
-        "init_pos": 6.277049541473389,
+        "init_pos": 1.5247769355773926,
         "default_pos": -0.253132,
         "kp": 2100.0,
         "ki": 0.0,
@@ -145,7 +145,7 @@
     },
     "right_ank_roll": {
         "motor": "XC430",
-        "init_pos": 0.09664078801870346,
+        "init_pos": -0.003067961661145091,
         "default_pos": 0.0,
         "kp": 2100.0,
         "ki": 0.0,
@@ -155,7 +155,7 @@
     },
     "right_ank_pitch": {
         "motor": "XC430",
-        "init_pos": 6.277049541473389,
+        "init_pos": 3.103243112564087,
         "default_pos": -0.253132,
         "kp": 2100.0,
         "ki": 0.0,
