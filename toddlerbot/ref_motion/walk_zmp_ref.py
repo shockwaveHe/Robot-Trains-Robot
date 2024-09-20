@@ -56,6 +56,9 @@ class WalkZMPReference(MotionReference):
             joint_groups == "leg"
         ]
 
+        self.left_hip_yaw_idx = robot.motor_ordering.index("left_hip_yaw_drive")
+        self.right_hip_yaw_idx = robot.motor_ordering.index("right_hip_yaw_drive")
+
         self.zmp_planner = ZMPPlanner()
 
         self.lookup_table_path = os.path.join(
@@ -141,6 +144,16 @@ class WalkZMPReference(MotionReference):
             motor_target,
             self.waist_actuator_indices,
             self.default_motor_pos[self.waist_actuator_indices],
+        )
+        motor_target = inplace_update(
+            motor_target,
+            self.left_hip_yaw_idx,
+            self.default_motor_pos[self.left_hip_yaw_idx],
+        )
+        motor_target = inplace_update(
+            motor_target,
+            self.right_hip_yaw_idx,
+            self.default_motor_pos[self.right_hip_yaw_idx],
         )
 
         return motor_target
