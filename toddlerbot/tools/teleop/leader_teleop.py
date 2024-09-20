@@ -1,6 +1,6 @@
 # type: ignore
-
 import argparse
+import collections
 import os
 import pickle
 import time
@@ -94,7 +94,10 @@ class InferencePolicy(BasePolicy):
         self.blend_percentage = 0.0
         self.default_pose = default_pose
 
-        self.load_ckpt()
+        self.load_model()
+        # deque for observation
+        self.obs_deque = collections.deque([], maxlen=self.model.obs_horizon)
+
         self._start_spacebar_listener()
 
     def _start_spacebar_listener(self):
@@ -113,11 +116,38 @@ class InferencePolicy(BasePolicy):
         listener = keyboard.Listener(on_press=on_press)
         listener.start()
 
-    def load_ckpt(self):
-        pass
+    def load_model(self):
+        import torch
+        from diffusion_policy_minimal.datasets.teleop_dataset import TeleopImageDataset
+        from diffusion_policy_minimal.inference_class import DPModel
 
-    def inference_step(self, obs: Obs, obs_real: Obs) -> npt.NDArray[np.float32]:
-        model_action = np.zeros(14)
+        model_path = "/Users/weizhuo2/Documents/gits/diffusion_policy_minimal/checkpoints/teleop_model.pth"
+        pred_horizon, obs_horizon, action_horizon = 16, 2, 8
+        lowdim_obs_dim, action_dim = 16, 16
+
+        # create dataset from file
+        dataset_path = "/Users/weizhuo2/Documents/gits/diffusion_policy_minimal/teleop_data/teleop_dataset.lz4"
+        dataset = TeleopImageDataset(
+            dataset_path=dataset_path,
+            pred_horizon=pred_horizon,
+            obs_horizon=obs_horizon,
+            action_horizon=action_horizon,
+        )
+        # save training data statistics (min, max) for each dim
+        stats = dataset.stats
+
+        self.model = DPModel(
+            model_path,
+            stats,
+            pred_horizon,
+            obs_horizon,
+            action_horizon,
+            lowdim_obs_dim,
+            action_dim,
+        )
+
+    def inference_step(self) -> npt.NDArray[np.float32]:
+        model_action = self.model.get_action_from_obs(self.obs_deque)
         return model_action
 
     def reset_slowly(self, obs_real):
@@ -130,8 +160,11 @@ class InferencePolicy(BasePolicy):
         return leader_action
 
     def step(self, obs: Obs, obs_real: Obs) -> npt.NDArray[np.float32]:
+        # manage obs_deque
+        self.obs_deque.append(obs_real)
+
         leader_action = obs_real.motor_pos
-        sim_action = self.inference_step(obs, obs_real)
+        sim_action = self.inference_step()
 
         if self.stop_inference:
             leader_action = self.reset_slowly(obs_real)
@@ -331,14 +364,14 @@ class TeleopPolicy(BasePolicy):
         # Log the data
         if self.log:
             t1 = time.time()
-            camera_frame = self.follower_camera.get_state()
+            # camera_frame = self.follower_camera.get_state()
             # camera_frame = None
             t2 = time.time()
             print(
                 f"Logging traj {self.nlogs}: camera_frame: {t2 - t1:.2f} s, current_time: {obs_real.time}"
             )
             self.dataset_logger.log_entry(
-                obs_real.time, obs_real.motor_pos, [fsrL, fsrR], camera_frame
+                obs_real.time, obs_real.motor_pos, [fsrL, fsrR], None
             )
         else:
             # clean up the log when not logging.
