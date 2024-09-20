@@ -133,6 +133,20 @@ def plot_results(
             save_path=exp_folder_path,
         )
 
+    if hasattr(policy, "com_pos_list"):
+        len_plot = min(len(policy.com_pos_list), len(time_obs_list))
+        plot_line_graph(
+            np.array(policy.com_pos_list).T[:2, :len_plot],
+            time_obs_list[:len_plot],
+            legend_labels=["COM X", "COM Y"],
+            title="Center of Mass Over Time",
+            x_label="Time (s)",
+            y_label="COM Position (m)",
+            save_config=True,
+            save_path=exp_folder_path,
+            file_name="com_tracking",
+        )()
+
     plot_line_graph(
         tor_obs_total_list,
         time_obs_list,

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 
 import mujoco
 import numpy as np
@@ -113,6 +113,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
 
         self.step_curr = 0
         self.previous_error = np.zeros(2, dtype=np.float32)
+        self.com_pos_list: List[npt.NDArray[np.float32]] = []
 
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         # Preparation phase
@@ -146,9 +147,9 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         mujoco.mj_jacSubtreeCom(self.model, self.data, com_jacp, 0)
 
         if self.com_pos_init is None:
-            self.com_pos_init = np.asarray(
-                self.data.body(0).subtree_com, dtype=np.float32
-            )
+            self.com_pos_init = com_pos.copy()
+
+        self.com_pos_list.append(com_pos)
 
         error = com_pos[:2] - self.com_pos_init[:2]
         error_derivative = (error - self.previous_error) / self.control_dt
