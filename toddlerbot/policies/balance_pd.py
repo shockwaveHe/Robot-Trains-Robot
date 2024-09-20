@@ -84,6 +84,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         xml_path = find_robot_file_path(self.robot.name, suffix="_scene.xml")
         self.model = mujoco.MjModel.from_xml_path(xml_path)
         self.data = mujoco.MjData(self.model)
+        self.com_pos_init: npt.NDArray[np.float32] | None = None
 
         self.joint_indices = np.array(
             [
@@ -144,7 +145,12 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         com_jacp = np.zeros((3, self.model.nv))
         mujoco.mj_jacSubtreeCom(self.model, self.data, com_jacp, 0)
 
-        error = com_pos[:2]
+        if self.com_pos_init is None:
+            self.com_pos_init = np.asarray(
+                self.data.body(0).subtree_com, dtype=np.float32
+            )
+
+        error = com_pos[:2] - self.com_pos_init[:2]
         error_derivative = (error - self.previous_error) / self.control_dt
         self.previous_error = error
 
