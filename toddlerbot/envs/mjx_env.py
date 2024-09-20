@@ -146,11 +146,9 @@ class MJXEnv(PipelineEnv):
         self.arm_actuator_indices = self.actuator_indices[motor_groups == "arm"]
         self.neck_actuator_indices = self.actuator_indices[motor_groups == "neck"]
         self.waist_actuator_indices = self.actuator_indices[motor_groups == "waist"]
+
         self.motor_limits = jnp.array(
-            [
-                self.sys.actuator_ctrlrange[motor_id]
-                for motor_id in self.actuator_indices
-            ]
+            [self.robot.joint_limits[name] for name in self.robot.motor_ordering]
         )
 
         arm_motor_names: List[str] = [

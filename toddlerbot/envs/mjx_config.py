@@ -6,7 +6,7 @@ from typing import List
 class MJXConfig:
     @dataclass
     class SimConfig:
-        timestep: float = 0.002
+        timestep: float = 0.004
         solver: int = 2  # Newton
         iterations: int = 1
         ls_iterations: int = 4
@@ -34,7 +34,7 @@ class MJXConfig:
         action_smooth_rate: float = 10.0
         contact_force_threshold: float = 1.0
         n_steps_delay: int = 1
-        n_frames: int = 10
+        n_frames: int = 5
 
     @dataclass
     class RewardsConfig:
@@ -100,7 +100,7 @@ class MJXConfig:
         q_dot_tau_max_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
         q_dot_max_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
         push_interval_s: int = 4  # seconds
-        push_vel: float = 0.1
+        push_vel: float = 0.01
 
     @dataclass
     class NoiseConfig:

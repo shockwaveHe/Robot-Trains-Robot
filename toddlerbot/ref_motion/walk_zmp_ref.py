@@ -140,11 +140,11 @@ class WalkZMPReference(MotionReference):
             self.arm_actuator_indices,
             self.default_motor_pos[self.arm_actuator_indices],
         )
-        motor_target = inplace_update(
-            motor_target,
-            self.waist_actuator_indices,
-            self.default_motor_pos[self.waist_actuator_indices],
-        )
+        # motor_target = inplace_update(
+        #     motor_target,
+        #     self.waist_actuator_indices,
+        #     self.default_motor_pos[self.waist_actuator_indices],
+        # )
         motor_target = inplace_update(
             motor_target,
             self.left_hip_yaw_idx,
