@@ -25,12 +25,14 @@ from toddlerbot.actuation.dynamixel.dynamixel_control import (
     DynamixelConfig,
     DynamixelController,
 )
+from toddlerbot.sim import BaseSim, Obs
+from toddlerbot.sim.mujoco_sim import MuJoCoSim
+from toddlerbot.sim.real_world import RealWorld
+from toddlerbot.sim.robot import Robot
 
 
-class PIDControllerWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        # ================== Dynamixel Controller ==================
+class ResponseTester:
+    def __init__(self, sim_name="real", robot_name="sysID_XC330"):
         # Initial values for the PID controller
         self.kP = 0.0
         self.kI = 0.0
@@ -39,10 +41,103 @@ class PIDControllerWindow(QMainWindow):
         self.kFF2 = 0.0
         self.kVP = 0.0
         self.kVI = 0.0
+
+        # Dynamixel motor ID
         self.id = 0
 
+        # create sim and robot object
+        self.robot_name = robot_name
+        self.sim_name = sim_name
+        self.robot = Robot(robot_name)
+        if self.sim_name == "mujoco":
+            self.sim = MuJoCoSim(self.robot, vis_type="view", fixed_base=False)
+        elif self.sim_name == "real":
+            self.sim = RealWorld(self.robot)
+        else:
+            raise ValueError(f"Invalid sim_name: {self.sim}")
+
         # Connect to the Dynamixel controller
-        self.connect_dynamixel()
+        self.controller = self.sim.dynamixel_controller
+        # self.connect_dynamixel()
+
+    def connect_dynamixel(self):
+        # Create a controller object
+        config = DynamixelConfig(
+            port="/dev/tty.usbserial-FT7WBA3B",  # FT8ISUJY
+            baudrate=2e6,
+            control_mode=["extended_position"],
+            kP=[self.kP],
+            kI=[self.kI],
+            kD=[self.kD],
+            kFF2=[self.kFF2],
+            kFF1=[self.kFF1],
+            init_pos=[0.0],
+        )
+        self.controller = DynamixelController(config, motor_ids=[self.id])
+
+    def reset_motors(self, reset_time=1.0, target_pos=0.0):
+        print("Resetting motors...")
+        self.controller.enable_motors()
+        self.controller.set_kp_kd(kp=2400, kd=2400)
+        state_dict = self.controller.get_motor_state()
+        position = state_dict[self.id].pos
+
+        for i in range(100):
+            curr_pos = position * (1 - i / 100) + target_pos * (i / 100)
+            print(f"Setting position to {curr_pos}", end="\r", flush=True)
+            self.controller.set_pos(pos=[curr_pos])
+            tslp = reset_time / 100
+            time.sleep(tslp)
+        self.controller.set_pos(pos=[target_pos])
+
+    def step_response(self, duration=3.0, target_pos=1.0):
+        # Reset the motor to the initial position
+        self.reset_motors()
+
+        print("Running step response...")
+        self.controller.set_parameters(
+            kp=self.kP,
+            ki=self.kI,
+            kd=self.kD,
+            kff1=self.kFF1,
+            kff2=self.kFF2,
+            ids=[self.id],
+        )
+
+        response = []
+        start_time = time.time()
+
+        # Set up tqdm progress bar with percentage
+        with tqdm(total=100, desc="Step Response Progress", unit="%") as pbar:
+            while time.time() - start_time < duration:
+                curr_time = time.time() - start_time
+                if curr_time < 1.0:
+                    cmd_pos = 0.0
+                else:
+                    cmd_pos = target_pos
+
+                self.controller.set_pos(pos=[cmd_pos])
+                state_dict = self.controller.get_motor_state()
+                response.append((curr_time, state_dict[self.id].pos, cmd_pos))
+
+                # Calculate the percentage of time completed
+                progress_percentage = round((curr_time / duration) * 100, 1)
+
+                # Update the tqdm progress bar
+                pbar.update(progress_percentage - pbar.n)  # Update only the increment
+
+        self.controller.disable_motors()
+
+        print("Step response complete")
+        return np.array(response)
+
+
+class PIDControllerWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+
+        # ================== Response Runner ==================
+        self.tester = ResponseTester()
 
         # ================== GUI Setup ==================
 
@@ -66,25 +161,25 @@ class PIDControllerWindow(QMainWindow):
         self.label_layout = QGridLayout()
 
         # Create labels to display the current values of Kp, Ki, Kd, Kff1, Kff2, KVP, and KVI
-        self.kp_label = QLabel(f"Kp: {self.kP}", self)
+        self.kp_label = QLabel(f"Kp: {self.tester.kP}", self)
         self.kp_label.setStyleSheet("font-size: 16px;")  # Set font size to 16px
 
-        self.ki_label = QLabel(f"Ki: {self.kI}", self)
+        self.ki_label = QLabel(f"Ki: {self.tester.kI}", self)
         self.ki_label.setStyleSheet("font-size: 16px;")  # Set font size to 16px
 
-        self.kd_label = QLabel(f"Kd: {self.kD}", self)
+        self.kd_label = QLabel(f"Kd: {self.tester.kD}", self)
         self.kd_label.setStyleSheet("font-size: 16px;")
 
-        self.kff1_label = QLabel(f"Kff1: {self.kFF1}", self)
+        self.kff1_label = QLabel(f"Kff1: {self.tester.kFF1}", self)
         self.kff1_label.setStyleSheet("font-size: 16px;")
 
-        self.kff2_label = QLabel(f"Kff2: {self.kFF2}", self)
+        self.kff2_label = QLabel(f"Kff2: {self.tester.kFF2}", self)
         self.kff2_label.setStyleSheet("font-size: 16px;")
 
-        self.kvp_label = QLabel(f"KVP: {self.kVP}", self)
+        self.kvp_label = QLabel(f"KVP: {self.tester.kVP}", self)
         self.kvp_label.setStyleSheet("font-size: 16px;")
 
-        self.kvi_label = QLabel(f"KVI: {self.kVI}", self)
+        self.kvi_label = QLabel(f"KVI: {self.tester.kVI}", self)
         self.kvi_label.setStyleSheet("font-size: 16px;")
 
         # Add the labels to the grid layout for two-column display
@@ -144,77 +239,10 @@ class PIDControllerWindow(QMainWindow):
         self.plot_canvas = PlotCanvas(self, width=5, height=4)
         self.main_layout.addWidget(self.plot_canvas)
 
-    def connect_dynamixel(self):
-        # Create a controller object
-        config = DynamixelConfig(
-            port="/dev/tty.usbserial-FT7WBA3B",  # FT8ISUJY
-            baudrate=2e6,
-            control_mode=["extended_position"],
-            kP=[self.kP],
-            kI=[self.kI],
-            kD=[self.kD],
-            kFF2=[self.kFF2],
-            kFF1=[self.kFF1],
-            init_pos=[0.0],
-        )
-        self.controller = DynamixelController(config, motor_ids=[self.id])
-
-    def slowly_reset_motors(self, reset_time=1.0, target_pos=0.0):
-        print("Resetting motors...")
-        self.controller.enable_motors()
-        self.controller.set_kp_kd(kp=2400, kd=2400)
-        state_dict = self.controller.get_motor_state()
-        position = state_dict[self.id].pos
-
-        for i in range(100):
-            curr_pos = position * (1 - i / 100) + target_pos * (i / 100)
-            print(f"Setting position to {curr_pos}", end="\r", flush=True)
-            self.controller.set_pos(pos=[curr_pos])
-            tslp = reset_time / 100
-            time.sleep(tslp)
-        self.controller.set_pos(pos=[target_pos])
-
-    def step_response(self, duration=3.0, target_pos=1.0):
-        print("Running step response...")
-        self.controller.set_parameters(
-            kp=self.kP,
-            ki=self.kI,
-            kd=self.kD,
-            kff1=self.kFF1,
-            kff2=self.kFF2,
-            ids=[self.id],
-        )
-
-        response = []
-        start_time = time.time()
-
-        # Set up tqdm progress bar with percentage
-        with tqdm(total=100, desc="Step Response Progress", unit="%") as pbar:
-            while time.time() - start_time < duration:
-                curr_time = time.time() - start_time
-                if curr_time < 1.0:
-                    cmd_pos = 0.0
-                else:
-                    cmd_pos = target_pos
-
-                self.controller.set_pos(pos=[cmd_pos])
-                state_dict = self.controller.get_motor_state()
-                response.append((curr_time, state_dict[self.id].pos, cmd_pos))
-
-                # Calculate the percentage of time completed
-                progress_percentage = round((curr_time / duration) * 100, 1)
-
-                # Update the tqdm progress bar
-                pbar.update(progress_percentage - pbar.n)  # Update only the increment
-
-        print("Step response complete")
-        return np.array(response)
-
     def on_plot_response(self):
         """Callback function for Plot Response button."""
         print("Plot Response button clicked")
-        self.slowly_reset_motors()
-        raw_response = self.step_response()
+        raw_response = self.tester.step_response()
         self.plot_canvas.update_plot(raw_response)
 
     def create_slider(self):
@@ -230,48 +258,48 @@ class PIDControllerWindow(QMainWindow):
     def update_kp(self, value):
         """Update the label to reflect the current value of Kp"""
         self.kp_label.setText(f"Kp: {value}")
-        self.kP = value
+        self.tester.kP = value
 
     def update_ki(self, value):
         """Update the label to reflect the current value of Ki"""
         self.ki_label.setText(f"Ki: {value}")
-        self.kI = value
+        self.tester.kI = value
 
     def update_kd(self, value):
         """Update the label to reflect the current value of Kd"""
         self.kd_label.setText(f"Kd: {value}")
-        self.kD = value
+        self.tester.kD = value
 
     def update_kff1(self, value):
         """Update the label to reflect the current value of Kff1"""
         self.kff1_label.setText(f"Kff1: {value}")
-        self.kFF1 = value
+        self.tester.kFF1 = value
 
     def update_kff2(self, value):
         """Update the label to reflect the current value of Kff2"""
         self.kff2_label.setText(f"Kff2: {value}")
-        self.kFF2 = value
+        self.tester.kFF2 = value
 
     def update_kvp(self, value):
         """Update the label to reflect the current value of KVP"""
         self.kvp_label.setText(f"KVP: {value}")
-        self.kVP = value
+        self.tester.kVP = value
 
     def update_kvi(self, value):
         """Update the label to reflect the current value of KVI"""
         self.kvi_label.setText(f"KVI: {value}")
-        self.kVI = value
+        self.tester.kVI = value
 
     def closeEvent(self, event):
         """Handle the window close event and disable motors."""
         print("Disabling motors...")
-        self.controller.disable_motors()
+        self.tester.controller.disable_motors()
         event.accept()  # Close the window
 
     def disable_motors_on_signal(self):
         """Disable motors when Ctrl-C is pressed."""
         print("Caught Ctrl-C, disabling motors...")
-        self.controller.disable_motors()
+        self.tester.controller.disable_motors()
         QApplication.quit()  # Close the application safely
 
 
