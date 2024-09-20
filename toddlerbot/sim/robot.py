@@ -65,6 +65,7 @@ class Robot:
                 self.data_dict: Dict[str, Any] = pickle.load(f)
                 log("Loaded cached data.", header="Robot")
         else:
+            # TODO: Remove URDF and use mujoco to do the computation
             urdf_path = find_robot_file_path(self.name)
             urdf: URDF = URDF.load(urdf_path)
             self.data_dict = self.compute_cache(urdf)

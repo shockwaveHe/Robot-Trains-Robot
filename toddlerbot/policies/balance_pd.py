@@ -62,6 +62,11 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         self.left_ank_pitch_idx = robot.joint_ordering.index("left_ank_pitch")
         self.right_ank_pitch_idx = robot.joint_ordering.index("right_ank_pitch")
 
+        self.left_hip_roll_idx = robot.joint_ordering.index("left_hip_roll")
+        self.right_hip_roll_idx = robot.joint_ordering.index("right_hip_roll")
+        self.left_ank_roll_idx = robot.joint_ordering.index("left_ank_roll")
+        self.right_ank_roll_idx = robot.joint_ordering.index("right_ank_roll")
+
         teleop_default_motor_pos = self.default_motor_pos.copy()
         arm_motor_slice = slice(
             robot.motor_ordering.index("left_sho_pitch"),
@@ -83,13 +88,15 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         # PD controller parameters
         self.kp = 3.0  # Proportional gain
         self.kd = 0.3  # Derivative gain
-        self.previous_error = 0.0
+        self.previous_error = np.zeros(2, dtype=np.float32)
         self.step_curr = 0
 
         # Weighting factors for distributing the control command
-        self.hip_weight = 0.3
-        self.knee_weight = 0.3
-        self.ankle_weight = 0.4
+        self.hip_pitch_weight = 0.3
+        self.knee_pitch_weight = 0.3
+        self.ankle_pitch_weight = 0.4
+        self.hip_roll_weight = 0.2
+        self.ankle_roll_weight = 0.2
 
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         # Preparation phase
@@ -109,12 +116,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
             command,
         )
 
-        # PD controller to maintain torso x at 0
-        com_pos_curr = obs.com_pos[0]
-        # Calculate the error (difference between desired and current pitch)
-        error = com_pos_curr
-
-        # Derivative of the error (rate of change)
+        error = obs.com_pos[:2]
         error_derivative = (error - self.previous_error) / self.control_dt
         self.previous_error = error
 
@@ -125,19 +127,23 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         joint_pos = self.default_joint_pos.copy()
 
         # Distribute the command across hip, knee, and ankle joints
-        hip_adjustment = self.hip_weight * ctrl
-        knee_adjustment = self.knee_weight * ctrl
-        ankle_adjustment = self.ankle_weight * ctrl
+        hip_pitch_adjustment = self.hip_pitch_weight * ctrl[0]
+        knee_pitch_adjustment = self.knee_pitch_weight * ctrl[0]
+        ankle_pitch_adjustment = self.ankle_pitch_weight * ctrl[0]
+        hip_roll_adjustment = self.hip_roll_weight * ctrl[1]
+        ankle_roll_adjustment = self.ankle_roll_weight * ctrl[1]
 
-        # Left side joints
-        joint_pos[self.left_hip_pitch_idx] += hip_adjustment
-        joint_pos[self.left_knee_pitch_idx] += knee_adjustment
-        joint_pos[self.left_ank_pitch_idx] += ankle_adjustment
+        joint_pos[self.left_hip_pitch_idx] += hip_pitch_adjustment
+        joint_pos[self.left_knee_pitch_idx] += knee_pitch_adjustment
+        joint_pos[self.left_ank_pitch_idx] += ankle_pitch_adjustment
+        joint_pos[self.right_hip_pitch_idx] += -hip_pitch_adjustment
+        joint_pos[self.right_knee_pitch_idx] += -knee_pitch_adjustment
+        joint_pos[self.right_ank_pitch_idx] += ankle_pitch_adjustment
 
-        # Right side joints
-        joint_pos[self.right_hip_pitch_idx] += -hip_adjustment
-        joint_pos[self.right_knee_pitch_idx] += -knee_adjustment
-        joint_pos[self.right_ank_pitch_idx] += ankle_adjustment
+        joint_pos[self.left_hip_roll_idx] += -hip_roll_adjustment
+        joint_pos[self.left_ank_roll_idx] += -ankle_roll_adjustment
+        joint_pos[self.right_hip_roll_idx] += hip_roll_adjustment
+        joint_pos[self.right_ank_roll_idx] += -ankle_roll_adjustment
 
         # Convert joint positions to motor angles
         motor_angles = self.robot.joint_to_motor_angles(

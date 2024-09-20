@@ -1,12 +1,13 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List
 
+import mujoco
 import numpy as np
 
 from toddlerbot.actuation import JointState
 from toddlerbot.sim import BaseSim, Obs
 from toddlerbot.sim.robot import Robot
-from toddlerbot.utils.file_utils import find_ports
+from toddlerbot.utils.file_utils import find_ports, find_robot_file_path
 from toddlerbot.utils.math_utils import euler2quat, quat_inv, rotate_vec
 
 # from toddlerbot.utils.misc_utils import profile
@@ -117,6 +118,10 @@ class RealWorld(BaseSim):
         if future_imu is not None:
             self.imu = future_imu.result()
 
+        xml_path = find_robot_file_path(self.robot.name, suffix="_scene.xml")
+        self.model = mujoco.MjModel.from_xml_path(xml_path)
+        self.data = mujoco.MjData(self.model)
+
         for _ in range(100):
             self.get_observation()
 
@@ -193,6 +198,17 @@ class RealWorld(BaseSim):
                     break
 
         obs = self.process_motor_reading(results)
+
+        motor_angles = dict(zip(self.robot.motor_ordering, obs.motor_pos))
+        for name in motor_angles:
+            self.data.joint(name).qpos = motor_angles[name]
+
+        joint_angles = self.robot.motor_to_joint_angles(motor_angles)
+        for name in joint_angles:
+            self.data.joint(name).qpos = joint_angles[name]
+
+        mujoco.mj_forward(self.model, self.data)
+        obs.com_pos = np.asarray(self.data.body(0).subtree_com, dtype=np.float32)
 
         if self.has_imu:
             # imu_lin_vel = np.array(results["imu"]["lin_vel"], dtype=np.float32)
