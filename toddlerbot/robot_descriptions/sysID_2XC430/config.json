@@ -3,7 +3,7 @@
         "is_fixed": true,
         "has_imu": false,
         "has_dynamixel": true,
-        "dynamixel_baudrate": 4000000,
+        "dynamixel_baudrate": 2000000,
         "has_sunny_sky": false,
         "solref": [
             0.004,
@@ -20,22 +20,25 @@
             "group": "none",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
-            "damping": 0.187,
-            "armature": 0.006,
-            "frictionloss": 0.217,
+            "damping": 0.075,
+            "armature": 0.0044,
+            "frictionloss": 0.252,
             "id": 0,
             "type": "dynamixel",
             "spec": "2XC430",
             "control_mode": "extended_position",
-            "init_pos": 3.141592653589793,
+            "init_pos": 1.5707963267948966,
             "default_pos": 0.0,
-            "kp_real": 1800.0,
+            "kp_real": 2100.0,
             "ki_real": 0.0,
             "kd_real": 0.0,
             "kff2_real": 0.0,
             "kff1_real": 0.0,
-            "kp_sim": 14.0625,
-            "kd_sim": 0.0
+            "kp_sim": 16.40625,
+            "kd_sim": 0.0,
+            "tau_max": 1.74,
+            "q_dot_tau_max": 2.84,
+            "q_dot_max": 10.0
         }
     }
 }

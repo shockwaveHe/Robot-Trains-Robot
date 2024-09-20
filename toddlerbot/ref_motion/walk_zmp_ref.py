@@ -3,6 +3,7 @@ import pickle
 from typing import List, Optional, Tuple
 
 import jax
+import numpy
 from tqdm import tqdm
 
 from toddlerbot.algorithms.zmp.zmp_planner import ZMPPlanner
@@ -21,7 +22,6 @@ class WalkZMPReference(MotionReference):
         command_ranges: List[List[float]],
         single_double_ratio: float = 2.0,
         foot_step_height: float = 0.03,
-        com_z: float = 0.336,
         control_dt: float = 0.02,
         control_cost_Q: float = 1.0,
         control_cost_R: float = 0.1,
@@ -36,8 +36,7 @@ class WalkZMPReference(MotionReference):
         self.control_cost_Q = control_cost_Q
         self.control_cost_R = control_cost_R
 
-        # TODO: Read from config
-        self.com_z = com_z
+        self.com_z = robot.config["general"]["offsets"]["torso_z_default"]
         self.foot_to_com_x = float(robot.data_dict["offsets"]["foot_to_com_x"])
         self.foot_to_com_y = float(robot.data_dict["offsets"]["foot_to_com_y"])
 
@@ -50,10 +49,15 @@ class WalkZMPReference(MotionReference):
             float(robot.config["general"]["offsets"]["torso_z"]) - self.com_z
         )
 
-        self.leg_joint_slice = slice(
-            self.robot.joint_ordering.index("left_hip_yaw_driven"),
-            self.robot.joint_ordering.index("right_ank_pitch") + 1,
+        joint_groups = numpy.array(
+            [robot.joint_groups[name] for name in robot.joint_ordering]
         )
+        self.leg_joint_indices = np.arange(len(robot.joint_ordering))[
+            joint_groups == "leg"
+        ]
+
+        self.left_hip_yaw_idx = robot.motor_ordering.index("left_hip_yaw_drive")
+        self.right_hip_yaw_idx = robot.motor_ordering.index("right_hip_yaw_drive")
 
         self.zmp_planner = ZMPPlanner()
 
@@ -99,7 +103,7 @@ class WalkZMPReference(MotionReference):
         joint_pos = self.default_joint_pos.copy()
         joint_pos = inplace_update(
             joint_pos,
-            self.leg_joint_slice,
+            self.leg_joint_indices,
             self.leg_joint_pos_lookup[nearest_command_idx][
                 (idx % self.lookup_length[nearest_command_idx]).astype(int)
             ],
@@ -140,6 +144,16 @@ class WalkZMPReference(MotionReference):
             motor_target,
             self.waist_actuator_indices,
             self.default_motor_pos[self.waist_actuator_indices],
+        )
+        motor_target = inplace_update(
+            motor_target,
+            self.left_hip_yaw_idx,
+            self.default_motor_pos[self.left_hip_yaw_idx],
+        )
+        motor_target = inplace_update(
+            motor_target,
+            self.right_hip_yaw_idx,
+            self.default_motor_pos[self.right_hip_yaw_idx],
         )
 
         return motor_target

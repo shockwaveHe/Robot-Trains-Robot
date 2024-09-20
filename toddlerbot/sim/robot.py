@@ -65,6 +65,7 @@ class Robot:
                 self.data_dict: Dict[str, Any] = pickle.load(f)
                 log("Loaded cached data.", header="Robot")
         else:
+            # TODO: Remove URDF and use mujoco to do the computation
             urdf_path = find_robot_file_path(self.name)
             urdf: URDF = URDF.load(urdf_path)
             self.data_dict = self.compute_cache(urdf)
@@ -82,28 +83,11 @@ class Robot:
 
     def compute_cache(self, urdf: URDF) -> Dict[str, Any]:
         data_dict: Dict[str, Any] = {"name": self.name}
-        if "foot_name" in self.config["general"]:
-            data_dict["foot_size"] = self.compute_foot_size(urdf)
-            data_dict["offsets"] = self.compute_offsets(urdf)
-            data_dict["ank_act_zero"] = self.ankle_ik([0.0, 0.0])
-            points, values = self.compute_ankle_fk_lookup()
-            data_dict["ank_fk_lookup_table"] = (points, values)
-
-        return data_dict
-
-    def compute_foot_size(self, urdf: URDF) -> npt.NDArray[np.float32]:
-        foot_bounds = urdf.scene.geometry.get("left_ank_pitch_link_visual.stl").bounds
-        foot_ori = urdf.scene.graph.get("ank_pitch_link")[0][:3, :3]
-        foot_bounds_rotated = foot_bounds @ foot_ori.T
-        foot_size = np.abs(foot_bounds_rotated[1] - foot_bounds_rotated[0])
-
-        # 0.004 is the thickness of the foot pad
-        return np.array([foot_size[0], foot_size[1], 0.004])
-
-    def compute_offsets(self, urdf: URDF):
-        graph = urdf.scene.graph
+        # if "foot_name" in self.config["general"]:
+        #     data_dict["foot_size"] = self.compute_foot_size(urdf)
 
         offsets: Dict[str, Any] = {}
+        graph = urdf.scene.graph
 
         ##### Below are for the leg IK #####
         # from the hip roll joint to the hip pitch joint
@@ -124,31 +108,47 @@ class Robot:
         offsets["foot_to_com_x"] = graph.get("ank_pitch_link")[0][0, 3]
         offsets["foot_to_com_y"] = graph.get("ank_pitch_link")[0][1, 3]
 
-        ##### Below are for the ankle IK #####
-        ank_origin: npt.NDArray[np.float32] = np.array(
-            graph.get("ank_pitch_link")[0][:3, 3]
-        )
+        if self.config["general"]["is_ankle_closed_loop"]:
+            ##### Below are for the ankle IK #####
+            ank_origin: npt.NDArray[np.float32] = np.array(
+                graph.get("ank_pitch_link")[0][:3, 3]
+            )
 
-        offsets["fE"] = [
-            graph.get("ank_rr_link")[0][:3, 3] - ank_origin,
-            graph.get("ank_rr_link_2")[0][:3, 3] - ank_origin,
-        ]
-        offsets["m"] = [
-            graph.get("ank_motor_arm")[0][:3, 3] - ank_origin,
-            graph.get("ank_motor_arm_2")[0][:3, 3] - ank_origin,
-        ]
-        ank_act_arm_y = self.config["general"]["offsets"]["ank_act_arm_y"]
-        offsets["m"][0][1] += ank_act_arm_y
-        offsets["m"][1][1] -= ank_act_arm_y
-        offsets["nE"] = np.array([1, 0, 0])
-        offsets["rod_len"] = [
-            self.config["general"]["offsets"]["ank_long_rod_len"],
-            self.config["general"]["offsets"]["ank_short_rod_len"],
-        ]
-        offsets["a"] = self.config["general"]["offsets"]["ank_act_arm_r"]
-        offsets["r"] = self.config["general"]["offsets"]["ank_rev_r"]
+            offsets["fE"] = [
+                graph.get("ank_rr_link")[0][:3, 3] - ank_origin,
+                graph.get("ank_rr_link_2")[0][:3, 3] - ank_origin,
+            ]
+            offsets["m"] = [
+                graph.get("ank_motor_arm")[0][:3, 3] - ank_origin,
+                graph.get("ank_motor_arm_2")[0][:3, 3] - ank_origin,
+            ]
+            ank_act_arm_y = self.config["general"]["offsets"]["ank_act_arm_y"]
+            offsets["m"][0][1] += ank_act_arm_y
+            offsets["m"][1][1] -= ank_act_arm_y
+            offsets["nE"] = np.array([1, 0, 0])
+            offsets["rod_len"] = [
+                self.config["general"]["offsets"]["ank_long_rod_len"],
+                self.config["general"]["offsets"]["ank_short_rod_len"],
+            ]
+            offsets["a"] = self.config["general"]["offsets"]["ank_act_arm_r"]
+            offsets["r"] = self.config["general"]["offsets"]["ank_rev_r"]
 
-        return offsets
+            data_dict["ank_act_zero"] = self.ankle_ik([0.0, 0.0])
+            points, values = self.compute_ankle_fk_lookup()
+            data_dict["ank_fk_lookup_table"] = (points, values)
+
+        data_dict["offsets"] = offsets
+
+        return data_dict
+
+    # def compute_foot_size(self, urdf: URDF) -> npt.NDArray[np.float32]:
+    #     foot_bounds = urdf.scene.geometry.get("left_ank_pitch_link_visual.stl").bounds
+    #     foot_ori = urdf.scene.graph.get("ank_pitch_link")[0][:3, :3]
+    #     foot_bounds_rotated = foot_bounds @ foot_ori.T
+    #     foot_size = np.abs(foot_bounds_rotated[1] - foot_bounds_rotated[0])
+
+    #     # 0.004 is the thickness of the foot pad
+    #     return np.array([foot_size[0], foot_size[1], 0.004])
 
     def initialize(self) -> None:
         self.init_motor_angles: Dict[str, float] = {}

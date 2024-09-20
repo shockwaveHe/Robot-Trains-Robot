@@ -3,7 +3,7 @@
         "is_fixed": true,
         "has_imu": false,
         "has_dynamixel": true,
-        "dynamixel_baudrate": 4000000,
+        "dynamixel_baudrate": 2000000,
         "has_sunny_sky": false,
         "solref": [
             0.004,
@@ -20,9 +20,9 @@
             "group": "none",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
-            "damping": 0.193,
-            "armature": 0.001,
-            "frictionloss": 0.089,
+            "damping": 0.08,
+            "armature": 0.0012,
+            "frictionloss": 0.134,
             "id": 0,
             "type": "dynamixel",
             "spec": "XM430",
@@ -35,7 +35,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 21.09375,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 1.86,
+            "q_dot_tau_max": 4.22,
+            "q_dot_max": 10.0
         }
     }
 }

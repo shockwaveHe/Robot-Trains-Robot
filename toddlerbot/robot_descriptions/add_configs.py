@@ -15,13 +15,42 @@ def get_default_config(
     motor_config: Dict[str, Dict[str, Any]],
     joint_dyn_config: Dict[str, Dict[str, float]],
 ):
-    # Define the URDF file path
-    config_dict: Dict[str, Dict[str, Any]] = {"general": general_config}
+    config_dict: Dict[str, Dict[str, Any]] = {"general": general_config, "joints": {}}
 
+    # Define the URDF file path
     is_waist_closed_loop = False
     is_knee_closed_loop = False
     is_ankle_closed_loop = False
-    config_dict["joints"] = {}
+    for joint in root.findall("joint"):
+        joint_name = joint.get("name")
+        if joint_name is None:
+            continue
+
+        if "waist" in joint_name and "act" in joint_name:
+            is_waist_closed_loop = True
+        if "knee" in joint_name and "act" in joint_name:
+            is_knee_closed_loop = True
+        if "ank" in joint_name and "act" in joint_name:
+            is_ankle_closed_loop = True
+
+    config_dict["general"]["is_waist_closed_loop"] = is_waist_closed_loop
+    config_dict["general"]["is_knee_closed_loop"] = is_knee_closed_loop
+    config_dict["general"]["is_ankle_closed_loop"] = is_ankle_closed_loop
+
+    if is_waist_closed_loop:
+        config_dict["general"]["waist_roll_backlash"] = 0.03
+        config_dict["general"]["waist_yaw_backlash"] = 0.001
+        config_dict["general"]["offsets"]["waist_roll_coef"] = 0.29166667
+        config_dict["general"]["offsets"]["waist_yaw_coef"] = 0.20833333
+
+    if is_ankle_closed_loop:
+        config_dict["general"]["ank_solimp_0"] = 0.9999
+        config_dict["general"]["ank_solref_0"] = 0.004
+        config_dict["general"]["offsets"]["ank_act_arm_y"] = 0.00582666
+        config_dict["general"]["offsets"]["ank_act_arm_r"] = 0.02
+        config_dict["general"]["offsets"]["ank_long_rod_len"] = 0.05900847
+        config_dict["general"]["offsets"]["ank_short_rod_len"] = 0.03951266
+        config_dict["general"]["offsets"]["ank_rev_r"] = 0.01
 
     # toddlerbot_arm joints should start with id 16
     if "arms" in robot_name:
@@ -57,20 +86,17 @@ def get_default_config(
             if "pinion" in joint_name:
                 is_passive = True
 
-        if "waist" in joint_name:
-            is_waist_closed_loop = True
+        if "waist" in joint_name and is_waist_closed_loop:
             transmission = "waist"
             if "act" not in joint_name:
                 is_passive = True
 
-        if "knee" in joint_name:
-            is_knee_closed_loop = True
+        if "knee" in joint_name and is_knee_closed_loop:
             transmission = "knee"
             if "act" not in joint_name:
                 is_passive = True
 
-        if "ank" in joint_name:
-            is_ankle_closed_loop = True
+        if "ank" in joint_name and is_ankle_closed_loop:
             transmission = "ankle"
             if "act" not in joint_name:
                 is_passive = True
@@ -100,17 +126,8 @@ def get_default_config(
 
         if is_passive:
             if joint_name in joint_dyn_config:
-                for param_name in ["damping", "armature", "frictionloss"]:
+                for param_name in joint_dyn_config[joint_name]:
                     joint_dict[param_name] = joint_dyn_config[joint_name][param_name]
-            # TODO: Remove this after doing sysID
-            elif transmission == "gear":
-                joint_drive_name = joint_name.replace("_driven", "_drive")
-                motor_name = motor_config[joint_drive_name]["motor"]
-                gear_ratio = motor_config[joint_drive_name].get("gear_ratio", 1.0)
-                for param_name in ["damping", "armature", "frictionloss"]:
-                    joint_dict[param_name] = joint_dyn_config[motor_name][
-                        param_name
-                    ] * (gear_ratio**2)
         else:
             if joint_name not in motor_config:
                 raise ValueError(f"{joint_name} not found in the motor config!")
@@ -142,16 +159,13 @@ def get_default_config(
             joint_dict["kff1_real"] = motor_config[joint_name]["kff1"]
             joint_dict["kp_sim"] = motor_config[joint_name]["kp"] / 128
             joint_dict["kd_sim"] = 0.0
-            joint_dict["tau_max"] = motor_config[joint_name]["tau_max"]
-            joint_dict["q_dot_tau_max"] = motor_config[joint_name]["q_dot_tau_max"]
-            joint_dict["q_dot_max"] = motor_config[joint_name]["q_dot_max"]
 
-            if joint_name in joint_dyn_config:
-                for param_name in ["damping", "armature", "frictionloss"]:
-                    joint_dict[param_name] = joint_dyn_config[joint_name][param_name]
-            elif motor_name in joint_dyn_config:
-                for param_name in ["damping", "armature", "frictionloss"]:
+            if motor_name in joint_dyn_config:
+                for param_name in joint_dyn_config[motor_name]:
                     joint_dict[param_name] = joint_dyn_config[motor_name][param_name]
+            elif joint_name in joint_dyn_config:
+                for param_name in joint_dyn_config[joint_name]:
+                    joint_dict[param_name] = joint_dyn_config[joint_name][param_name]
 
             if transmission == "gear" or transmission == "rack_and_pinion":
                 if "gear_ratio" in motor_config[joint_name]:
@@ -170,10 +184,6 @@ def get_default_config(
 
     # Create a new ordered dictionary from the sorted list
     config_dict["joints"] = dict(sorted_joints_list)
-
-    config_dict["general"]["is_waist_closed_loop"] = is_waist_closed_loop
-    config_dict["general"]["is_knee_closed_loop"] = is_knee_closed_loop
-    config_dict["general"]["is_ankle_closed_loop"] = is_ankle_closed_loop
 
     return config_dict
 
@@ -213,27 +223,14 @@ def main() -> None:
     if "sysID" not in args.robot and "arms" not in args.robot:
         general_config["is_fixed"] = False
         general_config["has_imu"] = True
-        general_config["smooth_alpha"] = 0.9
-        general_config["fd_smooth_alpha"] = 0.2
-        general_config["waist_roll_backlash"] = 0.03
-        general_config["waist_yaw_backlash"] = 0.001
-        general_config["ank_solimp_0"] = 0.9999
-        general_config["ank_solref_0"] = 0.004
         general_config["foot_name"] = "ank_roll_link"
         general_config["offsets"] = {
             "torso_z": 0.3442,
-            "imu_x": 0.0282,
-            "imu_y": 0.0,
-            "imu_z": 0.105483,
-            "imu_zaxis": "-1 0 0",
-            "waist_roll_coef": 0.29166667,
-            "waist_yaw_coef": 0.20833333,
-            "ank_act_arm_y": 0.00582666,
-            "ank_act_arm_r": 0.02,
-            "ank_long_rod_len": 0.05900847,
-            "ank_short_rod_len": 0.03951266,
-            "ank_rev_r": 0.01,
-            "foot_z": 0.039,
+            "torso_z_default": 0.336,
+            # "imu_x": 0.0282,
+            # "imu_y": 0.0,
+            # "imu_z": 0.105483,
+            # "imu_zaxis": "-1 0 0",
         }
 
     # if general_config["has_imu"]:
@@ -271,11 +268,7 @@ def main() -> None:
             with open(sysID_result_path, "r") as f:
                 sysID_result = json.load(f)
 
-            joint_dyn_config[motor_name] = {}
-            for param_name in ["damping", "armature", "frictionloss"]:
-                joint_dyn_config[motor_name][param_name] = sysID_result["joint_0"][
-                    param_name
-                ]
+            joint_dyn_config[motor_name] = sysID_result["joint_0"]
 
     dynamics_config_path = os.path.join(robot_dir, "config_dynamics.json")
     if os.path.exists(dynamics_config_path):

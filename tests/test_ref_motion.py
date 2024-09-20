@@ -97,7 +97,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    robot = Robot("toddlerbot")
+    robot = Robot(args.robot)
     if args.sim == "mujoco":
         from toddlerbot.sim.mujoco_sim import MuJoCoSim
 

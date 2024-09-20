@@ -9,9 +9,9 @@
   <worldbody>
     <geom type="mesh" rgba="0.662917 0.7055 0.667299 1" mesh="xc330_visual" class="visual" />
     <body name="arm_330" pos="0.0894 0.0219499 0.0034194" quat="0.5 0.5 0.5 0.5">
-      <inertial pos="0.0722101 0 -0.0145" quat="0.707107 0 0 0.707107" mass="0.2345" diaginertia="0.000368542 0.000234351 0.000185029" />
-      <joint name="joint_0" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.079" armature="0.0" frictionloss="0.001" />
-      <geom type="mesh" rgba="0.629995 0.655186 0.678154 1" mesh="arm_330_visual" class="visual" />
+      <inertial pos="0.0777716 1.36379e-05 -0.0145" quat="0.707306 0 0 0.706908" mass="0.2555" diaginertia="0.000410316 0.000243223 0.000221442" />
+      <joint name="joint_0" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.134" armature="0.0035" frictionloss="0.014" />
+      <geom type="mesh" rgba="0.630593 0.65299 0.674189 1" mesh="arm_330_visual" class="visual" />
     </body>
   </worldbody>
   <option>
@@ -20,7 +20,7 @@
   <equality />
   <contact />
   <actuator>
-    <position name="joint_0" joint="joint_0" kp="7.03125" ctrlrange="-1.5708 1.5708" class="XC330" />
+    <position name="joint_0" joint="joint_0" kp="11.71875" ctrlrange="-1.5708 1.5708" class="XC330" />
   </actuator>
   <default>
     <geom type="mesh" solref="0.004 1" />

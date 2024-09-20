@@ -25,6 +25,7 @@ from toddlerbot.visualization.vis_plot import (
     plot_joint_tracking_single,
     plot_line_graph,
     plot_loop_time,
+    plot_motor_vel_tor_mapping,
 )
 
 
@@ -45,10 +46,10 @@ dynamic_import_policies("toddlerbot.policies")
 
 def plot_results(
     robot: Robot,
+    policy: BasePolicy,
     loop_time_list: List[List[float]],
     obs_list: List[Obs],
     motor_angles_list: List[Dict[str, float]],
-    control_dt: float,
     exp_folder_path: str,
 ):
     loop_time_dict: Dict[str, List[float]] = {
@@ -104,7 +105,7 @@ def plot_results(
 
             # Assume the state fetching is instantaneous
             time_seq_dict[motor_name].append(float(obs.time))
-            time_seq_ref_dict[motor_name].append(i * control_dt)
+            time_seq_ref_dict[motor_name].append(i * policy.control_dt)
             motor_pos_dict[motor_name].append(obs.motor_pos[j])
             motor_vel_dict[motor_name].append(obs.motor_vel[j])
             motor_tor_dict[motor_name].append(obs.motor_tor[j])
@@ -124,6 +125,27 @@ def plot_results(
             joint_pos_ref_dict[joint_name].append(joint_angle)
 
     plot_loop_time(loop_time_dict, exp_folder_path)
+
+    if "sysID" in robot.name:
+        plot_motor_vel_tor_mapping(
+            motor_vel_dict["joint_0"],
+            motor_tor_dict["joint_0"],
+            save_path=exp_folder_path,
+        )
+
+    if hasattr(policy, "com_pos_list"):
+        len_plot = min(len(policy.com_pos_list), len(time_obs_list))
+        plot_line_graph(
+            np.array(policy.com_pos_list).T[:2, :len_plot],
+            time_obs_list[:len_plot],
+            legend_labels=["COM X", "COM Y"],
+            title="Center of Mass Over Time",
+            x_label="Time (s)",
+            y_label="COM Position (m)",
+            save_config=True,
+            save_path=exp_folder_path,
+            file_name="com_tracking",
+        )()
 
     plot_line_graph(
         tor_obs_total_list,
@@ -232,8 +254,13 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
                 ckpt_idx = min(ckpt_idx, len(ckpt_times) - 1)
                 if ckpt_idx != last_ckpt_idx:
                     motor_kps = policy.ckpt_dict[ckpt_times[ckpt_idx]]
-                    if np.any(list(motor_kps.values())):
-                        sim.set_motor_kps(motor_kps)
+                    motor_kps_updated = {}
+                    for joint_name in motor_kps:
+                        for motor_name in robot.joint_to_motor_name[joint_name]:
+                            motor_kps_updated[motor_name] = motor_kps[joint_name]
+
+                    if np.any(list(motor_kps_updated.values())):
+                        sim.set_motor_kps(motor_kps_updated)
                         last_ckpt_idx = ckpt_idx
 
             motor_target = policy.step(obs, "real" in sim.name)
@@ -313,10 +340,10 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
     log("Visualizing...", header="Walking")
     plot_results(
         robot,
+        policy,
         loop_time_list,
         obs_list,
         motor_angles_list,
-        policy.control_dt,
         exp_folder_path,
     )
 

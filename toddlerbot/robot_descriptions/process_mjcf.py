@@ -190,6 +190,7 @@ def update_geom_classes(root: ET.Element, geom_keys: List[str]):
 
 def add_keyframes(
     root: ET.Element,
+    general_config: Dict[str, Any],
     is_fixed: bool,
     has_lower_body: bool,
     has_upper_body: bool,
@@ -205,17 +206,23 @@ def add_keyframes(
     if is_fixed:
         qpos_str = ""
     else:
-        qpos_str = "0 0 0.336 1 0 0 0 "
+        qpos_str = f"0 0 {general_config['offsets']['torso_z_default']} 1 0 0 0 "
 
     if has_upper_body and has_lower_body:  # neck
         qpos_str += "0 0 0 0 "
 
     if has_lower_body:  # waist and legs
-        qpos_str += (
-            "0 0 0 0 "
-            + "0 0 0 -0.267268 0.523599 -0.523599 -0.523599 -0.25637 0 0 0.248043 0 -0.246445 -0.253132 0.256023 0.523599 -0.523599 -0.523599 "
-            + "0 0 0 0.267268 -0.523599 0.523599 0.523599 -0.25637 0 0 -0.248043 0 0.246445 0.253132 -0.256023 -0.523599 0.523599 0.523599 "
-        )
+        qpos_str += "0 0 0 0 "
+        if general_config["is_ankle_closed_loop"]:
+            qpos_str += (
+                "0 0 0 -0.267268 0.523599 -0.523599 -0.523599 -0.25637 0 0 0.248043 0 -0.246445 -0.253132 0.256023 0.523599 -0.523599 -0.523599 "
+                + "0 0 0 0.267268 -0.523599 0.523599 0.523599 -0.25637 0 0 -0.248043 0 0.246445 0.253132 -0.256023 -0.523599 0.523599 0.523599 "
+            )
+        else:
+            qpos_str += (
+                "0 0 0 -0.267268 0.523599 -0.523599 -0.523599 -0.25637 0 0.523599 -0.523599 -0.523599 "
+                + "0 0 0 0.267268 -0.523599 0.523599 0.523599 -0.25637 0 -0.523599 0.523599 0.523599 "
+            )
 
     if has_upper_body:  # arms
         qpos_str += (
@@ -285,10 +292,7 @@ def add_default_settings(
                 ET.SubElement(
                     motor_default,
                     actuator_type,
-                    {
-                        "ctrlrange": f"-{torque_limit} {torque_limit}",
-                        "forcerange": f"-{torque_limit} {torque_limit}",
-                    },
+                    {"ctrlrange": f"-{torque_limit} {torque_limit}"},
                 )
             else:
                 ET.SubElement(
@@ -648,8 +652,10 @@ def add_body_link(root: ET.Element, urdf_path: str, offsets: Dict[str, float]):
         body_link.append(element)
 
 
-def replace_box_collision(root: ET.Element, foot_name: str):
+def replace_box_collision(root: ET.Element, general_config: Dict[str, Any]):
     # Search for the target geom using the substring condition
+    foot_name = general_config["foot_name"]
+
     target_geoms: Dict[str, Tuple[ET.Element, ET.Element]] = {}
     for parent in root.iter():
         for geom in parent.findall("geom"):
@@ -671,13 +677,22 @@ def replace_box_collision(root: ET.Element, foot_name: str):
         y_offset = size[1] - sphere_radius
         z_offset = size[2] - sphere_radius
 
-        # Positions for the four corner balls
-        ball_positions = [
-            [pos[0] - x_offset, pos[1] + y_offset, pos[2] - z_offset],  # Bottom-left
-            [pos[0] + x_offset, pos[1] + y_offset, pos[2] - z_offset],  # Bottom-right
-            [pos[0] - x_offset, pos[1] + y_offset, pos[2] + z_offset],  # Top-left
-            [pos[0] + x_offset, pos[1] + y_offset, pos[2] + z_offset],  # Top-right
-        ]
+        if general_config["is_ankle_closed_loop"]:
+            # Positions for the four corner balls
+            ball_positions = [
+                [pos[0] - x_offset, pos[1] + y_offset, pos[2] - z_offset],
+                [pos[0] + x_offset, pos[1] + y_offset, pos[2] - z_offset],
+                [pos[0] - x_offset, pos[1] + y_offset, pos[2] + z_offset],
+                [pos[0] + x_offset, pos[1] + y_offset, pos[2] + z_offset],
+            ]
+        else:
+            # Positions for the four corner balls
+            ball_positions = [
+                [pos[0] - x_offset, pos[1] - y_offset, pos[2] - z_offset],
+                [pos[0] - x_offset, pos[1] + y_offset, pos[2] - z_offset],
+                [pos[0] - x_offset, pos[1] - y_offset, pos[2] + z_offset],
+                [pos[0] - x_offset, pos[1] + y_offset, pos[2] + z_offset],
+            ]
 
         # Create the new sphere elements at each corner
         for i, ball_pos in enumerate(ball_positions):
@@ -889,6 +904,7 @@ def process_mjcf_file(root: ET.Element, robot: Robot):
 
         add_keyframes(
             root,
+            robot.config["general"],
             True,
             "arms" not in robot.name,
             "legs" not in robot.name,
@@ -948,6 +964,7 @@ def get_mjcf_files(robot_name: str):
 
         add_keyframes(
             xml_root,
+            robot.config["general"],
             False,
             "arms" not in robot.name,
             "legs" not in robot.name,
@@ -957,7 +974,7 @@ def get_mjcf_files(robot_name: str):
         add_contacts(
             xml_root, robot.collision_config, robot.config["general"]["foot_name"]
         )
-        replace_box_collision(xml_root, robot.config["general"]["foot_name"])
+        replace_box_collision(xml_root, robot.config["general"])
 
         add_motor_actuators_to_mjcf(xml_root, robot.config["joints"])
         add_default_settings(

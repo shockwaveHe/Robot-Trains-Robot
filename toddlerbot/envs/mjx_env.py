@@ -2,15 +2,16 @@ from dataclasses import asdict
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import jax
+import mujoco
 import numpy as np
 from brax import base, math
 from brax.envs.base import PipelineEnv, State
 from brax.io import mjcf
 from jax import numpy as jnp
-
-import mujoco
 from mujoco import mjx
 from mujoco.mjx._src import support  # type: ignore
+
+from toddlerbot.actuation.mujoco.mujoco_control import MotorController
 from toddlerbot.envs.mjx_config import MJXConfig
 from toddlerbot.ref_motion import MotionReference
 from toddlerbot.sim.robot import Robot
@@ -28,7 +29,7 @@ class MJXEnv(PipelineEnv):
         fixed_base: bool = False,
         fixed_command: Optional[jax.Array] = None,
         add_noise: bool = True,
-        add_push: bool = True,
+        add_domain_rand: bool = True,
         **kwargs: Any,
     ):
         self.name = name
@@ -38,7 +39,7 @@ class MJXEnv(PipelineEnv):
         self.fixed_base = fixed_base
         self.fixed_command = fixed_command
         self.add_noise = add_noise
-        self.add_push = add_push
+        self.add_domain_rand = add_domain_rand
 
         if fixed_base:
             xml_path = find_robot_file_path(robot.name, suffix="_fixed_scene.xml")
@@ -174,6 +175,7 @@ class MJXEnv(PipelineEnv):
 
         # default qpos
         self.default_qpos = jnp.array(self.sys.mj_model.keyframe("home").qpos)
+
         # default action
         self.default_motor_pos = jnp.array(
             list(self.robot.default_motor_angles.values())
@@ -184,6 +186,7 @@ class MJXEnv(PipelineEnv):
             self.cfg.action.action_smooth_rate
             / (self.cfg.action.action_smooth_rate + 1 / (self.dt * 2 * jnp.pi))
         )
+        self.controller = MotorController(self.robot)
 
         # commands
         # x vel, y vel, yaw vel, heading
@@ -215,6 +218,12 @@ class MJXEnv(PipelineEnv):
         )
         self.reset_noise_pos = self.cfg.noise.reset_noise_pos
 
+        self.kp_range = self.cfg.domain_rand.kp_range
+        self.kd_range = self.cfg.domain_rand.kd_range
+        self.tau_max_range = self.cfg.domain_rand.tau_max_range
+        self.q_dot_tau_max_range = self.cfg.domain_rand.q_dot_tau_max_range
+        self.q_dot_max_range = self.cfg.domain_rand.q_dot_max_range
+
         self.push_interval = np.ceil(self.cfg.domain_rand.push_interval_s / self.dt)
         self.push_vel = self.cfg.domain_rand.push_vel
 
@@ -222,7 +231,6 @@ class MJXEnv(PipelineEnv):
         """Prepares a list of reward functions, which will be called to compute the total reward.
         Looks for self._reward_<REWARD_NAME>, where <REWARD_NAME> are names of all non zero reward scales in the cfg.
         """
-
         reward_scale_dict = asdict(self.cfg.rewards.scales)
         # Remove zero scales and multiply non-zero ones by dt
         for key in list(reward_scale_dict.keys()):
@@ -246,7 +254,7 @@ class MJXEnv(PipelineEnv):
 
     def reset(self, rng: jax.Array) -> State:
         """Resets the environment to an initial state."""
-        rng, rng1, rng2 = jax.random.split(rng, 3)
+        rng, rng1, rng2, rng3, rng4, rng5, rng6 = jax.random.split(rng, 7)
 
         state_info = {
             "rng": rng,
@@ -268,7 +276,7 @@ class MJXEnv(PipelineEnv):
 
         path_pos = jnp.zeros(3)
         path_quat = jnp.array([1.0, 0.0, 0.0, 0.0])
-        command = self._sample_command(rng2)
+        command = self._sample_command(rng1)
         state_info["phase_signal"] = self.motion_ref.get_phase_signal(0.0, command)
         state_ref = self.motion_ref.get_state_ref(path_pos, path_quat, 0.0, command)
         state_info["path_pos"] = path_pos
@@ -284,7 +292,7 @@ class MJXEnv(PipelineEnv):
         qpos = qpos.at[self.q_start_idx + self.arm_motor_indices].set(arm_motor_pos)  # type:ignore
         if self.add_noise:
             noise_pos = jax.random.uniform(
-                rng1,
+                rng2,
                 (self.nq - self.q_start_idx,),
                 minval=-self.reset_noise_pos,
                 maxval=self.reset_noise_pos,
@@ -299,6 +307,38 @@ class MJXEnv(PipelineEnv):
             self.q_start_idx + self.motor_indices
         ]
         state_info["init_feet_height"] = pipeline_state.x.pos[self.feet_link_ids, 2]
+
+        state_info["controller_kp"] = self.controller.kp.copy()
+        state_info["controller_kd"] = self.controller.kd.copy()
+        state_info["controller_tau_max"] = self.controller.tau_max.copy()
+        state_info["controller_q_dot_tau_max"] = self.controller.q_dot_tau_max.copy()
+        state_info["controller_q_dot_max"] = self.controller.q_dot_max.copy()
+
+        if self.add_domain_rand:
+            state_info["controller_kp"] *= jax.random.uniform(
+                rng3, (self.nu,), minval=self.kp_range[0], maxval=self.kp_range[1]
+            )
+            state_info["controller_kd"] *= jax.random.uniform(
+                rng4, (self.nu,), minval=self.kd_range[0], maxval=self.kd_range[1]
+            )
+            state_info["controller_tau_max"] *= jax.random.uniform(
+                rng4,
+                (self.nu,),
+                minval=self.tau_max_range[0],
+                maxval=self.tau_max_range[1],
+            )
+            state_info["controller_q_dot_tau_max"] *= jax.random.uniform(
+                rng5,
+                (self.nu,),
+                minval=self.q_dot_tau_max_range[0],
+                maxval=self.q_dot_tau_max_range[1],
+            )
+            state_info["controller_q_dot_max"] *= jax.random.uniform(
+                rng6,
+                (self.nu,),
+                minval=self.q_dot_max_range[0],
+                maxval=self.q_dot_max_range[1],
+            )
 
         obs_history = jnp.zeros(self.num_obs_history * self.obs_size)
         privileged_obs_history = jnp.zeros(
@@ -319,6 +359,27 @@ class MJXEnv(PipelineEnv):
         return State(
             pipeline_state, obs, privileged_obs, reward, done, metrics, state_info
         )
+
+    def pipeline_step(self, state: State, action: jax.Array) -> base.State:
+        """Takes a physics step using the physics pipeline."""
+
+        def f(pipeline_state, _):
+            ctrl = self.controller.step(
+                pipeline_state.q[self.q_start_idx + self.motor_indices],
+                pipeline_state.qd[self.qd_start_idx + self.motor_indices],
+                action,
+                state.info["controller_kp"],
+                state.info["controller_kd"],
+                state.info["controller_tau_max"],
+                state.info["controller_q_dot_tau_max"],
+                state.info["controller_q_dot_max"],
+            )
+            return (
+                self._pipeline.step(self.sys, pipeline_state, ctrl, self._debug),
+                None,
+            )
+
+        return jax.lax.scan(f, state.pipeline_state, (), self._n_frames)[0]
 
     def step(self, state: State, action: jax.Array) -> State:
         """Runs one timestep of the environment's dynamics."""
@@ -366,7 +427,7 @@ class MJXEnv(PipelineEnv):
         assert isinstance(motor_target, jax.Array)
         state.info["last_motor_target"] = motor_target.copy()
 
-        if self.add_push:
+        if self.add_domain_rand:
             push_theta = jax.random.uniform(push_rng, maxval=2 * jnp.pi)
             push = jnp.array([jnp.cos(push_theta), jnp.sin(push_theta)])
             push *= jnp.mod(state.info["step"], self.push_interval) == 0
@@ -376,8 +437,7 @@ class MJXEnv(PipelineEnv):
             state.info["push"] = push
 
         # jax.debug.breakpoint()
-
-        pipeline_state = self.pipeline_step(state.pipeline_state, motor_target)
+        pipeline_state = self.pipeline_step(state, motor_target)
 
         # jax.debug.print(
         #     "qfrc: {}",

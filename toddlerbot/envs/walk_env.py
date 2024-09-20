@@ -52,7 +52,7 @@ class WalkEnv(MJXEnv):
         fixed_base: bool = False,
         fixed_command: Optional[jax.Array] = None,
         add_noise: bool = True,
-        add_push: bool = True,
+        add_domain_rand: bool = True,
         **kwargs: Any,
     ):
         motion_ref: WalkSimpleReference | WalkZMPReference | None = None
@@ -84,7 +84,7 @@ class WalkEnv(MJXEnv):
             fixed_base=fixed_base,
             fixed_command=fixed_command,
             add_noise=add_noise,
-            add_push=add_push,
+            add_domain_rand=add_domain_rand,
             **kwargs,
         )
 

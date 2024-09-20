@@ -42,6 +42,8 @@ class RealWorld(BaseSim):
             "right_wrist_pitch_drive",
             "left_gripper_rack",
             "right_gripper_rack",
+            "left_ank_roll", # For toddlerbot_OP3
+            "right_ank_roll", # For toddlerbot_OP3
         ]
 
         self.initialize()
