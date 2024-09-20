@@ -86,17 +86,19 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         )
 
         # PD controller parameters
-        self.kp = 3.0  # Proportional gain
-        self.kd = 0.3  # Derivative gain
-        self.previous_error = np.zeros(2, dtype=np.float32)
+        self.hip_pitch_kp = 5.0
+        self.hip_pitch_kd = 0.01
+        self.knee_pitch_kp = 5.0
+        self.knee_pitch_kd = 0.01
+        self.ankle_pitch_kp = 5.0  
+        self.ankle_pitch_kd = 0.1
+        self.hip_roll_kp = 0.0
+        self.hip_roll_kd = 0.0
+        self.ankle_roll_kp = 0.0
+        self.ankle_roll_kd = 0.0
+        
         self.step_curr = 0
-
-        # Weighting factors for distributing the control command
-        self.hip_pitch_weight = 0.3
-        self.knee_pitch_weight = 0.3
-        self.ankle_pitch_weight = 0.4
-        self.hip_roll_weight = 0.2
-        self.ankle_roll_weight = 0.2
+        self.previous_error = np.zeros(2, dtype=np.float32)
 
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         # Preparation phase
@@ -120,30 +122,27 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         error_derivative = (error - self.previous_error) / self.control_dt
         self.previous_error = error
 
-        # PD controller output
-        ctrl = self.kp * error + self.kd * error_derivative
-
         # Update joint positions based on the PD controller command
         joint_pos = self.default_joint_pos.copy()
 
         # Distribute the command across hip, knee, and ankle joints
-        hip_pitch_adjustment = self.hip_pitch_weight * ctrl[0]
-        knee_pitch_adjustment = self.knee_pitch_weight * ctrl[0]
-        ankle_pitch_adjustment = self.ankle_pitch_weight * ctrl[0]
-        hip_roll_adjustment = self.hip_roll_weight * ctrl[1]
-        ankle_roll_adjustment = self.ankle_roll_weight * ctrl[1]
+        hip_pitch_ctrl = self.hip_pitch_kp * error[0] - self.hip_pitch_kd * error_derivative[0]
+        knee_pitch_ctrl = self.knee_pitch_kp * error[0] - self.knee_pitch_kd * error_derivative[0]
+        ankle_pitch_ctrl = self.ankle_pitch_kp * error[0] - self.ankle_pitch_kd * error_derivative[0]
+        hip_roll_ctrl = self.hip_roll_kp * error[1] - self.hip_roll_kd * error_derivative[1]
+        ankle_roll_ctrl = self.ankle_roll_kp * error[1] - self.ankle_roll_kd * error_derivative[1]
 
-        joint_pos[self.left_hip_pitch_idx] += hip_pitch_adjustment
-        joint_pos[self.left_knee_pitch_idx] += knee_pitch_adjustment
-        joint_pos[self.left_ank_pitch_idx] += ankle_pitch_adjustment
-        joint_pos[self.right_hip_pitch_idx] += -hip_pitch_adjustment
-        joint_pos[self.right_knee_pitch_idx] += -knee_pitch_adjustment
-        joint_pos[self.right_ank_pitch_idx] += ankle_pitch_adjustment
+        joint_pos[self.left_hip_pitch_idx] += hip_pitch_ctrl
+        joint_pos[self.left_knee_pitch_idx] += knee_pitch_ctrl
+        joint_pos[self.left_ank_pitch_idx] += ankle_pitch_ctrl
+        joint_pos[self.right_hip_pitch_idx] += -hip_pitch_ctrl
+        joint_pos[self.right_knee_pitch_idx] += -knee_pitch_ctrl
+        joint_pos[self.right_ank_pitch_idx] += ankle_pitch_ctrl
 
-        joint_pos[self.left_hip_roll_idx] += -hip_roll_adjustment
-        joint_pos[self.left_ank_roll_idx] += -ankle_roll_adjustment
-        joint_pos[self.right_hip_roll_idx] += hip_roll_adjustment
-        joint_pos[self.right_ank_roll_idx] += -ankle_roll_adjustment
+        joint_pos[self.left_hip_roll_idx] += -hip_roll_ctrl
+        joint_pos[self.left_ank_roll_idx] += -ankle_roll_ctrl
+        joint_pos[self.right_hip_roll_idx] += hip_roll_ctrl
+        joint_pos[self.right_ank_roll_idx] += -ankle_roll_ctrl
 
         # Convert joint positions to motor angles
         motor_angles = self.robot.joint_to_motor_angles(
