@@ -1,5 +1,6 @@
 from typing import Optional
 
+import mujoco
 import numpy as np
 import numpy.typing as npt
 
@@ -7,6 +8,7 @@ from toddlerbot.policies import BasePolicy
 from toddlerbot.ref_motion.balance_ref import BalanceReference
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
+from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.math_utils import interpolate_action
 
 default_pose = np.array(
@@ -55,17 +57,20 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         )
 
         # Indices for the pitch joints
-        self.left_hip_pitch_idx = robot.joint_ordering.index("left_hip_pitch")
-        self.right_hip_pitch_idx = robot.joint_ordering.index("right_hip_pitch")
-        self.left_knee_pitch_idx = robot.joint_ordering.index("left_knee_pitch")
-        self.right_knee_pitch_idx = robot.joint_ordering.index("right_knee_pitch")
-        self.left_ank_pitch_idx = robot.joint_ordering.index("left_ank_pitch")
-        self.right_ank_pitch_idx = robot.joint_ordering.index("right_ank_pitch")
-
-        self.left_hip_roll_idx = robot.joint_ordering.index("left_hip_roll")
-        self.right_hip_roll_idx = robot.joint_ordering.index("right_hip_roll")
-        self.left_ank_roll_idx = robot.joint_ordering.index("left_ank_roll")
-        self.right_ank_roll_idx = robot.joint_ordering.index("right_ank_roll")
+        self.ctrl_x_indices = [
+            robot.joint_ordering.index("left_hip_pitch"),
+            robot.joint_ordering.index("left_knee_pitch"),
+            robot.joint_ordering.index("left_ank_pitch"),
+            robot.joint_ordering.index("right_hip_pitch"),
+            robot.joint_ordering.index("right_knee_pitch"),
+            robot.joint_ordering.index("right_ank_pitch"),
+        ]
+        self.ctrl_y_indices = [
+            robot.joint_ordering.index("left_hip_roll"),
+            robot.joint_ordering.index("left_ank_roll"),
+            robot.joint_ordering.index("right_hip_roll"),
+            robot.joint_ordering.index("right_ank_roll"),
+        ]
 
         teleop_default_motor_pos = self.default_motor_pos.copy()
         arm_motor_slice = slice(
@@ -75,6 +80,22 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         teleop_default_motor_pos[arm_motor_slice] = default_pose
 
         self.motion_ref = BalanceReference(robot)
+
+        xml_path = find_robot_file_path(self.robot.name, suffix="_scene.xml")
+        self.model = mujoco.MjModel.from_xml_path(xml_path)
+        self.data = mujoco.MjData(self.model)
+
+        self.joint_indices = np.array(
+            [
+                mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, name)
+                for name in self.robot.joint_ordering
+            ]
+        )
+        if "fixed" not in self.name:
+            # Disregard the free joint
+            self.joint_indices -= 1
+
+        self.q_start_idx = 0 if "fixed" in self.name else 7
 
         self.prep_duration = 7.0
         self.prep_time, self.prep_action = self.move(
@@ -86,17 +107,9 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         )
 
         # PD controller parameters
-        self.hip_pitch_kp = 5.0
-        self.hip_pitch_kd = 0.01
-        self.knee_pitch_kp = 5.0
-        self.knee_pitch_kd = 0.01
-        self.ankle_pitch_kp = 5.0  
-        self.ankle_pitch_kd = 0.1
-        self.hip_roll_kp = 0.0
-        self.hip_roll_kd = 0.0
-        self.ankle_roll_kp = 0.0
-        self.ankle_roll_kd = 0.0
-        
+        self.kp = 2000.0
+        self.kd = 0.0
+
         self.step_curr = 0
         self.previous_error = np.zeros(2, dtype=np.float32)
 
@@ -118,31 +131,40 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
             command,
         )
 
-        error = obs.com_pos[:2]
+        motor_angles = dict(zip(self.robot.motor_ordering, obs.motor_pos))
+        for name in motor_angles:
+            self.data.joint(name).qpos = motor_angles[name]
+
+        joint_angles = self.robot.motor_to_joint_angles(motor_angles)
+        for name in joint_angles:
+            self.data.joint(name).qpos = joint_angles[name]
+
+        mujoco.mj_forward(self.model, self.data)
+        com_pos = np.asarray(self.data.body(0).subtree_com, dtype=np.float32)
+        com_jacp = np.zeros((3, self.model.nv))
+        mujoco.mj_jacSubtreeCom(self.model, self.data, com_jacp, 0)
+
+        error = com_pos[:2]
         error_derivative = (error - self.previous_error) / self.control_dt
         self.previous_error = error
 
+        ctrl = self.kp * error + self.kd * error_derivative
+
         # Update joint positions based on the PD controller command
         joint_pos = self.default_joint_pos.copy()
+        # Define joint mappings for ctrl[0] and ctrl[1]
 
-        # Distribute the command across hip, knee, and ankle joints
-        hip_pitch_ctrl = self.hip_pitch_kp * error[0] - self.hip_pitch_kd * error_derivative[0]
-        knee_pitch_ctrl = self.knee_pitch_kp * error[0] - self.knee_pitch_kd * error_derivative[0]
-        ankle_pitch_ctrl = self.ankle_pitch_kp * error[0] - self.ankle_pitch_kd * error_derivative[0]
-        hip_roll_ctrl = self.hip_roll_kp * error[1] - self.hip_roll_kd * error_derivative[1]
-        ankle_roll_ctrl = self.ankle_roll_kp * error[1] - self.ankle_roll_kd * error_derivative[1]
+        # Update joint positions for ctrl[0]
+        joint_pos[self.ctrl_x_indices] -= (
+            ctrl[0]
+            * com_jacp[0, self.q_start_idx + self.joint_indices[self.ctrl_x_indices]]
+        )
 
-        joint_pos[self.left_hip_pitch_idx] += hip_pitch_ctrl
-        joint_pos[self.left_knee_pitch_idx] += knee_pitch_ctrl
-        joint_pos[self.left_ank_pitch_idx] += ankle_pitch_ctrl
-        joint_pos[self.right_hip_pitch_idx] += -hip_pitch_ctrl
-        joint_pos[self.right_knee_pitch_idx] += -knee_pitch_ctrl
-        joint_pos[self.right_ank_pitch_idx] += ankle_pitch_ctrl
-
-        joint_pos[self.left_hip_roll_idx] += -hip_roll_ctrl
-        joint_pos[self.left_ank_roll_idx] += -ankle_roll_ctrl
-        joint_pos[self.right_hip_roll_idx] += hip_roll_ctrl
-        joint_pos[self.right_ank_roll_idx] += -ankle_roll_ctrl
+        # Update joint positions for ctrl[1]
+        joint_pos[self.ctrl_y_indices] -= (
+            ctrl[1]
+            * com_jacp[1, self.q_start_idx + self.joint_indices[self.ctrl_y_indices]]
+        )
 
         # Convert joint positions to motor angles
         motor_angles = self.robot.joint_to_motor_angles(

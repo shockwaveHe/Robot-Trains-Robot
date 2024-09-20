@@ -100,6 +100,22 @@
             ]
         },
         {
+            "name": "Python: balance_pd_toddlerbot_mujoco",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/policies/run_policy.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot",
+                "toddlerbot",
+                "--sim",
+                "mujoco",
+                "--policy",
+                "balance_pd",
+            ]
+        },
+        {
             "name": "Python: walk_fixed_toddlerbot_mujoco",
             "type": "python",
             "request": "launch",
