@@ -149,6 +149,8 @@ class MuJoCoSim(BaseSim):
         joint_pos_arr = np.array(joint_pos, dtype=np.float32)
         joint_vel_arr = np.array(joint_vel, dtype=np.float32)
 
+        com_pos = np.asarray(self.data.body(0).subtree_com, dtype=np.float32)
+
         if self.fixed_base:
             # torso_lin_vel = np.zeros(3, dtype=np.float32)
             torso_ang_vel = np.zeros(3, dtype=np.float32)
@@ -186,6 +188,7 @@ class MuJoCoSim(BaseSim):
             motor_pos=motor_pos_arr,
             motor_vel=motor_vel_arr,
             motor_tor=motor_tor_arr,
+            com_pos=com_pos,
             # lin_vel=torso_lin_vel,
             ang_vel=torso_ang_vel,
             euler=torso_euler,
@@ -197,10 +200,6 @@ class MuJoCoSim(BaseSim):
     def get_mass(self) -> float:
         subtree_mass = float(self.model.body(0).subtreemass)
         return subtree_mass
-
-    def get_com(self) -> npt.NDArray[np.float32]:
-        subtree_com = np.array(self.data.body(0).subtree_com, dtype=np.float32)
-        return subtree_com
 
     def set_motor_kps(self, motor_kps: Dict[str, float]):
         for name, kp in motor_kps.items():

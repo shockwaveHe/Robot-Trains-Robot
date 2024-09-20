@@ -7,7 +7,7 @@ from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.math_utils import interpolate_action
 
 
-class BalanceAnklePolicy(BasePolicy, policy_name="balance_ankle"):
+class BalancePDAnklePolicy(BasePolicy, policy_name="balance_pd_ankle"):
     def __init__(
         self, name: str, robot: Robot, init_motor_pos: npt.NDArray[np.float32]
     ):
@@ -30,11 +30,11 @@ class BalanceAnklePolicy(BasePolicy, policy_name="balance_ankle"):
 
         # PD controller parameters
         self.kp = 1.0  # Proportional gain
-        self.kd = 0.2  # Derivative gain
+        self.kd = 0.1  # Derivative gain
         self.previous_error = 0.0
 
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
-        # Preparation phase (interpolating towards the default motor positions)
+        # Preparation phase
         if obs.time < self.prep_time[-1]:
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
@@ -46,22 +46,23 @@ class BalanceAnklePolicy(BasePolicy, policy_name="balance_ankle"):
         # Calculate the error (difference between desired and current pitch)
         error = pitch_curr
 
-        # # Derivative of the error (rate of change of the error)
+        # Derivative of the error (rate of change)
         error_derivative = (error - self.previous_error) / self.control_dt
         self.previous_error = error
 
         # PD controller output
-        command = self.kp * error + self.kd * error_derivative
+        ctrl = self.kp * error + self.kd * error_derivative
 
         # Update joint positions based on the PD controller command
         joint_pos = self.default_joint_pos.copy()
-        joint_pos[self.left_ank_pitch_idx] += command
-        joint_pos[self.right_ank_pitch_idx] += command
+
+        joint_pos[self.left_ank_pitch_idx] += ctrl
+        joint_pos[self.right_ank_pitch_idx] += ctrl
 
         # Convert joint positions to motor angles
         motor_angles = self.robot.joint_to_motor_angles(
             dict(zip(self.robot.joint_ordering, joint_pos))
         )
-        motor_pos = np.array(list(motor_angles.values()), dtype=np.float32)
+        motor_target = np.array(list(motor_angles.values()), dtype=np.float32)
 
-        return motor_pos
+        return motor_target
