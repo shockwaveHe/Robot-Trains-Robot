@@ -104,8 +104,8 @@ class MJXConfig:
 
     @dataclass
     class NoiseConfig:
-        reset_noise_pos: float = 0.1
-        obs_noise_scale: float = 0.1
+        reset_noise_pos: float = 0.05
+        obs_noise_scale: float = 0.05
         dof_pos: float = 1.0
         dof_vel: float = 2.0
         ang_vel: float = 2.0
