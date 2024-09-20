@@ -79,7 +79,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         )
         teleop_default_motor_pos[arm_motor_slice] = default_pose
 
-        self.motion_ref = BalanceReference(robot)
+        self.motion_ref = BalanceReference(robot, playback_speed=0.5)
 
         xml_path = find_robot_file_path(self.robot.name, suffix="_scene.xml")
         self.model = mujoco.MjModel.from_xml_path(xml_path)

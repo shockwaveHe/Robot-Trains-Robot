@@ -10,7 +10,7 @@ from toddlerbot.utils.array_utils import array_lib as np
 
 
 class BalanceReference(MotionReference):
-    def __init__(self, robot: Robot):
+    def __init__(self, robot: Robot, playback_speed: float = 1.0):
         super().__init__("balance", "perceptual", robot)
 
         arm_motor_names: List[str] = [
@@ -32,7 +32,7 @@ class BalanceReference(MotionReference):
 
         # state_array: [time(1), motor_pos(14), fsrL(1), fsrR(1), camera_frame_idx(1)]
         state_arr = data_dict["state_array"]
-        self.time_ref = np.array(state_arr[:, 0] - state_arr[0, 0], dtype=np.float32)
+        self.time_ref = np.array(state_arr[:, 0] - state_arr[0, 0], dtype=np.float32) / playback_speed
         self.arm_joint_pos_ref = np.array(
             [
                 self.arm_fk(arm_motor_pos)
