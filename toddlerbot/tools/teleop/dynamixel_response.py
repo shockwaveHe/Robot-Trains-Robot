@@ -32,7 +32,7 @@ from toddlerbot.sim.robot import Robot
 
 
 class ResponseTester:
-    def __init__(self, sim_name="real", robot_name="sysID_XC330"):
+    def __init__(self, sim_name="mujoco", robot_name="sysID_XC330"):
         # Initial values for the PID controller
         self.kP = 0.0
         self.kI = 0.0
@@ -50,7 +50,7 @@ class ResponseTester:
         self.sim_name = sim_name
         self.robot = Robot(robot_name)
         if self.sim_name == "mujoco":
-            self.sim = MuJoCoSim(self.robot, vis_type="view", fixed_base=False)
+            self.sim = MuJoCoSim(self.robot, vis_type="view", fixed_base=True)
         elif self.sim_name == "real":
             self.sim = RealWorld(self.robot)
         else:
@@ -60,22 +60,22 @@ class ResponseTester:
         self.controller = self.sim.dynamixel_controller
         # self.connect_dynamixel()
 
-    def connect_dynamixel(self):
-        # Create a controller object
-        config = DynamixelConfig(
-            port="/dev/tty.usbserial-FT7WBA3B",  # FT8ISUJY
-            baudrate=2e6,
-            control_mode=["extended_position"],
-            kP=[self.kP],
-            kI=[self.kI],
-            kD=[self.kD],
-            kFF2=[self.kFF2],
-            kFF1=[self.kFF1],
-            init_pos=[0.0],
-        )
-        self.controller = DynamixelController(config, motor_ids=[self.id])
+    # def connect_dynamixel(self):
+    #     # Create a controller object
+    #     config = DynamixelConfig(
+    #         port="/dev/tty.usbserial-FT7WBA3B",  # FT8ISUJY
+    #         baudrate=2e6,
+    #         control_mode=["extended_position"],
+    #         kP=[self.kP],
+    #         kI=[self.kI],
+    #         kD=[self.kD],
+    #         kFF2=[self.kFF2],
+    #         kFF1=[self.kFF1],
+    #         init_pos=[0.0],
+    #     )
+    #     self.controller = DynamixelController(config, motor_ids=[self.id])
 
-    def reset_motors(self, reset_time=1.0, target_pos=0.0):
+    def reset_motors(self, reset_time=1.0, target_pos=-np.pi / 2):
         print("Resetting motors...")
         self.controller.enable_motors()
         self.controller.set_kp_kd(kp=2400, kd=2400)
@@ -90,9 +90,11 @@ class ResponseTester:
             time.sleep(tslp)
         self.controller.set_pos(pos=[target_pos])
 
-    def step_response(self, duration=3.0, target_pos=1.0):
+    # offset is unit(rad) so that we are looking at the unit step response
+    def step_response(self, duration=3.0, offset=1):
         # Reset the motor to the initial position
-        self.reset_motors()
+        rest_pos = -np.pi / 2
+        self.reset_motors(target_pos=rest_pos)
 
         print("Running step response...")
         self.controller.set_parameters(
@@ -112,13 +114,15 @@ class ResponseTester:
             while time.time() - start_time < duration:
                 curr_time = time.time() - start_time
                 if curr_time < 1.0:
-                    cmd_pos = 0.0
+                    cmd_pos = rest_pos
                 else:
-                    cmd_pos = target_pos
+                    cmd_pos = rest_pos + offset
 
                 self.controller.set_pos(pos=[cmd_pos])
                 state_dict = self.controller.get_motor_state()
-                response.append((curr_time, state_dict[self.id].pos, cmd_pos))
+                response.append(
+                    (curr_time, state_dict[self.id].pos - rest_pos, cmd_pos - rest_pos)
+                )
 
                 # Calculate the percentage of time completed
                 progress_percentage = round((curr_time / duration) * 100, 1)
