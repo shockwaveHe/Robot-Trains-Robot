@@ -100,7 +100,7 @@ class MJXConfig:
         q_dot_tau_max_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
         q_dot_max_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
         push_interval_s: int = 4  # seconds
-        push_vel: float = 0.01
+        push_vel: float = 0.1
 
     @dataclass
     class NoiseConfig:
