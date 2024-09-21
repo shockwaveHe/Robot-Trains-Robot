@@ -108,8 +108,8 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         )
 
         # PD controller parameters
-        self.kp = 2000.0
-        self.kd = 0.0
+        self.kp = np.array([2000, 4000], dtype=np.float32)
+        self.kd = np.array([0, 0], dtype=np.float32)
 
         self.step_curr = 0
         self.previous_error = np.zeros(2, dtype=np.float32)
