@@ -13,9 +13,9 @@ class PPOConfig:
     num_updates_per_batch: int = 4
     discounting: float = 0.97
     learning_rate: float = 1e-4
-    decay_steps: int = 10_000_000
+    decay_steps: int = 50_000_000
     alpha: float = 0.1
-    entropy_cost: float = 1e-4
+    entropy_cost: float = 2e-4
     clipping_epsilon: float = 0.2
     num_envs: int = 1024
     batch_size: int = 256
