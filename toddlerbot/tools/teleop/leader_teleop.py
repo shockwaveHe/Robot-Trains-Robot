@@ -6,6 +6,7 @@ import pickle
 import time
 from typing import Any, Dict, List
 
+import cv2
 import joblib
 import numpy as np
 import numpy.typing as npt
@@ -94,6 +95,8 @@ class InferencePolicy(BasePolicy):
         self.blend_percentage = 0.0
         self.default_pose = default_pose
 
+        self.camera = Camera(camera_id=0)
+
         self.load_model()
         # deque for observation
         self.obs_deque = collections.deque([], maxlen=self.model.obs_horizon)
@@ -161,10 +164,17 @@ class InferencePolicy(BasePolicy):
 
     def step(self, obs: Obs, obs_real: Obs) -> npt.NDArray[np.float32]:
         # manage obs_deque
-        self.obs_deque.append(obs_real)
+        camera_frame = self.camera.get_state()
+        camera_frame = cv2.resize(camera_frame, (171, 96))[:96, 38:134] / 255.0
+        camera_frame = camera_frame.transpose(2, 0, 1)
+        obs_entry = {"image": camera_frame, "agent_pos": obs_real.motor_pos}
+        self.obs_deque.append(obs_entry)
 
         leader_action = obs_real.motor_pos
-        sim_action = self.inference_step()
+        if len(self.obs_deque) == self.model.obs_horizon:
+            sim_action = self.inference_step()
+        else:
+            sim_action = obs_real.motor_pos
 
         if self.stop_inference:
             leader_action = self.reset_slowly(obs_real)
