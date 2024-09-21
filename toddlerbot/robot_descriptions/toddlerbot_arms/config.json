@@ -3,7 +3,7 @@
         "is_fixed": true,
         "has_imu": false,
         "has_dynamixel": true,
-        "dynamixel_baudrate": 3000000,
+        "dynamixel_baudrate": 2000000,
         "has_sunny_sky": false,
         "solref": [
             0.004,
@@ -20,9 +20,9 @@
             "group": "arm",
             "lower_limit": -3.141592653589793,
             "upper_limit": 1.5707963267948966,
-            "damping": 0.174,
-            "armature": 0.005,
-            "frictionloss": 0.291,
+            "damping": 0.127,
+            "armature": 0.004,
+            "frictionloss": 0.069,
             "id": 16,
             "type": "dynamixel",
             "spec": "XC430",
@@ -35,7 +35,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 1.45,
+            "q_dot_tau_max": 4.99,
+            "q_dot_max": 10.0
         },
         "left_sho_roll": {
             "is_passive": false,
@@ -43,9 +46,9 @@
             "group": "arm",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 0.3490658503988659,
-            "damping": 0.195,
-            "armature": 0.015,
-            "frictionloss": 0.53,
+            "damping": 0.12,
+            "armature": 0.0042,
+            "frictionloss": 0.292,
             "id": 17,
             "type": "dynamixel",
             "spec": "2XL430",
@@ -58,7 +61,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 1.55,
+            "q_dot_tau_max": 3.24,
+            "q_dot_max": 19.91
         },
         "left_sho_yaw_drive": {
             "is_passive": false,
@@ -66,9 +72,9 @@
             "group": "arm",
             "lower_limit": -2.6179938779914944,
             "upper_limit": 2.6179938779914944,
-            "damping": 0.195,
-            "armature": 0.015,
-            "frictionloss": 0.53,
+            "damping": 0.12,
+            "armature": 0.0042,
+            "frictionloss": 0.292,
             "id": 18,
             "type": "dynamixel",
             "spec": "2XL430",
@@ -82,6 +88,9 @@
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
             "kd_sim": 0.0,
+            "tau_max": 1.55,
+            "q_dot_tau_max": 3.24,
+            "q_dot_max": 19.91,
             "gear_ratio": 1.0
         },
         "left_elbow_roll": {
@@ -90,9 +99,9 @@
             "group": "arm",
             "lower_limit": -1.9198621771937625,
             "upper_limit": 2.443460952792061,
-            "damping": 0.195,
-            "armature": 0.015,
-            "frictionloss": 0.53,
+            "damping": 0.12,
+            "armature": 0.0042,
+            "frictionloss": 0.292,
             "id": 19,
             "type": "dynamixel",
             "spec": "2XL430",
@@ -105,7 +114,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 1.55,
+            "q_dot_tau_max": 3.24,
+            "q_dot_max": 19.91
         },
         "left_elbow_yaw_drive": {
             "is_passive": false,
@@ -113,9 +125,9 @@
             "group": "arm",
             "lower_limit": -2.6179938779914944,
             "upper_limit": 2.6179938779914944,
-            "damping": 0.195,
-            "armature": 0.015,
-            "frictionloss": 0.53,
+            "damping": 0.12,
+            "armature": 0.0042,
+            "frictionloss": 0.292,
             "id": 20,
             "type": "dynamixel",
             "spec": "2XL430",
@@ -129,6 +141,9 @@
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
             "kd_sim": 0.0,
+            "tau_max": 1.55,
+            "q_dot_tau_max": 3.24,
+            "q_dot_max": 19.91,
             "gear_ratio": 1.0
         },
         "left_wrist_pitch_drive": {
@@ -137,9 +152,9 @@
             "group": "arm",
             "lower_limit": -1.9198621771937625,
             "upper_limit": 1.3962634015954636,
-            "damping": 0.195,
-            "armature": 0.015,
-            "frictionloss": 0.53,
+            "damping": 0.12,
+            "armature": 0.0042,
+            "frictionloss": 0.292,
             "id": 21,
             "type": "dynamixel",
             "spec": "2XL430",
@@ -153,6 +168,9 @@
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
             "kd_sim": 0.0,
+            "tau_max": 1.55,
+            "q_dot_tau_max": 3.24,
+            "q_dot_max": 19.91,
             "gear_ratio": 1.0
         },
         "left_wrist_roll": {
@@ -161,9 +179,9 @@
             "group": "arm",
             "lower_limit": -1.9198621771937625,
             "upper_limit": 1.3962634015954636,
-            "damping": 0.195,
-            "armature": 0.015,
-            "frictionloss": 0.53,
+            "damping": 0.12,
+            "armature": 0.0042,
+            "frictionloss": 0.292,
             "id": 22,
             "type": "dynamixel",
             "spec": "2XL430",
@@ -176,7 +194,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 1.55,
+            "q_dot_tau_max": 3.24,
+            "q_dot_max": 19.91
         },
         "right_sho_pitch": {
             "is_passive": false,
@@ -184,9 +205,9 @@
             "group": "arm",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 3.141592653589793,
-            "damping": 0.174,
-            "armature": 0.005,
-            "frictionloss": 0.291,
+            "damping": 0.127,
+            "armature": 0.004,
+            "frictionloss": 0.069,
             "id": 23,
             "type": "dynamixel",
             "spec": "XC430",
@@ -199,7 +220,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 1.45,
+            "q_dot_tau_max": 4.99,
+            "q_dot_max": 10.0
         },
         "right_sho_roll": {
             "is_passive": false,
@@ -207,9 +231,9 @@
             "group": "arm",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 0.3490658503988659,
-            "damping": 0.195,
-            "armature": 0.015,
-            "frictionloss": 0.53,
+            "damping": 0.12,
+            "armature": 0.0042,
+            "frictionloss": 0.292,
             "id": 24,
             "type": "dynamixel",
             "spec": "2XL430",
@@ -222,7 +246,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 1.55,
+            "q_dot_tau_max": 3.24,
+            "q_dot_max": 19.91
         },
         "right_sho_yaw_drive": {
             "is_passive": false,
@@ -230,9 +257,9 @@
             "group": "arm",
             "lower_limit": -2.6179938779914944,
             "upper_limit": 2.6179938779914944,
-            "damping": 0.195,
-            "armature": 0.015,
-            "frictionloss": 0.53,
+            "damping": 0.12,
+            "armature": 0.0042,
+            "frictionloss": 0.292,
             "id": 25,
             "type": "dynamixel",
             "spec": "2XL430",
@@ -246,6 +273,9 @@
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
             "kd_sim": 0.0,
+            "tau_max": 1.55,
+            "q_dot_tau_max": 3.24,
+            "q_dot_max": 19.91,
             "gear_ratio": 1.0
         },
         "right_elbow_roll": {
@@ -254,9 +284,9 @@
             "group": "arm",
             "lower_limit": -1.9198621771937625,
             "upper_limit": 2.443460952792061,
-            "damping": 0.195,
-            "armature": 0.015,
-            "frictionloss": 0.53,
+            "damping": 0.12,
+            "armature": 0.0042,
+            "frictionloss": 0.292,
             "id": 26,
             "type": "dynamixel",
             "spec": "2XL430",
@@ -269,7 +299,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 1.55,
+            "q_dot_tau_max": 3.24,
+            "q_dot_max": 19.91
         },
         "right_elbow_yaw_drive": {
             "is_passive": false,
@@ -277,9 +310,9 @@
             "group": "arm",
             "lower_limit": -2.6179938779914944,
             "upper_limit": 2.6179938779914944,
-            "damping": 0.195,
-            "armature": 0.015,
-            "frictionloss": 0.53,
+            "damping": 0.12,
+            "armature": 0.0042,
+            "frictionloss": 0.292,
             "id": 27,
             "type": "dynamixel",
             "spec": "2XL430",
@@ -293,6 +326,9 @@
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
             "kd_sim": 0.0,
+            "tau_max": 1.55,
+            "q_dot_tau_max": 3.24,
+            "q_dot_max": 19.91,
             "gear_ratio": 1.0
         },
         "right_wrist_pitch_drive": {
@@ -301,9 +337,9 @@
             "group": "arm",
             "lower_limit": -1.3962634015954636,
             "upper_limit": 1.9198621771937625,
-            "damping": 0.195,
-            "armature": 0.015,
-            "frictionloss": 0.53,
+            "damping": 0.12,
+            "armature": 0.0042,
+            "frictionloss": 0.292,
             "id": 28,
             "type": "dynamixel",
             "spec": "2XL430",
@@ -317,6 +353,9 @@
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
             "kd_sim": 0.0,
+            "tau_max": 1.55,
+            "q_dot_tau_max": 3.24,
+            "q_dot_max": 19.91,
             "gear_ratio": 1.0
         },
         "right_wrist_roll": {
@@ -325,9 +364,9 @@
             "group": "arm",
             "lower_limit": -1.3962634015954636,
             "upper_limit": 1.9198621771937625,
-            "damping": 0.195,
-            "armature": 0.015,
-            "frictionloss": 0.53,
+            "damping": 0.12,
+            "armature": 0.0042,
+            "frictionloss": 0.292,
             "id": 29,
             "type": "dynamixel",
             "spec": "2XL430",
@@ -340,7 +379,10 @@
             "kff2_real": 0.0,
             "kff1_real": 0.0,
             "kp_sim": 14.0625,
-            "kd_sim": 0.0
+            "kd_sim": 0.0,
+            "tau_max": 1.55,
+            "q_dot_tau_max": 3.24,
+            "q_dot_max": 19.91
         },
         "left_elbow_yaw_driven": {
             "is_passive": true,
@@ -348,9 +390,9 @@
             "group": "arm",
             "lower_limit": -2.6179938779914944,
             "upper_limit": 2.6179938779914944,
-            "damping": 0.195,
-            "armature": 0.015,
-            "frictionloss": 0.53
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0
         },
         "left_sho_yaw_driven": {
             "is_passive": true,
@@ -358,9 +400,9 @@
             "group": "arm",
             "lower_limit": -2.6179938779914944,
             "upper_limit": 2.6179938779914944,
-            "damping": 0.195,
-            "armature": 0.015,
-            "frictionloss": 0.53
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0
         },
         "left_wrist_pitch_driven": {
             "is_passive": true,
@@ -368,9 +410,9 @@
             "group": "arm",
             "lower_limit": -1.3962634015954636,
             "upper_limit": 1.9198621771937625,
-            "damping": 0.195,
-            "armature": 0.015,
-            "frictionloss": 0.53
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0
         },
         "right_elbow_yaw_driven": {
             "is_passive": true,
@@ -378,9 +420,9 @@
             "group": "arm",
             "lower_limit": -2.6179938779914944,
             "upper_limit": 2.6179938779914944,
-            "damping": 0.195,
-            "armature": 0.015,
-            "frictionloss": 0.53
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0
         },
         "right_sho_yaw_driven": {
             "is_passive": true,
@@ -388,9 +430,9 @@
             "group": "arm",
             "lower_limit": -2.6179938779914944,
             "upper_limit": 2.6179938779914944,
-            "damping": 0.195,
-            "armature": 0.015,
-            "frictionloss": 0.53
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0
         },
         "right_wrist_pitch_driven": {
             "is_passive": true,
@@ -398,9 +440,9 @@
             "group": "arm",
             "lower_limit": -1.9198621771937625,
             "upper_limit": 1.3962634015954636,
-            "damping": 0.195,
-            "armature": 0.015,
-            "frictionloss": 0.53
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0
         }
     }
 }
