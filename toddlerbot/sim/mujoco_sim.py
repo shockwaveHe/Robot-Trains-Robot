@@ -24,8 +24,8 @@ class MuJoCoSim(BaseSim):
     def __init__(
         self,
         robot: Robot,
-        n_frames: int = 10,
-        dt: float = 0.002,
+        n_frames: int = 20,
+        dt: float = 0.001,
         fixed_base: bool = False,
         xml_path: str = "",
         xml_str: str = "",

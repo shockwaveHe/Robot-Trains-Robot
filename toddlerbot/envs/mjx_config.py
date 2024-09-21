@@ -76,7 +76,7 @@ class MJXConfig:
 
         healthy_z_range: List[float] = field(default_factory=lambda: [0.2, 0.4])
         tracking_sigma: float = 5.0
-        min_feet_distance: float = 0.06
+        min_feet_distance: float = 0.05
         max_feet_distance: float = 0.15
         target_feet_z_delta: float = 0.02
         torso_pitch_range: List[float] = field(default_factory=lambda: [-0.2, 0.2])
@@ -100,7 +100,7 @@ class MJXConfig:
         q_dot_tau_max_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
         q_dot_max_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
         push_interval_s: int = 4  # seconds
-        push_vel: float = 0.1
+        push_vel: float = 0.02
 
     @dataclass
     class NoiseConfig:
