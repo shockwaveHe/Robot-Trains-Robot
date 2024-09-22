@@ -13,6 +13,7 @@ from adafruit_bno08x import (
 from adafruit_bno08x.i2c import BNO08X_I2C
 
 from toddlerbot.utils.math_utils import (
+    euler2quat,
     exponential_moving_average,
     quat2euler,
     quat_inv,
@@ -45,7 +46,15 @@ class IMU:
         self.euler_prev = np.zeros(3, dtype=np.float32)
 
     def set_zero_pose(self):
-        self.zero_quat = np.array(self.sensor.quaternion, dtype=np.float32, copy=True)
+        quat_raw = np.array(
+            [self.sensor.quaternion[3], *self.sensor.quaternion[:3]],
+            dtype=np.float32,
+            copy=True,
+        )
+        zero_euler = np.asarray(quat2euler(quat_raw))
+        # To make sure the torso pitch is in the neural position
+        zero_euler[1] = -np.pi / 2
+        self.zero_quat = np.asarray(euler2quat(zero_euler))
         self.zero_quat_inv = np.asarray(quat_inv(self.zero_quat))
 
     def get_state(self) -> Dict[str, npt.NDArray[np.float32]]:
@@ -55,15 +64,17 @@ class IMU:
         assert self.zero_quat is not None
         assert self.zero_quat_inv is not None
 
-        quat_raw = np.array(self.sensor.quaternion, dtype=np.float32, copy=True)
+        quat_raw = np.array(
+            [self.sensor.quaternion[3], *self.sensor.quaternion[:3]],
+            dtype=np.float32,
+            copy=True,
+        )
         # Compute relative rotation based on zero pose
         quat = quat_mult(quat_raw, self.zero_quat_inv)
-        quat[2] *= -1
+        quat[2:] *= -1
         euler = np.asarray(quat2euler(quat))
-        # Ensure the transition is smooth by adjusting for any discontinuities
-        euler_delta = euler - self.euler_prev
-        euler_delta = (euler_delta + np.pi) % (2 * np.pi) - np.pi
-        euler = self.euler_prev + euler_delta
+        euler_delta = (euler - self.euler_prev + np.pi) % (2 * np.pi) - np.pi
+        euler = (self.euler_prev + euler_delta + np.pi) % (2 * np.pi) - np.pi
 
         filtered_euler = np.asarray(
             exponential_moving_average(self.alpha, euler, self.euler_prev),
@@ -73,6 +84,7 @@ class IMU:
 
         ang_vel_raw = np.array(self.sensor.gyro, dtype=np.float32, copy=True)
         ang_vel = np.asarray(rotate_vec(ang_vel_raw, quat_raw))
+        ang_vel[1:] *= -1
         filtered_ang_vel = np.asarray(
             exponential_moving_average(self.alpha, ang_vel, self.ang_vel_prev),
             dtype=np.float32,
@@ -101,12 +113,19 @@ if __name__ == "__main__":
         step_start = time.time()
         # acceleration = imu.get_acceleration()
         state = imu.get_state()
+        # print(
+        #     np.array(
+        #         [imu.sensor.quaternion[3], *imu.sensor.quaternion[:3]],
+        #         dtype=np.float32,
+        #         copy=True,
+        #     )
+        # )
         print(f"ang_vel: {state['ang_vel']}, euler: {state['euler']} ")
 
         step_time = time.time() - step_start
         print(f"Step time: {step_time * 1000:.3f} ms")
 
-        time.sleep(0.01)
+        time.sleep(0.02)
 
         step += 1
 

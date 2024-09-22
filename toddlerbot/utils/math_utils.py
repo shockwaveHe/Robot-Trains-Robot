@@ -223,11 +223,6 @@ def gaussian_basis_functions(phase: ArrayType, N: int = 50):
     return basis
 
 
-def wrap_to_pi(angle: ArrayType) -> ArrayType:
-    """Wrap angles to the range [-pi, pi]."""
-    return (angle + np.pi) % (2 * np.pi) - np.pi
-
-
 def interpolate(
     p_start: ArrayType | float,
     p_end: ArrayType | float,
