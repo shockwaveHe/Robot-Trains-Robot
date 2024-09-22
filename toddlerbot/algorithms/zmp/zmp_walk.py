@@ -446,7 +446,7 @@ class ZMPWalk:
                     -hip_roll,
                     hip_pitch,
                     knee_pitch,
-                    -ank_roll + hip_roll,
+                    ank_roll - hip_roll,
                     -ank_pitch,
                 ]
             ).T
@@ -457,7 +457,7 @@ class ZMPWalk:
                     hip_roll,
                     -hip_pitch,
                     -knee_pitch,
-                    -ank_roll + hip_roll,
+                    ank_roll - hip_roll,
                     -ank_pitch,
                 ]
             ).T

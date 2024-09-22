@@ -29,6 +29,7 @@ def test_motion_ref(
     motion_ref: MotionReference,
     command_list: List[npt.NDArray[np.float32]],
     time_total: float = 5.0,
+    vis_type: str = "render",
 ):
     exp_name: str = f"{robot.name}_{motion_ref.name}_{sim.name}_test"
     time_str = time.strftime("%Y%m%d_%H%M%S")
@@ -54,6 +55,9 @@ def test_motion_ref(
                 # sim.step()
                 sim.set_joint_angles(dict(zip(robot.joint_ordering, joint_angles)))
                 sim.forward()
+
+                if vis_type == "view":
+                    time.sleep(sim.control_dt)
 
     except KeyboardInterrupt:
         print("KeyboardInterrupt: Stopping the simulation...")
@@ -167,4 +171,4 @@ if __name__ == "__main__":
             np.array([1.0], dtype=np.float32),
         ]
 
-    test_motion_ref(robot, sim, motion_ref, command_list)
+    test_motion_ref(robot, sim, motion_ref, command_list, vis_type=args.vis)

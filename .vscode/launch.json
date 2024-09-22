@@ -313,6 +313,8 @@
             "args": [
                 "--ref", 
                 "walk_zmp",
+                "--robot",
+                "toddlerbot_OP3",
             ],
         },
         {
@@ -325,6 +327,8 @@
             "args": [
                 "--ref", 
                 "balance",
+                "--robot",
+                "toddlerbot_OP3",
             ],
         },
         {
