@@ -53,7 +53,7 @@ class WalkZMPPolicy(BasePolicy, policy_name="walk_zmp"):
             robot.joint_ordering.index("right_ank_roll"),
         ]
         self.motion_ref = WalkZMPReference(
-            robot, 0.72, [[-0.1, 0.3], [-0.05, 0.05], [0.0, 0.0]]
+            robot, [[-0.1, 0.3], [-0.05, 0.05], [0.0, 0.0]], 0.72, self.control_dt
         )
 
         xml_path = find_robot_file_path(self.robot.name, suffix="_scene.xml")
