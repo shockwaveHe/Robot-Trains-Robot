@@ -121,11 +121,7 @@ if __name__ == "__main__":
         cfg = WalkCfg()
         motion_ref = WalkZMPReference(
             robot,
-            [
-                cfg.commands.lin_vel_x_range,
-                cfg.commands.lin_vel_y_range,
-                cfg.commands.ang_vel_z_range,
-            ],
+            cfg.commands.command_list,
             cfg.action.cycle_time,
             cfg.sim.timestep * cfg.action.n_frames,
         )

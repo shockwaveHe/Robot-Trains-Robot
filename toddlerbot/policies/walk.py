@@ -21,11 +21,7 @@ class WalkPolicy(MJXPolicy, policy_name="walk"):
         env_cfg = WalkCfg()
         motion_ref = WalkZMPReference(
             robot,
-            [
-                env_cfg.commands.lin_vel_x_range,
-                env_cfg.commands.lin_vel_y_range,
-                env_cfg.commands.ang_vel_z_range,
-            ],
+            env_cfg.commands.command_list,
             env_cfg.action.cycle_time,
             env_cfg.sim.timestep * env_cfg.action.n_frames,
         )

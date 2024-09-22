@@ -52,22 +52,24 @@ class ZMPWalk:
         path_quat = np.array([1, 0, 0, 0], dtype=np.float32)
 
         # Create linspace arrays for each command range
-        linspaces = [
-            np.arange(start, stop + 1e-6, interval, dtype=np.float32)
-            for start, stop in command_ranges
-        ]
+        # linspaces = [
+        #     np.arange(start, stop + 1e-6, interval, dtype=np.float32)
+        #     for start, stop in command_ranges
+        # ]
 
-        zeros_x = np.zeros_like(linspaces[0])
-        zeros_y = np.zeros_like(linspaces[1])
-        zeros_z = np.zeros_like(linspaces[2])
+        # zeros_x = np.zeros_like(linspaces[0])
+        # zeros_y = np.zeros_like(linspaces[1])
+        # zeros_z = np.zeros_like(linspaces[2])
 
-        command_spectrum_x = np.stack([linspaces[0], zeros_x, zeros_x], axis=1)
-        command_spectrum_y = np.stack([zeros_y, linspaces[1], zeros_y], axis=1)
-        command_spectrum_z = np.stack([zeros_z, zeros_z, linspaces[2]], axis=1)
-        # Concatenate all command spectrums
-        command_spectrum = np.concatenate(
-            [command_spectrum_x, command_spectrum_y, command_spectrum_z], axis=0
-        )
+        # command_spectrum_x = np.stack([linspaces[0], zeros_x, zeros_x], axis=1)
+        # command_spectrum_y = np.stack([zeros_y, linspaces[1], zeros_y], axis=1)
+        # command_spectrum_z = np.stack([zeros_z, zeros_z, linspaces[2]], axis=1)
+        # # Concatenate all command spectrums
+        # command_spectrum = np.concatenate(
+        #     [command_spectrum_x, command_spectrum_y, command_spectrum_z], axis=0
+        # )
+
+        command_spectrum = np.array(command_ranges, dtype=np.float32)
         for command in tqdm(command_spectrum, desc="Building Lookup Table"):
             # if np.linalg.norm(command) < 1e-6:
             #     continue

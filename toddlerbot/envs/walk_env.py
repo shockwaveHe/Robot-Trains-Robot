@@ -20,10 +20,16 @@ class WalkCfg(MJXConfig):
 
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):
-        num_commands: int = 3
-        lin_vel_x_range: List[float] = field(default_factory=lambda: [-0.1, 0.3])
-        lin_vel_y_range: List[float] = field(default_factory=lambda: [-0.05, 0.05])
-        ang_vel_z_range: List[float] = field(default_factory=lambda: [0.0, 0.0])
+        command_list: List[List[float]] = field(
+            default_factory=lambda: [
+                [0.0, 0.0, 0.0],
+                [-0.1, 0.0, 0.0],
+                [0.1, 0.0, 0.0],
+                [0.2, 0.0, 0.0],
+                [0.0, -0.05, 0.0],
+                [0.0, 0.05, 0.0],
+            ]
+        )
 
     @dataclass
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
@@ -63,11 +69,7 @@ class WalkEnv(MJXEnv):
         elif ref_motion_type == "zmp":
             motion_ref = WalkZMPReference(
                 robot,
-                [
-                    cfg.commands.lin_vel_x_range,
-                    cfg.commands.lin_vel_y_range,
-                    cfg.commands.ang_vel_z_range,
-                ],
+                cfg.commands.command_list,
                 cfg.action.cycle_time,
                 cfg.sim.timestep * cfg.action.n_frames,
             )
@@ -75,9 +77,7 @@ class WalkEnv(MJXEnv):
             raise ValueError(f"Unknown ref_motion_type: {ref_motion_type}")
 
         self.cycle_time = jnp.array(cfg.action.cycle_time)
-        self.lin_vel_x_range = jnp.array(cfg.commands.lin_vel_x_range)
-        self.lin_vel_y_range = jnp.array(cfg.commands.lin_vel_y_range)
-        self.ang_vel_z_range = jnp.array(cfg.commands.ang_vel_z_range)
+        self.command_list = jnp.array(cfg.commands.command_list)
 
         super().__init__(
             name,
@@ -95,30 +95,19 @@ class WalkEnv(MJXEnv):
         if self.fixed_command is not None:
             return self.fixed_command
 
-        # rng, rng_1, rng_2, rng_3 = jax.random.split(rng, 4)
-        # lin_vel_x = jax.random.uniform(
-        #     rng_1, (1,), minval=self.lin_vel_x_range[0], maxval=self.lin_vel_x_range[1]
-        # )
-        # lin_vel_y = jax.random.uniform(
-        #     rng_2, (1,), minval=self.lin_vel_y_range[0], maxval=self.lin_vel_y_range[1]
-        # )
-        # ang_vel_yaw = jax.random.uniform(
-        #     rng_3, (1,), minval=self.ang_vel_z_range[0], maxval=self.ang_vel_z_range[1]
-        # )
+        # Randomly sample an index from the command list
+        num_commands = self.command_list.shape[0]
+        rng, rng1 = jax.random.split(rng)
+        command_idx = jax.random.randint(rng1, (), 0, num_commands)
 
-        # commands = jnp.concatenate([lin_vel_x, lin_vel_y, ang_vel_yaw])
-        commands = jnp.concatenate(
-            [jnp.array([-0.1]), jnp.array([0.0]), jnp.array([0.0])]
-        )
-        # commands = jnp.concatenate(
-        #     [jnp.array([0.0]), jnp.array([0.05]), jnp.array([0.0])]
-        # )
+        # Select the corresponding command
+        command = self.command_list[command_idx]
 
         # Set small commands to zero based on norm condition
-        mask = (jnp.linalg.norm(commands[:2]) > 0.01).astype(jnp.float32)
-        commands = commands.at[:2].set(commands[:2] * mask)
+        mask = (jnp.linalg.norm(command[:2]) > 0.01).astype(jnp.float32)
+        command = command.at[:2].set(command[:2] * mask)
 
-        return commands
+        return command
 
     def _extract_command(self, command: jax.Array) -> Tuple[jax.Array, jax.Array]:
         x_vel = command[0]
