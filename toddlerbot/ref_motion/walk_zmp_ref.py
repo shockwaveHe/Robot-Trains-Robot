@@ -47,16 +47,25 @@ class WalkZMPReference(MotionReference):
         )
         if os.path.exists(lookup_table_path):
             with open(lookup_table_path, "rb") as f:
-                lookup_keys, stance_mask_ref_list, leg_joint_pos_ref_list = pickle.load(
-                    f
-                )
+                (
+                    lookup_keys,
+                    com_ref_list,
+                    stance_mask_ref_list,
+                    leg_joint_pos_ref_list,
+                ) = pickle.load(f)
         else:
-            lookup_keys, stance_mask_ref_list, leg_joint_pos_ref_list = (
+            lookup_keys, com_ref_list, stance_mask_ref_list, leg_joint_pos_ref_list = (
                 self.zmp_walk.build_lookup_table(command_ranges)
             )
             with open(lookup_table_path, "wb") as f:
                 pickle.dump(
-                    (lookup_keys, stance_mask_ref_list, leg_joint_pos_ref_list), f
+                    (
+                        lookup_keys,
+                        com_ref_list,
+                        stance_mask_ref_list,
+                        leg_joint_pos_ref_list,
+                    ),
+                    f,
                 )
 
         self.lookup_keys = np.array(lookup_keys, dtype=np.float32)

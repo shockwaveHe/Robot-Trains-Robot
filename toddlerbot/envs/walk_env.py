@@ -143,7 +143,7 @@ class WalkEnv(MJXEnv):
         first_contact = (info["feet_air_time"] > 0) * contact_filter
         reward = jnp.sum(info["feet_air_time"] * first_contact)
         # no reward for zero command
-        reward *= jnp.linalg.norm(info["command"][:2]) > 0.05
+        reward *= jnp.linalg.norm(info["command"][:2]) > 0.01
         return reward
 
     def _reward_feet_clearance(
@@ -187,5 +187,5 @@ class WalkEnv(MJXEnv):
             )
         )
         reward = -(qpos_diff**2)
-        reward *= jnp.linalg.norm(info["command"][:2]) < 0.1
+        reward *= jnp.linalg.norm(info["command"][:2]) < 0.01
         return reward

@@ -4,8 +4,8 @@ import mujoco
 import numpy as np
 import numpy.typing as npt
 
+from toddlerbot.algorithms.zmp.zmp_walk import ZMPWalk
 from toddlerbot.policies import BasePolicy
-from toddlerbot.ref_motion.walk_zmp_ref import WalkZMPReference
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
@@ -19,6 +19,7 @@ class WalkZMPPolicy(BasePolicy, policy_name="walk_zmp"):
         robot: Robot,
         init_motor_pos: npt.NDArray[np.float32],
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
+        cycle_time: float = 0.72,
     ):
         super().__init__(name, robot, init_motor_pos)
 
@@ -52,9 +53,7 @@ class WalkZMPPolicy(BasePolicy, policy_name="walk_zmp"):
             robot.joint_ordering.index("right_hip_roll"),
             robot.joint_ordering.index("right_ank_roll"),
         ]
-        self.motion_ref = WalkZMPReference(
-            robot, [[-0.1, 0.3], [-0.05, 0.05], [0.0, 0.0]], 0.72, self.control_dt
-        )
+        self.zmp_walk = ZMPWalk(robot, cycle_time, control_dt=self.control_dt)
 
         xml_path = find_robot_file_path(self.robot.name, suffix="_scene.xml")
         self.model = mujoco.MjModel.from_xml_path(xml_path)

@@ -45,6 +45,7 @@ class ZMPWalk:
         Precompute and store the trajectories for a range of commands.
         """
         lookup_keys: List[Tuple[float, ...]] = []
+        com_ref_list: List[ArrayType] = []
         stance_mask_ref_list: List[ArrayType] = []
         leg_joint_pos_ref_list: List[ArrayType] = []
         path_pos = np.zeros(3, dtype=np.float32)
@@ -71,12 +72,15 @@ class ZMPWalk:
             # if np.linalg.norm(command) < 1e-6:
             #     continue
 
-            leg_joint_pos_ref, stance_mask_ref = self.plan(path_pos, path_quat, command)
+            com_ref, leg_joint_pos_ref, stance_mask_ref = self.plan(
+                path_pos, path_quat, command
+            )
             lookup_keys.append(tuple(map(float, command)))
+            com_ref_list.append(com_ref)
             stance_mask_ref_list.append(stance_mask_ref)
             leg_joint_pos_ref_list.append(leg_joint_pos_ref)
 
-        return lookup_keys, stance_mask_ref_list, leg_joint_pos_ref_list
+        return lookup_keys, com_ref_list, stance_mask_ref_list, leg_joint_pos_ref_list
 
     def plan(
         self,
@@ -84,7 +88,7 @@ class ZMPWalk:
         path_quat: ArrayType,
         command: ArrayType,
         total_time: float = 20.0,
-    ) -> Tuple[ArrayType, ArrayType]:
+    ) -> Tuple[ArrayType, ArrayType, ArrayType]:
         path_euler = quat2euler(path_quat)
         pose_curr = np.array(
             [path_pos[0], path_pos[1], path_euler[2]], dtype=np.float32
@@ -216,10 +220,12 @@ class ZMPWalk:
         )
 
         first_cycle_idx = int(np.ceil(self.cycle_time / self.control_dt))
+
+        com_ref_truncated = x_traj[first_cycle_idx:]
         leg_joint_pos_ref_truncated = leg_joint_pos_ref[first_cycle_idx:]
         stance_mask_ref_truncated = stance_mask_ref[first_cycle_idx:]
 
-        return leg_joint_pos_ref_truncated, stance_mask_ref_truncated
+        return com_ref_truncated, leg_joint_pos_ref_truncated, stance_mask_ref_truncated
 
     def compute_foot_trajectories(
         self, time_steps: ArrayType, footsteps: List[ArrayType]
