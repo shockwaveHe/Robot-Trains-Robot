@@ -110,6 +110,8 @@ class MJXConfig:
         dof_vel: float = 2.0
         ang_vel: float = 2.0
         euler: float = 1.0
+        backlash_scale: float = 0.02
+        backlash_activation: float = 0.1
 
     def __init__(self):
         self.sim = self.SimConfig()

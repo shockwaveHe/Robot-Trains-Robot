@@ -215,6 +215,8 @@ class MJXEnv(PipelineEnv):
             ]
         )
         self.reset_noise_pos = self.cfg.noise.reset_noise_pos
+        self.backlash_scale = self.cfg.noise.backlash_scale
+        self.backlash_activation = self.cfg.noise.backlash_activation
 
         self.kp_range = self.cfg.domain_rand.kp_range
         self.kd_range = self.cfg.domain_rand.kd_range
@@ -289,11 +291,8 @@ class MJXEnv(PipelineEnv):
         qpos = qpos.at[self.q_start_idx + self.arm_joint_indices].set(arm_joint_pos)  # type:ignore
         qpos = qpos.at[self.q_start_idx + self.arm_motor_indices].set(arm_motor_pos)  # type:ignore
         if self.add_noise:
-            noise_pos = jax.random.uniform(
-                rng2,
-                (self.nq - self.q_start_idx,),
-                minval=-self.reset_noise_pos,
-                maxval=self.reset_noise_pos,
+            noise_pos = self.reset_noise_pos * jax.random.normal(
+                rng2, (self.nq - self.q_start_idx,)
             )
             qpos = qpos.at[self.q_start_idx :].add(noise_pos)
 
@@ -600,6 +599,10 @@ class MJXEnv(PipelineEnv):
         motor_pos_delta = (
             motor_pos - self.default_qpos[self.q_start_idx + self.motor_indices]
         )
+        motor_backlash = self.backlash_scale * jnp.tanh(
+            pipeline_state.qfrc_actuator[self.motor_indices] / self.backlash_activation
+        )
+
         motor_vel = pipeline_state.qd[self.qd_start_idx + self.motor_indices]
 
         joint_pos = pipeline_state.q[self.q_start_idx + self.joint_indices]
@@ -621,7 +624,7 @@ class MJXEnv(PipelineEnv):
             [
                 info["phase_signal"],
                 info["command"],
-                motor_pos_delta * self.obs_scales.dof_pos,
+                motor_pos_delta * self.obs_scales.dof_pos + motor_backlash,
                 motor_vel * self.obs_scales.dof_vel,
                 info["last_act"],
                 # torso_lin_vel * self.obs_scales.lin_vel,
@@ -647,9 +650,7 @@ class MJXEnv(PipelineEnv):
         )
 
         if self.add_noise:
-            obs += self.obs_noise_scale * jax.random.uniform(
-                info["rng"], obs.shape, minval=-1, maxval=1
-            )
+            obs += self.obs_noise_scale * jax.random.normal(info["rng"], obs.shape)
 
         # jax.debug.breakpoint()
 
