@@ -75,6 +75,9 @@ class WalkEnv(MJXEnv):
             raise ValueError(f"Unknown ref_motion_type: {ref_motion_type}")
 
         self.cycle_time = jnp.array(cfg.action.cycle_time)
+        self.lin_vel_x_range = jnp.array(cfg.commands.lin_vel_x_range)
+        self.lin_vel_y_range = jnp.array(cfg.commands.lin_vel_y_range)
+        self.ang_vel_z_range = jnp.array(cfg.commands.ang_vel_z_range)
 
         super().__init__(
             name,
@@ -94,31 +97,22 @@ class WalkEnv(MJXEnv):
 
         # rng, rng_1, rng_2, rng_3 = jax.random.split(rng, 4)
         # lin_vel_x = jax.random.uniform(
-        #     rng_1,
-        #     (1,),
-        #     minval=self.command_ranges["lin_vel_x"][0],
-        #     maxval=self.command_ranges["lin_vel_x"][1],
+        #     rng_1, (1,), minval=self.lin_vel_x_range[0], maxval=self.lin_vel_x_range[1]
         # )
         # lin_vel_y = jax.random.uniform(
-        #     rng_2,
-        #     (1,),
-        #     minval=self.command_ranges["lin_vel_y"][0],
-        #     maxval=self.command_ranges["lin_vel_y"][1],
+        #     rng_2, (1,), minval=self.lin_vel_y_range[0], maxval=self.lin_vel_y_range[1]
         # )
         # ang_vel_yaw = jax.random.uniform(
-        #     rng_3,
-        #     (1,),
-        #     minval=self.command_ranges["ang_vel_yaw"][0],
-        #     maxval=self.command_ranges["ang_vel_yaw"][1],
+        #     rng_3, (1,), minval=self.ang_vel_z_range[0], maxval=self.ang_vel_z_range[1]
         # )
 
-        # TODO: Add command back
-        # commands = jnp.concatenate(
-        #     [jnp.array([0.1]), jnp.array([0.0]), jnp.array([0.0])]
-        # )
+        # commands = jnp.concatenate([lin_vel_x, lin_vel_y, ang_vel_yaw])
         commands = jnp.concatenate(
-            [jnp.array([0.0]), jnp.array([0.05]), jnp.array([0.0])]
+            [jnp.array([-0.1]), jnp.array([0.0]), jnp.array([0.0])]
         )
+        # commands = jnp.concatenate(
+        #     [jnp.array([0.0]), jnp.array([0.05]), jnp.array([0.0])]
+        # )
 
         # Set small commands to zero based on norm condition
         mask = (jnp.linalg.norm(commands[:2]) > 0.01).astype(jnp.float32)
