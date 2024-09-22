@@ -33,9 +33,12 @@ class CalibratePolicy(BasePolicy, policy_name="calibrate"):
         )
 
         # PD controller parameters
-        self.kp = 1.0  # Proportional gain
-        self.kd = 0.1  # Derivative gain
-        self.previous_error = 0.0
+        self.kp = 0.1  # Proportional gain
+        self.kd = 0.01  # Derivative gain
+        self.ki = 0.2  # Integral gain
+
+        # Initialize integral error
+        self.integral_error = 0.0
 
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         # Preparation phase
@@ -45,19 +48,20 @@ class CalibratePolicy(BasePolicy, policy_name="calibrate"):
             )
             return action
 
-        # PD controller to maintain torso pitch at 0
-        pitch_curr = obs.euler[1]  # Torso pitch angle (obs.euler[1])
-        # Calculate the error (difference between desired and current pitch)
-        error = pitch_curr
+        # PD+I controller to maintain torso pitch at 0
+        error = obs.euler[1]
+        error_derivative = obs.ang_vel[1]
 
-        # Derivative of the error (rate of change)
-        error_derivative = (error - self.previous_error) / self.control_dt
-        self.previous_error = error
+        # Update integral error (with a basic anti-windup mechanism)
+        self.integral_error += error * self.control_dt
+        self.integral_error = np.clip(self.integral_error, -10.0, 10.0)  # Anti-windup
 
-        # PD controller output
-        ctrl = self.kp * error + self.kd * error_derivative
+        # PID controller output
+        ctrl = (
+            self.kp * error + self.ki * self.integral_error - self.kd * error_derivative
+        )
 
-        # Update joint positions based on the PD controller command
+        # Update joint positions based on the PID controller command
         joint_pos = self.default_joint_pos.copy()
 
         joint_pos[self.left_hip_pitch_idx] += ctrl
