@@ -38,6 +38,13 @@ class WalkZMPPolicy(BasePolicy, policy_name="walk_zmp"):
             [robot.joint_limits[name] for name in robot.motor_ordering]
         )
 
+        joint_groups = np.array(
+            [robot.joint_groups[name] for name in robot.joint_ordering]
+        )
+        self.leg_joint_indices = np.arange(len(robot.joint_ordering))[
+            joint_groups == "leg"
+        ]
+
         # Indices for the pitch joints
         self.ctrl_x_indices = [
             robot.joint_ordering.index("left_hip_pitch"),
@@ -53,7 +60,14 @@ class WalkZMPPolicy(BasePolicy, policy_name="walk_zmp"):
             robot.joint_ordering.index("right_hip_roll"),
             robot.joint_ordering.index("right_ank_roll"),
         ]
+
         self.zmp_walk = ZMPWalk(robot, cycle_time, control_dt=self.control_dt)
+        self.com_ref, self.leg_joint_pos_ref, stance_mask_ref = self.zmp_walk.plan(
+            np.array([0.0, 0.0, 0.0]),
+            np.array([1.0, 0.0, 0.0, 0.0]),
+            self.fixed_command,
+            total_time=60.0,
+        )
 
         xml_path = find_robot_file_path(self.robot.name, suffix="_scene.xml")
         self.model = mujoco.MjModel.from_xml_path(xml_path)
@@ -72,17 +86,17 @@ class WalkZMPPolicy(BasePolicy, policy_name="walk_zmp"):
 
         self.q_start_idx = 0 if "fixed" in self.name else 7
 
-        self.prep_duration = 7.0
+        self.prep_duration = 2.0
         self.prep_time, self.prep_action = self.move(
             -self.control_dt,
             init_motor_pos,
             self.default_motor_pos,
             self.prep_duration,
-            end_time=5.0,
+            end_time=0.0,
         )
 
         # PD controller parameters
-        self.kp = np.array([2000, 4000], dtype=np.float32)
+        self.kp = np.array([500, 500], dtype=np.float32)
         self.kd = np.array([0, 0], dtype=np.float32)
 
         self.step_curr = 0
@@ -97,67 +111,49 @@ class WalkZMPPolicy(BasePolicy, policy_name="walk_zmp"):
             )
             return action
 
-        command = self.fixed_command
+        motor_angles = dict(zip(self.robot.motor_ordering, obs.motor_pos))
+        for name in motor_angles:
+            self.data.joint(name).qpos = motor_angles[name]
 
-        time_curr = self.step_curr * self.control_dt
-        state_ref = self.motion_ref.get_state_ref(
-            np.zeros(3, dtype=np.float32),
-            np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),
-            time_curr,
-            command,
-        )
+        joint_angles = self.robot.motor_to_joint_angles(motor_angles)
+        for name in joint_angles:
+            self.data.joint(name).qpos = joint_angles[name]
 
-        # motor_angles = dict(zip(self.robot.motor_ordering, obs.motor_pos))
-        # for name in motor_angles:
-        #     self.data.joint(name).qpos = motor_angles[name]
+        mujoco.mj_forward(self.model, self.data)
+        com_pos = np.asarray(self.data.body(0).subtree_com, dtype=np.float32)
+        com_jacp = np.zeros((3, self.model.nv))
+        mujoco.mj_jacSubtreeCom(self.model, self.data, com_jacp, 0)
 
-        # joint_angles = self.robot.motor_to_joint_angles(motor_angles)
-        # for name in joint_angles:
-        #     self.data.joint(name).qpos = joint_angles[name]
+        self.com_pos_list.append(com_pos)
 
-        # mujoco.mj_forward(self.model, self.data)
-        # com_pos = np.asarray(self.data.body(0).subtree_com, dtype=np.float32)
-        # com_jacp = np.zeros((3, self.model.nv))
-        # mujoco.mj_jacSubtreeCom(self.model, self.data, com_jacp, 0)
+        com_pos_ref = self.com_ref[self.step_curr]
+        error = com_pos[:2] - com_pos_ref[:2]
+        error_derivative = (error - self.previous_error) / self.control_dt
+        self.previous_error = error
 
-        # if self.com_pos_init is None:
-        #     self.com_pos_init = com_pos.copy()
-
-        # self.com_pos_list.append(com_pos)
-
-        # error = com_pos[:2] - self.com_pos_init[:2]
-        # error_derivative = (error - self.previous_error) / self.control_dt
-        # self.previous_error = error
-
-        # ctrl = self.kp * error + self.kd * error_derivative
+        ctrl = self.kp * error + self.kd * error_derivative
 
         # Update joint positions based on the PD controller command
-        # joint_pos = self.default_joint_pos.copy()
-        # # Define joint mappings for ctrl[0] and ctrl[1]
+        joint_pos = self.default_joint_pos.copy()
+        joint_pos[self.leg_joint_indices] = self.leg_joint_pos_ref[self.step_curr]
 
-        # # Update joint positions for ctrl[0]
-        # joint_pos[self.ctrl_x_indices] -= (
-        #     ctrl[0]
-        #     * com_jacp[0, self.q_start_idx + self.joint_indices[self.ctrl_x_indices]]
-        # )
+        # Update joint positions for ctrl[0]
+        joint_pos[self.ctrl_x_indices] -= (
+            ctrl[0]
+            * com_jacp[0, self.q_start_idx + self.joint_indices[self.ctrl_x_indices]]
+        )
 
-        # # Update joint positions for ctrl[1]
-        # joint_pos[self.ctrl_y_indices] -= (
-        #     ctrl[1]
-        #     * com_jacp[1, self.q_start_idx + self.joint_indices[self.ctrl_y_indices]]
-        # )
-
-        joint_pos = state_ref[13 : 13 + len(self.robot.joint_ordering)]
+        # Update joint positions for ctrl[1]
+        joint_pos[self.ctrl_y_indices] -= (
+            ctrl[1]
+            * com_jacp[1, self.q_start_idx + self.joint_indices[self.ctrl_y_indices]]
+        )
 
         # Convert joint positions to motor angles
         motor_angles = self.robot.joint_to_motor_angles(
             dict(zip(self.robot.joint_ordering, joint_pos))
         )
         motor_target = np.array(list(motor_angles.values()), dtype=np.float32)
-
-        motor_target = np.asarray(
-            self.motion_ref.override_motor_target(motor_target, state_ref)
-        )
         motor_target = np.clip(
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
         )

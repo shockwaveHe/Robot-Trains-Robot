@@ -117,7 +117,7 @@ class WalkEnv(MJXEnv):
         #     [jnp.array([0.1]), jnp.array([0.0]), jnp.array([0.0])]
         # )
         commands = jnp.concatenate(
-            [jnp.array([0.0]), jnp.array([0.02]), jnp.array([0.0])]
+            [jnp.array([0.0]), jnp.array([0.05]), jnp.array([0.0])]
         )
 
         # Set small commands to zero based on norm condition
