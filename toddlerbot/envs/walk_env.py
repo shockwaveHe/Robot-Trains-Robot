@@ -95,21 +95,21 @@ class WalkEnv(MJXEnv):
         if self.fixed_command is not None:
             return self.fixed_command
 
-        rng, rng_1, rng_2, rng_3 = jax.random.split(rng, 4)
-        lin_vel_x = jax.random.uniform(
-            rng_1, (1,), minval=self.lin_vel_x_range[0], maxval=self.lin_vel_x_range[1]
-        )
-        lin_vel_y = jax.random.uniform(
-            rng_2, (1,), minval=self.lin_vel_y_range[0], maxval=self.lin_vel_y_range[1]
-        )
-        ang_vel_yaw = jax.random.uniform(
-            rng_3, (1,), minval=self.ang_vel_z_range[0], maxval=self.ang_vel_z_range[1]
-        )
-
-        commands = jnp.concatenate([lin_vel_x, lin_vel_y, ang_vel_yaw])
-        # commands = jnp.concatenate(
-        #     [jnp.array([0.1]), jnp.array([0.0]), jnp.array([0.0])]
+        # rng, rng_1, rng_2, rng_3 = jax.random.split(rng, 4)
+        # lin_vel_x = jax.random.uniform(
+        #     rng_1, (1,), minval=self.lin_vel_x_range[0], maxval=self.lin_vel_x_range[1]
         # )
+        # lin_vel_y = jax.random.uniform(
+        #     rng_2, (1,), minval=self.lin_vel_y_range[0], maxval=self.lin_vel_y_range[1]
+        # )
+        # ang_vel_yaw = jax.random.uniform(
+        #     rng_3, (1,), minval=self.ang_vel_z_range[0], maxval=self.ang_vel_z_range[1]
+        # )
+
+        # commands = jnp.concatenate([lin_vel_x, lin_vel_y, ang_vel_yaw])
+        commands = jnp.concatenate(
+            [jnp.array([-0.1]), jnp.array([0.0]), jnp.array([0.0])]
+        )
         # commands = jnp.concatenate(
         #     [jnp.array([0.0]), jnp.array([0.05]), jnp.array([0.0])]
         # )
