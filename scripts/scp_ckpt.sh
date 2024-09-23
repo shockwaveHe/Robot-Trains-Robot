@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# shellcheck disable=SC2086
+
 # Assign positional arguments to variables
 # Default values
 TIME_STR=""

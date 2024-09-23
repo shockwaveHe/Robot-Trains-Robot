@@ -1,5 +1,6 @@
 from typing import List, Tuple
 
+import numpy
 from tqdm import tqdm
 
 from toddlerbot.algorithms.zmp.zmp_planner import ZMPPlanner
@@ -28,6 +29,14 @@ class ZMPWalk:
         self.control_dt = control_dt
         self.control_cost_Q = control_cost_Q
         self.control_cost_R = control_cost_R
+
+        default_joint_pos = np.array(
+            list(robot.default_joint_angles.values()), dtype=np.float32
+        )
+        joint_groups = numpy.array(
+            [robot.joint_groups[name] for name in robot.joint_ordering]
+        )
+        self.default_leg_joint_pos = default_joint_pos[joint_groups == "leg"]
 
         self.com_z = robot.config["general"]["offsets"]["torso_z_default"]
         self.foot_to_com_x = float(robot.data_dict["offsets"]["foot_to_com_x"])
@@ -96,7 +105,6 @@ class ZMPWalk:
             [path_pos[0], path_pos[1], path_euler[2]], dtype=np.float32
         )
 
-        num_cycles = int(np.ceil(total_time / self.cycle_time))
         footsteps: List[ArrayType] = []
         left_footstep_init = np.array(
             [pose_curr[0], pose_curr[1] + self.foot_to_com_y, pose_curr[2], 0],
@@ -106,6 +114,7 @@ class ZMPWalk:
             [pose_curr[0], pose_curr[1] - self.foot_to_com_y, pose_curr[2], 1],
             dtype=np.float32,
         )
+        num_cycles = int(np.ceil(total_time / self.cycle_time))
         if np.linalg.norm(command) < 1e-6:
             for _ in range(num_cycles):
                 footsteps.append(left_footstep_init)
@@ -160,72 +169,79 @@ class ZMPWalk:
             dtype=np.float32,
         )
         time_steps = np.cumsum(time_list)
-        desired_zmps = [step[:2] for step in footsteps for _ in range(2)]
-
-        x0 = np.array([path_pos[0], path_pos[1], 0.0, 0.0], dtype=np.float32)
-
-        self.zmp_planner.plan(
-            time_steps,
-            desired_zmps,
-            x0,
-            self.com_z,
-            Qy=np.eye(2, dtype=np.float32) * self.control_cost_Q,
-            R=np.eye(2, dtype=np.float32) * self.control_cost_R,
-        )
-
-        def update_step(
-            carry: Tuple[ArrayType, ArrayType], idx: int
-        ) -> Tuple[Tuple[ArrayType, ArrayType], ArrayType]:
-            x_traj, u_traj = carry
-            t = time_steps[0] + idx * self.control_dt
-            xd = np.hstack((x_traj[idx - 1, 2:], u_traj[idx - 1, :]))
-            x_traj = inplace_update(
-                x_traj, idx, x_traj[idx - 1, :] + xd * self.control_dt
-            )
-            u = self.zmp_planner.get_optim_com_acc(t, x_traj[idx, :])
-            u_traj = inplace_update(u_traj, idx, u)
-
-            return (x_traj, u_traj), x_traj[idx]
-
-        # Initialize the arrays
         num_total_steps = int(
             np.ceil((time_steps[-1] - time_steps[0]) / self.control_dt)
         )
-        x_traj = np.zeros((num_total_steps, 4), dtype=np.float32)
-        u_traj = np.zeros((num_total_steps, 2), dtype=np.float32)
-        # Set the initial conditions
-        x_traj = inplace_update(x_traj, 0, x0)
-        u_traj = inplace_update(
-            u_traj,
-            0,
-            self.zmp_planner.get_optim_com_acc(time_steps[0], x0),
-        )
-        x_traj = loop_update(update_step, x_traj, u_traj, (1, num_total_steps))
-
-        (
-            left_foot_pos_traj,
-            left_foot_ori_traj,
-            right_foot_pos_traj,
-            right_foot_ori_traj,
-            stance_mask_ref,
-        ) = self.compute_foot_trajectories(
-            time_steps,
-            np.repeat(np.stack(footsteps), 2, axis=0),
-        )
-
-        leg_joint_pos_ref = self.solve_ik(
-            left_foot_pos_traj,
-            left_foot_ori_traj,
-            right_foot_pos_traj,
-            right_foot_ori_traj,
-            x_traj[:, :2],
-        )
-
         first_cycle_idx = int(np.ceil(self.cycle_time / self.control_dt))
+        x0 = np.array([path_pos[0], path_pos[1], 0.0, 0.0], dtype=np.float32)
 
-        com_ref_truncated = x_traj[first_cycle_idx:]
-        leg_joint_pos_ref_truncated = leg_joint_pos_ref[first_cycle_idx:]
-        stance_mask_ref_truncated = stance_mask_ref[first_cycle_idx:]
+        if np.linalg.norm(command) < 1e-6:
+            truncated_steps = num_total_steps - first_cycle_idx
+            com_ref_truncated = np.tile(x0, (truncated_steps, 1))
+            leg_joint_pos_ref_truncated = np.tile(
+                self.default_leg_joint_pos, (truncated_steps, 1)
+            )
+            stance_mask_ref_truncated = np.ones((truncated_steps, 2), dtype=np.float32)
+
+        else:
+            desired_zmps = [step[:2] for step in footsteps for _ in range(2)]
+            self.zmp_planner.plan(
+                time_steps,
+                desired_zmps,
+                x0,
+                self.com_z,
+                Qy=np.eye(2, dtype=np.float32) * self.control_cost_Q,
+                R=np.eye(2, dtype=np.float32) * self.control_cost_R,
+            )
+
+            def update_step(
+                carry: Tuple[ArrayType, ArrayType], idx: int
+            ) -> Tuple[Tuple[ArrayType, ArrayType], ArrayType]:
+                x_traj, u_traj = carry
+                t = time_steps[0] + idx * self.control_dt
+                xd = np.hstack((x_traj[idx - 1, 2:], u_traj[idx - 1, :]))
+                x_traj = inplace_update(
+                    x_traj, idx, x_traj[idx - 1, :] + xd * self.control_dt
+                )
+                u = self.zmp_planner.get_optim_com_acc(t, x_traj[idx, :])
+                u_traj = inplace_update(u_traj, idx, u)
+
+                return (x_traj, u_traj), x_traj[idx]
+
+            # Initialize the arrays
+            x_traj = np.zeros((num_total_steps, 4), dtype=np.float32)
+            u_traj = np.zeros((num_total_steps, 2), dtype=np.float32)
+            # Set the initial conditions
+            x_traj = inplace_update(x_traj, 0, x0)
+            u_traj = inplace_update(
+                u_traj,
+                0,
+                self.zmp_planner.get_optim_com_acc(time_steps[0], x0),
+            )
+            x_traj = loop_update(update_step, x_traj, u_traj, (1, num_total_steps))
+
+            (
+                left_foot_pos_traj,
+                left_foot_ori_traj,
+                right_foot_pos_traj,
+                right_foot_ori_traj,
+                stance_mask_ref,
+            ) = self.compute_foot_trajectories(
+                time_steps,
+                np.repeat(np.stack(footsteps), 2, axis=0),
+            )
+
+            leg_joint_pos_ref = self.solve_ik(
+                left_foot_pos_traj,
+                left_foot_ori_traj,
+                right_foot_pos_traj,
+                right_foot_ori_traj,
+                x_traj[:, :2],
+            )
+
+            com_ref_truncated = x_traj[first_cycle_idx:]
+            leg_joint_pos_ref_truncated = leg_joint_pos_ref[first_cycle_idx:]
+            stance_mask_ref_truncated = stance_mask_ref[first_cycle_idx:]
 
         return com_ref_truncated, leg_joint_pos_ref_truncated, stance_mask_ref_truncated
 
