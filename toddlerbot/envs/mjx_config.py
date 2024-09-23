@@ -32,7 +32,7 @@ class MJXConfig:
     class ActionConfig:
         action_scale: float = 0.25
         filter_type: str = "butter"
-        filter_order: int = 8
+        filter_order: int = 4
         filter_cutoff: float = 10.0
         contact_force_threshold: float = 1.0
         n_steps_delay: int = 1
