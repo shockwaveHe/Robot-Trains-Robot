@@ -47,9 +47,7 @@ class ZMPWalk:
         )
         self.zmp_planner = ZMPPlanner()
 
-    def build_lookup_table(
-        self, command_ranges: List[List[float]], interval: float = 0.01
-    ):
+    def build_lookup_table(self, command_ranges: List[List[float]]):
         """
         Precompute and store the trajectories for a range of commands.
         """
@@ -99,6 +97,7 @@ class ZMPWalk:
         path_quat: ArrayType,
         command: ArrayType,
         total_time: float = 20.0,
+        rotation_radius: float = 0.1,
     ) -> Tuple[ArrayType, ArrayType, ArrayType]:
         path_euler = quat2euler(path_quat)
         pose_curr = np.array(
@@ -141,7 +140,42 @@ class ZMPWalk:
                 footsteps.append(right_footstep)
 
         elif np.abs(command[2]) > 1e-6:
-            raise NotImplementedError("Rotation not implemented")
+            stride = command[2] * total_time / (2 * num_cycles - 1)
+            r = np.sign(command[2]) * rotation_radius
+            for i in range(num_cycles):
+                # Calculate the new angles for the left and right foot
+                angle_left = i * 2 * stride
+                angle_right = (i * 2 + 1) * stride
+
+                left_footstep = np.array(
+                    [
+                        pose_curr[0]
+                        + r * np.sin(angle_left)
+                        - self.foot_to_com_y * np.sin(angle_left),
+                        pose_curr[1]
+                        + r * (1 - np.cos(angle_left))
+                        + self.foot_to_com_y * np.cos(angle_left),
+                        angle_left,
+                        0,
+                    ],
+                    dtype=np.float32,
+                )
+                right_footstep = np.array(
+                    [
+                        pose_curr[0]
+                        + r * np.sin(angle_right)
+                        + self.foot_to_com_y * np.sin(angle_right),
+                        pose_curr[1]
+                        + r * (1 - np.cos(angle_right))
+                        - self.foot_to_com_y * np.cos(angle_right),
+                        angle_right,
+                        1,
+                    ],
+                    dtype=np.float32,
+                )
+
+                footsteps.append(left_footstep)
+                footsteps.append(right_footstep)
 
         # import numpy
 
@@ -225,18 +259,23 @@ class ZMPWalk:
                 left_foot_ori_traj,
                 right_foot_pos_traj,
                 right_foot_ori_traj,
+                torso_ori_traj,
                 stance_mask_ref,
             ) = self.compute_foot_trajectories(
                 time_steps,
                 np.repeat(np.stack(footsteps), 2, axis=0),
             )
 
+            com_pose_traj = np.concatenate(
+                [x_traj[:, :2], torso_ori_traj[:, 2:]],
+                axis=-1,
+            )
             leg_joint_pos_ref = self.solve_ik(
                 left_foot_pos_traj,
                 left_foot_ori_traj,
                 right_foot_pos_traj,
                 right_foot_ori_traj,
-                x_traj[:, :2],
+                com_pose_traj,
             )
 
             com_ref_truncated = x_traj[first_cycle_idx:]
@@ -265,6 +304,7 @@ class ZMPWalk:
         last_ori = np.array(
             [0.0, 0.0, footsteps[0][2], 0.0, 0.0, footsteps[0][2]], dtype=np.float32
         )
+        last_base_ori = np.zeros(3, dtype=np.float32)
 
         num_total_steps = int(
             np.ceil((time_steps[-1] - time_steps[0]) / self.control_dt)
@@ -273,6 +313,7 @@ class ZMPWalk:
         left_foot_ori_traj = np.zeros((num_total_steps, 3), dtype=np.float32)
         right_foot_pos_traj = np.zeros((num_total_steps, 3), dtype=np.float32)
         right_foot_ori_traj = np.zeros((num_total_steps, 3), dtype=np.float32)
+        torso_ori_traj = np.zeros((num_total_steps, 3), dtype=np.float32)
         stance_mask_traj = np.zeros((num_total_steps, 2), dtype=np.float32)
         step_curr = 0
         for i in range(len(time_steps) - 1):
@@ -284,6 +325,7 @@ class ZMPWalk:
             if i % 2 == 0:  # Double support
                 foot_pos_traj = np.tile(last_pos, (num_steps, 1))
                 foot_ori_traj = np.tile(last_ori, (num_steps, 1))
+                base_ori_traj = np.tile(last_base_ori, (num_steps, 1))
             else:
                 support_leg_curr = int(footsteps[i][-1])
                 support_leg_next = int(footsteps[i + 1][-1])
@@ -342,14 +384,17 @@ class ZMPWalk:
                     up_traj,
                 )
 
-                # TODO: check this
                 ori_delta = (target_ori - current_ori) / num_steps
                 foot_ori_traj = current_ori + ori_delta * np.arange(num_steps)[:, None]
-                foot_ori_traj = inplace_update(
-                    foot_ori_traj,
-                    (slice(None), swing_leg * 3 + 2),
-                    np.zeros(num_steps, dtype=np.float32),
+
+                base_ori_delta = (
+                    target_ori[swing_leg * 3 : swing_leg * 3 + 3] - last_base_ori
+                ) / num_steps
+                base_ori_traj = (
+                    last_base_ori + base_ori_delta * np.arange(num_steps)[:, None]
                 )
+                last_base_ori = base_ori_traj[-1]
+
                 stance_mask = inplace_update(stance_mask, (slice(None), swing_leg), 0)
 
             slice_curr = slice(step_curr, step_curr + num_steps)
@@ -365,6 +410,7 @@ class ZMPWalk:
             right_foot_ori_traj = inplace_update(
                 right_foot_ori_traj, slice_curr, foot_ori_traj[:, 3:]
             )
+            torso_ori_traj = inplace_update(torso_ori_traj, slice_curr, base_ori_traj)
             stance_mask_traj = inplace_update(stance_mask_traj, slice_curr, stance_mask)
 
             step_curr += int(num_steps)
@@ -374,6 +420,7 @@ class ZMPWalk:
             left_foot_ori_traj,
             right_foot_pos_traj,
             right_foot_ori_traj,
+            torso_ori_traj,
             stance_mask_traj,
         )
 
@@ -383,30 +430,37 @@ class ZMPWalk:
         left_foot_ori_traj: ArrayType,
         right_foot_pos_traj: ArrayType,
         right_foot_ori_traj: ArrayType,
-        com_pos_traj: ArrayType,
+        com_pose_traj: ArrayType,
     ):
-        com_pos_traj_padded = np.hstack(
-            [com_pos_traj, np.zeros((com_pos_traj.shape[0], 1))]
+        com_pos_traj = np.hstack(
+            [com_pose_traj[:, :2], np.zeros((com_pose_traj.shape[0], 1))]
         )
-        left_foot_adjusted_pos = (
-            left_foot_pos_traj
-            - com_pos_traj_padded
-            - np.array([self.foot_to_com_x, self.foot_to_com_y, 0], dtype=np.float32)
+        com_ori_traj = np.hstack(
+            [np.zeros((com_pose_traj.shape[0], 2)), com_pose_traj[:, 2:]]
         )
+        foot_to_com_offset = np.concatenate(
+            [
+                np.sin(com_pose_traj[:, 2:]) * self.foot_to_com_y,
+                -np.cos(com_pose_traj[:, 2:]) * self.foot_to_com_y,
+                np.zeros((com_pose_traj.shape[0], 1)),
+            ],
+            axis=-1,
+        )
+        left_foot_adjusted_pos = left_foot_pos_traj - com_pos_traj + foot_to_com_offset
         right_foot_adjusted_pos = (
-            right_foot_pos_traj
-            - com_pos_traj_padded
-            - np.array([self.foot_to_com_x, -self.foot_to_com_y, 0], dtype=np.float32)
+            right_foot_pos_traj - com_pos_traj - foot_to_com_offset
         )
+        left_foot_adjusted_ori = left_foot_ori_traj - com_ori_traj
+        right_foot_adjusted_ori = right_foot_ori_traj - com_ori_traj
 
         left_leg_joint_pos_traj = self.foot_ik(
             left_foot_adjusted_pos,
-            left_foot_ori_traj,
+            left_foot_adjusted_ori,
             side="left",
         )
         right_leg_joint_pos_traj = self.foot_ik(
             right_foot_adjusted_pos,
-            right_foot_ori_traj,
+            right_foot_adjusted_ori,
             side="right",
         )
 
@@ -420,7 +474,7 @@ class ZMPWalk:
     def foot_ik(
         self,
         target_foot_pos: ArrayType,
-        target_foot_ori: ArrayType = np.zeros(3, dtype=np.float32),
+        target_foot_ori: ArrayType,
         side: str = "left",
     ) -> ArrayType:
         target_x = target_foot_pos[:, 0]

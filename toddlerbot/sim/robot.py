@@ -106,7 +106,7 @@ class Robot:
         )
         # from the hip center to the foot
         offsets["foot_to_com_x"] = graph.get("ank_pitch_link")[0][0, 3]
-        offsets["foot_to_com_y"] = graph.get("ank_pitch_link")[0][1, 3]
+        offsets["foot_to_com_y"] = graph.get("ank_roll_link")[0][1, 3]
 
         if self.config["general"]["is_ankle_closed_loop"]:
             ##### Below are for the ankle IK #####
