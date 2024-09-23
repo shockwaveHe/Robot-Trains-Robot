@@ -80,9 +80,9 @@ class WalkEnv(MJXEnv):
         self.cycle_time = jnp.array(cfg.action.cycle_time)
         self.command_list = jnp.array(cfg.commands.command_list)
         self.torso_pitch_range = cfg.rewards.torso_pitch_range
-        self.min_feet_y_dist = self.cfg.rewards.min_feet_y_dist
-        self.max_feet_y_dist = self.cfg.rewards.max_feet_y_dist
-        self.target_feet_z_delta = self.cfg.rewards.target_feet_z_delta
+        self.min_feet_y_dist = cfg.rewards.min_feet_y_dist
+        self.max_feet_y_dist = cfg.rewards.max_feet_y_dist
+        self.target_feet_z_delta = cfg.rewards.target_feet_z_delta
 
         super().__init__(
             name,
