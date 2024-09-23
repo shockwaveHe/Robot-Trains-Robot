@@ -26,7 +26,7 @@ class BalanceCfg(MJXConfig):
     @dataclass
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
         # Balance specific rewards
-        torso_pitch = 1.0
+        pass
 
     def __init__(self):
         super().__init__()

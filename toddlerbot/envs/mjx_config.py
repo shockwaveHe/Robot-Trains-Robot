@@ -42,7 +42,6 @@ class MJXConfig:
         class RewardScales:
             torso_pos: float = 0.0  # 1.0
             torso_quat: float = 1.0
-            torso_pitch: float = 0.1
             lin_vel_xy: float = 1.0
             lin_vel_z: float = 0.5
             ang_vel_xy: float = 0.5
@@ -76,8 +75,8 @@ class MJXConfig:
 
         healthy_z_range: List[float] = field(default_factory=lambda: [0.2, 0.4])
         tracking_sigma: float = 5.0
-        min_feet_distance: float = 0.05
-        max_feet_distance: float = 0.15
+        min_feet_y_dist: float = 0.05
+        max_feet_y_dist: float = 0.11
         target_feet_z_delta: float = 0.02
         torso_pitch_range: List[float] = field(default_factory=lambda: [-0.2, 0.2])
         scales: RewardScales = RewardScales()

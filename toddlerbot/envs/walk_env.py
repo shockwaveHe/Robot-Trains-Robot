@@ -3,7 +3,7 @@ from typing import Any, List, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
-from brax import base
+from brax import base, math
 
 from toddlerbot.envs.mjx_config import MJXConfig
 from toddlerbot.envs.mjx_env import MJXEnv
@@ -34,6 +34,7 @@ class WalkCfg(MJXConfig):
     @dataclass
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
         # Walk specific rewards
+        torso_pitch: float = 0.1
         lin_vel_xy: float = 2.0
         feet_air_time: float = 50.0
         feet_clearance: float = 0.0  # Doesn't help
@@ -78,6 +79,10 @@ class WalkEnv(MJXEnv):
 
         self.cycle_time = jnp.array(cfg.action.cycle_time)
         self.command_list = jnp.array(cfg.commands.command_list)
+        self.torso_pitch_range = cfg.rewards.torso_pitch_range
+        self.min_feet_y_dist = self.cfg.rewards.min_feet_y_dist
+        self.max_feet_y_dist = self.cfg.rewards.max_feet_y_dist
+        self.target_feet_z_delta = self.cfg.rewards.target_feet_z_delta
 
         super().__init__(
             name,
@@ -118,6 +123,20 @@ class WalkEnv(MJXEnv):
         ang_vel = jnp.array([0.0, 0.0, yaw_vel])
         return lin_vel, ang_vel
 
+    def _reward_torso_pitch(
+        self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
+    ):
+        """Reward for torso pitch"""
+        torso_quat = pipeline_state.x.rot[0]
+        torso_pitch = math.quat_to_euler(torso_quat)[1]
+
+        pitch_min = jnp.clip(torso_pitch - self.torso_pitch_range[0], max=0.0)
+        pitch_max = jnp.clip(torso_pitch - self.torso_pitch_range[1], min=0.0)
+        reward = (
+            jnp.exp(-jnp.abs(pitch_min) * 100) + jnp.exp(-jnp.abs(pitch_max) * 100)
+        ) / 2
+        return reward
+
     def _reward_feet_air_time(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
@@ -145,8 +164,8 @@ class WalkEnv(MJXEnv):
         # Penalize feet get close to each other or too far away on the y axis
         feet_pos = pipeline_state.x.pos[self.feet_link_ids, 1]
         feet_dist = jnp.abs(feet_pos[0] - feet_pos[1])
-        d_min = jnp.clip(feet_dist - self.min_feet_distance, max=0.0)
-        d_max = jnp.clip(feet_dist - self.max_feet_distance, min=0.0)
+        d_min = jnp.clip(feet_dist - self.min_feet_y_dist, max=0.0)
+        d_max = jnp.clip(feet_dist - self.max_feet_y_dist, min=0.0)
         reward = (jnp.exp(-jnp.abs(d_min) * 100) + jnp.exp(-jnp.abs(d_max) * 100)) / 2
         return reward
 

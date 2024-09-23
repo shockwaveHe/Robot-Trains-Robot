@@ -20,6 +20,10 @@ Recommended VSCode Extenstions:
 1. Ruff
 
 
+### MuJoCo
+
+Add `export MUJOCO_GL="egl"` to your `.bashrc` if headless rendering is desired. 
+
 ### Jetson-orin
 
 https://docs.nvidia.com/jetson/archives/r36.3/DeveloperGuide/SD/SoftwarePackagesAndTheUpdateMechanism.html#real-time-kernel-using-ota-update
