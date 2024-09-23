@@ -3,7 +3,7 @@ import numpy as np
 from scipy import signal
 
 filter_name = "butterworth"
-fs = 200  # Sampling frequency (Hz)
+fs = 50  # Sampling frequency (Hz)
 num_points = 512  # Number of frequency points for plotting
 
 if filter_name == "ema":
@@ -17,7 +17,7 @@ if filter_name == "ema":
 elif filter_name == "butterworth":
     # Define parameters
     cutoff_freq = 10  # Desired cutoff frequency (Hz)
-    order = 2  # Higher order for a steeper cutoff
+    order = 8  # Higher order for a steeper cutoff
 
     # Design an 8th-order Butterworth low-pass filter
     b, a = signal.butter(order, cutoff_freq / (fs / 2), btype="low")

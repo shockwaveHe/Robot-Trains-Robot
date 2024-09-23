@@ -188,7 +188,7 @@ class MJXEnv(PipelineEnv):
         self.filter_type = self.cfg.action.filter_type
         self.filter_order = self.cfg.action.filter_order
         # EMA
-        self.action_smooth_alpha = float(
+        self.ema_alpha = float(
             self.cfg.action.filter_cutoff
             / (self.cfg.action.filter_cutoff + 1 / (self.dt * 2 * jnp.pi))
         )
@@ -313,11 +313,14 @@ class MJXEnv(PipelineEnv):
         pipeline_state = self.pipeline_init(qpos, qvel)
 
         state_info["init_feet_height"] = pipeline_state.x.pos[self.feet_link_ids, 2]
-        state_info["last_motor_target"] = pipeline_state.qpos[
-            self.q_start_idx + self.motor_indices
-        ]
-        state_info["butter_past_inputs"] = jnp.zeros((self.filter_order, self.nu))
-        state_info["butter_past_outputs"] = jnp.zeros((self.filter_order, self.nu))
+        last_motor_target = pipeline_state.qpos[self.q_start_idx + self.motor_indices]
+        state_info["last_motor_target"] = last_motor_target
+        state_info["butter_past_inputs"] = jnp.tile(
+            last_motor_target, (self.filter_order, 1)
+        )
+        state_info["butter_past_outputs"] = jnp.tile(
+            last_motor_target, (self.filter_order, 1)
+        )
 
         state_info["controller_kp"] = self.controller.kp.copy()
         state_info["controller_kd"] = self.controller.kd.copy()
@@ -429,12 +432,10 @@ class MJXEnv(PipelineEnv):
             * (self.motor_limits[:, 1] - self.default_motor_pos),
         )
         motor_target = self.motion_ref.override_motor_target(motor_target, state_ref)
-        motor_target = jnp.clip(
-            motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
-        )
+
         if self.filter_type == "ema":
             motor_target = exponential_moving_average(
-                self.action_smooth_alpha, motor_target, state.info["last_motor_target"]
+                self.ema_alpha, motor_target, state.info["last_motor_target"]
             )
         else:
             (
@@ -448,6 +449,10 @@ class MJXEnv(PipelineEnv):
                 state.info["butter_past_inputs"],
                 state.info["butter_past_outputs"],
             )
+
+        motor_target = jnp.clip(
+            motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
+        )
 
         assert isinstance(motor_target, jax.Array)
         state.info["last_motor_target"] = motor_target.copy()

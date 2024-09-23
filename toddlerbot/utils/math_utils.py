@@ -239,11 +239,15 @@ def butterworth(
     - new_state: Updated state to use in the next step
     """
     # Compute the current output y[n] based on the difference equation
-    y = b[0] * x + np.sum(b[1:] * past_inputs) - np.sum(a[1:] * past_outputs)
+    y = (
+        b[0] * x
+        + np.sum(b[1:] * past_inputs, axis=0)
+        - np.sum(a[1:] * past_outputs, axis=0)
+    )
 
     # Update the state with the new input/output for the next iteration
-    new_past_inputs = np.concatenate([x[None], past_inputs[:-1]])
-    new_past_outputs = np.concatenate([y[None], past_outputs[:-1]])
+    new_past_inputs = np.concatenate([x[None], past_inputs[:-1]], axis=0)
+    new_past_outputs = np.concatenate([y[None], past_outputs[:-1]], axis=0)
 
     return y, new_past_inputs, new_past_outputs
 
