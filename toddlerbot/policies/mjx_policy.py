@@ -1,7 +1,6 @@
 import functools
 import os
-from dataclasses import fields
-from typing import List, Optional
+from typing import Optional
 
 import jax
 import jax.numpy as jnp
@@ -49,10 +48,8 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             self.fixed_command = fixed_command
 
         self.motion_ref = motion_ref
-        self.command_ranges: List[List[float]] = []
-        for field in fields(cfg.commands):
-            if "range" in field.name:
-                self.command_ranges.append(getattr(cfg.commands, field.name))
+
+        self.command_list = cfg.commands.command_list
 
         self.obs_scales = cfg.obs.scales  # Assume all the envs have the same scales
         self.default_motor_pos = np.array(
@@ -91,6 +88,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             self.last_motor_target, (self.filter_order, 1)
         )
 
+        self.last_command = np.zeros(cfg.commands.num_commands, dtype=np.float32)
         self.last_action = np.zeros(robot.nu, dtype=np.float32)
         self.action_buffer = np.zeros(
             ((self.n_steps_delay + 1) * robot.nu), dtype=np.float32
@@ -155,9 +153,12 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             command = self.fixed_command
         else:
             command = np.array(
-                get_controller_input(self.joystick, self.command_ranges),
-                dtype=np.float32,
+                get_controller_input(self.joystick, self.command_list), dtype=np.float32
             )
+
+        if not np.allclose(command, self.last_command):
+            # print(f"Command: {command}")
+            self.last_command = command
 
         time_curr = self.step_curr * self.control_dt
         phase_signal = self.motion_ref.get_phase_signal(time_curr, command)

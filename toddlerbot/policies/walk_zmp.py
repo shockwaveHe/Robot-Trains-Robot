@@ -24,7 +24,7 @@ class WalkZMPPolicy(BasePolicy, policy_name="walk_zmp"):
         super().__init__(name, robot, init_motor_pos)
 
         if fixed_command is None:
-            self.fixed_command = np.array([0.0, 0.0, 0.5], dtype=np.float32)
+            self.fixed_command = np.array([0.1, 0.0, 0.0], dtype=np.float32)
         else:
             self.fixed_command = fixed_command
 
@@ -72,7 +72,6 @@ class WalkZMPPolicy(BasePolicy, policy_name="walk_zmp"):
         xml_path = find_robot_file_path(self.robot.name, suffix="_scene.xml")
         self.model = mujoco.MjModel.from_xml_path(xml_path)
         self.data = mujoco.MjData(self.model)
-        self.com_pos_init: npt.NDArray[np.float32] | None = None
 
         self.joint_indices = np.array(
             [
@@ -96,7 +95,7 @@ class WalkZMPPolicy(BasePolicy, policy_name="walk_zmp"):
         )
 
         # PD controller parameters
-        self.kp = np.array([500, 500], dtype=np.float32)
+        self.kp = np.array([200, 200], dtype=np.float32)
         self.kd = np.array([0, 0], dtype=np.float32)
 
         self.step_curr = 0
@@ -111,43 +110,42 @@ class WalkZMPPolicy(BasePolicy, policy_name="walk_zmp"):
             )
             return action
 
-        # motor_angles = dict(zip(self.robot.motor_ordering, obs.motor_pos))
-        # for name in motor_angles:
-        #     self.data.joint(name).qpos = motor_angles[name]
+        self.com_pos_list.append(obs.pos[:2])
 
-        # joint_angles = self.robot.motor_to_joint_angles(motor_angles)
-        # for name in joint_angles:
-        #     self.data.joint(name).qpos = joint_angles[name]
+        motor_angles = dict(zip(self.robot.motor_ordering, obs.motor_pos))
+        for name in motor_angles:
+            self.data.joint(name).qpos = motor_angles[name]
 
-        # mujoco.mj_forward(self.model, self.data)
-        # com_pos = np.asarray(self.data.body(0).subtree_com, dtype=np.float32)
-        # com_jacp = np.zeros((3, self.model.nv))
-        # mujoco.mj_jacSubtreeCom(self.model, self.data, com_jacp, 0)
+        joint_angles = self.robot.motor_to_joint_angles(motor_angles)
+        for name in joint_angles:
+            self.data.joint(name).qpos = joint_angles[name]
 
-        # self.com_pos_list.append(com_pos)
+        mujoco.mj_forward(self.model, self.data)
+        com_jacp = np.zeros((3, self.model.nv))
+        mujoco.mj_jacSubtreeCom(self.model, self.data, com_jacp, 0)
 
-        # com_pos_ref = self.com_ref[self.step_curr]
-        # error = com_pos[:2] - com_pos_ref[:2]
-        # error_derivative = (error - self.previous_error) / self.control_dt
-        # self.previous_error = error
+        com_pos_ref = self.com_ref[self.step_curr]
+        error = obs.pos[:2] - com_pos_ref[:2]
+        error_derivative = (error - self.previous_error) / self.control_dt
+        self.previous_error = error
 
-        # ctrl = self.kp * error + self.kd * error_derivative
+        ctrl = self.kp * error + self.kd * error_derivative
 
         # Update joint positions based on the PD controller command
         joint_pos = self.default_joint_pos.copy()
         joint_pos[self.leg_joint_indices] = self.leg_joint_pos_ref[self.step_curr]
 
-        # # Update joint positions for ctrl[0]
-        # joint_pos[self.ctrl_x_indices] -= (
-        #     ctrl[0]
-        #     * com_jacp[0, self.q_start_idx + self.joint_indices[self.ctrl_x_indices]]
-        # )
+        # Update joint positions for ctrl[0]
+        joint_pos[self.ctrl_x_indices] -= (
+            ctrl[0]
+            * com_jacp[0, self.q_start_idx + self.joint_indices[self.ctrl_x_indices]]
+        )
 
-        # # Update joint positions for ctrl[1]
-        # joint_pos[self.ctrl_y_indices] -= (
-        #     ctrl[1]
-        #     * com_jacp[1, self.q_start_idx + self.joint_indices[self.ctrl_y_indices]]
-        # )
+        # Update joint positions for ctrl[1]
+        joint_pos[self.ctrl_y_indices] -= (
+            ctrl[1]
+            * com_jacp[1, self.q_start_idx + self.joint_indices[self.ctrl_y_indices]]
+        )
 
         # Convert joint positions to motor angles
         motor_angles = self.robot.joint_to_motor_angles(

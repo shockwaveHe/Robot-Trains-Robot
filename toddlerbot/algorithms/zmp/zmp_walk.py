@@ -47,7 +47,7 @@ class ZMPWalk:
         )
         self.zmp_planner = ZMPPlanner()
 
-    def build_lookup_table(self, command_ranges: List[List[float]]):
+    def build_lookup_table(self, command_list: List[List[float]]):
         """
         Precompute and store the trajectories for a range of commands.
         """
@@ -61,7 +61,7 @@ class ZMPWalk:
         # Create linspace arrays for each command range
         # linspaces = [
         #     np.arange(start, stop + 1e-6, interval, dtype=np.float32)
-        #     for start, stop in command_ranges
+        #     for start, stop in command_list
         # ]
 
         # zeros_x = np.zeros_like(linspaces[0])
@@ -76,7 +76,7 @@ class ZMPWalk:
         #     [command_spectrum_x, command_spectrum_y, command_spectrum_z], axis=0
         # )
 
-        command_spectrum = np.array(command_ranges, dtype=np.float32)
+        command_spectrum = np.array(command_list, dtype=np.float32)
         for command in tqdm(command_spectrum, desc="Building Lookup Table"):
             # if np.linalg.norm(command) < 1e-6:
             #     continue
@@ -84,12 +84,17 @@ class ZMPWalk:
             com_ref, leg_joint_pos_ref, stance_mask_ref = self.plan(
                 path_pos, path_quat, command
             )
-            lookup_keys.append(tuple(map(float, command)))
-            com_ref_list.append(com_ref)
-            stance_mask_ref_list.append(stance_mask_ref)
-            leg_joint_pos_ref_list.append(leg_joint_pos_ref)
+            first_cycle_idx = int(np.ceil(self.cycle_time / self.control_dt))
+            com_ref_truncated = com_ref[first_cycle_idx:]
+            leg_joint_pos_ref_truncated = leg_joint_pos_ref[first_cycle_idx:]
+            stance_mask_ref_truncated = stance_mask_ref[first_cycle_idx:]
 
-        return lookup_keys, com_ref_list, stance_mask_ref_list, leg_joint_pos_ref_list
+            lookup_keys.append(tuple(map(float, command)))
+            com_ref_list.append(com_ref_truncated)
+            leg_joint_pos_ref_list.append(leg_joint_pos_ref_truncated)
+            stance_mask_ref_list.append(stance_mask_ref_truncated)
+
+        return lookup_keys, com_ref_list, leg_joint_pos_ref_list, stance_mask_ref_list
 
     def plan(
         self,
@@ -206,16 +211,14 @@ class ZMPWalk:
         num_total_steps = int(
             np.ceil((time_steps[-1] - time_steps[0]) / self.control_dt)
         )
-        first_cycle_idx = int(np.ceil(self.cycle_time / self.control_dt))
         x0 = np.array([path_pos[0], path_pos[1], 0.0, 0.0], dtype=np.float32)
 
         if np.linalg.norm(command) < 1e-6:
-            truncated_steps = num_total_steps - first_cycle_idx
-            com_ref_truncated = np.tile(x0, (truncated_steps, 1))
-            leg_joint_pos_ref_truncated = np.tile(
-                self.default_leg_joint_pos, (truncated_steps, 1)
+            x_traj = np.tile(x0, (num_total_steps, 1))
+            leg_joint_pos_ref = np.tile(
+                self.default_leg_joint_pos, (num_total_steps, 1)
             )
-            stance_mask_ref_truncated = np.ones((truncated_steps, 2), dtype=np.float32)
+            stance_mask_ref = np.ones((num_total_steps, 2), dtype=np.float32)
 
         else:
             desired_zmps = [step[:2] for step in footsteps for _ in range(2)]
@@ -278,11 +281,7 @@ class ZMPWalk:
                 com_pose_traj,
             )
 
-            com_ref_truncated = x_traj[first_cycle_idx:]
-            leg_joint_pos_ref_truncated = leg_joint_pos_ref[first_cycle_idx:]
-            stance_mask_ref_truncated = stance_mask_ref[first_cycle_idx:]
-
-        return com_ref_truncated, leg_joint_pos_ref_truncated, stance_mask_ref_truncated
+        return x_traj, leg_joint_pos_ref, stance_mask_ref
 
     def compute_foot_trajectories(
         self, time_steps: ArrayType, footsteps: List[ArrayType]

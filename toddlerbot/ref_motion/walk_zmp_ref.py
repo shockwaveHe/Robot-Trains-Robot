@@ -16,7 +16,7 @@ class WalkZMPReference(MotionReference):
     def __init__(
         self,
         robot: Robot,
-        command_ranges: List[List[float]],
+        command_list: List[List[float]],
         cycle_time: float,
         control_dt: float,
     ):
@@ -54,8 +54,8 @@ class WalkZMPReference(MotionReference):
                     leg_joint_pos_ref_list,
                 ) = pickle.load(f)
         else:
-            lookup_keys, com_ref_list, stance_mask_ref_list, leg_joint_pos_ref_list = (
-                self.zmp_walk.build_lookup_table(command_ranges)
+            lookup_keys, com_ref_list, leg_joint_pos_ref_list, stance_mask_ref_list = (
+                self.zmp_walk.build_lookup_table(command_list)
             )
             with open(lookup_table_path, "wb") as f:
                 pickle.dump(

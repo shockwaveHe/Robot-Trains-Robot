@@ -61,6 +61,7 @@ class MuJoCoSim(BaseSim):
         self.model.opt.solver = mujoco.mjtSolver.mjSOL_NEWTON
         self.model.opt.iterations = 1
         self.model.opt.ls_iterations = 4
+        # self.model.opt.gravity[2] = -1.0
 
         # Assume imu is the first site
         self.torso_euler_prev = np.zeros(3, dtype=np.float32)
@@ -150,17 +151,23 @@ class MuJoCoSim(BaseSim):
         joint_vel_arr = np.array(joint_vel, dtype=np.float32)
 
         if self.fixed_base:
-            # torso_lin_vel = np.zeros(3, dtype=np.float32)
+            torso_lin_vel = np.zeros(3, dtype=np.float32)
             torso_ang_vel = np.zeros(3, dtype=np.float32)
+            torso_pos = np.zeros(3, dtype=np.float32)
             torso_euler = np.zeros(3, dtype=np.float32)
         else:
-            # lin_vel_global = np.array(
-            #     self.data.body("torso").cvel[3:],
-            #     dtype=np.float32,
-            #     copy=True,
-            # )
+            lin_vel_global = np.array(
+                self.data.body("torso").cvel[3:],
+                dtype=np.float32,
+                copy=True,
+            )
             ang_vel_global = np.array(
                 self.data.body("torso").cvel[:3],
+                dtype=np.float32,
+                copy=True,
+            )
+            torso_pos = np.array(
+                self.data.body("torso").xpos,
                 dtype=np.float32,
                 copy=True,
             )
@@ -172,7 +179,7 @@ class MuJoCoSim(BaseSim):
             if np.linalg.norm(torso_quat) == 0:
                 torso_quat = np.array([1, 0, 0, 0], dtype=np.float32)
 
-            # torso_lin_vel = np.asarray(rotate_vec(lin_vel_global, quat_inv(torso_quat)))
+            torso_lin_vel = np.asarray(rotate_vec(lin_vel_global, quat_inv(torso_quat)))
             torso_ang_vel = np.asarray(rotate_vec(ang_vel_global, quat_inv(torso_quat)))
 
             torso_euler = np.asarray(quat2euler(torso_quat))
@@ -186,8 +193,9 @@ class MuJoCoSim(BaseSim):
             motor_pos=motor_pos_arr,
             motor_vel=motor_vel_arr,
             motor_tor=motor_tor_arr,
-            # lin_vel=torso_lin_vel,
+            lin_vel=torso_lin_vel,
             ang_vel=torso_ang_vel,
+            pos=torso_pos,
             euler=torso_euler,
             joint_pos=joint_pos_arr,
             joint_vel=joint_vel_arr,
