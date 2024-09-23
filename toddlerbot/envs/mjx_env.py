@@ -4,6 +4,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import jax
 import mujoco
 import numpy as np
+import scipy
 from brax import base, math
 from brax.envs.base import PipelineEnv, State
 from brax.io import mjcf
@@ -16,7 +17,7 @@ from toddlerbot.envs.mjx_config import MJXConfig
 from toddlerbot.ref_motion import MotionReference
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
-from toddlerbot.utils.math_utils import exponential_moving_average
+from toddlerbot.utils.math_utils import butterworth, exponential_moving_average
 
 
 class MJXEnv(PipelineEnv):
@@ -180,11 +181,26 @@ class MJXEnv(PipelineEnv):
         )
         self.action_scale = self.cfg.action.action_scale
         self.n_steps_delay = self.cfg.action.n_steps_delay
-        self.action_smooth_alpha = float(
-            self.cfg.action.action_smooth_rate
-            / (self.cfg.action.action_smooth_rate + 1 / (self.dt * 2 * jnp.pi))
-        )
+
         self.controller = MotorController(self.robot)
+
+        # Filter
+        self.filter_type = self.cfg.action.filter_type
+        self.filter_order = self.cfg.action.filter_order
+        # EMA
+        self.action_smooth_alpha = float(
+            self.cfg.action.filter_cutoff
+            / (self.cfg.action.filter_cutoff + 1 / (self.dt * 2 * jnp.pi))
+        )
+        # Butterworth
+        b, a = scipy.signal.butter(
+            self.filter_order,
+            self.cfg.action.filter_cutoff / (0.5 / self.dt),
+            btype="low",
+            analog=False,
+        )
+        self.butter_b_coef = jnp.array(b)[:, None]
+        self.butter_a_coef = jnp.array(a)[:, None]
 
         # commands
         # x vel, y vel, yaw vel, heading
@@ -296,10 +312,12 @@ class MJXEnv(PipelineEnv):
 
         pipeline_state = self.pipeline_init(qpos, qvel)
 
+        state_info["init_feet_height"] = pipeline_state.x.pos[self.feet_link_ids, 2]
         state_info["last_motor_target"] = pipeline_state.qpos[
             self.q_start_idx + self.motor_indices
         ]
-        state_info["init_feet_height"] = pipeline_state.x.pos[self.feet_link_ids, 2]
+        state_info["butter_past_inputs"] = jnp.zeros((self.filter_order, self.nu))
+        state_info["butter_past_outputs"] = jnp.zeros((self.filter_order, self.nu))
 
         state_info["controller_kp"] = self.controller.kp.copy()
         state_info["controller_kd"] = self.controller.kd.copy()
@@ -414,9 +432,23 @@ class MJXEnv(PipelineEnv):
         motor_target = jnp.clip(
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
         )
-        motor_target = exponential_moving_average(
-            self.action_smooth_alpha, motor_target, state.info["last_motor_target"]
-        )
+        if self.filter_type == "ema":
+            motor_target = exponential_moving_average(
+                self.action_smooth_alpha, motor_target, state.info["last_motor_target"]
+            )
+        else:
+            (
+                motor_target,
+                state.info["butter_past_inputs"],
+                state.info["butter_past_outputs"],
+            ) = butterworth(
+                self.butter_b_coef,
+                self.butter_a_coef,
+                motor_target,
+                state.info["butter_past_inputs"],
+                state.info["butter_past_outputs"],
+            )
+
         assert isinstance(motor_target, jax.Array)
         state.info["last_motor_target"] = motor_target.copy()
 

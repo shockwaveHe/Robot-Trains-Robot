@@ -56,8 +56,8 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         self.action_scale = cfg.action.action_scale
         self.n_steps_delay = cfg.action.n_steps_delay
         self.action_smooth_alpha = float(
-            cfg.action.action_smooth_rate
-            / (cfg.action.action_smooth_rate + 1 / (self.control_dt * 2 * np.pi))
+            cfg.action.filter_cutoff
+            / (cfg.action.filter_cutoff + 1 / (self.control_dt * 2 * np.pi))
         )
 
         self.motor_limits = np.array(

@@ -1,87 +1,58 @@
-import jax
 import jax.numpy as jnp
-import matplotlib.pyplot as plt
-import numpy as np
+from scipy.signal import butter
+
+# Example: Low-pass Butterworth filter of order 4 with cutoff frequency at 5 Hz
+order = 8
+fs = 50  # Sampling frequency
+cutoff = 10  # Cutoff frequency
+b, a = butter(order, cutoff / (0.5 * fs), btype="low", analog=False)
+
+# Print or save coefficients
+print("b coefficients:", b)
+print("a coefficients:", a)
 
 
-def butterworth_filter_coefficients(f_s, f_c, N):
-    """Calculates the coefficients for an Nth-order Butterworth filter."""
-    T = 1 / f_s  # Sampling period
-    # Pre-warp the cutoff frequency
-    omega_c = (2 / T) * jnp.tan(jnp.pi * f_c / f_s)
+# Recursive Butterworth filter implementation in JAX
+def butterworth_filter(b, a, x, state):
+    """
+    Apply Butterworth filter to a single data point `x` using filter coefficients `b` and `a`.
+    State holds past input and output values to maintain continuity.
 
-    # Compute the analog prototype poles
-    k = jnp.arange(1, N + 1)
-    theta = jnp.pi * (2 * k - 1) / (2 * N)
-    s_k = omega_c * -jnp.exp(1j * theta)
+    Arguments:
+    - b: Filter numerator coefficients (b_0, b_1, ..., b_m)
+    - a: Filter denominator coefficients (a_0, a_1, ..., a_n) with a[0] = 1
+    - x: Current input value
+    - state: Tuple of (past_inputs, past_outputs)
 
-    # Apply the bilinear transform to get digital poles
-    z_k = (1 + s_k * T / 2) / (1 - s_k * T / 2)
+    Returns:
+    - y: Filtered output
+    - new_state: Updated state to use in the next step
+    """
+    past_inputs, past_outputs = state
 
-    # Ensure stability inside the unit circle
-    z_k = z_k / jnp.abs(z_k)
+    # Compute the current output y[n] based on the difference equation
+    y = b[0] * x + jnp.sum(b[1:] * past_inputs) - jnp.sum(a[1:] * past_outputs)
 
-    # Compute denominator polynomial from poles
-    a = jnp.poly(z_k)
+    # Update the state with the new input/output for the next iteration
+    new_past_inputs = jnp.concatenate(
+        [jnp.array([x]), past_inputs[:-1]]
+    )  # Shift inputs
+    new_past_outputs = jnp.concatenate(
+        [jnp.array([y]), past_outputs[:-1]]
+    )  # Shift outputs
 
-    # Numerator polynomial is scaled to achieve unity gain at zero frequency
-    b = jnp.array([jnp.prod(1 - z_k)])
+    new_state = (new_past_inputs, new_past_outputs)
 
-    # Normalize the coefficients
-    a = a / a[0]
-    b = b / a[0]
-
-    return b.real, a.real
-
-
-def jax_freqz(b, a, worN=512):
-    """Computes the frequency response of a digital filter."""
-    w = jnp.linspace(0, jnp.pi, worN)
-    z = jnp.exp(-1j * w)
-    h = jnp.polyval(b, z) / jnp.polyval(a, z)
-    return w, h
+    return y, new_state
 
 
-# Define parameters
-cutoff_freq = 10  # Desired cutoff frequency (Hz)
-order = 8  # Filter order
-fs = 200  # Sampling frequency (Hz)
-num_points = 512  # Number of frequency points for plotting
+# Example usage
+state = jnp.zeros(order), jnp.zeros(order)
 
-# SciPy implementation for comparison
-import scipy.signal as signal
+# Simulate a real-time sequence of target joint angles
+joint_angles = jnp.array([0.5, 0.6, 0.8, 0.9, 1.0, 1.2])  # Example inputs
 
-b_scipy, a_scipy = signal.butter(order, cutoff_freq / (fs / 2), btype="low")
-w_scipy, h_scipy = signal.freqz(b_scipy, a_scipy, worN=num_points)
-frequencies_scipy = (w_scipy / (2 * np.pi)) * fs
-
-# JAX implementation
-b_jax, a_jax = butterworth_filter_coefficients(fs, cutoff_freq, order)
-
-# Compute frequency response using JAX
-w_jax, h_jax = jax_freqz(b_jax, a_jax, num_points)
-frequencies_jax = (w_jax / (2 * jnp.pi)) * fs
-
-# Plot to compare the frequency responses
-plt.figure(figsize=(10, 6))
-
-plt.plot(
-    frequencies_scipy,
-    20 * np.log10(np.abs(h_scipy)),
-    label="SciPy Frequency Response",
-    color="blue",
-)
-plt.plot(
-    frequencies_jax,
-    20 * np.log10(np.abs(h_jax)),
-    label="JAX Frequency Response",
-    linestyle="dashed",
-    color="red",
-)
-
-plt.title("Frequency Response Comparison (SciPy vs JAX)")
-plt.xlabel("Frequency (Hz)")
-plt.ylabel("Magnitude (dB)")
-plt.legend()
-plt.grid(True)
-plt.show()
+# Apply the filter in a loop (like in real-time data generation)
+for angle in joint_angles:
+    filtered_angle, state = butterworth_filter(b, a, angle, state)
+    print(f"Filtered angle: {filtered_angle}")

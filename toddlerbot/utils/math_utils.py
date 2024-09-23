@@ -216,6 +216,38 @@ def exponential_moving_average(
     return alpha * current_value + (1 - alpha) * previous_filtered_value
 
 
+# Recursive Butterworth filter implementation in JAX
+def butterworth(
+    b: ArrayType,
+    a: ArrayType,
+    x: ArrayType,
+    past_inputs: ArrayType,
+    past_outputs: ArrayType,
+) -> Tuple[ArrayType, ArrayType, ArrayType]:
+    """
+    Apply Butterworth filter to a single data point `x` using filter coefficients `b` and `a`.
+    State holds past input and output values to maintain continuity.
+
+    Arguments:
+    - b: Filter numerator coefficients (b_0, b_1, ..., b_m)
+    - a: Filter denominator coefficients (a_0, a_1, ..., a_n) with a[0] = 1
+    - x: Current input value
+    - state: Tuple of (past_inputs, past_outputs)
+
+    Returns:
+    - y: Filtered output
+    - new_state: Updated state to use in the next step
+    """
+    # Compute the current output y[n] based on the difference equation
+    y = b[0] * x + np.sum(b[1:] * past_inputs) - np.sum(a[1:] * past_outputs)
+
+    # Update the state with the new input/output for the next iteration
+    new_past_inputs = np.concatenate([x[None], past_inputs[:-1]])
+    new_past_outputs = np.concatenate([y[None], past_outputs[:-1]])
+
+    return y, new_past_inputs, new_past_outputs
+
+
 def gaussian_basis_functions(phase: ArrayType, N: int = 50):
     centers = np.linspace(0, 1, N)
     # Compute the Gaussian basis functions
