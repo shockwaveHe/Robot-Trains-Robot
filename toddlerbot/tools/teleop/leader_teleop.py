@@ -10,7 +10,6 @@ import cv2
 import joblib
 import numpy as np
 import numpy.typing as npt
-import zmq
 from pynput import keyboard
 from tqdm import tqdm
 
@@ -26,6 +25,7 @@ from toddlerbot.utils.misc_utils import (
     log,
     snake2camel,
 )
+from toddlerbot.utils.comm_utils import ZMQNode
 
 default_pose = np.array(
     [
@@ -100,6 +100,7 @@ class InferencePolicy(BasePolicy):
         self.load_model()
         # deque for observation
         self.obs_deque = collections.deque([], maxlen=self.model.obs_horizon)
+        self.model_action_seq = []
 
         self._start_spacebar_listener()
 
@@ -124,12 +125,12 @@ class InferencePolicy(BasePolicy):
         from diffusion_policy_minimal.datasets.teleop_dataset import TeleopImageDataset
         from diffusion_policy_minimal.inference_class import DPModel
 
-        model_path = "/Users/weizhuo2/Documents/gits/diffusion_policy_minimal/checkpoints/teleop_model.pth"
+        model_path = "/home/weizhuo2/Documents/gits/diffusion_policy_minimal/checkpoints/teleop_model.pth"
         pred_horizon, obs_horizon, action_horizon = 16, 2, 8
-        lowdim_obs_dim, action_dim = 16, 16
+        lowdim_obs_dim, action_dim = 14, 14
 
         # create dataset from file
-        dataset_path = "/Users/weizhuo2/Documents/gits/diffusion_policy_minimal/teleop_data/teleop_dataset.lz4"
+        dataset_path = "/home/weizhuo2/Documents/gits/diffusion_policy_minimal/teleop_data/teleop_dataset.lz4"
         dataset = TeleopImageDataset(
             dataset_path=dataset_path,
             pred_horizon=pred_horizon,
@@ -151,7 +152,7 @@ class InferencePolicy(BasePolicy):
 
     def inference_step(self) -> npt.NDArray[np.float32]:
         model_action = self.model.get_action_from_obs(self.obs_deque)
-        return model_action
+        return list(model_action)
 
     def reset_slowly(self, obs_real):
         leader_action = (
@@ -172,7 +173,9 @@ class InferencePolicy(BasePolicy):
 
         leader_action = obs_real.motor_pos
         if len(self.obs_deque) == self.model.obs_horizon:
-            sim_action = self.inference_step()
+            if len(self.model_action_seq) == 0:
+                self.model_action_sequence = self.inference_step()
+            sim_action = self.model_action_sequence.pop(0)
         else:
             sim_action = obs_real.motor_pos
 
@@ -286,35 +289,11 @@ class TeleopPolicy(BasePolicy):
         self.default_pose = default_pose
         self.last_t = time.time()
 
-        self.start_zmq()
+        # self.zmq = ZMQNode(type="Sender", ip="10.5.6.171")
+        self.zmq = ZMQNode(type="Sender", ip="127.0.0.1") # test locally
 
         # Start a listener for the spacebar
         self._start_spacebar_listener()
-
-    def start_zmq(self):
-        # Set up ZeroMQ context and socket for receiving data
-        self.zmq_context = zmq.Context()
-        self.socket = self.zmq_context.socket(zmq.PUSH)
-        # Set high water mark and enable non-blocking send
-        self.socket.setsockopt(zmq.SNDHWM, 1)  # Limit queue to 10 messages
-        self.socket.setsockopt(zmq.LINGER, 0)
-        self.socket.setsockopt(zmq.SNDBUF, 1024)  # Smaller send buffer
-        # self.socket.setsockopt(
-        #     zmq.IMMEDIATE, 1
-        # )  # Prevent blocking if receiver is not available
-        self.socket.connect("tcp://10.5.6.212:5555")
-
-    def send_msg(self, send_dict):
-        # Serialize the numpy array using pickle
-        serialized_array = pickle.dumps(send_dict)
-        # Send the serialized data
-        try:
-            # Send the serialized data with non-blocking to avoid hanging if the queue is full
-            self.socket.send(serialized_array, zmq.NOBLOCK)
-            # print("Message sent!")
-        except zmq.Again:
-            # print("Message queue full, dropping message.")
-            pass
 
     def _start_spacebar_listener(self):
         def on_press(key):
@@ -369,7 +348,7 @@ class TeleopPolicy(BasePolicy):
             "fsr": np.array([fsrL, fsrR]),
         }
         # print(f"Sending: {send_dict['time']}")
-        self.send_msg(send_dict)
+        self.zmq.send_msg(send_dict)
 
         # Log the data
         if self.log:
@@ -394,6 +373,7 @@ class TeleopPolicy(BasePolicy):
         # print(f"Loop time: {1000*(tend - self.last_t):.2f} ms")
         self.last_t = tend
 
+        # print(sim_action[0], leader_action[0], obs_real.motor_pos[0])
         # print(f"Total time: {1000*(tend - tstart):.2f} ms")
         return sim_action, leader_action
 
@@ -577,7 +557,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--policy",
         type=str,
-        default="inference_fixed",
+        default="teleop_fixed",
         help="The name of the task. [replay_fixed, teleop_fixed, inference_fixed]",
     )
     parser.add_argument(
@@ -604,7 +584,7 @@ if __name__ == "__main__":
     elif args.policy == "replay_fixed":
         # path = "/Users/weizhuo2/Documents/gits/toddleroid/results/toddlerbot_arms_teleop_fixed_mujoco_20240904_202637/dataset.lz4"
         # path = "/Users/weizhuo2/Documents/gits/toddleroid/results/toddlerbot_arms_teleop_fixed_mujoco_20240906_175139/dataset.lz4"
-        path = "/Users/weizhuo2/Documents/gits/toddleroid/results/toddlerbot_arms_teleop_fixed_mujoco_20240909_204445/dataset.lz4"
+        path = "/home/weizhuo2/Documents/gits/toddlerbot/results/toddlerbot_arms_teleop_fixed_mujoco_20240909_204445/dataset.lz4"
         policy: BasePolicy = ReplayPolicy(
             robot_leader, log_path=path, dest=args.replay_env
         )

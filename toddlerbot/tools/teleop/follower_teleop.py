@@ -11,7 +11,6 @@ import joblib
 # import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
-import zmq
 from pynput import keyboard
 from tqdm import tqdm
 
@@ -27,6 +26,7 @@ from toddlerbot.utils.misc_utils import (
     log,
     snake2camel,
 )
+from toddlerbot.utils.comm_utils import ZMQNode
 
 default_pose = np.array(
     [
@@ -166,46 +166,9 @@ class TeleopFollowerPolicy(BasePolicy):
         self.remote_fsr = None
 
         # start a zmq listener
-        self.start_zmq()
+        self.zmq = ZMQNode(type="Receiver")
 
         # optional: blend to current pose of leader
-
-    def start_zmq(self):
-        # Set up ZeroMQ context and socket for receiving data
-        self.zmq_context = zmq.Context()
-        self.socket = self.zmq_context.socket(zmq.PULL)
-        self.socket.bind("tcp://0.0.0.0:5555")  # Listen on all interfaces
-        self.socket.setsockopt(zmq.RCVHWM, 1)  # Limit receiver's queue to 1 message
-        self.socket.setsockopt(zmq.CONFLATE, 1)  # Only keep the latest message
-        self.socket.setsockopt(zmq.RCVBUF, 1024)
-
-    def get_zmq_data(self):
-        try:
-            # Non-blocking receive
-            serialized_array = self.socket.recv(zmq.NOBLOCK)
-            send_dict = pickle.loads(serialized_array)
-            return send_dict
-        except zmq.Again:
-            # No data is available
-            # print("No message available right now")
-            return None
-
-    # For some reason a simple get is not working. buffer will blow up when read speed is too slow
-    # So we will read all the way until the buffer if empty to bypass this problem
-    def get_zmq_data_queue(self):
-        messages = []
-        while True:
-            try:
-                # Non-blocking receive
-                serialized_array = self.socket.recv(zmq.NOBLOCK)
-                send_dict = pickle.loads(serialized_array)
-                messages.append(send_dict)
-            except zmq.Again:
-                # No more data is available
-                break
-
-        if messages:
-            return messages[-1] if messages else None
 
     # note: calibrate zero at: toddlerbot/tools/calibration/calibrate_zero.py --robot toddlerbot_arms
     # note: zero points can be accessed in config_motors.json
@@ -214,7 +177,7 @@ class TeleopFollowerPolicy(BasePolicy):
         tstart = time.time()
 
         sim_action = self.default_action
-        remote_state = self.get_zmq_data_queue()
+        remote_state = self.zmq.get_all_msg()
         if remote_state is not None:
             curr_t = time.time()
             if curr_t - remote_state["time"] > 0.1:
