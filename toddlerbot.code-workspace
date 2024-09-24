@@ -1,0 +1,52 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../diffusion_policy_minimal"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"istream": "cpp",
+			"__locale": "cpp",
+			"locale": "cpp",
+			"cstddef": "cpp",
+			"ostream": "cpp",
+			"complex": "cpp",
+			"chrono": "cpp"
+		},
+		"terminal.integrated.profiles.linux": {
+			
+			"bash": {
+				"path": "bash",
+				"icon": "terminal-bash"
+			},
+			"zsh": {
+				"path": "zsh"
+			},
+			"fish": {
+				"path": "fish"
+			},
+			"tmux": {
+				"path": "tmux",
+				"icon": "terminal-tmux"
+			},
+			"pwsh": {
+				"path": "pwsh",
+				"icon": "terminal-powershell"
+			},
+			"ssh-toddy": {
+                "path": "bash",
+                "args": [
+                    "-c",
+                    "ssh toddlerbot@10.5.6.171"
+                ],
+                "icon": "terminal-bash",
+                "overrideName": true,
+                "name": "SSH Toddlerbot"
+            }
+		}
+	}
+}
