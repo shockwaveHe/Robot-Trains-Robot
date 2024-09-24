@@ -30,6 +30,31 @@ from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.sim.robot import Robot
 
+class MuJoCoFakeDyn:
+    def __init__(self, sim: MuJoCoSim):
+        self.sim = sim
+
+    def enable_motors(self):
+        pass
+
+    def disable_motors(self):
+        pass
+
+    def set_pos(self, pos):
+        self.sim.set_motor_angles(pos)
+
+    def set_parameters(self, kp, ki, kd, kff1, kff2, ids):
+        self.sim.set_motor_kps({"joint_0":kp})
+
+    def set_kp_kd(self, kp, kd):
+        self.set_parameters(kp=kp, ki=0, kd=kd, kff1=0, kff2=0, ids=[0])
+
+    def get_motor_state(self):
+        state = self.sim.get_motor_state()
+        # rename all the key from "joint_0" to 0
+        state = {int(k.split("_")[1]): v for k, v in state.items()}
+        return state
+    
 
 class ResponseTester:
     def __init__(self, sim_name="mujoco", robot_name="sysID_XC330"):
@@ -51,13 +76,14 @@ class ResponseTester:
         self.robot = Robot(robot_name)
         if self.sim_name == "mujoco":
             self.sim = MuJoCoSim(self.robot, vis_type="view", fixed_base=True)
+            self.controller = MuJoCoFakeDyn(self.sim)
         elif self.sim_name == "real":
             self.sim = RealWorld(self.robot)
+                # Connect to the Dynamixel controller in real
+            self.controller = self.sim.dynamixel_controller
         else:
             raise ValueError(f"Invalid sim_name: {self.sim}")
 
-        # Connect to the Dynamixel controller
-        self.controller = self.sim.dynamixel_controller
         # self.connect_dynamixel()
 
     # def connect_dynamixel(self):
@@ -96,7 +122,7 @@ class ResponseTester:
         rest_pos = -np.pi / 2
         self.reset_motors(target_pos=rest_pos)
 
-        print("Running step response...")
+        print("Running step response...\n")
         self.controller.set_parameters(
             kp=self.kP,
             ki=self.kI,
@@ -120,6 +146,7 @@ class ResponseTester:
 
                 self.controller.set_pos(pos=[cmd_pos])
                 state_dict = self.controller.get_motor_state()
+
                 response.append(
                     (curr_time, state_dict[self.id].pos - rest_pos, cmd_pos - rest_pos)
                 )
@@ -129,10 +156,13 @@ class ResponseTester:
 
                 # Update the tqdm progress bar
                 pbar.update(progress_percentage - pbar.n)  # Update only the increment
+                if self.sim_name == "mujoco":
+                    self.sim.step()
 
         self.controller.disable_motors()
 
         print("Step response complete")
+        print(len(response))
         return np.array(response)
 
 
