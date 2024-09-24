@@ -8,7 +8,10 @@ import numpy as np
 import numpy.typing as npt
 
 from toddlerbot.actuation import JointState
-from toddlerbot.actuation.mujoco.mujoco_control import MotorController
+from toddlerbot.actuation.mujoco.mujoco_control import (
+    MotorController,
+    PositionController,
+)
 from toddlerbot.sim import BaseSim, Obs
 from toddlerbot.sim.mujoco_utils import MuJoCoRenderer, MuJoCoViewer
 from toddlerbot.sim.robot import Robot
@@ -83,7 +86,14 @@ class MuJoCoSim(BaseSim):
         self.q_start_idx = 0 if self.fixed_base else 7
         self.qd_start_idx = 0 if self.fixed_base else 6
 
-        self.controller = MotorController(robot)
+        # Check if the actuator is a motor or position actuator
+        if (
+            self.model.actuator(0).gainprm[0] == 1
+            and self.model.actuator(0).biasprm[1] == 0
+        ):
+            self.controller = MotorController(robot)
+        else:
+            self.controller = PositionController()
 
         self.target_motor_angles = np.zeros(self.model.nu, dtype=np.float32)
 
