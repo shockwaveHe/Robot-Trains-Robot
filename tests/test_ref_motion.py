@@ -144,8 +144,8 @@ if __name__ == "__main__":
     if "walk" in args.ref:
         command_list = [
             np.array([0.1, 0, 0], dtype=np.float32),
-            np.array([0, -0.05, 0], dtype=np.float32),
-            np.array([0, 0.0, 0.5], dtype=np.float32),
+            np.array([0, -0.1, 0], dtype=np.float32),
+            np.array([0, 0.0, 0.2], dtype=np.float32),
             np.array([0, 0, 0], dtype=np.float32),
         ]
 
