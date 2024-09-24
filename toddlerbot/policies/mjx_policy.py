@@ -1,12 +1,12 @@
 import functools
 import os
-from dataclasses import fields
-from typing import List, Optional
+from typing import Optional
 
 import jax
 import jax.numpy as jnp
 import numpy as np
 import numpy.typing as npt
+import scipy
 from brax.io import model
 from brax.training.agents.ppo import networks as ppo_networks
 
@@ -17,7 +17,11 @@ from toddlerbot.ref_motion import MotionReference
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.teleop.joystick import get_controller_input, initialize_joystick
-from toddlerbot.utils.math_utils import exponential_moving_average, interpolate_action
+from toddlerbot.utils.math_utils import (
+    butterworth,
+    exponential_moving_average,
+    interpolate_action,
+)
 
 # from toddlerbot.utils.misc_utils import profile
 
@@ -44,10 +48,8 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             self.fixed_command = fixed_command
 
         self.motion_ref = motion_ref
-        self.command_ranges: List[List[float]] = []
-        for field in fields(cfg.commands):
-            if "range" in field.name:
-                self.command_ranges.append(getattr(cfg.commands, field.name))
+
+        self.command_list = cfg.commands.command_list
 
         self.obs_scales = cfg.obs.scales  # Assume all the envs have the same scales
         self.default_motor_pos = np.array(
@@ -55,16 +57,38 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         )
         self.action_scale = cfg.action.action_scale
         self.n_steps_delay = cfg.action.n_steps_delay
-        self.action_smooth_alpha = float(
-            cfg.action.action_smooth_rate
-            / (cfg.action.action_smooth_rate + 1 / (self.control_dt * 2 * np.pi))
-        )
 
         self.motor_limits = np.array(
             [robot.joint_limits[name] for name in robot.motor_ordering]
         )
 
-        self.last_motor_target: npt.NDArray[np.float32] | None = None
+        # Filter
+        self.filter_type = cfg.action.filter_type
+        self.filter_order = cfg.action.filter_order
+        # EMA
+        self.ema_alpha = float(
+            cfg.action.filter_cutoff
+            / (cfg.action.filter_cutoff + 1 / (self.control_dt * 2 * jnp.pi))
+        )
+        # Butterworth
+        b, a = scipy.signal.butter(
+            self.filter_order,
+            cfg.action.filter_cutoff / (0.5 / self.control_dt),
+            btype="low",
+            analog=False,
+        )
+        self.butter_b_coef = np.array(b)[:, None]
+        self.butter_a_coef = np.array(a)[:, None]
+
+        self.last_motor_target = self.default_motor_pos.copy()
+        self.butter_past_inputs = np.tile(
+            self.last_motor_target, (self.filter_order, 1)
+        )
+        self.butter_past_outputs = np.tile(
+            self.last_motor_target, (self.filter_order, 1)
+        )
+
+        self.last_command = np.zeros(cfg.commands.num_commands, dtype=np.float32)
         self.last_action = np.zeros(robot.nu, dtype=np.float32)
         self.action_buffer = np.zeros(
             ((self.n_steps_delay + 1) * robot.nu), dtype=np.float32
@@ -129,9 +153,12 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             command = self.fixed_command
         else:
             command = np.array(
-                get_controller_input(self.joystick, self.command_ranges),
-                dtype=np.float32,
+                get_controller_input(self.joystick, self.command_list), dtype=np.float32
             )
+
+        if not np.allclose(command, self.last_command):
+            # print(f"Command: {command}")
+            self.last_command = command
 
         time_curr = self.step_curr * self.control_dt
         phase_signal = self.motion_ref.get_phase_signal(time_curr, command)
@@ -184,15 +211,27 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         motor_target = np.asarray(
             self.motion_ref.override_motor_target(motor_target, state_ref)
         )
+
+        if self.filter_type == "ema":
+            motor_target = exponential_moving_average(
+                self.ema_alpha, motor_target, self.last_motor_target
+            )
+
+        else:
+            (
+                motor_target,
+                self.butter_past_inputs,
+                self.butter_past_outputs,
+            ) = butterworth(
+                self.butter_b_coef,
+                self.butter_a_coef,
+                motor_target,
+                self.butter_past_inputs,
+                self.butter_past_outputs,
+            )
+
         motor_target = np.clip(
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
-        )
-        motor_target = np.asarray(
-            exponential_moving_average(
-                self.action_smooth_alpha,
-                motor_target,
-                self.last_motor_target,
-            )
         )
 
         self.last_motor_target = motor_target.copy()

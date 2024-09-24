@@ -111,9 +111,9 @@ def main(robot: Robot):
     executor.shutdown(wait=True)
 
     motor_names = robot.get_joint_attrs("is_passive", False)
-    motor_init_pos = robot.get_joint_attrs("is_passive", False, "init_pos")
+    motor_pos_init = robot.get_joint_attrs("is_passive", False, "init_pos")
     motor_angles = {
-        name: round(pos, 4) for name, pos in zip(motor_names, motor_init_pos)
+        name: round(pos, 4) for name, pos in zip(motor_names, motor_pos_init)
     }
     log(f"Motor angles: {motor_angles}", header="Calibration")
 
@@ -122,7 +122,7 @@ def main(robot: Robot):
         with open(motor_config_path, "r") as f:
             motor_config = json.load(f)
 
-        for motor_name, init_pos in zip(motor_names, motor_init_pos):
+        for motor_name, init_pos in zip(motor_names, motor_pos_init):
             motor_config[motor_name]["init_pos"] = float(init_pos)
 
         with open(motor_config_path, "w") as f:

@@ -26,7 +26,7 @@ class BasePolicy(ABC):
         name: str,
         robot: Robot,
         init_motor_pos: npt.NDArray[np.float32],
-        control_dt: float = 10 * 0.002,
+        control_dt: float = 0.02,
         prep_duration: float = 2.0,
         n_steps_total: float = float("inf"),
     ):

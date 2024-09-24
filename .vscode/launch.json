@@ -154,6 +154,42 @@
             ]
         },
         {
+            "name": "Python: walk_toddlerbot_OP3_mujoco",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/policies/run_policy.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot",
+                "toddlerbot_OP3",
+                "--sim",
+                "mujoco",
+                "--policy",
+                "walk",
+                "--ckpt",
+                "20240922_104345",
+                "--command",
+                "-0.1 0 0"
+            ]
+        },
+        {
+            "name": "Python: walk_zmp_toddlerbot_OP3_mujoco",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/policies/run_policy.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot",
+                "toddlerbot_OP3",
+                "--sim",
+                "mujoco",
+                "--policy",
+                "walk_zmp",
+            ]
+        },
+        {
             "name": "Python: sysid_toddlerbot_mujoco",
             "type": "python",
             "request": "launch",
@@ -293,6 +329,8 @@
             "args": [
                 "--ref", 
                 "walk_zmp",
+                "--robot",
+                "toddlerbot_OP3",
             ],
         },
         {
@@ -305,6 +343,8 @@
             "args": [
                 "--ref", 
                 "balance",
+                "--robot",
+                "toddlerbot_OP3",
             ],
         },
         {

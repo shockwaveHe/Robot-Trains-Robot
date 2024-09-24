@@ -3,7 +3,7 @@ from typing import Any, List, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
-from brax import base
+from brax import base, math
 
 from toddlerbot.envs.mjx_config import MJXConfig
 from toddlerbot.envs.mjx_env import MJXEnv
@@ -20,14 +20,22 @@ class WalkCfg(MJXConfig):
 
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):
-        num_commands: int = 3
-        lin_vel_x_range: List[float] = field(default_factory=lambda: [-0.1, 0.3])
-        lin_vel_y_range: List[float] = field(default_factory=lambda: [-0.05, 0.05])
-        ang_vel_z_range: List[float] = field(default_factory=lambda: [0.0, 0.0])
+        command_list: List[List[float]] = field(
+            default_factory=lambda: [
+                [0.0, 0.0, 0.0],
+                [-0.1, 0.0, 0.0],
+                [0.1, 0.0, 0.0],
+                [0.0, -0.05, 0.0],
+                [0.0, 0.05, 0.0],
+                [0.0, 0.0, 0.5],
+                [0.0, 0.0, -0.5],
+            ]
+        )
 
     @dataclass
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
         # Walk specific rewards
+        torso_pitch: float = 0.1
         lin_vel_xy: float = 2.0
         feet_air_time: float = 50.0
         feet_clearance: float = 0.0  # Doesn't help
@@ -63,18 +71,19 @@ class WalkEnv(MJXEnv):
         elif ref_motion_type == "zmp":
             motion_ref = WalkZMPReference(
                 robot,
+                cfg.commands.command_list,
                 cfg.action.cycle_time,
-                [
-                    cfg.commands.lin_vel_x_range,
-                    cfg.commands.lin_vel_y_range,
-                    cfg.commands.ang_vel_z_range,
-                ],
-                control_dt=cfg.sim.timestep * cfg.action.n_frames,
+                cfg.sim.timestep * cfg.action.n_frames,
             )
         else:
             raise ValueError(f"Unknown ref_motion_type: {ref_motion_type}")
 
         self.cycle_time = jnp.array(cfg.action.cycle_time)
+        self.command_list = jnp.array(cfg.commands.command_list)
+        self.torso_pitch_range = cfg.rewards.torso_pitch_range
+        self.min_feet_y_dist = cfg.rewards.min_feet_y_dist
+        self.max_feet_y_dist = cfg.rewards.max_feet_y_dist
+        self.target_feet_z_delta = cfg.rewards.target_feet_z_delta
 
         super().__init__(
             name,
@@ -92,34 +101,19 @@ class WalkEnv(MJXEnv):
         if self.fixed_command is not None:
             return self.fixed_command
 
-        # rng, rng_1, rng_2, rng_3 = jax.random.split(rng, 4)
-        # lin_vel_x = jax.random.uniform(
-        #     rng_1,
-        #     (1,),
-        #     minval=self.command_ranges["lin_vel_x"][0],
-        #     maxval=self.command_ranges["lin_vel_x"][1],
-        # )
-        # lin_vel_y = jax.random.uniform(
-        #     rng_2,
-        #     (1,),
-        #     minval=self.command_ranges["lin_vel_y"][0],
-        #     maxval=self.command_ranges["lin_vel_y"][1],
-        # )
-        # ang_vel_yaw = jax.random.uniform(
-        #     rng_3,
-        #     (1,),
-        #     minval=self.command_ranges["ang_vel_yaw"][0],
-        #     maxval=self.command_ranges["ang_vel_yaw"][1],
-        # )
+        # Randomly sample an index from the command list
+        num_commands = self.command_list.shape[0]
+        rng, rng1 = jax.random.split(rng)
+        command_idx = jax.random.randint(rng1, (), 0, num_commands)
 
-        # TODO: Add command back
-        commands = jnp.concatenate([jnp.array([0.1]), jnp.zeros(1), jnp.zeros(1)])
+        # Select the corresponding command
+        command = self.command_list[command_idx]
 
         # Set small commands to zero based on norm condition
-        mask = (jnp.linalg.norm(commands[:2]) > 0.05).astype(jnp.float32)
-        commands = commands.at[:2].set(commands[:2] * mask)
+        mask = (jnp.linalg.norm(command[:2]) > 0.01).astype(jnp.float32)
+        command = command.at[:2].set(command[:2] * mask)
 
-        return commands
+        return command
 
     def _extract_command(self, command: jax.Array) -> Tuple[jax.Array, jax.Array]:
         x_vel = command[0]
@@ -130,6 +124,20 @@ class WalkEnv(MJXEnv):
         ang_vel = jnp.array([0.0, 0.0, yaw_vel])
         return lin_vel, ang_vel
 
+    def _reward_torso_pitch(
+        self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
+    ):
+        """Reward for torso pitch"""
+        torso_quat = pipeline_state.x.rot[0]
+        torso_pitch = math.quat_to_euler(torso_quat)[1]
+
+        pitch_min = jnp.clip(torso_pitch - self.torso_pitch_range[0], max=0.0)
+        pitch_max = jnp.clip(torso_pitch - self.torso_pitch_range[1], min=0.0)
+        reward = (
+            jnp.exp(-jnp.abs(pitch_min) * 100) + jnp.exp(-jnp.abs(pitch_max) * 100)
+        ) / 2
+        return reward
+
     def _reward_feet_air_time(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
@@ -138,7 +146,7 @@ class WalkEnv(MJXEnv):
         first_contact = (info["feet_air_time"] > 0) * contact_filter
         reward = jnp.sum(info["feet_air_time"] * first_contact)
         # no reward for zero command
-        reward *= jnp.linalg.norm(info["command"][:2]) > 0.05
+        reward *= jnp.linalg.norm(info["command"][:2]) > 0.01
         return reward
 
     def _reward_feet_clearance(
@@ -157,8 +165,8 @@ class WalkEnv(MJXEnv):
         # Penalize feet get close to each other or too far away on the y axis
         feet_pos = pipeline_state.x.pos[self.feet_link_ids, 1]
         feet_dist = jnp.abs(feet_pos[0] - feet_pos[1])
-        d_min = jnp.clip(feet_dist - self.min_feet_distance, max=0.0)
-        d_max = jnp.clip(feet_dist - self.max_feet_distance, min=0.0)
+        d_min = jnp.clip(feet_dist - self.min_feet_y_dist, max=0.0)
+        d_max = jnp.clip(feet_dist - self.max_feet_y_dist, min=0.0)
         reward = (jnp.exp(-jnp.abs(d_min) * 100) + jnp.exp(-jnp.abs(d_max) * 100)) / 2
         return reward
 
@@ -182,5 +190,5 @@ class WalkEnv(MJXEnv):
             )
         )
         reward = -(qpos_diff**2)
-        reward *= jnp.linalg.norm(info["command"][:2]) < 0.1
+        reward *= jnp.linalg.norm(info["command"][:2]) < 0.01
         return reward

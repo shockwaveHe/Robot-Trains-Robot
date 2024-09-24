@@ -26,7 +26,7 @@ class BalanceCfg(MJXConfig):
     @dataclass
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
         # Balance specific rewards
-        torso_pitch = 1.0
+        pass
 
     def __init__(self):
         super().__init__()
@@ -71,13 +71,13 @@ class BalanceEnv(MJXEnv):
             return self.fixed_command
 
         rng, rng_1 = jax.random.split(rng)
-        commands = jax.random.uniform(
+        command = jax.random.uniform(
             rng_1,
             (1,),
             minval=self.sample_range[0],
             maxval=self.sample_range[1],
         )
-        return commands
+        return command
 
     def _extract_command(self, command: jax.Array) -> Tuple[jax.Array, jax.Array]:
         lin_vel = jnp.array([0.0, 0.0, 0.0])

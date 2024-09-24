@@ -4,46 +4,27 @@ import mujoco
 import numpy as np
 import numpy.typing as npt
 
+from toddlerbot.algorithms.zmp.zmp_walk import ZMPWalk
 from toddlerbot.policies import BasePolicy
-from toddlerbot.ref_motion.balance_ref import BalanceReference
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.math_utils import interpolate_action
-from toddlerbot.utils.comm_utils import ZMQNode
-
-default_pose = np.array(
-    [
-        -0.6028545,
-        -0.90198064,
-        0.01840782,
-        1.2379225,
-        0.52615595,
-        0.4985056,
-        -1.1320779,
-        0.5031457,
-        -0.9372623,
-        -0.248505,
-        1.2179809,
-        -0.35434943,
-        -0.6473398,
-        -1.1581556,
-    ]
-)
 
 
-class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
+class WalkZMPPolicy(BasePolicy, policy_name="walk_zmp"):
     def __init__(
         self,
         name: str,
         robot: Robot,
         init_motor_pos: npt.NDArray[np.float32],
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
+        cycle_time: float = 0.72,
     ):
         super().__init__(name, robot, init_motor_pos)
 
         if fixed_command is None:
-            self.fixed_command = np.array([0.0], dtype=np.float32)
+            self.fixed_command = np.array([0.1, 0.0, 0.0], dtype=np.float32)
         else:
             self.fixed_command = fixed_command
 
@@ -56,6 +37,13 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         self.motor_limits = np.array(
             [robot.joint_limits[name] for name in robot.motor_ordering]
         )
+
+        joint_groups = np.array(
+            [robot.joint_groups[name] for name in robot.joint_ordering]
+        )
+        self.leg_joint_indices = np.arange(len(robot.joint_ordering))[
+            joint_groups == "leg"
+        ]
 
         # Indices for the pitch joints
         self.ctrl_x_indices = [
@@ -73,19 +61,17 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
             robot.joint_ordering.index("right_ank_roll"),
         ]
 
-        teleop_default_motor_pos = self.default_motor_pos.copy()
-        arm_motor_slice = slice(
-            robot.motor_ordering.index("left_sho_pitch"),
-            robot.motor_ordering.index("right_wrist_roll") + 1,
+        self.zmp_walk = ZMPWalk(robot, cycle_time, control_dt=self.control_dt)
+        self.com_ref, self.leg_joint_pos_ref, stance_mask_ref = self.zmp_walk.plan(
+            np.array([0.0, 0.0, 0.0]),
+            np.array([1.0, 0.0, 0.0, 0.0]),
+            self.fixed_command,
+            total_time=60.0,
         )
-        teleop_default_motor_pos[arm_motor_slice] = default_pose
-
-        self.motion_ref = BalanceReference(robot, playback_speed=0.5)
 
         xml_path = find_robot_file_path(self.robot.name, suffix="_scene.xml")
         self.model = mujoco.MjModel.from_xml_path(xml_path)
         self.data = mujoco.MjData(self.model)
-        self.com_pos_init: npt.NDArray[np.float32] | None = None
 
         self.joint_indices = np.array(
             [
@@ -99,17 +85,17 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
 
         self.q_start_idx = 0 if "fixed" in self.name else 7
 
-        self.prep_duration = 7.0
+        self.prep_duration = 2.0
         self.prep_time, self.prep_action = self.move(
             -self.control_dt,
             init_motor_pos,
-            teleop_default_motor_pos,
+            self.default_motor_pos,
             self.prep_duration,
-            end_time=5.0,
+            end_time=0.0,
         )
 
         # PD controller parameters
-        self.kp = np.array([2000, 4000], dtype=np.float32)
+        self.kp = np.array([200, 200], dtype=np.float32)
         self.kd = np.array([0, 0], dtype=np.float32)
 
         self.step_curr = 0
@@ -124,6 +110,8 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
             )
             return action
 
+        self.com_pos_list.append(obs.pos[:2])
+
         motor_angles = dict(zip(self.robot.motor_ordering, obs.motor_pos))
         for name in motor_angles:
             self.data.joint(name).qpos = motor_angles[name]
@@ -133,16 +121,11 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
             self.data.joint(name).qpos = joint_angles[name]
 
         mujoco.mj_forward(self.model, self.data)
-        com_pos = np.asarray(self.data.body(0).subtree_com, dtype=np.float32)
         com_jacp = np.zeros((3, self.model.nv))
         mujoco.mj_jacSubtreeCom(self.model, self.data, com_jacp, 0)
 
-        if self.com_pos_init is None:
-            self.com_pos_init = com_pos.copy()
-
-        self.com_pos_list.append(com_pos)
-
-        error = com_pos[:2] - self.com_pos_init[:2]
+        com_pos_ref = self.com_ref[self.step_curr]
+        error = obs.pos[:2] - com_pos_ref[:2]
         error_derivative = (error - self.previous_error) / self.control_dt
         self.previous_error = error
 
@@ -150,7 +133,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
 
         # Update joint positions based on the PD controller command
         joint_pos = self.default_joint_pos.copy()
-        # Define joint mappings for ctrl[0] and ctrl[1]
+        joint_pos[self.leg_joint_indices] = self.leg_joint_pos_ref[self.step_curr]
 
         # Update joint positions for ctrl[0]
         joint_pos[self.ctrl_x_indices] -= (
@@ -169,31 +152,10 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
             dict(zip(self.robot.joint_ordering, joint_pos))
         )
         motor_target = np.array(list(motor_angles.values()), dtype=np.float32)
-
-        # override motor target with reference motion or teleop motion
-        motor_target = self.override_motor_target(motor_target)
-
         motor_target = np.clip(
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
         )
 
         self.step_curr += 1
 
-        return motor_target
-
-    # override upper body motor_target with reference motion (replay from balance dataset)
-    def override_motor_target(self, motor_target):
-        command = self.fixed_command
-
-        time_curr = self.step_curr * self.control_dt
-        state_ref = self.motion_ref.get_state_ref(
-            np.zeros(3, dtype=np.float32),
-            np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),
-            time_curr,
-            command,
-        )
-        
-        motor_target = np.asarray(
-            self.motion_ref.override_motor_target(motor_target, state_ref)
-        )
         return motor_target

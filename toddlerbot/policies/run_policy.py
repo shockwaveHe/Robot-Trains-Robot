@@ -1,6 +1,7 @@
 import argparse
 import bisect
 import importlib
+import json
 import os
 import pickle
 import pkgutil
@@ -12,6 +13,7 @@ import numpy.typing as npt
 from tqdm import tqdm
 
 from toddlerbot.policies import BasePolicy, get_policy_class
+from toddlerbot.policies.calibrate import CalibratePolicy
 from toddlerbot.policies.mjx_policy import MJXPolicy
 from toddlerbot.policies.sysID_fixed import SysIDFixedPolicy
 from toddlerbot.sim import BaseSim, Obs
@@ -247,8 +249,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
 
             obs_time = time.time()
 
-            if "sysID" in policy.name:
-                assert isinstance(policy, SysIDFixedPolicy)
+            if isinstance(policy, SysIDFixedPolicy):
                 ckpt_times = list(policy.ckpt_dict.keys())
                 ckpt_idx = bisect.bisect_left(ckpt_times, obs.time)
                 ckpt_idx = min(ckpt_idx, len(ckpt_times) - 1)
@@ -326,8 +327,8 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
         "obs_list": obs_list,
         "motor_angles_list": motor_angles_list,
     }
-    if "sysID" in policy.name:
-        assert isinstance(policy, SysIDFixedPolicy)
+
+    if isinstance(policy, SysIDFixedPolicy):
         log_data_dict["ckpt_dict"] = policy.ckpt_dict
 
     log_data_path = os.path.join(exp_folder_path, "log_data.pkl")
@@ -336,6 +337,34 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
 
     prof_path = os.path.join(exp_folder_path, "profile_output.lprof")
     dump_profiling_data(prof_path)
+
+    if isinstance(policy, CalibratePolicy):
+        motor_config_path = os.path.join(robot.root_path, "config_motors.json")
+        if os.path.exists(motor_config_path):
+            motor_names = robot.get_joint_attrs("is_passive", False)
+            motor_pos_init = np.array(
+                robot.get_joint_attrs("is_passive", False, "init_pos")
+            )
+            motor_pos_delta = (
+                np.array(list(motor_angles_list[-1].values()), dtype=np.float32)
+                - policy.default_motor_pos
+            )
+            motor_pos_delta[
+                np.logical_and(motor_pos_delta > -0.005, motor_pos_delta < 0.005)
+            ] = 0.0
+
+            with open(motor_config_path, "r") as f:
+                motor_config = json.load(f)
+
+            for motor_name, init_pos in zip(
+                motor_names, motor_pos_init + motor_pos_delta
+            ):
+                motor_config[motor_name]["init_pos"] = float(init_pos)
+
+            with open(motor_config_path, "w") as f:
+                json.dump(motor_config, f, indent=4)
+        else:
+            raise FileNotFoundError(f"Could not find {motor_config_path}")
 
     log("Visualizing...", header="Walking")
     plot_results(

@@ -505,6 +505,12 @@ if __name__ == "__main__":
         default="",
         help="Path to the checkpoint folder.",
     )
+    parser.add_argument(
+        "--ref",
+        type=str,
+        default="zmp",
+        help="Path to the checkpoint folder.",
+    )
     args = parser.parse_args()
 
     robot = Robot(args.robot)
@@ -520,7 +526,7 @@ if __name__ == "__main__":
         train_cfg = PPOConfig()
         EnvClass = WalkEnv
         fixed_command = jnp.array([0.1, 0.0, 0.0])
-        kwargs = {"ref_motion_type": "zmp"}
+        kwargs = {"ref_motion_type": args.ref}
 
     elif "squat" in args.env:
         env_cfg = SquatCfg()
@@ -547,8 +553,8 @@ if __name__ == "__main__":
         raise ValueError(f"Unknown env: {args.env}")
 
     if "fixed" in args.env:
-        train_cfg.num_timesteps = 10_000_000
-        train_cfg.num_evals = 100
+        train_cfg.num_timesteps = 20_000_000
+        train_cfg.num_evals = 200
 
         env_cfg.rewards.healthy_z_range = [-0.2, 0.2]
         env_cfg.rewards.scales.reset()

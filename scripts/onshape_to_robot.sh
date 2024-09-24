@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# shellcheck disable=SC1091
+# shellcheck disable=SC2086
+
 YELLOW='\033[0;33m'
 NC='\033[0m' # No Color
 
@@ -88,7 +91,6 @@ URDF_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/$ROBOT_NAME.urdf
 MJCF_VIS_SCENE_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/${ROBOT_NAME}_vis_scene.xml
 CONFIG_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/config.json
 
-# shellcheck disable=SC1091
 source "$HOME/.bashrc"
 
 printf "Do you want to export urdf from onshape? (y/n)"
@@ -96,7 +98,6 @@ read -r -p " > " run_onshape
 
 if [ "$run_onshape" == "y" ]; then
     printf "Exporting...\n\n"
-    # shellcheck disable=SC2086
     python $REPO_NAME/robot_descriptions/get_urdf.py --doc-id-list $DOC_ID_LIST --assembly-list $ASSEMBLY_LIST
 else
     printf "Export skipped.\n\n"
