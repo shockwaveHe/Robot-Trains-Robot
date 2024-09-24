@@ -10,6 +10,7 @@ from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.math_utils import interpolate_action
+from toddlerbot.utils.comm_utils import ZMQNode
 
 default_pose = np.array(
     [
@@ -123,16 +124,6 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
             )
             return action
 
-        command = self.fixed_command
-
-        time_curr = self.step_curr * self.control_dt
-        state_ref = self.motion_ref.get_state_ref(
-            np.zeros(3, dtype=np.float32),
-            np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),
-            time_curr,
-            command,
-        )
-
         motor_angles = dict(zip(self.robot.motor_ordering, obs.motor_pos))
         for name in motor_angles:
             self.data.joint(name).qpos = motor_angles[name]
@@ -179,13 +170,30 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         )
         motor_target = np.array(list(motor_angles.values()), dtype=np.float32)
 
-        motor_target = np.asarray(
-            self.motion_ref.override_motor_target(motor_target, state_ref)
-        )
+        # override motor target with reference motion or teleop motion
+        motor_target = self.override_motor_target(motor_target)
+
         motor_target = np.clip(
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
         )
 
         self.step_curr += 1
 
+        return motor_target
+
+    # override upper body motor_target with reference motion (replay from balance dataset)
+    def override_motor_target(self, motor_target):
+        command = self.fixed_command
+
+        time_curr = self.step_curr * self.control_dt
+        state_ref = self.motion_ref.get_state_ref(
+            np.zeros(3, dtype=np.float32),
+            np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),
+            time_curr,
+            command,
+        )
+        
+        motor_target = np.asarray(
+            self.motion_ref.override_motor_target(motor_target, state_ref)
+        )
         return motor_target

@@ -366,7 +366,7 @@ if __name__ == "__main__":
         "--vis",
         type=str,
         default="render",
-        help="The visualization type.",
+        help="The visualization type. [render, view]",
     )
     parser.add_argument(
         "--policy",
