@@ -31,7 +31,7 @@ class MJXConfig:
     @dataclass
     class ActionConfig:
         action_scale: float = 0.25
-        filter_type: str = "ema"
+        filter_type: str = "none"
         filter_order: int = 4
         filter_cutoff: float = 10.0
         contact_force_threshold: float = 1.0

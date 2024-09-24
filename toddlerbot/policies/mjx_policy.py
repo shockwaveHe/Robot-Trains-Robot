@@ -217,7 +217,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
                 self.ema_alpha, motor_target, self.last_motor_target
             )
 
-        else:
+        elif self.filter_type == "butter":
             (
                 motor_target,
                 self.butter_past_inputs,

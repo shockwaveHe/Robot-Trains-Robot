@@ -437,7 +437,7 @@ class MJXEnv(PipelineEnv):
             motor_target = exponential_moving_average(
                 self.ema_alpha, motor_target, state.info["last_motor_target"]
             )
-        else:
+        elif self.filter_type == "butter":
             (
                 motor_target,
                 state.info["butter_past_inputs"],
