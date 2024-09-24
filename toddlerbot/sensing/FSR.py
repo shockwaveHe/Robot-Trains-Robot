@@ -3,10 +3,14 @@ import time
 
 import numpy as np
 import serial
-
+import platform
 
 class FSR:
     def __init__(self, port_pattern="/dev/tty.usbmodem*", baud_rate=115200):
+        # If on ubuntu
+        os_type = platform.system()
+        if os_type == "Linux":
+            port_pattern = "/dev/ttyACM*"
         # Automatically detect the correct serial port
         matching_ports = glob.glob(port_pattern)
         if not matching_ports:
