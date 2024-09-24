@@ -83,6 +83,12 @@ conda create --name toddlerbot python=3.10
 conda activate toddlerbot
 pip install -e .
 ```
+
+For the PID tuner tool, you need to install these:
+```
+sudo apt-get install libxcb-xkb1 libxkbcommon-x11-0 libxcb-cursor0
+```
+
 #### Setting up Optuna
 Linux:
 ```
