@@ -183,15 +183,15 @@ class WalkZMPReference(MotionReference):
             self.waist_actuator_indices,
             self.default_motor_pos[self.waist_actuator_indices],
         )
-        motor_target = inplace_update(
-            motor_target,
-            self.left_hip_yaw_idx,
-            self.default_motor_pos[self.left_hip_yaw_idx],
-        )
-        motor_target = inplace_update(
-            motor_target,
-            self.right_hip_yaw_idx,
-            self.default_motor_pos[self.right_hip_yaw_idx],
-        )
+        # motor_target = inplace_update(
+        #     motor_target,
+        #     self.left_hip_yaw_idx,
+        #     self.default_motor_pos[self.left_hip_yaw_idx],
+        # )
+        # motor_target = inplace_update(
+        #     motor_target,
+        #     self.right_hip_yaw_idx,
+        #     self.default_motor_pos[self.right_hip_yaw_idx],
+        # )
 
         return motor_target
