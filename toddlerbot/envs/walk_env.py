@@ -16,7 +16,7 @@ from toddlerbot.sim.robot import Robot
 class WalkCfg(MJXConfig):
     @dataclass
     class ActionConfig(MJXConfig.ActionConfig):
-        cycle_time: float = 0.96
+        cycle_time: float = 0.72
 
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):
