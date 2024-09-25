@@ -302,27 +302,5 @@
         "kd": 0.0,
         "kff1": 0.0,
         "kff2": 0.0
-    },
-    "left_gripper_rack": {
-        "motor": "XC330",
-        "init_pos": 5.3658647537231445,
-        "default_pos": 0.0,
-        "gear_ratio": 0.007,
-        "kp": 1500.0,
-        "ki": 0.0,
-        "kd": 2000.0,
-        "kff1": 0.0,
-        "kff2": 0.0
-    },
-    "right_gripper_rack": {
-        "motor": "XC330",
-        "init_pos": 4.818233489990234,
-        "default_pos": 0.0,
-        "gear_ratio": 0.007,
-        "kp": 1500.0,
-        "ki": 0.0,
-        "kd": 2000.0,
-        "kff1": 0.0,
-        "kff2": 0.0
     }
 }
