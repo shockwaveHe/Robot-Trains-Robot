@@ -103,9 +103,7 @@ class RotateTorsoOpenPolicy(BasePolicy, policy_name="rotate_torso_open"):
 
             rotate_time += time_list[-1][-1] + self.control_dt
 
-            rotate_pos = np.zeros(
-                (signal.shape[0], len(robot.joint_ordering)), np.float32
-            )
+            rotate_pos = np.zeros((signal.shape[0], robot.nu), np.float32)
             rotate_pos[:, joint_idx] = signal
 
             rotate_action = np.zeros_like(rotate_pos)

@@ -3,38 +3,17 @@ import numpy as np
 import numpy.typing as npt
 
 from toddlerbot.policies import BasePolicy
-from toddlerbot.ref_motion.balance_ref import BalanceReference
+from toddlerbot.ref_motion.squat_ref import SquatReference
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
+from toddlerbot.tools.teleop.joystick import get_controller_input, initialize_joystick
 from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.math_utils import interpolate_action, quat2euler
 
-default_pose = np.array(
-    [
-        -0.6028545,
-        -0.90198064,
-        0.01840782,
-        1.2379225,
-        0.52615595,
-        0.4985056,
-        -1.1320779,
-        0.5031457,
-        -0.9372623,
-        -0.248505,
-        1.2179809,
-        -0.35434943,
-        -0.6473398,
-        -1.1581556,
-    ]
-)
 
-
-class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
+class TeleopSquatPolicy(BasePolicy, policy_name="teleop_squat"):
     def __init__(
-        self,
-        name: str,
-        robot: Robot,
-        init_motor_pos: npt.NDArray[np.float32],
+        self, name: str, robot: Robot, init_motor_pos: npt.NDArray[np.float32]
     ):
         super().__init__(name, robot, init_motor_pos)
 
@@ -65,14 +44,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         ]
         self.pitch_joint_signs = np.array([1, 1, 1, -1, -1, 1], dtype=np.float32)
 
-        teleop_default_motor_pos = self.default_motor_pos.copy()
-        arm_motor_slice = slice(
-            robot.motor_ordering.index("left_sho_pitch"),
-            robot.motor_ordering.index("right_wrist_roll") + 1,
-        )
-        teleop_default_motor_pos[arm_motor_slice] = default_pose
-
-        self.motion_ref = BalanceReference(robot, playback_speed=0.5)
+        self.motion_ref = SquatReference(robot, self.control_dt)
 
         xml_path = find_robot_file_path(self.robot.name, suffix="_scene.xml")
         self.model = mujoco.MjModel.from_xml_path(xml_path)
@@ -91,15 +63,22 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
 
         self.q_start_idx = 0 if "fixed" in self.name else 7
 
-        self.prep_duration = 7.0
+        self.prep_duration = 2.0
         self.prep_time, self.prep_action = self.move(
             -self.control_dt,
             init_motor_pos,
-            teleop_default_motor_pos,
+            self.default_motor_pos,
             self.prep_duration,
-            end_time=5.0,
+            end_time=0.0,
         )
 
+        self.joystick = None
+        try:
+            self.joystick = initialize_joystick()
+        except Exception:
+            pass
+
+        self.command_list = [[-0.02], [0.02]]
         # PD controller parameters
         self.jac_kp = np.array([2000, 4000], dtype=np.float32)
         self.jac_kd = np.array([0, 0], dtype=np.float32)
@@ -119,12 +98,20 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
             )
             return action
 
+        if self.joystick is None:
+            command = self.fixed_command
+        else:
+            command = np.array(
+                get_controller_input(self.joystick, self.command_list),
+                dtype=np.float32,
+            )
+
         time_curr = self.step_curr * self.control_dt
         state_ref = self.motion_ref.get_state_ref(
             np.zeros(3, dtype=np.float32),
             np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),
             time_curr,
-            np.zeros(1, dtype=np.float32),
+            command,
         )
 
         motor_angles = dict(zip(self.robot.motor_ordering, obs.motor_pos))
@@ -169,7 +156,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         )
 
         # Update joint positions based on the PD controller command
-        joint_pos = self.default_joint_pos.copy()
+        joint_pos = state_ref[13 : 13 + self.robot.nu]
         joint_pos[self.pitch_joint_indicies] -= (
             ctrl_jac[0]
             * com_jacp[

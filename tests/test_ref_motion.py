@@ -47,7 +47,7 @@ def test_motion_ref(
                 state = motion_ref.get_state_ref(
                     path_pos, path_quat, time_curr, command
                 )
-                joint_angles = np.asarray(state[13 : 13 + len(robot.joint_ordering)])
+                joint_angles = np.asarray(state[13 : 13 + robot.nu])
                 # motor_angles = robot.joint_to_motor_angles(
                 #     dict(zip(robot.joint_ordering, joint_angles))
                 # )

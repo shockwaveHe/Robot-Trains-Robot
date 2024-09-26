@@ -8,12 +8,7 @@ from toddlerbot.utils.math_utils import gaussian_basis_functions
 
 
 class SquatReference(MotionReference):
-    def __init__(
-        self,
-        robot: Robot,
-        max_knee_pitch: float = np.pi / 2,
-        min_knee_pitch: float = 0.0,
-    ):
+    def __init__(self, robot: Robot, control_dt: float):
         super().__init__("squat", "episodic", robot)
 
         self.default_joint_pos = np.array(
@@ -24,8 +19,7 @@ class SquatReference(MotionReference):
         self.knee_pitch_default = self.default_joint_pos[
             self.robot.joint_ordering.index("left_knee_pitch")
         ]
-        self.max_knee_pitch = max_knee_pitch
-        self.min_knee_pitch = min_knee_pitch
+        self.control_dt = control_dt
 
         self.hip_pitch_to_knee_z = self.robot.data_dict["offsets"][
             "hip_pitch_to_knee_z"
@@ -43,27 +37,41 @@ class SquatReference(MotionReference):
         )
         self.shin_thigh_ratio = self.knee_to_ank_pitch_z / self.hip_pitch_to_knee_z
 
-        self.knee_limits = np.array(
+        self.com_z_target = np.array([0.0], dtype=np.float32)
+        knee_limits = np.array(
+            self.robot.joint_limits["left_knee_pitch"], dtype=np.float32
+        )
+        self.com_z_limits = np.array(
             [
-                self.knee_pitch_default - min_knee_pitch,
-                max_knee_pitch - self.knee_pitch_default,
-            ]
+                np.sqrt(
+                    self.hip_pitch_to_knee_z**2
+                    + self.knee_to_ank_pitch_z**2
+                    - 2
+                    * self.hip_pitch_to_knee_z
+                    * self.knee_to_ank_pitch_z
+                    * np.cos(np.pi - knee_limits[1])
+                )
+                - self.hip_pitch_to_ank_pitch_z,
+                0.0,
+            ],
+            dtype=np.float32,
         )
 
-        self.left_hip_pitch_idx = self.robot.joint_ordering.index("left_hip_pitch")
-        self.left_knee_pitch_idx = self.robot.joint_ordering.index("left_knee_pitch")
-        self.left_ank_pitch_idx = self.robot.joint_ordering.index("left_ank_pitch")
-        self.right_hip_pitch_idx = self.robot.joint_ordering.index("right_hip_pitch")
-        self.right_knee_pitch_idx = self.robot.joint_ordering.index("right_knee_pitch")
-        self.right_ank_pitch_idx = self.robot.joint_ordering.index("right_ank_pitch")
+        self.pitch_joint_indicies = [
+            robot.joint_ordering.index("left_hip_pitch"),
+            robot.joint_ordering.index("left_knee_pitch"),
+            robot.joint_ordering.index("left_ank_pitch"),
+            robot.joint_ordering.index("right_hip_pitch"),
+            robot.joint_ordering.index("right_knee_pitch"),
+            robot.joint_ordering.index("right_ank_pitch"),
+        ]
 
         self.num_joints = len(self.robot.joint_ordering)
 
     def get_phase_signal(
         self, time_curr: float | ArrayType, command: ArrayType
     ) -> ArrayType:
-        time_total = np.max(self.knee_limits / (command[0] + 1e-6))
-        phase = np.clip(time_curr / time_total, 0.0, 1.0)
+        phase = np.clip(time_curr, 0.0, 1.0)
         phase_signal = gaussian_basis_functions(phase)
         return phase_signal
 
@@ -83,12 +91,19 @@ class SquatReference(MotionReference):
         linear_vel = np.array([0.0, 0.0, command[0]], dtype=np.float32)
         angular_vel = np.array([0.0, 0.0, 0.0], dtype=np.float32)
 
-        joint_pos = self.default_joint_pos.copy()
-        leg_angles = self.calculate_leg_angles(
-            np.array(command[0] * time_curr, dtype=np.float32)
+        self.com_z_target = np.clip(
+            self.com_z_target + self.control_dt * command[0],
+            self.com_z_limits[0],
+            self.com_z_limits[1],
         )
-        for idx, angle in leg_angles.items():
-            joint_pos = inplace_update(joint_pos, idx, angle)
+
+        print(f"com_z_target: {self.com_z_target}")
+
+        joint_pos = self.default_joint_pos.copy()
+        pitch_joint_pos = self.leg_ik(np.array(self.com_z_target, dtype=np.float32))
+        joint_pos = inplace_update(
+            joint_pos, self.pitch_joint_indicies, pitch_joint_pos
+        )
 
         joint_vel = self.default_joint_vel.copy()
 
@@ -106,7 +121,7 @@ class SquatReference(MotionReference):
             )
         )
 
-    def calculate_leg_angles(self, delta_z: ArrayType):
+    def leg_ik(self, delta_z: ArrayType):
         knee_angle_cos = (
             self.hip_pitch_to_knee_z**2
             + self.knee_to_ank_pitch_z**2
@@ -114,7 +129,6 @@ class SquatReference(MotionReference):
         ) / (2 * self.hip_pitch_to_knee_z * self.knee_to_ank_pitch_z)
         knee_angle_cos = np.clip(knee_angle_cos, -1.0, 1.0)
         knee_angle = np.abs(np.pi - np.arccos(knee_angle_cos))
-        knee_angle = np.clip(knee_angle, self.min_knee_pitch, self.max_knee_pitch)
 
         ank_pitch_angle = np.arctan2(
             np.sin(knee_angle),
@@ -122,14 +136,17 @@ class SquatReference(MotionReference):
         )
         hip_pitch_angle = knee_angle - ank_pitch_angle
 
-        return {
-            self.left_hip_pitch_idx: -hip_pitch_angle,
-            self.left_knee_pitch_idx: knee_angle,
-            self.left_ank_pitch_idx: -ank_pitch_angle,
-            self.right_hip_pitch_idx: hip_pitch_angle,
-            self.right_knee_pitch_idx: -knee_angle,
-            self.right_ank_pitch_idx: -ank_pitch_angle,
-        }
+        return np.vstack(
+            [
+                -hip_pitch_angle,
+                knee_angle,
+                -ank_pitch_angle,
+                hip_pitch_angle,
+                -knee_angle,
+                -ank_pitch_angle,
+            ],
+            dtype=np.float32,
+        ).T
 
     def override_motor_target(
         self, motor_target: ArrayType, state_ref: ArrayType
@@ -143,6 +160,11 @@ class SquatReference(MotionReference):
             motor_target,
             self.arm_actuator_indices,
             self.default_motor_pos[self.arm_actuator_indices],
+        )
+        motor_target = inplace_update(
+            motor_target,
+            self.waist_actuator_indices,
+            self.default_motor_pos[self.waist_actuator_indices],
         )
 
         return motor_target

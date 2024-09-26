@@ -190,6 +190,22 @@
             ]
         },
         {
+            "name": "Python: teleop_squat_toddlerbot_OP3_mujoco",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/policies/run_policy.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot",
+                "toddlerbot_OP3",
+                "--sim",
+                "mujoco",
+                "--policy",
+                "teleop_squat",
+            ]
+        },
+        {
             "name": "Python: sysid_toddlerbot_mujoco",
             "type": "python",
             "request": "launch",
