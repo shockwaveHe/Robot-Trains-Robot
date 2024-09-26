@@ -31,7 +31,6 @@ class BalancePDAnklePolicy(BasePolicy, policy_name="balance_pd_ankle"):
         # PD controller parameters
         self.kp = 1.0  # Proportional gain
         self.kd = 0.1  # Derivative gain
-        self.previous_error = 0.0
 
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         # Preparation phase
@@ -42,16 +41,12 @@ class BalancePDAnklePolicy(BasePolicy, policy_name="balance_pd_ankle"):
             return action
 
         # PD controller to maintain torso pitch at 0
-        pitch_curr = obs.euler[1]  # Torso pitch angle (obs.euler[1])
-        # Calculate the error (difference between desired and current pitch)
-        error = pitch_curr
-
+        error = obs.euler[1]  # Torso pitch angle (obs.euler[1])
         # Derivative of the error (rate of change)
-        error_derivative = (error - self.previous_error) / self.control_dt
-        self.previous_error = error
+        error_derivative = obs.ang_vel[1]
 
         # PD controller output
-        ctrl = self.kp * error + self.kd * error_derivative
+        ctrl = self.kp * error - self.kd * error_derivative
 
         # Update joint positions based on the PD controller command
         joint_pos = self.default_joint_pos.copy()
