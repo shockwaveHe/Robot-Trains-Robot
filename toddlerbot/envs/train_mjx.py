@@ -448,7 +448,7 @@ def evaluate(
         policy_path = os.path.join("results", run_name, "policy")
 
     params = model.load_params(policy_path)
-    inference_fn = make_policy(params)
+    inference_fn = make_policy(params, deterministic=True)
 
     # initialize the state
     jit_reset = jax.jit(env.reset)
@@ -461,12 +461,10 @@ def evaluate(
     rng = jax.random.PRNGKey(0)
     state = jit_reset(rng)
 
-    rollout: List[Any] = [state.pipeline_state]
-
     times = [time.time()]
+    rollout: List[Any] = [state.pipeline_state]
     for i in tqdm(range(num_steps), desc="Evaluating"):
-        act_rng, rng = jax.random.split(rng)
-        ctrl, _ = jit_inference_fn(state.obs, act_rng)
+        ctrl, _ = jit_inference_fn(state.obs, rng)
         state = jit_step(state, ctrl)
         times.append(time.time())
         rollout.append(state.pipeline_state)
