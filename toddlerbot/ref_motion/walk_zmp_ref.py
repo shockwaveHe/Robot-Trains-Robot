@@ -33,9 +33,7 @@ class WalkZMPReference(MotionReference):
         joint_groups = numpy.array(
             [robot.joint_groups[name] for name in robot.joint_ordering]
         )
-        self.leg_joint_indices = np.arange(len(robot.joint_ordering))[
-            joint_groups == "leg"
-        ]
+        self.leg_joint_indices = np.arange(robot.nu)[joint_groups == "leg"]
 
         self.left_hip_yaw_idx = robot.motor_ordering.index("left_hip_yaw_drive")
         self.right_hip_yaw_idx = robot.motor_ordering.index("right_hip_yaw_drive")
