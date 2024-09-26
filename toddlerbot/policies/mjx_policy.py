@@ -118,12 +118,11 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             policy_path = os.path.join("results", run_name, "policy")
 
         params = model.load_params(policy_path)
-        inference_fn = make_policy(params)
+        inference_fn = make_policy(params, deterministic=True)
         # jit_inference_fn = inference_fn
         self.jit_inference_fn = jax.jit(inference_fn)
         self.rng = jax.random.PRNGKey(0)
-        act_rng, _ = jax.random.split(self.rng)
-        self.jit_inference_fn(self.obs_history, act_rng)[0].block_until_ready()
+        self.jit_inference_fn(self.obs_history, self.rng)[0].block_until_ready()
 
         self.joystick = None
         try:
@@ -186,8 +185,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         self.obs_history = np.roll(self.obs_history, obs_arr.size)
         self.obs_history[: obs_arr.size] = obs_arr
 
-        act_rng, self.rng = jax.random.split(self.rng)
-        jit_action, _ = self.jit_inference_fn(jnp.asarray(self.obs_history), act_rng)
+        jit_action, _ = self.jit_inference_fn(jnp.asarray(self.obs_history), self.rng)
 
         action = np.asarray(jit_action, dtype=np.float32).copy()
         if is_real:
