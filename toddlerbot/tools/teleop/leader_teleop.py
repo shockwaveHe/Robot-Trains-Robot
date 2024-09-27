@@ -289,8 +289,9 @@ class TeleopPolicy(BasePolicy):
         self.default_pose = default_pose
         self.last_t = time.time()
 
-        # self.zmq = ZMQNode(type="Sender", ip="10.5.6.171")
-        self.zmq = ZMQNode(type="Sender", ip="127.0.0.1") # test locally
+        self.zmq = ZMQNode(type="Sender", ip="10.5.6.171")
+        # self.zmq = ZMQNode(type="Sender", ip="127.0.0.1") # test locally
+        self.test_idx = 0
 
         # Start a listener for the spacebar
         self._start_spacebar_listener()
@@ -346,9 +347,12 @@ class TeleopPolicy(BasePolicy):
             "log": self.log,
             "sim_action": sim_action,
             "fsr": np.array([fsrL, fsrR]),
+            "test": self.test_idx
         }
         # print(f"Sending: {send_dict['time']}")
         self.zmq.send_msg(send_dict)
+        self.test_idx += 1
+        print(time.time(), self.test_idx)
 
         # Log the data
         if self.log:
