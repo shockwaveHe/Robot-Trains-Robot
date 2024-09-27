@@ -80,7 +80,7 @@ class MJXConfig:
         min_feet_y_dist: float = 0.05
         max_feet_y_dist: float = 0.13
         target_feet_z_delta: float = 0.02
-        torso_pitch_range: List[float] = field(default_factory=lambda: [-0.2, 0.2])
+        torso_pitch_range: List[float] = field(default_factory=lambda: [-0.1, 0.1])
         scales: RewardScales = RewardScales()
 
     @dataclass
@@ -106,7 +106,8 @@ class MJXConfig:
 
     @dataclass
     class NoiseConfig:
-        reset_noise_pos: float = 0.05
+        reset_noise_joint_pos: float = 0.05
+        reset_noise_torso_pitch: float = 0.1
         obs_noise_scale: float = 0.05
         dof_pos: float = 1.0
         dof_vel: float = 2.0

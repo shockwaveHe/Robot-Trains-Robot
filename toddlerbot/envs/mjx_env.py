@@ -230,7 +230,8 @@ class MJXEnv(PipelineEnv):
                 jnp.ones(3) * self.cfg.noise.euler,
             ]
         )
-        self.reset_noise_pos = self.cfg.noise.reset_noise_pos
+        self.reset_noise_joint_pos = self.cfg.noise.reset_noise_joint_pos
+        self.reset_noise_torso_pitch = self.cfg.noise.reset_noise_torso_pitch
         self.backlash_scale = self.cfg.noise.backlash_scale
         self.backlash_activation = self.cfg.noise.backlash_activation
 
@@ -303,10 +304,19 @@ class MJXEnv(PipelineEnv):
         qpos = qpos.at[self.q_start_idx + self.arm_joint_indices].set(arm_joint_pos)  # type:ignore
         qpos = qpos.at[self.q_start_idx + self.arm_motor_indices].set(arm_motor_pos)  # type:ignore
         if self.add_noise:
-            noise_pos = self.reset_noise_pos * jax.random.normal(
+            if not self.fixed_base:
+                noise_torso_pitch = self.reset_noise_torso_pitch * jax.random.normal(
+                    rng2, (1,)
+                )
+                noise_torso_quat = math.euler_to_quat(
+                    jnp.array([0.0, noise_torso_pitch[0], 0.0])
+                )
+                qpos = qpos.at[3:7].set(noise_torso_quat)
+
+            noise_joint_pos = self.reset_noise_joint_pos * jax.random.normal(
                 rng2, (self.nq - self.q_start_idx,)
             )
-            qpos = qpos.at[self.q_start_idx :].add(noise_pos)
+            qpos = qpos.at[self.q_start_idx :].add(noise_joint_pos)
 
         qvel = jnp.zeros(self.nv)
 
