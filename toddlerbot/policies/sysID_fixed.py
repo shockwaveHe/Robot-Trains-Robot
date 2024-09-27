@@ -218,9 +218,7 @@ class SysIDFixedPolicy(BasePolicy, policy_name="sysID"):
 
                 rotate_time += time_list[-1][-1] + self.control_dt
 
-                rotate_pos = np.zeros(
-                    (signal.shape[0], len(robot.joint_ordering)), np.float32
-                )
+                rotate_pos = np.zeros((signal.shape[0], robot.nu), np.float32)
 
                 if isinstance(joint_idx, int):
                     rotate_pos[:, joint_idx] = signal

@@ -41,12 +41,10 @@ class WalkZMPPolicy(BasePolicy, policy_name="walk_zmp"):
         joint_groups = np.array(
             [robot.joint_groups[name] for name in robot.joint_ordering]
         )
-        self.leg_joint_indices = np.arange(len(robot.joint_ordering))[
-            joint_groups == "leg"
-        ]
+        self.leg_joint_indices = np.arange(robot.nu)[joint_groups == "leg"]
 
         # Indices for the pitch joints
-        self.ctrl_x_indices = [
+        self.pitch_joint_indicies = [
             robot.joint_ordering.index("left_hip_pitch"),
             robot.joint_ordering.index("left_knee_pitch"),
             robot.joint_ordering.index("left_ank_pitch"),
@@ -54,7 +52,7 @@ class WalkZMPPolicy(BasePolicy, policy_name="walk_zmp"):
             robot.joint_ordering.index("right_knee_pitch"),
             robot.joint_ordering.index("right_ank_pitch"),
         ]
-        self.ctrl_y_indices = [
+        self.roll_joint_indicies = [
             robot.joint_ordering.index("left_hip_roll"),
             robot.joint_ordering.index("left_ank_roll"),
             robot.joint_ordering.index("right_hip_roll"),
@@ -100,7 +98,6 @@ class WalkZMPPolicy(BasePolicy, policy_name="walk_zmp"):
 
         self.step_curr = 0
         self.previous_error = np.zeros(2, dtype=np.float32)
-        self.com_pos_list: List[npt.NDArray[np.float32]] = []
 
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         # Preparation phase
@@ -109,8 +106,6 @@ class WalkZMPPolicy(BasePolicy, policy_name="walk_zmp"):
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
             )
             return action
-
-        self.com_pos_list.append(obs.pos[:2])
 
         motor_angles = dict(zip(self.robot.motor_ordering, obs.motor_pos))
         for name in motor_angles:
@@ -136,15 +131,19 @@ class WalkZMPPolicy(BasePolicy, policy_name="walk_zmp"):
         joint_pos[self.leg_joint_indices] = self.leg_joint_pos_ref[self.step_curr]
 
         # Update joint positions for ctrl[0]
-        joint_pos[self.ctrl_x_indices] -= (
+        joint_pos[self.pitch_joint_indicies] -= (
             ctrl[0]
-            * com_jacp[0, self.q_start_idx + self.joint_indices[self.ctrl_x_indices]]
+            * com_jacp[
+                0, self.q_start_idx + self.joint_indices[self.pitch_joint_indicies]
+            ]
         )
 
         # Update joint positions for ctrl[1]
-        joint_pos[self.ctrl_y_indices] -= (
+        joint_pos[self.roll_joint_indicies] -= (
             ctrl[1]
-            * com_jacp[1, self.q_start_idx + self.joint_indices[self.ctrl_y_indices]]
+            * com_jacp[
+                1, self.q_start_idx + self.joint_indices[self.roll_joint_indicies]
+            ]
         )
 
         # Convert joint positions to motor angles

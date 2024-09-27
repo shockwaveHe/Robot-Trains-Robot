@@ -25,10 +25,10 @@ class WalkCfg(MJXConfig):
                 [0.0, 0.0, 0.0],
                 [-0.1, 0.0, 0.0],
                 [0.1, 0.0, 0.0],
-                [0.0, -0.05, 0.0],
-                [0.0, 0.05, 0.0],
-                [0.0, 0.0, 0.5],
-                [0.0, 0.0, -0.5],
+                [0.0, -0.1, 0.0],
+                [0.0, 0.1, 0.0],
+                [0.0, 0.0, 0.2],
+                [0.0, 0.0, -0.2],
             ]
         )
 
@@ -37,6 +37,7 @@ class WalkCfg(MJXConfig):
         # Walk specific rewards
         torso_pitch: float = 0.1
         lin_vel_xy: float = 2.0
+        ang_vel_z: float = 2.0
         feet_air_time: float = 50.0
         feet_clearance: float = 0.0  # Doesn't help
         feet_distance: float = 0.5
@@ -146,7 +147,7 @@ class WalkEnv(MJXEnv):
         first_contact = (info["feet_air_time"] > 0) * contact_filter
         reward = jnp.sum(info["feet_air_time"] * first_contact)
         # no reward for zero command
-        reward *= jnp.linalg.norm(info["command"][:2]) > 0.01
+        reward *= jnp.linalg.norm(info["command"]) > 0.01
         return reward
 
     def _reward_feet_clearance(
@@ -190,5 +191,5 @@ class WalkEnv(MJXEnv):
             )
         )
         reward = -(qpos_diff**2)
-        reward *= jnp.linalg.norm(info["command"][:2]) < 0.01
+        reward *= jnp.linalg.norm(info["command"]) < 0.01
         return reward

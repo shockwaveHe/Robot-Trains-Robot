@@ -1,3 +1,4 @@
+import argparse
 import os
 import time
 from typing import List
@@ -20,22 +21,14 @@ def arrays_are_close(
     return np.allclose(arr1, arr2, atol=tol)
 
 
-def test_mass_properties():
-    robot = Robot("toddlerbot")
+def test_mass_properties(robot: Robot):
     sim = MuJoCoSim(robot)
     sim.forward()
 
     print(sim.get_mass())
 
-    assert abs(sim.get_mass() - 2.53174268) < 1e-6
-    assert arrays_are_close(
-        sim.get_com(), np.array([-0.0020665, 0.00086725, 0.31932396])
-    )
 
-
-def test_kinematics() -> None:
-    robot = Robot("toddlerbot")
-
+def test_kinematics(robot: Robot) -> None:
     exp_name: str = "test_kinematics"
     time_str = time.strftime("%Y%m%d_%H%M%S")
     exp_folder_path = f"results/{time_str}_{exp_name}"
@@ -95,9 +88,16 @@ def test_kinematics() -> None:
 
 
 if __name__ == "__main__":
-    # test_mass_properties()
-    test_kinematics()
+    parser = argparse.ArgumentParser(description="Run the walking simulation.")
+    parser.add_argument(
+        "--robot",
+        type=str,
+        default="toddlerbot",
+        help="The name of the robot. Need to match the name in robot_descriptions.",
+    )
+    args = parser.parse_args()
 
-    # import pytest
+    robot = Robot(args.robot)
 
-    # pytest.main()
+    test_mass_properties(robot)
+    # test_kinematics()

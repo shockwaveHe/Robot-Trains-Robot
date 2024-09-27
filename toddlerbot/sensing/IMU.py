@@ -37,7 +37,9 @@ class IMU:
 
         time.sleep(0.2)
 
-        self.zero_quat = None
+        zero_euler = np.array([0.0, -np.pi / 2, 0.0], dtype=np.float32)
+        self.zero_quat = np.asarray(euler2quat(zero_euler))
+        self.zero_quat_inv = np.asarray(quat_inv(self.zero_quat))
 
         # Initialize previous Euler angle for smoothing
         # self.time_last = time.time()
@@ -45,25 +47,7 @@ class IMU:
         self.ang_vel_prev = np.zeros(3, dtype=np.float32)
         self.euler_prev = np.zeros(3, dtype=np.float32)
 
-    def set_zero_pose(self):
-        quat_raw = np.array(
-            [self.sensor.quaternion[3], *self.sensor.quaternion[:3]],
-            dtype=np.float32,
-            copy=True,
-        )
-        zero_euler = np.asarray(quat2euler(quat_raw))
-        # To make sure the torso pitch is in the neural position
-        zero_euler[1] = -np.pi / 2
-        self.zero_quat = np.asarray(euler2quat(zero_euler))
-        self.zero_quat_inv = np.asarray(quat_inv(self.zero_quat))
-
     def get_state(self) -> Dict[str, npt.NDArray[np.float32]]:
-        if self.zero_quat is None:
-            self.set_zero_pose()
-
-        assert self.zero_quat is not None
-        assert self.zero_quat_inv is not None
-
         quat_raw = np.array(
             [self.sensor.quaternion[3], *self.sensor.quaternion[:3]],
             dtype=np.float32,

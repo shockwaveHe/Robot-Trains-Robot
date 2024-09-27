@@ -118,12 +118,11 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             policy_path = os.path.join("results", run_name, "policy")
 
         params = model.load_params(policy_path)
-        inference_fn = make_policy(params)
+        inference_fn = make_policy(params, deterministic=True)
         # jit_inference_fn = inference_fn
         self.jit_inference_fn = jax.jit(inference_fn)
         self.rng = jax.random.PRNGKey(0)
-        act_rng, _ = jax.random.split(self.rng)
-        self.jit_inference_fn(self.obs_history, act_rng)[0].block_until_ready()
+        self.jit_inference_fn(self.obs_history, self.rng)[0].block_until_ready()
 
         self.joystick = None
         try:
@@ -186,8 +185,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         self.obs_history = np.roll(self.obs_history, obs_arr.size)
         self.obs_history[: obs_arr.size] = obs_arr
 
-        act_rng, self.rng = jax.random.split(self.rng)
-        jit_action, _ = self.jit_inference_fn(jnp.asarray(self.obs_history), act_rng)
+        jit_action, _ = self.jit_inference_fn(jnp.asarray(self.obs_history), self.rng)
 
         action = np.asarray(jit_action, dtype=np.float32).copy()
         if is_real:
@@ -197,17 +195,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             self.action_buffer[: action.size] = action
             action_delay = self.action_buffer[-self.robot.nu :]
 
-        motor_target = np.where(
-            action_delay < 0,
-            self.default_motor_pos
-            + self.action_scale
-            * action_delay
-            * (self.default_motor_pos - self.motor_limits[:, 0]),
-            self.default_motor_pos
-            + self.action_scale
-            * action_delay
-            * (self.motor_limits[:, 1] - self.default_motor_pos),
-        )
+        motor_target = self.default_motor_pos + self.action_scale * action_delay
         motor_target = np.asarray(
             self.motion_ref.override_motor_target(motor_target, state_ref)
         )
@@ -217,7 +205,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
                 self.ema_alpha, motor_target, self.last_motor_target
             )
 
-        else:
+        elif self.filter_type == "butter":
             (
                 motor_target,
                 self.butter_past_inputs,

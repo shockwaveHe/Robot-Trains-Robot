@@ -135,19 +135,19 @@ def plot_results(
             save_path=exp_folder_path,
         )
 
-    if hasattr(policy, "com_pos_list"):
-        len_plot = min(len(policy.com_pos_list), len(time_obs_list))
-        plot_line_graph(
-            np.array(policy.com_pos_list).T[:2, :len_plot],
-            time_obs_list[:len_plot],
-            legend_labels=["COM X", "COM Y"],
-            title="Center of Mass Over Time",
-            x_label="Time (s)",
-            y_label="COM Position (m)",
-            save_config=True,
-            save_path=exp_folder_path,
-            file_name="com_tracking",
-        )()
+    # if hasattr(policy, "com_pos_list"):
+    #     plot_len = min(len(policy.com_pos_list), len(time_obs_list))
+    #     plot_line_graph(
+    #         np.array(policy.com_pos_list).T[:2, :plot_len],
+    #         time_obs_list[:plot_len],
+    #         legend_labels=["COM X", "COM Y"],
+    #         title="Center of Mass Over Time",
+    #         x_label="Time (s)",
+    #         y_label="COM Position (m)",
+    #         save_config=True,
+    #         save_path=exp_folder_path,
+    #         file_name="com_tracking",
+    #     )()
 
     plot_line_graph(
         tor_obs_total_list,
@@ -219,7 +219,6 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
     obs_list: List[Obs] = []
     motor_angles_list: List[Dict[str, float]] = []
 
-    is_prepared = False
     n_steps_total = (
         float("inf")
         if "real" in sim.name and "fixed" not in policy.name
@@ -237,12 +236,6 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
             # Get the latest state from the queue
             obs = sim.get_observation()
             obs.time -= start_time
-
-            if "real" in sim.name:
-                assert isinstance(sim, RealWorld)
-                if not is_prepared and obs.time > policy.prep_duration and sim.has_imu:
-                    is_prepared = True
-                    sim.imu.set_zero_pose()
 
             if "real" not in sim.name and vis_type != "view":
                 obs.time += time_until_next_step
