@@ -14,8 +14,8 @@ from toddlerbot.sim.robot import Robot
 class BalanceCfg(MJXConfig):
     @dataclass
     class ObsConfig(MJXConfig.ObsConfig):
-        num_single_obs: int = 98
-        num_single_privileged_obs: int = 137
+        num_single_obs: int = 104
+        num_single_privileged_obs: int = 143
 
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):
@@ -26,7 +26,7 @@ class BalanceCfg(MJXConfig):
     @dataclass
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
         # Balance specific rewards
-        torso_pitch = 1.0
+        pass
 
     def __init__(self):
         super().__init__()
@@ -45,6 +45,7 @@ class BalanceEnv(MJXEnv):
         fixed_base: bool = False,
         fixed_command: Optional[jax.Array] = None,
         add_noise: bool = True,
+        add_domain_rand: bool = True,
         **kwargs: Any,
     ):
         motion_ref = BalanceReference(robot)
@@ -60,6 +61,7 @@ class BalanceEnv(MJXEnv):
             fixed_base=fixed_base,
             fixed_command=fixed_command,
             add_noise=add_noise,
+            add_domain_rand=add_domain_rand,
             **kwargs,
         )
 
@@ -69,13 +71,13 @@ class BalanceEnv(MJXEnv):
             return self.fixed_command
 
         rng, rng_1 = jax.random.split(rng)
-        commands = jax.random.uniform(
+        command = jax.random.uniform(
             rng_1,
             (1,),
             minval=self.sample_range[0],
             maxval=self.sample_range[1],
         )
-        return commands
+        return command
 
     def _extract_command(self, command: jax.Array) -> Tuple[jax.Array, jax.Array]:
         lin_vel = jnp.array([0.0, 0.0, 0.0])

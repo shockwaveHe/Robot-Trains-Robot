@@ -14,8 +14,8 @@ from toddlerbot.sim.robot import Robot
 class RotateTorsoCfg(MJXConfig):
     @dataclass
     class ObsConfig(MJXConfig.ObsConfig):
-        num_single_obs: int = 148
-        num_single_privileged_obs: int = 187
+        num_single_obs: int = 154
+        num_single_privileged_obs: int = 193
 
     @dataclass
     class ActionConfig(MJXConfig.ActionConfig):
@@ -54,7 +54,7 @@ class RotateTorsoEnv(MJXEnv):
         fixed_base: bool = False,
         fixed_command: Optional[jax.Array] = None,
         add_noise: bool = True,
-        add_push: bool = True,
+        add_domain_rand: bool = True,
         **kwargs: Any,
     ):
         motion_ref = RotateTorsoReference(robot)
@@ -71,7 +71,7 @@ class RotateTorsoEnv(MJXEnv):
             fixed_base=fixed_base,
             fixed_command=fixed_command,
             add_noise=add_noise,
-            add_push=add_push,
+            add_domain_rand=add_domain_rand,
             **kwargs,
         )
 

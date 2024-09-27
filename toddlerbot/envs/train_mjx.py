@@ -184,66 +184,48 @@ def get_body_mass_attr_range(robot: Robot, body_mass_range: List[float], num_env
 def domain_randomize(
     sys: base.System,
     rng: jax.Array,
-    friction_range: Optional[List[float]],
-    gain_range: Optional[List[float]],
-    damping_range: Optional[List[float]],
-    armature_range: Optional[List[float]],
+    friction_range: List[float],
+    damping_range: List[float],
+    armature_range: List[float],
+    frictionloss_range: List[float],
     body_mass_attr_range: Optional[Dict[str, jax.Array | npt.NDArray[np.float32]]],
 ) -> Tuple[base.System, base.System]:
     @jax.vmap
-    def rand(
-        rng: jax.Array,
-    ) -> Tuple[
-        jax.Array, jax.Array, jax.Array, jax.Array, jax.Array, Dict[str, jax.Array]
-    ]:
+    def rand(rng: jax.Array):
         _, key = jax.random.split(rng, 2)
 
-        if friction_range is None:
-            friction = sys.geom_friction
-        else:
-            # Friction
-            friction = jax.random.uniform(
+        # Friction
+        friction = jax.random.uniform(
+            key,
+            (1,),
+            minval=friction_range[0],
+            maxval=friction_range[1],
+        )
+        friction = sys.geom_friction.at[:, 0].set(friction)
+
+        damping = (
+            jax.random.uniform(
+                key, (sys.nv,), minval=damping_range[0], maxval=damping_range[1]
+            )
+            * sys.dof_damping
+        )
+
+        armature = (
+            jax.random.uniform(
+                key, (sys.nv,), minval=armature_range[0], maxval=armature_range[1]
+            )
+            * sys.dof_armature
+        )
+
+        frictionloss = (
+            jax.random.uniform(
                 key,
-                (1,),
-                minval=friction_range[0],
-                maxval=friction_range[1],
+                (sys.nv,),
+                minval=frictionloss_range[0],
+                maxval=frictionloss_range[1],
             )
-            friction = sys.geom_friction.at[:, 0].set(friction)
-
-        if gain_range is None:
-            gain = sys.actuator_gainprm
-            bias = sys.actuator_biasprm
-        else:
-            # Actuator
-            _, key = jax.random.split(key, 2)
-            param = (
-                jax.random.uniform(
-                    key, (1,), minval=gain_range[0], maxval=gain_range[1]
-                )
-                * sys.actuator_gainprm[:, 0]
-            )
-            gain = sys.actuator_gainprm.at[:, 0].set(param)
-            bias = sys.actuator_biasprm.at[:, 1].set(-param)
-
-        if damping_range is None:
-            damping = sys.dof_damping
-        else:
-            damping = (
-                jax.random.uniform(
-                    key, (1,), minval=damping_range[0], maxval=damping_range[1]
-                )
-                * sys.dof_damping
-            )
-
-        if armature_range is None:
-            armature = sys.dof_armature
-        else:
-            armature = (
-                jax.random.uniform(
-                    key, (1,), minval=armature_range[0], maxval=armature_range[1]
-                )
-                * sys.dof_armature
-            )
+            * sys.dof_frictionloss
+        )
 
         if body_mass_attr_range is None:
             body_mass_attr = {
@@ -265,7 +247,6 @@ def domain_randomize(
                 "dof_invweight0": body_mass_attr_range["dof_invweight0"][0],
                 "tendon_invweight0": body_mass_attr_range["tendon_invweight0"][0],
             }
-
             body_mass_attr_range["body_mass"] = body_mass_attr_range["body_mass"][1:]
             body_mass_attr_range["body_inertia"] = body_mass_attr_range["body_inertia"][
                 1:
@@ -284,25 +265,27 @@ def domain_randomize(
                 "tendon_invweight0"
             ][1:]
 
-        return friction, gain, bias, damping, armature, body_mass_attr
+        return friction, damping, armature, frictionloss, body_mass_attr
 
-    friction, gain, bias, damping, armature, body_mass_attr = rand(rng)
+    friction, damping, armature, frictionloss, body_mass_attr = rand(rng)
 
     in_axes_dict = {
         "geom_friction": 0,
-        "actuator_gainprm": 0,
-        "actuator_biasprm": 0,
+        # "actuator_gainprm": 0,
+        # "actuator_biasprm": 0,
         "dof_damping": 0,
         "dof_armature": 0,
+        "dof_frictionloss": 0,
         **{key: 0 for key in body_mass_attr.keys()},
     }
 
     sys_dict = {
         "geom_friction": friction,
-        "actuator_gainprm": gain,
-        "actuator_biasprm": bias,
+        # "actuator_gainprm": gain,
+        # "actuator_biasprm": bias,
         "dof_damping": damping,
         "dof_armature": armature,
+        "dof_frictionloss": frictionloss,
         **body_mass_attr,
     }
 
@@ -345,6 +328,11 @@ def train(
     with open(os.path.join(exp_folder_path, "env_config.json"), "w") as f:
         json.dump(asdict(env.cfg), f, indent=4)
 
+    # Copy the Python scripts
+    shutil.copytree(
+        os.path.join("toddlerbot", "envs"), os.path.join(exp_folder_path, "envs")
+    )
+
     wandb.init(
         project="ToddlerBot",
         sync_tensorboard=True,
@@ -362,10 +350,11 @@ def train(
         policy_path = os.path.join(path, "policy")
         model.save_params(policy_path, (params[0], params[1].policy))
 
-    learning_rate_schedule_fn = optax.linear_schedule(
-        init_value=train_cfg.learning_rate,
-        end_value=train_cfg.min_learning_rate,
-        transition_steps=train_cfg.num_timesteps,
+    # TODO: Implement adaptive learning rate
+    learning_rate_schedule_fn = optax.cosine_decay_schedule(
+        train_cfg.learning_rate,
+        train_cfg.decay_steps,
+        train_cfg.alpha,
     )
 
     body_mass_attr_range = None
@@ -377,9 +366,9 @@ def train(
     domain_randomize_fn = functools.partial(
         domain_randomize,
         friction_range=env.cfg.domain_rand.friction_range,
-        gain_range=env.cfg.domain_rand.gain_range,
         damping_range=env.cfg.domain_rand.damping_range,
         armature_range=env.cfg.domain_rand.armature_range,
+        frictionloss_range=env.cfg.domain_rand.frictionloss_range,
         body_mass_attr_range=body_mass_attr_range,
     )
 
@@ -439,6 +428,8 @@ def train(
 
     print(f"time to jit: {times[1] - times[0]}")
     print(f"time to train: {times[-1] - times[1]}")
+    print(f"best checkpoint step: {best_ckpt_step}")
+    print(f"best episode reward: {best_episode_reward}")
 
 
 def evaluate(
@@ -457,7 +448,7 @@ def evaluate(
         policy_path = os.path.join("results", run_name, "policy")
 
     params = model.load_params(policy_path)
-    inference_fn = make_policy(params)
+    inference_fn = make_policy(params, deterministic=True)
 
     # initialize the state
     jit_reset = jax.jit(env.reset)
@@ -470,12 +461,10 @@ def evaluate(
     rng = jax.random.PRNGKey(0)
     state = jit_reset(rng)
 
-    rollout: List[Any] = [state.pipeline_state]
-
     times = [time.time()]
+    rollout: List[Any] = [state.pipeline_state]
     for i in tqdm(range(num_steps), desc="Evaluating"):
-        act_rng, rng = jax.random.split(rng)
-        ctrl, _ = jit_inference_fn(state.obs, act_rng)
+        ctrl, _ = jit_inference_fn(state.obs, rng)
         state = jit_step(state, ctrl)
         times.append(time.time())
         rollout.append(state.pipeline_state)
@@ -514,41 +503,47 @@ if __name__ == "__main__":
         default="",
         help="Path to the checkpoint folder.",
     )
+    parser.add_argument(
+        "--ref",
+        type=str,
+        default="zmp",
+        help="Path to the checkpoint folder.",
+    )
     args = parser.parse_args()
 
     robot = Robot(args.robot)
 
     env_cfg: WalkCfg | SquatCfg | RotateTorsoCfg | BalanceCfg | None = None
     train_cfg: PPOConfig | None = None
-    env_class: (
+    EnvClass: (
         Type[WalkEnv] | Type[SquatEnv] | Type[RotateTorsoEnv] | Type[BalanceEnv] | None
     ) = None
 
     if "walk" in args.env:
         env_cfg = WalkCfg()
         train_cfg = PPOConfig()
-        env_class = WalkEnv
+        EnvClass = WalkEnv
         fixed_command = jnp.array([0.1, 0.0, 0.0])
-        kwargs = {"ref_motion_type": "zmp"}
+        kwargs = {"ref_motion_type": args.ref}
 
     elif "squat" in args.env:
         env_cfg = SquatCfg()
         train_cfg = PPOConfig()
-        env_class = SquatEnv
+        EnvClass = SquatEnv
         fixed_command = jnp.array([-0.0])
         kwargs = {}
 
     elif "rotate_torso" in args.env:
         env_cfg = RotateTorsoCfg()
         train_cfg = PPOConfig()
-        env_class = RotateTorsoEnv
+        EnvClass = RotateTorsoEnv
         fixed_command = jnp.array([0.2, 0.0])
         kwargs = {}
 
     elif "balance" in args.env:
         env_cfg = BalanceCfg()
         train_cfg = PPOConfig()
-        env_class = BalanceEnv
+        EnvClass = BalanceEnv
         fixed_command = jnp.array([0.0])
         kwargs = {}
 
@@ -556,14 +551,15 @@ if __name__ == "__main__":
         raise ValueError(f"Unknown env: {args.env}")
 
     if "fixed" in args.env:
-        train_cfg.num_timesteps = 10_000_000
-        train_cfg.num_evals = 100
-        train_cfg.transition_steps = 1_000_000
-        train_cfg.learning_rate = 1e-4
+        train_cfg.num_timesteps = 20_000_000
+        train_cfg.num_evals = 200
 
         env_cfg.rewards.healthy_z_range = [-0.2, 0.2]
         env_cfg.rewards.scales.reset()
-        # reward_scales.feet_distance = 0.5
+
+        if "walk" in args.env:
+            env_cfg.rewards.scales.feet_distance = 0.5
+
         env_cfg.rewards.scales.leg_joint_pos = 5.0
         env_cfg.rewards.scales.waist_joint_pos = 5.0
         env_cfg.rewards.scales.motor_torque = 5e-2
@@ -573,28 +569,28 @@ if __name__ == "__main__":
         env_cfg.rewards.scales.waist_action_rate = 1e-2
         env_cfg.rewards.scales.waist_action_acc = 1e-2
 
-    env = env_class(
-        "walk",
+    env = EnvClass(
+        args.env,
         robot,
         env_cfg,  # type: ignore
         fixed_base="fixed" in args.env,
         **kwargs,  # type: ignore
     )
-    eval_env = env_class(
-        "walk",
+    eval_env = EnvClass(
+        args.env,
         robot,
         env_cfg,  # type: ignore
         fixed_base="fixed" in args.env,
         **kwargs,  # type: ignore
     )
-    test_env = env_class(
-        "walk",
+    test_env = EnvClass(
+        args.env,
         robot,
         env_cfg,  # type: ignore
         fixed_base="fixed" in args.env,
         fixed_command=fixed_command,
         add_noise=False,
-        add_push=False,
+        add_domain_rand=False,
         **kwargs,
     )
 

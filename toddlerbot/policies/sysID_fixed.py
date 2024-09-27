@@ -11,7 +11,7 @@ from toddlerbot.utils.math_utils import get_chirp_signal, interpolate_action
 from toddlerbot.utils.misc_utils import set_seed
 
 
-class SysIDFixedPolicy(BasePolicy, policy_name="sysID_fixed"):
+class SysIDFixedPolicy(BasePolicy, policy_name="sysID"):
     def __init__(
         self, name: str, robot: Robot, init_motor_pos: npt.NDArray[np.float32]
     ):
@@ -25,69 +25,83 @@ class SysIDFixedPolicy(BasePolicy, policy_name="sysID_fixed"):
         reset_duration = 2.0
 
         if "sysID" in robot.name:
+            kp_list: List[float] = []
+            if "330" in robot.name:
+                kp_list = list(range(900, 2400, 300))
+            else:
+                kp_list = list(range(1500, 3600, 300))
+
             joint_sysID_specs = {
-                "joint_0": SysIDSpecs(
-                    amplitude_ratio=0.5,
-                    final_frequency=10.0,
-                    kp_list=list(range(300, 2700, 300)),
-                )
+                "joint_0": SysIDSpecs(amplitude_list=[0.25, 0.5, 0.75], kp_list=kp_list)
             }
         else:
+            XC330_kp_list = [1200.0, 1500.0, 1800.0]
+            # XC430_kp_list = [1800.0, 2100.0, 2400.0]
+            # XM430_kp_list = [2400.0, 2700.0, 3000.0]
             joint_sysID_specs = {
                 # "neck_yaw_driven": SysIDSpecs(amplitude_max=np.pi / 2),
                 # "neck_pitch_driven": SysIDSpecs(),
-                "waist_roll": SysIDSpecs(
+                "ank_roll": SysIDSpecs(
+                    amplitude_list=[0.25, 0.5, 0.75], kp_list=XC330_kp_list
+                ),
+                "ank_pitch": SysIDSpecs(
+                    amplitude_list=[0.25, 0.5, 0.75], kp_list=XC330_kp_list
+                ),
+                # "knee_pitch": SysIDSpecs(
+                #     amplitude_list=[0.25, 0.5, 0.75],
+                #     warm_up_angles={
+                #         "left_sho_roll": -np.pi / 12,
+                #         "right_sho_roll": -np.pi / 12,
+                #         "left_hip_roll": np.pi / 8,
+                #         "right_hip_roll": np.pi / 8,
+                #     },
+                #     direction=-1,
+                #     kp_list=XM430_kp_list,
+                # ),
+                # "hip_pitch": SysIDSpecs(
+                #     amplitude_list=[0.25, 0.5, 0.75],
+                #     warm_up_angles={
+                #         "left_sho_roll": -np.pi / 12,
+                #         "right_sho_roll": -np.pi / 12,
+                #         "left_hip_roll": np.pi / 8,
+                #         "right_hip_roll": np.pi / 8,
+                #     },
+                #     kp_list=XC430_kp_list,
+                # ),
+                # "hip_roll": SysIDSpecs(
+                #     amplitude_list=[0.25, 0.5, 0.75],
+                #     warm_up_angles={
+                #         "left_sho_roll": -np.pi / 6,
+                #         "right_sho_roll": -np.pi / 6,
+                #     },
+                #     direction=-1,
+                #     kp_list=XC430_kp_list,
+                # ),
+                "hip_yaw_driven": SysIDSpecs(
+                    amplitude_list=[0.25, 0.5, 0.75],
                     warm_up_angles={
                         "left_sho_roll": -np.pi / 6,
                         "right_sho_roll": -np.pi / 6,
                     },
-                    kp_list=list(range(600, 1800, 300)),
+                    kp_list=XC330_kp_list,
+                ),
+                "waist_roll": SysIDSpecs(
+                    amplitude_list=[0.25, 0.5, 0.75],
+                    warm_up_angles={
+                        "left_sho_roll": -np.pi / 6,
+                        "right_sho_roll": -np.pi / 6,
+                    },
+                    kp_list=XC330_kp_list,
                 ),
                 "waist_yaw": SysIDSpecs(
+                    amplitude_list=[0.25, 0.5, 0.75],
                     warm_up_angles={
                         "left_sho_roll": -np.pi / 6,
                         "right_sho_roll": -np.pi / 6,
                     },
-                    kp_list=list(range(600, 1800, 300)),
-                ),
-                "hip_yaw_driven": SysIDSpecs(
-                    amplitude_ratio=0.5,
-                    final_frequency=2.0,
-                    warm_up_angles={
-                        "left_sho_roll": -np.pi / 6,
-                        "right_sho_roll": -np.pi / 6,
-                    },
-                    kp_list=list(range(600, 1800, 300)),
-                ),
-                "hip_roll": SysIDSpecs(
-                    warm_up_angles={
-                        "left_sho_roll": -np.pi / 6,
-                        "right_sho_roll": -np.pi / 6,
-                    },
-                    direction=-1,
-                    kp_list=list(range(1200, 2400, 300)),
-                ),
-                "hip_pitch": SysIDSpecs(
-                    warm_up_angles={
-                        "left_sho_roll": -np.pi / 12,
-                        "right_sho_roll": -np.pi / 12,
-                        "left_hip_roll": np.pi / 8,
-                        "right_hip_roll": np.pi / 8,
-                    },
-                    kp_list=list(range(1200, 2400, 300)),
-                ),
-                "knee_pitch": SysIDSpecs(
-                    warm_up_angles={
-                        "left_sho_roll": -np.pi / 12,
-                        "right_sho_roll": -np.pi / 12,
-                        "left_hip_roll": np.pi / 8,
-                        "right_hip_roll": np.pi / 8,
-                    },
-                    direction=-1,
-                    kp_list=list(range(2400, 3300, 300)),
+                    kp_list=XC330_kp_list,
                 ),
                 # "sho_yaw_driven": SysIDSpecs(
-                #     amplitude_max=np.pi / 4,
                 #     warm_up_angles={
                 #         "left_sho_roll": -np.pi / 6,
                 #         "right_sho_roll": -np.pi / 6,
@@ -95,14 +109,13 @@ class SysIDFixedPolicy(BasePolicy, policy_name="sysID_fixed"):
                 #     direction=-1,
                 # ),
                 # "elbow_yaw_driven": SysIDSpecs(
-                #     amplitude_max=np.pi / 4,
                 #     warm_up_angles={
                 #         "left_sho_roll": -np.pi / 6,
                 #         "right_sho_roll": -np.pi / 6,
                 #     },
                 #     direction=-1,
                 # ),
-                # "wrist_pitch": SysIDSpecs(
+                # "wrist_pitch_driven": SysIDSpecs(
                 #     warm_up_angles={
                 #         "left_sho_roll": -np.pi / 6,
                 #         "right_sho_roll": -np.pi / 6,
@@ -116,7 +129,7 @@ class SysIDFixedPolicy(BasePolicy, policy_name="sysID_fixed"):
                 #         "right_sho_yaw_driven": -np.pi / 2,
                 #     },
                 # ),
-                # "wrist_roll_driven": SysIDSpecs(
+                # "wrist_roll": SysIDSpecs(
                 #     warm_up_angles={
                 #         "left_sho_roll": -np.pi / 6,
                 #         "right_sho_roll": -np.pi / 6,
@@ -124,14 +137,8 @@ class SysIDFixedPolicy(BasePolicy, policy_name="sysID_fixed"):
                 #         "right_sho_yaw_driven": -np.pi / 2,
                 #     },
                 # ),
-                "ank_roll": SysIDSpecs(
-                    final_frequency=2.0, kp_list=list(range(600, 1800, 300))
-                ),
-                "ank_pitch": SysIDSpecs(
-                    final_frequency=2.0, kp_list=list(range(600, 1800, 300))
-                ),
-                # "sho_pitch": SysIDSpecs(amplitude_max=np.pi / 4),
-                # "sho_roll": SysIDSpecs(amplitude_max=np.pi / 4),
+                # "sho_pitch": SysIDSpecs(),
+                # "sho_roll": SysIDSpecs(),
             }
 
         time_list: List[npt.NDArray[np.float32]] = []
@@ -184,9 +191,8 @@ class SysIDFixedPolicy(BasePolicy, policy_name="sysID_fixed"):
             )
 
             amplitude_max = robot.joint_limits[joint_names[0]][1] - mean
-            amplitude = sysID_specs.amplitude_ratio * amplitude_max
 
-            def build_episode(kp: float):
+            def build_episode(amplitude_ratio: float, kp: float):
                 if not np.allclose(warm_up_act, action_list[-1][-1], 1e-6):
                     warm_up_time, warm_up_action = self.move(
                         time_list[-1][-1],
@@ -204,16 +210,15 @@ class SysIDFixedPolicy(BasePolicy, policy_name="sysID_fixed"):
                     0.0,
                     sysID_specs.initial_frequency,
                     sysID_specs.final_frequency,
-                    amplitude,
+                    amplitude_ratio * amplitude_max,
+                    sysID_specs.decay_rate,
                 )
                 rotate_time = np.asarray(rotate_time)
                 signal = np.asarray(signal)
 
                 rotate_time += time_list[-1][-1] + self.control_dt
 
-                rotate_pos = np.zeros(
-                    (signal.shape[0], len(robot.joint_ordering)), np.float32
-                )
+                rotate_pos = np.zeros((signal.shape[0], robot.nu), np.float32)
 
                 if isinstance(joint_idx, int):
                     rotate_pos[:, joint_idx] = signal
@@ -251,10 +256,12 @@ class SysIDFixedPolicy(BasePolicy, policy_name="sysID_fixed"):
                 )
 
             if sysID_specs.kp_list is None:
-                build_episode(0.0)
+                for amplitude_ratio in sysID_specs.amplitude_list:
+                    build_episode(amplitude_ratio, 0.0)
             else:
                 for kp in sysID_specs.kp_list:
-                    build_episode(kp)
+                    for amplitude_ratio in sysID_specs.amplitude_list:
+                        build_episode(amplitude_ratio, kp)
 
         self.time_arr = np.concatenate(time_list)
         self.action_arr = np.concatenate(action_list)

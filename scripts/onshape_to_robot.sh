@@ -1,50 +1,96 @@
 #!/bin/bash
 
-# YELLOW='\033[0;33m'
-# NC='\033[0m' # No Color
+# shellcheck disable=SC1091
+# shellcheck disable=SC2086
 
-##### toddlerbot #####
-ROBOT_NAME="toddlerbot"
-BODY_NAME="toddlerbot"
-ARM_NAME="arm_gripper"
-LEG_NAME="leg_XM430"
-DOC_ID_LIST="6f1a2a766fbbc097a49abb91 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
-ASSEMBLY_LIST="toddlerbot left_leg_XM430 right_leg_XM430 left_arm_gripper right_arm_gripper"
-# DOC_ID_LIST="6f1a2a766fbbc097a49abb91"
-# ASSEMBLY_LIST="toddlerbot"
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
 
-#### toddlerbot_legs #####
-# ROBOT_NAME="toddlerbot_legs"
-# BODY_NAME="toddlerbot_legs"
-# LEG_NAME="leg_XM430"
-# DOC_ID_LIST="6f1a2a766fbbc097a49abb91 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe"
-# ASSEMBLY_LIST="toddlerbot_legs left_leg_XM430 right_leg_XM430"
-# DOC_ID_LIST="6f1a2a766fbbc097a49abb91"
-# ASSEMBLY_LIST="toddlerbot_legs"
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --robot)
+        ROBOT_NAME="$2"
+        case "$ROBOT_NAME" in
+            toddlerbot)
+            BODY_NAME="toddlerbot"
+            ARM_NAME="arm_gripper"
+            LEG_NAME="leg"
+            DOC_ID_LIST="6f1a2a766fbbc097a49abb91 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
+            ASSEMBLY_LIST="$BODY_NAME left_$LEG_NAME right_$LEG_NAME left_$ARM_NAME right_$ARM_NAME"
+            # DOC_ID_LIST="cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
+            # ASSEMBLY_LIST="left_$ARM_NAME right_$ARM_NAME"
+            ;;
+            toddlerbot_OP3)
+            BODY_NAME="toddlerbot"
+            ARM_NAME="arm_umi"
+            LEG_NAME="leg_OP3"
+            DOC_ID_LIST="6f1a2a766fbbc097a49abb91 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
+            ASSEMBLY_LIST="$BODY_NAME left_$LEG_NAME right_$LEG_NAME left_$ARM_NAME right_$ARM_NAME"
+            DOC_ID_LIST="6f1a2a766fbbc097a49abb91"
+            ASSEMBLY_LIST="$BODY_NAME"
+            ;;
+            toddlerbot_legs)
+            BODY_NAME="toddlerbot"
+            LEG_NAME="leg"
+            DOC_ID_LIST="6f1a2a766fbbc097a49abb91 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe"
+            ASSEMBLY_LIST="$BODY_NAME left_$LEG_NAME right_$LEG_NAME"
+            # DOC_ID_LIST="6f1a2a766fbbc097a49abb91"
+            # ASSEMBLY_LIST="toddlerbot_legs"
+            ;;
+            toddlerbot_arms)
+            BODY_NAME="toddlerbot"
+            ARM_NAME="arm_hand"
+            DOC_ID_LIST="6f1a2a766fbbc097a49abb91 cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
+            ASSEMBLY_LIST="$BODY_NAME left_$ARM_NAME right_$ARM_NAME"
+            # DOC_ID_LIST="cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
+            # ASSEMBLY_LIST="left_arm_hand right_arm_hand"
+            ;;
+            sysID_XC330)
+            DOC_ID_LIST="4b8df5a39fb5e7db7afa93b4"
+            ASSEMBLY_LIST="sysID_XC330"
+            ;;
+            sysID_XC430)
+            DOC_ID_LIST="4b8df5a39fb5e7db7afa93b4"
+            ASSEMBLY_LIST="sysID_XC430"
+            ;;
+            sysID_2XC430)
+            DOC_ID_LIST="4b8df5a39fb5e7db7afa93b4"
+            ASSEMBLY_LIST="sysID_2XC430"
+            ;;
+            sysID_2XL430)
+            DOC_ID_LIST="4b8df5a39fb5e7db7afa93b4"
+            ASSEMBLY_LIST="sysID_2XL430"
+            ;;
+            sysID_XM430)
+            DOC_ID_LIST="4b8df5a39fb5e7db7afa93b4"
+            ASSEMBLY_LIST="sysID_XM430"
+            ;;
+            *)
+            echo -e "${YELLOW}Unknown robot name: $ROBOT_NAME.${NC}"
+            ;;
+        esac
+        shift # past argument
+        shift # past value
+        ;;
+        *)
+        echo -e "${YELLOW}Unknown option: $1${NC}"
+        shift # past unknown argument
+        ;;
+    esac
+done
 
-#### toddlerbot_arms #####
-# ROBOT_NAME="toddlerbot_arms"
-# BODY_NAME="toddlerbot_arms"
-# ARM_NAME="arm_hand"
-# DOC_ID_LIST="6f1a2a766fbbc097a49abb91 cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
-# ASSEMBLY_LIST="toddlerbot_arms left_arm_hand right_arm_hand"
-# DOC_ID_LIST="6f1a2a766fbbc097a49abb91"
-# ASSEMBLY_LIST="toddlerbot_arms"
-
-##### sysID_device #####
-# MOTOR_TYPE="XC330"
-# ROBOT_NAME="sysID_$MOTOR_TYPE"
-# BODY_NAME="sysID_$MOTOR_TYPE"
-# DOC_ID_LIST="4b8df5a39fb5e7db7afa93b4"
-# ASSEMBLY_LIST="sysID_$MOTOR_TYPE"
+# Check if ROBOT_NAME is set
+if [[ -z "$ROBOT_NAME" ]]; then
+    echo -e "${YELLOW}Error: --robot argument is required.${NC}"
+    exit 1
+fi
 
 REPO_NAME="toddlerbot"
 URDF_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/$ROBOT_NAME.urdf
-MJCF_FIXED_SCENE_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/${ROBOT_NAME}_fixed_scene.xml
-MJCF_SCENE_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/${ROBOT_NAME}_scene.xml
+MJCF_VIS_SCENE_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/${ROBOT_NAME}_vis_scene.xml
 CONFIG_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/config.json
 
-# shellcheck disable=SC1091
 source "$HOME/.bashrc"
 
 printf "Do you want to export urdf from onshape? (y/n)"
@@ -52,7 +98,6 @@ read -r -p " > " run_onshape
 
 if [ "$run_onshape" == "y" ]; then
     printf "Exporting...\n\n"
-    # shellcheck disable=SC2086
     python $REPO_NAME/robot_descriptions/get_urdf.py --doc-id-list $DOC_ID_LIST --assembly-list $ASSEMBLY_LIST
 else
     printf "Export skipped.\n\n"
@@ -123,7 +168,7 @@ read -r -p " > " run_mujoco
 
 if [ "$run_mujoco" == "y" ]; then
     printf "Simulation running...\n\n"
-    python -m mujoco.viewer --mjcf=$MJCF_SCENE_PATH
+    python -m mujoco.viewer --mjcf=$MJCF_VIS_SCENE_PATH
 else
     printf "Simulation skipped.\n\n"
 fi

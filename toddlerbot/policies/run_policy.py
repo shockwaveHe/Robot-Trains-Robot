@@ -1,6 +1,7 @@
 import argparse
 import bisect
 import importlib
+import json
 import os
 import pickle
 import pkgutil
@@ -12,13 +13,13 @@ import numpy.typing as npt
 from tqdm import tqdm
 
 from toddlerbot.policies import BasePolicy, get_policy_class
+from toddlerbot.policies.calibrate import CalibratePolicy
 from toddlerbot.policies.mjx_policy import MJXPolicy
 from toddlerbot.policies.sysID_fixed import SysIDFixedPolicy
 from toddlerbot.sim import BaseSim, Obs
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.sim.robot import Robot
-from toddlerbot.utils.math_utils import round_floats
 from toddlerbot.utils.misc_utils import dump_profiling_data, log, snake2camel
 from toddlerbot.visualization.vis_plot import (
     plot_joint_tracking,
@@ -26,6 +27,7 @@ from toddlerbot.visualization.vis_plot import (
     plot_joint_tracking_single,
     plot_line_graph,
     plot_loop_time,
+    plot_motor_vel_tor_mapping,
 )
 
 
@@ -46,10 +48,10 @@ dynamic_import_policies("toddlerbot.policies")
 
 def plot_results(
     robot: Robot,
+    policy: BasePolicy,
     loop_time_list: List[List[float]],
     obs_list: List[Obs],
     motor_angles_list: List[Dict[str, float]],
-    control_dt: float,
     exp_folder_path: str,
 ):
     loop_time_dict: Dict[str, List[float]] = {
@@ -105,7 +107,7 @@ def plot_results(
 
             # Assume the state fetching is instantaneous
             time_seq_dict[motor_name].append(float(obs.time))
-            time_seq_ref_dict[motor_name].append(i * control_dt)
+            time_seq_ref_dict[motor_name].append(i * policy.control_dt)
             motor_pos_dict[motor_name].append(obs.motor_pos[j])
             motor_vel_dict[motor_name].append(obs.motor_vel[j])
             motor_tor_dict[motor_name].append(obs.motor_tor[j])
@@ -125,6 +127,27 @@ def plot_results(
             joint_pos_ref_dict[joint_name].append(joint_angle)
 
     plot_loop_time(loop_time_dict, exp_folder_path)
+
+    if "sysID" in robot.name:
+        plot_motor_vel_tor_mapping(
+            motor_vel_dict["joint_0"],
+            motor_tor_dict["joint_0"],
+            save_path=exp_folder_path,
+        )
+
+    # if hasattr(policy, "com_pos_list"):
+    #     plot_len = min(len(policy.com_pos_list), len(time_obs_list))
+    #     plot_line_graph(
+    #         np.array(policy.com_pos_list).T[:2, :plot_len],
+    #         time_obs_list[:plot_len],
+    #         legend_labels=["COM X", "COM Y"],
+    #         title="Center of Mass Over Time",
+    #         x_label="Time (s)",
+    #         y_label="COM Position (m)",
+    #         save_config=True,
+    #         save_path=exp_folder_path,
+    #         file_name="com_tracking",
+    #     )()
 
     plot_line_graph(
         tor_obs_total_list,
@@ -189,17 +212,13 @@ def plot_results(
 
 
 # @profile()
-def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
+def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
     header_name = snake2camel(sim.name)
 
     loop_time_list: List[List[float]] = []
     obs_list: List[Obs] = []
     motor_angles_list: List[Dict[str, float]] = []
 
-    if getattr(policy, "torso_pos", None) is not None and isinstance(sim, MuJoCoSim):
-        sim.set_torso_pos(policy.torso_pos)
-    
-    is_prepared = False
     n_steps_total = (
         float("inf")
         if "real" in sim.name and "fixed" not in policy.name
@@ -218,24 +237,24 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
             obs = sim.get_observation()
             obs.time -= start_time
 
-            if "real" in sim.name:
-                assert isinstance(sim, RealWorld)
-                if not is_prepared and obs.time > policy.prep_duration and sim.has_imu:
-                    is_prepared = True
-                    sim.imu.set_zero_pose()
-            else:
+            if "real" not in sim.name and vis_type != "view":
                 obs.time += time_until_next_step
 
             obs_time = time.time()
 
-            if "sysID" in policy.name:
-                assert isinstance(policy, SysIDFixedPolicy)
+            if isinstance(policy, SysIDFixedPolicy):
                 ckpt_times = list(policy.ckpt_dict.keys())
                 ckpt_idx = bisect.bisect_left(ckpt_times, obs.time)
+                ckpt_idx = min(ckpt_idx, len(ckpt_times) - 1)
                 if ckpt_idx != last_ckpt_idx:
                     motor_kps = policy.ckpt_dict[ckpt_times[ckpt_idx]]
-                    if np.any(list(motor_kps.values())):
-                        sim.set_motor_kps(motor_kps)
+                    motor_kps_updated = {}
+                    for joint_name in motor_kps:
+                        for motor_name in robot.joint_to_motor_name[joint_name]:
+                            motor_kps_updated[motor_name] = motor_kps[joint_name]
+
+                    if np.any(list(motor_kps_updated.values())):
+                        sim.set_motor_kps(motor_kps_updated)
                         last_ckpt_idx = ckpt_idx
 
             motor_target = policy.step(obs, "real" in sim.name)
@@ -261,18 +280,6 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
             if step_idx % p_bar_steps == 0:
                 p_bar.update(p_bar_steps)
 
-            if debug["log"]:
-                log(
-                    f"obs: {round_floats(obs.__dict__, 4)}",
-                    header=header_name,
-                    level="debug",
-                )
-                log(
-                    f"Joint angles: {round_floats(motor_angles,4)}",
-                    header=header_name,
-                    level="debug",
-                )
-
             step_end = time.time()
 
             loop_time_list.append(
@@ -288,12 +295,13 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
 
             time_until_next_step = start_time + policy.control_dt * step_idx - step_end
             # print(f"time_until_next_step: {time_until_next_step * 1000:.2f} ms")
-            if "real" in sim.name and time_until_next_step > 0:
+            if ("real" in sim.name or vis_type == "view") and time_until_next_step > 0:
                 time.sleep(time_until_next_step)
 
     except KeyboardInterrupt:
         log("KeyboardInterrupt recieved. Closing...", header=header_name)
 
+    finally:
         p_bar.close()
 
     exp_name = f"{robot.name}_{policy.name}_{sim.name}"
@@ -314,26 +322,64 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, debug: Dict[str, Any]):
     with open(log_data_path, "wb") as f:
         pickle.dump(log_data_dict, f)
 
-    if debug["render"] and hasattr(sim, "save_recording"):
+    if hasattr(sim, "save_recording"):
         assert isinstance(sim, MuJoCoSim)
-        print(f"Saving recording to {exp_folder_path}")
         sim.save_recording(exp_folder_path, policy.control_dt, 2)
 
     sim.close()
 
+    log_data_dict: Dict[str, Any] = {
+        "obs_list": obs_list,
+        "motor_angles_list": motor_angles_list,
+    }
+
+    if isinstance(policy, SysIDFixedPolicy):
+        log_data_dict["ckpt_dict"] = policy.ckpt_dict
+
+    log_data_path = os.path.join(exp_folder_path, "log_data.pkl")
+    with open(log_data_path, "wb") as f:
+        pickle.dump(log_data_dict, f)
+
     prof_path = os.path.join(exp_folder_path, "profile_output.lprof")
     dump_profiling_data(prof_path)
 
-    if debug["plot"]:
-        log("Visualizing...", header="Walking")
-        plot_results(
-            robot,
-            loop_time_list,
-            obs_list,
-            motor_angles_list,
-            policy.control_dt,
-            exp_folder_path,
-        )
+    if isinstance(policy, CalibratePolicy):
+        motor_config_path = os.path.join(robot.root_path, "config_motors.json")
+        if os.path.exists(motor_config_path):
+            motor_names = robot.get_joint_attrs("is_passive", False)
+            motor_pos_init = np.array(
+                robot.get_joint_attrs("is_passive", False, "init_pos")
+            )
+            motor_pos_delta = (
+                np.array(list(motor_angles_list[-1].values()), dtype=np.float32)
+                - policy.default_motor_pos
+            )
+            motor_pos_delta[
+                np.logical_and(motor_pos_delta > -0.005, motor_pos_delta < 0.005)
+            ] = 0.0
+
+            with open(motor_config_path, "r") as f:
+                motor_config = json.load(f)
+
+            for motor_name, init_pos in zip(
+                motor_names, motor_pos_init + motor_pos_delta
+            ):
+                motor_config[motor_name]["init_pos"] = float(init_pos)
+
+            with open(motor_config_path, "w") as f:
+                json.dump(motor_config, f, indent=4)
+        else:
+            raise FileNotFoundError(f"Could not find {motor_config_path}")
+
+    log("Visualizing...", header="Walking")
+    plot_results(
+        robot,
+        policy,
+        loop_time_list,
+        obs_list,
+        motor_angles_list,
+        exp_folder_path,
+    )
 
 
 if __name__ == "__main__":
@@ -403,7 +449,7 @@ if __name__ == "__main__":
     else:
         raise ValueError("Unknown simulator")
 
-    PolicyClass = get_policy_class(args.policy)
+    PolicyClass = get_policy_class(args.policy.replace("_fixed", ""))
 
     if "replay" in args.policy:
         policy = PolicyClass(args.policy, robot, init_motor_pos, args.run_name)
@@ -422,6 +468,4 @@ if __name__ == "__main__":
     else:
         policy = PolicyClass(args.policy, robot, init_motor_pos)
 
-    debug_config: Dict[str, Any] = {"log": False, "plot": False, "render": True}
-
-    main(robot, sim, policy, debug_config)
+    main(robot, sim, policy, args.vis)

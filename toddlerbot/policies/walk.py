@@ -9,7 +9,7 @@ from toddlerbot.ref_motion.walk_zmp_ref import WalkZMPReference
 from toddlerbot.sim.robot import Robot
 
 
-class WalkPolicy(MJXPolicy):
+class WalkPolicy(MJXPolicy, policy_name="walk"):
     def __init__(
         self,
         name: str,
@@ -19,12 +19,12 @@ class WalkPolicy(MJXPolicy):
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
     ):
         env_cfg = WalkCfg()
-        command_ranges = [
-            env_cfg.commands.lin_vel_x_range,
-            env_cfg.commands.lin_vel_y_range,
-            env_cfg.commands.ang_vel_z_range,
-        ]
-        motion_ref = WalkZMPReference(robot, env_cfg.action.cycle_time, command_ranges)
+        motion_ref = WalkZMPReference(
+            robot,
+            env_cfg.commands.command_list,
+            env_cfg.action.cycle_time,
+            env_cfg.sim.timestep * env_cfg.action.n_frames,
+        )
 
         super().__init__(
             name, robot, init_motor_pos, ckpt, fixed_command, env_cfg, motion_ref

@@ -14,7 +14,6 @@ from moviepy.editor import VideoFileClip, clips_array
 
 # Suppress specific warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="moviepy")
-os.environ["MUJOCO_GL"] = "egl"  # For headless rendering
 
 
 class MuJoCoViewer:

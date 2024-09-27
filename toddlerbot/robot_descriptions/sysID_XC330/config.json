@@ -3,7 +3,7 @@
         "is_fixed": true,
         "has_imu": false,
         "has_dynamixel": true,
-        "dynamixel_baudrate": 4000000,
+        "dynamixel_baudrate": 2000000,
         "has_sunny_sky": false,
         "solref": [
             0.004,
@@ -20,22 +20,25 @@
             "group": "none",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
-            "damping": 0.154,
-            "armature": 0.004,
-            "frictionloss": 0.0,
+            "damping": 0.134,
+            "armature": 0.0035,
+            "frictionloss": 0.014,
             "id": 0,
             "type": "dynamixel",
             "spec": "XC330",
             "control_mode": "extended_position",
-            "init_pos": 3.141592653589793,
+            "init_pos": 1.5707963267948966,
             "default_pos": 0.0,
-            "kp_real": 900.0,
+            "kp_real": 1500.0,
             "ki_real": 0.0,
             "kd_real": 0.0,
             "kff2_real": 0.0,
             "kff1_real": 0.0,
-            "kp_sim": 7.03125,
-            "kd_sim": 0.0
+            "kp_sim": 11.71875,
+            "kd_sim": 0.0,
+            "tau_max": 0.99,
+            "q_dot_tau_max": 3.29,
+            "q_dot_max": 10.0
         }
     }
 }

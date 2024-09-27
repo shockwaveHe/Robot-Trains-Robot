@@ -2,55 +2,43 @@
     "general": {
         "is_fixed": true,
         "has_imu": false,
-        "constraint_pairs": [],
         "has_dynamixel": true,
+        "dynamixel_baudrate": 2000000,
         "has_sunny_sky": false,
-        "dynamixel_baudrate": 3000000
+        "solref": [
+            0.004,
+            1
+        ],
+        "is_waist_closed_loop": false,
+        "is_knee_closed_loop": false,
+        "is_ankle_closed_loop": false
     },
     "joints": {
         "joint_0": {
-            "id": 0,
-            "group": "default",
-            "type": "dynamixel",
-            "spec": "XL430",
-            "control_mode": "position",
             "is_passive": false,
-            "is_closed_loop": false,
-            "damping": 0.153,
-            "armature": 0.008,
-            "frictionloss": 0.998,
-            "kp_real": 2400.0,
-            "ki_real": 0.0,
-            "kd_real": 2400.0,
-            "kp_sim": 18.75,
-            "kd_sim": 0.0,
-            "kff2_real": 0.0,
-            "kff1_real": 0.0,
-            "gear_ratio": 1.0,
+            "transmission": "none",
+            "group": "none",
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "damping": 0.12,
+            "armature": 0.0042,
+            "frictionloss": 0.292,
+            "id": 0,
+            "type": "dynamixel",
+            "spec": "2XL430",
+            "control_mode": "extended_position",
             "init_pos": 3.141592653589793,
             "default_pos": 0.0,
-            "lower_limit": -1.5707963267948966,
-            "upper_limit": 1.5707963267948966
-        }
-    },
-    "links": {
-        "2xl430": {
-            "has_collision": false,
-            "collision_type": "box",
-            "collision_scale": [
-                1.0,
-                1.0,
-                1.0
-            ]
-        },
-        "arm_430": {
-            "has_collision": false,
-            "collision_type": "box",
-            "collision_scale": [
-                1.0,
-                1.0,
-                1.0
-            ]
+            "kp_real": 2100.0,
+            "ki_real": 0.0,
+            "kd_real": 0.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 16.40625,
+            "kd_sim": 0.0,
+            "tau_max": 1.55,
+            "q_dot_tau_max": 3.24,
+            "q_dot_max": 19.91
         }
     }
 }

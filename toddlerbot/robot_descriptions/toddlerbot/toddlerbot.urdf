@@ -1246,16 +1246,16 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/left_arm_hand/meshes/left_sho_pitch_link_visual.stl" />
+        <mesh filename="../assemblies/left_arm_gripper/meshes/left_sho_pitch_link_visual.stl" />
       </geometry>
       <material name="sho_pitch_link_material">
         <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0" />
       </material>
     </visual>
     <inertial>
-      <origin xyz="5.8254247652798875819e-11 -5.1264642561121521395e-05 0.0082440788127094901533" rpy="0 0 0" />
+      <origin xyz="5.8254246946927595895e-11 -5.1264642561121060609e-05 0.0082440788127094641324" rpy="0 0 0" />
       <mass value="0.0086000000000000000056" />
-      <inertia ixx="1.2272887040545791873e-06" ixy="-2.1429944210231087856e-14" ixz="-8.584719860658140756e-15" iyy="2.9107306060364611617e-06" iyz="7.4623841398183299076e-09" izz="3.0803135950773487693e-06" />
+      <inertia ixx="1.227288704054570717e-06" ixy="-2.1429936863904790749e-14" ixz="-8.5847198110204645787e-15" iyy="2.9107306060364421035e-06" iyz="7.4623841398182488439e-09" izz="3.0803135950773271699e-06" />
     </inertial>
   </link>
 
@@ -1263,16 +1263,16 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/left_arm_hand/meshes/left_2xl430_gears_visual.stl" />
+        <mesh filename="../assemblies/left_arm_gripper/meshes/left_2xl430_gears_visual.stl" />
       </geometry>
       <material name="2xl430_gears_material">
-        <color rgba="0.7560598568794409946 0.85804695962693022793 0.91320266199377464478 1.0" />
+        <color rgba="0.7560598568794409946 0.8580469596269301169 0.91320266199377464478 1.0" />
       </material>
     </visual>
     <inertial>
-      <origin xyz="-0.011579403981036554341 -0.0024225766141400158216 -0.018551095523803531884" rpy="0 0 0" />
-      <mass value="0.11800003674524907338" />
-      <inertia ixx="2.7482298083236092012e-05" ixy="9.2729623432982117887e-07" ixz="-2.2634512003762348769e-08" iyy="3.2770742486672784378e-05" iyz="-6.5708346020130146558e-07" izz="3.5767957544054292845e-05" />
+      <origin xyz="-0.011579403981035758103 -0.0024225766141424860678 -0.018551095523803400045" rpy="0 0 0" />
+      <mass value="0.11800003674524910113" />
+      <inertia ixx="2.7482298083238270581e-05" ixy="9.2729623433106271741e-07" ixz="-2.2634512004565670184e-08" iyy="3.277074248667325194e-05" iyz="-6.5708346020155028151e-07" izz="3.5767957544057342163e-05" />
     </inertial>
   </link>
 
@@ -1280,25 +1280,25 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/left_arm_hand/meshes/left_spur_1m_24t_drive_visual.stl" />
+        <mesh filename="../assemblies/left_arm_gripper/meshes/left_spur_1m_24t_drive_visual.stl" />
       </geometry>
       <material name="spur_1m_24t_drive_material">
         <color rgba="0.61568627450980406568 0.81176470588235294379 0.92941176470588238168 1.0" />
       </material>
     </visual>
     <inertial>
-      <origin xyz="-7.7588747702773419228e-15 -1.2113919729783031184e-16 0.0047949116178401460231" rpy="0 0 0" />
+      <origin xyz="-7.7516116741234976791e-15 -1.2124421064949640411e-16 0.0047949116178401399516" rpy="0 0 0" />
       <mass value="0.0032000000000000001533" />
-      <inertia ixx="1.4019331346159887702e-07" ixy="1.6002410021513630837e-15" ixz="-8.0106568502533340392e-38" iyy="1.4019331260388786185e-07" iyz="3.5707617447061325799e-38" izz="2.3838919844264060647e-07" />
+      <inertia ixx="1.4019331346159892996e-07" ixy="1.6002409902219162019e-15" ixz="1.2418303191241970223e-36" iyy="1.4019331260388780891e-07" iyz="4.4948724812246596416e-37" izz="2.3838919844264071235e-07" />
     </inertial>
   </link>
 
   <joint name="left_sho_yaw_drive" type="revolute">
-    <origin xyz="-0.024000000716141278723 -0.019000000152448490859 -0.0190000001524472939" rpy="1.570796326794886566 -1.7772407460995643501e-15 2.9721983312145830671e-14" />
+    <origin xyz="-0.024000000716139110318 -0.019000000152454975255 -0.019000000152449778024" rpy="1.5707963267949334174 -1.1191795890472901541e-13 1.4055336229792838361e-13" />
     <parent link="2xl430_gears" />
     <child link="spur_1m_24t_drive" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
+    <limit effort="1" velocity="20" lower="-2.6179938779914944114" upper="2.6179938779914944114" />
     <joint_properties friction="0.0" />
   </joint>
 
@@ -1306,16 +1306,16 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/left_arm_hand/meshes/left_spur_1m_24t_driven_visual.stl" />
+        <mesh filename="../assemblies/left_arm_gripper/meshes/left_spur_1m_24t_driven_visual.stl" />
       </geometry>
       <material name="spur_1m_24t_driven_material">
-        <color rgba="0.23137254901960788156 0.38039215686274507888 0.7058823529411765163 1.0" />
+        <color rgba="0.23137254901960788156 0.38039215686274502337 0.7058823529411765163 1.0" />
       </material>
     </visual>
     <inertial>
-      <origin xyz="2.3289816703110464291e-18 -5.7987576959439556938e-15 -0.00096866348640038332785" rpy="0 0 0" />
-      <mass value="0.0027000000000000001429" />
-      <inertia ixx="1.2026541119643502094e-07" ixy="-4.0474500803410873683e-47" ixz="-1.0726060653955529023e-38" iyy="1.2026541119643483565e-07" iyz="5.980474480612833222e-38" izz="2.2827257365099366486e-07" />
+      <origin xyz="1.9637778540992548441e-18 -5.8049057615352288969e-15 -0.00097054817521927832808" rpy="0 0 0" />
+      <mass value="0.0026999999999999997093" />
+      <inertia ixx="1.2036234079571065709e-07" ixy="6.0233363989413072236e-37" ixz="4.2452965972389379691e-36" iyy="1.203623407957104718e-07" iyz="1.6094626499063888535e-36" izz="2.2847261745924535316e-07" />
     </inertial>
   </link>
 
@@ -1323,16 +1323,16 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/left_arm_hand/meshes/left_sho_yaw_link_visual.stl" />
+        <mesh filename="../assemblies/left_arm_gripper/meshes/left_sho_yaw_link_visual.stl" />
       </geometry>
       <material name="sho_yaw_link_material">
         <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0" />
       </material>
     </visual>
     <inertial>
-      <origin xyz="-1.1573942515719324801e-18 3.9965734479645065973e-18 -0.024214576156328410095" rpy="0 0 0" />
-      <mass value="0.014500000000000019817" />
-      <inertia ixx="9.0490855102915009419e-06" ixy="3.5997729401550392327e-13" ixz="8.4928747802388991438e-37" iyy="5.6767199180624735964e-06" iyz="1.6087043138114355428e-36" izz="4.4590603637468159332e-06" />
+      <origin xyz="-1.2817564279969982505e-18 -4.2395441168349757852e-19 -0.024303257848520158635" rpy="0 0 0" />
+      <mass value="0.014500000000000016348" />
+      <inertia ixx="9.0846670053041382782e-06" ixy="3.6224092806404002001e-13" ixz="-2.2549862058730217891e-35" iyy="5.6910950712097533498e-06" iyz="-3.7044100730248461845e-36" izz="4.481960984554899287e-06" />
     </inertial>
   </link>
 
@@ -1340,16 +1340,16 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/left_arm_hand/meshes/left_2xl430_gears_2_visual.stl" />
+        <mesh filename="../assemblies/left_arm_gripper/meshes/left_2xl430_gears_2_visual.stl" />
       </geometry>
       <material name="2xl430_gears_2_material">
-        <color rgba="0.7560598568794409946 0.85804695962693022793 0.91320266199377464478 1.0" />
+        <color rgba="0.7560598568794409946 0.8580469596269301169 0.91320266199377464478 1.0" />
       </material>
     </visual>
     <inertial>
-      <origin xyz="-0.01157940398103590382 -0.0024225766141403085562 -0.018551095523804767007" rpy="0 0 0" />
-      <mass value="0.11800003674524907338" />
-      <inertia ixx="2.7482298083236647666e-05" ixy="9.2729623433076170308e-07" ixz="-2.263451200393656955e-08" iyy="3.2770742486673184177e-05" iyz="-6.5708346020168125398e-07" izz="3.5767957544054909485e-05" />
+      <origin xyz="-0.011579403981035940249 -0.0024225766141466515725 -0.018551095523804794762" rpy="0 0 0" />
+      <mass value="0.11800003674524910113" />
+      <inertia ixx="2.7482298083242519298e-05" ixy="9.2729623433074825643e-07" ixz="-2.2634512004084773846e-08" iyy="3.2770742486673638187e-05" iyz="-6.5708346020082733889e-07" izz="3.5767957544061780616e-05" />
     </inertial>
   </link>
 
@@ -1357,25 +1357,25 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/left_arm_hand/meshes/left_spur_1m_24t_drive_2_visual.stl" />
+        <mesh filename="../assemblies/left_arm_gripper/meshes/left_spur_1m_24t_drive_2_visual.stl" />
       </geometry>
       <material name="spur_1m_24t_drive_2_material">
         <color rgba="0.61568627450980406568 0.81176470588235294379 0.92941176470588238168 1.0" />
       </material>
     </visual>
     <inertial>
-      <origin xyz="-7.7519358763734346945e-15 -1.2113919729783050906e-16 0.0047949116178401382168" rpy="0 0 0" />
+      <origin xyz="-7.744672780219588873e-15 -1.2124421062364700997e-16 0.0047949116178401382168" rpy="0 0 0" />
       <mass value="0.0032000000000000001533" />
-      <inertia ixx="1.4019331346159887702e-07" ixy="1.6002410054600855339e-15" ixz="2.601989679508350391e-37" iyy="1.4019331260388786185e-07" iyz="-1.1857416576551867588e-36" izz="2.3838919844264060647e-07" />
+      <inertia ixx="1.4019331346159887702e-07" ixy="1.6002409922818087303e-15" ixz="2.3547439486243088255e-36" iyy="1.4019331260388783538e-07" iyz="3.8710779976498571709e-36" izz="2.3838919844264060647e-07" />
     </inertial>
   </link>
 
   <joint name="left_elbow_yaw_drive" type="revolute">
-    <origin xyz="-0.024000000716141011575 -0.019000000152448556778 -0.019000000152448452695" rpy="1.5707963267949249797 5.3833632274240703492e-15 -6.2781152873576405876e-14" />
+    <origin xyz="-0.02400000071614073055 -0.019000000152457841018 -0.019000000152442970969" rpy="1.5707963267946287722 -5.6790261222308772362e-14 9.8859639154170636391e-14" />
     <parent link="2xl430_gears_2" />
     <child link="spur_1m_24t_drive_2" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
+    <limit effort="1" velocity="20" lower="-2.6179938779914944114" upper="2.6179938779914944114" />
     <joint_properties friction="0.0" />
   </joint>
 
@@ -1383,16 +1383,16 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/left_arm_hand/meshes/left_spur_1m_24t_driven_2_visual.stl" />
+        <mesh filename="../assemblies/left_arm_gripper/meshes/left_spur_1m_24t_driven_2_visual.stl" />
       </geometry>
       <material name="spur_1m_24t_driven_2_material">
-        <color rgba="0.23137254901960788156 0.38039215686274507888 0.7058823529411765163 1.0" />
+        <color rgba="0.23137254901960788156 0.38039215686274502337 0.7058823529411765163 1.0" />
       </material>
     </visual>
     <inertial>
-      <origin xyz="2.3289816703110237031e-18 -5.7989934404527921162e-15 -0.00096866348640039037516" rpy="0 0 0" />
-      <mass value="0.0027000000000000001429" />
-      <inertia ixx="1.2026541119643502094e-07" ixy="0" ixz="-3.9131793608196566436e-37" iyy="1.2026541119643483565e-07" iyz="0" izz="2.2827257365099366486e-07" />
+      <origin xyz="1.9637778540993942815e-18 -5.8049057615352241637e-15 -0.00097054817521927117235" rpy="0 0 0" />
+      <mass value="0.0026999999999999997093" />
+      <inertia ixx="1.2036234079571065709e-07" ixy="3.6792793727059434211e-37" ixz="1.8249753104761457119e-36" iyy="1.203623407957104718e-07" iyz="2.1366319123049580012e-36" izz="2.2847261745924535316e-07" />
     </inertial>
   </link>
 
@@ -1400,16 +1400,16 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/left_arm_hand/meshes/left_elb_yaw_link_visual.stl" />
+        <mesh filename="../assemblies/left_arm_gripper/meshes/left_elb_yaw_link_visual.stl" />
       </geometry>
       <material name="elb_yaw_link_material">
         <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588227065 1.0" />
       </material>
     </visual>
     <inertial>
-      <origin xyz="5.2870889172778520186e-08 0.0019873558182742466494 -0.02336566119982871545" rpy="0 0 0" />
+      <origin xyz="5.3127688027391931278e-08 0.0019833638641961644222 -0.023416643551549959357" rpy="0 0 0" />
       <mass value="0.017500000000000001665" />
-      <inertia ixx="1.4097804991252558057e-05" ixy="1.690080968406779376e-12" ixz="-1.118467366217378058e-11" iyy="6.6367696417680302023e-06" iyz="1.0579908722588331512e-06" izz="8.9601142768980663591e-06" />
+      <inertia ixx="1.4134344903109194693e-05" ixy="1.6945783921965038345e-12" ixz="-1.128639872187510241e-11" iyy="6.6435900776211323463e-06" iyz="1.0545227077253055462e-06" izz="8.9925290757998976773e-06" />
     </inertial>
   </link>
 
@@ -1417,16 +1417,16 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/left_arm_hand/meshes/left_spur_1m_24t_driven_3_visual.stl" />
+        <mesh filename="../assemblies/left_arm_gripper/meshes/left_spur_1m_24t_driven_3_visual.stl" />
       </geometry>
       <material name="spur_1m_24t_driven_3_material">
-        <color rgba="0.23137254901960788156 0.38039215686274507888 0.7058823529411765163 1.0" />
+        <color rgba="0.23137254901960788156 0.38039215686274502337 0.7058823529411765163 1.0" />
       </material>
     </visual>
     <inertial>
-      <origin xyz="-2.5426593945317773481e-17 -5.8024628874047457304e-15 -0.0025686634864003805856" rpy="0 0 0" />
-      <mass value="0.0027000000000000001429" />
-      <inertia ixx="1.2026541119643502094e-07" ixy="7.589814491455755124e-37" ixz="1.0368687130951098114e-36" iyy="1.2026541119643483565e-07" iyz="7.7514145192038011191e-67" izz="2.2827257365099366486e-07" />
+      <origin xyz="-2.5791797761529668296e-17 -5.8049057615352249526e-15 -0.0025705481752192754774" rpy="0 0 0" />
+      <mass value="0.0026999999999999997093" />
+      <inertia ixx="1.2036234079571065709e-07" ixy="-2.4130930452109170601e-36" ixz="0" iyy="1.203623407957104718e-07" iyz="0" izz="2.2847261745924535316e-07" />
     </inertial>
   </link>
 
@@ -1434,16 +1434,16 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/left_arm_hand/meshes/left_2xl430_gears_3_visual.stl" />
+        <mesh filename="../assemblies/left_arm_gripper/meshes/left_2xl430_gears_3_visual.stl" />
       </geometry>
       <material name="2xl430_gears_3_material">
-        <color rgba="0.7560598568794409946 0.85804695962693022793 0.91320266199377464478 1.0" />
+        <color rgba="0.7560598568794409946 0.8580469596269301169 0.91320266199377464478 1.0" />
       </material>
     </visual>
     <inertial>
-      <origin xyz="0.00044890447620182772313 0.011579403622954374115 -0.024577423538310189111" rpy="0 0 0" />
-      <mass value="0.11800003674524907338" />
-      <inertia ixx="3.5767957544054136991e-05" ixy="2.2634512003809435198e-08" ixz="6.5708346020219646177e-07" iyy="2.7482298083236969538e-05" iyz="9.2729623433153832641e-07" izz="3.277074248667180182e-05" />
+      <origin xyz="0.00044890447619850030667 0.011579403622961071882 -0.024577423538310830958" rpy="0 0 0" />
+      <mass value="0.11800003674524910113" />
+      <inertia ixx="3.5767957544053940479e-05" ixy="2.2634512004662083048e-08" ixz="6.5708346020372133283e-07" iyy="2.7482298083236996643e-05" iyz="9.2729623432844559736e-07" izz="3.2770742486673238387e-05" />
     </inertial>
   </link>
 
@@ -1451,51 +1451,181 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/left_arm_hand/meshes/left_spur_1m_24t_drive_3_visual.stl" />
+        <mesh filename="../assemblies/left_arm_gripper/meshes/left_spur_1m_24t_drive_3_visual.stl" />
       </geometry>
       <material name="spur_1m_24t_drive_3_material">
         <color rgba="0.61568627450980406568 0.81176470588235294379 0.92941176470588238168 1.0" />
       </material>
     </visual>
     <inertial>
-      <origin xyz="-7.779691451989063608e-15 -1.2139113751310926949e-16 0.0047949116178401460231" rpy="0 0 0" />
+      <origin xyz="-7.7516116741234976791e-15 -1.2124421062364700997e-16 0.004794911617840143421" rpy="0 0 0" />
       <mass value="0.0032000000000000001533" />
-      <inertia ixx="1.4019331346159887702e-07" ixy="1.6002410021513630837e-15" ixz="1.353024793676005615e-36" iyy="1.4019331260388786185e-07" iyz="-6.353552390351152457e-37" izz="2.3838919844264060647e-07" />
+      <inertia ixx="1.4019331346159892996e-07" ixy="1.6002409922535022317e-15" ixz="-1.7637142966041434778e-36" iyy="1.4019331260388783538e-07" iyz="-4.1141582459556894849e-37" izz="2.3838919844264060647e-07" />
     </inertial>
   </link>
 
-  <joint name="left_wrist_roll_drive" type="revolute">
-    <origin xyz="-1.5244091752797395145e-10 0.024000000358059436767 -0.0080000000000068592632" rpy="1.9871762375367660116e-15 -2.337019466836035928e-14 -1.5707963267949176522" />
+  <joint name="left_wrist_pitch_drive" type="revolute">
+    <origin xyz="-1.5244435917471112579e-10 0.024000000358067929973 -0.0080000000000045659587" rpy="-6.8143291540626782613e-14 -7.3946574628751046645e-14 -1.5707963267947160357" />
     <parent link="2xl430_gears_3" />
     <child link="spur_1m_24t_drive_3" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
+    <limit effort="1" velocity="20" lower="-1.9198621771937625091" upper="1.3962634015954635824" />
     <joint_properties friction="0.0" />
   </joint>
 
-  <link name="hand">
+  <link name="gripper_connector">
     <visual>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/left_arm_hand/meshes/left_hand_visual.stl" />
+        <mesh filename="../assemblies/left_arm_gripper/meshes/left_gripper_connector_visual.stl" />
       </geometry>
-      <material name="hand_material">
+      <material name="gripper_connector_material">
         <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0" />
       </material>
     </visual>
     <inertial>
-      <origin xyz="-4.3038382212365917433e-08 -0.049723778585231935556 -0.017933572005390339271" rpy="0 0 0" />
-      <mass value="0.017000000000001441042" />
-      <inertia ixx="9.492141461772624154e-06" ixy="-1.5549215897336582142e-11" ixz="-1.0809694196523374989e-11" iyy="4.0745028295199771232e-06" iyz="2.4719408559837110004e-07" izz="6.6623859523002763733e-06" />
+      <origin xyz="-0.00020299682521053422947 -0.023971521766976103263 -0.008596986149848028988" rpy="0 0 0" />
+      <mass value="0.0099999999999999915345" />
+      <inertia ixx="5.3001475666257246734e-06" ixy="-2.3401437868255261042e-08" ixz="-4.811583299767815884e-08" iyy="3.824595446707140777e-06" iyz="1.9316561248438799289e-08" izz="2.2623415168893576625e-06" />
     </inertial>
   <collision name="hand_collision"><origin xyz="0.0 -0.03788831038400531 -0.017851115437224507" rpy="0 0 0" /><geometry><box size="0.020999999716877937 0.09677662048488855 0.04629777139052749" /></geometry></collision></link>
 
-  <joint name="left_wrist_pitch" type="revolute">
-    <origin xyz="0.019000000000005953099 -3.5808089826616651408e-10 -0.027000000152448959401" rpy="3.3651291228739927188e-14 1.5707963267946487562 0" />
-    <parent link="2xl430_gears_3" />
-    <child link="hand" />
+  <link name="left_rail_guide">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 -0 0" />
+      <geometry>
+        <mesh filename="../assemblies/left_arm_gripper/meshes/left_rail_guide_visual.stl" />
+      </geometry>
+      <material name="left_rail_guide_material">
+        <color rgba="0.61996873695689813655 0.81385103374119360797 0.93007060508235839258 1.0" />
+      </material>
+    </visual>
+    <inertial>
+      <origin xyz="0.0092700665834928343279 0.0022613527845001661111 6.7965382068801947503e-05" rpy="0 0 0" />
+      <mass value="0.032142035224833366558" />
+      <inertia ixx="7.5992490868921785228e-06" ixy="2.1661862170734318126e-06" ixz="4.0652418928980975783e-06" iyy="2.7370569943527415298e-05" iyz="-9.475778314087232407e-07" izz="3.0022397080929719777e-05" />
+    </inertial>
+  </link>
+
+  <link name="rail">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 -0 0" />
+      <geometry>
+        <mesh filename="../assemblies/left_arm_gripper/meshes/left_rail_visual.stl" />
+      </geometry>
+      <material name="rail_material">
+        <color rgba="0.64705882352941179736 0.64705882352941179736 0.64705882352941179736 1.0" />
+      </material>
+    </visual>
+    <inertial>
+      <origin xyz="0.022744777800883877322 -0.01423343940335741048 -0.0079907133176532613161" rpy="0 0 0" />
+      <mass value="0.011900000000000000855" />
+      <inertia ixx="2.9161025366903536705e-06" ixy="4.4570835808162340167e-09" ixz="-7.5225164550604629609e-07" iyy="3.6201306422454505118e-06" iyz="2.6765050785959864527e-08" izz="4.4681807873990699658e-06" />
+    </inertial>
+  </link>
+
+  <joint name="left_gripper_pinion" type="prismatic">
+    <origin xyz="-0.028872599999999620096 -0.014175000000000003569 -0.0053500000000002712053" rpy="3.141592653589793116 1.5707963267948952257 0" />
+    <parent link="left_rail_guide" />
+    <child link="rail" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
+    <limit effort="1" velocity="20" lower="-0.036872599999999998432" upper="0" />
+    <joint_properties friction="0.0" />
+  </joint>
+
+  <link name="rail_2">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 -0 0" />
+      <geometry>
+        <mesh filename="../assemblies/left_arm_gripper/meshes/left_rail_2_visual.stl" />
+      </geometry>
+      <material name="rail_2_material">
+        <color rgba="0.64705882352941179736 0.64705882352941179736 0.64705882352941179736 1.0" />
+      </material>
+    </visual>
+    <inertial>
+      <origin xyz="0.022744777800883825281 -0.01423343940335741048 -0.0079907133176532335606" rpy="0 0 0" />
+      <mass value="0.011900000000000000855" />
+      <inertia ixx="2.9161025366903536705e-06" ixy="4.4570835808162340167e-09" ixz="-7.5225164550604629609e-07" iyy="3.6201306422454505118e-06" iyz="2.6765050785959864527e-08" izz="4.4681807873990699658e-06" />
+    </inertial>
+  </link>
+
+  <joint name="left_gripper_pinion_mirror" type="prismatic">
+    <origin xyz="0.062872600000000888887 0.014174999999999993161 -0.0053500000000002434497" rpy="-1.1034025256268857111e-29 1.5707963267948952257 0" />
+    <parent link="left_rail_guide" />
+    <child link="rail_2" />
+    <axis xyz="0 0 1" />
+    <limit effort="1" velocity="20" lower="-0.036872599999999998432" upper="0" />
+    <joint_properties friction="0.0" />
+  </joint>
+
+  <link name="xc330">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 -0 0" />
+      <geometry>
+        <mesh filename="../assemblies/left_arm_gripper/meshes/left_xc330_visual.stl" />
+      </geometry>
+      <material name="xc330_material">
+        <color rgba="0.66932535752643762539 0.72911795671409951325 0.67547870389434383487 1.0" />
+      </material>
+    </visual>
+    <inertial>
+      <origin xyz="0.0080045171539631747304 -0.015558009851635308529 -0.011717805512819661276" rpy="0 0 0" />
+      <mass value="0.026599999993091760775" />
+      <inertia ixx="3.8683410666516304709e-06" ixy="-7.7688424002126317042e-10" ixz="5.7969695829202793455e-10" iyy="2.1626767907497041396e-06" iyz="8.3590274790162801869e-09" izz="3.3158761130056369499e-06" />
+    </inertial>
+  </link>
+
+  <link name="spur_gear_(14_teeth)">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 -0 0" />
+      <geometry>
+        <mesh filename="../assemblies/left_arm_gripper/meshes/left_spur_gear_(14_teeth)_visual.stl" />
+      </geometry>
+      <material name="spur_gear_(14_teeth)_material">
+        <color rgba="0.91764705882352926025 0.91764705882352926025 0.91764705882352926025 1.0" />
+      </material>
+    </visual>
+    <inertial>
+      <origin xyz="5.0520117134827957628e-09 -3.0586955572509122447e-09 -0.0069037287088334897689" rpy="0 0 0" />
+      <mass value="0.0012999999999999999403" />
+      <inertia ixx="2.6445547365951358714e-08" ixy="2.5401821979637465349e-10" ixz="1.9678356781359983902e-14" iyy="2.685067914664504757e-08" iyz="-1.1914086607927021171e-14" izz="3.4027434623053041057e-08" />
+    </inertial>
+  </link>
+
+  <joint name="left_gripper_rack" type="revolute">
+    <origin xyz="0.0079999999999986540211 -0.022500000000000068556 -0.020000000000001683098" rpy="-2.5268845972633189624e-15 -1.3993704652363439234e-15 1.9862277411454370245e-15" />
+    <parent link="xc330" />
+    <child link="spur_gear_(14_teeth)" />
+    <axis xyz="0 0 1" />
+    <limit effort="1" velocity="20" lower="0" upper="5.2359877559829888227" />
+    <joint_properties friction="0.0" />
+  </joint>
+
+  <joint name="left_gripper_motor" type="fixed">
+    <origin xyz="-0.021949999999999993822 0.022600000000000002032 0.023300000000000042899" rpy="-3.3306690738376151447e-16 -1.8578007987304439296e-17 1.8327083470280543311e-17" />
+    <parent link="left_rail_guide" />
+    <child link="xc330" />
+    <axis xyz="0 0 1" />
+    <limit effort="1" velocity="20" />
+    <joint_properties friction="0.0" />
+  </joint>
+
+  <joint name="left_gripper_fixed" type="fixed">
+    <origin xyz="0 -0.037000000000000005107 -0.036000000000000004219" rpy="-1.57079632679489678 -1.570796326794896558 0" />
+    <parent link="gripper_connector" />
+    <child link="left_rail_guide" />
+    <axis xyz="0 0 1" />
+    <limit effort="1" velocity="20" />
+    <joint_properties friction="0.0" />
+  </joint>
+
+  <joint name="left_wrist_roll" type="revolute">
+    <origin xyz="0.019000000000008621104 -3.5807914966490272946e-10 -0.02700000015245084678" rpy="-5.342948306010493038e-15 1.5707963267948528152 0" />
+    <parent link="2xl430_gears_3" />
+    <child link="gripper_connector" />
+    <axis xyz="0 0 1" />
+    <limit effort="1" velocity="20" lower="-1.9198621771937625091" upper="1.3962634015954635824" />
     <joint_properties friction="0.0" />
   </joint>
 
@@ -1503,21 +1633,21 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/left_arm_hand/meshes/left_wrist_bearing_plate_visual.stl" />
+        <mesh filename="../assemblies/left_arm_gripper/meshes/left_wrist_bearing_plate_visual.stl" />
       </geometry>
       <material name="wrist_bearing_plate_material">
         <color rgba="0.64496316278892629192 0.69011804996940528945 0.71706771073555886087 1.0" />
       </material>
     </visual>
     <inertial>
-      <origin xyz="-0.0075896393545961393645 -0.015499999999999982542 -0.001838611004571836377" rpy="0 0 0" />
-      <mass value="0.0049000367468305539714" />
-      <inertia ixx="4.9747313520140109893e-07" ixy="3.1440518711942401996e-23" ixz="1.8097509420524730079e-08" iyy="7.1295025627582343196e-07" iyz="7.639371504633119733e-24" izz="1.192629795229190602e-06" />
+      <origin xyz="-0.0075835583121500052886 -0.015499999999999980807 -0.0018386323705903342279" rpy="0 0 0" />
+      <mass value="0.0049000367468305548388" />
+      <inertia ixx="4.9707430109150150308e-07" ixy="1.0480461077229452081e-22" ixz="1.8100904820813892973e-08" iyy="7.1268523603538616587e-07" iyz="7.4313337734771095754e-24" izz="1.1919657811600115587e-06" />
     </inertial>
   </link>
 
   <joint name="left_wrist_pitch_fixed" type="fixed">
-    <origin xyz="0.015500000000005269979 -1.7125190154843039636e-14 -0.04500000000000015099" rpy="-4.057865155005087888e-14 -2.9093394360302217044e-13 -1.5707963267949061059" />
+    <origin xyz="0.015500000000004772113 -6.3837823915946501074e-15 -0.045000000000001996736" rpy="-3.5027536426602388959e-14 -1.2834178164666087642e-13 -1.5707963267947810948" />
     <parent link="2xl430_gears_3" />
     <child link="wrist_bearing_plate" />
     <axis xyz="0 0 1" />
@@ -1525,17 +1655,17 @@
     <joint_properties friction="0.0" />
   </joint>
 
-  <joint name="left_wrist_roll_driven" type="revolute">
-    <origin xyz="-2.7755575615628913511e-17 0 -0.0015999999999999937883" rpy="2.1632341616309662631e-16 -1.4384639448392080473e-27 -1.57079632679489678" />
+  <joint name="left_wrist_pitch_driven" type="revolute">
+    <origin xyz="-2.7755575615628913511e-17 -3.1554436208840472216e-30 -0.0015999999999999972577" rpy="1.8707257964927463223e-14 -2.230976160592272071e-14 -1.570796326794896558" />
     <parent link="spur_1m_24t_driven_3" />
     <child link="2xl430_gears_3" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
+    <limit effort="1" velocity="20" lower="-1.3962634015954635824" upper="1.9198621771937625091" />
     <joint_properties friction="0.0" />
   </joint>
 
   <joint name="left_wrist_roll_fixed" type="fixed">
-    <origin xyz="-3.4694469519536141888e-18 -0.025300000000000003042 -0.051999999999999976796" rpy="1.570796326794896558 -1.570796326794896558 0" />
+    <origin xyz="3.1554436208840472216e-30 -0.025300000000000003042 -0.052000000000000032307" rpy="1.570796326794896558 -1.570796326794896558 0" />
     <parent link="elb_yaw_link" />
     <child link="spur_1m_24t_driven_3" />
     <axis xyz="0 0 1" />
@@ -1544,7 +1674,7 @@
   </joint>
 
   <joint name="left_elbow_yaw_fixed" type="fixed">
-    <origin xyz="7.8886090522101180541e-31 3.4694469519536141888e-18 0.0015999999999999625633" rpy="3.141592653589793116 6.123233994422830684e-17 -1.57079632679489678" />
+    <origin xyz="0 3.1554436208840472216e-30 0.0016000000000000041966" rpy="-3.1415926535897926719 -1.6686716652751508178e-29 -1.570796326794896558" />
     <parent link="spur_1m_24t_driven_2" />
     <child link="elb_yaw_link" />
     <axis xyz="0 0 1" />
@@ -1553,25 +1683,25 @@
   </joint>
 
   <joint name="left_elbow_yaw_driven" type="revolute">
-    <origin xyz="-3.5806929990500613314e-10 -0.027000000152451131274 -0.019000000000003351014" rpy="1.5707963267949591746 1.5707963267948683583 0" />
+    <origin xyz="-3.5806481391009725712e-10 -0.027000000152458666913 -0.018999999999996696615" rpy="1.5707963267946756236 9.436895709310436914e-15 -7.5767000241948220497e-14" />
     <parent link="2xl430_gears_2" />
     <child link="spur_1m_24t_driven_2" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
+    <limit effort="1" velocity="20" lower="-2.6179938779914944114" upper="2.6179938779914944114" />
     <joint_properties friction="0.0" />
   </joint>
 
   <joint name="left_elbow_roll" type="revolute">
-    <origin xyz="2.185751579730776939e-16 -0.018999999999999329925 -0.058999999999999733213" rpy="1.570796326794896558 -1.3443939455351824662e-14 1.2212453270787430779e-15" />
+    <origin xyz="0 -0.018999999999999996059 -0.058999999999999983014" rpy="1.570796326794896558 5.5516872419979014276e-14 -4.4351709097753281525e-15" />
     <parent link="sho_yaw_link" />
     <child link="2xl430_gears_2" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
+    <limit effort="1" velocity="20" lower="-1.9198621771937625091" upper="2.4434609527920612138" />
     <joint_properties friction="0.0" />
   </joint>
 
   <joint name="left_sho_yaw_fixed" type="fixed">
-    <origin xyz="1.7347234759768070944e-17 -1.6375789611241112762e-17 0.0015999999999999972577" rpy="-3.1415926535897926719 2.775557561593911827e-16 4.4408920984097454411e-16" />
+    <origin xyz="-3.4694469519536141888e-18 1.5777218104420236108e-30 0.0016000000000000041966" rpy="3.1415926535897771288 -2.9902758688536131143e-29 -1.1367870242563646532e-30" />
     <parent link="spur_1m_24t_driven" />
     <child link="sho_yaw_link" />
     <axis xyz="0 0 1" />
@@ -1580,20 +1710,20 @@
   </joint>
 
   <joint name="left_sho_yaw_driven" type="revolute">
-    <origin xyz="-3.5807098258677783065e-10 -0.027000000152450111257 -0.019000000000003021416" rpy="1.5707963267949009989 2.5840015203544507292e-14 -4.9507333169721578628e-15" />
+    <origin xyz="-3.5806544534944251268e-10 -0.027000000152452456603 -0.01900000000000368755" rpy="1.5707963267949525132 -6.2878911843812520251e-14 1.1213824667586519115e-13" />
     <parent link="2xl430_gears" />
     <child link="spur_1m_24t_driven" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
+    <limit effort="1" velocity="20" lower="-2.6179938779914944114" upper="2.6179938779914944114" />
     <joint_properties friction="0.0" />
   </joint>
 
   <joint name="left_sho_roll" type="revolute">
-    <origin xyz="-0.018999999999999947486 0.0010000000000000076102 0.027000000000000003164" rpy="-3.141592653589793116 1.570796326794896558 0" />
+    <origin xyz="-0.01899999999999992667 0.00099999999999997031368 0.026999999999999909489" rpy="3.1415926535897913396 1.5707963267948474861 0" />
     <parent link="sho_pitch_link" />
     <child link="2xl430_gears" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="0" />
+    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="0.34906585039886589561" />
     <joint_properties friction="0.0" />
   </joint>
 
@@ -1602,16 +1732,16 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/right_arm_hand/meshes/right_sho_pitch_link_visual.stl" />
+        <mesh filename="../assemblies/right_arm_gripper/meshes/right_sho_pitch_link_visual.stl" />
       </geometry>
       <material name="sho_pitch_link_material">
         <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0" />
       </material>
     </visual>
     <inertial>
-      <origin xyz="5.8254247652798875819e-11 -5.1264642561121521395e-05 0.0082440788127094901533" rpy="0 0 0" />
+      <origin xyz="5.8254247037992103401e-11 -5.1264642561121243568e-05 0.0082440788127094936227" rpy="0 0 0" />
       <mass value="0.0086000000000000000056" />
-      <inertia ixx="1.2272887040545791873e-06" ixy="-2.1429944210231087856e-14" ixz="-8.584719860658140756e-15" iyy="2.9107306060364611617e-06" iyz="7.4623841398183299076e-09" izz="3.0803135950773487693e-06" />
+      <inertia ixx="1.2272887040545796108e-06" ixy="-2.1429944214503845664e-14" ixz="-8.5847198242763822559e-15" iyy="2.9107306060364624323e-06" iyz="7.4623841398183017835e-09" izz="3.0803135950773491928e-06" />
     </inertial>
   </link>
 
@@ -1619,16 +1749,16 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/right_arm_hand/meshes/right_2xl430_gears_visual.stl" />
+        <mesh filename="../assemblies/right_arm_gripper/meshes/right_2xl430_gears_visual.stl" />
       </geometry>
       <material name="2xl430_gears_material">
-        <color rgba="0.7560598568794409946 0.85804695962693022793 0.91320266199377464478 1.0" />
+        <color rgba="0.7560598568794409946 0.8580469596269301169 0.91320266199377464478 1.0" />
       </material>
     </visual>
     <inertial>
-      <origin xyz="-0.011579403981034819618 -0.002422576614140262586 -0.018551095523804385368" rpy="0 0 0" />
-      <mass value="0.11800003674524907338" />
-      <inertia ixx="2.7482298083236305464e-05" ixy="9.2729623432947590706e-07" ixz="-2.2634512004125047616e-08" iyy="3.2770742486672947008e-05" iyz="-6.5708346020133704096e-07" izz="3.5767957544054523238e-05" />
+      <origin xyz="-0.011579403981033875928 -0.0024225766141437866767 -0.018551095523802622889" rpy="0 0 0" />
+      <mass value="0.11800003674524910113" />
+      <inertia ixx="2.7482298083236928881e-05" ixy="9.2729623433052696907e-07" ixz="-2.2634512004386817192e-08" iyy="3.2770742486672553985e-05" iyz="-6.5708346020062489801e-07" izz="3.576795754405571586e-05" />
     </inertial>
   </link>
 
@@ -1636,25 +1766,25 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/right_arm_hand/meshes/right_spur_1m_24t_drive_visual.stl" />
+        <mesh filename="../assemblies/right_arm_gripper/meshes/right_spur_1m_24t_drive_visual.stl" />
       </geometry>
       <material name="spur_1m_24t_drive_material">
         <color rgba="0.61568627450980406568 0.81176470588235294379 0.92941176470588238168 1.0" />
       </material>
     </visual>
     <inertial>
-      <origin xyz="-7.7449969824695274661e-15 -1.2113919729783050906e-16 0.0047949116178401442884" rpy="0 0 0" />
+      <origin xyz="-7.7516116741234976791e-15 -1.2124421062364720718e-16 0.0047949116178401416863" rpy="0 0 0" />
       <mass value="0.0032000000000000001533" />
-      <inertia ixx="1.4019331346159882408e-07" ixy="1.6002410042112558093e-15" ixz="-3.3725439700307390285e-36" iyy="1.4019331260388791479e-07" iyz="3.7162875711380697641e-37" izz="2.3838919844264071235e-07" />
+      <inertia ixx="1.4019331346159892996e-07" ixy="1.6002409922818087303e-15" ixz="1.5512658169588909582e-36" iyy="1.4019331260388783538e-07" iyz="6.832589472426229927e-37" izz="2.3838919844264060647e-07" />
     </inertial>
   </link>
 
   <joint name="right_sho_yaw_drive" type="revolute">
-    <origin xyz="-0.024000000716138513573 -0.019000000152446919199 -0.019000000152449438018" rpy="1.5707963267949425212 -7.4825707768639476445e-14 5.2729872485629252068e-14" />
+    <origin xyz="-0.02400000071613753172 -0.019000000152449930679 -0.01900000015244478202" rpy="1.5707963267947220309 -4.4297106944168913575e-14 6.810646137204639124e-14" />
     <parent link="2xl430_gears_4" />
     <child link="spur_1m_24t_drive_4" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
+    <limit effort="1" velocity="20" lower="-2.6179938779914944114" upper="2.6179938779914944114" />
     <joint_properties friction="0.0" />
   </joint>
 
@@ -1662,16 +1792,16 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/right_arm_hand/meshes/right_spur_1m_24t_driven_visual.stl" />
+        <mesh filename="../assemblies/right_arm_gripper/meshes/right_spur_1m_24t_driven_visual.stl" />
       </geometry>
       <material name="spur_1m_24t_driven_material">
-        <color rgba="0.23137254901960788156 0.38039215686274507888 0.7058823529411765163 1.0" />
+        <color rgba="0.23137254901960788156 0.38039215686274502337 0.7058823529411765163 1.0" />
       </material>
     </visual>
     <inertial>
-      <origin xyz="2.3289816703110487402e-18 -5.7987576959439572715e-15 -0.00096866348640038332785" rpy="0 0 0" />
-      <mass value="0.0027000000000000001429" />
-      <inertia ixx="1.2026541119643502094e-07" ixy="-5.5663580889415808082e-37" ixz="6.6068929034903528962e-38" iyy="1.2026541119643483565e-07" iyz="-8.7912927549812511121e-37" izz="2.2827257365099366486e-07" />
+      <origin xyz="1.9637778540991893625e-18 -5.8049057615352288969e-15 -0.00097054817521927832808" rpy="0 0 0" />
+      <mass value="0.0026999999999999997093" />
+      <inertia ixx="1.2036234079571065709e-07" ixy="3.0459387528081630637e-37" ixz="-3.0332648475783403611e-37" iyy="1.203623407957104718e-07" iyz="-2.0908704881522101161e-36" izz="2.2847261745924535316e-07" />
     </inertial>
   </link>
 
@@ -1679,16 +1809,16 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/right_arm_hand/meshes/right_sho_yaw_link_visual.stl" />
+        <mesh filename="../assemblies/right_arm_gripper/meshes/right_sho_yaw_link_visual.stl" />
       </geometry>
       <material name="sho_yaw_link_material">
         <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0" />
       </material>
     </visual>
     <inertial>
-      <origin xyz="-1.1573942515719413393e-18 3.9965734479639950703e-18 -0.024214576156328420503" rpy="0 0 0" />
-      <mass value="0.014500000000000019817" />
-      <inertia ixx="9.0490855102915009419e-06" ixy="3.5997729401550392327e-13" ixz="7.6329854215857035117e-36" iyy="5.6767199180624735964e-06" iyz="-3.9168248734789212003e-35" izz="4.4590603637468159332e-06" />
+      <origin xyz="-1.2817564279970693173e-18 -4.2395441168324980763e-19 -0.024303257848520172513" rpy="0 0 0" />
+      <mass value="0.014500000000000016348" />
+      <inertia ixx="9.0846670053041382782e-06" ixy="3.6224092806404002001e-13" ixz="-7.3094158734906374592e-36" iyy="5.6910950712097533498e-06" iyz="-4.7266869952784907348e-35" izz="4.481960984554899287e-06" />
     </inertial>
   </link>
 
@@ -1696,16 +1826,16 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/right_arm_hand/meshes/right_2xl430_gears_2_visual.stl" />
+        <mesh filename="../assemblies/right_arm_gripper/meshes/right_2xl430_gears_2_visual.stl" />
       </geometry>
       <material name="2xl430_gears_2_material">
-        <color rgba="0.7560598568794409946 0.85804695962693022793 0.91320266199377464478 1.0" />
+        <color rgba="0.7560598568794409946 0.8580469596269301169 0.91320266199377464478 1.0" />
       </material>
     </visual>
     <inertial>
-      <origin xyz="-0.011579403981039061017 -0.0024225766141394624448 -0.01855109552380462129" rpy="0 0 0" />
-      <mass value="0.11800003674524907338" />
-      <inertia ixx="2.7482298083236664606e-05" ixy="9.272962343288520673e-07" ixz="-2.263451200331673003e-08" iyy="3.2770742486673394241e-05" iyz="-6.5708346020123031481e-07" izz="3.5767957544054679092e-05" />
+      <origin xyz="-0.011579403981039848581 -0.0024225766141426031616 -0.018551095523806133969" rpy="0 0 0" />
+      <mass value="0.11800003674524910113" />
+      <inertia ixx="2.7482298083239717313e-05" ixy="9.2729623432914789355e-07" ixz="-2.2634512003324065467e-08" iyy="3.2770742486673665292e-05" iyz="-6.570834602014093564e-07" izz="3.5767957544057796173e-05" />
     </inertial>
   </link>
 
@@ -1713,25 +1843,25 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/right_arm_hand/meshes/right_spur_1m_24t_drive_2_visual.stl" />
+        <mesh filename="../assemblies/right_arm_gripper/meshes/right_spur_1m_24t_drive_2_visual.stl" />
       </geometry>
       <material name="spur_1m_24t_drive_2_material">
         <color rgba="0.61568627450980406568 0.81176470588235294379 0.92941176470588238168 1.0" />
       </material>
     </visual>
     <inertial>
-      <origin xyz="-7.7519358763734346945e-15 -1.2113919727198111491e-16 0.0047949116178401382168" rpy="0 0 0" />
+      <origin xyz="-7.7516116741234961014e-15 -1.2124421064949660133e-16 0.0047949116178401382168" rpy="0 0 0" />
       <mass value="0.0032000000000000001533" />
-      <inertia ixx="1.4019331346159882408e-07" ixy="1.6002410067372217571e-15" ixz="1.6629977555619572844e-37" iyy="1.4019331260388783538e-07" iyz="-5.9003905059354040123e-36" izz="2.3838919844264060647e-07" />
+      <inertia ixx="1.4019331346159887702e-07" ixy="1.6002409935589451508e-15" ixz="3.4217861399280605448e-38" iyy="1.4019331260388780891e-07" iyz="-5.6275823426893574842e-37" izz="2.3838919844264060647e-07" />
     </inertial>
   </link>
 
   <joint name="right_elbow_yaw_drive" type="revolute">
-    <origin xyz="-0.024000000716145233892 -0.019000000152448695556 -0.019000000152448716373" rpy="1.5707963267950251218 -1.5597582698688193762e-15 -8.7866473173388565758e-14" />
+    <origin xyz="-0.02400000071614593472 -0.019000000152452525826 -0.019000000152448241059" rpy="1.5707963267948983344 1.6898711261348466559e-13 -7.2725329301663980295e-14" />
     <parent link="2xl430_gears_5" />
     <child link="spur_1m_24t_drive_5" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
+    <limit effort="1" velocity="20" lower="-2.6179938779914944114" upper="2.6179938779914944114" />
     <joint_properties friction="0.0" />
   </joint>
 
@@ -1739,16 +1869,16 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/right_arm_hand/meshes/right_spur_1m_24t_driven_2_visual.stl" />
+        <mesh filename="../assemblies/right_arm_gripper/meshes/right_spur_1m_24t_driven_2_visual.stl" />
       </geometry>
       <material name="spur_1m_24t_driven_2_material">
-        <color rgba="0.23137254901960788156 0.38039215686274507888 0.7058823529411765163 1.0" />
+        <color rgba="0.23137254901960788156 0.38039215686274502337 0.7058823529411765163 1.0" />
       </material>
     </visual>
     <inertial>
-      <origin xyz="2.3289816703110487402e-18 -5.7987576959439580604e-15 -0.00096866348640039037516" rpy="0 0 0" />
-      <mass value="0.0027000000000000001429" />
-      <inertia ixx="1.2026541119643502094e-07" ixy="0" ixz="0" iyy="1.2026541119643483565e-07" iyz="-2.0904260807940459177e-37" izz="2.2827257365099366486e-07" />
+      <origin xyz="1.9637778540993164739e-18 -5.8049057615352265303e-15 -0.00097054817521928168911" rpy="0 0 0" />
+      <mass value="0.0026999999999999997093" />
+      <inertia ixx="1.2036234079571071003e-07" ixy="2.8999630800741879349e-37" ixz="1.3128544367748221718e-36" iyy="1.203623407957104718e-07" iyz="-2.5130632054411367083e-36" izz="2.2847261745924545904e-07" />
     </inertial>
   </link>
 
@@ -1756,16 +1886,16 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/right_arm_hand/meshes/right_elb_yaw_link_visual.stl" />
+        <mesh filename="../assemblies/right_arm_gripper/meshes/right_elb_yaw_link_visual.stl" />
       </geometry>
       <material name="elb_yaw_link_material">
         <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588227065 1.0" />
       </material>
     </visual>
     <inertial>
-      <origin xyz="5.2870889176247967138e-08 0.0019873558182742466494 -0.023365661199828722389" rpy="0 0 0" />
+      <origin xyz="5.3127688027391931278e-08 0.0019833638641961644222 -0.023416643551549931601" rpy="0 0 0" />
       <mass value="0.017500000000000001665" />
-      <inertia ixx="1.4097804991252558057e-05" ixy="1.690080968406779376e-12" ixz="-1.1184673662173783811e-11" iyy="6.6367696417680302023e-06" iyz="1.057990872258833363e-06" izz="8.9601142768980697473e-06" />
+      <inertia ixx="1.4134344903109194693e-05" ixy="1.6945783921965038345e-12" ixz="-1.128639872187510241e-11" iyy="6.6435900776211323463e-06" iyz="1.0545227077253055462e-06" izz="8.9925290757998976773e-06" />
     </inertial>
   </link>
 
@@ -1773,16 +1903,16 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/right_arm_hand/meshes/right_spur_1m_24t_driven_3_visual.stl" />
+        <mesh filename="../assemblies/right_arm_gripper/meshes/right_spur_1m_24t_driven_3_visual.stl" />
       </geometry>
       <material name="spur_1m_24t_driven_3_material">
-        <color rgba="0.23137254901960788156 0.38039215686274507888 0.7058823529411765163 1.0" />
+        <color rgba="0.23137254901960788156 0.38039215686274502337 0.7058823529411765163 1.0" />
       </material>
     </visual>
     <inertial>
-      <origin xyz="3.008455728593993028e-17 -5.7989934404527921162e-15 -0.0025686634864003805856" rpy="0 0 0" />
-      <mass value="0.0027000000000000001429" />
-      <inertia ixx="1.2026541119643502094e-07" ixy="2.4642767301845862177e-37" ixz="-2.4880139536911267997e-37" iyy="1.2026541119643483565e-07" iyz="5.0195324597132952237e-37" izz="2.2827257365099366486e-07" />
+      <origin xyz="-2.5791797761529692948e-17 -5.8049057615352265303e-15 -0.0025705481752192754774" rpy="0 0 0" />
+      <mass value="0.0026999999999999997093" />
+      <inertia ixx="1.2036234079571065709e-07" ixy="2.3695488040715002324e-36" ixz="-1.6418916509117533046e-37" iyy="1.203623407957104718e-07" iyz="2.6219923247193895907e-37" izz="2.2847261745924535316e-07" />
     </inertial>
   </link>
 
@@ -1790,16 +1920,16 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/right_arm_hand/meshes/right_2xl430_gears_3_visual.stl" />
+        <mesh filename="../assemblies/right_arm_gripper/meshes/right_2xl430_gears_3_visual.stl" />
       </geometry>
       <material name="2xl430_gears_3_material">
-        <color rgba="0.7560598568794409946 0.85804695962693022793 0.91320266199377464478 1.0" />
+        <color rgba="0.7560598568794409946 0.8580469596269301169 0.91320266199377464478 1.0" />
       </material>
     </visual>
     <inertial>
-      <origin xyz="0.00044890447620021529766 0.011579403622967155557 -0.024577423538309637469" rpy="0 0 0" />
-      <mass value="0.11800003674524907338" />
-      <inertia ixx="3.5767957544056075002e-05" ixy="2.2634512003692829202e-08" ixz="6.5708346020097832251e-07" iyy="2.7482298083237132169e-05" iyz="9.2729623433063327171e-07" izz="3.2770742486673109638e-05" />
+      <origin xyz="0.00044890447619669408006 0.011579403622970779394 -0.024577423538312447721" rpy="0 0 0" />
+      <mass value="0.11800003674524910113" />
+      <inertia ixx="3.5767957544055424481e-05" ixy="2.2634512004688532975e-08" ixz="6.5708346020178840365e-07" iyy="2.748229808323665783e-05" iyz="9.2729623433030875221e-07" izz="3.2770742486673733055e-05" />
     </inertial>
   </link>
 
@@ -1807,51 +1937,181 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/right_arm_hand/meshes/right_spur_1m_24t_drive_3_visual.stl" />
+        <mesh filename="../assemblies/right_arm_gripper/meshes/right_spur_1m_24t_drive_3_visual.stl" />
       </geometry>
       <material name="spur_1m_24t_drive_3_material">
         <color rgba="0.61568627450980406568 0.81176470588235294379 0.92941176470588238168 1.0" />
       </material>
     </visual>
     <inertial>
-      <origin xyz="-7.724180300757805781e-15 -1.2139113751310946671e-16 0.0047949116178401460231" rpy="0 0 0" />
+      <origin xyz="-7.7516116741234961014e-15 -1.2124421064949640411e-16 0.0047949116178401460231" rpy="0 0 0" />
       <mass value="0.0032000000000000001533" />
-      <inertia ixx="1.4019331346159882408e-07" ixy="1.6002410120492237384e-15" ixz="-1.9540791723013512303e-37" iyy="1.4019331260388786185e-07" iyz="7.8971612067142880027e-37" izz="2.3838919844264060647e-07" />
+      <inertia ixx="1.4019331346159887702e-07" ixy="1.6002409922818087303e-15" ixz="-3.3317537353747163282e-37" iyy="1.4019331260388783538e-07" iyz="3.0918437697492268121e-37" izz="2.3838919844264060647e-07" />
     </inertial>
   </link>
 
-  <joint name="right_wrist_roll_drive" type="revolute">
-    <origin xyz="-1.5244304429895549902e-10 0.024000000358071205131 -0.0080000000000011832479" rpy="-2.7654003188110425226e-15 2.9457521138105151042e-15 -1.5707963267949167641" />
+  <joint name="right_wrist_pitch_drive" type="revolute">
+    <origin xyz="-1.5244750094239886385e-10 0.0240000003580740362 -0.0080000000000028936853" rpy="-2.6466654378983997098e-14 5.3007428237114777825e-14 -1.5707963267948148456" />
     <parent link="2xl430_gears_6" />
     <child link="spur_1m_24t_drive_6" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
+    <limit effort="1" velocity="20" lower="-1.3962634015954635824" upper="1.9198621771937625091" />
     <joint_properties friction="0.0" />
   </joint>
 
-  <link name="hand_2">
+  <link name="gripper_connector_2">
     <visual>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/right_arm_hand/meshes/right_hand_visual.stl" />
+        <mesh filename="../assemblies/right_arm_gripper/meshes/right_gripper_connector_visual.stl" />
       </geometry>
-      <material name="hand_material">
+      <material name="gripper_connector_material">
         <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0" />
       </material>
     </visual>
     <inertial>
-      <origin xyz="-4.3038382212365917433e-08 0.049723778585231921678 -0.020066427994609656316" rpy="0 0 0" />
-      <mass value="0.017000000000001441042" />
-      <inertia ixx="9.492141461772624154e-06" ixy="1.5549215897336585373e-11" ixz="1.0809694196523376605e-11" iyy="4.0745028295199788173e-06" iyz="2.4719408559837120591e-07" izz="6.6623859523002797615e-06" />
+      <origin xyz="-0.00020299682521053769892 0.023971521766976103263 -0.029403013850151978742" rpy="0 0 0" />
+      <mass value="0.0099999999999999915345" />
+      <inertia ixx="5.3001475666257246734e-06" ixy="2.3401437868255261042e-08" ixz="4.811583299767815884e-08" iyy="3.824595446707140777e-06" iyz="1.9316561248438799289e-08" izz="2.2623415168893576625e-06" />
     </inertial>
   <collision name="hand_2_collision"><origin xyz="0.0 0.03788831038400531 -0.020148885785602033" rpy="0 0 0" /><geometry><box size="0.020999999716877937 0.09677662048488855 0.04629777115769684" /></geometry></collision></link>
 
-  <joint name="right_wrist_pitch" type="revolute">
-    <origin xyz="0.019000000000001918132 -3.5806760334544662783e-10 -0.027000000152449927376" rpy="3.1415926535897029659 -1.5707963267947193664 0" />
-    <parent link="2xl430_gears_6" />
-    <child link="hand_2" />
+  <link name="right_rail_guide">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 -0 0" />
+      <geometry>
+        <mesh filename="../assemblies/right_arm_gripper/meshes/right_rail_guide_visual.stl" />
+      </geometry>
+      <material name="right_rail_guide_material">
+        <color rgba="0.62025753727489985057 0.81399173133201496722 0.93011503590051236579 1.0" />
+      </material>
+    </visual>
+    <inertial>
+      <origin xyz="0.0092741550667162046817 -0.0022368973911260671417 1.1465282798785714338e-05" rpy="0 0 0" />
+      <mass value="0.030111386261699946837" />
+      <inertia ixx="7.0587141071297691507e-06" ixy="-2.0076614642548894021e-06" ixz="3.7679719233345471749e-06" iyy="2.5402123601769114198e-05" iyz="8.8191782705952159154e-07" izz="2.785726023589890857e-05" />
+    </inertial>
+  </link>
+
+  <link name="rail_3">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 -0 0" />
+      <geometry>
+        <mesh filename="../assemblies/right_arm_gripper/meshes/right_rail_visual.stl" />
+      </geometry>
+      <material name="rail_material">
+        <color rgba="0.64705882352941179736 0.64705882352941179736 0.64705882352941179736 1.0" />
+      </material>
+    </visual>
+    <inertial>
+      <origin xyz="0.022744777800883853036 -0.01423343940335741048 -0.0079907133176532335606" rpy="0 0 0" />
+      <mass value="0.011900000000000000855" />
+      <inertia ixx="2.9161025366903536705e-06" ixy="4.4570835808162340167e-09" ixz="-7.5225164550604629609e-07" iyy="3.6201306422454505118e-06" iyz="2.6765050785959864527e-08" izz="4.4681807873990699658e-06" />
+    </inertial>
+  </link>
+
+  <joint name="right_gripper_pinion" type="prismatic">
+    <origin xyz="-0.028872600000001191756 -0.014174999999999993161 -0.005350000000001076117" rpy="-3.141592653589793116 1.5707963267948954478 0" />
+    <parent link="right_rail_guide" />
+    <child link="rail_3" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
+    <limit effort="1" velocity="20" lower="-0.036872599999999998432" upper="0" />
+    <joint_properties friction="0.0" />
+  </joint>
+
+  <link name="rail_4">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 -0 0" />
+      <geometry>
+        <mesh filename="../assemblies/right_arm_gripper/meshes/right_rail_2_visual.stl" />
+      </geometry>
+      <material name="rail_2_material">
+        <color rgba="0.64705882352941179736 0.64705882352941179736 0.64705882352941179736 1.0" />
+      </material>
+    </visual>
+    <inertial>
+      <origin xyz="0.022744777800883853036 -0.014233439403357413949 -0.0079907133176532613161" rpy="0 0 0" />
+      <mass value="0.011900000000000000855" />
+      <inertia ixx="2.9161025366903536705e-06" ixy="4.4570835808162340167e-09" ixz="-7.5225164550604629609e-07" iyy="3.6201306422454505118e-06" iyz="2.6765050785959864527e-08" izz="4.4681807873990699658e-06" />
+    </inertial>
+  </link>
+
+  <joint name="right_gripper_pinion_mirror" type="prismatic">
+    <origin xyz="0.062872599999998834974 0.01417499999999999663 -0.0053500000000010206058" rpy="9.1593399531549520226e-16 1.5707963267948945596 0" />
+    <parent link="right_rail_guide" />
+    <child link="rail_4" />
+    <axis xyz="0 0 1" />
+    <limit effort="1" velocity="20" lower="-0.036872599999999998432" upper="0" />
+    <joint_properties friction="0.0" />
+  </joint>
+
+  <link name="xc330_2">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 -0 0" />
+      <geometry>
+        <mesh filename="../assemblies/right_arm_gripper/meshes/right_xc330_visual.stl" />
+      </geometry>
+      <material name="xc330_material">
+        <color rgba="0.66932535752643762539 0.72911795671409951325 0.67547870389434383487 1.0" />
+      </material>
+    </visual>
+    <inertial>
+      <origin xyz="0.0080045171539637055558 -0.015558009851631656936 -0.011717805512818139924" rpy="0 0 0" />
+      <mass value="0.026599999993091760775" />
+      <inertia ixx="3.868341066651401772e-06" ixy="-7.7688424002228949476e-10" ixz="5.7969695833036041471e-10" iyy="2.1626767907494474886e-06" iyz="8.3590274792902258621e-09" izz="3.3158761130056255149e-06" />
+    </inertial>
+  </link>
+
+  <link name="spur_gear_(14_teeth)_2">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 -0 0" />
+      <geometry>
+        <mesh filename="../assemblies/right_arm_gripper/meshes/right_spur_gear_(14_teeth)_visual.stl" />
+      </geometry>
+      <material name="spur_gear_(14_teeth)_material">
+        <color rgba="0.91764705882352926025 0.91764705882352926025 0.91764705882352926025 1.0" />
+      </material>
+    </visual>
+    <inertial>
+      <origin xyz="5.0520117152175192388e-09 -3.0586955537814648792e-09 -0.0069037287088334628807" rpy="0 0 0" />
+      <mass value="0.0012999999999999999403" />
+      <inertia ixx="2.644554736595136864e-08" ixy="2.5401821979637413651e-10" ixz="1.9678356781359987057e-14" iyy="2.6850679146645054187e-08" iyz="-1.1914086607927024327e-14" izz="3.4027434623053041057e-08" />
+    </inertial>
+  </link>
+
+  <joint name="right_gripper_rack" type="revolute">
+    <origin xyz="0.0079999999999993270938 -0.022499999999995481947 -0.019999999999999684697" rpy="5.6483726968237356019e-16 2.1632341620255480784e-16 1.8833104111286173228e-17" />
+    <parent link="xc330_2" />
+    <child link="spur_gear_(14_teeth)_2" />
+    <axis xyz="0 0 1" />
+    <limit effort="1" velocity="20" lower="0" upper="5.2359877559829888227" />
+    <joint_properties friction="0.0" />
+  </joint>
+
+  <joint name="right_gripper_motor" type="fixed">
+    <origin xyz="-0.005949999999999996958 -0.022599999999999995093 0.023299999999999931877" rpy="-3.3306690738751713332e-16 -9.4115114089812621852e-30 -3.141592653589793116" />
+    <parent link="right_rail_guide" />
+    <child link="xc330_2" />
+    <axis xyz="0 0 1" />
+    <limit effort="1" velocity="20" />
+    <joint_properties friction="0.0" />
+  </joint>
+
+  <joint name="right_gripper_fixed" type="fixed">
+    <origin xyz="3.4694469519536141888e-18 0.036999999999999977351 -0.0020000000000000017764" rpy="1.570796326794896336 1.570796326794896558 0" />
+    <parent link="gripper_connector_2" />
+    <child link="right_rail_guide" />
+    <axis xyz="0 0 1" />
+    <limit effort="1" velocity="20" />
+    <joint_properties friction="0.0" />
+  </joint>
+
+  <joint name="right_wrist_roll" type="revolute">
+    <origin xyz="0.019000000000002677941 -3.5806407838734344296e-10 -0.027000000152454406432" rpy="-3.1415926535897558125 -1.570796326794831721 0" />
+    <parent link="2xl430_gears_6" />
+    <child link="gripper_connector_2" />
+    <axis xyz="0 0 1" />
+    <limit effort="1" velocity="20" lower="-1.3962634015954635824" upper="1.9198621771937625091" />
     <joint_properties friction="0.0" />
   </joint>
 
@@ -1859,21 +2119,21 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 -0 0" />
       <geometry>
-        <mesh filename="../assemblies/right_arm_hand/meshes/right_wrist_bearing_plate_visual.stl" />
+        <mesh filename="../assemblies/right_arm_gripper/meshes/right_wrist_bearing_plate_visual.stl" />
       </geometry>
       <material name="wrist_bearing_plate_material">
         <color rgba="0.64496316278892629192 0.69011804996940528945 0.71706771073555886087 1.0" />
       </material>
     </visual>
     <inertial>
-      <origin xyz="-0.0075896393545961445687 -0.015499999999999986011 -0.0018386110045718389791" rpy="0 0 0" />
-      <mass value="0.0049000367468305539714" />
-      <inertia ixx="4.9747313520140131069e-07" ixy="1.0858724720439498592e-22" ixz="1.8097509420524789636e-08" iyy="7.1295025627582205553e-07" iyz="-1.4672026767920951309e-22" izz="1.1926297952291895432e-06" />
+      <origin xyz="-0.0075835583121500035539 -0.015499999999999982542 -0.0018386323705903435521" rpy="0 0 0" />
+      <mass value="0.0049000367468305548388" />
+      <inertia ixx="4.9707430109150150308e-07" ixy="7.8908790833106419086e-23" ixz="1.8100904820814068335e-08" iyy="7.1268523603538584823e-07" iyz="4.3653874061918244677e-24" izz="1.1919657811600107117e-06" />
     </inertial>
   </link>
 
   <joint name="right_wrist_pitch_fixed" type="fixed">
-    <origin xyz="0.015500000000003956793 4.5519144009631418157e-15 -0.045000000000003870237" rpy="-3.552713678787178252e-15 1.2051470932306258524e-13 -1.570796326794896558" />
+    <origin xyz="0.015500000000002131864 9.6866958898544908152e-15 -0.045000000000006430689" rpy="-2.6645352590932944871e-15 1.1984857550828037264e-13 -1.5707963267947835373" />
     <parent link="2xl430_gears_6" />
     <child link="wrist_bearing_plate_2" />
     <axis xyz="0 0 1" />
@@ -1881,17 +2141,17 @@
     <joint_properties friction="0.0" />
   </joint>
 
-  <joint name="right_wrist_roll_driven" type="revolute">
-    <origin xyz="2.7755575615628913511e-17 0 -0.0015999999999999972577" rpy="-5.61028737291082927e-15 5.3290705182036772791e-15 1.57079632679489678" />
+  <joint name="right_wrist_pitch_driven" type="revolute">
+    <origin xyz="-2.7755575615628913511e-17 6.3108872417680944433e-30 -0.0015999999999999992093" rpy="5.5511151231243844462e-16 1.2547220914404902092e-15 1.570796326794896558" />
     <parent link="spur_1m_24t_driven_6" />
     <child link="2xl430_gears_6" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
+    <limit effort="1" velocity="20" lower="-1.9198621771937625091" upper="1.3962634015954635824" />
     <joint_properties friction="0.0" />
   </joint>
 
   <joint name="right_wrist_roll_fixed" type="fixed">
-    <origin xyz="3.4694469519536141888e-18 -0.025299999999999996103 -0.051999999999999990674" rpy="1.5707963267949205388 1.570796326794896558 0" />
+    <origin xyz="1.5777218104420236108e-30 -0.025299999999999999573 -0.052000000000000004552" rpy="1.5707963267948974462 1.570796326794896558 0" />
     <parent link="elb_yaw_link_2" />
     <child link="spur_1m_24t_driven_6" />
     <axis xyz="0 0 1" />
@@ -1900,7 +2160,7 @@
   </joint>
 
   <joint name="right_elbow_yaw_fixed" type="fixed">
-    <origin xyz="-3.4694469519536141888e-18 -1.5777218104420236108e-30 0.0015999999999999764411" rpy="-3.1415926535897891192 -8.3149610451184695905e-31 2.7073084493379207714e-30" />
+    <origin xyz="0 7.8886090522101180541e-30 0.0015999999999999764411" rpy="3.141592653589793116 -4.1526642731421539574e-29 -1.570796326794896558" />
     <parent link="spur_1m_24t_driven_5" />
     <child link="elb_yaw_link_2" />
     <axis xyz="0 0 1" />
@@ -1909,25 +2169,25 @@
   </joint>
 
   <joint name="right_elbow_yaw_driven" type="revolute">
-    <origin xyz="-3.5807111442576200488e-10 -0.027000000152451464341 -0.019000000000003632039" rpy="1.570796326794921427 1.0192981807050532901e-13 -4.32129208184743122e-14" />
+    <origin xyz="-3.5806997991660871605e-10 -0.027000000152456016256 -0.01900000000000036729" rpy="1.5707963267948485964 8.4311697099245782578e-14 3.098094357577576486e-14" />
     <parent link="2xl430_gears_5" />
     <child link="spur_1m_24t_driven_5" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
+    <limit effort="1" velocity="20" lower="-2.6179938779914944114" upper="2.6179938779914944114" />
     <joint_properties friction="0.0" />
   </joint>
 
   <joint name="right_elbow_roll" type="revolute">
-    <origin xyz="-2.2898349882893853646e-16 -0.019000000000000173001 -0.058999999999999837297" rpy="1.57079632679489678 -1.1224323958578838097e-14 -5.9062164171655744588e-15" />
+    <origin xyz="-3.4694469519536141888e-18 -0.018999999999999999528 -0.059000000000000010769" rpy="1.570796326794896558 5.4458140093899203203e-15 -1.8535314627675585241e-14" />
     <parent link="sho_yaw_link_2" />
     <child link="2xl430_gears_5" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
+    <limit effort="1" velocity="20" lower="-1.9198621771937625091" upper="2.4434609527920612138" />
     <joint_properties friction="0.0" />
   </joint>
 
   <joint name="right_sho_yaw_fixed" type="fixed">
-    <origin xyz="3.4694469519536141888e-18 0 0.0016000000000000076661" rpy="-3.1415926535897917837 7.3983136435179850071e-16 1.4710455076273652726e-15" />
+    <origin xyz="0 1.1832913578315177081e-30 0.0015999999999999937883" rpy="3.141592653589793116 -1.9721522629860631248e-30 4.8102873877572434203e-28" />
     <parent link="spur_1m_24t_driven_4" />
     <child link="sho_yaw_link_2" />
     <axis xyz="0 0 1" />
@@ -1936,20 +2196,20 @@
   </joint>
 
   <joint name="right_sho_yaw_driven" type="revolute">
-    <origin xyz="-3.5806675333094339919e-10 -0.027000000152447987956 -0.019000000000004509809" rpy="1.5707963267949396347 -3.4289578266172945506e-14 -6.6930782579143983011e-15" />
+    <origin xyz="-3.5806749579259111727e-10 -0.027000000152448931645 -0.018999999999998073985" rpy="1.5707963267947655517 -4.3564811365923459647e-14 5.9791231064775441371e-14" />
     <parent link="2xl430_gears_4" />
     <child link="spur_1m_24t_driven_4" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="1.570796326794896558" />
+    <limit effort="1" velocity="20" lower="-2.6179938779914944114" upper="2.6179938779914944114" />
     <joint_properties friction="0.0" />
   </joint>
 
   <joint name="right_sho_roll" type="revolute">
-    <origin xyz="-0.01899999999999998565 0.0010000000000000112965 0.027000000000000013572" rpy="3.141592653589793116 1.570796326794896558 0" />
+    <origin xyz="-0.019000000000000002998 0.0010000000000000076102 0.027000000000000003164" rpy="3.141592653589793116 1.5707963267948827912 0" />
     <parent link="sho_pitch_link_2" />
     <child link="2xl430_gears_4" />
     <axis xyz="0 0 1" />
-    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="0" />
+    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="0.34906585039886589561" />
     <joint_properties friction="0.0" />
   </joint>
 

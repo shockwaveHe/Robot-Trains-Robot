@@ -1,58 +1,42 @@
 {
     "waist_roll": {
-        "damping": 0.548,
-        "armature": 0.003
+        "damping": 0.488,
+        "armature": 0.0018,
+        "frictionloss": 0.03
     },
     "waist_yaw": {
-        "damping": 0.011,
-        "armature": 0.014
+        "damping": 0.108,
+        "armature": 0.0053,
+        "frictionloss": 0.001
     },
     "left_hip_yaw_driven": {
-        "damping": 0.099,
-        "armature": 0.0
+        "damping": 0.0,
+        "armature": 0.0,
+        "frictionloss": 0.685
     },
     "right_hip_yaw_driven": {
-        "damping": 0.099,
-        "armature": 0.0
-    },
-    "left_hip_roll": {
-        "damping": 0.381,
-        "armature": 0.006
-    },
-    "right_hip_roll": {
-        "damping": 0.381,
-        "armature": 0.006
-    },
-    "left_hip_pitch": {
-        "damping": 0.305,
-        "armature": 0.006
-    },
-    "right_hip_pitch": {
-        "damping": 0.305,
-        "armature": 0.006
-    },
-    "left_knee_pitch": {
         "damping": 0.0,
-        "armature": 0.0
-    },
-    "right_knee_pitch": {
-        "damping": 0.0,
-        "armature": 0.0
+        "armature": 0.0,
+        "frictionloss": 0.685
     },
     "left_ank_roll": {
-        "damping": 0.264,
-        "armature": 0.002
+        "damping": 0.139,
+        "armature": 0.0018,
+        "frictionloss": 0.058
     },
     "right_ank_roll": {
-        "damping": 0.264,
-        "armature": 0.002
+        "damping": 0.139,
+        "armature": 0.0018,
+        "frictionloss": 0.058
     },
     "left_ank_pitch": {
-        "damping": 0.193,
-        "armature": 0.0
+        "damping": 0.0,
+        "armature": 0.0006,
+        "frictionloss": 0.44
     },
     "right_ank_pitch": {
-        "damping": 0.193,
-        "armature": 0.0
+        "damping": 0.0,
+        "armature": 0.0006,
+        "frictionloss": 0.44
     }
 }

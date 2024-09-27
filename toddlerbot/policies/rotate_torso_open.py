@@ -1,3 +1,5 @@
+# type: ignore
+
 from typing import Dict, List
 
 import numpy as np
@@ -26,6 +28,7 @@ class RotateTorsoOpenPolicy(BasePolicy, policy_name="rotate_torso_open"):
         signal_duraion = 10.0
         reset_duration = 2.0
 
+        # TODO: Update to use sine signals
         joint_sysID_specs = {
             "waist_roll": SysIDSpecs(
                 amplitude_ratio=0.5,
@@ -93,15 +96,14 @@ class RotateTorsoOpenPolicy(BasePolicy, policy_name="rotate_torso_open"):
                 sysID_specs.initial_frequency,
                 sysID_specs.final_frequency,
                 amplitude,
+                sysID_specs.decay_rate,
             )
             rotate_time = np.asarray(rotate_time)
             signal = np.asarray(signal)
 
             rotate_time += time_list[-1][-1] + self.control_dt
 
-            rotate_pos = np.zeros(
-                (signal.shape[0], len(robot.joint_ordering)), np.float32
-            )
+            rotate_pos = np.zeros((signal.shape[0], robot.nu), np.float32)
             rotate_pos[:, joint_idx] = signal
 
             rotate_action = np.zeros_like(rotate_pos)

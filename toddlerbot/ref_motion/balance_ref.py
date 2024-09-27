@@ -9,19 +9,23 @@ from toddlerbot.utils.array_utils import ArrayType, inplace_update
 from toddlerbot.utils.array_utils import array_lib as np
 
 
+# TODO: Recollect data with the balance PD policy
 class BalanceReference(MotionReference):
-    def __init__(self, robot: Robot):
+    def __init__(self, robot: Robot, playback_speed: float = 1.0):
         super().__init__("balance", "perceptual", robot)
 
         arm_motor_names: List[str] = [
             robot.motor_ordering[i] for i in self.arm_actuator_indices
         ]
-        self.arm_joint_coef = np.ones(len(arm_motor_names), dtype=np.float32)
+        self.arm_gear_ratio = np.ones(len(arm_motor_names), dtype=np.float32)  # type: ignore
         for i, motor_name in enumerate(arm_motor_names):
             motor_config = robot.config["joints"][motor_name]
-            if motor_config["transmission"] == "gears":
-                self.arm_joint_coef = inplace_update(
-                    self.arm_joint_coef, i, -motor_config["gear_ratio"]
+            if (
+                motor_config["transmission"] == "gear"
+                or motor_config["transmission"] == "rack_and_pinion"
+            ):
+                self.arm_gear_ratio = inplace_update(
+                    self.arm_gear_ratio, i, -motor_config["gear_ratio"]
                 )
 
         data_path = os.path.join("toddlerbot", "ref_motion", "balance_dataset.lz4")
@@ -29,8 +33,10 @@ class BalanceReference(MotionReference):
 
         # state_array: [time(1), motor_pos(14), fsrL(1), fsrR(1), camera_frame_idx(1)]
         state_arr = data_dict["state_array"]
-        self.time_ref = np.array(state_arr[:, 0], dtype=np.float32)
-        self.time_ref -= self.time_ref[0]
+        self.time_ref = (
+            np.array(state_arr[:, 0] - state_arr[0, 0], dtype=np.float32)
+            / playback_speed
+        )
         self.arm_joint_pos_ref = np.array(
             [
                 self.arm_fk(arm_motor_pos)
@@ -117,9 +123,9 @@ class BalanceReference(MotionReference):
         return motor_target
 
     def arm_fk(self, arm_motor_pos: ArrayType) -> ArrayType:
-        arm_joint_pos = arm_motor_pos / self.arm_joint_coef
+        arm_joint_pos = arm_motor_pos * self.arm_gear_ratio
         return arm_joint_pos
 
     def arm_ik(self, arm_joint_pos: ArrayType) -> ArrayType:
-        arm_motor_pos = arm_joint_pos * self.arm_joint_coef
+        arm_motor_pos = arm_joint_pos / self.arm_gear_ratio
         return arm_motor_pos

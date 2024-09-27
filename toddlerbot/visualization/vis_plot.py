@@ -148,6 +148,25 @@ def plot_ankle_mapping(
             )()
 
 
+def plot_motor_vel_tor_mapping(
+    motor_vel_list: List[float],
+    motor_tor_list: List[float],
+    save_path: str,
+    file_name: str = "motor_vel_tor_mapping",
+):
+    plot_scatter_graph(
+        np.abs(motor_vel_list, dtype=np.float32),
+        np.abs(motor_tor_list, dtype=np.float32),
+        "blue",
+        x_label="Torque (Nm) or Current (mA)",
+        y_label="Velocity (rad/s)",
+        title="Motor Velocity-Torque Mapping",
+        save_config=True,
+        save_path=save_path,
+        file_name=file_name,
+    )()
+
+
 def plot_one_footstep(
     ax: plt.Axes,
     center: npt.NDArray[np.float32],
@@ -187,9 +206,10 @@ def plot_one_footstep(
     )
     ax.add_patch(polygon)
 
+    return corners
+
 
 def plot_footsteps(
-    path: npt.NDArray[np.float32],
     foot_pos_list: npt.NDArray[np.float32],
     support_leg_list: List[int],
     foot_size: Tuple[float, float],
@@ -209,24 +229,36 @@ def plot_footsteps(
         ax.set_aspect("equal")
 
     def plot():
-        ax.plot(path[:, 0], path[:, 1], "r-", label="Cubic Hermite Path")
-
         # Draw each footstep
+        all_x = []
+        all_y = []
         for foot_pos, support_leg in zip(foot_pos_list, support_leg_list):
             if support_leg == 2:
                 dx = -foot_to_com_y * np.sin(foot_pos[2])
                 dy = foot_to_com_y * np.cos(foot_pos[2])
 
                 left_foot_pos = [foot_pos[0] + dx, foot_pos[1] + dy]
-                plot_one_footstep(
+                corners_left = plot_one_footstep(
                     ax, np.array(left_foot_pos), foot_size, foot_pos[2], 0
                 )
                 right_foot_pos = [foot_pos[0] - dx, foot_pos[1] - dy]
-                plot_one_footstep(
+                corners_right = plot_one_footstep(
                     ax, np.array(right_foot_pos), foot_size, foot_pos[2], 1
                 )
+                all_x.extend(corners_left[:, 0])
+                all_x.extend(corners_right[:, 0])
+                all_y.extend(corners_left[:, 1])
+                all_y.extend(corners_right[:, 1])
             else:
-                plot_one_footstep(ax, foot_pos[:2], foot_size, foot_pos[2], support_leg)
+                corners = plot_one_footstep(
+                    ax, foot_pos[:2], foot_size, foot_pos[2], support_leg
+                )
+                all_x.extend(corners[:, 0])
+                all_y.extend(corners[:, 1])
+
+        padding = 0.05  # Add some padding around the footsteps
+        ax.set_xlim(min(all_x) - padding, max(all_x) + padding)
+        ax.set_ylim(min(all_y) - padding, max(all_y) + padding)
 
     vis_function: Any = make_vis_function(
         plot,
@@ -658,6 +690,7 @@ def plot_line_graph(
                     color=color,
                     alpha=0.7,
                     label=legend_labels[i] if legend_labels else None,
+                    linewidth=0.3,
                 )
 
                 if checkpoint_period and checkpoint_period[i]:
@@ -672,6 +705,7 @@ def plot_line_graph(
                 color=line_colors_local[0],
                 alpha=0.7,
                 label=legend_labels[0] if legend_labels else None,
+                linewidth=0.3,
             )
 
             if checkpoint_period and checkpoint_period[0]:
@@ -706,7 +740,7 @@ def plot_line_graph(
 def plot_scatter_graph(
     y: npt.NDArray[np.float32],
     x: npt.NDArray[np.float32],
-    colors: npt.NDArray[np.float32],
+    colors: npt.NDArray[np.float32] | str,
     fig_size: Tuple[int, int] = (10, 6),
     title: str = "",
     x_label: str = "",
@@ -727,7 +761,9 @@ def plot_scatter_graph(
         ax.scatter(
             x,
             y,
-            color=colors,
+            s=1.0,
+            c=colors,
+            alpha=0.7,
             label=legend_label if len(legend_label) > 0 else None,
         )
 

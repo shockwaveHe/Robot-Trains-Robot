@@ -4,18 +4,20 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import jax
 import mujoco
 import numpy as np
+import scipy
 from brax import base, math
 from brax.envs.base import PipelineEnv, State
 from brax.io import mjcf
 from jax import numpy as jnp
 from mujoco import mjx
-from mujoco.mjx._src import support
+from mujoco.mjx._src import support  # type: ignore
 
+from toddlerbot.actuation.mujoco.mujoco_control import MotorController
 from toddlerbot.envs.mjx_config import MJXConfig
 from toddlerbot.ref_motion import MotionReference
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
-from toddlerbot.utils.math_utils import exponential_moving_average
+from toddlerbot.utils.math_utils import butterworth, exponential_moving_average
 
 
 class MJXEnv(PipelineEnv):
@@ -28,7 +30,7 @@ class MJXEnv(PipelineEnv):
         fixed_base: bool = False,
         fixed_command: Optional[jax.Array] = None,
         add_noise: bool = True,
-        add_push: bool = True,
+        add_domain_rand: bool = True,
         **kwargs: Any,
     ):
         self.name = name
@@ -38,7 +40,7 @@ class MJXEnv(PipelineEnv):
         self.fixed_base = fixed_base
         self.fixed_command = fixed_command
         self.add_noise = add_noise
-        self.add_push = add_push
+        self.add_domain_rand = add_domain_rand
 
         if fixed_base:
             xml_path = find_robot_file_path(robot.name, suffix="_fixed_scene.xml")
@@ -145,21 +147,22 @@ class MJXEnv(PipelineEnv):
         self.arm_actuator_indices = self.actuator_indices[motor_groups == "arm"]
         self.neck_actuator_indices = self.actuator_indices[motor_groups == "neck"]
         self.waist_actuator_indices = self.actuator_indices[motor_groups == "waist"]
+
         self.motor_limits = jnp.array(
-            [
-                self.sys.actuator_ctrlrange[motor_id]
-                for motor_id in self.actuator_indices
-            ]
+            [self.robot.joint_limits[name] for name in self.robot.motor_ordering]
         )
 
         arm_motor_names: List[str] = [
             self.robot.motor_ordering[i] for i in self.arm_actuator_indices
         ]
-        self.arm_joint_coef = jnp.ones(len(arm_motor_names), dtype=np.float32)
+        self.arm_gear_ratio = jnp.ones(len(arm_motor_names))
         for i, motor_name in enumerate(arm_motor_names):
             motor_config = self.robot.config["joints"][motor_name]
-            if motor_config["transmission"] == "gears":
-                self.arm_joint_coef = self.arm_joint_coef.at[i].set(
+            if (
+                motor_config["transmission"] == "gear"
+                or motor_config["transmission"] == "rack_and_pinion"
+            ):
+                self.arm_gear_ratio = self.arm_gear_ratio.at[i].set(
                     -motor_config["gear_ratio"]
                 )
 
@@ -171,16 +174,33 @@ class MJXEnv(PipelineEnv):
 
         # default qpos
         self.default_qpos = jnp.array(self.sys.mj_model.keyframe("home").qpos)
+
         # default action
         self.default_motor_pos = jnp.array(
             list(self.robot.default_motor_angles.values())
         )
         self.action_scale = self.cfg.action.action_scale
         self.n_steps_delay = self.cfg.action.n_steps_delay
-        self.action_smooth_alpha = float(
-            self.cfg.action.action_smooth_rate
-            / (self.cfg.action.action_smooth_rate + 1 / (self.dt * 2 * jnp.pi))
+
+        self.controller = MotorController(self.robot)
+
+        # Filter
+        self.filter_type = self.cfg.action.filter_type
+        self.filter_order = self.cfg.action.filter_order
+        # EMA
+        self.ema_alpha = float(
+            self.cfg.action.filter_cutoff
+            / (self.cfg.action.filter_cutoff + 1 / (self.dt * 2 * jnp.pi))
         )
+        # Butterworth
+        b, a = scipy.signal.butter(
+            self.filter_order,
+            self.cfg.action.filter_cutoff / (0.5 / self.dt),
+            btype="low",
+            analog=False,
+        )
+        self.butter_b_coef = jnp.array(b)[:, None]
+        self.butter_a_coef = jnp.array(a)[:, None]
 
         # commands
         # x vel, y vel, yaw vel, heading
@@ -211,6 +231,14 @@ class MJXEnv(PipelineEnv):
             ]
         )
         self.reset_noise_pos = self.cfg.noise.reset_noise_pos
+        self.backlash_scale = self.cfg.noise.backlash_scale
+        self.backlash_activation = self.cfg.noise.backlash_activation
+
+        self.kp_range = self.cfg.domain_rand.kp_range
+        self.kd_range = self.cfg.domain_rand.kd_range
+        self.tau_max_range = self.cfg.domain_rand.tau_max_range
+        self.q_dot_tau_max_range = self.cfg.domain_rand.q_dot_tau_max_range
+        self.q_dot_max_range = self.cfg.domain_rand.q_dot_max_range
 
         self.push_interval = np.ceil(self.cfg.domain_rand.push_interval_s / self.dt)
         self.push_vel = self.cfg.domain_rand.push_vel
@@ -219,7 +247,6 @@ class MJXEnv(PipelineEnv):
         """Prepares a list of reward functions, which will be called to compute the total reward.
         Looks for self._reward_<REWARD_NAME>, where <REWARD_NAME> are names of all non zero reward scales in the cfg.
         """
-
         reward_scale_dict = asdict(self.cfg.rewards.scales)
         # Remove zero scales and multiply non-zero ones by dt
         for key in list(reward_scale_dict.keys()):
@@ -236,14 +263,10 @@ class MJXEnv(PipelineEnv):
 
         self.healthy_z_range = self.cfg.rewards.healthy_z_range
         self.tracking_sigma = self.cfg.rewards.tracking_sigma
-        self.min_feet_distance = self.cfg.rewards.min_feet_distance
-        self.max_feet_distance = self.cfg.rewards.max_feet_distance
-        self.target_feet_z_delta = self.cfg.rewards.target_feet_z_delta
-        self.torso_pitch_range = self.cfg.rewards.torso_pitch_range
 
     def reset(self, rng: jax.Array) -> State:
         """Resets the environment to an initial state."""
-        rng, rng1, rng2 = jax.random.split(rng, 3)
+        rng, rng1, rng2, rng3, rng4, rng5, rng6 = jax.random.split(rng, 7)
 
         state_info = {
             "rng": rng,
@@ -265,7 +288,7 @@ class MJXEnv(PipelineEnv):
 
         path_pos = jnp.zeros(3)
         path_quat = jnp.array([1.0, 0.0, 0.0, 0.0])
-        command = self._sample_command(rng2)
+        command = self._sample_command(rng1)
         state_info["phase_signal"] = self.motion_ref.get_phase_signal(0.0, command)
         state_ref = self.motion_ref.get_state_ref(path_pos, path_quat, 0.0, command)
         state_info["path_pos"] = path_pos
@@ -275,16 +298,13 @@ class MJXEnv(PipelineEnv):
 
         qpos = self.default_qpos
         arm_joint_pos = state_ref[self.ref_start_idx + self.arm_ref_indices]
-        arm_motor_pos = arm_joint_pos * self.arm_joint_coef
-        qpos = qpos.at[self.q_start_idx + self.arm_joint_indices].set(arm_joint_pos)
-        qpos = qpos.at[self.q_start_idx + self.arm_motor_indices].set(arm_motor_pos)
 
+        arm_motor_pos = arm_joint_pos / self.arm_gear_ratio
+        qpos = qpos.at[self.q_start_idx + self.arm_joint_indices].set(arm_joint_pos)  # type:ignore
+        qpos = qpos.at[self.q_start_idx + self.arm_motor_indices].set(arm_motor_pos)  # type:ignore
         if self.add_noise:
-            noise_pos = jax.random.uniform(
-                rng1,
-                (self.nq - self.q_start_idx,),
-                minval=-self.reset_noise_pos,
-                maxval=self.reset_noise_pos,
+            noise_pos = self.reset_noise_pos * jax.random.normal(
+                rng2, (self.nq - self.q_start_idx,)
             )
             qpos = qpos.at[self.q_start_idx :].add(noise_pos)
 
@@ -292,10 +312,47 @@ class MJXEnv(PipelineEnv):
 
         pipeline_state = self.pipeline_init(qpos, qvel)
 
-        state_info["last_motor_target"] = pipeline_state.qpos[
-            self.q_start_idx + self.motor_indices
-        ]
         state_info["init_feet_height"] = pipeline_state.x.pos[self.feet_link_ids, 2]
+        last_motor_target = pipeline_state.qpos[self.q_start_idx + self.motor_indices]
+        state_info["last_motor_target"] = last_motor_target
+        state_info["butter_past_inputs"] = jnp.tile(
+            last_motor_target, (self.filter_order, 1)
+        )
+        state_info["butter_past_outputs"] = jnp.tile(
+            last_motor_target, (self.filter_order, 1)
+        )
+
+        state_info["controller_kp"] = self.controller.kp.copy()
+        state_info["controller_kd"] = self.controller.kd.copy()
+        state_info["controller_tau_max"] = self.controller.tau_max.copy()
+        state_info["controller_q_dot_tau_max"] = self.controller.q_dot_tau_max.copy()
+        state_info["controller_q_dot_max"] = self.controller.q_dot_max.copy()
+
+        if self.add_domain_rand:
+            state_info["controller_kp"] *= jax.random.uniform(
+                rng3, (self.nu,), minval=self.kp_range[0], maxval=self.kp_range[1]
+            )
+            state_info["controller_kd"] *= jax.random.uniform(
+                rng4, (self.nu,), minval=self.kd_range[0], maxval=self.kd_range[1]
+            )
+            state_info["controller_tau_max"] *= jax.random.uniform(
+                rng4,
+                (self.nu,),
+                minval=self.tau_max_range[0],
+                maxval=self.tau_max_range[1],
+            )
+            state_info["controller_q_dot_tau_max"] *= jax.random.uniform(
+                rng5,
+                (self.nu,),
+                minval=self.q_dot_tau_max_range[0],
+                maxval=self.q_dot_tau_max_range[1],
+            )
+            state_info["controller_q_dot_max"] *= jax.random.uniform(
+                rng6,
+                (self.nu,),
+                minval=self.q_dot_max_range[0],
+                maxval=self.q_dot_max_range[1],
+            )
 
         obs_history = jnp.zeros(self.num_obs_history * self.obs_size)
         privileged_obs_history = jnp.zeros(
@@ -316,6 +373,27 @@ class MJXEnv(PipelineEnv):
         return State(
             pipeline_state, obs, privileged_obs, reward, done, metrics, state_info
         )
+
+    def pipeline_step(self, state: State, action: jax.Array) -> base.State:
+        """Takes a physics step using the physics pipeline."""
+
+        def f(pipeline_state, _):
+            ctrl = self.controller.step(
+                pipeline_state.q[self.q_start_idx + self.motor_indices],
+                pipeline_state.qd[self.qd_start_idx + self.motor_indices],
+                action,
+                state.info["controller_kp"],
+                state.info["controller_kd"],
+                state.info["controller_tau_max"],
+                state.info["controller_q_dot_tau_max"],
+                state.info["controller_q_dot_max"],
+            )
+            return (
+                self._pipeline.step(self.sys, pipeline_state, ctrl, self._debug),
+                None,
+            )
+
+        return jax.lax.scan(f, state.pipeline_state, (), self._n_frames)[0]
 
     def step(self, state: State, action: jax.Array) -> State:
         """Runs one timestep of the environment's dynamics."""
@@ -342,28 +420,34 @@ class MJXEnv(PipelineEnv):
         )
 
         action_delay: jax.Array = state.info["action_buffer"][-self.nu :]
-        motor_target = jnp.where(
-            action_delay < 0,
-            self.default_motor_pos
-            + self.action_scale
-            * action_delay
-            * (self.default_motor_pos - self.motor_limits[:, 0]),
-            self.default_motor_pos
-            + self.action_scale
-            * action_delay
-            * (self.motor_limits[:, 1] - self.default_motor_pos),
-        )
+        motor_target = self.default_motor_pos + self.action_scale * action_delay
         motor_target = self.motion_ref.override_motor_target(motor_target, state_ref)
+
+        if self.filter_type == "ema":
+            motor_target = exponential_moving_average(
+                self.ema_alpha, motor_target, state.info["last_motor_target"]
+            )
+        elif self.filter_type == "butter":
+            (
+                motor_target,
+                state.info["butter_past_inputs"],
+                state.info["butter_past_outputs"],
+            ) = butterworth(
+                self.butter_b_coef,
+                self.butter_a_coef,
+                motor_target,
+                state.info["butter_past_inputs"],
+                state.info["butter_past_outputs"],
+            )
+
         motor_target = jnp.clip(
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
         )
-        motor_target = exponential_moving_average(
-            self.action_smooth_alpha, motor_target, state.info["last_motor_target"]
-        )
+
         assert isinstance(motor_target, jax.Array)
         state.info["last_motor_target"] = motor_target.copy()
 
-        if self.add_push:
+        if self.add_domain_rand:
             push_theta = jax.random.uniform(push_rng, maxval=2 * jnp.pi)
             push = jnp.array([jnp.cos(push_theta), jnp.sin(push_theta)])
             push *= jnp.mod(state.info["step"], self.push_interval) == 0
@@ -373,8 +457,7 @@ class MJXEnv(PipelineEnv):
             state.info["push"] = push
 
         # jax.debug.breakpoint()
-
-        pipeline_state = self.pipeline_step(state.pipeline_state, motor_target)
+        pipeline_state = self.pipeline_step(state, motor_target)
 
         # jax.debug.print(
         #     "qfrc: {}",
@@ -540,6 +623,10 @@ class MJXEnv(PipelineEnv):
         motor_pos_delta = (
             motor_pos - self.default_qpos[self.q_start_idx + self.motor_indices]
         )
+        motor_backlash = self.backlash_scale * jnp.tanh(
+            pipeline_state.qfrc_actuator[self.motor_indices] / self.backlash_activation
+        )
+
         motor_vel = pipeline_state.qd[self.qd_start_idx + self.motor_indices]
 
         joint_pos = pipeline_state.q[self.q_start_idx + self.joint_indices]
@@ -561,7 +648,7 @@ class MJXEnv(PipelineEnv):
             [
                 info["phase_signal"],
                 info["command"],
-                motor_pos_delta * self.obs_scales.dof_pos,
+                motor_pos_delta * self.obs_scales.dof_pos + motor_backlash,
                 motor_vel * self.obs_scales.dof_vel,
                 info["last_act"],
                 # torso_lin_vel * self.obs_scales.lin_vel,
@@ -587,9 +674,7 @@ class MJXEnv(PipelineEnv):
         )
 
         if self.add_noise:
-            obs += self.obs_noise_scale * jax.random.uniform(
-                info["rng"], obs.shape, minval=-1, maxval=1
-            )
+            obs += self.obs_noise_scale * jax.random.normal(info["rng"], obs.shape)
 
         # jax.debug.breakpoint()
 
@@ -652,20 +737,6 @@ class MJXEnv(PipelineEnv):
         # Quaternion angle difference
         angle_diff = 2.0 * jnp.arccos(jnp.abs(dot_product))
         reward = jnp.exp(-20.0 * (angle_diff**2))
-        return reward
-
-    def _reward_torso_pitch(
-        self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
-    ):
-        """Reward for torso pitch"""
-        torso_quat = pipeline_state.x.rot[0]
-        torso_pitch = math.quat_to_euler(torso_quat)[1]
-
-        pitch_min = jnp.clip(torso_pitch - self.torso_pitch_range[0], max=0.0)
-        pitch_max = jnp.clip(torso_pitch - self.torso_pitch_range[1], min=0.0)
-        reward = (
-            jnp.exp(-jnp.abs(pitch_min) * 100) + jnp.exp(-jnp.abs(pitch_max) * 100)
-        ) / 2
         return reward
 
     def _reward_lin_vel_xy(

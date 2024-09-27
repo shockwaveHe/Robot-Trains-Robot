@@ -1,12 +1,12 @@
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List
 
 
 @dataclass
 class MJXConfig:
     @dataclass
     class SimConfig:
-        timestep: float = 0.002
+        timestep: float = 0.004
         solver: int = 2  # Newton
         iterations: int = 1
         ls_iterations: int = 4
@@ -31,10 +31,12 @@ class MJXConfig:
     @dataclass
     class ActionConfig:
         action_scale: float = 0.25
-        action_smooth_rate: float = 10.0
+        filter_type: str = "none"
+        filter_order: int = 4
+        filter_cutoff: float = 10.0
         contact_force_threshold: float = 1.0
         n_steps_delay: int = 1
-        n_frames: int = 6
+        n_frames: int = 5
 
     @dataclass
     class RewardsConfig:
@@ -42,11 +44,10 @@ class MJXConfig:
         class RewardScales:
             torso_pos: float = 0.0  # 1.0
             torso_quat: float = 1.0
-            torso_pitch: float = 0.1
             lin_vel_xy: float = 1.0
             lin_vel_z: float = 0.5
             ang_vel_xy: float = 0.5
-            ang_vel_z: float = 0.5
+            ang_vel_z: float = 1.0
             leg_joint_pos: float = 5.0
             leg_joint_vel: float = 0.0  # 1e-4
             arm_joint_pos: float = 0.0  # 0.1
@@ -76,8 +77,8 @@ class MJXConfig:
 
         healthy_z_range: List[float] = field(default_factory=lambda: [0.2, 0.4])
         tracking_sigma: float = 5.0
-        min_feet_distance: float = 0.06
-        max_feet_distance: float = 0.15
+        min_feet_y_dist: float = 0.05
+        max_feet_y_dist: float = 0.13
         target_feet_z_delta: float = 0.02
         torso_pitch_range: List[float] = field(default_factory=lambda: [-0.2, 0.2])
         scales: RewardScales = RewardScales()
@@ -86,31 +87,33 @@ class MJXConfig:
     class CommandsConfig:
         num_commands: int = 3
         resample_time: float = 5.0
+        command_list: List[List[float]] = field(default_factory=lambda: [[0.0]])
 
     @dataclass
     class DomainRandConfig:
-        friction_range: Optional[List[float]] = field(
-            default_factory=lambda: [0.5, 1.5]
-        )
-        gain_range: Optional[List[float]] = field(default_factory=lambda: [0.5, 1.5])
-        damping_range: Optional[List[float]] = field(default_factory=lambda: [0.5, 1.5])
-        armature_range: Optional[List[float]] = field(
-            default_factory=lambda: [0.5, 1.5]
-        )
-        added_mass_range: Optional[List[float]] = field(
-            default_factory=lambda: [-0.5, 0.5]
-        )
-        push_interval_s: int = 2  # seconds
+        friction_range: List[float] = field(default_factory=lambda: [0.5, 2.0])
+        damping_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
+        armature_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
+        frictionloss_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
+        added_mass_range: List[float] = field(default_factory=lambda: [-0.2, 0.2])
+        kp_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
+        kd_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
+        tau_max_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
+        q_dot_tau_max_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
+        q_dot_max_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
+        push_interval_s: int = 4  # seconds
         push_vel: float = 0.1
 
     @dataclass
     class NoiseConfig:
-        reset_noise_pos: float = 0.1
-        obs_noise_scale: float = 0.1
+        reset_noise_pos: float = 0.05
+        obs_noise_scale: float = 0.05
         dof_pos: float = 1.0
         dof_vel: float = 2.0
         ang_vel: float = 2.0
         euler: float = 1.0
+        backlash_scale: float = 0.02
+        backlash_activation: float = 0.1
 
     def __init__(self):
         self.sim = self.SimConfig()

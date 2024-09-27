@@ -29,6 +29,7 @@ def test_motion_ref(
     motion_ref: MotionReference,
     command_list: List[npt.NDArray[np.float32]],
     time_total: float = 5.0,
+    vis_type: str = "render",
 ):
     exp_name: str = f"{robot.name}_{motion_ref.name}_{sim.name}_test"
     time_str = time.strftime("%Y%m%d_%H%M%S")
@@ -46,12 +47,17 @@ def test_motion_ref(
                 state = motion_ref.get_state_ref(
                     path_pos, path_quat, time_curr, command
                 )
-                joint_angles = np.asarray(state[13 : 13 + len(robot.joint_ordering)])
-                motor_angles = robot.joint_to_motor_angles(
-                    dict(zip(robot.joint_ordering, joint_angles))
-                )
-                sim.set_motor_angles(motor_angles)
-                sim.step()
+                joint_angles = np.asarray(state[13 : 13 + robot.nu])
+                # motor_angles = robot.joint_to_motor_angles(
+                #     dict(zip(robot.joint_ordering, joint_angles))
+                # )
+                # sim.set_motor_angles(motor_angles)
+                # sim.step()
+                sim.set_joint_angles(dict(zip(robot.joint_ordering, joint_angles)))
+                sim.forward()
+
+                if vis_type == "view":
+                    time.sleep(sim.control_dt)
 
     except KeyboardInterrupt:
         print("KeyboardInterrupt: Stopping the simulation...")
@@ -95,7 +101,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    robot = Robot("toddlerbot")
+    robot = Robot(args.robot)
     if args.sim == "mujoco":
         from toddlerbot.sim.mujoco_sim import MuJoCoSim
 
@@ -115,12 +121,9 @@ if __name__ == "__main__":
         cfg = WalkCfg()
         motion_ref = WalkZMPReference(
             robot,
+            cfg.commands.command_list,
             cfg.action.cycle_time,
-            [
-                cfg.commands.lin_vel_x_range,
-                cfg.commands.lin_vel_y_range,
-                cfg.commands.ang_vel_z_range,
-            ],
+            cfg.sim.timestep * cfg.action.n_frames,
         )
 
     elif args.ref == "squat":
@@ -141,9 +144,9 @@ if __name__ == "__main__":
     if "walk" in args.ref:
         command_list = [
             np.array([0.1, 0, 0], dtype=np.float32),
-            # np.array([0, -0.1, 0], dtype=np.float32),
-            # np.array([0.0, 0, 0.2], dtype=np.float32),
-            # np.array([0, 0, 0], dtype=np.float32),
+            np.array([0, -0.1, 0], dtype=np.float32),
+            np.array([0, 0.0, 0.2], dtype=np.float32),
+            np.array([0, 0, 0], dtype=np.float32),
         ]
 
     elif "squat" in args.ref:
@@ -165,4 +168,4 @@ if __name__ == "__main__":
             np.array([1.0], dtype=np.float32),
         ]
 
-    test_motion_ref(robot, sim, motion_ref, command_list)
+    test_motion_ref(robot, sim, motion_ref, command_list, vis_type=args.vis)

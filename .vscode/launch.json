@@ -48,7 +48,23 @@
                 "--sim",
                 "mujoco",
                 "--policy",
-                "stand",
+                "stand_open",
+            ]
+        },
+        {
+            "name": "Python: stand_toddlerbot_OP3_mujoco",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/policies/run_policy.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot",
+                "toddlerbot_OP3",
+                "--sim",
+                "mujoco",
+                "--policy",
+                "stand_open",
             ]
         },
         {
@@ -84,6 +100,22 @@
             ]
         },
         {
+            "name": "Python: balance_pd_toddlerbot_mujoco",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/policies/run_policy.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot",
+                "toddlerbot",
+                "--sim",
+                "mujoco",
+                "--policy",
+                "balance_pd",
+            ]
+        },
+        {
             "name": "Python: walk_fixed_toddlerbot_mujoco",
             "type": "python",
             "request": "launch",
@@ -116,7 +148,61 @@
                 "--policy",
                 "walk",
                 "--ckpt",
-                "20240908_235416"
+                "20240915_154323",
+                "--command",
+                "0.1 0 0"
+            ]
+        },
+        {
+            "name": "Python: walk_toddlerbot_OP3_mujoco",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/policies/run_policy.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot",
+                "toddlerbot_OP3",
+                "--sim",
+                "mujoco",
+                "--policy",
+                "walk",
+                "--ckpt",
+                "20240922_104345",
+                "--command",
+                "-0.1 0 0"
+            ]
+        },
+        {
+            "name": "Python: walk_zmp_toddlerbot_OP3_mujoco",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/policies/run_policy.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot",
+                "toddlerbot_OP3",
+                "--sim",
+                "mujoco",
+                "--policy",
+                "walk_zmp",
+            ]
+        },
+        {
+            "name": "Python: teleop_squat_toddlerbot_OP3_mujoco",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/policies/run_policy.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot",
+                "toddlerbot_OP3",
+                "--sim",
+                "mujoco",
+                "--policy",
+                "teleop_squat",
             ]
         },
         {
@@ -129,6 +215,22 @@
             "args": [
                 "--robot",
                 "toddlerbot",
+                "--sim",
+                "mujoco",
+                "--policy",
+                "sysID_fixed"
+            ]
+        },
+        {
+            "name": "Python: sysid_XC330_mujoco",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/policies/run_policy.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot",
+                "sysID_XC330",
                 "--sim",
                 "mujoco",
                 "--policy",
@@ -182,7 +284,7 @@
                 "--sim",
                 "mujoco",
                 "--time-str",
-                "20240906_235413"
+                "20240918_152725"
             ]
         },
         {
@@ -196,7 +298,25 @@
                 "--robot",
                 "toddlerbot",
                 "--env",
-                "walk"
+                "walk",
+                "--eval",
+                "20240919_102159"
+            ],
+        },
+        {
+            "name": "Python: walk_toddlerbot_OP3_mjx",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/envs/train_mjx.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--robot",
+                "toddlerbot_OP3",
+                "--env",
+                "walk",
+                "--eval",
+                "20240919_103340"
             ],
         },
         {
@@ -216,7 +336,21 @@
             ],
         },
         {
-            "name": "Python: test_reference_motion",
+            "name": "Python: test_walk_zmp_ref",
+            "type": "python",
+            "request": "launch",
+            "program": "tests/test_ref_motion.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--ref", 
+                "walk_zmp",
+                "--robot",
+                "toddlerbot_OP3",
+            ],
+        },
+        {
+            "name": "Python: test_balance_ref",
             "type": "python",
             "request": "launch",
             "program": "tests/test_ref_motion.py",
@@ -225,6 +359,8 @@
             "args": [
                 "--ref", 
                 "balance",
+                "--robot",
+                "toddlerbot_OP3",
             ],
         },
         {

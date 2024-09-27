@@ -149,7 +149,7 @@ def update_joint_params(root: ET.Element, joints_config: Dict[str, Any]):
 
         if joint_name in joints_config:
             for attr_name in joints_config[joint_name]:
-                if attr_name in ["damping", "armature"]:  # , "frictionloss"]:
+                if attr_name in ["damping", "armature", "frictionloss"]:
                     attr_value = round_to_sig_digits(
                         joints_config[joint_name][attr_name], 6
                     )
@@ -189,7 +189,12 @@ def update_geom_classes(root: ET.Element, geom_keys: List[str]):
 
 
 def add_keyframes(
-    root: ET.Element, is_fixed: bool, has_lower_body: bool, has_upper_body: bool
+    root: ET.Element,
+    general_config: Dict[str, Any],
+    is_fixed: bool,
+    has_lower_body: bool,
+    has_upper_body: bool,
+    has_gripper: bool,
 ):
     # Create or find the <default> element
     keyframe = root.find("keyframe")
@@ -201,41 +206,46 @@ def add_keyframes(
     if is_fixed:
         qpos_str = ""
     else:
-        qpos_str = "0 0 0.336 1 0 0 0 "
-
-    ctrl_str = ""
+        qpos_str = f"0 0 {general_config['offsets']['torso_z_default']} 1 0 0 0 "
 
     if has_upper_body and has_lower_body:  # neck
         qpos_str += "0 0 0 0 "
-        ctrl_str += "0 0 "
 
-    # TODO: Read from config
     if has_lower_body:  # waist and legs
-        qpos_str += (
-            "0 0 0 0 "
-            + "0 0 0 -0.267268 0.523599 -0.523599 -0.523599 -0.25637 0 0 0.248043 0 -0.246445 -0.253132 0.256023 0.523599 -0.523599 -0.523599 "
-            + "0 0 0 0.267268 -0.523599 0.523599 0.523599 -0.25637 0 0 -0.248043 0 0.246445 0.253132 -0.256023 -0.523599 0.523599 0.523599 "
-        )
-        ctrl_str += (
-            "0 0 "
-            + "0 0 -0.267268 0.523599 -0.253132 0.256023 "
-            + "0 0 0.267268 -0.523599 0.253132 -0.256023 "
-        )
+        qpos_str += "0 0 0 0 "
+        if general_config["is_ankle_closed_loop"]:
+            qpos_str += (
+                "0 0 0 -0.267268 0.523599 -0.523599 -0.523599 -0.25637 0 0 0.248043 0 -0.246445 -0.253132 0.256023 0.523599 -0.523599 -0.523599 "
+                + "0 0 0 0.267268 -0.523599 0.523599 0.523599 -0.25637 0 0 -0.248043 0 0.246445 0.253132 -0.256023 -0.523599 0.523599 0.523599 "
+            )
+        else:
+            qpos_str += (
+                "0 0 0 -0.267268 0.523599 -0.523599 -0.523599 -0.25637 0 0.523599 -0.523599 -0.523599 "
+                + "0 0 0 0.267268 -0.523599 0.523599 0.523599 -0.25637 0 -0.523599 0.523599 0.523599 "
+            )
 
     if has_upper_body:  # arms
         qpos_str += (
-            "0.174533 -0.261799 1.0472 -1.0472 0.523599 0.5235990 -0.5235990 -1.0472 1.0472 0 "
-            + "-0.174533 -0.261799 -1.0472 1.0472 0.523599 -0.523599 0.523599 1.0472 -1.0472 0"
+            "0.174533 -0.261799 1.0472 -1.0472 0.523599 -1.0472 1.0472 1.309 -1.309 0 "
         )
-        ctrl_str += (
-            "0.174533 -0.261799 1.0472 0.523599 0.523599 1.0472 0 "
-            + "-0.174533 -0.261799 -1.0472 0.523599 -0.523599 -1.0472 0"
+        if has_gripper:
+            qpos_str += "0 0 0 "
+
+        qpos_str += (
+            "-0.174533 -0.261799 -1.0472 1.0472 0.523599 1.0472 -1.0472 -1.309 1.309 0"
         )
+        if has_gripper:
+            qpos_str += " 0 0 0"
 
-    ET.SubElement(keyframe, "key", {"name": "home", "qpos": qpos_str, "ctrl": ctrl_str})
+    ET.SubElement(keyframe, "key", {"name": "home", "qpos": qpos_str})
 
 
-def add_default_settings(root: ET.Element, general_config: Dict[str, Any]):
+def add_default_settings(
+    root: ET.Element,
+    general_config: Dict[str, Any],
+    joints_config: Dict[str, Any],
+    actuator_type: str,
+):
     # Create or find the <default> element
     default = root.find("default")
     if default is not None:
@@ -251,25 +261,6 @@ def add_default_settings(root: ET.Element, general_config: Dict[str, Any]):
             "solref": f"{general_config['solref'][0]} {general_config['solref'][1]}",
         },
     )
-
-    XM430_default = ET.SubElement(default, "default", {"class": "XM430"})
-    ET.SubElement(XM430_default, "position", {"forcerange": "-3 3"})
-
-    XC430_default = ET.SubElement(default, "default", {"class": "XC430"})
-    ET.SubElement(XC430_default, "position", {"forcerange": "-2 2"})
-
-    two_XC430_default = ET.SubElement(default, "default", {"class": "2XC430"})
-    ET.SubElement(two_XC430_default, "position", {"forcerange": "-2 2"})
-
-    XL430_default = ET.SubElement(default, "default", {"class": "XL430"})
-    ET.SubElement(XL430_default, "position", {"forcerange": "-2 2"})
-
-    two_XL430_default = ET.SubElement(default, "default", {"class": "2XL430"})
-    ET.SubElement(two_XL430_default, "position", {"forcerange": "-2 2"})
-
-    XC330_default = ET.SubElement(default, "default", {"class": "XC330"})
-    ET.SubElement(XC330_default, "position", {"forcerange": "-1 1"})
-
     # Add <default class="visual"> settings
     visual_default = ET.SubElement(default, "default", {"class": "visual"})
     ET.SubElement(
@@ -282,6 +273,33 @@ def add_default_settings(root: ET.Element, general_config: Dict[str, Any]):
     collision_default = ET.SubElement(default, "default", {"class": "collision"})
     # Group 3's visualization is diabled by default
     ET.SubElement(collision_default, "geom", {"group": "3"})
+
+    for motor_name, torque_limit in zip(
+        ["XM430", "XC430", "2XC430", "XL430", "2XL430", "XC330"], [3, 2, 2, 2, 2, 1]
+    ):
+        has_motor = False
+        for joint_config in joints_config.values():
+            if "spec" not in joint_config:
+                continue
+
+            if joint_config["spec"] == motor_name:
+                has_motor = True
+                break
+
+        if has_motor:
+            motor_default = ET.SubElement(default, "default", {"class": motor_name})
+            if actuator_type == "motor":
+                ET.SubElement(
+                    motor_default,
+                    actuator_type,
+                    {"ctrlrange": f"-{torque_limit} {torque_limit}"},
+                )
+            else:
+                ET.SubElement(
+                    motor_default,
+                    actuator_type,
+                    {"forcerange": f"-{torque_limit} {torque_limit}"},
+                )
 
 
 def include_all_contacts(root: ET.Element):
@@ -462,7 +480,7 @@ def add_ankle_constraints(root: ET.Element, general_config: Dict[str, Any]):
         )
 
 
-def add_gear_constraints(
+def add_joint_constraints(
     root: ET.Element, general_config: Dict[str, Any], joints_config: Dict[str, Any]
 ):
     equality = root.find("./equality")
@@ -474,7 +492,7 @@ def add_gear_constraints(
             continue
 
         transmission = joint_config["transmission"]
-        if transmission == "gears":
+        if transmission == "gear":
             joint_driven_name = joint_name.replace("_drive", "_driven")
             joint_driven: ET.Element | None = root.find(
                 f".//joint[@name='{joint_driven_name}']"
@@ -483,7 +501,7 @@ def add_gear_constraints(
                 raise ValueError(f"The driven joint {joint_driven_name} is not found")
 
             gear_ratio = round_to_sig_digits(
-                -1 / joints_config[joint_name]["gear_ratio"], 6
+                -joints_config[joint_name]["gear_ratio"], 6
             )
             ET.SubElement(
                 equality,
@@ -494,9 +512,34 @@ def add_gear_constraints(
                 solimp="0.9999 0.9999 0.001 0.5 2",
                 solref=f"{general_config['solref'][0]} {general_config['solref'][1]}",
             )
+        elif transmission == "rack_and_pinion":
+            joint_pinion_1_name = joint_name.replace("_rack", "_pinion")
+            joint_pinion_2_name = joint_name.replace("_rack", "_pinion_mirror")
+            for joint_pinion_name in [joint_pinion_1_name, joint_pinion_2_name]:
+                joint_pinion: ET.Element | None = root.find(
+                    f".//joint[@name='{joint_pinion_name}']"
+                )
+                if joint_pinion is None:
+                    raise ValueError(
+                        f"The pinion joint {joint_pinion_name} is not found"
+                    )
+
+                gear_ratio = round_to_sig_digits(
+                    -joints_config[joint_name]["gear_ratio"], 6
+                )
+
+                ET.SubElement(
+                    equality,
+                    "joint",
+                    joint1=joint_pinion_name,
+                    joint2=joint_name,
+                    polycoef=f"0 {gear_ratio} 0 0 0",
+                    solimp="0.9999 0.9999 0.001 0.5 2",
+                    solref=f"{general_config['solref'][0]} {general_config['solref'][1]}",
+                )
 
 
-def add_actuators_to_mjcf(root: ET.Element, joints_config: Dict[str, Any]):
+def add_position_actuators_to_mjcf(root: ET.Element, joints_config: Dict[str, Any]):
     # Create <actuator> element if it doesn't exist
     actuator = root.find("./actuator")
     if actuator is not None:
@@ -508,27 +551,6 @@ def add_actuators_to_mjcf(root: ET.Element, joints_config: Dict[str, Any]):
         if "spec" not in joint_config:
             continue
 
-        # transmission = joint_config["transmission"]
-        # if transmission == "gears":
-        #     joint_driven_name = joint_name.replace("_drive", "_driven")
-        #     joint_driven: ET.Element | None = root.find(
-        #         f".//joint[@name='{joint_driven_name}']"
-        #     )
-        #     if joint_driven is None:
-        #         raise ValueError(f"The driven joint {joint_driven_name} is not found")
-
-        #     position = ET.SubElement(
-        #         actuator,
-        #         "position",
-        #         name=joint_name,
-        #         joint=joint_driven_name,
-        #         kp=str(joints_config[joint_name]["kp_sim"]),
-        #         gear=str(
-        #             round_to_sig_digits(1 / joints_config[joint_name]["gear_ratio"], 6)
-        #         ),
-        #         ctrlrange=joint_driven.get("range", "-3.141592 3.141592"),
-        #     )
-        # else:
         joint: ET.Element | None = root.find(f".//joint[@name='{joint_name}']")
         if joint is None:
             raise ValueError(f"The joint {joint_name} is not found")
@@ -539,10 +561,32 @@ def add_actuators_to_mjcf(root: ET.Element, joints_config: Dict[str, Any]):
             name=joint_name,
             joint=joint_name,
             kp=str(joints_config[joint_name]["kp_sim"]),
+            # kv=str(joints_config[joint_name]["kd_sim"]),
             ctrlrange=joint.get("range", "-3.141592 3.141592"),
         )
 
         position.set("class", joints_config[joint_name]["spec"])
+
+
+def add_motor_actuators_to_mjcf(root: ET.Element, joints_config: Dict[str, Any]):
+    # Create <actuator> element if it doesn't exist
+    actuator = root.find("./actuator")
+    if actuator is not None:
+        root.remove(actuator)
+
+    actuator = ET.SubElement(root, "actuator")
+
+    for joint_name, joint_config in joints_config.items():
+        if "spec" not in joint_config:
+            continue
+
+        joint: ET.Element | None = root.find(f".//joint[@name='{joint_name}']")
+        if joint is None:
+            raise ValueError(f"The joint {joint_name} is not found")
+
+        motor = ET.SubElement(actuator, "motor", name=joint_name, joint=joint_name)
+
+        motor.set("class", joints_config[joint_name]["spec"])
 
 
 def parse_urdf_body_link(root: ET.Element, root_link_name: str):
@@ -608,8 +652,10 @@ def add_body_link(root: ET.Element, urdf_path: str, offsets: Dict[str, float]):
         body_link.append(element)
 
 
-def replace_box_collision(root: ET.Element, foot_name: str):
+def replace_box_collision(root: ET.Element, general_config: Dict[str, Any]):
     # Search for the target geom using the substring condition
+    foot_name = general_config["foot_name"]
+
     target_geoms: Dict[str, Tuple[ET.Element, ET.Element]] = {}
     for parent in root.iter():
         for geom in parent.findall("geom"):
@@ -631,13 +677,22 @@ def replace_box_collision(root: ET.Element, foot_name: str):
         y_offset = size[1] - sphere_radius
         z_offset = size[2] - sphere_radius
 
-        # Positions for the four corner balls
-        ball_positions = [
-            [pos[0] - x_offset, pos[1] + y_offset, pos[2] - z_offset],  # Bottom-left
-            [pos[0] + x_offset, pos[1] + y_offset, pos[2] - z_offset],  # Bottom-right
-            [pos[0] - x_offset, pos[1] + y_offset, pos[2] + z_offset],  # Top-left
-            [pos[0] + x_offset, pos[1] + y_offset, pos[2] + z_offset],  # Top-right
-        ]
+        if general_config["is_ankle_closed_loop"]:
+            # Positions for the four corner balls
+            ball_positions = [
+                [pos[0] - x_offset, pos[1] + y_offset, pos[2] - z_offset],
+                [pos[0] + x_offset, pos[1] + y_offset, pos[2] - z_offset],
+                [pos[0] - x_offset, pos[1] + y_offset, pos[2] + z_offset],
+                [pos[0] + x_offset, pos[1] + y_offset, pos[2] + z_offset],
+            ]
+        else:
+            # Positions for the four corner balls
+            ball_positions = [
+                [pos[0] - x_offset, pos[1] - y_offset, pos[2] - z_offset],
+                [pos[0] - x_offset, pos[1] + y_offset, pos[2] - z_offset],
+                [pos[0] - x_offset, pos[1] - y_offset, pos[2] + z_offset],
+                [pos[0] - x_offset, pos[1] + y_offset, pos[2] + z_offset],
+            ]
 
         # Create the new sphere elements at each corner
         for i, ball_pos in enumerate(ball_positions):
@@ -691,7 +746,7 @@ def replace_box_collision(root: ET.Element, foot_name: str):
                         )
 
 
-def create_scene_xml(mjcf_path: str, general_config: Dict[str, Any], is_fixed: bool):
+def create_scene_xml(mjcf_path: str, is_fixed: bool):
     robot_name = os.path.basename(mjcf_path).replace(".xml", "")
 
     # Create the root element
@@ -773,7 +828,6 @@ def create_scene_xml(mjcf_path: str, general_config: Dict[str, Any], is_fixed: b
                 "type": "plane",
                 "material": "groundplane",
                 "condim": "3",
-                # "solref": f"{general_config['solref'][0]} {general_config['solref'][1]}",
             },
         )
         # Asset settings
@@ -822,7 +876,7 @@ def create_scene_xml(mjcf_path: str, general_config: Dict[str, Any], is_fixed: b
     tree.write(os.path.join(os.path.dirname(mjcf_path), f"{robot_name}_scene.xml"))
 
 
-def process_mjcf_fixed_file(root: ET.Element, robot: Robot):
+def process_mjcf_file(root: ET.Element, robot: Robot):
     update_compiler_settings(root)
     add_option_settings(root)
 
@@ -831,8 +885,7 @@ def process_mjcf_fixed_file(root: ET.Element, robot: Robot):
 
     update_joint_params(root, robot.config["joints"])
     update_geom_classes(root, ["contype", "conaffinity", "group", "density"])
-    add_actuators_to_mjcf(root, robot.config["joints"])
-    add_gear_constraints(root, robot.config["general"], robot.config["joints"])
+    add_joint_constraints(root, robot.config["general"], robot.config["joints"])
 
     if robot.config["general"]["is_waist_closed_loop"]:
         add_waist_constraints(root, robot.config["general"])
@@ -844,11 +897,20 @@ def process_mjcf_fixed_file(root: ET.Element, robot: Robot):
         add_ankle_constraints(root, robot.config["general"])
 
     if "sysID" not in robot.name:
-        add_keyframes(root, True, "arms" not in robot.name, "legs" not in robot.name)
+        has_gripper = False
+        for motor_name in robot.motor_ordering:
+            if "gripper" in motor_name:
+                has_gripper = True
 
-    add_default_settings(root, robot.config["general"])
+        add_keyframes(
+            root,
+            robot.config["general"],
+            True,
+            "arms" not in robot.name,
+            "legs" not in robot.name,
+            has_gripper,
+        )
 
-    # include_all_contacts(root)
     exclude_all_contacts(root)
 
 
@@ -864,39 +926,63 @@ def get_mjcf_files(robot_name: str):
     robot_dir = os.path.join("toddlerbot", "robot_descriptions", robot_name)
     urdf_path = os.path.join(robot_dir, robot_name + ".urdf")
     source_mjcf_path = os.path.join("mjmodel.xml")
-    mjcf_fixed_path = os.path.join(robot_dir, robot_name + "_fixed.xml")
+    mjcf_vis_path = os.path.join(robot_dir, robot_name + "_vis.xml")
     if os.path.exists(source_mjcf_path):
-        shutil.move(source_mjcf_path, mjcf_fixed_path)
+        shutil.move(source_mjcf_path, mjcf_vis_path)
     else:
         raise ValueError(
             "No MJCF file found. Remember to click the button save_xml to save the model to mjmodel.xml in the current directory."
         )
 
-    xml_tree = ET.parse(mjcf_fixed_path)
+    xml_tree = ET.parse(mjcf_vis_path)
     xml_root = xml_tree.getroot()
 
-    process_mjcf_fixed_file(xml_root, robot)
+    process_mjcf_file(xml_root, robot)
+    add_position_actuators_to_mjcf(xml_root, robot.config["joints"])
+    add_default_settings(
+        xml_root, robot.config["general"], robot.config["joints"], "position"
+    )
+    xml_tree.write(mjcf_vis_path)
+    create_scene_xml(mjcf_vis_path, is_fixed=True)
+
+    mjcf_fixed_path = os.path.join(robot_dir, robot_name + "_fixed.xml")
+    add_motor_actuators_to_mjcf(xml_root, robot.config["joints"])
+    add_default_settings(
+        xml_root, robot.config["general"], robot.config["joints"], "motor"
+    )
     xml_tree.write(mjcf_fixed_path)
+    create_scene_xml(mjcf_fixed_path, is_fixed=True)
 
-    if robot.config["general"]["is_fixed"]:
-        mjcf_path = mjcf_fixed_path
-    else:
-        create_scene_xml(mjcf_fixed_path, robot.config["general"], is_fixed=True)
-
+    if not robot.config["general"]["is_fixed"]:
         mjcf_path = os.path.join(robot_dir, robot_name + ".xml")
         add_body_link(xml_root, urdf_path, robot.config["general"]["offsets"])
+
+        has_gripper = False
+        for motor_name in robot.motor_ordering:
+            if "gripper" in motor_name:
+                has_gripper = True
+
         add_keyframes(
-            xml_root, False, "arms" not in robot.name, "legs" not in robot.name
+            xml_root,
+            robot.config["general"],
+            False,
+            "arms" not in robot.name,
+            "legs" not in robot.name,
+            has_gripper,
         )
+
         add_contacts(
             xml_root, robot.collision_config, robot.config["general"]["foot_name"]
         )
-        replace_box_collision(xml_root, robot.config["general"]["foot_name"])
+        replace_box_collision(xml_root, robot.config["general"])
+
+        add_motor_actuators_to_mjcf(xml_root, robot.config["joints"])
+        add_default_settings(
+            xml_root, robot.config["general"], robot.config["joints"], "motor"
+        )
         xml_tree.write(mjcf_path)
 
-    create_scene_xml(
-        mjcf_path, robot.config["general"], robot.config["general"]["is_fixed"]
-    )
+        create_scene_xml(mjcf_path, is_fixed=False)
 
 
 def main():

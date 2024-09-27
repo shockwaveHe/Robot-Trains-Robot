@@ -13,7 +13,7 @@
         "motor": "XC330",
         "init_pos": 5.5898261070251465,
         "default_pos": 0,
-        "gear_ratio": 1.105263157894737
+        "gear_ratio": 0.9047619047619047
     },
     "left_hip_roll": {
         "motor": "2XC430",
@@ -44,7 +44,7 @@
         "motor": "XC330",
         "init_pos": 1.9650293588638306,
         "default_pos": 0,
-        "gear_ratio": 1.105263157894737
+        "gear_ratio": 0.9047619047619047
     },
     "right_hip_roll": {
         "motor": "2XC430",
