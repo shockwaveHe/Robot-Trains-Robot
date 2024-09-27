@@ -1,21 +1,15 @@
-from typing import List, Optional
+import time
+from typing import Optional
 
-import mujoco
 import numpy as np
 import numpy.typing as npt
 
-from toddlerbot.policies import BasePolicy
-from toddlerbot.ref_motion.balance_ref import BalanceReference
-from toddlerbot.sim import Obs
+from toddlerbot.policies.balance_pd import BalancePDPolicy, default_pose
 from toddlerbot.sim.robot import Robot
-from toddlerbot.utils.file_utils import find_robot_file_path
-from toddlerbot.utils.math_utils import interpolate_action
 from toddlerbot.utils.comm_utils import ZMQNode
 
-from toddlerbot.policies.balance_pd import BalancePDPolicy, default_pose
-import time
 
-class TeleopBalancePDPolicy(BalancePDPolicy, policy_name = "teleop_balance_pd"):
+class TeleopBalancePDPolicy(BalancePDPolicy, policy_name="teleop_balance_pd"):
     def __init__(
         self,
         name: str,
@@ -34,12 +28,14 @@ class TeleopBalancePDPolicy(BalancePDPolicy, policy_name = "teleop_balance_pd"):
         # Get the motor target from the teleop node
         remote_state_dict = self.zmq_node.get_all_msg()
         if remote_state_dict is not None:
-            print(remote_state_dict['time'], time.time())
-            print(remote_state_dict['sim_action'])
-            if abs(remote_state_dict['time'] - time.time()) < 0.1:
+            # print(remote_state_dict["time"], time.time())
+            # print(remote_state_dict["sim_action"])
+            # print((time.time() - remote_state_dict["time"]) * 1000)
+            # print("last ", remote_state_dict["test"])
+            if abs(time.time() - remote_state_dict["time"]) < 0.1:
                 motor_target[16:30] = remote_state_dict["sim_action"]
                 self.last_pose = remote_state_dict["sim_action"]
             else:
                 print("stale message received, discarding")
-    
+
         return motor_target
