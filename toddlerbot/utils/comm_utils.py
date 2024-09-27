@@ -1,5 +1,7 @@
-import zmq
 import pickle
+import time
+
+import zmq
 
 """
 Usage:
@@ -8,12 +10,13 @@ Usage:
     - Receiver: ZMQNode(type='Receiver')
 """
 
+
 class ZMQNode:
-    def __init__(self, type='Sender', ip=None, queue_len=1):
+    def __init__(self, type="Sender", ip=None, queue_len=1):
         self.type = type
-        if type not in ['Sender', 'Receiver']:
+        if type not in ["Sender", "Receiver"]:
             raise ValueError("ZMQ type must be either 'Sender' or 'Receiver'")
-        
+
         self.queue_len = queue_len
         self.ip = ip
         self.start_zmq()
@@ -21,10 +24,12 @@ class ZMQNode:
     def start_zmq(self):
         # Set up ZeroMQ context and socket for data exchange
         self.zmq_context = zmq.Context()
-        if self.type == 'Sender':
+        if self.type == "Sender":
             self.socket = self.zmq_context.socket(zmq.PUSH)
             # Set high water mark and enable non-blocking send
-            self.socket.setsockopt(zmq.SNDHWM, self.queue_len)  # Limit queue to 10 messages
+            self.socket.setsockopt(
+                zmq.SNDHWM, self.queue_len
+            )  # Limit queue to 10 messages
             self.socket.setsockopt(zmq.LINGER, 0)
             self.socket.setsockopt(zmq.SNDBUF, 1024)  # Smaller send buffer
             # self.socket.setsockopt(
@@ -32,7 +37,7 @@ class ZMQNode:
             # )  # Prevent blocking if receiver is not available
             self.socket.connect("tcp://" + self.ip + ":5555")
 
-        elif self.type == 'Receiver':
+        elif self.type == "Receiver":
             self.socket = self.zmq_context.socket(zmq.PULL)
             self.socket.bind("tcp://0.0.0.0:5555")  # Listen on all interfaces
             self.socket.setsockopt(zmq.RCVHWM, 1)  # Limit receiver's queue to 1 message
@@ -40,9 +45,9 @@ class ZMQNode:
             self.socket.setsockopt(zmq.RCVBUF, 1024)
 
     def send_msg(self, send_dict):
-        if self.type != 'Sender':
+        if self.type != "Sender":
             raise ValueError("ZMQ type must be 'Sender' to send messages")
-        
+
         # Serialize the numpy array using pickle
         serialized_array = pickle.dumps(send_dict)
         # Send the serialized data
@@ -56,7 +61,7 @@ class ZMQNode:
     # def get_msg(self):
     #     if self.type != 'Receiver':
     #         raise ValueError("ZMQ type must be 'Receiver' to receive messages")
-        
+
     #     try:
     #         # Non-blocking receive
     #         serialized_array = self.socket.recv(zmq.NOBLOCK)
@@ -66,13 +71,13 @@ class ZMQNode:
     #         # No data is available
     #         print("No message available right now")
     #         return None
-        
+
     # For some reason a simple get is not working. buffer will blow up when read speed is too slow
     # So we will read all the way until the buffer if empty to bypass this problem
     def get_all_msg(self, return_last=True):
-        if self.type != 'Receiver':
+        if self.type != "Receiver":
             raise ValueError("ZMQ type must be 'Receiver' to receive messages")
-        
+
         messages = []
         while True:
             try:
@@ -85,6 +90,8 @@ class ZMQNode:
                 break
 
         if return_last:
+            # for message in messages:
+            #     print(message["test"], message["time"], time.time())
             return messages[-1] if messages else None
         else:
             return messages if messages else None
