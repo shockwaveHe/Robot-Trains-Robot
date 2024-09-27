@@ -523,7 +523,7 @@ if __name__ == "__main__":
         env_cfg = WalkCfg()
         train_cfg = PPOConfig()
         EnvClass = WalkEnv
-        fixed_command = jnp.array([0.1, 0.0, 0.0])
+        fixed_command = jnp.array([0.2, 0.0, 0.0])
         kwargs = {"ref_motion_type": args.ref}
 
     elif "squat" in args.env:
