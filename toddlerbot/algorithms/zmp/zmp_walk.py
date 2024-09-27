@@ -16,7 +16,7 @@ class ZMPWalk:
         robot: Robot,
         cycle_time: float,
         single_double_ratio: float = 2.0,
-        foot_step_height: float = 0.03,
+        foot_step_height: float = 0.05,
         control_dt: float = 0.02,
         control_cost_Q: float = 1.0,
         control_cost_R: float = 0.1,
@@ -520,10 +520,10 @@ class ZMPWalk:
             return np.vstack(
                 [
                     -hip_yaw,
-                    -hip_roll,
+                    hip_roll,
                     hip_pitch,
                     knee_pitch,
-                    ank_roll - hip_roll,
+                    hip_roll - ank_roll,
                     -ank_pitch,
                 ]
             ).T
@@ -531,10 +531,10 @@ class ZMPWalk:
             return np.vstack(
                 [
                     -hip_yaw,
-                    hip_roll,
+                    -hip_roll,
                     -hip_pitch,
                     -knee_pitch,
-                    ank_roll - hip_roll,
+                    hip_roll - ank_roll,
                     -ank_pitch,
                 ]
             ).T

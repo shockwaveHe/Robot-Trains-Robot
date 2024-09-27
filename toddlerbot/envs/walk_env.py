@@ -23,7 +23,7 @@ class WalkCfg(MJXConfig):
         command_list: List[List[float]] = field(
             default_factory=lambda: [
                 [0.0, 0.0, 0.0],
-                [-0.1, 0.0, 0.0],
+                [-0.05, 0.0, 0.0],
                 [0.1, 0.0, 0.0],
                 [0.0, -0.1, 0.0],
                 [0.0, 0.1, 0.0],
