@@ -42,7 +42,7 @@ class MuJoCoSim(BaseSim):
         self.n_frames = n_frames
         self.dt = dt
         self.control_dt = n_frames * dt
-        self.fixed_base = fixed_base
+        self.fixed_base = fixed_base # DISCUSS, do I still need this?
 
         if len(xml_str) > 0 and assets is not None:
             model = mujoco.MjModel.from_xml_string(xml_str, assets)
@@ -54,7 +54,7 @@ class MuJoCoSim(BaseSim):
                     )
                 else:
                     xml_path = find_robot_file_path(robot.name, suffix="_scene.xml")
-
+            print(xml_path)
             model = mujoco.MjModel.from_xml_path(xml_path)
 
         self.model = model
@@ -107,6 +107,7 @@ class MuJoCoSim(BaseSim):
         default_qpos = np.array(self.model.keyframe("home").qpos, dtype=np.float32)
         self.data.qpos = default_qpos.copy()
         self.data.qvel = np.zeros(self.model.nv, dtype=np.float32)
+        self.data.ctrl = self.model.keyframe("home").ctrl.copy()
         self.forward()
 
     def get_motor_state(self) -> Dict[str, JointState]:
@@ -263,6 +264,7 @@ class MuJoCoSim(BaseSim):
             )
             mujoco.mj_step(self.model, self.data)
 
+        import ipdb; ipdb.set_trace()
         if self.visualizer is not None:
             self.visualizer.visualize(self.data)
 
@@ -286,6 +288,7 @@ class MuJoCoSim(BaseSim):
             dtype=np.float64,
         )
         for i, motor_ctrls in enumerate(motor_ctrls_list):
+            import ipdb; ipdb.set_trace()
             if isinstance(motor_ctrls, np.ndarray):
                 control[self.n_frames * i : self.n_frames * (i + 1)] = motor_ctrls
             else:

@@ -1,0 +1,229 @@
+<mujoco model="sbot">
+  <compiler angle="radian" autolimits="true"/>
+  <option>
+    <flag eulerdamp="disable" />
+  </option>
+  <asset>
+    <mesh name="base_link" file="meshes/sbot/collision/base_link.STL"/>
+    <mesh name="shoulder_link" file="meshes/sbot/collision/shoulder_link.STL"/>
+    <mesh name="upper_arm_link" file="meshes/sbot/collision/upper_arm_link.STL"/>
+    <mesh name="forearm_link" file="meshes/sbot/collision/forearm_link.STL"/>
+    <mesh name="wrist_1_link" file="meshes/sbot/collision/wrist_1_link.STL"/>
+    <mesh name="wrist_2_link" file="meshes/sbot/collision/wrist_2_link.STL"/>
+    <mesh name="wrist_3_link" file="meshes/sbot/collision/wrist_3_link.STL"/>
+    <mesh name="torso_visual" file="../assemblies/toddlerbot/meshes/torso_visual.stl" />
+    <mesh name="spur_1m_20t_visual" file="../assemblies/toddlerbot/meshes/spur_1m_20t_visual.stl" />
+    <mesh name="neck_yaw_link_visual" file="../assemblies/toddlerbot/meshes/neck_yaw_link_visual.stl" />
+    <mesh name="neck_pitch_link_visual" file="../assemblies/toddlerbot/meshes/neck_pitch_link_visual.stl" />
+    <mesh name="spur_gear_(13_teeth)_visual" file="../assemblies/toddlerbot/meshes/spur_gear_(13_teeth)_visual.stl" />
+    <mesh name="waist_gears_visual" file="../assemblies/toddlerbot/meshes/waist_gears_visual.stl" />
+    <mesh name="waist_link_visual" file="../assemblies/toddlerbot/meshes/waist_link_visual.stl" />
+    <mesh name="spiral_bevel_1m_14t_30deg_visual" file="../assemblies/toddlerbot/meshes/spiral_bevel_1m_14t_30deg_visual.stl" />
+    <mesh name="spiral_bevel_1m_14t_30deg_2_visual" file="../assemblies/toddlerbot/meshes/spiral_bevel_1m_14t_30deg_2_visual.stl" />
+    <mesh name="spur_gear_19_teeth_visual" file="../assemblies/toddlerbot/meshes/spur_gear_19_teeth_visual.stl" />
+    <mesh name="spur_gear_21_teeth_visual" file="../assemblies/toddlerbot/meshes/spur_gear_21_teeth_visual.stl" />
+    <mesh name="spur_gear_19_teeth_2_visual" file="../assemblies/toddlerbot/meshes/spur_gear_19_teeth_2_visual.stl" />
+    <mesh name="spur_gear_21_teeth_2_visual" file="../assemblies/toddlerbot/meshes/spur_gear_21_teeth_2_visual.stl" />
+    <mesh name="left_hip_yaw_link_visual" file="../assemblies/left_leg_OP3/meshes/left_hip_yaw_link_visual.stl" />
+    <mesh name="left_hip_roll_link_visual" file="../assemblies/left_leg_OP3/meshes/left_hip_roll_link_visual.stl" />
+    <mesh name="left_hip_pitch_link_xm430_visual" file="../assemblies/left_leg_OP3/meshes/left_hip_pitch_link_xm430_visual.stl" />
+    <mesh name="left_calf_link_visual" file="../assemblies/left_leg_OP3/meshes/left_calf_link_visual.stl" />
+    <mesh name="left_bearing_683_visual" file="../assemblies/left_leg_OP3/meshes/left_bearing_683_visual.stl" />
+    <mesh name="left_bearing_683_2_visual" file="../assemblies/left_leg_OP3/meshes/left_bearing_683_2_visual.stl" />
+    <mesh name="left_ank_pitch_link_visual" file="../assemblies/left_leg_OP3/meshes/left_ank_pitch_link_visual.stl" />
+    <mesh name="left_ank_roll_link_visual" file="../assemblies/left_leg_OP3/meshes/left_ank_roll_link_visual.stl" />
+    <mesh name="left_xm430_plate_visual" file="../assemblies/left_leg_OP3/meshes/left_xm430_plate_visual.stl" />
+    <mesh name="left_knee_rod_visual" file="../assemblies/left_leg_OP3/meshes/left_knee_rod_visual.stl" />
+    <mesh name="left_knee_rod_2_visual" file="../assemblies/left_leg_OP3/meshes/left_knee_rod_2_visual.stl" />
+    <mesh name="right_hip_yaw_link_visual" file="../assemblies/right_leg_OP3/meshes/right_hip_yaw_link_visual.stl" />
+    <mesh name="right_hip_roll_link_visual" file="../assemblies/right_leg_OP3/meshes/right_hip_roll_link_visual.stl" />
+    <mesh name="right_hip_pitch_link_xm430_visual" file="../assemblies/right_leg_OP3/meshes/right_hip_pitch_link_xm430_visual.stl" />
+    <mesh name="right_calf_link_visual" file="../assemblies/right_leg_OP3/meshes/right_calf_link_visual.stl" />
+    <mesh name="right_bearing_683_visual" file="../assemblies/right_leg_OP3/meshes/right_bearing_683_visual.stl" />
+    <mesh name="right_bearing_683_2_visual" file="../assemblies/right_leg_OP3/meshes/right_bearing_683_2_visual.stl" />
+    <mesh name="right_ank_pitch_link_visual" file="../assemblies/right_leg_OP3/meshes/right_ank_pitch_link_visual.stl" />
+    <mesh name="right_ank_roll_link_visual" file="../assemblies/right_leg_OP3/meshes/right_ank_roll_link_visual.stl" />
+    <mesh name="right_xm430_plate_visual" file="../assemblies/right_leg_OP3/meshes/right_xm430_plate_visual.stl" />
+    <mesh name="right_knee_rod_visual" file="../assemblies/right_leg_OP3/meshes/right_knee_rod_visual.stl" />
+    <mesh name="right_knee_rod_2_visual" file="../assemblies/right_leg_OP3/meshes/right_knee_rod_2_visual.stl" />
+    <mesh name="left_sho_pitch_link_visual" file="../assemblies/left_arm_umi/meshes/left_sho_pitch_link_visual.stl" />
+    <mesh name="left_2xl430_gears_visual" file="../assemblies/left_arm_umi/meshes/left_2xl430_gears_visual.stl" />
+    <mesh name="left_spur_1m_24t_drive_visual" file="../assemblies/left_arm_umi/meshes/left_spur_1m_24t_drive_visual.stl" />
+    <mesh name="left_spur_1m_24t_driven_visual" file="../assemblies/left_arm_umi/meshes/left_spur_1m_24t_driven_visual.stl" />
+    <mesh name="left_sho_yaw_link_visual" file="../assemblies/left_arm_umi/meshes/left_sho_yaw_link_visual.stl" />
+    <mesh name="left_2xl430_gears_2_visual" file="../assemblies/left_arm_umi/meshes/left_2xl430_gears_2_visual.stl" />
+    <mesh name="left_spur_1m_24t_drive_2_visual" file="../assemblies/left_arm_umi/meshes/left_spur_1m_24t_drive_2_visual.stl" />
+    <mesh name="left_spur_1m_24t_driven_2_visual" file="../assemblies/left_arm_umi/meshes/left_spur_1m_24t_driven_2_visual.stl" />
+    <mesh name="left_elb_yaw_link_visual" file="../assemblies/left_arm_umi/meshes/left_elb_yaw_link_visual.stl" />
+    <mesh name="left_spur_1m_24t_driven_3_visual" file="../assemblies/left_arm_umi/meshes/left_spur_1m_24t_driven_3_visual.stl" />
+    <mesh name="left_2xl430_gears_3_visual" file="../assemblies/left_arm_umi/meshes/left_2xl430_gears_3_visual.stl" />
+    <mesh name="left_spur_1m_24t_drive_3_visual" file="../assemblies/left_arm_umi/meshes/left_spur_1m_24t_drive_3_visual.stl" />
+    <mesh name="left_hand_visual" file="../assemblies/left_arm_umi/meshes/left_hand_visual.stl" />
+    <mesh name="left_wrist_bearing_plate_visual" file="../assemblies/left_arm_umi/meshes/left_wrist_bearing_plate_visual.stl" />
+    <mesh name="right_sho_pitch_link_visual" file="../assemblies/right_arm_umi/meshes/right_sho_pitch_link_visual.stl" />
+    <mesh name="right_2xl430_gears_visual" file="../assemblies/right_arm_umi/meshes/right_2xl430_gears_visual.stl" />
+    <mesh name="right_spur_1m_24t_drive_visual" file="../assemblies/right_arm_umi/meshes/right_spur_1m_24t_drive_visual.stl" />
+    <mesh name="right_spur_1m_24t_driven_visual" file="../assemblies/right_arm_umi/meshes/right_spur_1m_24t_driven_visual.stl" />
+    <mesh name="right_sho_yaw_link_visual" file="../assemblies/right_arm_umi/meshes/right_sho_yaw_link_visual.stl" />
+    <mesh name="right_2xl430_gears_2_visual" file="../assemblies/right_arm_umi/meshes/right_2xl430_gears_2_visual.stl" />
+    <mesh name="right_spur_1m_24t_drive_2_visual" file="../assemblies/right_arm_umi/meshes/right_spur_1m_24t_drive_2_visual.stl" />
+    <mesh name="right_spur_1m_24t_driven_2_visual" file="../assemblies/right_arm_umi/meshes/right_spur_1m_24t_driven_2_visual.stl" />
+    <mesh name="right_elb_yaw_link_visual" file="../assemblies/right_arm_umi/meshes/right_elb_yaw_link_visual.stl" />
+    <mesh name="right_spur_1m_24t_driven_3_visual" file="../assemblies/right_arm_umi/meshes/right_spur_1m_24t_driven_3_visual.stl" />
+    <mesh name="right_2xl430_gears_3_visual" file="../assemblies/right_arm_umi/meshes/right_2xl430_gears_3_visual.stl" />
+    <mesh name="right_spur_1m_24t_drive_3_visual" file="../assemblies/right_arm_umi/meshes/right_spur_1m_24t_drive_3_visual.stl" />
+    <mesh name="right_hand_visual" file="../assemblies/right_arm_umi/meshes/right_hand_visual.stl" />
+    <mesh name="right_wrist_bearing_plate_visual" file="../assemblies/right_arm_umi/meshes/right_wrist_bearing_plate_visual.stl" />
+  </asset>
+
+  <worldbody>
+    <camera name="home" pos="2.531 0.682 0.596" xyaxes="-0.292 0.956 0.000 -0.080 -0.024 0.996"/>
+    <body name="sbot" pos="0 0 0">
+      <geom quat="0.707107 0 0 -0.707107" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.86667 0.86667 0.8902 1" mesh="base_link"/>
+      <geom quat="0.707107 0 0 -0.707107" type="mesh" rgba="0.86667 0.86667 0.8902 1" mesh="base_link"/>
+      <body name="shoulder_link" pos="0 0 0.172" quat="0.707107 0 0 -0.707107">
+        <inertial pos="-0.015506 5.31134e-06 0.00202666" quat="0.707744 0.00819027 0.00819366 0.706374" mass="7.48001" diaginertia="0.0296005 0.0290159 0.0236767"/>
+        <joint name="joint0" pos="0 0 0" axis="0 0 1" range="-6.28319 6.28319" actuatorfrcrange="-346 346"/>
+        <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.866667 0.866667 0.890196 1" mesh="shoulder_link"/>
+        <geom type="mesh" rgba="0.866667 0.866667 0.890196 1" mesh="shoulder_link"/>
+        <body name="upper_arm_link" pos="-0.1885 0 0">
+          <inertial pos="0.00037048 -1.0498e-06 0.24431" quat="0.707104 0.00419016 0.00419555 0.707085" mass="13.27" diaginertia="0.67925 0.673219 0.0370655"/>
+          <joint name="joint1" pos="0 0 0" axis="-1 0 0" range="-2.35619 2.35619" actuatorfrcrange="-346 346"/>
+          <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.86667 0.86667 0.8902 1" mesh="upper_arm_link"/>
+          <geom type="mesh" rgba="0.86667 0.86667 0.8902 1" mesh="upper_arm_link"/>
+          <body name="forearm_link" pos="0.14635 0 0.5907">
+            <inertial pos="-0.0085627 -0.000680804 0.284369" quat="0.71768 0.00484718 0.00408494 0.696344" mass="3.99016" diaginertia="0.185231 0.183525 0.00594995"/>
+            <joint name="joint2" pos="0 0 0" axis="-1 0 0" range="-3.14159 3.14159" actuatorfrcrange="-163 163"/>
+            <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.866667 0.866667 0.890196 1" mesh="forearm_link"/>
+            <geom type="mesh" rgba="0.866667 0.866667 0.890196 1" mesh="forearm_link"/>
+            <body name="wrist_1_link" pos="-0.1498 0 0.5494">
+              <inertial pos="0.00603382 5.30466e-05 0.00949427" quat="0.705615 -0.0107006 -0.0099924 0.708444" mass="2.34999" diaginertia="0.00569172 0.00536728 0.00279135"/>
+              <joint name="joint3" pos="0 0 0" axis="-1 0 0" range="-6.28319 6.28319" actuatorfrcrange="-63 63"/>
+              <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.866667 0.866667 0.890196 1" mesh="wrist_1_link"/>
+              <geom type="mesh" rgba="0.866667 0.866667 0.890196 1" mesh="wrist_1_link"/>
+              <body name="wrist_2_link" pos="0 0 0.1498">
+                <inertial pos="-0.00949427 -5.30466e-05 -0.00603382" quat="0.493379 0.506011 0.508512 0.491879" mass="2.34999" diaginertia="0.00569172 0.00536728 0.00279135"/>
+                <joint name="joint4" pos="0 0 0" axis="0 0 1" range="-6.28319 6.28319" actuatorfrcrange="-63 63"/>
+                <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.866667 0.866667 0.890196 1" mesh="wrist_2_link"/>
+                <geom type="mesh" rgba="0.866667 0.866667 0.890196 1" mesh="wrist_2_link"/>
+                <body name="wrist_3_link" pos="-0.1767 0 0">
+                  <inertial pos="-0.0596959 4.23114e-05 -0.000741538" quat="0.498223 0.500476 0.519237 0.481342" mass="3.84506" diaginertia="0.0208399 0.0207775 0.0121087"/>
+                  <joint name="joint5" pos="0 0 0" axis="-1 0 0" range="-6.28319 6.28319" actuatorfrcrange="-63 63"/>
+                  <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.792157 0.819608 0.933333 1" mesh="wrist_3_link"/>
+                  <geom type="mesh" rgba="0.792157 0.819608 0.933333 1" mesh="wrist_3_link"/>
+                  <geom size="0.00723 0.00723 0.007825" pos="-0.0785 0 0" quat="0.5 0.5 -0.5 -0.5" type="box"/>
+                  <body name="attachment" pos="0 0 0.045" quat="0 0 0 1">
+                    <site name="attachment_site" rgba="1 0 0 1" size="0.01" group="1"/>
+                    <body name="toddlerbot" pos="0.08 0 -0.1" quat="1 0 0 0">
+                      <include file="toddlerbot_OP3.xml"/>
+                    </body>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+    <equality>
+    <joint joint1="neck_yaw_driven" joint2="neck_yaw_drive" polycoef="0 -0.722222 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <joint joint1="neck_pitch_driven" joint2="neck_pitch_drive" polycoef="0 -0.909091 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <joint joint1="left_hip_yaw_driven" joint2="left_hip_yaw_drive" polycoef="0 -0.904762 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <joint joint1="right_hip_yaw_driven" joint2="right_hip_yaw_drive" polycoef="0 -0.904762 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <joint joint1="left_sho_yaw_driven" joint2="left_sho_yaw_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <joint joint1="left_elbow_yaw_driven" joint2="left_elbow_yaw_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <joint joint1="left_wrist_pitch_driven" joint2="left_wrist_pitch_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <joint joint1="right_sho_yaw_driven" joint2="right_sho_yaw_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <joint joint1="right_elbow_yaw_driven" joint2="right_elbow_yaw_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <joint joint1="right_wrist_pitch_driven" joint2="right_wrist_pitch_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <weld body1="knee_rod" body2="bearing_683" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <weld body1="knee_rod_2" body2="bearing_683_2" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <weld body1="knee_rod_3" body2="bearing_683_3" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <weld body1="knee_rod_4" body2="bearing_683_4" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+  </equality>
+  <tendon>
+    <fixed name="waist_roll_coupling" limited="true" range="-0.03 0.03">
+      <joint joint="waist_act_1" coef="0.291667" />
+      <joint joint="waist_act_2" coef="-0.291667" />
+      <joint joint="waist_roll" coef="1" />
+    </fixed>
+    <fixed name="waist_yaw_coupling" limited="true" range="-0.001 0.001">
+      <joint joint="waist_act_1" coef="-0.208333" />
+      <joint joint="waist_act_2" coef="-0.208333" />
+      <joint joint="waist_yaw" coef="1" />
+    </fixed>
+  </tendon>
+  <contact>
+    <exclude body1="ank_roll_link" body2="ank_roll_link_2" />
+    <exclude body1="ank_roll_link_2" body2="ank_roll_link" />
+  </contact>
+  <actuator>
+    <position name="joint0" joint="joint0" kp="3460" kv="200" forcerange="-346 346" ctrlrange="-6.283185307179586 6.283185307179586"/> <!-- velocity="4.71238898038469" -->
+    <position name="joint1" joint="joint1" kp="3460" kv="200" forcerange="-346 346" ctrlrange="-2.356194490192345 2.356194490192345"/> <!-- velocity="4.71238898038469" -->
+    <position name="joint2" joint="joint2" kp="1630" kv="200" forcerange="-163 163" ctrlrange="-3.141592653589793 3.141592653589793"/> <!-- velocity="5.026548245743669" -->
+    <position name="joint3" joint="joint3" kp="630" kv="50" forcerange="-63 63" ctrlrange="-6.283185307179586 6.283185307179586"/> <!-- velocity="6.806784082777885" -->
+    <position name="joint4" joint="joint4" kp="630" kv="50" forcerange="-63 63" ctrlrange="-6.283185307179586 6.283185307179586"/> <!-- velocity="6.806784082777885" -->
+    <position name="joint5" joint="joint5" kp="630" kv="50" forcerange="-63 63" ctrlrange="-6.283185307179586 6.283185307179586"/> <!-- velocity="6.806784082777885" -->
+    <motor name="neck_yaw_drive" joint="neck_yaw_drive" class="XC330" />
+    <motor name="neck_pitch_drive" joint="neck_pitch_drive" class="XC330" />
+    <motor name="waist_act_1" joint="waist_act_1" class="XC330" />
+    <motor name="waist_act_2" joint="waist_act_2" class="XC330" />
+    <motor name="left_hip_yaw_drive" joint="left_hip_yaw_drive" class="XC330" />
+    <motor name="left_hip_roll" joint="left_hip_roll" class="2XC430" />
+    <motor name="left_hip_pitch" joint="left_hip_pitch" class="2XC430" />
+    <motor name="left_knee_act" joint="left_knee_act" class="XM430" />
+    <motor name="left_ank_roll" joint="left_ank_roll" class="XC430" />
+    <motor name="left_ank_pitch" joint="left_ank_pitch" class="XC430" />
+    <motor name="right_hip_yaw_drive" joint="right_hip_yaw_drive" class="XC330" />
+    <motor name="right_hip_roll" joint="right_hip_roll" class="2XC430" />
+    <motor name="right_hip_pitch" joint="right_hip_pitch" class="2XC430" />
+    <motor name="right_knee_act" joint="right_knee_act" class="XM430" />
+    <motor name="right_ank_roll" joint="right_ank_roll" class="XC430" />
+    <motor name="right_ank_pitch" joint="right_ank_pitch" class="XC430" />
+    <motor name="left_sho_pitch" joint="left_sho_pitch" class="XC430" />
+    <motor name="left_sho_roll" joint="left_sho_roll" class="2XL430" />
+    <motor name="left_sho_yaw_drive" joint="left_sho_yaw_drive" class="2XL430" />
+    <motor name="left_elbow_roll" joint="left_elbow_roll" class="2XL430" />
+    <motor name="left_elbow_yaw_drive" joint="left_elbow_yaw_drive" class="2XL430" />
+    <motor name="left_wrist_pitch_drive" joint="left_wrist_pitch_drive" class="2XL430" />
+    <motor name="left_wrist_roll" joint="left_wrist_roll" class="2XL430" />
+    <motor name="right_sho_pitch" joint="right_sho_pitch" class="XC430" />
+    <motor name="right_sho_roll" joint="right_sho_roll" class="2XL430" />
+    <motor name="right_sho_yaw_drive" joint="right_sho_yaw_drive" class="2XL430" />
+    <motor name="right_elbow_roll" joint="right_elbow_roll" class="2XL430" />
+    <motor name="right_elbow_yaw_drive" joint="right_elbow_yaw_drive" class="2XL430" />
+    <motor name="right_wrist_pitch_drive" joint="right_wrist_pitch_drive" class="2XL430" />
+    <motor name="right_wrist_roll" joint="right_wrist_roll" class="2XL430" />
+  </actuator>
+  <default>
+    <geom type="mesh" solref="0.004 1" />
+    <default class="visual">
+      <geom type="mesh" contype="0" conaffinity="0" group="2" />
+    </default>
+    <default class="collision">
+      <geom group="3" />
+    </default>
+    <default class="XM430">
+      <motor ctrlrange="-3 3" />
+    </default>
+    <default class="XC430">
+      <motor ctrlrange="-2 2" />
+    </default>
+    <default class="2XC430">
+      <motor ctrlrange="-2 2" />
+    </default>
+    <default class="2XL430">
+      <motor ctrlrange="-2 2" />
+    </default>
+    <default class="XC330">
+      <motor ctrlrange="-1 1" />
+    </default>
+  </default>
+  <keyframe>
+    <key name="home" qpos="0 0.76332 1.4 -2.32 -1.6 0 0 0 0 0 0 0 0 0 0 0 0 -0.267268 0.523599 -0.523599 -0.523599 -0.25637 0 0.523599 -0.523599 -0.523599 0 0 0 0.267268 -0.523599 0.523599 0.523599 -0.25637 0 -0.523599 0.523599 0.523599 0.174533 -0.261799 1.0472 -1.0472 0.523599 -1.0472 1.0472 1.309 -1.309 0 -0.174533 -0.261799 -1.0472 1.0472 0.523599 1.0472 -1.0472 -1.309 1.309 0" ctrl="0 0.76332 1.4 -2.32 -1.6 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"/>
+  </keyframe>
+  <sensor>
+    <force name="attachment_force" site="attachment_site" />
+  </sensor>
+</mujoco>

@@ -12,14 +12,16 @@ import numpy as np
 import numpy.typing as npt
 from tqdm import tqdm
 
-from toddlerbot.policies import BasePolicy, get_policy_class
+from toddlerbot.policies import BasePolicy, BaseArmPolicy, get_policy_class, get_arm_policy_class
 from toddlerbot.policies.calibrate import CalibratePolicy
 from toddlerbot.policies.mjx_policy import MJXPolicy
 from toddlerbot.policies.sysID_fixed import SysIDFixedPolicy
 from toddlerbot.sim import BaseSim, Obs
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
+from toddlerbot.sim.arm_toddler_sim import ArmToddlerSim
 from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.sim.robot import Robot
+from toddlerbot.sim.arm import BaseArm, get_arm_class
 from toddlerbot.utils.misc_utils import dump_profiling_data, log, snake2camel
 from toddlerbot.visualization.vis_plot import (
     plot_joint_tracking,
@@ -212,7 +214,7 @@ def plot_results(
 
 
 # @profile()
-def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
+def main(robot: Robot, arm: BaseArm, sim: BaseSim, toddler_policy: BasePolicy, arm_policy: BaseArmPolicy, vis_type: str):
     header_name = snake2camel(sim.name)
 
     loop_time_list: List[List[float]] = []
@@ -221,8 +223,8 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
 
     n_steps_total = (
         float("inf")
-        if "real" in sim.name and "fixed" not in policy.name
-        else policy.n_steps_total
+        if "real" in sim.name and "fixed" not in toddler_policy.name
+        else toddler_policy.n_steps_total
     )
     p_bar = tqdm(total=n_steps_total, desc="Running the policy")
     start_time = time.time()
@@ -242,12 +244,12 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
 
             obs_time = time.time()
 
-            if isinstance(policy, SysIDFixedPolicy):
-                ckpt_times = list(policy.ckpt_dict.keys())
+            if isinstance(toddler_policy, SysIDFixedPolicy):
+                ckpt_times = list(toddler_policy.ckpt_dict.keys())
                 ckpt_idx = bisect.bisect_left(ckpt_times, obs.time)
                 ckpt_idx = min(ckpt_idx, len(ckpt_times) - 1)
                 if ckpt_idx != last_ckpt_idx:
-                    motor_kps = policy.ckpt_dict[ckpt_times[ckpt_idx]]
+                    motor_kps = toddler_policy.ckpt_dict[ckpt_times[ckpt_idx]]
                     motor_kps_updated = {}
                     for joint_name in motor_kps:
                         for motor_name in robot.joint_to_motor_name[joint_name]:
@@ -257,7 +259,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
                         sim.set_motor_kps(motor_kps_updated)
                         last_ckpt_idx = ckpt_idx
 
-            motor_target = policy.step(obs, "real" in sim.name)
+            motor_target = toddler_policy.step(obs, "real" in sim.name)
 
             inference_time = time.time()
 
@@ -268,6 +270,9 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
             sim.set_motor_angles(motor_angles)
             set_action_time = time.time()
 
+            arm_joint_targets = arm_policy.step(obs, "real" in sim.name)
+            sim.set_target_arm_joint_angles(arm_joint_targets) # DISCUSS: should I change BaseSim?
+
             sim.step()
             sim_step_time = time.time()
 
@@ -276,7 +281,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
 
             step_idx += 1
 
-            p_bar_steps = int(1 / policy.control_dt)
+            p_bar_steps = int(1 / toddler_policy.control_dt)
             if step_idx % p_bar_steps == 0:
                 p_bar.update(p_bar_steps)
 
@@ -293,7 +298,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
                 ]
             )
 
-            time_until_next_step = start_time + policy.control_dt * step_idx - step_end
+            time_until_next_step = start_time + toddler_policy.control_dt * step_idx - step_end
             # print(f"time_until_next_step: {time_until_next_step * 1000:.2f} ms")
             if ("real" in sim.name or vis_type == "view") and time_until_next_step > 0:
                 time.sleep(time_until_next_step)
@@ -304,7 +309,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
     finally:
         p_bar.close()
 
-    exp_name = f"{robot.name}_{policy.name}_{sim.name}"
+    exp_name = f"{robot.name}_{toddler_policy.name}_{sim.name}"
     time_str = time.strftime("%Y%m%d_%H%M%S")
     exp_folder_path = f"results/{exp_name}_{time_str}"
 
@@ -314,9 +319,9 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
         "obs_list": obs_list,
         "motor_angles_list": motor_angles_list,
     }
-    if "sysID" in policy.name:
-        assert isinstance(policy, SysIDFixedPolicy)
-        log_data_dict["ckpt_dict"] = policy.ckpt_dict
+    if "sysID" in toddler_policy.name:
+        assert isinstance(toddler_policy, SysIDFixedPolicy)
+        log_data_dict["ckpt_dict"] = toddler_policy.ckpt_dict
 
     log_data_path = os.path.join(exp_folder_path, "log_data.pkl")
     with open(log_data_path, "wb") as f:
@@ -324,7 +329,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
 
     if hasattr(sim, "save_recording"):
         assert isinstance(sim, MuJoCoSim)
-        sim.save_recording(exp_folder_path, policy.control_dt, 2)
+        sim.save_recording(exp_folder_path, toddler_policy.control_dt, 2)
 
     sim.close()
 
@@ -333,8 +338,8 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
         "motor_angles_list": motor_angles_list,
     }
 
-    if isinstance(policy, SysIDFixedPolicy):
-        log_data_dict["ckpt_dict"] = policy.ckpt_dict
+    if isinstance(toddler_policy, SysIDFixedPolicy):
+        log_data_dict["ckpt_dict"] = toddler_policy.ckpt_dict
 
     log_data_path = os.path.join(exp_folder_path, "log_data.pkl")
     with open(log_data_path, "wb") as f:
@@ -343,7 +348,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
     prof_path = os.path.join(exp_folder_path, "profile_output.lprof")
     dump_profiling_data(prof_path)
 
-    if isinstance(policy, CalibratePolicy):
+    if isinstance(toddler_policy, CalibratePolicy):
         motor_config_path = os.path.join(robot.root_path, "config_motors.json")
         if os.path.exists(motor_config_path):
             motor_names = robot.get_joint_attrs("is_passive", False)
@@ -352,7 +357,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
             )
             motor_pos_delta = (
                 np.array(list(motor_angles_list[-1].values()), dtype=np.float32)
-                - policy.default_motor_pos
+                - toddler_policy.default_motor_pos
             )
             motor_pos_delta[
                 np.logical_and(motor_pos_delta > -0.005, motor_pos_delta < 0.005)
@@ -372,14 +377,14 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
             raise FileNotFoundError(f"Could not find {motor_config_path}")
 
     log("Visualizing...", header="Walking")
-    plot_results(
-        robot,
-        policy,
-        loop_time_list,
-        obs_list,
-        motor_angles_list,
-        exp_folder_path,
-    )
+    # plot_results(
+    #     robot,
+    #     toddler_policy,
+    #     loop_time_list,
+    #     obs_list,
+    #     motor_angles_list,
+    #     exp_folder_path,
+    # )
 
 
 if __name__ == "__main__":
@@ -393,20 +398,39 @@ if __name__ == "__main__":
     parser.add_argument(
         "--sim",
         type=str,
-        default="mujoco",
+        default="arm_toddler",
         help="The simulator to use.",
     )
     parser.add_argument(
         "--vis",
         type=str,
         default="render",
+        choices=["render", "view", "none"],
         help="The visualization type.",
     )
     parser.add_argument(
-        "--policy",
+        "--toddler-policy",
         type=str,
         default="stand",
         help="The name of the task.",
+    )
+    parser.add_argument(
+        "--arm-type",
+        type=str,
+        default="franka",
+        choices=["franka", "standard_bot"],
+        help="The type of the arm.",
+    )
+    parser.add_argument(
+        "--arm-policy",
+        type=str,
+        default="fix_arm",
+        help="The name of the arm policy.",
+    )
+    parser.add_argument(
+        "--rigid-connection",
+        action="store_true",
+        help="Whether to use a rigid connection between the arm and the robot.",
     )
     parser.add_argument(
         "--ckpt",
@@ -435,37 +459,55 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     robot = Robot(args.robot)
+    
+    ArmClass = get_arm_class(args.arm_type)
+    arm: BaseArm = ArmClass()
 
     sim: BaseSim | None = None
     if args.sim == "mujoco":
-        sim = MuJoCoSim(robot, vis_type=args.vis, fixed_base="fixed" in args.policy)
+        fixed_base="fixed" in args.toddler_policy
+        sim = MuJoCoSim(robot, vis_type=args.vis, fixed_base=fixed_base)
+        init_motor_pos = sim.get_observation().motor_pos
+    elif args.sim == "arm_toddler":
+        rigid_connection = args.rigid_connection
+        sensors = ["attachment_force"] # DISCUSS
+        fixed_base = "fixed" in args.toddler_policy or args.rigid_connection
+        sim = ArmToddlerSim(robot, arm, n_frames=5, vis_type=args.vis, fixed_base=fixed_base, sensor_names=sensors)
+        sim.load_keyframe()
+        init_arm_joint_pos = sim.get_observation().arm_joint_pos
         init_motor_pos = sim.get_observation().motor_pos
 
     elif args.sim == "real":
         sim = RealWorld(robot)
-        sim.has_imu = "fixed" not in args.policy
+        sim.has_imu = "fixed" not in args.toddler_policy
         init_motor_pos = sim.get_observation(retries=-1).motor_pos
+        raise NotImplementedError("Real world ArmTodder policy not implemented yet")
 
     else:
         raise ValueError("Unknown simulator")
 
-    PolicyClass = get_policy_class(args.policy.replace("_fixed", ""))
-
-    if "replay" in args.policy:
-        policy = PolicyClass(args.policy, robot, init_motor_pos, args.run_name)
-    elif "ref" in args.policy:
-        policy = PolicyClass(args.policy, robot, init_motor_pos, args.ref_motion)
-    elif issubclass(PolicyClass, MJXPolicy):
+    ToddlerPolicyClass = get_policy_class(args.toddler_policy.replace("_fixed", ""))
+    ArmPolicyClass = get_arm_policy_class(args.arm_policy)
+    if "replay" in args.toddler_policy:
+        toddler_policy = ToddlerPolicyClass(args.toddler_policy, robot, init_motor_pos, args.run_name)
+    elif "ref" in args.toddler_policy:
+        toddler_policy = ToddlerPolicyClass(args.toddler_policy, robot, init_motor_pos, args.ref_motion)
+    elif issubclass(ToddlerPolicyClass, MJXPolicy):
         assert len(args.ckpt) > 0, "Need to provide a checkpoint for MJX policies"
         assert len(args.command) > 0, "Need to provide a command for MJX policies"
-        policy = PolicyClass(
-            args.policy,
+        toddler_policy = ToddlerPolicyClass(
+            args.toddler_policy,
             robot,
             init_motor_pos,
             args.ckpt,
             fixed_command=np.array(args.command.split(" "), dtype=np.float32),
         )
     else:
-        policy = PolicyClass(args.policy, robot, init_motor_pos)
-
-    main(robot, sim, policy, args.vis)
+        toddler_policy = ToddlerPolicyClass(args.toddler_policy, robot, init_motor_pos, fixed_base=fixed_base)
+    if args.sim == "arm_toddler":
+        if args.arm_policy == "fix_arm":
+            arm_policy = ArmPolicyClass(args.arm_policy, robot, init_arm_joint_pos)
+        else:
+            raise ValueError("Unknown arm policy")
+    # input("Press Enter to start the simulation...")
+    main(robot, arm, sim, toddler_policy, arm_policy, args.vis)

@@ -13,8 +13,8 @@ from toddlerbot.utils.math_utils import interpolate_action, quat2euler
 
 class TeleopSquatPolicy(BasePolicy, policy_name="teleop_squat"):
     def __init__(
-        self, name: str, robot: Robot, init_motor_pos: npt.NDArray[np.float32]
-    ):
+        self, name: str, robot: Robot, init_motor_pos: npt.NDArray[np.float32], fixed_base: bool = False
+    ): # TODO: add fixed_base to other policies
         super().__init__(name, robot, init_motor_pos)
 
         self.default_motor_pos = np.array(
@@ -57,11 +57,11 @@ class TeleopSquatPolicy(BasePolicy, policy_name="teleop_squat"):
                 for name in self.robot.joint_ordering
             ]
         )
-        if "fixed" not in self.name:
+        if not fixed_base:
             # Disregard the free joint
             self.joint_indices -= 1
 
-        self.q_start_idx = 0 if "fixed" in self.name else 7
+        self.q_start_idx = 0 if fixed_base else 7
 
         self.prep_duration = 2.0
         self.prep_time, self.prep_action = self.move(
@@ -93,6 +93,7 @@ class TeleopSquatPolicy(BasePolicy, policy_name="teleop_squat"):
         
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         # Preparation phase
+        # import ipdb; ipdb.set_trace()
         if obs.time < self.prep_time[-1]:
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
@@ -133,9 +134,9 @@ class TeleopSquatPolicy(BasePolicy, policy_name="teleop_squat"):
 
         torso_euler = np.asarray(quat2euler(torso_quat))
 
-        com_pos = np.asarray(self.data.body(0).subtree_com, dtype=np.float32)
+        com_pos = np.asarray(self.data.body("torso").subtree_com, dtype=np.float32)
         com_jacp = np.zeros((3, self.model.nv))
-        mujoco.mj_jacSubtreeCom(self.model, self.data, com_jacp, 0)
+        mujoco.mj_jacSubtreeCom(self.model, self.data, com_jacp, self.data.body("torso").id)
 
         if self.com_pos_init is None:
             self.com_pos_init = com_pos.copy()

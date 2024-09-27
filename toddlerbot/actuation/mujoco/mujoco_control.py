@@ -68,3 +68,7 @@ class MotorController:
 class PositionController:
     def step(self, q: ArrayType, q_dot: ArrayType, a: ArrayType):
         return a
+    
+class JointController:
+    def step(self, q: ArrayType):
+        return q

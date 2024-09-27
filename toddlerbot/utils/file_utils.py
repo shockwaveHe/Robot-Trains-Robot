@@ -115,6 +115,14 @@ def find_last_result_dir(result_dir: str, prefix: str = "") -> Optional[str]:
         print(f"No directories starting with '{prefix}' were found in {result_dir}.")
         return None
 
+def find_arm_toddler_file_path(arm_name: str, toddler_name: str, suffix: str = ".urdf") -> str:
+    robot_dir = os.path.join("toddlerbot", "robot_descriptions", arm_name)
+    if os.path.exists(robot_dir):
+        file_path = os.path.join(robot_dir, '_'.join([arm_name, toddler_name]) + suffix)
+        if os.path.exists(file_path):
+            return file_path
+
+    raise FileNotFoundError(f"No {suffix} file found for arm '{arm_name}' and robot '{toddler_name}'.")
 
 def find_robot_file_path(robot_name: str, suffix: str = ".urdf") -> str:
     """
