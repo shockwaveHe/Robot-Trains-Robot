@@ -420,17 +420,7 @@ class MJXEnv(PipelineEnv):
         )
 
         action_delay: jax.Array = state.info["action_buffer"][-self.nu :]
-        motor_target = jnp.where(
-            action_delay < 0,
-            self.default_motor_pos
-            + self.action_scale
-            * action_delay
-            * (self.default_motor_pos - self.motor_limits[:, 0]),
-            self.default_motor_pos
-            + self.action_scale
-            * action_delay
-            * (self.motor_limits[:, 1] - self.default_motor_pos),
-        )
+        motor_target = self.default_motor_pos + self.action_scale * action_delay
         motor_target = self.motion_ref.override_motor_target(motor_target, state_ref)
 
         if self.filter_type == "ema":
