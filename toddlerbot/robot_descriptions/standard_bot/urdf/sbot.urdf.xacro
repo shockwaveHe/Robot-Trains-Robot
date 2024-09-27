@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot xmlns:xacro="http://wiki.ros.org/xacro" name="sbot">
+
+  <!-- Use this if parameters are set from the launch file, otherwise delete -->
+  <xacro:arg name="prefix" default="" />
+
+  <xacro:arg name="use_mock_hardware" default="false" />
+  <xacro:arg name="mock_sensor_commands" default="false" />
+  <xacro:arg name="sim_gazebo_classic" default="false" />
+  <xacro:arg name="sim_gazebo" default="false" />
+  <xacro:arg name="simulation_controllers" default="" />
+
+  <xacro:include filename="$(find standard_bots_description)/urdf/sbot/sbot_macro.xacro"/>
+  <xacro:include filename="$(find standard_bots_description)/urdf/sbot/sbot_macro.ros2_control.xacro"/>
+
+  <!-- create link fixed to the "world" -->
+  <link name="world" />
+
+  <!-- Load robot's macro with parameters -->
+  <!-- set prefix if multiple robots are used -->
+  <xacro:sbot prefix="$(arg prefix)" parent="world" >
+    <origin xyz="0 0 0" rpy="0 0 ${-pi/2}" />          <!-- position robot in the world -->
+  </xacro:sbot>
+
+  <xacro:sbot_ros2_control
+    name="sbot"
+    prefix="$(arg prefix)"
+    use_mock_hardware="$(arg use_mock_hardware)"
+    mock_sensor_commands="$(arg mock_sensor_commands)"
+    sim_gazebo_classic="$(arg sim_gazebo_classic)"
+    sim_gazebo="$(arg sim_gazebo)"
+    simulation_controllers="$(arg simulation_controllers)" />
+
+  <!-- base scene -->
+  <xacro:arg name="scene_column_a" default="0.3" />
+  <xacro:arg name="scene_column_h" default="0.3" />
+  <xacro:arg name="scene_floor_a" default="2.0" />
+  <xacro:arg name="scene_floor_h" default="0.1" />
+  <xacro:arg name="scene_environment_alpha" default="0.1" />
+
+  <xacro:property name="scene_column_a" default="$(arg scene_column_a)" />
+  <xacro:property name="scene_column_h" default="$(arg scene_column_h)" />
+  <xacro:property name="scene_floor_a" default="$(arg scene_floor_a)" />
+  <xacro:property name="scene_floor_h" default="$(arg scene_floor_h)" />
+  <xacro:property name="scene_environment_alpha" default="$(arg scene_environment_alpha)" />
+
+  <link name="scene_environment">
+    <collision>
+      <origin xyz="0 0 ${-1.05*scene_column_h/2}" rpy="0 0 0" />
+      <geometry>
+        <box size="${scene_column_a} ${scene_column_a} ${scene_column_h}" />
+      </geometry>
+    </collision>
+    <visual>
+      <origin xyz="0 0 ${-1.05*scene_column_h/2}" rpy="0 0 0" />
+      <geometry>
+        <box size="${scene_column_a} ${scene_column_a} ${scene_column_h}" />
+      </geometry>
+      <material name="blue">
+        <color rgba="0 0 1 ${scene_environment_alpha}"/>
+      </material>
+    </visual>
+
+    <collision>
+      <origin xyz="0 0 ${-scene_column_h-scene_floor_h/2}" rpy="0 0 0" />
+      <geometry>
+        <box size="${scene_floor_a} ${scene_floor_a} ${scene_floor_h}" />
+      </geometry>
+    </collision>
+    <visual>
+      <origin xyz="0 0 ${-scene_column_h-scene_floor_h/2}" rpy="0 0 0" />
+      <geometry>
+        <box size="${scene_floor_a} ${scene_floor_a} ${scene_floor_h}" />
+      </geometry>
+      <material name="blue">
+        <color rgba="0 0 1 ${scene_environment_alpha}"/>
+      </material>
+    </visual>
+
+  </link>
+
+  <joint name="base_to_scene" type="fixed">
+    <parent link="base_link" />
+    <child link="scene_environment" />
+    <origin rpy="0 0 0" xyz="0 0 0" />
+  </joint>
+
+</robot>

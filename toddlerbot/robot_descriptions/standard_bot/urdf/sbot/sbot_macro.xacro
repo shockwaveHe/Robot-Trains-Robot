@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot xmlns:xacro="http://wiki.ros.org/xacro">
+
+  <xacro:include filename="$(find standard_bots_description)/urdf/common.xacro" />
+  <xacro:include filename="$(find standard_bots_description)/urdf/materials.xacro" />
+
+  <xacro:macro name="sbot" params="prefix parent *origin">
+    <!-- LINKS -->
+    <!-- base link -->
+    <link name="${prefix}base_link">
+      <xacro:base_link_inertial/>
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+           <mesh filename="package://standard_bots_description/meshes/sbot/visual/base_link.STL" />
+        </geometry>
+        <material name="base_link_color"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <mesh filename="package://standard_bots_description/meshes/sbot/collision/base_link.STL" />
+        </geometry>
+      </collision>
+    </link>
+    <!-- shoulder_link -->
+    <link name="${prefix}shoulder_link">
+      <xacro:shoulder_link_inertial/>
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <mesh filename="package://standard_bots_description/meshes/sbot/visual/shoulder_link.STL" />
+        </geometry>
+        <material name="shoulder_link_color"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <mesh filename="package://standard_bots_description/meshes/sbot/collision/shoulder_link.STL" />
+        </geometry>
+      </collision>
+    </link>
+    <!-- upper_arm_link -->
+    <link name="${prefix}upper_arm_link">
+      <xacro:upper_arm_link_inertial/>
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <mesh filename="package://standard_bots_description/meshes/sbot/visual/upper_arm_link.STL" />
+        </geometry>
+        <material name="upper_arm_link_color"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <mesh filename="package://standard_bots_description/meshes/sbot/collision/upper_arm_link.STL" />
+        </geometry>
+      </collision>
+    </link>
+    <!-- forearm_link -->
+    <link name="${prefix}forearm_link">
+      <xacro:forearm_link_inertial/>
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <mesh filename="package://standard_bots_description/meshes/sbot/visual/forearm_link.STL" />
+        </geometry>
+        <material name="forearm_link_color"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <mesh filename="package://standard_bots_description/meshes/sbot/collision/forearm_link.STL" />
+        </geometry>
+      </collision>
+    </link>
+    <!-- wrist_1_link -->
+    <link name="${prefix}wrist_1_link">
+      <xacro:wrist_1_link_inertial/>
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <mesh filename="package://standard_bots_description/meshes/sbot/visual/wrist_1_link.STL" />
+        </geometry>
+        <material name="wrist_1_link_color"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <mesh filename="package://standard_bots_description/meshes/sbot/collision/wrist_1_link.STL" />
+        </geometry>
+      </collision>
+    </link>
+    <!-- wrist_2_link -->
+    <link name="${prefix}wrist_2_link">
+      <xacro:wrist_2_link_inertial/>
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <mesh filename="package://standard_bots_description/meshes/sbot/visual/wrist_2_link.STL" />
+        </geometry>
+        <material name="wrist_2_link_color"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <mesh filename="package://standard_bots_description/meshes/sbot/collision/wrist_2_link.STL" />
+        </geometry>
+      </collision>
+    </link>
+    <!-- wrist_3_link -->
+    <link name="${prefix}wrist_3_link">
+      <xacro:wrist_3_link_inertial/>
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <mesh filename="package://standard_bots_description/meshes/sbot/visual/wrist_3_link.STL" />
+        </geometry>
+        <material name="wrist_3_link_color"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <mesh filename="package://standard_bots_description/meshes/sbot/collision/wrist_3_link.STL" />
+        </geometry>
+      </collision>
+    </link>
+
+    <!-- All-zero tool frame. This frame should correspond to the TOOL frame of the robot's controller.) -->
+    <link name="${prefix}tool0" />
+    <!-- tool link -->
+
+    <!-- A collision box to represent the gripper -->
+    <link name="${prefix}gripper">
+      <collision>
+        <origin xyz="0 0 0.0785" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.1446 0.1446 0.1565"/>
+        </geometry>
+      </collision>
+    </link>
+
+<!-- START Delete if not needed -->
+    <!-- Standard frames for industrial robots. Also useful for manipulators.
+         (ROS-I specs - https://wiki.ros.org/Industrial/Tutorials/WorkingWithRosIndustrialRobotSupportPackages#Standardised_links_.2F_frames)-->
+    <!-- This frame should correspond to the BASE coordinate system of robot's controller.) -->
+    <link name="${prefix}base" />
+    <!-- Frame for mounting EEF models to a manipulator. x+ axis points forward (REP 103). -->
+    <link name="${prefix}flange" />
+<!-- END Delete if not needed  -->
+    <!-- END LINKS -->
+
+    <!-- JOINTS -->
+    <!-- base_joint fixes base_link to the environment -->
+    <joint name="${prefix}base_joint" type="fixed">
+      <xacro:insert_block name="origin" />
+      <parent link="${parent}" />
+      <child link="${prefix}base_link" />
+    </joint>
+    <!-- joint 0 -->
+    <joint name="${prefix}joint0" type="revolute">
+      <origin xyz="0 0 0.172" rpy="0 0 0" />
+      <parent link="${prefix}base_link" />
+      <child link="${prefix}shoulder_link" />
+      <axis xyz="0 0 1" />
+      <limit effort="346" lower="${radians(-360)}" upper="${radians(360)}" velocity="${radians(270)}" />
+    </joint>
+    <!-- joint 1 -->
+    <joint name="${prefix}joint1" type="revolute">
+      <origin xyz="-0.1885 0 0" rpy="0 0 0" />
+      <parent link="${prefix}shoulder_link" />
+      <child link="${prefix}upper_arm_link" />
+      <axis xyz="-1 0 0" />
+      <limit effort="346" lower="${radians(-135)}" upper="${radians(135)}" velocity="${radians(270)}" />
+    </joint>
+    <!-- joint 2 -->
+    <joint name="${prefix}joint2" type="revolute">
+      <origin xyz="0.14635000035763 0 0.5906999941826" rpy="0 0 0" />
+      <parent link="${prefix}upper_arm_link" />
+      <child link="${prefix}forearm_link" />
+      <axis xyz="-1 0 0" />
+      <limit effort="163" lower="${radians(-180)}" upper="${radians(180)}" velocity="${radians(288)}" />
+    </joint>
+    <!-- joint 3 -->
+    <joint name="${prefix}joint3" type="revolute">
+      <origin xyz="-0.1498 0 0.5494" rpy="0 0 0" />
+      <parent link="${prefix}forearm_link" />
+      <child link="${prefix}wrist_1_link" />
+      <axis xyz="-1 0 0" />
+      <limit effort="63" lower="${radians(-360)}" upper="${radians(360)}" velocity="${radians(390)}" />
+    </joint>
+    <!-- joint 4 -->
+    <joint name="${prefix}joint4" type="revolute">
+      <origin xyz="0 0 0.1498" rpy="0 0 0" />
+      <parent link="${prefix}wrist_1_link" />
+      <child link="${prefix}wrist_2_link" />
+      <axis xyz="0 0 1" />
+      <limit effort="63" lower="${radians(-360)}" upper="${radians(360)}" velocity="${radians(390)}" />
+    </joint>
+    <!-- joint 5 -->
+    <joint name="${prefix}joint5" type="revolute">
+      <origin xyz="-0.1767 0 0" rpy="0 0 0" />
+      <parent link="${prefix}wrist_2_link" />
+      <child link="${prefix}wrist_3_link" />
+      <axis xyz="-1 0 0" />
+      <limit effort="63" lower="${radians(-360)}" upper="${radians(360)}" velocity="${radians(390)}" />
+    </joint>
+
+    <!-- tool frame - fixed frame -->
+    <joint name="${prefix}joint5-tool0" type="fixed">
+      <parent link="${prefix}wrist_3_link" />
+      <child link="${prefix}tool0" />
+        <origin xyz="0 0 0" rpy="${pi/2} 0 ${-pi/2}" />
+    </joint>
+    <!-- END JOINTS -->
+
+<!-- START Delete if not needed -->
+    <!-- Standard frames for industrial robots. Also useful for manipulators.
+         (ROS-I specs - https://wiki.ros.org/Industrial/Tutorials/WorkingWithRosIndustrialRobotSupportPackages#Standardised_links_.2F_frames)-->
+    <joint name="${prefix}base_link-base_joint" type="fixed">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <parent link="${prefix}base_link" />
+      <child link="${prefix}base" />
+    </joint>
+
+    <joint name="${prefix}tool0-flange_joint" type="fixed">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <parent link="${prefix}tool0" />
+      <child link="${prefix}flange" />
+    </joint>
+
+    <joint name="${prefix}tool0-gripper" type="fixed">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <parent link="${prefix}tool0" />
+      <child link="${prefix}gripper" />
+    </joint>
+
+<!-- END Delete if not needed  -->
+
+
+  </xacro:macro>
+</robot>

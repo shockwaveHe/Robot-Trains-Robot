@@ -89,7 +89,8 @@ class TeleopSquatPolicy(BasePolicy, policy_name="teleop_squat"):
         self.step_curr = 0
         self.com_pos_error_prev = np.zeros(2, dtype=np.float32)
         self.torso_euler_error_prev = np.zeros(2, dtype=np.float32)
-
+        self.fixed_command = np.array([-0.02], dtype=np.float32)
+        
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         # Preparation phase
         if obs.time < self.prep_time[-1]:

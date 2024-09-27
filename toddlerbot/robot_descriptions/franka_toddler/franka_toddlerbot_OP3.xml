@@ -1,0 +1,368 @@
+<mujoco model="panda nohand">
+  <compiler angle="radian" autolimits="true"/>
+
+  <!-- <option integrator="implicitfast" impratio="10"/> -->
+
+  <default>
+    <default class="panda">
+      <material specular="0.5" shininess="0.25"/>
+      <joint armature="0.1" damping="1" axis="0 0 1" range="-2.8973 2.8973"/>
+      <general dyntype="none" biastype="affine" ctrlrange="-2.8973 2.8973" forcerange="-87 87"/>
+      <default class="finger">
+        <joint axis="0 1 0" type="slide" range="0 0.04"/>
+      </default>
+
+      <default class="panda/visual">
+        <geom type="mesh" contype="0" conaffinity="0" group="2"/>
+      </default>
+      <default class="panda/collision">
+        <geom type="mesh" group="3"/>
+      </default>
+      <site size="0.001" rgba="0.5 0.5 0.5 0.3" group="4"/>
+    </default>
+  </default>
+
+  <asset>
+    <material class="panda" name="white" rgba="1 1 1 1"/>
+    <material class="panda" name="off_white" rgba="0.901961 0.921569 0.929412 1"/>
+    <material class="panda" name="dark_grey" rgba="0.25 0.25 0.25 1"/>
+    <material class="panda" name="green" rgba="0 1 0 1"/>
+    <material class="panda" name="light_blue" rgba="0.039216 0.541176 0.780392 1"/>
+
+    <!-- Collision meshes -->
+    <mesh name="link0_c" file="assets/link0.stl"/>
+    <mesh name="link1_c" file="assets/link1.stl"/>
+    <mesh name="link2_c" file="assets/link2.stl"/>
+    <mesh name="link3_c" file="assets/link3.stl"/>
+    <mesh name="link4_c" file="assets/link4.stl"/>
+    <mesh name="link5_c0" file="assets/link5_collision_0.obj"/>
+    <mesh name="link5_c1" file="assets/link5_collision_1.obj"/>
+    <mesh name="link5_c2" file="assets/link5_collision_2.obj"/>
+    <mesh name="link6_c" file="assets/link6.stl"/>
+    <mesh name="link7_c" file="assets/link7.stl"/>
+
+    <!-- Visual meshes -->
+    <mesh file="assets/link0_0.obj"/>
+    <mesh file="assets/link0_1.obj"/>
+    <mesh file="assets/link0_2.obj"/>
+    <mesh file="assets/link0_3.obj"/>
+    <mesh file="assets/link0_4.obj"/>
+    <mesh file="assets/link0_5.obj"/>
+    <mesh file="assets/link0_7.obj"/>
+    <mesh file="assets/link0_8.obj"/>
+    <mesh file="assets/link0_9.obj"/>
+    <mesh file="assets/link0_10.obj"/>
+    <mesh file="assets/link0_11.obj"/>
+    <mesh file="assets/link1.obj"/>
+    <mesh file="assets/link2.obj"/>
+    <mesh file="assets/link3_0.obj"/>
+    <mesh file="assets/link3_1.obj"/>
+    <mesh file="assets/link3_2.obj"/>
+    <mesh file="assets/link3_3.obj"/>
+    <mesh file="assets/link4_0.obj"/>
+    <mesh file="assets/link4_1.obj"/>
+    <mesh file="assets/link4_2.obj"/>
+    <mesh file="assets/link4_3.obj"/>
+    <mesh file="assets/link5_0.obj"/>
+    <mesh file="assets/link5_1.obj"/>
+    <mesh file="assets/link5_2.obj"/>
+    <mesh file="assets/link6_0.obj"/>
+    <mesh file="assets/link6_1.obj"/>
+    <mesh file="assets/link6_2.obj"/>
+    <mesh file="assets/link6_3.obj"/>
+    <mesh file="assets/link6_4.obj"/>
+    <mesh file="assets/link6_5.obj"/>
+    <mesh file="assets/link6_6.obj"/>
+    <mesh file="assets/link6_7.obj"/>
+    <mesh file="assets/link6_8.obj"/>
+    <mesh file="assets/link6_9.obj"/>
+    <mesh file="assets/link6_10.obj"/>
+    <mesh file="assets/link6_11.obj"/>
+    <mesh file="assets/link6_12.obj"/>
+    <mesh file="assets/link6_13.obj"/>
+    <mesh file="assets/link6_14.obj"/>
+    <mesh file="assets/link6_15.obj"/>
+    <mesh file="assets/link6_16.obj"/>
+    <mesh file="assets/link7_0.obj"/>
+    <mesh file="assets/link7_1.obj"/>
+    <mesh file="assets/link7_2.obj"/>
+    <mesh file="assets/link7_3.obj"/>
+    <mesh file="assets/link7_4.obj"/>
+    <mesh file="assets/link7_5.obj"/>
+    <mesh file="assets/link7_6.obj"/>
+    <mesh file="assets/link7_7.obj"/>
+
+
+    <mesh name="torso_visual" file="../assemblies/toddlerbot/meshes/torso_visual.stl" />
+    <mesh name="spur_1m_20t_visual" file="../assemblies/toddlerbot/meshes/spur_1m_20t_visual.stl" />
+    <mesh name="neck_yaw_link_visual" file="../assemblies/toddlerbot/meshes/neck_yaw_link_visual.stl" />
+    <mesh name="neck_pitch_link_visual" file="../assemblies/toddlerbot/meshes/neck_pitch_link_visual.stl" />
+    <mesh name="spur_gear_(13_teeth)_visual" file="../assemblies/toddlerbot/meshes/spur_gear_(13_teeth)_visual.stl" />
+    <mesh name="waist_gears_visual" file="../assemblies/toddlerbot/meshes/waist_gears_visual.stl" />
+    <mesh name="waist_link_visual" file="../assemblies/toddlerbot/meshes/waist_link_visual.stl" />
+    <mesh name="spiral_bevel_1m_14t_30deg_visual" file="../assemblies/toddlerbot/meshes/spiral_bevel_1m_14t_30deg_visual.stl" />
+    <mesh name="spiral_bevel_1m_14t_30deg_2_visual" file="../assemblies/toddlerbot/meshes/spiral_bevel_1m_14t_30deg_2_visual.stl" />
+    <mesh name="spur_gear_19_teeth_visual" file="../assemblies/toddlerbot/meshes/spur_gear_19_teeth_visual.stl" />
+    <mesh name="spur_gear_21_teeth_visual" file="../assemblies/toddlerbot/meshes/spur_gear_21_teeth_visual.stl" />
+    <mesh name="spur_gear_19_teeth_2_visual" file="../assemblies/toddlerbot/meshes/spur_gear_19_teeth_2_visual.stl" />
+    <mesh name="spur_gear_21_teeth_2_visual" file="../assemblies/toddlerbot/meshes/spur_gear_21_teeth_2_visual.stl" />
+    <mesh name="left_hip_yaw_link_visual" file="../assemblies/left_leg_OP3/meshes/left_hip_yaw_link_visual.stl" />
+    <mesh name="left_hip_roll_link_visual" file="../assemblies/left_leg_OP3/meshes/left_hip_roll_link_visual.stl" />
+    <mesh name="left_hip_pitch_link_xm430_visual" file="../assemblies/left_leg_OP3/meshes/left_hip_pitch_link_xm430_visual.stl" />
+    <mesh name="left_calf_link_visual" file="../assemblies/left_leg_OP3/meshes/left_calf_link_visual.stl" />
+    <mesh name="left_bearing_683_visual" file="../assemblies/left_leg_OP3/meshes/left_bearing_683_visual.stl" />
+    <mesh name="left_bearing_683_2_visual" file="../assemblies/left_leg_OP3/meshes/left_bearing_683_2_visual.stl" />
+    <mesh name="left_ank_pitch_link_visual" file="../assemblies/left_leg_OP3/meshes/left_ank_pitch_link_visual.stl" />
+    <mesh name="left_ank_roll_link_visual" file="../assemblies/left_leg_OP3/meshes/left_ank_roll_link_visual.stl" />
+    <mesh name="left_xm430_plate_visual" file="../assemblies/left_leg_OP3/meshes/left_xm430_plate_visual.stl" />
+    <mesh name="left_knee_rod_visual" file="../assemblies/left_leg_OP3/meshes/left_knee_rod_visual.stl" />
+    <mesh name="left_knee_rod_2_visual" file="../assemblies/left_leg_OP3/meshes/left_knee_rod_2_visual.stl" />
+    <mesh name="right_hip_yaw_link_visual" file="../assemblies/right_leg_OP3/meshes/right_hip_yaw_link_visual.stl" />
+    <mesh name="right_hip_roll_link_visual" file="../assemblies/right_leg_OP3/meshes/right_hip_roll_link_visual.stl" />
+    <mesh name="right_hip_pitch_link_xm430_visual" file="../assemblies/right_leg_OP3/meshes/right_hip_pitch_link_xm430_visual.stl" />
+    <mesh name="right_calf_link_visual" file="../assemblies/right_leg_OP3/meshes/right_calf_link_visual.stl" />
+    <mesh name="right_bearing_683_visual" file="../assemblies/right_leg_OP3/meshes/right_bearing_683_visual.stl" />
+    <mesh name="right_bearing_683_2_visual" file="../assemblies/right_leg_OP3/meshes/right_bearing_683_2_visual.stl" />
+    <mesh name="right_ank_pitch_link_visual" file="../assemblies/right_leg_OP3/meshes/right_ank_pitch_link_visual.stl" />
+    <mesh name="right_ank_roll_link_visual" file="../assemblies/right_leg_OP3/meshes/right_ank_roll_link_visual.stl" />
+    <mesh name="right_xm430_plate_visual" file="../assemblies/right_leg_OP3/meshes/right_xm430_plate_visual.stl" />
+    <mesh name="right_knee_rod_visual" file="../assemblies/right_leg_OP3/meshes/right_knee_rod_visual.stl" />
+    <mesh name="right_knee_rod_2_visual" file="../assemblies/right_leg_OP3/meshes/right_knee_rod_2_visual.stl" />
+    <mesh name="left_sho_pitch_link_visual" file="../assemblies/left_arm_umi/meshes/left_sho_pitch_link_visual.stl" />
+    <mesh name="left_2xl430_gears_visual" file="../assemblies/left_arm_umi/meshes/left_2xl430_gears_visual.stl" />
+    <mesh name="left_spur_1m_24t_drive_visual" file="../assemblies/left_arm_umi/meshes/left_spur_1m_24t_drive_visual.stl" />
+    <mesh name="left_spur_1m_24t_driven_visual" file="../assemblies/left_arm_umi/meshes/left_spur_1m_24t_driven_visual.stl" />
+    <mesh name="left_sho_yaw_link_visual" file="../assemblies/left_arm_umi/meshes/left_sho_yaw_link_visual.stl" />
+    <mesh name="left_2xl430_gears_2_visual" file="../assemblies/left_arm_umi/meshes/left_2xl430_gears_2_visual.stl" />
+    <mesh name="left_spur_1m_24t_drive_2_visual" file="../assemblies/left_arm_umi/meshes/left_spur_1m_24t_drive_2_visual.stl" />
+    <mesh name="left_spur_1m_24t_driven_2_visual" file="../assemblies/left_arm_umi/meshes/left_spur_1m_24t_driven_2_visual.stl" />
+    <mesh name="left_elb_yaw_link_visual" file="../assemblies/left_arm_umi/meshes/left_elb_yaw_link_visual.stl" />
+    <mesh name="left_spur_1m_24t_driven_3_visual" file="../assemblies/left_arm_umi/meshes/left_spur_1m_24t_driven_3_visual.stl" />
+    <mesh name="left_2xl430_gears_3_visual" file="../assemblies/left_arm_umi/meshes/left_2xl430_gears_3_visual.stl" />
+    <mesh name="left_spur_1m_24t_drive_3_visual" file="../assemblies/left_arm_umi/meshes/left_spur_1m_24t_drive_3_visual.stl" />
+    <mesh name="left_hand_visual" file="../assemblies/left_arm_umi/meshes/left_hand_visual.stl" />
+    <mesh name="left_wrist_bearing_plate_visual" file="../assemblies/left_arm_umi/meshes/left_wrist_bearing_plate_visual.stl" />
+    <mesh name="right_sho_pitch_link_visual" file="../assemblies/right_arm_umi/meshes/right_sho_pitch_link_visual.stl" />
+    <mesh name="right_2xl430_gears_visual" file="../assemblies/right_arm_umi/meshes/right_2xl430_gears_visual.stl" />
+    <mesh name="right_spur_1m_24t_drive_visual" file="../assemblies/right_arm_umi/meshes/right_spur_1m_24t_drive_visual.stl" />
+    <mesh name="right_spur_1m_24t_driven_visual" file="../assemblies/right_arm_umi/meshes/right_spur_1m_24t_driven_visual.stl" />
+    <mesh name="right_sho_yaw_link_visual" file="../assemblies/right_arm_umi/meshes/right_sho_yaw_link_visual.stl" />
+    <mesh name="right_2xl430_gears_2_visual" file="../assemblies/right_arm_umi/meshes/right_2xl430_gears_2_visual.stl" />
+    <mesh name="right_spur_1m_24t_drive_2_visual" file="../assemblies/right_arm_umi/meshes/right_spur_1m_24t_drive_2_visual.stl" />
+    <mesh name="right_spur_1m_24t_driven_2_visual" file="../assemblies/right_arm_umi/meshes/right_spur_1m_24t_driven_2_visual.stl" />
+    <mesh name="right_elb_yaw_link_visual" file="../assemblies/right_arm_umi/meshes/right_elb_yaw_link_visual.stl" />
+    <mesh name="right_spur_1m_24t_driven_3_visual" file="../assemblies/right_arm_umi/meshes/right_spur_1m_24t_driven_3_visual.stl" />
+    <mesh name="right_2xl430_gears_3_visual" file="../assemblies/right_arm_umi/meshes/right_2xl430_gears_3_visual.stl" />
+    <mesh name="right_spur_1m_24t_drive_3_visual" file="../assemblies/right_arm_umi/meshes/right_spur_1m_24t_drive_3_visual.stl" />
+    <mesh name="right_hand_visual" file="../assemblies/right_arm_umi/meshes/right_hand_visual.stl" />
+    <mesh name="right_wrist_bearing_plate_visual" file="../assemblies/right_arm_umi/meshes/right_wrist_bearing_plate_visual.stl" />
+  </asset>
+
+  <worldbody>
+    <body name="link0" childclass="panda" pos="-.5 0 0">
+      <inertial mass="0.629769" pos="-0.041018 -0.00014 0.049974" fullinertia="0.00315 0.00388 0.004285 8.2904e-7 0.00015 8.2299e-6"/>
+      <geom mesh="link0_0" material="off_white" class="panda/visual"/>
+      <geom mesh="link0_1" material="dark_grey" class="panda/visual"/>
+      <geom mesh="link0_2" material="off_white" class="panda/visual"/>
+      <geom mesh="link0_3" material="dark_grey" class="panda/visual"/>
+      <geom mesh="link0_4" material="off_white" class="panda/visual"/>
+      <geom mesh="link0_5" material="dark_grey" class="panda/visual"/>
+      <geom mesh="link0_7" material="white" class="panda/visual"/>
+      <geom mesh="link0_8" material="white" class="panda/visual"/>
+      <geom mesh="link0_9" material="dark_grey" class="panda/visual"/>
+      <geom mesh="link0_10" material="off_white" class="panda/visual"/>
+      <geom mesh="link0_11" material="white" class="panda/visual"/>
+      <geom mesh="link0_c" class="panda/collision"/>
+      <body name="link1" pos="0 0 0.333">
+        <inertial mass="4.970684" pos="0.003875 0.002081 -0.04762" fullinertia="0.70337 0.70661 0.0091170 -0.00013900 0.0067720 0.019169"/>
+        <joint name="joint1"/>
+        <geom material="white" mesh="link1" class="panda/visual"/>
+        <geom mesh="link1_c" class="panda/collision"/>
+        <body name="link2" quat="1 -1 0 0">
+          <inertial mass="0.646926" pos="-0.003141 -0.02872 0.003495" fullinertia="0.0079620 2.8110e-2 2.5995e-2 -3.925e-3 1.0254e-2 7.04e-4"/>
+          <joint name="joint2" range="-1.7628 1.7628"/>
+          <geom material="white" mesh="link2" class="panda/visual"/>
+          <geom mesh="link2_c" class="panda/collision"/>
+          <body name="link3" pos="0 -0.316 0" quat="1 1 0 0">
+            <joint name="joint3"/>
+            <inertial mass="3.228604" pos="2.7518e-2 3.9252e-2 -6.6502e-2" fullinertia="3.7242e-2 3.6155e-2 1.083e-2 -4.761e-3 -1.1396e-2 -1.2805e-2"/>
+            <geom mesh="link3_0" material="white" class="panda/visual"/>
+            <geom mesh="link3_1" material="white" class="panda/visual"/>
+            <geom mesh="link3_2" material="white" class="panda/visual"/>
+            <geom mesh="link3_3" material="dark_grey" class="panda/visual"/>
+            <geom mesh="link3_c" class="panda/collision"/>
+            <body name="link4" pos="0.0825 0 0" quat="1 1 0 0">
+              <inertial mass="3.587895" pos="-5.317e-2 1.04419e-1 2.7454e-2" fullinertia="2.5853e-2 1.9552e-2 2.8323e-2 7.796e-3 -1.332e-3 8.641e-3"/>
+              <joint name="joint4" range="-3.0718 -0.0698"/>
+              <geom mesh="link4_0" material="white" class="panda/visual"/>
+              <geom mesh="link4_1" material="white" class="panda/visual"/>
+              <geom mesh="link4_2" material="dark_grey" class="panda/visual"/>
+              <geom mesh="link4_3" material="white" class="panda/visual"/>
+              <geom mesh="link4_c" class="panda/collision"/>
+              <body name="link5" pos="-0.0825 0.384 0" quat="1 -1 0 0">
+                <inertial mass="1.225946" pos="-1.1953e-2 4.1065e-2 -3.8437e-2" fullinertia="3.5549e-2 2.9474e-2 8.627e-3 -2.117e-3 -4.037e-3 2.29e-4"/>
+                <joint name="joint5"/>
+                <geom mesh="link5_0" material="dark_grey" class="panda/visual"/>
+                <geom mesh="link5_1" material="white" class="panda/visual"/>
+                <geom mesh="link5_2" material="white" class="panda/visual"/>
+                <geom mesh="link5_c0" class="panda/collision"/>
+                <geom mesh="link5_c1" class="panda/collision"/>
+                <geom mesh="link5_c2" class="panda/collision"/>
+                <body name="link6" quat="1 1 0 0">
+                  <inertial mass="1.666555" pos="6.0149e-2 -1.4117e-2 -1.0517e-2" fullinertia="1.964e-3 4.354e-3 5.433e-3 1.09e-4 -1.158e-3 3.41e-4"/>
+                  <joint name="joint6" range="-0.0175 3.7525"/>
+                  <geom mesh="link6_0" material="off_white" class="panda/visual"/>
+                  <geom mesh="link6_1" material="white" class="panda/visual"/>
+                  <geom mesh="link6_2" material="dark_grey" class="panda/visual"/>
+                  <geom mesh="link6_3" material="white" class="panda/visual"/>
+                  <geom mesh="link6_4" material="white" class="panda/visual"/>
+                  <geom mesh="link6_5" material="white" class="panda/visual"/>
+                  <geom mesh="link6_6" material="white" class="panda/visual"/>
+                  <geom mesh="link6_7" material="light_blue" class="panda/visual"/>
+                  <geom mesh="link6_8" material="light_blue" class="panda/visual"/>
+                  <geom mesh="link6_9" material="dark_grey" class="panda/visual"/>
+                  <geom mesh="link6_10" material="dark_grey" class="panda/visual"/>
+                  <geom mesh="link6_11" material="white" class="panda/visual"/>
+                  <geom mesh="link6_12" material="green" class="panda/visual"/>
+                  <geom mesh="link6_13" material="white" class="panda/visual"/>
+                  <geom mesh="link6_14" material="dark_grey" class="panda/visual"/>
+                  <geom mesh="link6_15" material="dark_grey" class="panda/visual"/>
+                  <geom mesh="link6_16" material="white" class="panda/visual"/>
+                  <geom mesh="link6_c" class="panda/collision"/>
+                  <body name="link7" pos="0.088 0 0" quat="1 1 0 0">
+                    <inertial mass="7.35522e-01" pos="1.0517e-2 -4.252e-3 6.1597e-2" fullinertia="1.2516e-2 1.0027e-2 4.815e-3 -4.28e-4 -1.196e-3 -7.41e-4"/>
+                    <joint name="joint7"/>
+                    <geom mesh="link7_0" material="white" class="panda/visual"/>
+                    <geom mesh="link7_1" material="dark_grey" class="panda/visual"/>
+                    <geom mesh="link7_2" material="dark_grey" class="panda/visual"/>
+                    <geom mesh="link7_3" material="dark_grey" class="panda/visual"/>
+                    <geom mesh="link7_4" material="dark_grey" class="panda/visual"/>
+                    <geom mesh="link7_5" material="dark_grey" class="panda/visual"/>
+                    <geom mesh="link7_6" material="dark_grey" class="panda/visual"/>
+                    <geom mesh="link7_7" material="white" class="panda/visual"/>
+                    <geom mesh="link7_c" class="panda/collision"/>
+                    <site name="mount_site" pos="0 0 0" rgba="0 1 0 1" size="0.005"/>
+                    <body name="attachment" pos="0 0 0.107" quat="0.3826834 0 0 0.9238795">
+                      <site name="attachment_site" rgba="0 1 0 1" size="0.005"/>
+                      <inertial pos="0 0 0" mass="0.0001" diaginertia="0 0 0" />
+                    </body>
+                    <body name="toddlerbot" pos="-0.09 0 0.17" quat="0 -0.71 0 -0.71">
+                      <include file="toddlerbot_OP3.xml"/>
+                    </body>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <general class="panda" name="actuator1" joint="joint1" gainprm="4500" biasprm="0 -4500 -450"/>
+    <general class="panda" name="actuator2" joint="joint2" gainprm="4500" biasprm="0 -4500 -450" ctrlrange="-1.7628 1.7628"/>
+    <general class="panda" name="actuator3" joint="joint3" gainprm="3500" biasprm="0 -3500 -350"/>
+    <general class="panda" name="actuator4" joint="joint4" gainprm="3500" biasprm="0 -3500 -350" ctrlrange="-3.0718 -0.0698"/>
+    <general class="panda" name="actuator5" joint="joint5" gainprm="2000" biasprm="0 -2000 -200" forcerange="-12 12"/>
+    <general class="panda" name="actuator6" joint="joint6" gainprm="2000" biasprm="0 -2000 -200" forcerange="-12 12" ctrlrange="-0.0175 3.7525"/>
+    <general class="panda" name="actuator7" joint="joint7" gainprm="2000" biasprm="0 -2000 -200" forcerange="-12 12"/>
+  </actuator>
+
+  <equality>
+    <joint joint1="neck_yaw_driven" joint2="neck_yaw_drive" polycoef="0 -0.722222 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <joint joint1="neck_pitch_driven" joint2="neck_pitch_drive" polycoef="0 -0.909091 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <joint joint1="left_hip_yaw_driven" joint2="left_hip_yaw_drive" polycoef="0 -0.904762 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <joint joint1="right_hip_yaw_driven" joint2="right_hip_yaw_drive" polycoef="0 -0.904762 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <joint joint1="left_sho_yaw_driven" joint2="left_sho_yaw_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <joint joint1="left_elbow_yaw_driven" joint2="left_elbow_yaw_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <joint joint1="left_wrist_pitch_driven" joint2="left_wrist_pitch_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <joint joint1="right_sho_yaw_driven" joint2="right_sho_yaw_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <joint joint1="right_elbow_yaw_driven" joint2="right_elbow_yaw_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <joint joint1="right_wrist_pitch_driven" joint2="right_wrist_pitch_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <weld body1="knee_rod" body2="bearing_683" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <weld body1="knee_rod_2" body2="bearing_683_2" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <weld body1="knee_rod_3" body2="bearing_683_3" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <weld body1="knee_rod_4" body2="bearing_683_4" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+  </equality>
+  <tendon>
+    <fixed name="waist_roll_coupling" limited="true" range="-0.03 0.03">
+      <joint joint="waist_act_1" coef="0.291667" />
+      <joint joint="waist_act_2" coef="-0.291667" />
+      <joint joint="waist_roll" coef="1" />
+    </fixed>
+    <fixed name="waist_yaw_coupling" limited="true" range="-0.001 0.001">
+      <joint joint="waist_act_1" coef="-0.208333" />
+      <joint joint="waist_act_2" coef="-0.208333" />
+      <joint joint="waist_yaw" coef="1" />
+    </fixed>
+  </tendon>
+  <contact>
+    <exclude body1="ank_roll_link" body2="ank_roll_link_2" />
+    <exclude body1="ank_roll_link_2" body2="ank_roll_link" />
+  </contact>
+  <actuator>
+    <motor name="neck_yaw_drive" joint="neck_yaw_drive" class="XC330" />
+    <motor name="neck_pitch_drive" joint="neck_pitch_drive" class="XC330" />
+    <motor name="waist_act_1" joint="waist_act_1" class="XC330" />
+    <motor name="waist_act_2" joint="waist_act_2" class="XC330" />
+    <motor name="left_hip_yaw_drive" joint="left_hip_yaw_drive" class="XC330" />
+    <motor name="left_hip_roll" joint="left_hip_roll" class="2XC430" />
+    <motor name="left_hip_pitch" joint="left_hip_pitch" class="2XC430" />
+    <motor name="left_knee_act" joint="left_knee_act" class="XM430" />
+    <motor name="left_ank_roll" joint="left_ank_roll" class="XC430" />
+    <motor name="left_ank_pitch" joint="left_ank_pitch" class="XC430" />
+    <motor name="right_hip_yaw_drive" joint="right_hip_yaw_drive" class="XC330" />
+    <motor name="right_hip_roll" joint="right_hip_roll" class="2XC430" />
+    <motor name="right_hip_pitch" joint="right_hip_pitch" class="2XC430" />
+    <motor name="right_knee_act" joint="right_knee_act" class="XM430" />
+    <motor name="right_ank_roll" joint="right_ank_roll" class="XC430" />
+    <motor name="right_ank_pitch" joint="right_ank_pitch" class="XC430" />
+    <motor name="left_sho_pitch" joint="left_sho_pitch" class="XC430" />
+    <motor name="left_sho_roll" joint="left_sho_roll" class="2XL430" />
+    <motor name="left_sho_yaw_drive" joint="left_sho_yaw_drive" class="2XL430" />
+    <motor name="left_elbow_roll" joint="left_elbow_roll" class="2XL430" />
+    <motor name="left_elbow_yaw_drive" joint="left_elbow_yaw_drive" class="2XL430" />
+    <motor name="left_wrist_pitch_drive" joint="left_wrist_pitch_drive" class="2XL430" />
+    <motor name="left_wrist_roll" joint="left_wrist_roll" class="2XL430" />
+    <motor name="right_sho_pitch" joint="right_sho_pitch" class="XC430" />
+    <motor name="right_sho_roll" joint="right_sho_roll" class="2XL430" />
+    <motor name="right_sho_yaw_drive" joint="right_sho_yaw_drive" class="2XL430" />
+    <motor name="right_elbow_roll" joint="right_elbow_roll" class="2XL430" />
+    <motor name="right_elbow_yaw_drive" joint="right_elbow_yaw_drive" class="2XL430" />
+    <motor name="right_wrist_pitch_drive" joint="right_wrist_pitch_drive" class="2XL430" />
+    <motor name="right_wrist_roll" joint="right_wrist_roll" class="2XL430" />
+  </actuator>
+  <default>
+    <geom type="mesh" solref="0.004 1" />
+    <default class="visual">
+      <geom type="mesh" contype="0" conaffinity="0" group="2" />
+    </default>
+    <default class="collision">
+      <geom group="3" />
+    </default>
+    <default class="XM430">
+      <motor ctrlrange="-3 3" />
+    </default>
+    <default class="XC430">
+      <motor ctrlrange="-2 2" />
+    </default>
+    <default class="2XC430">
+      <motor ctrlrange="-2 2" />
+    </default>
+    <default class="2XL430">
+      <motor ctrlrange="-2 2" />
+    </default>
+    <default class="XC330">
+      <motor ctrlrange="-1 1" />
+    </default>
+  </default>
+
+  <keyframe>
+    <key name="home" qpos="-0.0899758 0.62 -0.000859427 -1.62475 -0.0238155 3.7504 0 0 0 0 0 0 0 0 0 0 0 0 -0.267268 0.523599 -0.523599 -0.523599 -0.25637 0 0.523599 -0.523599 -0.523599 0 0 0 0.267268 -0.523599 0.523599 0.523599 -0.25637 0 -0.523599 0.523599 0.523599 0.174533 -0.261799 1.0472 -1.0472 0.523599 -1.0472 1.0472 1.309 -1.309 0 -0.174533 -0.261799 -1.0472 1.0472 0.523599 1.0472 -1.0472 -1.309 1.309 0" ctrl="-0.0899758 0.62 -0.000859427 -1.62475 -0.0238155 3.7504 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"/>
+  </keyframe>
+  <sensor>
+    <touch name="touch" site="mount_site" />
+    <force name="force" site="mount_site" />
+  </sensor>
+</mujoco>
