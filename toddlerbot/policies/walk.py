@@ -39,14 +39,14 @@ class WalkPolicy(MJXPolicy, policy_name="walk"):
 
     def get_command(self) -> npt.NDArray[np.float32]:
         if self.joystick is None:
-            command_arr = self.fixed_command
+            command = self.fixed_command
         else:
-            task_commands = self.joystick.get_controller_input()
-            command_arr = np.zeros(2, dtype=np.float32)
-            for task, command in task_commands.items():
+            control_inputs = self.joystick.get_controller_input()
+            command = np.zeros(2, dtype=np.float32)
+            for task, input in control_inputs.items():
                 if task == "walk_vertical":
-                    command_arr[0] = command
+                    command[0] = input
                 elif task == "walk_horizontal":
-                    command_arr[1] = command
+                    command[1] = input
 
-        return command_arr
+        return command

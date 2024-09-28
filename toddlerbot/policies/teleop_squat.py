@@ -13,7 +13,11 @@ from toddlerbot.utils.math_utils import interpolate_action, quat2euler
 
 class TeleopSquatPolicy(BasePolicy, policy_name="teleop_squat"):
     def __init__(
-        self, name: str, robot: Robot, init_motor_pos: npt.NDArray[np.float32]
+        self,
+        name: str,
+        robot: Robot,
+        init_motor_pos: npt.NDArray[np.float32],
+        squat_speed=0.03,
     ):
         super().__init__(name, robot, init_motor_pos)
 
@@ -26,6 +30,7 @@ class TeleopSquatPolicy(BasePolicy, policy_name="teleop_squat"):
         self.motor_limits = np.array(
             [robot.joint_limits[name] for name in robot.motor_ordering]
         )
+        self.squat_speed = squat_speed
 
         # Indices for the pitch joints
         self.pitch_joint_indicies = [
@@ -78,7 +83,6 @@ class TeleopSquatPolicy(BasePolicy, policy_name="teleop_squat"):
         except Exception:
             pass
 
-        self.command_list = [[-0.02], [0.02]]
         # PD controller parameters
         self.jac_kp = np.array([2000, 4000], dtype=np.float32)
         self.jac_kd = np.array([0, 0], dtype=np.float32)
@@ -94,13 +98,13 @@ class TeleopSquatPolicy(BasePolicy, policy_name="teleop_squat"):
         if self.joystick is None:
             raise ValueError("Joystick is required for this policy.")
         else:
-            task_commands = self.joystick.get_controller_input()
-            command_arr = np.zeros(2, dtype=np.float32)
-            for task, command in task_commands.items():
+            control_inputs = self.joystick.get_controller_input()
+            command = np.zeros(2, dtype=np.float32)
+            for task, input in control_inputs.items():
                 if task == "squat":
-                    command_arr[0] = command
+                    command[0] = -input * self.squat_speed
 
-        return command_arr
+        return command
 
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         # Preparation phase

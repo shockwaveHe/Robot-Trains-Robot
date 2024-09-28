@@ -1,5 +1,5 @@
 import contextlib
-from typing import Dict, List
+from typing import Dict
 
 with contextlib.redirect_stdout(None):
     import pygame
@@ -11,24 +11,27 @@ AXIS_MAPPING = {
     "left_joystick_horizontal": 0,
     "right_joystick_vertical": 3,
     "right_joystick_horizontal": 2,
-    "left_trigger": 4,
-    "right_trigger": 5,
+    # 4, 5, 6, 7 are tracking pads
+    "L2": 9,
+    "R2": 8,
 }
 BUTTON_MAPPING = {
-    "A": 0,
-    "B": 1,
-    "X": 2,
-    "Y": 3,
-    "left_bumper": 4,
-    "right_bumper": 5,
-    "back": 6,
-    "start": 7,
-    "L3": 8,
-    "R3": 9,
-    "d_pad_up": 10,
-    "d_pad_down": 11,
-    "d_pad_left": 12,
-    "d_pad_right": 13,
+    "A": 3,
+    "B": 4,
+    "X": 5,
+    "Y": 6,
+    "L1": 7,
+    "R1": 8,
+    "view": 11,
+    "menu": 12,
+    "d_pad_up": 16,
+    "d_pad_down": 17,
+    "d_pad_left": 18,
+    "d_pad_right": 19,
+    "L4": 20,
+    "R4": 21,
+    "L5": 22,
+    "R5": 23,
 }
 
 
@@ -72,16 +75,16 @@ class Joystick:
         # Process pygame events
         pygame.event.pump()
 
-        task_commands: Dict[str, float] = {}
+        control_inputs: Dict[str, float] = {}
         for key, task in self.joystick_mapping.items():
             if key in BUTTON_MAPPING:
                 value = self.get_button(key)
-                task_commands[task] = 0.0 if abs(value) < self.dead_zone else value
+                control_inputs[task] = 0.0 if abs(value) < self.dead_zone else value
             elif key in AXIS_MAPPING:
                 value = self.get_axis(key)
-                task_commands[task] = 0.0 if abs(value) < self.dead_zone else value
+                control_inputs[task] = 0.0 if abs(value) < self.dead_zone else value
 
-        return task_commands
+        return control_inputs
 
 
 if __name__ == "__main__":

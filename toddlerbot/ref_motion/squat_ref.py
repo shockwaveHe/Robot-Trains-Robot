@@ -97,8 +97,6 @@ class SquatReference(MotionReference):
             self.com_z_limits[1],
         )
 
-        print(f"com_z_target: {self.com_z_target}")
-
         joint_pos = self.default_joint_pos.copy()
         pitch_joint_pos = self.leg_ik(np.array(self.com_z_target, dtype=np.float32))
         joint_pos = inplace_update(
