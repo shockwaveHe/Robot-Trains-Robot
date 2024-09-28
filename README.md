@@ -73,12 +73,26 @@ This allows the user `youruser` to run echo and tee without a password. Ensure y
 
 Install miniforge: Download `Linux aarch64 (arm64)` from [their website](https://github.com/conda-forge/miniforge). Do NOT run the install script with sudo. Answer `yes` to all the options.
 
+For the accuracy of teleoperation and logging over network, we need to install ntp package to sync time of the jetson to server.
+```
+sudo apt install ntp
+sudo systemctl enable ntp
+sudo service ntp start
+```
+
+
 ### Linux Systems
 ```
 conda create --name toddlerbot python=3.10
 conda activate toddlerbot
 pip install -e .
 ```
+
+For the PID tuner tool, you need to install these:
+```
+sudo apt-get install libxcb-xkb1 libxkbcommon-x11-0 libxcb-cursor0
+```
+
 #### Setting up Optuna
 Linux:
 ```
@@ -393,6 +407,7 @@ pigar generate
 1. Don't drag the cables when removing the connector. Use the plastic tips on both sides
 1. Tape the DC power supply voltage and current buttons to avoid accidentally changing the settings
 
+Dynamixel XC330 can not sustain 4Mbps baudrate, it will raise a bunch of warnings (no status packet). Please down grade all xc330 to 2Mbps.
 
 ### Jetson Tips
 - We recommand using jtop to monitor the performance of the system

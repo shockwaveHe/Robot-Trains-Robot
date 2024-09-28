@@ -1,25 +1,18 @@
 # type: ignore
-
 import argparse
+import collections
 import os
 import pickle
-import threading
 import time
 from typing import Any, Dict, List
 
+import cv2
 import joblib
-import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
-import redis
-import zmq
 from pynput import keyboard
 from tqdm import tqdm
 
-from toddlerbot.actuation.dynamixel.dynamixel_control import (
-    DynamixelConfig,
-    DynamixelController,
-)
 from toddlerbot.policies import BasePolicy
 from toddlerbot.sensing.Camera import Camera
 from toddlerbot.sensing.FSR import FSR
@@ -30,27 +23,42 @@ from toddlerbot.utils.math_utils import round_floats
 from toddlerbot.utils.misc_utils import (
     dump_profiling_data,
     log,
-    precise_sleep,
-    # profile,
     snake2camel,
 )
+from toddlerbot.utils.comm_utils import ZMQNode
 
 default_pose = np.array(
     [
-        -0.8590293,
-        -0.5307572,
-        -0.00153399,
-        0.8789711,
-        1.1581554,
-        -0.8406215,
-        -1.0937283,
-        0.8805051,
-        -0.52615523,
-        -0.05062127,
-        0.8759031,
-        -1.2394564,
-        0.79613614,
-        -1.1366798,
+        # as drawn
+        -0.60745645,
+        -0.9265244,
+        0.02147579,
+        1.2348546,
+        0.52922344,
+        0.49394178,
+        -1.125942,
+        0.5123496,
+        -0.96180606,
+        -0.25003886,
+        1.2195148,
+        -0.35128164,
+        -0.6504078,
+        -1.1535536,
+        # wider pose
+        # -0.5829127,
+        # -0.7393787,
+        # 0.4356506,
+        # 0.9464662,
+        # -1.5953398,
+        # 0.9541359,
+        # -1.2133789,
+        # 0.82067966,
+        # -0.8390875,
+        # 0.10737848,
+        # 1.0016894,
+        # 1.1121361,
+        # -0.7117672,
+        # -1.2287186,
     ]
 )
 
@@ -71,19 +79,128 @@ def state_dict_to_np(state_dict):
     return np_array
 
 
+class InferencePolicy(BasePolicy):
+    def __init__(self, robot: Robot, model_path: str, dest: str):
+        super().__init__(name="replay_fixed", robot=robot, init_motor_pos=default_pose)
+
+        # self.default_action = np.array(
+        #     list(robot.default_motor_angles.values()), dtype=np.float32
+        # )
+
+        self.model_path = model_path
+        self.toggle_motor = False
+
+        self.log = False
+        self.stop_inference = True
+        self.blend_percentage = 0.0
+        self.default_pose = default_pose
+
+        self.camera = Camera(camera_id=0)
+
+        self.load_model()
+        # deque for observation
+        self.obs_deque = collections.deque([], maxlen=self.model.obs_horizon)
+        self.model_action_seq = []
+
+        self._start_spacebar_listener()
+
+    def _start_spacebar_listener(self):
+        def on_press(key):
+            try:
+                if key == keyboard.Key.space:
+                    self.stop_inference = not self.stop_inference
+                    self.blend_percentage = 0.0
+                    if self.stop_inference:
+                        print("\nInference stopped, resetting to default pose\n")
+                    else:
+                        print("\nInference started, leader controlled by model now.\n")
+            except AttributeError:
+                pass
+
+        listener = keyboard.Listener(on_press=on_press)
+        listener.start()
+
+    def load_model(self):
+        import torch
+        from diffusion_policy_minimal.datasets.teleop_dataset import TeleopImageDataset
+        from diffusion_policy_minimal.inference_class import DPModel
+
+        model_path = "/home/weizhuo2/Documents/gits/diffusion_policy_minimal/checkpoints/teleop_model.pth"
+        pred_horizon, obs_horizon, action_horizon = 16, 2, 8
+        lowdim_obs_dim, action_dim = 14, 14
+
+        # create dataset from file
+        dataset_path = "/home/weizhuo2/Documents/gits/diffusion_policy_minimal/teleop_data/teleop_dataset.lz4"
+        dataset = TeleopImageDataset(
+            dataset_path=dataset_path,
+            pred_horizon=pred_horizon,
+            obs_horizon=obs_horizon,
+            action_horizon=action_horizon,
+        )
+        # save training data statistics (min, max) for each dim
+        stats = dataset.stats
+
+        self.model = DPModel(
+            model_path,
+            stats,
+            pred_horizon,
+            obs_horizon,
+            action_horizon,
+            lowdim_obs_dim,
+            action_dim,
+        )
+
+    def inference_step(self) -> npt.NDArray[np.float32]:
+        model_action = self.model.get_action_from_obs(self.obs_deque)
+        return list(model_action)
+
+    def reset_slowly(self, obs_real):
+        leader_action = (
+            self.default_pose * self.blend_percentage
+            + obs_real.motor_pos * (1 - self.blend_percentage)
+        )
+        self.blend_percentage += 0.002
+        self.blend_percentage = min(1, self.blend_percentage)
+        return leader_action
+
+    def step(self, obs: Obs, obs_real: Obs) -> npt.NDArray[np.float32]:
+        # manage obs_deque
+        camera_frame = self.camera.get_state()
+        camera_frame = cv2.resize(camera_frame, (171, 96))[:96, 38:134] / 255.0
+        camera_frame = camera_frame.transpose(2, 0, 1)
+        obs_entry = {"image": camera_frame, "agent_pos": obs_real.motor_pos}
+        self.obs_deque.append(obs_entry)
+
+        leader_action = obs_real.motor_pos
+        if len(self.obs_deque) == self.model.obs_horizon:
+            if len(self.model_action_seq) == 0:
+                self.model_action_sequence = self.inference_step()
+            sim_action = self.model_action_sequence.pop(0)
+        else:
+            sim_action = obs_real.motor_pos
+
+        if self.stop_inference:
+            leader_action = self.reset_slowly(obs_real)
+            # if self.blend_percentage >= 0.99:
+            # self.log = True
+            # self.toggle_motor = True
+        # else:
+        #     leader_action = sim_action
+        return sim_action, leader_action
+
+
 """
 Replay Policy loads the dataset logged and follows the same trajectory
 """
 
 
 class ReplayPolicy(BasePolicy):
-    def __init__(self, robot: Robot, log_path: str, replay_dest: str):
-        super().__init__(robot)
-        self.name = "replay_fixed"
+    def __init__(self, robot: Robot, log_path: str, dest: str):
+        super().__init__(name="replay_fixed", robot=robot, init_motor_pos=default_pose)
 
-        self.default_action = np.array(
-            list(robot.default_motor_angles.values()), dtype=np.float32
-        )
+        # self.default_action = np.array(
+        #     list(robot.default_motor_angles.values()), dtype=np.float32
+        # )
 
         self.log_path = log_path
         self.toggle_motor = False
@@ -117,8 +234,9 @@ class ReplayPolicy(BasePolicy):
         listener.start()
 
     def reset_slowly(self, obs_real):
-        leader_action = self.default_pose * self.blend_percentage + obs_real.q * (
-            1 - self.blend_percentage
+        leader_action = (
+            self.default_pose * self.blend_percentage
+            + obs_real.motor_pos * (1 - self.blend_percentage)
         )
         self.blend_percentage += 0.002
         self.blend_percentage = min(1, self.blend_percentage)
@@ -149,14 +267,13 @@ class ReplayPolicy(BasePolicy):
         return sim_action, leader_action
 
 
-class TeleopFollowerPolicy(BasePolicy):
+class TeleopPolicy(BasePolicy):
     def __init__(self, robot: Robot):
-        super().__init__(robot)
-        self.name = "teleop_follower_fixed"
+        super().__init__(name="teleop_fixed", robot=robot, init_motor_pos=default_pose)
 
-        self.default_action = np.array(
-            list(robot.default_motor_angles.values()), dtype=np.float32
-        )
+        # self.default_action = np.array(
+        #     list(robot.default_motor_angles.values()), dtype=np.float32
+        # )
         self.log = False
         self.toggle_motor = True
         self.blend_percentage = 0.0
@@ -170,120 +287,14 @@ class TeleopFollowerPolicy(BasePolicy):
         self.fsr = FSR()
 
         self.default_pose = default_pose
+        self.last_t = time.time()
 
-        # start a zmq listener
-        self.start_zmq()
-
-    def start_zmq(self):
-        # Set up ZeroMQ context and socket for receiving data
-        self.zmq_context = zmq.Context()
-        self.socket = self.zmq_context.socket(zmq.PULL)
-        self.socket.bind("tcp://0.0.0.0:5555")  # Listen on all interfaces
-
-    def get_zmq_data(self):
-        # Receive the serialized numpy array
-        serialized_array = self.socket.recv()
-        send_dict = pickle.loads(serialized_array)
-        return send_dict
-
-    # note: calibrate zero at: toddlerbot/tools/calibration/calibrate_zero.py --robot toddlerbot_arms
-    # note: zero points can be accessed in config_motors.json
-
-    def step(self, obs: Obs, obs_real: Obs) -> npt.NDArray[np.float32]:
-        sim_action = obs_real.q
-        # state_dict = self.controller.get_motor_state()
-        # print(np.array(list(state_dict.values())))
-        # action = state_dict_to_action(state_dict)
-        # print(self.default_action)
-        # return self.default_action
-
-        # Log the data
-        if self.log:
-            t1 = time.time()
-            camera_frame = self.follower_camera.get_state()
-            fsrL, fsrR = self.fsr.get_state()
-            t2 = time.time()
-            print(f"camera_frame: {t2 - t1:.2f} s, current_time: {obs_real.time}")
-            self.dataset_logger.log_entry(
-                obs_real.time, obs_real.q, [fsrL, fsrR], camera_frame
-            )
-        else:
-            # clean up the log when not logging.
-            self.dataset_logger.maintain_log()
-
-        leader_action = self.default_pose * self.blend_percentage + obs_real.q * (
-            1 - self.blend_percentage
-        )
-        self.blend_percentage += 0.002
-        self.blend_percentage = min(1, self.blend_percentage)
-        return sim_action, leader_action
-
-
-class TeleopPolicy(BasePolicy):
-    def __init__(self, robot: Robot):
-        super().__init__(robot)
-        self.name = "teleop_fixed"
-
-        self.default_action = np.array(
-            list(robot.default_motor_angles.values()), dtype=np.float32
-        )
-        self.log = False
-        self.toggle_motor = True
-        self.blend_percentage = 0.0
-        self.nlogs = 1
-        print(
-            '\n\nBy default, logging is disabled. Press "space" to toggle logging.\n\n'
-        )
-        self.dataset_logger = DatasetLogger()
-
-        self.follower_camera = Camera(camera_id=0)
-        self.fsr = FSR()
-
-        self.default_pose = np.array(
-            [
-                -0.8590293,
-                -0.5307572,
-                -0.00153399,
-                0.8789711,
-                1.1581554,
-                -0.8406215,
-                -1.0937283,
-                0.8805051,
-                -0.52615523,
-                -0.05062127,
-                0.8759031,
-                -1.2394564,
-                0.79613614,
-                -1.1366798,
-            ]
-        )
-
-        self.start_zmq()
+        self.zmq = ZMQNode(type="Sender", ip="10.5.6.171")
+        # self.zmq = ZMQNode(type="Sender", ip="127.0.0.1") # test locally
+        self.test_idx = 0
 
         # Start a listener for the spacebar
         self._start_spacebar_listener()
-
-    def start_zmq(self):
-        # Set up ZeroMQ context and socket for receiving data
-        self.zmq_context = zmq.Context()
-        self.socket = self.zmq_context.socket(zmq.PUSH)
-        # Set high water mark and enable non-blocking send
-        self.socket.setsockopt(zmq.SNDHWM, 10)  # Limit queue to 10 messages
-        self.socket.setsockopt(
-            zmq.IMMEDIATE, 1
-        )  # Prevent blocking if receiver is not available
-        self.socket.connect("tcp://10.5.6.212:5555")
-
-    def send_msg(self, send_dict):
-        # Serialize the numpy array using pickle
-        serialized_array = pickle.dumps(send_dict)
-        # Send the serialized data
-        try:
-            # Send the serialized data with non-blocking to avoid hanging if the queue is full
-            self.socket.send(serialized_array, zmq.NOBLOCK)
-            # print("Message sent!")
-        except zmq.Again:
-            pass
 
     def _start_spacebar_listener(self):
         def on_press(key):
@@ -307,8 +318,9 @@ class TeleopPolicy(BasePolicy):
         listener.start()
 
     def reset_slowly(self, obs_real):
-        leader_action = self.default_pose * self.blend_percentage + obs_real.q * (
-            1 - self.blend_percentage
+        leader_action = (
+            self.default_pose * self.blend_percentage
+            + obs_real.motor_pos * (1 - self.blend_percentage)
         )
         self.blend_percentage += 0.002
         self.blend_percentage = min(1, self.blend_percentage)
@@ -318,32 +330,55 @@ class TeleopPolicy(BasePolicy):
     # note: zero points can be accessed in config_motors.json
 
     def step(self, obs: Obs, obs_real: Obs) -> npt.NDArray[np.float32]:
-        sim_action = obs_real.q
+        tstart = time.time()
+        # print("f")
+        sim_action = obs_real.motor_pos
         # state_dict = self.controller.get_motor_state()
         # print(np.array(list(state_dict.values())))
         # action = state_dict_to_action(state_dict)
         # print(self.default_action)
         # return self.default_action
 
+        fsrL, fsrR = self.fsr.get_state()
+
         # compile data to send to follower
-        send_dict = {"time": time.time(), "log": self.log, "sim_action": sim_action}
-        self.send_msg(send_dict)
+        send_dict = {
+            "time": time.time(),
+            "log": self.log,
+            "sim_action": sim_action,
+            "fsr": np.array([fsrL, fsrR]),
+            "test": self.test_idx
+        }
+        # print(f"Sending: {send_dict['time']}")
+        self.zmq.send_msg(send_dict)
+        self.test_idx += 1
+        print(time.time(), self.test_idx)
 
         # Log the data
         if self.log:
             t1 = time.time()
-            camera_frame = self.follower_camera.get_state()
-            fsrL, fsrR = self.fsr.get_state()
+            # camera_frame = self.follower_camera.get_state()
+            # camera_frame = None
             t2 = time.time()
-            print(f"camera_frame: {t2 - t1:.2f} s, current_time: {obs_real.time}")
+            print(
+                f"Logging traj {self.nlogs}: camera_frame: {t2 - t1:.2f} s, current_time: {obs_real.time}"
+            )
             self.dataset_logger.log_entry(
-                obs_real.time, obs_real.q, [fsrL, fsrR], camera_frame
+                obs_real.time, obs_real.motor_pos, [fsrL, fsrR], None
             )
         else:
             # clean up the log when not logging.
             self.dataset_logger.maintain_log()
+            # time.sleep(0.1)
 
         leader_action = self.reset_slowly(obs_real)
+
+        tend = time.time()
+        # print(f"Loop time: {1000*(tend - self.last_t):.2f} ms")
+        self.last_t = tend
+
+        # print(sim_action[0], leader_action[0], obs_real.motor_pos[0])
+        # print(f"Total time: {1000*(tend - tstart):.2f} ms")
         return sim_action, leader_action
 
 
@@ -401,9 +436,10 @@ def main(
                     # set motor kp kd
                     sim_real.dynamixel_controller.set_kp_kd(0, 0)
                     # when logging, only enable damping for part of the motors
-                    sim_real.dynamixel_controller.disable_motors(
-                        [18, 20, 21, 22, 25, 27, 28, 29]
-                    )
+                    # sim_real.dynamixel_controller.disable_motors(
+                    #     [18, 20, 21, 22, 25, 27, 28, 29]
+                    # )
+                    sim_leader.dynamixel_controller.disable_motors()
                     print("Disabling motors")
                 else:
                     # when not logging, enable all motors, with positive kp kd
@@ -457,7 +493,8 @@ def main(
             time_until_next_step = start_time + policy.control_dt * step_idx - step_end
             # print(f"time_until_next_step: {time_until_next_step * 1000:.2f} ms")
             if time_until_next_step > 0:
-                precise_sleep(time_until_next_step)
+                # precise_sleep(time_until_next_step)
+                time.sleep(time_until_next_step)
 
     except KeyboardInterrupt:
         log("KeyboardInterrupt recieved. Closing...", header=header_name)
@@ -525,7 +562,7 @@ if __name__ == "__main__":
         "--policy",
         type=str,
         default="teleop_fixed",
-        help="The name of the task. [replay_fixed, teleop_fixed]",
+        help="The name of the task. [replay_fixed, teleop_fixed, inference_fixed]",
     )
     parser.add_argument(
         "--ckpt",
@@ -550,9 +587,15 @@ if __name__ == "__main__":
         policy: BasePolicy = TeleopPolicy(robot_leader)
     elif args.policy == "replay_fixed":
         # path = "/Users/weizhuo2/Documents/gits/toddleroid/results/toddlerbot_arms_teleop_fixed_mujoco_20240904_202637/dataset.lz4"
-        path = "/Users/weizhuo2/Documents/gits/toddleroid/results/toddlerbot_arms_teleop_fixed_mujoco_20240906_175139/dataset.lz4"
+        # path = "/Users/weizhuo2/Documents/gits/toddleroid/results/toddlerbot_arms_teleop_fixed_mujoco_20240906_175139/dataset.lz4"
+        path = "/home/weizhuo2/Documents/gits/toddlerbot/results/toddlerbot_arms_teleop_fixed_mujoco_20240909_204445/dataset.lz4"
         policy: BasePolicy = ReplayPolicy(
-            robot_leader, log_path=path, replay_dest=args.replay_env
+            robot_leader, log_path=path, dest=args.replay_env
+        )
+    elif args.policy == "inference_fixed":
+        ckpt_path = "/"
+        policy: BasePolicy = InferencePolicy(
+            robot_leader, model_path=ckpt_path, dest=args.replay_env
         )
     else:
         raise ValueError("Unknown policy")
@@ -580,9 +623,10 @@ if __name__ == "__main__":
         sim_leader = RealWorld(robot_leader)
         sim_leader.has_imu = False
         if policy.name == "teleop_fixed":
-            sim_leader.dynamixel_controller.disable_motors(
-                [18, 20, 21, 22, 25, 27, 28, 29]
-            )
+            # sim_leader.dynamixel_controller.disable_motors(
+            #     [18, 20, 21, 22, 25, 27, 28, 29]
+            # )
+            sim_leader.dynamixel_controller.disable_motors()
 
     else:
         raise ValueError("Unknown simulator")

@@ -5,6 +5,59 @@ import cv2
 import numpy as np
 import zmq
 
+class ZMQNode:
+    def __init__(self, type='Sender', ip=None, queue_len=1):
+        self.type = type
+        if type not in ['Sender', 'Receiver']:
+            raise ValueError("ZMQ type must be either 'Sender' or 'Receiver'")
+        
+        self.queue_len = queue_len
+        self.ip = ip
+        self.start_zmq()
+
+    def start_zmq(self):
+        # Set up ZeroMQ context and socket for data exchange
+        self.zmq_context = zmq.Context()
+        if self.type == 'Sender':
+            self.socket = self.zmq_context.socket(zmq.PUSH)
+            # Set high water mark and enable non-blocking send
+            self.socket.setsockopt(zmq.SNDHWM, self.queue_len)  # Limit queue to 10 messages
+            self.socket.setsockopt(
+                zmq.IMMEDIATE, 1
+            )  # Prevent blocking if receiver is not available
+            self.socket.connect("tcp://" + self.ip + ":5555")
+        elif self.type == 'Receiver':
+            self.socket = self.zmq_context.socket(zmq.PULL)
+            self.socket.bind("tcp://0.0.0.0:5555")
+
+    def send_msg(self, send_dict):
+        if self.type != 'Sender':
+            raise ValueError("ZMQ type must be 'Sender' to send messages")
+        
+        # Serialize the numpy array using pickle
+        serialized_array = pickle.dumps(send_dict)
+        # Send the serialized data
+        try:
+            # Send the serialized data with non-blocking to avoid hanging if the queue is full
+            self.socket.send(serialized_array, zmq.NOBLOCK)
+            # print("Message sent!")
+        except zmq.Again:
+            pass
+
+    def get_msg(self):
+        if self.type != 'Receiver':
+            raise ValueError("ZMQ type must be 'Receiver' to receive messages")
+        
+        try:
+            # Non-blocking receive
+            serialized_array = self.socket.recv(zmq.NOBLOCK)
+            send_dict = pickle.loads(serialized_array)
+            return send_dict
+        except zmq.Again:
+            # No data is available
+            print("No message available right now")
+            return None
+
 
 class ZMQSender:
     def __init__(self, ip, queue_len=1):
@@ -59,13 +112,20 @@ class ZMQReceiver:
 
 send_to_remote = True
 if send_to_remote:
-    sender = ZMQSender("10.5.6.248")
+    sender = ZMQNode(type='Sender', ip="10.5.6.248")
 
 # Open the camera (0 is the default camera)
 cap = cv2.VideoCapture(0)
+# cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
 # Set the resolution to 640x360
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 360)
+
+# Get the fourcc code of the video format
+fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))
+fourcc_str = "".join([chr((fourcc >> 8 * i) & 0xFF) for i in range(4)])
+
+print(f"Video format (FOURCC): {fourcc_str}")
 
 # Check if the camera opened successfully
 if not cap.isOpened():
