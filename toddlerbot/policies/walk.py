@@ -42,11 +42,18 @@ class WalkPolicy(MJXPolicy, policy_name="walk"):
             command = self.fixed_command
         else:
             control_inputs = self.joystick.get_controller_input()
-            command = np.zeros(2, dtype=np.float32)
+            command = np.zeros_like(self.fixed_command)
             for task, input in control_inputs.items():
                 if task == "walk_vertical":
-                    command[0] = input
+                    input_values = np.array([-1, -0.5, 0, 1])
+                    output_values = np.array([0.2, 0.1, 0, -0.1])
+
+                    # Find the closest input and map it to the corresponding output value
+                    closest_index = np.argmin(np.abs(input_values - input))
+                    command[0] = output_values[closest_index]
                 elif task == "walk_horizontal":
                     command[1] = input
+                elif task == "turn":
+                    command[2] = input
 
         return command

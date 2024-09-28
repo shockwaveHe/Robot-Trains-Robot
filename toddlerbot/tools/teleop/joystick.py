@@ -4,9 +4,10 @@ from typing import Dict
 with contextlib.redirect_stdout(None):
     import pygame
 
+import evdev
 from pygame.joystick import JoystickType
 
-AXIS_MAPPING = {
+DECK_AXIS_MAPPING = {
     "left_joystick_vertical": 1,
     "left_joystick_horizontal": 0,
     "right_joystick_vertical": 3,
@@ -15,7 +16,15 @@ AXIS_MAPPING = {
     "L2": 9,
     "R2": 8,
 }
-BUTTON_MAPPING = {
+XBOX_AXIS_MAPPING = {
+    "left_joystick_vertical": 1,
+    "left_joystick_horizontal": 0,
+    "right_joystick_vertical": 4,
+    "right_joystick_horizontal": 3,
+    "LT": 2,
+    "RT": 5,
+}
+DECK_BUTTON_MAPPING = {
     "A": 3,
     "B": 4,
     "X": 5,
@@ -32,6 +41,16 @@ BUTTON_MAPPING = {
     "R4": 21,
     "L5": 22,
     "R5": 23,
+}
+XBOX_BUTTON_MAPPING = {
+    "A": 0,
+    "B": 1,
+    "X": 2,
+    "Y": 3,
+    "LB": 4,
+    "RB": 5,
+    "view": 6,
+    "menu": 7,
 }
 
 
@@ -51,15 +70,30 @@ class Joystick:
             "right_joystick_horizontal": "walk_turn",
             "A": "balance",
         }
+        # List all input devices
+        devices = [evdev.InputDevice(path) for path in evdev.list_devices()]
+
+        for device in devices:
+            device_name = device.name.lower()
+            if "microsoft" in device_name and "xbox" in device_name:
+                print("Detected: Microsoft Xbox Controller")
+                self.axis_mapping = XBOX_AXIS_MAPPING
+                self.button_mapping = XBOX_BUTTON_MAPPING
+                break
+            elif "steam" in device_name and "deck" in device_name:
+                print("Detected: Steam Deck Controller")
+                self.axis_mapping = DECK_AXIS_MAPPING
+                self.button_mapping = DECK_BUTTON_MAPPING
+                break
 
     def get_axis(self, axis_name: str) -> float:
-        if axis_name in AXIS_MAPPING:
-            axis_id = AXIS_MAPPING[axis_name]
+        if axis_name in self.axis_mapping:
+            axis_id = self.axis_mapping[axis_name]
             return self.joystick.get_axis(axis_id)
 
     def get_button(self, button_name: str) -> bool:
-        if button_name in BUTTON_MAPPING:
-            button_id = BUTTON_MAPPING[button_name]
+        if button_name in self.button_mapping:
+            button_id = self.button_mapping[button_name]
             return self.joystick.get_button(button_id)
 
     def initialize_joystick(self) -> JoystickType:
@@ -77,10 +111,10 @@ class Joystick:
 
         control_inputs: Dict[str, float] = {}
         for key, task in self.joystick_mapping.items():
-            if key in BUTTON_MAPPING:
+            if key in self.button_mapping:
                 value = self.get_button(key)
                 control_inputs[task] = 0.0 if abs(value) < self.dead_zone else value
-            elif key in AXIS_MAPPING:
+            elif key in self.axis_mapping:
                 value = self.get_axis(key)
                 control_inputs[task] = 0.0 if abs(value) < self.dead_zone else value
 
