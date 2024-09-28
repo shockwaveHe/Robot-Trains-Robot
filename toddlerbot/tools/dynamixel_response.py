@@ -3,7 +3,6 @@ import sys
 import time
 
 import numpy as np
-import serial
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PySide6.QtCore import Qt, QTimer
@@ -21,14 +20,10 @@ from PySide6.QtWidgets import (
 )
 from tqdm import tqdm
 
-from toddlerbot.actuation.dynamixel.dynamixel_control import (
-    DynamixelConfig,
-    DynamixelController,
-)
-from toddlerbot.sim import BaseSim, Obs
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.sim.robot import Robot
+
 
 class MuJoCoFakeDyn:
     def __init__(self, sim: MuJoCoSim):
@@ -44,7 +39,7 @@ class MuJoCoFakeDyn:
         self.sim.set_motor_angles(pos)
 
     def set_parameters(self, kp, ki, kd, kff1, kff2, ids):
-        self.sim.set_motor_kps({"joint_0":kp})
+        self.sim.set_motor_kps({"joint_0": kp})
 
     def set_kp_kd(self, kp, kd):
         self.set_parameters(kp=kp, ki=0, kd=kd, kff1=0, kff2=0, ids=[0])
@@ -54,7 +49,7 @@ class MuJoCoFakeDyn:
         # rename all the key from "joint_0" to 0
         state = {int(k.split("_")[1]): v for k, v in state.items()}
         return state
-    
+
 
 class ResponseTester:
     def __init__(self, sim_name="mujoco", robot_name="sysID_XC330"):
@@ -79,7 +74,7 @@ class ResponseTester:
             self.controller = MuJoCoFakeDyn(self.sim)
         elif self.sim_name == "real":
             self.sim = RealWorld(self.robot)
-                # Connect to the Dynamixel controller in real
+            # Connect to the Dynamixel controller in real
             self.controller = self.sim.dynamixel_controller
         else:
             raise ValueError(f"Invalid sim_name: {self.sim}")

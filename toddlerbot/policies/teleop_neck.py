@@ -4,7 +4,7 @@ import numpy.typing as npt
 from toddlerbot.policies import BasePolicy
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
-from toddlerbot.tools.teleop.joystick import Joystick
+from toddlerbot.tools.joystick import Joystick
 from toddlerbot.utils.math_utils import interpolate_action
 
 

@@ -7,7 +7,7 @@ from toddlerbot.envs.walk_env import WalkCfg
 from toddlerbot.policies.mjx_policy import MJXPolicy
 from toddlerbot.ref_motion.walk_zmp_ref import WalkZMPReference
 from toddlerbot.sim.robot import Robot
-from toddlerbot.tools.teleop.joystick import Joystick
+from toddlerbot.tools.joystick import Joystick
 
 
 class WalkPolicy(MJXPolicy, policy_name="walk"):

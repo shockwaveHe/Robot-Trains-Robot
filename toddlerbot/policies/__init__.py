@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Type
+from typing import Dict, List, Type
 
 import numpy as np
 import numpy.typing as npt
@@ -17,6 +17,10 @@ def get_policy_class(policy_name: str) -> Type["BasePolicy"]:
         raise ValueError(f"Unknown policy: {policy_name}")
 
     return policy_registry[policy_name]
+
+
+def get_policy_names() -> List[str]:
+    return list(policy_registry.keys())
 
 
 class BasePolicy(ABC):

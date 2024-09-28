@@ -6,7 +6,7 @@ from toddlerbot.policies import BasePolicy
 from toddlerbot.ref_motion.squat_ref import SquatReference
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
-from toddlerbot.tools.teleop.joystick import Joystick
+from toddlerbot.tools.joystick import Joystick
 from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.math_utils import interpolate_action, quat2euler
 

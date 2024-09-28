@@ -12,10 +12,13 @@ import numpy as np
 import numpy.typing as npt
 from tqdm import tqdm
 
-from toddlerbot.policies import BasePolicy, get_policy_class
+from toddlerbot.policies import BasePolicy, get_policy_class, get_policy_names
 from toddlerbot.policies.calibrate import CalibratePolicy
+from toddlerbot.policies.dp_policy import DPPolicy
 from toddlerbot.policies.mjx_policy import MJXPolicy
 from toddlerbot.policies.sysID_fixed import SysIDFixedPolicy
+from toddlerbot.policies.teleop_follower import TeleopFollowerPolicy
+from toddlerbot.policies.teleop_leader import TeleopLeaderPolicy
 from toddlerbot.sim import BaseSim, Obs
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.real_world import RealWorld
@@ -257,6 +260,25 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
                         sim.set_motor_kps(motor_kps_updated)
                         last_ckpt_idx = ckpt_idx
 
+            # need to enable and disable motors according to logging state
+            if isinstance(policy, TeleopLeaderPolicy):
+                sim.dynamixel_controller.enable_motors()
+                if policy.log:
+                    # set motor kp kd
+                    sim.dynamixel_controller.set_kp_kd(0, 0)
+                    # when logging, only enable damping for part of the motors
+                    # sim_real.dynamixel_controller.disable_motors(
+                    #     [18, 20, 21, 22, 25, 27, 28, 29]
+                    # )
+                    sim.dynamixel_controller.disable_motors()
+                    print("Disabling motors")
+                else:
+                    # when not logging, enable all motors, with positive kp kd
+                    sim.dynamixel_controller.set_kp_kd(2000, 8000)
+                    print("Enabling motors")
+
+                policy.toggle_motor = False
+
             motor_target = policy.step(obs, "real" in sim.name)
 
             inference_time = time.time()
@@ -331,6 +353,9 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
     prof_path = os.path.join(exp_folder_path, "profile_output.lprof")
     dump_profiling_data(prof_path)
 
+    if isinstance(policy, TeleopFollowerPolicy):
+        policy.dataset_logger.save(os.path.join(exp_folder_path, "dataset.lz4"))
+
     if isinstance(policy, CalibratePolicy):
         motor_config_path = os.path.join(robot.root_path, "config_motors.json")
         if os.path.exists(motor_config_path):
@@ -375,26 +400,30 @@ if __name__ == "__main__":
     parser.add_argument(
         "--robot",
         type=str,
-        default="toddlerbot",
+        default="toddlerbot_OP3",
         help="The name of the robot. Need to match the name in robot_descriptions.",
+        choices=["toddlerbot_OP3", "toddlerbot_arms"],
     )
     parser.add_argument(
         "--sim",
         type=str,
         default="mujoco",
-        help="The simulator to use.",
+        help="The name of the simulator to use.",
+        choices=["mujoco", "real"],
     )
     parser.add_argument(
         "--vis",
         type=str,
         default="render",
-        help="The visualization type. [render, view]",
+        help="The visualization type.",
+        choices=["render", "view"],
     )
     parser.add_argument(
         "--policy",
         type=str,
         default="stand",
         help="The name of the task.",
+        choices=get_policy_names(),
     )
     parser.add_argument(
         "--ckpt",
@@ -444,13 +473,21 @@ if __name__ == "__main__":
             fixed_command = None
 
         policy = PolicyClass(
-            args.policy,
-            robot,
-            init_motor_pos,
-            args.ckpt,
-            fixed_command=fixed_command,
+            args.policy, robot, init_motor_pos, args.ckpt, fixed_command=fixed_command
         )
+    elif issubclass(PolicyClass, DPPolicy):
+        assert len(args.ckpt) > 0, "Need to provide a checkpoint for MJX policies"
+
+        policy = PolicyClass(args.policy, robot, init_motor_pos, args.ckpt)
     else:
+        if issubclass(PolicyClass, TeleopLeaderPolicy):
+            assert (
+                args.sim == "real"
+            ), "The sim needs to be the real world for the teleop leader policy"
+            for motor_name in robot.motor_ordering:
+                for gain_name in ["kp_real", "kd_real", "kff1_real", "kff2_real"]:
+                    robot.config["joints"][motor_name][gain_name] = 0.0
+
         policy = PolicyClass(args.policy, robot, init_motor_pos)
 
     main(robot, sim, policy, args.vis)
