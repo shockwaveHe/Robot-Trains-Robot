@@ -9,7 +9,7 @@ from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.comm_utils import ZMQNode
 
 
-class TeleopBalancePDPolicy(BalancePDPolicy, policy_name="teleop_balance_pd"):
+class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
     def __init__(
         self,
         name: str,

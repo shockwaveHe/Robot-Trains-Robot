@@ -54,9 +54,9 @@ class DPPolicy(BasePolicy, policy_name="dp"):
         self.obs_deque = collections.deque([], maxlen=self.model.obs_horizon)
         self.model_action_seq = []
 
-        self._start_spacebar_listener()
+        self._start_keyboard_listener()
 
-    def _start_spacebar_listener(self):
+    def _start_keyboard_listener(self):
         def on_press(key):
             try:
                 if key == keyboard.Key.space:

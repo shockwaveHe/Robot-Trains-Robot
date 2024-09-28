@@ -53,9 +53,9 @@ class ReplayFollowerPolicy(BasePolicy):
         self.blend_percentage = 0.0
         self.default_pose = default_pose
         # Start a listener for the spacebar
-        self._start_spacebar_listener()
+        self._start_keyboard_listener()
 
-    def _start_spacebar_listener(self):
+    def _start_keyboard_listener(self):
         def on_press(key):
             try:
                 if key == keyboard.Key.space:

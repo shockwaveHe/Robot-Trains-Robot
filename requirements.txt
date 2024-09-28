@@ -31,4 +31,5 @@ transforms3d==0.4.1
 trimesh==3.21.7
 wandb==0.16.6
 yourdfpy==0.0.56
+zmq==0.0.0
 PySide6==6.7.2

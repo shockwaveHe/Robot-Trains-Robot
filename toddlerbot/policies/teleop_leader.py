@@ -13,29 +13,15 @@ from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.comm_utils import ZMQNode
 from toddlerbot.utils.dataset_utils import DatasetLogger
 
-default_pose = np.array(
-    [
-        -0.60745645,
-        -0.9265244,
-        0.02147579,
-        1.2348546,
-        0.52922344,
-        0.49394178,
-        -1.125942,
-        0.5123496,
-        -0.96180606,
-        -0.25003886,
-        1.2195148,
-        -0.35128164,
-        -0.6504078,
-        -1.1535536,
-    ]
-)
-
 
 class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
-    def __init__(self, robot: Robot):
-        super().__init__(name="teleop_leader", robot=robot, init_motor_pos=default_pose)
+    def __init__(
+        self,
+        name: str,
+        robot: Robot,
+        init_motor_pos: npt.NDArray[np.float32],
+    ):
+        super().__init__(name, robot, init_motor_pos)
 
         # self.default_action = np.array(
         #     list(robot.default_motor_angles.values()), dtype=np.float32
@@ -60,9 +46,9 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
         self.test_idx = 0
 
         # Start a listener for the spacebar
-        self._start_spacebar_listener()
+        self._start_keyboard_listener()
 
-    def _start_spacebar_listener(self):
+    def _start_keyboard_listener(self):
         def on_press(key):
             try:
                 if key == keyboard.Key.space:

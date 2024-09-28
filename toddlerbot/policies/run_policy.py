@@ -16,7 +16,7 @@ from toddlerbot.policies import BasePolicy, get_policy_class, get_policy_names
 from toddlerbot.policies.calibrate import CalibratePolicy
 from toddlerbot.policies.dp_policy import DPPolicy
 from toddlerbot.policies.mjx_policy import MJXPolicy
-from toddlerbot.policies.sysID_fixed import SysIDFixedPolicy
+from toddlerbot.policies.sysID import SysIDFixedPolicy
 from toddlerbot.policies.teleop_follower import TeleopFollowerPolicy
 from toddlerbot.policies.teleop_leader import TeleopLeaderPolicy
 from toddlerbot.sim import BaseSim, Obs
