@@ -16,7 +16,6 @@ from toddlerbot.policies import BasePolicy
 from toddlerbot.ref_motion import MotionReference
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
-from toddlerbot.tools.teleop.joystick import get_controller_input, initialize_joystick
 from toddlerbot.utils.math_utils import (
     butterworth,
     exponential_moving_average,
@@ -88,7 +87,6 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             self.last_motor_target, (self.filter_order, 1)
         )
 
-        self.last_command = np.zeros(cfg.commands.num_commands, dtype=np.float32)
         self.last_action = np.zeros(robot.nu, dtype=np.float32)
         self.action_buffer = np.zeros(
             ((self.n_steps_delay + 1) * robot.nu), dtype=np.float32
@@ -124,12 +122,6 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         self.rng = jax.random.PRNGKey(0)
         self.jit_inference_fn(self.obs_history, self.rng)[0].block_until_ready()
 
-        self.joystick = None
-        try:
-            self.joystick = initialize_joystick()
-        except Exception:
-            pass
-
         self.prep_duration = 7.0
         self.prep_time, self.prep_action = self.move(
             -self.control_dt,
@@ -139,27 +131,19 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             end_time=5.0,
         )
 
+    def get_command(self) -> npt.NDArray[np.float32]:
+        return np.zeros(1, dtype=np.float32)
+
     # @profile()
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         if obs.time < self.prep_duration:
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
             )
-
             return action
 
-        if self.joystick is None:
-            command = self.fixed_command
-        else:
-            command = np.array(
-                get_controller_input(self.joystick, self.command_list), dtype=np.float32
-            )
-
-        if not np.allclose(command, self.last_command):
-            # print(f"Command: {command}")
-            self.last_command = command
-
         time_curr = self.step_curr * self.control_dt
+        command = self.get_command()
         phase_signal = self.motion_ref.get_phase_signal(time_curr, command)
         state_ref = self.motion_ref.get_state_ref(
             np.zeros(3, dtype=np.float32),

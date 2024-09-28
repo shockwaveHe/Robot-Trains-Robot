@@ -6,7 +6,7 @@ from toddlerbot.policies import BasePolicy
 from toddlerbot.ref_motion.squat_ref import SquatReference
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
-from toddlerbot.tools.teleop.joystick import get_controller_input, initialize_joystick
+from toddlerbot.tools.teleop.joystick import Joystick
 from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.math_utils import interpolate_action, quat2euler
 
@@ -74,7 +74,7 @@ class TeleopSquatPolicy(BasePolicy, policy_name="teleop_squat"):
 
         self.joystick = None
         try:
-            self.joystick = initialize_joystick()
+            self.joystick = Joystick()
         except Exception:
             pass
 
@@ -90,6 +90,18 @@ class TeleopSquatPolicy(BasePolicy, policy_name="teleop_squat"):
         self.com_pos_error_prev = np.zeros(2, dtype=np.float32)
         self.torso_euler_error_prev = np.zeros(2, dtype=np.float32)
 
+    def get_command(self) -> npt.NDArray[np.float32]:
+        if self.joystick is None:
+            raise ValueError("Joystick is required for this policy.")
+        else:
+            task_commands = self.joystick.get_controller_input()
+            command_arr = np.zeros(2, dtype=np.float32)
+            for task, command in task_commands.items():
+                if task == "squat":
+                    command_arr[0] = command
+
+        return command_arr
+
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         # Preparation phase
         if obs.time < self.prep_time[-1]:
@@ -98,13 +110,7 @@ class TeleopSquatPolicy(BasePolicy, policy_name="teleop_squat"):
             )
             return action
 
-        if self.joystick is None:
-            command = self.fixed_command
-        else:
-            command = np.array(
-                get_controller_input(self.joystick, self.command_list),
-                dtype=np.float32,
-            )
+        command = self.get_command()
 
         time_curr = self.step_curr * self.control_dt
         state_ref = self.motion_ref.get_state_ref(
