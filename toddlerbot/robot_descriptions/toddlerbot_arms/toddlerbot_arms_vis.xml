@@ -160,20 +160,20 @@
   </keyframe>
   <contact />
   <actuator>
-    <motor name="left_sho_pitch" joint="left_sho_pitch" class="XC430" />
-    <motor name="left_sho_roll" joint="left_sho_roll" class="2XL430" />
-    <motor name="left_sho_yaw_drive" joint="left_sho_yaw_drive" class="2XL430" />
-    <motor name="left_elbow_roll" joint="left_elbow_roll" class="2XL430" />
-    <motor name="left_elbow_yaw_drive" joint="left_elbow_yaw_drive" class="2XL430" />
-    <motor name="left_wrist_pitch_drive" joint="left_wrist_pitch_drive" class="2XL430" />
-    <motor name="left_wrist_roll" joint="left_wrist_roll" class="2XL430" />
-    <motor name="right_sho_pitch" joint="right_sho_pitch" class="XC430" />
-    <motor name="right_sho_roll" joint="right_sho_roll" class="2XL430" />
-    <motor name="right_sho_yaw_drive" joint="right_sho_yaw_drive" class="2XL430" />
-    <motor name="right_elbow_roll" joint="right_elbow_roll" class="2XL430" />
-    <motor name="right_elbow_yaw_drive" joint="right_elbow_yaw_drive" class="2XL430" />
-    <motor name="right_wrist_pitch_drive" joint="right_wrist_pitch_drive" class="2XL430" />
-    <motor name="right_wrist_roll" joint="right_wrist_roll" class="2XL430" />
+    <position name="left_sho_pitch" joint="left_sho_pitch" kp="16.40625" ctrlrange="-3.14159 1.5708" class="XC430" />
+    <position name="left_sho_roll" joint="left_sho_roll" kp="16.40625" ctrlrange="-1.5708 0.349066" class="2XL430" />
+    <position name="left_sho_yaw_drive" joint="left_sho_yaw_drive" kp="16.40625" ctrlrange="-2.61799 2.61799" class="2XL430" />
+    <position name="left_elbow_roll" joint="left_elbow_roll" kp="16.40625" ctrlrange="-1.91986 2.44346" class="2XL430" />
+    <position name="left_elbow_yaw_drive" joint="left_elbow_yaw_drive" kp="16.40625" ctrlrange="-2.61799 2.61799" class="2XL430" />
+    <position name="left_wrist_pitch_drive" joint="left_wrist_pitch_drive" kp="16.40625" ctrlrange="-1.91986 1.39626" class="2XL430" />
+    <position name="left_wrist_roll" joint="left_wrist_roll" kp="16.40625" ctrlrange="-1.91986 1.39626" class="2XL430" />
+    <position name="right_sho_pitch" joint="right_sho_pitch" kp="16.40625" ctrlrange="-1.5708 3.14159" class="XC430" />
+    <position name="right_sho_roll" joint="right_sho_roll" kp="16.40625" ctrlrange="-1.5708 0.349066" class="2XL430" />
+    <position name="right_sho_yaw_drive" joint="right_sho_yaw_drive" kp="16.40625" ctrlrange="-2.61799 2.61799" class="2XL430" />
+    <position name="right_elbow_roll" joint="right_elbow_roll" kp="16.40625" ctrlrange="-1.91986 2.44346" class="2XL430" />
+    <position name="right_elbow_yaw_drive" joint="right_elbow_yaw_drive" kp="16.40625" ctrlrange="-2.61799 2.61799" class="2XL430" />
+    <position name="right_wrist_pitch_drive" joint="right_wrist_pitch_drive" kp="16.40625" ctrlrange="-1.39626 1.91986" class="2XL430" />
+    <position name="right_wrist_roll" joint="right_wrist_roll" kp="16.40625" ctrlrange="-1.39626 1.91986" class="2XL430" />
   </actuator>
   <default>
     <geom type="mesh" solref="0.004 1" />
@@ -184,10 +184,10 @@
       <geom group="3" />
     </default>
     <default class="XC430">
-      <motor ctrlrange="-2 2" />
+      <position forcerange="-2 2" />
     </default>
     <default class="2XL430">
-      <motor ctrlrange="-2 2" />
+      <position forcerange="-2 2" />
     </default>
   </default>
 </mujoco>
