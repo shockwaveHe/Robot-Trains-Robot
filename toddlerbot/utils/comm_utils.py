@@ -1,20 +1,34 @@
 import pickle
+from dataclasses import dataclass
+from typing import List
 
+import numpy as np
+import numpy.typing as npt
 import zmq
+
+
+@dataclass
+class ZMQMessage:
+    time: float
+    is_logging: bool
+    action: npt.NDArray[np.float32]
+    fsr: npt.NDArray[np.float32]
+    trial: int
+
 
 """
 Usage:
 
-    - Sender:   ZMQNode(type='Sender', ip='10.5.6.171')
-    - Receiver: ZMQNode(type='Receiver')
+    - Sender:   ZMQNode(type='sender', ip='10.5.6.171')
+    - Receiver: ZMQNode(type='receiver')
 """
 
 
 class ZMQNode:
-    def __init__(self, type="Sender", ip=None, queue_len=1):
+    def __init__(self, type: str = "sender", ip: str = "", queue_len: int = 1):
         self.type = type
-        if type not in ["Sender", "Receiver"]:
-            raise ValueError("ZMQ type must be either 'Sender' or 'Receiver'")
+        if type not in ["sender", "receiver"]:
+            raise ValueError("ZMQ type must be either 'sender' or 'receiver'")
 
         self.queue_len = queue_len
         self.ip = ip
@@ -23,7 +37,7 @@ class ZMQNode:
     def start_zmq(self):
         # Set up ZeroMQ context and socket for data exchange
         self.zmq_context = zmq.Context()
-        if self.type == "Sender":
+        if self.type == "sender":
             self.socket = self.zmq_context.socket(zmq.PUSH)
             # Set high water mark and enable non-blocking send
             self.socket.setsockopt(
@@ -36,19 +50,19 @@ class ZMQNode:
             # )  # Prevent blocking if receiver is not available
             self.socket.connect("tcp://" + self.ip + ":5555")
 
-        elif self.type == "Receiver":
+        elif self.type == "receiver":
             self.socket = self.zmq_context.socket(zmq.PULL)
             self.socket.bind("tcp://0.0.0.0:5555")  # Listen on all interfaces
             self.socket.setsockopt(zmq.RCVHWM, 1)  # Limit receiver's queue to 1 message
             self.socket.setsockopt(zmq.CONFLATE, 1)  # Only keep the latest message
             self.socket.setsockopt(zmq.RCVBUF, 1024)
 
-    def send_msg(self, send_dict):
-        if self.type != "Sender":
-            raise ValueError("ZMQ type must be 'Sender' to send messages")
+    def send_msg(self, msg: ZMQMessage):
+        if self.type != "sender":
+            raise ValueError("ZMQ type must be 'sender' to send messages")
 
         # Serialize the numpy array using pickle
-        serialized_array = pickle.dumps(send_dict)
+        serialized_array = pickle.dumps(msg)
         # Send the serialized data
         try:
             # Send the serialized data with non-blocking to avoid hanging if the queue is full
@@ -57,33 +71,27 @@ class ZMQNode:
         except zmq.Again:
             pass
 
-    # def get_msg(self):
-    #     if self.type != 'Receiver':
-    #         raise ValueError("ZMQ type must be 'Receiver' to receive messages")
-
-    #     try:
-    #         # Non-blocking receive
-    #         serialized_array = self.socket.recv(zmq.NOBLOCK)
-    #         send_dict = pickle.loads(serialized_array)
-    #         return send_dict
-    #     except zmq.Again:
-    #         # No data is available
-    #         print("No message available right now")
-    #         return None
-
     # For some reason a simple get is not working. buffer will blow up when read speed is too slow
     # So we will read all the way until the buffer if empty to bypass this problem
-    def get_all_msg(self, return_last=True):
-        if self.type != "Receiver":
-            raise ValueError("ZMQ type must be 'Receiver' to receive messages")
+    def get_msg(self, return_last: bool = True):
+        if self.type != "receiver":
+            raise ValueError("ZMQ type must be 'receiver' to receive messages")
 
-        messages = []
+        messages: List[ZMQMessage] = []
         while True:
             try:
                 # Non-blocking receive
                 serialized_array = self.socket.recv(zmq.NOBLOCK)
-                send_dict = pickle.loads(serialized_array)
-                messages.append(send_dict)
+                msg = pickle.loads(serialized_array)
+                zmq_message = ZMQMessage(
+                    time=msg["time"],
+                    is_logging=msg["is_logging"],
+                    action=np.array(msg["action"], dtype=np.float32),
+                    fsr=np.array(msg["fsr"], dtype=np.float32),
+                    trial=msg["trial"],
+                )
+                messages.append(zmq_message)
+
             except zmq.Again:
                 # No more data is available
                 break
