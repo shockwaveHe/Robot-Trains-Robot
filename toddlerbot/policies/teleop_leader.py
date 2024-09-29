@@ -10,6 +10,7 @@ from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.comm_utils import ZMQMessage, ZMQNode
 from toddlerbot.utils.dataset_utils import DatasetLogger
+from toddlerbot.utils.math_utils import interpolate_action
 
 
 class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
@@ -40,6 +41,15 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
         self.n_logs = 1
         self.trial_idx = 0
         self.last_time = time.time()
+
+        self.prep_duration = 2.0
+        self.prep_time, self.prep_action = self.move(
+            -self.control_dt,
+            init_motor_pos,
+            self.default_motor_pos,
+            self.prep_duration,
+            end_time=0.0,
+        )
 
         # Start a listener for the spacebar
         self._start_keyboard_listener()
@@ -72,6 +82,12 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
     # note: zero points can be accessed in config_motors.json
 
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
+        if obs.time < self.prep_time[-1]:
+            action = np.asarray(
+                interpolate_action(obs.time, self.prep_time, self.prep_action)
+            )
+            return action
+
         action = obs.motor_pos
         if self.fsr is not None:
             fsrL, fsrR = self.fsr.get_state()

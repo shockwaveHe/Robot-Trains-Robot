@@ -261,21 +261,13 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
                         last_ckpt_idx = ckpt_idx
 
             # need to enable and disable motors according to logging state
-            if isinstance(policy, TeleopLeaderPolicy):
-                sim.dynamixel_controller.enable_motors()
+            if isinstance(policy, TeleopLeaderPolicy) and policy.toggle_motor:
                 if policy.is_logging:
                     # set motor kp kd
                     sim.dynamixel_controller.set_kp_kd(0, 0)
-                    # when logging, only enable damping for part of the motors
-                    # sim_real.dynamixel_controller.disable_motors(
-                    #     [18, 20, 21, 22, 25, 27, 28, 29]
-                    # )
-                    sim.dynamixel_controller.disable_motors()
-                    print("Disabling motors")
                 else:
                     # when not logging, enable all motors, with positive kp kd
                     sim.dynamixel_controller.set_kp_kd(2000, 8000)
-                    print("Enabling motors")
 
                 policy.toggle_motor = False
 
@@ -456,7 +448,7 @@ if __name__ == "__main__":
 
     elif args.sim == "real":
         sim = RealWorld(robot)
-        sim.has_imu = "fixed" not in args.policy
+        sim.has_imu = args.robot != "toddlerbot_arms"
         init_motor_pos = sim.get_observation(retries=-1).motor_pos
 
     else:
@@ -483,6 +475,9 @@ if __name__ == "__main__":
         policy = PolicyClass(args.policy, robot, init_motor_pos, args.ckpt)
     else:
         if issubclass(PolicyClass, TeleopLeaderPolicy):
+            assert (
+                args.robot == "toddlerbot_arms"
+            ), "The teleop leader policy is only for the arms"
             assert (
                 args.sim == "real"
             ), "The sim needs to be the real world for the teleop leader policy"

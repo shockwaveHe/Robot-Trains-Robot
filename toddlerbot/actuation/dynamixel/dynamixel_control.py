@@ -128,10 +128,6 @@ class DynamixelController(BaseController):
     def reboot_motors(self):
         self.client.reboot(self.motor_ids)
 
-    def set_kp(self, kP: List[float]):
-        with self.lock:
-            self.client.sync_write(self.motor_ids, kP, 84, 2)
-
     # Only disable the torque, but stay connected through comm. If no id is provided, disable all motors
     def disable_motors(self, ids=None):
         open_clients: List[DynamixelClient] = list(DynamixelClient.OPEN_CLIENTS)  # type: ignore
@@ -157,7 +153,11 @@ class DynamixelController(BaseController):
                 print("Enabling all motor")
                 open_client.set_torque_enabled(open_client.motor_ids, True)
 
-    def set_kp_kd(self, kp, kd, ids=None):
+    def set_kp(self, kp: List[float]):
+        with self.lock:
+            self.client.sync_write(self.motor_ids, kp, 84, 2)
+
+    def set_kp_kd(self, kp: float, kd: float):
         log("Setting motor kp kd", header="Dynamixel")
         with self.lock:
             self.client.sync_write(self.motor_ids, [kd] * len(self.motor_ids), 80, 2)
