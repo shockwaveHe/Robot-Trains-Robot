@@ -47,7 +47,11 @@ class ZMPWalk:
         )
         self.zmp_planner = ZMPPlanner()
 
-    def build_lookup_table(self, command_list: List[List[float]]):
+    def build_lookup_table(
+        self,
+        command_range: List[List[float]] = [[-0.1, 0.2], [-0.1, 0.1], [-0.5, 0.5]],
+        interval: float = 0.02,
+    ):
         """
         Precompute and store the trajectories for a range of commands.
         """
@@ -59,25 +63,23 @@ class ZMPWalk:
         path_quat = np.array([1, 0, 0, 0], dtype=np.float32)
 
         # Create linspace arrays for each command range
-        # linspaces = [
-        #     np.arange(start, stop + 1e-6, interval, dtype=np.float32)
-        #     for start, stop in command_list
-        # ]
+        linspaces = [
+            np.arange(start, stop + 1e-6, interval, dtype=np.float32)
+            for start, stop in command_range
+        ]
 
-        # zeros_x = np.zeros_like(linspaces[0])
-        # zeros_y = np.zeros_like(linspaces[1])
-        # zeros_z = np.zeros_like(linspaces[2])
+        # Generate all combinations of command values using meshgrid and then flatten
+        command_xy_grid = np.meshgrid(*linspaces[:2], indexing="ij")
+        command_xy = np.stack([g.flatten() for g in command_xy_grid], axis=-1)
+        command_set = np.concatenate(
+            [command_xy, np.zeros((command_xy.shape[0], 1), dtype=np.float32)], axis=1
+        )
 
-        # command_spectrum_x = np.stack([linspaces[0], zeros_x, zeros_x], axis=1)
-        # command_spectrum_y = np.stack([zeros_y, linspaces[1], zeros_y], axis=1)
-        # command_spectrum_z = np.stack([zeros_z, zeros_z, linspaces[2]], axis=1)
-        # # Concatenate all command spectrums
-        # command_spectrum = np.concatenate(
-        #     [command_spectrum_x, command_spectrum_y, command_spectrum_z], axis=0
-        # )
+        zeros_z = np.zeros_like(linspaces[2])
+        command_z = np.stack([zeros_z, zeros_z, linspaces[2]], axis=1)
+        command_set = np.concatenate([command_set, command_z], axis=0)
 
-        command_spectrum = np.array(command_list, dtype=np.float32)
-        for command in tqdm(command_spectrum, desc="Building Lookup Table"):
+        for command in tqdm(command_set, desc="Building Lookup Table"):
             # if np.linalg.norm(command) < 1e-6:
             #     continue
 
@@ -124,23 +126,13 @@ class ZMPWalk:
                 footsteps.append(left_footstep_init)
                 footsteps.append(right_footstep_init)
 
-        elif np.abs(command[0]) > 1e-6:
-            stride = command[0] * total_time / (2 * num_cycles - 1)
+        elif np.linalg.norm(command[:2]) > 1e-6:
+            stride = command[:2] * total_time / (2 * num_cycles - 1)
             for i in range(num_cycles):
                 left_footstep = left_footstep_init.copy()
                 right_footstep = right_footstep_init.copy()
-                left_footstep[0] += i * 2 * stride
-                right_footstep[0] += (i * 2 + 1) * stride
-                footsteps.append(left_footstep)
-                footsteps.append(right_footstep)
-
-        elif np.abs(command[1]) > 1e-6:
-            stride = command[1] * total_time / (2 * num_cycles - 1)
-            for i in range(num_cycles):
-                left_footstep = left_footstep_init.copy()
-                right_footstep = right_footstep_init.copy()
-                left_footstep[1] += i * 2 * stride
-                right_footstep[1] += (i * 2 + 1) * stride
+                left_footstep[:2] += i * 2 * stride
+                right_footstep[:2] += (i * 2 + 1) * stride
                 footsteps.append(left_footstep)
                 footsteps.append(right_footstep)
 

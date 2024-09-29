@@ -20,18 +20,10 @@ class WalkCfg(MJXConfig):
 
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):
-        command_list: List[List[float]] = field(
-            default_factory=lambda: [
-                [0.0, 0.0, 0.0],
-                [-0.1, 0.0, 0.0],
-                [0.1, 0.0, 0.0],
-                [0.2, 0.0, 0.0],
-                [0.0, -0.1, 0.0],
-                [0.0, 0.1, 0.0],
-                [0.0, 0.0, 0.5],
-                [0.0, 0.0, -0.5],
-            ]
+        command_range: List[List[float]] = field(
+            default_factory=lambda: [[-0.1, 0.2], [-0.1, 0.1]]
         )
+        deadzone: float = 0.05
 
     @dataclass
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
@@ -40,10 +32,9 @@ class WalkCfg(MJXConfig):
         lin_vel_xy: float = 2.0
         ang_vel_z: float = 2.0
         feet_air_time: float = 50.0
-        feet_clearance: float = 0.0  # Doesn't help
         feet_distance: float = 0.5
         feet_slip: float = 0.1
-        stand_still: float = 0.0  # 1.0
+        stand_still: float = 1.0
 
     def __init__(self):
         super().__init__()
@@ -73,7 +64,7 @@ class WalkEnv(MJXEnv):
         elif ref_motion_type == "zmp":
             motion_ref = WalkZMPReference(
                 robot,
-                cfg.commands.command_list,
+                cfg.commands.command_range,
                 cfg.action.cycle_time,
                 cfg.sim.timestep * cfg.action.n_frames,
             )
@@ -81,7 +72,8 @@ class WalkEnv(MJXEnv):
             raise ValueError(f"Unknown ref_motion_type: {ref_motion_type}")
 
         self.cycle_time = jnp.array(cfg.action.cycle_time)
-        self.command_list = jnp.array(cfg.commands.command_list)
+        self.command_range = jnp.array(cfg.commands.command_range)
+        self.deadzone = jnp.array(cfg.commands.deadzone)
         self.torso_pitch_range = cfg.rewards.torso_pitch_range
         self.min_feet_y_dist = cfg.rewards.min_feet_y_dist
         self.max_feet_y_dist = cfg.rewards.max_feet_y_dist
@@ -104,15 +96,27 @@ class WalkEnv(MJXEnv):
             return self.fixed_command
 
         # Randomly sample an index from the command list
-        num_commands = self.command_list.shape[0]
-        rng, rng1 = jax.random.split(rng)
-        command_idx = jax.random.randint(rng1, (), 0, num_commands)
+        rng, rng_1, rng_2 = jax.random.split(rng, 3)
 
-        # Select the corresponding command
-        command = self.command_list[command_idx]
+        # Sample random angles uniformly between 0 and 2*pi
+        theta = jax.random.uniform(rng_1, (1,), minval=0, maxval=2 * jnp.pi)
+        r = jax.random.uniform(rng_2, (1,), minval=0, maxval=1)
+
+        # Parametric equation of ellipse
+        x = jnp.where(
+            jnp.sin(theta) > 0,
+            self.command_range[0][1] * r * jnp.sin(theta),
+            -self.command_range[0][0] * r * jnp.sin(theta),
+        )
+        y = jnp.where(
+            jnp.cos(theta) > 0,
+            self.command_range[1][1] * r * jnp.cos(theta),
+            -self.command_range[1][0] * r * jnp.cos(theta),
+        )
+        command = jnp.concatenate([x, y])
 
         # Set small commands to zero based on norm condition
-        mask = (jnp.linalg.norm(command[:2]) > 0.01).astype(jnp.float32)
+        mask = (jnp.linalg.norm(command[:2]) > self.deadzone).astype(jnp.float32)
         command = command.at[:2].set(command[:2] * mask)
 
         return command
@@ -148,16 +152,7 @@ class WalkEnv(MJXEnv):
         first_contact = (info["feet_air_time"] > 0) * contact_filter
         reward = jnp.sum(info["feet_air_time"] * first_contact)
         # no reward for zero command
-        reward *= jnp.linalg.norm(info["command"]) > 0.01
-        return reward
-
-    def _reward_feet_clearance(
-        self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
-    ) -> jax.Array:
-        feet_height = pipeline_state.x.pos[self.feet_link_ids, 2]
-        feet_z_delta = feet_height - info["init_feet_height"]
-        is_close = jnp.abs(feet_z_delta - self.target_feet_z_delta) < 0.01
-        reward = jnp.sum(is_close * (1 - info["stance_mask"]))
+        reward *= jnp.linalg.norm(info["command"]) > self.deadzone
         return reward
 
     def _reward_feet_distance(
@@ -192,5 +187,5 @@ class WalkEnv(MJXEnv):
             )
         )
         reward = -(qpos_diff**2)
-        reward *= jnp.linalg.norm(info["command"]) < 0.01
+        reward *= jnp.linalg.norm(info["command"]) < self.deadzone
         return reward
