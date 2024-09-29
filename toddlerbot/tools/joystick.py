@@ -75,7 +75,7 @@ class Joystick:
 
         for device in devices:
             device_name = device.name.lower()
-            if "microsoft" in device_name and "xbox" in device_name:
+            if "xbox" in device_name or "x-box" in device_name:
                 print("Detected: Microsoft Xbox Controller")
                 self.axis_mapping = XBOX_AXIS_MAPPING
                 self.button_mapping = XBOX_BUTTON_MAPPING
@@ -85,6 +85,8 @@ class Joystick:
                 self.axis_mapping = DECK_AXIS_MAPPING
                 self.button_mapping = DECK_BUTTON_MAPPING
                 break
+            else:
+                print(f"Unsupported controller detected: {device_name}")
 
     def get_axis(self, axis_name: str) -> float:
         if axis_name in self.axis_mapping:

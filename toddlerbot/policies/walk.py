@@ -22,10 +22,11 @@ class WalkPolicy(MJXPolicy, policy_name="walk"):
         env_cfg = WalkCfg()
         motion_ref = WalkZMPReference(
             robot,
-            env_cfg.commands.command_range,
             env_cfg.action.cycle_time,
             env_cfg.sim.timestep * env_cfg.action.n_frames,
         )
+
+        self.command_range = env_cfg.commands.command_range
 
         self.joystick = None
         try:
@@ -45,14 +46,19 @@ class WalkPolicy(MJXPolicy, policy_name="walk"):
             command = np.zeros_like(self.fixed_command)
             for task, input in control_inputs.items():
                 if task == "walk_vertical":
-                    input_values = np.array([-1, -0.5, 0, 1])
-                    output_values = np.array([0.2, 0.1, 0, -0.1])
+                    command[0] = np.interp(
+                        input,
+                        [-1, 0, 1],
+                        [self.command_range[0][1], 0.0, self.command_range[0][0]],
+                    )
 
-                    # Find the closest input and map it to the corresponding output value
-                    closest_index = np.argmin(np.abs(input_values - input))
-                    command[0] = output_values[closest_index]
                 elif task == "walk_horizontal":
-                    command[1] = input
+                    command[1] = np.interp(
+                        input,
+                        [-1, 0, 1],
+                        [self.command_range[1][1], 0.0, self.command_range[1][0]],
+                    )
+
                 elif task == "turn":
                     command[2] = input
 
