@@ -355,19 +355,19 @@ def add_contacts(
         ):
             pairs.append((body_name, "floor"))
 
-    # for i in range(len(collision_bodies) - 1):
-    #     for j in range(i + 1, len(collision_body_names)):
-    #         body1_name = collision_body_names[i]
-    #         body2_name = collision_body_names[j]
+    for i in range(len(collision_bodies) - 1):
+        for j in range(i + 1, len(collision_body_names)):
+            body1_name = collision_body_names[i]
+            body2_name = collision_body_names[j]
 
-    #         paired_1 = body2_name in collision_config[body1_name]["contact_pairs"]
-    #         paired_2 = body1_name in collision_config[body2_name]["contact_pairs"]
-    #         if (paired_1 and paired_2) and (
-    #             foot_name in body1_name or foot_name in body2_name
-    #         ):
-    #             pairs.append((body1_name, body2_name))
-    #         else:
-    #             excludes.append((body1_name, body2_name))
+            paired_1 = body2_name in collision_config[body1_name]["contact_pairs"]
+            paired_2 = body1_name in collision_config[body2_name]["contact_pairs"]
+            if (paired_1 and paired_2) and (
+                foot_name in body1_name or foot_name in body2_name
+            ):
+                pairs.append((body1_name, body2_name))
+            else:
+                excludes.append((body1_name, body2_name))
 
     # Add all <pair> elements first
     for body1_name, body2_name in pairs:
@@ -974,7 +974,7 @@ def get_mjcf_files(robot_name: str):
         add_contacts(
             xml_root, robot.collision_config, robot.config["general"]["foot_name"]
         )
-        replace_box_collision(xml_root, robot.config["general"])
+        # replace_box_collision(xml_root, robot.config["general"])
 
         add_motor_actuators_to_mjcf(xml_root, robot.config["joints"])
         add_default_settings(
