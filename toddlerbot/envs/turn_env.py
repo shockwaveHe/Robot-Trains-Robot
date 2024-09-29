@@ -13,7 +13,7 @@ from toddlerbot.sim.robot import Robot
 
 
 @dataclass
-class WalkCfg(MJXConfig, env_name="walk"):
+class TurnCfg(MJXConfig, env_name="turn"):
     @dataclass
     class ActionConfig(MJXConfig.ActionConfig):
         cycle_time: float = 0.72
@@ -43,12 +43,12 @@ class WalkCfg(MJXConfig, env_name="walk"):
         self.rewards.scales = self.RewardScales()
 
 
-class WalkEnv(MJXEnv, env_name="walk"):
+class TurnEnv(MJXEnv, env_name="turn"):
     def __init__(
         self,
         name: str,
         robot: Robot,
-        cfg: WalkCfg,
+        cfg: TurnCfg,
         ref_motion_type: str = "simple",
         fixed_base: bool = False,
         add_noise: bool = True,

@@ -1,5 +1,5 @@
 from dataclasses import asdict
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Tuple, Type
 
 import jax
 import mujoco
@@ -17,7 +17,24 @@ from toddlerbot.envs.mjx_config import MJXConfig
 from toddlerbot.ref_motion import MotionReference
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
-from toddlerbot.utils.math_utils import butterworth, exponential_moving_average
+from toddlerbot.utils.math_utils import (
+    butterworth,
+    exponential_moving_average,
+)
+
+# Global registry to store env names and their corresponding classes
+env_registry: Dict[str, Type["MJXEnv"]] = {}
+
+
+def get_env_class(env_name: str) -> Type["MJXEnv"]:
+    if env_name not in env_registry:
+        raise ValueError(f"Unknown env: {env_name}")
+
+    return env_registry[env_name]
+
+
+def get_env_names() -> List[str]:
+    return list(env_registry.keys())
 
 
 class MJXEnv(PipelineEnv):
@@ -28,7 +45,6 @@ class MJXEnv(PipelineEnv):
         cfg: MJXConfig,
         motion_ref: MotionReference,
         fixed_base: bool = False,
-        fixed_command: Optional[jax.Array] = None,
         add_noise: bool = True,
         add_domain_rand: bool = True,
         **kwargs: Any,
@@ -38,7 +54,6 @@ class MJXEnv(PipelineEnv):
         self.robot = robot
         self.motion_ref = motion_ref
         self.fixed_base = fixed_base
-        self.fixed_command = fixed_command
         self.add_noise = add_noise
         self.add_domain_rand = add_domain_rand
 
@@ -64,6 +79,12 @@ class MJXEnv(PipelineEnv):
 
         self._init_env()
         self._init_reward()
+
+    # Automatic registration of subclasses
+    def __init_subclass__(cls, env_name: str = "", **kwargs):
+        super().__init_subclass__(**kwargs)
+        if len(env_name) > 0:
+            env_registry[env_name] = cls
 
     def _init_env(self) -> None:
         self.nu = self.sys.nu

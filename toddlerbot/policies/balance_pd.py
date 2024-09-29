@@ -8,7 +8,6 @@ from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.math_utils import interpolate_action, quat2euler
-from toddlerbot.utils.comm_utils import ZMQNode
 
 default_pose = np.array(
     [
@@ -214,7 +213,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
             time_curr,
             command,
         )
-        
+
         motor_target = np.asarray(
             self.motion_ref.override_motor_target(motor_target, state_ref)
         )

@@ -1,5 +1,15 @@
 from dataclasses import dataclass, field
-from typing import List
+from typing import Dict, List, Type
+
+# Global registry to store env names and their corresponding classes
+env_cfg_registry: Dict[str, Type["MJXConfig"]] = {}
+
+
+def get_env_cfg_class(env_name: str) -> Type["MJXConfig"]:
+    if env_name not in env_cfg_registry:
+        raise ValueError(f"Unknown env: {env_name}")
+
+    return env_cfg_registry[env_name]
 
 
 @dataclass
@@ -124,3 +134,9 @@ class MJXConfig:
         self.commands = self.CommandsConfig()
         self.domain_rand = self.DomainRandConfig()
         self.noise = self.NoiseConfig()
+
+    # Automatic registration of subclasses
+    def __init_subclass__(cls, env_name: str = "", **kwargs):
+        super().__init_subclass__(**kwargs)
+        if len(env_name) > 0:
+            env_cfg_registry[env_name] = cls
