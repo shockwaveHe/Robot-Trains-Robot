@@ -23,7 +23,7 @@ class WalkCfg(MJXConfig):
         command_range: List[List[float]] = field(
             default_factory=lambda: [[-0.1, 0.2], [-0.1, 0.1]]
         )
-        deadzone: float = 0.05
+        deadzone: float = 0.02
 
     @dataclass
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
