@@ -63,10 +63,7 @@ class WalkEnv(MJXEnv):
 
         elif ref_motion_type == "zmp":
             motion_ref = WalkZMPReference(
-                robot,
-                cfg.commands.command_range,
-                cfg.action.cycle_time,
-                cfg.sim.timestep * cfg.action.n_frames,
+                robot, cfg.action.cycle_time, cfg.sim.timestep * cfg.action.n_frames
             )
         else:
             raise ValueError(f"Unknown ref_motion_type: {ref_motion_type}")
@@ -113,7 +110,8 @@ class WalkEnv(MJXEnv):
             self.command_range[1][1] * r * jnp.cos(theta),
             -self.command_range[1][0] * r * jnp.cos(theta),
         )
-        command = jnp.concatenate([x, y])
+        z = jnp.zeros(1)
+        command = jnp.concatenate([x, y, z])
 
         # Set small commands to zero based on norm condition
         mask = (jnp.linalg.norm(command[:2]) > self.deadzone).astype(jnp.float32)
