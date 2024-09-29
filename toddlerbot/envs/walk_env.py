@@ -153,8 +153,12 @@ class WalkEnv(MJXEnv, env_name="walk"):
     ):
         # Calculates the reward based on the distance between the feet.
         # Penalize feet get close to each other or too far away on the y axis
-        feet_pos = pipeline_state.x.pos[self.feet_link_ids, 1]
-        feet_dist = jnp.abs(feet_pos[0] - feet_pos[1])
+        feet_vec = math.rotate(
+            pipeline_state.x.pos[self.feet_link_ids[0]]
+            - pipeline_state.x.pos[self.feet_link_ids[1]],
+            math.quat_inv(pipeline_state.x.rot[0]),
+        )
+        feet_dist = jnp.abs(feet_vec[1])
         d_min = jnp.clip(feet_dist - self.min_feet_y_dist, max=0.0)
         d_max = jnp.clip(feet_dist - self.max_feet_y_dist, min=0.0)
         reward = (jnp.exp(-jnp.abs(d_min) * 100) + jnp.exp(-jnp.abs(d_max) * 100)) / 2
