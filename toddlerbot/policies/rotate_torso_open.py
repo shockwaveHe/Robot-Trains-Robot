@@ -29,21 +29,21 @@ class RotateTorsoOpenPolicy(BasePolicy, policy_name="rotate_torso_open"):
 
         # TODO: Update to use sine signals
         joint_sysID_specs = {
-            "waist_roll": SysIDSpecs(
-                amplitude_ratio=0.5,
-                final_frequency=0.3,
-                warm_up_angles={
-                    "left_sho_roll": -np.pi / 6,
-                    "right_sho_roll": -np.pi / 6,
-                },
-            ),
-            "waist_yaw": SysIDSpecs(
-                final_frequency=0.3,
-                warm_up_angles={
-                    "left_sho_roll": -np.pi / 6,
-                    "right_sho_roll": -np.pi / 6,
-                },
-            ),
+            # "waist_roll": SysIDSpecs(
+            #     amplitude_ratio=0.5,
+            #     final_frequency=0.3,
+            #     warm_up_angles={
+            #         "left_sho_roll": -np.pi / 6,
+            #         "right_sho_roll": -np.pi / 6,
+            #     },
+            # ),
+            # "waist_yaw": SysIDSpecs(
+            #     final_frequency=0.3,
+            #     warm_up_angles={
+            #         "left_sho_roll": -np.pi / 6,
+            #         "right_sho_roll": -np.pi / 6,
+            #     },
+            # ),
         }
 
         time_list: List[npt.NDArray[np.float32]] = []
