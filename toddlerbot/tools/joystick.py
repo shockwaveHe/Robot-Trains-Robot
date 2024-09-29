@@ -67,7 +67,7 @@ class Joystick:
             "left_joystick_vertical": "walk_vertical",
             "left_joystick_horizontal": "walk_horizontal",
             "right_joystick_vertical": "squat",
-            "right_joystick_horizontal": "walk_turn",
+            "right_joystick_horizontal": "turn",
             "A": "balance",
         }
         # List all input devices
