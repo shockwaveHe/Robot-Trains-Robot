@@ -263,7 +263,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
             # need to enable and disable motors according to logging state
             if isinstance(policy, TeleopLeaderPolicy):
                 sim.dynamixel_controller.enable_motors()
-                if policy.log:
+                if policy.is_logging:
                     # set motor kp kd
                     sim.dynamixel_controller.set_kp_kd(0, 0)
                     # when logging, only enable damping for part of the motors
@@ -353,7 +353,9 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
     prof_path = os.path.join(exp_folder_path, "profile_output.lprof")
     dump_profiling_data(prof_path)
 
-    if isinstance(policy, TeleopFollowerPolicy):
+    if isinstance(policy, TeleopLeaderPolicy) or isinstance(
+        policy, TeleopFollowerPolicy
+    ):
         policy.dataset_logger.save(os.path.join(exp_folder_path, "dataset.lz4"))
 
     if isinstance(policy, CalibratePolicy):

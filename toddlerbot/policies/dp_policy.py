@@ -7,7 +7,7 @@ import numpy.typing as npt
 from pynput import keyboard
 
 from toddlerbot.policies import BasePolicy
-from toddlerbot.sensing.Camera import Camera
+from toddlerbot.sensing.camera import Camera
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 

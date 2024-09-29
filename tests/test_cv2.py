@@ -5,12 +5,13 @@ import cv2
 import numpy as np
 import zmq
 
+
 class ZMQNode:
-    def __init__(self, type='Sender', ip=None, queue_len=1):
+    def __init__(self, type="sender", ip=None, queue_len=1):
         self.type = type
-        if type not in ['Sender', 'Receiver']:
-            raise ValueError("ZMQ type must be either 'Sender' or 'Receiver'")
-        
+        if type not in ["sender", "receiver"]:
+            raise ValueError("ZMQ type must be either 'sender' or 'receiver'")
+
         self.queue_len = queue_len
         self.ip = ip
         self.start_zmq()
@@ -18,22 +19,24 @@ class ZMQNode:
     def start_zmq(self):
         # Set up ZeroMQ context and socket for data exchange
         self.zmq_context = zmq.Context()
-        if self.type == 'Sender':
+        if self.type == "sender":
             self.socket = self.zmq_context.socket(zmq.PUSH)
             # Set high water mark and enable non-blocking send
-            self.socket.setsockopt(zmq.SNDHWM, self.queue_len)  # Limit queue to 10 messages
+            self.socket.setsockopt(
+                zmq.SNDHWM, self.queue_len
+            )  # Limit queue to 10 messages
             self.socket.setsockopt(
                 zmq.IMMEDIATE, 1
             )  # Prevent blocking if receiver is not available
             self.socket.connect("tcp://" + self.ip + ":5555")
-        elif self.type == 'Receiver':
+        elif self.type == "receiver":
             self.socket = self.zmq_context.socket(zmq.PULL)
             self.socket.bind("tcp://0.0.0.0:5555")
 
     def send_msg(self, send_dict):
-        if self.type != 'Sender':
-            raise ValueError("ZMQ type must be 'Sender' to send messages")
-        
+        if self.type != "sender":
+            raise ValueError("ZMQ type must be 'sender' to send messages")
+
         # Serialize the numpy array using pickle
         serialized_array = pickle.dumps(send_dict)
         # Send the serialized data
@@ -45,9 +48,9 @@ class ZMQNode:
             pass
 
     def get_msg(self):
-        if self.type != 'Receiver':
-            raise ValueError("ZMQ type must be 'Receiver' to receive messages")
-        
+        if self.type != "receiver":
+            raise ValueError("ZMQ type must be 'receiver' to receive messages")
+
         try:
             # Non-blocking receive
             serialized_array = self.socket.recv(zmq.NOBLOCK)
@@ -112,7 +115,7 @@ class ZMQReceiver:
 
 send_to_remote = True
 if send_to_remote:
-    sender = ZMQNode(type='Sender', ip="10.5.6.248")
+    sender = ZMQNode(type="sender", ip="10.5.6.248")
 
 # Open the camera (0 is the default camera)
 cap = cv2.VideoCapture(0)

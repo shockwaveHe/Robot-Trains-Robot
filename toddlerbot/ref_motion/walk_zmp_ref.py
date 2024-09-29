@@ -1,6 +1,6 @@
 import os
 import pickle
-from typing import List, Optional
+from typing import Optional
 
 import jax
 import numpy

@@ -19,14 +19,14 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
     ):
         super().__init__(name, robot, init_motor_pos, fixed_command)
 
-        self.zmq_node = ZMQNode(type="Receiver")
+        self.zmq_node = ZMQNode(type="receiver")
         self.last_pose = default_pose
 
     def override_motor_target(self, motor_target):
         # Still override even if no message received, so that it won't suddenly go to default pose
         motor_target[16:30] = self.last_pose
         # Get the motor target from the teleop node
-        remote_state_dict = self.zmq_node.get_all_msg()
+        remote_state_dict = self.zmq_node.get_msg()
         if remote_state_dict is not None:
             # print(remote_state_dict["time"], time.time())
             # print(remote_state_dict["sim_action"])
