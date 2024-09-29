@@ -1,9 +1,9 @@
 import glob
-import time
+import platform
 
 import numpy as np
 import serial
-import platform
+
 
 class FSR:
     def __init__(self, port_pattern="/dev/tty.usbmodem*", baud_rate=115200):
