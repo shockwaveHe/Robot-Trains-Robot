@@ -49,6 +49,9 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         self.model = mujoco.MjModel.from_xml_path(xml_path)
         self.data = mujoco.MjData(self.model)
 
+        mujoco.mj_forward(self.model, self.data)
+        self.com_pos_init = np.asarray(self.data.body(0).subtree_com, dtype=np.float32)
+
         self.joint_indices = np.array(
             [
                 mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, name)
@@ -71,19 +74,17 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         )
 
         # PD controller parameters
-        self.com_kp = np.array([2000, 4000], dtype=np.float32)
+        self.com_kp = np.array([1000, 1000], dtype=np.float32)
         self.com_kd = np.array([0, 0], dtype=np.float32)
 
-        self.torso_kp = np.array([0.2, 0.2], dtype=np.float32)
+        self.torso_kp = np.array([0.5, 0.5], dtype=np.float32)
         self.torso_kd = np.array([0.0, 0.0], dtype=np.float32)
 
-        self.com_pos_init: npt.NDArray[np.float32] | None = None
         self.com_pos_error_prev = np.zeros(2, dtype=np.float32)
         self.torso_euler_error_prev = np.zeros(2, dtype=np.float32)
         self.step_curr = 0
 
     def reset(self):
-        self.com_pos_init = None
         self.com_pos_error_prev = np.zeros(2, dtype=np.float32)
         self.torso_euler_error_prev = np.zeros(2, dtype=np.float32)
         self.step_curr = 0
@@ -116,8 +117,6 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
 
         torso_euler = np.asarray(quat2euler(torso_quat))
         com_pos = np.asarray(self.data.body(0).subtree_com, dtype=np.float32)
-        if self.com_pos_init is None:
-            self.com_pos_init = com_pos.copy()
 
         # PD controller on CoM position
         com_pos_error = com_pos[:2] - self.com_pos_init[:2]
@@ -136,6 +135,9 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         ctrl_torso_ori = (
             self.torso_kp * torso_euler_error + self.torso_kd * torso_euler_error_d
         )
+
+        # print(f"com_pos_error: {com_pos_error}")
+        # print(f"torso_euler_error: {torso_euler_error}")
 
         time_curr = self.step_curr * self.control_dt
         joint_pos = self.get_joint_target(obs, time_curr)

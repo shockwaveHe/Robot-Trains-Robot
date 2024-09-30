@@ -58,6 +58,7 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
             )
             return action
 
+        # TODO: Finish the current gait cycle before transitioning
         command_scale = {key: 0 for key in self.policies}
         command_scale["squat"] = 1e-6
         control_inputs = self.joystick.get_controller_input()
