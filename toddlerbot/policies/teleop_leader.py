@@ -1,13 +1,14 @@
 import time
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
-from pynput import keyboard
 
 from toddlerbot.policies import BasePolicy
 from toddlerbot.sensing.FSR import FSR
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
+from toddlerbot.tools.joystick import Joystick
 from toddlerbot.utils.comm_utils import ZMQMessage, ZMQNode
 from toddlerbot.utils.dataset_utils import DatasetLogger
 from toddlerbot.utils.math_utils import interpolate_action
@@ -19,6 +20,7 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
         name: str,
         robot: Robot,
         init_motor_pos: npt.NDArray[np.float32],
+        joystick: Optional[Joystick] = None,
         ip: str = "127.0.0.1",
     ):
         super().__init__(name, robot, init_motor_pos)
@@ -38,9 +40,17 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
 
         self.is_logging = False
         self.toggle_motor = True
+        self.is_button_pressed = False
         self.n_logs = 1
         self.trial_idx = 0
-        self.last_time = time.time()
+        # self.last_time = time.time()
+
+        self.joystick = joystick
+        if joystick is None:
+            try:
+                self.joystick = Joystick()
+            except Exception:
+                pass
 
         self.prep_duration = 2.0
         self.prep_time, self.prep_action = self.move(
@@ -51,30 +61,7 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
             end_time=0.0,
         )
 
-        # Start a listener for the spacebar
-        self._start_keyboard_listener()
-
-        print('\nBy default, logging is disabled. Press "space" to toggle logging.\n')
-
-    def _start_keyboard_listener(self):
-        def on_press(key):
-            try:
-                if key == keyboard.Key.space:
-                    self.is_logging = not self.is_logging
-                    self.toggle_motor = True
-                    # if logging is toggled to off(done), log the episode end
-                    if not self.is_logging:
-                        self.dataset_logger.log_episode_end()
-                        print(f"Logged {self.n_logs} entries.")
-                        self.n_logs += 1
-                    print(
-                        f"\nLogging is now {'enabled' if self.is_logging else 'disabled'}.\n"
-                    )
-            except AttributeError:
-                pass
-
-        listener = keyboard.Listener(on_press=on_press)
-        listener.start()
+        print('\nBy default, logging is disabled. Press "menu" to toggle logging.\n')
 
     # note: calibrate zero at: toddlerbot/tools/calibration/calibrate_zero.py --robot toddlerbot_arms
     # note: zero points can be accessed in config_motors.json
@@ -86,11 +73,36 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
             )
             return action
 
+        control_inputs = self.joystick.get_controller_input()
+        for task, input in control_inputs.items():
+            if task == "log":
+                if abs(input) > 0.5:
+                    # Button is pressed
+                    if not self.is_button_pressed:
+                        self.is_button_pressed = True  # Mark the button as pressed
+                        self.is_logging = not self.is_logging  # Toggle logging
+                        self.toggle_motor = True
+
+                        # Log the episode end if logging is toggled to off
+                        if not self.is_logging:
+                            self.dataset_logger.log_episode_end()
+                            print(f"Logged {self.n_logs} entries.")
+                            self.n_logs += 1
+
+                        print(
+                            f"\nLogging is now {'enabled' if self.is_logging else 'disabled'}.\n"
+                        )
+                else:
+                    # Button is released
+                    self.is_button_pressed = False  # Reset button pressed state
+
         action = obs.motor_pos
+        fsrL, fsrR = 0.0, 0.0
         if self.fsr is not None:
-            fsrL, fsrR = self.fsr.get_state()
-        else:
-            fsrL, fsrR = 0.0, 0.0
+            try:
+                fsrL, fsrR = self.fsr.get_state()
+            except Exception as e:
+                print(e)
 
         # compile data to send to follower
         msg = ZMQMessage(

@@ -4,7 +4,6 @@ import collections
 import cv2
 import numpy as np
 import numpy.typing as npt
-from pynput import keyboard
 
 from toddlerbot.policies import BasePolicy
 from toddlerbot.sensing.camera import Camera

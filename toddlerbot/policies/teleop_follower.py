@@ -66,7 +66,7 @@ class TeleopFollowerPolicy(BasePolicy, policy_name="teleop_follower"):
             end_time=0.0,
         )
 
-        print('\nBy default, logging is disabled. Press "space" to toggle logging.\n')
+        print('\nBy default, logging is disabled. Press "menu" to toggle logging.\n')
 
     # note: calibrate zero at: toddlerbot/tools/calibrate_zero.py --robot toddlerbot_arms
     # note: zero points can be accessed in config_motors.json

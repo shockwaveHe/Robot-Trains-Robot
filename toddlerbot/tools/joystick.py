@@ -60,6 +60,7 @@ class Joystick:
         self.joystick = self.initialize_joystick()
         self.joystick_mapping = {
             "view": "stand",
+            "menu": "log",
             "Y": "look_up",
             "A": "look_down",
             "X": "look_left",
