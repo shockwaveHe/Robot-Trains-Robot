@@ -60,6 +60,9 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
             self.prep_duration,
             end_time=0.0,
         )
+        self.reset_duration = 5.0
+        self.reset_end_time = 1.0
+        self.reset_time = None
 
         print('\nBy default, logging is disabled. Press "menu" to toggle logging.\n')
 
@@ -96,13 +99,31 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
                     # Button is released
                     self.is_button_pressed = False  # Reset button pressed state
 
-        action = obs.motor_pos
         fsrL, fsrR = 0.0, 0.0
-        if self.fsr is not None:
-            try:
-                fsrL, fsrR = self.fsr.get_state()
-            except Exception as e:
-                print(e)
+        if self.is_logging:
+            action = obs.motor_pos
+            if self.fsr is not None:
+                try:
+                    fsrL, fsrR = self.fsr.get_state()
+                except Exception as e:
+                    print(e)
+        else:
+            if self.reset_time is None:
+                self.reset_time, self.reset_action = self.move(
+                    obs.time - self.control_dt,
+                    obs.motor_pos,
+                    self.default_motor_pos,
+                    self.reset_duration,
+                    end_time=self.reset_end_time,
+                )
+
+            if obs.time < self.reset_time[-1]:
+                action = np.asarray(
+                    interpolate_action(obs.time, self.reset_time, self.reset_action)
+                )
+            else:
+                self.reset_time = None
+                action = self.default_motor_pos.copy()
 
         # compile data to send to follower
         msg = ZMQMessage(
