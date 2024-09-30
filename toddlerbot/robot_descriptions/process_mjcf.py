@@ -206,7 +206,7 @@ def add_keyframes(
     if is_fixed:
         qpos_str = ""
     else:
-        qpos_str = f"0 0 {general_config['offsets']['torso_z_default']} 1 0 0 0 "
+        qpos_str = f"0 0 {general_config['offsets']['default_torso_z']} 1 0 0 0 "
 
     if has_upper_body and has_lower_body:  # neck
         qpos_str += "0 0 0 0 "

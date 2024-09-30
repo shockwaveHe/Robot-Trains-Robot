@@ -3,7 +3,6 @@ import numpy as np
 import numpy.typing as npt
 
 from toddlerbot.policies import BasePolicy
-from toddlerbot.ref_motion.balance_ref import BalanceReference
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
@@ -43,7 +42,8 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         ]
         self.pitch_joint_signs = np.array([1, 1, 1, -1, -1, 1], dtype=np.float32)
 
-        self.motion_ref = BalanceReference(robot, playback_speed=0.5)
+        self.neck_yaw_idx = robot.joint_ordering.index("neck_yaw_driven")
+        self.neck_pitch_idx = robot.joint_ordering.index("neck_pitch_driven")
 
         xml_path = find_robot_file_path(self.robot.name, suffix="_scene.xml")
         self.model = mujoco.MjModel.from_xml_path(xml_path)
@@ -74,7 +74,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         self.com_kp = np.array([2000, 4000], dtype=np.float32)
         self.com_kd = np.array([0, 0], dtype=np.float32)
 
-        self.torso_kp = np.array([0.5, 0.5], dtype=np.float32)
+        self.torso_kp = np.array([0.2, 0.2], dtype=np.float32)
         self.torso_kd = np.array([0.0, 0.0], dtype=np.float32)
 
         self.com_pos_init: npt.NDArray[np.float32] | None = None
@@ -175,9 +175,11 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         return motor_target
 
     def get_joint_target(self, obs: Obs, time_curr: float) -> npt.NDArray[np.float32]:
-        return self.motion_ref.get_state_ref(
-            np.zeros(3, dtype=np.float32),
-            np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),
-            time_curr,
-            np.zeros(1, dtype=np.float32),
-        )[13 : 13 + self.robot.nu]
+        joint_target = self.default_joint_pos.copy()
+        joint_angles = self.robot.motor_to_joint_angles(
+            dict(zip(self.robot.motor_ordering, obs.motor_pos))
+        )
+        joint_target[self.neck_yaw_idx] = joint_angles["neck_yaw_driven"]
+        joint_target[self.neck_pitch_idx] = joint_angles["neck_pitch_driven"]
+
+        return joint_target

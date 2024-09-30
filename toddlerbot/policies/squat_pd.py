@@ -40,9 +40,17 @@ class SquatPDPolicy(BalancePDPolicy, policy_name="squat_pd"):
             if task == "squat":
                 command[0] = -input * self.squat_speed
 
-        return self.motion_ref.get_state_ref(
+        joint_target = self.motion_ref.get_state_ref(
             np.zeros(3, dtype=np.float32),
             np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),
             time_curr,
             command,
         )[13 : 13 + self.robot.nu]
+
+        joint_angles = self.robot.motor_to_joint_angles(
+            dict(zip(self.robot.motor_ordering, obs.motor_pos))
+        )
+        joint_target[self.neck_yaw_idx] = joint_angles["neck_yaw_driven"]
+        joint_target[self.neck_pitch_idx] = joint_angles["neck_pitch_driven"]
+
+        return joint_target

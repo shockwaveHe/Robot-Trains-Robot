@@ -54,7 +54,4 @@ class TurnPolicy(MJXPolicy, policy_name="turn"):
                         [self.command_range[0][1], 0.0, self.command_range[0][0]],
                     )
 
-            print("Control inputs: ", control_inputs)
-            print(f"Turn command: {command}")
-
         return command

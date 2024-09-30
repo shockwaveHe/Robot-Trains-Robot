@@ -13,8 +13,12 @@ class ResetPDPolicy(BalancePDPolicy, policy_name="reset_pd"):
     ):
         super().__init__(name, robot, init_motor_pos)
 
-        self.reset_duration = 7.0
-        self.reset_end_time = 2.0
+        self.reset_duration = 5.0
+        self.reset_end_time = 1.0
+        self.reset_time = None
+
+    def reset(self):
+        super().reset()
         self.reset_time = None
 
     def get_joint_target(self, obs: Obs, time_curr: float) -> npt.NDArray[np.float32]:
@@ -32,11 +36,19 @@ class ResetPDPolicy(BalancePDPolicy, policy_name="reset_pd"):
             motor_target = np.asarray(
                 interpolate_action(obs.time, self.reset_time, self.reset_action)
             )
-            joint_angles = self.robot.motor_to_joint_angles(
-                dict(zip(self.robot.motor_ordering, motor_target))
+            joint_target = np.array(
+                list(
+                    self.robot.motor_to_joint_angles(
+                        dict(zip(self.robot.motor_ordering, motor_target))
+                    ).values()
+                ),
+                dtype=np.float32,
             )
-            joint_target = np.array(list(joint_angles.values()), dtype=np.float32)
-        else:
-            self.reset_time = None
+
+        joint_angles = self.robot.motor_to_joint_angles(
+            dict(zip(self.robot.motor_ordering, obs.motor_pos))
+        )
+        joint_target[self.neck_yaw_idx] = joint_angles["neck_yaw_driven"]
+        joint_target[self.neck_pitch_idx] = joint_angles["neck_pitch_driven"]
 
         return joint_target

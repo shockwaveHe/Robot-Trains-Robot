@@ -38,7 +38,7 @@ class ZMPWalk:
         )
         self.default_leg_joint_pos = default_joint_pos[joint_groups == "leg"]
 
-        self.com_z = robot.config["general"]["offsets"]["torso_z_default"]
+        self.com_z = robot.config["general"]["offsets"]["default_torso_z"]
         self.foot_to_com_x = float(robot.data_dict["offsets"]["foot_to_com_x"])
         self.foot_to_com_y = float(robot.data_dict["offsets"]["foot_to_com_y"])
 

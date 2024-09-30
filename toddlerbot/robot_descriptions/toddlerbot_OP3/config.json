@@ -12,7 +12,7 @@
         "foot_name": "ank_roll_link",
         "offsets": {
             "torso_z": 0.3442,
-            "torso_z_default": 0.336,
+            "default_torso_z": 0.336,
             "waist_roll_coef": 0.29166667,
             "waist_yaw_coef": 0.20833333
         },

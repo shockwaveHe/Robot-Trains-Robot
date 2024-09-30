@@ -53,7 +53,7 @@ class MJXConfig:
         @dataclass
         class RewardScales:
             torso_pos: float = 0.0  # 1.0
-            torso_quat: float = 1.0
+            torso_quat: float = 0.0  # 1.0
             lin_vel_xy: float = 1.0
             lin_vel_z: float = 0.5
             ang_vel_xy: float = 0.5
