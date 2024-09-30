@@ -17,6 +17,7 @@ class TurnPolicy(MJXPolicy, policy_name="turn"):
         robot: Robot,
         init_motor_pos: npt.NDArray[np.float32],
         ckpt: str,
+        joystick: Optional[Joystick] = None,
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
     ):
         env_cfg = TurnCfg()
@@ -28,11 +29,12 @@ class TurnPolicy(MJXPolicy, policy_name="turn"):
 
         self.command_range = env_cfg.commands.command_range
 
-        self.joystick = None
-        try:
-            self.joystick = Joystick()
-        except Exception:
-            pass
+        self.joystick = joystick
+        if joystick is None:
+            try:
+                self.joystick = Joystick()
+            except Exception:
+                pass
 
         super().__init__(
             name, robot, init_motor_pos, ckpt, fixed_command, env_cfg, motion_ref

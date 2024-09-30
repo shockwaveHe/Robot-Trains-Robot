@@ -47,6 +47,9 @@ class BasePolicy(ABC):
         if len(policy_name) > 0:
             policy_registry[policy_name] = cls
 
+    def reset(self):
+        pass
+
     @abstractmethod
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         pass

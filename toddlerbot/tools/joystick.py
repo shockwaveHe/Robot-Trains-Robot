@@ -21,8 +21,8 @@ XBOX_AXIS_MAPPING = {
     "left_joystick_horizontal": 0,
     "right_joystick_vertical": 4,
     "right_joystick_horizontal": 3,
-    "LT": 2,
-    "RT": 5,
+    "L2": 2,
+    "R2": 5,
 }
 DECK_BUTTON_MAPPING = {
     "A": 3,
@@ -47,28 +47,27 @@ XBOX_BUTTON_MAPPING = {
     "B": 1,
     "X": 2,
     "Y": 3,
-    "LB": 4,
-    "RB": 5,
+    "L1": 4,
+    "R1": 5,
     "view": 6,
     "menu": 7,
 }
 
 
 class Joystick:
-    def __init__(self, dead_zone: float = 0.05):
+    def __init__(self, dead_zone: float = 0.1):
         self.dead_zone = dead_zone
         self.joystick = self.initialize_joystick()
         self.joystick_mapping = {
             "view": "stand",
-            "d_pad_up": "neck_up",
-            "d_pad_down": "neck_down",
-            "d_pad_left": "neck_left",
-            "d_pad_right": "neck_right",
+            "Y": "look_up",
+            "A": "look_down",
+            "X": "look_left",
+            "B": "look_right",
             "left_joystick_vertical": "walk_vertical",
             "left_joystick_horizontal": "walk_horizontal",
             "right_joystick_vertical": "squat",
             "right_joystick_horizontal": "turn",
-            "A": "balance",
         }
         # List all input devices
         devices = [evdev.InputDevice(path) for path in evdev.list_devices()]

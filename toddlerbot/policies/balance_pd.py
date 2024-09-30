@@ -9,32 +9,10 @@ from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.math_utils import interpolate_action, quat2euler
 
-default_pose = np.array(
-    [
-        -0.6028545,
-        -0.90198064,
-        0.01840782,
-        1.2379225,
-        0.52615595,
-        0.4985056,
-        -1.1320779,
-        0.5031457,
-        -0.9372623,
-        -0.248505,
-        1.2179809,
-        -0.35434943,
-        -0.6473398,
-        -1.1581556,
-    ]
-)
-
 
 class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
     def __init__(
-        self,
-        name: str,
-        robot: Robot,
-        init_motor_pos: npt.NDArray[np.float32],
+        self, name: str, robot: Robot, init_motor_pos: npt.NDArray[np.float32]
     ):
         super().__init__(name, robot, init_motor_pos)
 
@@ -65,19 +43,11 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         ]
         self.pitch_joint_signs = np.array([1, 1, 1, -1, -1, 1], dtype=np.float32)
 
-        teleop_default_motor_pos = self.default_motor_pos.copy()
-        arm_motor_slice = slice(
-            robot.motor_ordering.index("left_sho_pitch"),
-            robot.motor_ordering.index("right_wrist_roll") + 1,
-        )
-        teleop_default_motor_pos[arm_motor_slice] = default_pose
-
         self.motion_ref = BalanceReference(robot, playback_speed=0.5)
 
         xml_path = find_robot_file_path(self.robot.name, suffix="_scene.xml")
         self.model = mujoco.MjModel.from_xml_path(xml_path)
         self.data = mujoco.MjData(self.model)
-        self.com_pos_init: npt.NDArray[np.float32] | None = None
 
         self.joint_indices = np.array(
             [
@@ -91,25 +61,32 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
 
         self.q_start_idx = 0 if "fixed" in self.name else 7
 
-        self.prep_duration = 7.0
+        self.prep_duration = 2.0
         self.prep_time, self.prep_action = self.move(
             -self.control_dt,
             init_motor_pos,
-            teleop_default_motor_pos,
+            self.default_motor_pos,
             self.prep_duration,
-            end_time=5.0,
+            end_time=0.0,
         )
 
         # PD controller parameters
-        self.jac_kp = np.array([2000, 4000], dtype=np.float32)
-        self.jac_kd = np.array([0, 0], dtype=np.float32)
+        self.com_kp = np.array([2000, 4000], dtype=np.float32)
+        self.com_kd = np.array([0, 0], dtype=np.float32)
 
-        self.torso_kp = np.array([0.1, 0.1], dtype=np.float32)
+        self.torso_kp = np.array([0.5, 0.5], dtype=np.float32)
         self.torso_kd = np.array([0.0, 0.0], dtype=np.float32)
 
-        self.step_curr = 0
+        self.com_pos_init: npt.NDArray[np.float32] | None = None
         self.com_pos_error_prev = np.zeros(2, dtype=np.float32)
         self.torso_euler_error_prev = np.zeros(2, dtype=np.float32)
+        self.step_curr = 0
+
+    def reset(self):
+        self.com_pos_init = None
+        self.com_pos_error_prev = np.zeros(2, dtype=np.float32)
+        self.torso_euler_error_prev = np.zeros(2, dtype=np.float32)
+        self.step_curr = 0
 
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         # Preparation phase
@@ -119,14 +96,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
             )
             return action
 
-        time_curr = self.step_curr * self.control_dt
-        state_ref = self.motion_ref.get_state_ref(
-            np.zeros(3, dtype=np.float32),
-            np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),
-            time_curr,
-            np.zeros(1, dtype=np.float32),
-        )
-
+        # Get the motor angles from the observation
         motor_angles = dict(zip(self.robot.motor_ordering, obs.motor_pos))
         for name in motor_angles:
             self.data.joint(name).qpos = motor_angles[name]
@@ -137,6 +107,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
 
         mujoco.mj_forward(self.model, self.data)
 
+        # Get the torso orientation and center of mass position
         torso_quat = np.array(
             self.data.body("torso").xquat, dtype=np.float32, copy=True
         )
@@ -144,56 +115,57 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
             torso_quat = np.array([1, 0, 0, 0], dtype=np.float32)
 
         torso_euler = np.asarray(quat2euler(torso_quat))
-
         com_pos = np.asarray(self.data.body(0).subtree_com, dtype=np.float32)
-        com_jacp = np.zeros((3, self.model.nv))
-        mujoco.mj_jacSubtreeCom(self.model, self.data, com_jacp, 0)
-
         if self.com_pos_init is None:
             self.com_pos_init = com_pos.copy()
 
+        # PD controller on CoM position
         com_pos_error = com_pos[:2] - self.com_pos_init[:2]
         com_pos_error_d = (com_pos_error - self.com_pos_error_prev) / self.control_dt
         self.com_pos_error_prev = com_pos_error
 
-        ctrl_jac = self.jac_kp * com_pos_error + self.jac_kd * com_pos_error_d
+        ctrl_com = self.com_kp * com_pos_error + self.com_kd * com_pos_error_d
 
+        # PD controller on torso orientation
         torso_euler_error = obs.euler[:2] - torso_euler[:2]
         torso_euler_error_d = (
             torso_euler_error - self.torso_euler_error_prev
         ) / self.control_dt
         self.torso_euler_error_prev = torso_euler_error
 
-        ctrl_torso = (
+        ctrl_torso_ori = (
             self.torso_kp * torso_euler_error + self.torso_kd * torso_euler_error_d
         )
 
+        time_curr = self.step_curr * self.control_dt
+        joint_pos = self.get_joint_target(obs, time_curr)
+
+        com_jacp = np.zeros((3, self.model.nv))
+        mujoco.mj_jacSubtreeCom(self.model, self.data, com_jacp, 0)
+
         # Update joint positions based on the PD controller command
-        joint_pos = self.default_joint_pos.copy()
         joint_pos[self.pitch_joint_indicies] -= (
-            ctrl_jac[0]
+            ctrl_com[0]
             * com_jacp[
                 0, self.q_start_idx + self.joint_indices[self.pitch_joint_indicies]
             ]
         )
         joint_pos[self.roll_joint_indicies] -= (
-            ctrl_jac[1]
+            ctrl_com[1]
             * com_jacp[
                 1, self.q_start_idx + self.joint_indices[self.roll_joint_indicies]
             ]
         )
-
-        joint_pos[self.pitch_joint_indicies] += ctrl_torso[0] * self.pitch_joint_signs
+        joint_pos[self.pitch_joint_indicies] += (
+            ctrl_torso_ori[0] * self.pitch_joint_signs
+        )
 
         # Convert joint positions to motor angles
         motor_angles = self.robot.joint_to_motor_angles(
             dict(zip(self.robot.joint_ordering, joint_pos))
         )
         motor_target = np.array(list(motor_angles.values()), dtype=np.float32)
-
-        # override motor target with reference motion or teleop motion
-        motor_target = self.override_motor_target(motor_target)
-
+        # Override motor target with reference motion or teleop motion
         motor_target = np.clip(
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
         )
@@ -202,19 +174,10 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
 
         return motor_target
 
-    # override upper body motor_target with reference motion (replay from balance dataset)
-    def override_motor_target(self, motor_target):
-        command = self.fixed_command
-
-        time_curr = self.step_curr * self.control_dt
-        state_ref = self.motion_ref.get_state_ref(
+    def get_joint_target(self, obs: Obs, time_curr: float) -> npt.NDArray[np.float32]:
+        return self.motion_ref.get_state_ref(
             np.zeros(3, dtype=np.float32),
             np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),
             time_curr,
-            command,
-        )
-
-        motor_target = np.asarray(
-            self.motion_ref.override_motor_target(motor_target, state_ref)
-        )
-        return motor_target
+            np.zeros(1, dtype=np.float32),
+        )[13 : 13 + self.robot.nu]
