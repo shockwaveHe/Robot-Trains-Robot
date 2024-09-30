@@ -54,9 +54,7 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
         # Start a listener for the spacebar
         self._start_keyboard_listener()
 
-        print(
-            '\n\nBy default, logging is disabled. Press "space" to toggle logging.\n\n'
-        )
+        print('\nBy default, logging is disabled. Press "space" to toggle logging.\n')
 
     def _start_keyboard_listener(self):
         def on_press(key):
@@ -70,7 +68,7 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
                         print(f"Logged {self.n_logs} entries.")
                         self.n_logs += 1
                     print(
-                        f"\n\nLogging is now {'enabled' if self.is_logging else 'disabled'}.\n\n"
+                        f"\nLogging is now {'enabled' if self.is_logging else 'disabled'}.\n"
                     )
             except AttributeError:
                 pass

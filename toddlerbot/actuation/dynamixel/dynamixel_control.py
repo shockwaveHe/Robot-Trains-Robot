@@ -135,10 +135,10 @@ class DynamixelController(BaseController):
             if ids is not None:
                 # get the intersecting list between ids and motor_ids
                 ids_to_disable = list(set(open_client.motor_ids) & set(ids))
-                print("Disabling motor id ", ids_to_disable)
+                print(f"\nDisabling motor id {ids_to_disable}\n")
                 open_client.set_torque_enabled(ids_to_disable, False, retries=0)
             else:
-                print("Disabling all motor")
+                print("\nDisabling all the motors\n")
                 open_client.set_torque_enabled(open_client.motor_ids, False, retries=0)
 
     def enable_motors(self, ids=None):
@@ -147,10 +147,10 @@ class DynamixelController(BaseController):
             if ids is not None:
                 # get the intersecting list between ids and motor_ids
                 ids_to_enable = list(set(open_client.motor_ids) & set(ids))
-                print("Enabling motor id ", ids_to_enable)
+                print(f"\nEnabling motor id {ids_to_enable}\n")
                 open_client.set_torque_enabled(ids_to_enable, True)
             else:
-                print("Enabling all motor")
+                print("\nEnabling all the motors\n")
                 open_client.set_torque_enabled(open_client.motor_ids, True)
 
     def set_kp(self, kp: List[float]):

@@ -262,12 +262,13 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
 
             # need to enable and disable motors according to logging state
             if isinstance(policy, TeleopLeaderPolicy) and policy.toggle_motor:
+                assert isinstance(sim, RealWorld)
                 if policy.is_logging:
-                    # set motor kp kd
-                    sim.dynamixel_controller.set_kp_kd(0, 0)
+                    # disable all motors when logging
+                    sim.dynamixel_controller.disable_motors()
                 else:
-                    # when not logging, enable all motors, with positive kp kd
-                    sim.dynamixel_controller.set_kp_kd(2000, 8000)
+                    # enable all motors when not logging
+                    sim.dynamixel_controller.enable_motors()
 
                 policy.toggle_motor = False
 

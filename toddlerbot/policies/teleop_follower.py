@@ -1,8 +1,5 @@
-# type: ignore
-
 import time
 
-# import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 
@@ -69,9 +66,7 @@ class TeleopFollowerPolicy(BasePolicy, policy_name="teleop_follower"):
             end_time=0.0,
         )
 
-        print(
-            '\n\nBy default, logging is disabled. Press "space" to toggle logging.\n\n'
-        )
+        print('\nBy default, logging is disabled. Press "space" to toggle logging.\n')
 
     # note: calibrate zero at: toddlerbot/tools/calibrate_zero.py --robot toddlerbot_arms
     # note: zero points can be accessed in config_motors.json
@@ -133,7 +128,7 @@ class TeleopFollowerPolicy(BasePolicy, policy_name="teleop_follower"):
             t2 = time.time()
             n_logs = len(self.dataset_logger.data_dict["episode_ends"])
             print(
-                f"Logging traj {n_logs} (starts at 0): Camera_frame: {t2 - t1:.2f} s, current_time: {obs.time}"
+                f"Logging traj {n_logs} (starts at 0): camera_frame: {t2 - t1:.2f} s, current_time: {obs.time: .2f} s"
             )
             self.dataset_logger.log_entry(
                 obs.time, obs.motor_pos, [fsrL, fsrR], camera_frame

@@ -20,7 +20,12 @@ def get_policy_class(policy_name: str) -> Type["BasePolicy"]:
 
 
 def get_policy_names() -> List[str]:
-    return list(policy_registry.keys())
+    policy_names: List[str] = []
+    for key in policy_registry.keys():
+        policy_names.append(key)
+        policy_names.append(key + "_fixed")
+
+    return policy_names
 
 
 class BasePolicy(ABC):
