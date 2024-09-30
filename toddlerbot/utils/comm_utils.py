@@ -83,14 +83,7 @@ class ZMQNode:
                 # Non-blocking receive
                 serialized_array = self.socket.recv(zmq.NOBLOCK)
                 msg = pickle.loads(serialized_array)
-                zmq_message = ZMQMessage(
-                    time=msg["time"],
-                    is_logging=msg["is_logging"],
-                    action=np.array(msg["action"], dtype=np.float32),
-                    fsr=np.array(msg["fsr"], dtype=np.float32),
-                    trial=msg["trial"],
-                )
-                messages.append(zmq_message)
+                messages.append(msg)
 
             except zmq.Again:
                 # No more data is available

@@ -158,7 +158,7 @@ class DynamixelController(BaseController):
             self.client.sync_write(self.motor_ids, kp, 84, 2)
 
     def set_kp_kd(self, kp: float, kd: float):
-        log("Setting motor kp kd", header="Dynamixel")
+        log(f"Setting motor kp={kp} kd={kd}", header="Dynamixel")
         with self.lock:
             self.client.sync_write(self.motor_ids, [kd] * len(self.motor_ids), 80, 2)
             self.client.sync_write(self.motor_ids, [kp] * len(self.motor_ids), 84, 2)

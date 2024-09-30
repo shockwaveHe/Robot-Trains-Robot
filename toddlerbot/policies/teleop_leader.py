@@ -28,7 +28,7 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
         )
 
         self.dataset_logger = DatasetLogger()
-        self.zmq = ZMQNode(type="sender", ip=ip)  # test locally
+        self.zmq = ZMQNode(type="sender", ip=ip)
 
         self.fsr = None
         try:
@@ -102,10 +102,11 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
             fsr=np.array([fsrL, fsrR]),
             trial=self.trial_idx,
         )
-        # print(f"Sending: {send_dict['time']}")
+        # print(f"Sending: {msg}")
         self.zmq.send_msg(msg)
         self.trial_idx += 1
-        print(time.time(), self.trial_idx)
+
+        # print(time.time(), self.trial_idx)
 
         # Log the data
         if self.is_logging:
