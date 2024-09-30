@@ -15,7 +15,7 @@ from toddlerbot.tools.joystick import Joystick
 from toddlerbot.utils.math_utils import interpolate_action
 
 WALK_CKPT = "20240929_133322"
-TURN_CKPT = "20240929_133303"
+TURN_CKPT = "20240929_220646"
 
 
 class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
