@@ -11,7 +11,7 @@ from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
 from toddlerbot.utils.math_utils import interpolate_action
-
+from toddlerbot.utils.comm_utils import ZMQNode
 
 class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
     def __init__(
@@ -22,7 +22,14 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
         self.default_motor_pos = np.array(
             list(robot.default_motor_angles.values()), dtype=np.float32
         )
-        self.joystick = Joystick()
+
+        self.joystick = None
+        try:
+            self.joystick = Joystick()
+        except Exception:
+            pass
+
+        self.zmq_node = ZMQNode(type="receiver")
 
         self.walk_policy = WalkPolicy(
             "walk", robot, init_motor_pos, joystick=self.joystick
@@ -31,7 +38,7 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
             "turn", robot, init_motor_pos, joystick=self.joystick
         )
         self.balance_policy = TeleopFollowerPDPolicy(
-            "teleop_follower_pd", robot, init_motor_pos, joystick=self.joystick
+            "teleop_follower_pd", robot, init_motor_pos, joystick=self.joystick, zmq_node=self.zmq_node
         )
         self.reset_policy = ResetPDPolicy("reset_pd", robot, init_motor_pos)
 
@@ -61,17 +68,28 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
             )
             return action
 
+        msg = self.zmq_node.get_msg()
+        self.balance_policy.msg = msg
+
+        print(f"msg: {msg}")
+
+        control_inputs = None
+        if self.joystick is not None:
+            control_inputs = self.joystick.get_controller_input()
+        elif msg is not None:
+            control_inputs = msg.control_inputs
+
         command_scale = {key: 0 for key in self.policies}
         command_scale["balance"] = 1e-6
-        control_inputs = self.joystick.get_controller_input()
-        for task, input in control_inputs.items():
-            for key in self.policies:
-                if key in task:
-                    command_scale[key] += abs(input)
-                    break
+
+        if control_inputs is not None:
+            for task, input in control_inputs.items():
+                for key in self.policies:
+                    if key in task:
+                        command_scale[key] += abs(input)
+                        break
 
         policy_curr = max(command_scale, key=command_scale.get)
-
         if policy_curr != self.policy_prev:
             if (
                 not self.need_reset
@@ -101,8 +119,8 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
 
         motor_target = self.policies[policy_curr].step(obs, is_real)
 
-        # print(f"Policy: {policy_curr}")
-        # print(f"need_reset: {self.need_reset}")
+        print(f"Policy: {policy_curr}")
+        print(f"need_reset: {self.need_reset}")
 
         if self.reset_policy.reset_time is None:
             self.need_reset = False
