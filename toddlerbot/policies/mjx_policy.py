@@ -1,6 +1,6 @@
 import functools
 import os
-from typing import Optional
+from typing import Dict, Optional
 
 import jax
 import jax.numpy as jnp
@@ -16,6 +16,7 @@ from toddlerbot.policies import BasePolicy
 from toddlerbot.ref_motion import MotionReference
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
+from toddlerbot.tools.joystick import Joystick
 from toddlerbot.utils.math_utils import (
     butterworth,
     exponential_moving_average,
@@ -32,6 +33,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         robot: Robot,
         init_motor_pos: npt.NDArray[np.float32],
         ckpt: str,
+        joystick: Optional[Joystick] = None,
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
         cfg: Optional[MJXConfig] = None,
         motion_ref: Optional[MotionReference] = None,
@@ -125,6 +127,13 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         self.rng = jax.random.PRNGKey(0)
         self.jit_inference_fn(self.obs_history, self.rng)[0].block_until_ready()
 
+        self.joystick = joystick
+        if joystick is None:
+            try:
+                self.joystick = Joystick()
+            except Exception:
+                pass
+
         self.prep_duration = 7.0
         self.prep_time, self.prep_action = self.move(
             -self.control_dt,
@@ -134,11 +143,18 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             end_time=5.0,
         )
 
-    def get_command(self) -> npt.NDArray[np.float32]:
+    def get_command(
+        self, control_inputs: Optional[Dict[str, float]]
+    ) -> npt.NDArray[np.float32]:
         return np.zeros(1, dtype=np.float32)
 
     # @profile()
-    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
+    def step(
+        self,
+        obs: Obs,
+        is_real: bool = False,
+        control_inputs: Optional[Dict[str, float]] = None,
+    ) -> npt.NDArray[np.float32]:
         if obs.time < self.prep_duration:
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
@@ -146,7 +162,14 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             return action
 
         time_curr = self.step_curr * self.control_dt
-        command = self.get_command()
+
+        if self.joystick is None:
+            command = self.fixed_command
+        else:
+            # TODO: Implement joystick control
+            control_inputs = self.joystick.get_controller_input()
+            command = self.get_command()
+
         phase_signal = self.motion_ref.get_phase_signal(time_curr, command)
         state_ref = self.motion_ref.get_state_ref(
             np.zeros(3, dtype=np.float32),

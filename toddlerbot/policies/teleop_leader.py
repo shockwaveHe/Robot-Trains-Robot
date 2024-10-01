@@ -1,5 +1,5 @@
 import time
-from typing import Optional
+from typing import Dict, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -69,7 +69,12 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
     # note: calibrate zero at: toddlerbot/tools/calibration/calibrate_zero.py --robot toddlerbot_arms
     # note: zero points can be accessed in config_motors.json
 
-    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
+    def step(
+        self,
+        obs: Obs,
+        is_real: bool = False,
+        control_inputs: Optional[Dict[str, float]] = None,
+    ) -> npt.NDArray[np.float32]:
         if obs.time < self.prep_time[-1]:
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
@@ -129,6 +134,7 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
         msg = ZMQMessage(
             time=time.time(),
             is_logging=self.is_logging,
+            control_inputs=control_inputs,
             action=action,
             fsr=np.array([fsrL, fsrR]),
             trial=self.trial_idx,

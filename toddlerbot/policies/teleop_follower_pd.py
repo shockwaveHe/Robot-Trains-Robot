@@ -1,4 +1,5 @@
 import time
+from typing import Dict, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -35,13 +36,17 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
         self.arm_gear_ratio = np.array(arm_gear_ratio_list, dtype=np.float32)
 
         self.zmq_node = ZMQNode(type="receiver")
+        self.msg = None
         self.last_arm_joint_pos = self.default_joint_pos[self.arm_joint_slice].copy()
 
     def reset(self):
         super().reset()
         self.last_arm_joint_pos = self.default_joint_pos[self.arm_joint_slice].copy()
 
-    def get_joint_target(self, obs: Obs, time_curr: float) -> npt.NDArray[np.float32]:
+    def get_msg(self):
+        return self.zmq_node.get_msg()
+
+    def plan(self, obs: Obs, time_curr: float) -> npt.NDArray[np.float32]:
         # Still override even if no message received, so that it won't suddenly go to default pose
         # TODO: Maintain the squatting pose
         joint_target = self.default_joint_pos.copy()
@@ -52,10 +57,9 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
         joint_target[self.neck_pitch_idx] = joint_angles["neck_pitch_driven"]
         joint_target[self.arm_joint_slice] = self.last_arm_joint_pos
         # Get the motor target from the teleop node
-        msg = self.zmq_node.get_msg()
-        if msg is not None:
-            if abs(time.time() - msg.time) < 0.1:
-                arm_motor_pos = msg.action
+        if self.msg is not None:
+            if abs(time.time() - self.msg.time) < 0.1:
+                arm_motor_pos = self.msg.action
                 arm_joint_pos = arm_motor_pos * self.arm_gear_ratio
                 joint_target[self.arm_joint_slice] = arm_joint_pos
                 self.last_arm_joint_pos = arm_joint_pos
@@ -63,3 +67,12 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
                 print("stale message received, discarding")
 
         return joint_target
+
+    def step(
+        self,
+        obs: Obs,
+        is_real: bool = False,
+        control_inputs: Optional[Dict[str, float]] = None,
+    ) -> npt.NDArray[np.float32]:
+        self.msg = self.get_msg()
+        return super().step(obs, is_real, control_inputs)

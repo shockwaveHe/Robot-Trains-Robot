@@ -1,6 +1,6 @@
 import os
 import pickle
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -47,7 +47,12 @@ class ReplayPolicy(BasePolicy, policy_name="replay"):
         self.n_steps_total = self.action_arr.shape[0]
         self.step_curr = 0
 
-    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
+    def step(
+        self,
+        obs: Obs,
+        is_real: bool = False,
+        control_inputs: Optional[Dict[str, float]] = None,
+    ) -> npt.NDArray[np.float32]:
         action = self.action_arr[self.step_curr]
         self.step_curr = self.step_curr + 1
         return action

@@ -1,3 +1,5 @@
+from typing import Dict, Optional
+
 import numpy as np
 import numpy.typing as npt
 
@@ -22,7 +24,12 @@ class StandOpenPolicy(BasePolicy, policy_name="stand_open"):
             -self.control_dt, init_motor_pos, self.default_motor_pos, self.prep_duration
         )
 
-    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
+    def step(
+        self,
+        obs: Obs,
+        is_real: bool = False,
+        control_inputs: Optional[Dict[str, float]] = None,
+    ) -> npt.NDArray[np.float32]:
         if obs.time < self.prep_time[-1]:
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)

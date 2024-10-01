@@ -33,7 +33,7 @@ class SquatPDPolicy(BalancePDPolicy, policy_name="squat_pd"):
         super().reset()
         self.motion_ref.reset()
 
-    def get_joint_target(self, obs: Obs, time_curr: float) -> npt.NDArray[np.float32]:
+    def plan(self, obs: Obs, time_curr: float) -> npt.NDArray[np.float32]:
         control_inputs = self.joystick.get_controller_input()
         command = np.zeros(2, dtype=np.float32)
         for task, input in control_inputs.items():

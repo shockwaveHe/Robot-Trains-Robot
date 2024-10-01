@@ -1,3 +1,5 @@
+from typing import Dict, Optional
+
 import numpy as np
 import numpy.typing as npt
 
@@ -21,7 +23,12 @@ class ResetPDPolicy(BalancePDPolicy, policy_name="reset_pd"):
         super().reset()
         self.reset_time = None
 
-    def get_joint_target(self, obs: Obs, time_curr: float) -> npt.NDArray[np.float32]:
+    def plan(
+        self,
+        obs: Obs,
+        time_curr: float,
+        control_inputs: Optional[Dict[str, float]] = None,
+    ) -> npt.NDArray[np.float32]:
         # TODO: Debug the reset action
         if self.reset_time is None:
             self.reset_time, self.reset_action = self.move(

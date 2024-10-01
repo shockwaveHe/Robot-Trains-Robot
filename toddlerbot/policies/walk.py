@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Dict, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -37,28 +37,34 @@ class WalkPolicy(MJXPolicy, policy_name="walk"):
                 pass
 
         super().__init__(
-            name, robot, init_motor_pos, ckpt, fixed_command, env_cfg, motion_ref
+            name,
+            robot,
+            init_motor_pos,
+            ckpt,
+            joystick,
+            fixed_command,
+            env_cfg,
+            motion_ref,
         )
 
-    def get_command(self) -> npt.NDArray[np.float32]:
-        if self.joystick is None:
-            command = self.fixed_command
-        else:
-            control_inputs = self.joystick.get_controller_input()
-            command = np.zeros_like(self.fixed_command)
-            for task, input in control_inputs.items():
-                if task == "walk_vertical":
-                    command[0] = np.interp(
-                        input,
-                        [-1, 0, 1],
-                        [self.command_range[0][1], 0.0, self.command_range[0][0]],
-                    )
+    def get_command(
+        self, control_inputs: Optional[Dict[str, float]] = None
+    ) -> npt.NDArray[np.float32]:
+        # TODO: Remove the fixed command
+        command = np.zeros_like(self.fixed_command)
+        for task, input in control_inputs.items():
+            if task == "walk_vertical":
+                command[0] = np.interp(
+                    input,
+                    [-1, 0, 1],
+                    [self.command_range[0][1], 0.0, self.command_range[0][0]],
+                )
 
-                elif task == "walk_horizontal":
-                    command[1] = np.interp(
-                        input,
-                        [-1, 0, 1],
-                        [self.command_range[1][1], 0.0, self.command_range[1][0]],
-                    )
+            elif task == "walk_horizontal":
+                command[1] = np.interp(
+                    input,
+                    [-1, 0, 1],
+                    [self.command_range[1][1], 0.0, self.command_range[1][0]],
+                )
 
         return command

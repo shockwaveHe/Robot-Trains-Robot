@@ -11,6 +11,7 @@ import zmq
 class ZMQMessage:
     time: float
     is_logging: bool
+    control_inputs: dict
     action: npt.NDArray[np.float32]
     fsr: npt.NDArray[np.float32]
     trial: int

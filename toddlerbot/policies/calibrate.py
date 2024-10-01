@@ -1,3 +1,5 @@
+from typing import Dict, Optional
+
 import numpy as np
 import numpy.typing as npt
 
@@ -40,7 +42,12 @@ class CalibratePolicy(BasePolicy, policy_name="calibrate"):
         # Initialize integral error
         self.integral_error = 0.0
 
-    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
+    def step(
+        self,
+        obs: Obs,
+        is_real: bool = False,
+        control_inputs: Optional[Dict[str, float]] = None,
+    ) -> npt.NDArray[np.float32]:
         # Preparation phase
         if obs.time < self.prep_time[-1]:
             action = np.asarray(

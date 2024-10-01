@@ -1,3 +1,5 @@
+from typing import Dict, Optional
+
 import mujoco
 import numpy as np
 import numpy.typing as npt
@@ -89,7 +91,12 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         self.torso_euler_error_prev = np.zeros(2, dtype=np.float32)
         self.step_curr = 0
 
-    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
+    def step(
+        self,
+        obs: Obs,
+        is_real: bool = False,
+        control_inputs: Optional[Dict[str, float]] = None,
+    ) -> npt.NDArray[np.float32]:
         # Preparation phase
         if obs.time < self.prep_time[-1]:
             action = np.asarray(
@@ -140,7 +147,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         # print(f"torso_euler_error: {torso_euler_error}")
 
         time_curr = self.step_curr * self.control_dt
-        joint_pos = self.get_joint_target(obs, time_curr)
+        joint_pos = self.plan(obs, time_curr)
 
         com_jacp = np.zeros((3, self.model.nv))
         mujoco.mj_jacSubtreeCom(self.model, self.data, com_jacp, 0)
@@ -176,7 +183,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
 
         return motor_target
 
-    def get_joint_target(self, obs: Obs, time_curr: float) -> npt.NDArray[np.float32]:
+    def plan(self, obs: Obs, time_curr: float) -> npt.NDArray[np.float32]:
         joint_target = self.default_joint_pos.copy()
         joint_angles = self.robot.motor_to_joint_angles(
             dict(zip(self.robot.motor_ordering, obs.motor_pos))

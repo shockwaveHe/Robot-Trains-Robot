@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List, Type
+from typing import Dict, List, Optional, Type
 
 import numpy as np
 import numpy.typing as npt
@@ -56,7 +56,12 @@ class BasePolicy(ABC):
         pass
 
     @abstractmethod
-    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
+    def step(
+        self,
+        obs: Obs,
+        is_real: bool = False,
+        control_inputs: Optional[Dict[str, float]] = None,
+    ) -> npt.NDArray[np.float32]:
         pass
 
     # duration: total length of the motion
