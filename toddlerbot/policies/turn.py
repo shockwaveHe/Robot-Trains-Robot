@@ -16,7 +16,7 @@ class TurnPolicy(MJXPolicy, policy_name="turn"):
         name: str,
         robot: Robot,
         init_motor_pos: npt.NDArray[np.float32],
-        ckpt: str,
+        ckpt: str = "",
         joystick: Optional[Joystick] = None,
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
     ):

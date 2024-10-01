@@ -12,9 +12,6 @@ from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
 from toddlerbot.utils.math_utils import interpolate_action
 
-WALK_CKPT = "20240929_133322"
-TURN_CKPT = "20240929_220646"
-
 
 class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
     def __init__(
@@ -27,12 +24,8 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
         )
         self.joystick = Joystick()
 
-        self.walk_policy = WalkPolicy(
-            "walk", robot, init_motor_pos, WALK_CKPT, self.joystick
-        )
-        self.turn_policy = TurnPolicy(
-            "turn", robot, init_motor_pos, TURN_CKPT, self.joystick
-        )
+        self.walk_policy = WalkPolicy("walk", robot, init_motor_pos, self.joystick)
+        self.turn_policy = TurnPolicy("turn", robot, init_motor_pos, self.joystick)
         self.balance_policy = TeleopFollowerPDPolicy(
             "teleop_follower_pd", robot, init_motor_pos, self.joystick
         )

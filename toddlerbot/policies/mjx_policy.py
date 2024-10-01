@@ -116,10 +116,20 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         )
         make_policy = ppo_networks.make_inference_fn(ppo_network)
 
-        run_name = f"{robot.name}_{self.name}_ppo_{ckpt}"
-        policy_path = os.path.join("results", run_name, "best_policy")
-        if not os.path.exists(policy_path):
-            policy_path = os.path.join("results", run_name, "policy")
+        if len(ckpt) > 0:
+            run_name = f"{robot.name}_{self.name}_ppo_{ckpt}"
+            policy_path = os.path.join("results", run_name, "best_policy")
+            if not os.path.exists(policy_path):
+                policy_path = os.path.join("results", run_name, "policy")
+        else:
+            policy_path = os.path.join(
+                "toddlerbot",
+                "policies",
+                "checkpoints",
+                f"{robot.name}_{self.name}_policy",
+            )
+
+        print(f"Loading policy from {policy_path}")
 
         params = model.load_params(policy_path)
         inference_fn = make_policy(params, deterministic=True)
