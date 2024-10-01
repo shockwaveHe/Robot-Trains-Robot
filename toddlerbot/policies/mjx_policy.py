@@ -92,6 +92,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             self.last_motor_target, (self.filter_order, 1)
         )
 
+        self.state_ref = None
         self.last_action = np.zeros(robot.nu, dtype=np.float32)
         self.action_buffer = np.zeros(
             ((self.n_steps_delay + 1) * robot.nu), dtype=np.float32
@@ -143,6 +144,13 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             end_time=5.0,
         )
 
+    def is_double_support(self) -> bool:
+        if self.state_ref is None:
+            return False
+
+        stance_mask = self.state_ref[-2:]
+        return stance_mask[0] == 1.0 and stance_mask[1] == 1.0
+
     def get_command(self) -> npt.NDArray[np.float32]:
         return np.zeros(1, dtype=np.float32)
 
@@ -162,7 +170,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             command = self.get_command()
 
         phase_signal = self.motion_ref.get_phase_signal(time_curr, command)
-        state_ref = self.motion_ref.get_state_ref(
+        self.state_ref = self.motion_ref.get_state_ref(
             np.zeros(3, dtype=np.float32),
             np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),
             time_curr,
@@ -198,7 +206,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
 
         motor_target = self.default_motor_pos + self.action_scale * action_delay
         motor_target = np.asarray(
-            self.motion_ref.override_motor_target(motor_target, state_ref)
+            self.motion_ref.override_motor_target(motor_target, self.state_ref)
         )
 
         if self.filter_type == "ema":

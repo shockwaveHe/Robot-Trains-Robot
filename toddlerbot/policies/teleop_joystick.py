@@ -2,6 +2,7 @@ import numpy as np
 import numpy.typing as npt
 
 from toddlerbot.policies import BasePolicy
+from toddlerbot.policies.mjx_policy import MJXPolicy
 from toddlerbot.policies.reset_pd import ResetPDPolicy
 from toddlerbot.policies.teleop_follower_pd import TeleopFollowerPDPolicy
 from toddlerbot.policies.turn import TurnPolicy
@@ -54,7 +55,7 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
         )
 
         self.need_reset = False
-        self.last_policy = "balance"
+        self.policy_prev = "balance"
 
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         if obs.time < self.prep_duration:
@@ -63,7 +64,6 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
             )
             return action
 
-        # TODO: Finish the current gait cycle before transitioning
         command_scale = {key: 0 for key in self.policies}
         command_scale["balance"] = 1e-6
         control_inputs = self.joystick.get_controller_input()
@@ -75,17 +75,24 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
 
         policy_curr = max(command_scale, key=command_scale.get)
 
-        if (
-            not self.need_reset
-            and policy_curr != self.last_policy
-            and self.last_policy != "reset"
-            and policy_curr in ["walk", "turn"]
-        ):
-            self.need_reset = True
-            self.reset_policy.last_motor_target = (
-                self.balance_policy.last_motor_target.copy()
-            )
-            self.balance_policy.reset()
+        if policy_curr != self.policy_prev:
+            if (
+                not self.need_reset
+                and self.policy_prev != "reset"
+                and isinstance(self.policies[policy_curr], MJXPolicy)
+            ):
+                self.need_reset = True
+                self.reset_policy.last_motor_target = (
+                    self.balance_policy.last_motor_target.copy()
+                )
+                self.balance_policy.reset()
+
+            last_policy = self.policies[self.policy_prev]
+            if (
+                isinstance(last_policy, MJXPolicy)
+                and not last_policy.is_double_support()
+            ):
+                policy_curr = self.policy_prev
 
         if self.need_reset:
             policy_curr = "reset"
@@ -99,6 +106,6 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
             self.need_reset = False
             self.reset_policy.reset()
 
-        self.last_policy = policy_curr
+        self.policy_prev = policy_curr
 
         return motor_target
