@@ -9,7 +9,7 @@ from toddlerbot.ref_motion.squat_ref import SquatReference
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
-from toddlerbot.utils.comm_utils import ZMQNode
+from toddlerbot.utils.comm_utils import ZMQNode, ZMQMessage
 
 
 class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
@@ -19,6 +19,7 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
         robot: Robot,
         init_motor_pos: npt.NDArray[np.float32],
         joystick: Optional[Joystick] = None,
+        zmq_node: Optional[ZMQNode] = None,
         squat_speed=0.03,
     ):
         super().__init__(name, robot, init_motor_pos)
@@ -53,12 +54,18 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
         self.squat_speed = squat_speed
         self.squat_ref = SquatReference(robot, self.control_dt)
 
+        self.joystick = joystick 
         if joystick is None:
-            self.joystick = Joystick()
-        else:
-            self.joystick = joystick
+            try:
+                self.joystick = Joystick()
+            except Exception:
+                pass
 
-        self.zmq_node = ZMQNode(type="receiver")
+        if zmq_node is None:
+            self.zmq_node = ZMQNode(type="receiver")
+        else:
+            self.zmq_node = zmq_node
+
         self.msg = None
         self.last_arm_joint_pos = self.default_joint_pos[self.arm_joint_slice].copy()
 
@@ -69,24 +76,34 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
         self.squat_ref.reset()
         self.last_arm_joint_pos = self.default_joint_pos[self.arm_joint_slice].copy()
 
-    def get_msg(self):
-        return self.zmq_node.get_msg()
-
     def plan(self) -> npt.NDArray[np.float32]:
-        control_inputs = self.joystick.get_controller_input()
+        # Get the motor target from the teleop node
+        if self.zmq_node is None:
+            msg = self.msg
+        else:
+            msg = self.zmq_node.get_msg()
+
+        control_inputs = None
+        if self.joystick is not None:
+            control_inputs = self.joystick.get_controller_input()
+        elif msg is not None:
+            control_inputs = msg.control_inputs
+
         look_command = np.zeros(2, dtype=np.float32)
         squat_command = np.zeros(1, dtype=np.float32)
-        for task, input in control_inputs.items():
-            if task == "look_up" and input > 0:
-                look_command[1] = input
-            elif task == "look_down" and input > 0:
-                look_command[1] = -input
-            elif task == "look_left" and input > 0:
-                look_command[0] = input
-            elif task == "look_right" and input > 0:
-                look_command[0] = -input
-            if task == "squat":
-                squat_command[0] = -input * self.squat_speed
+
+        if control_inputs is not None:
+            for task, input in control_inputs.items():
+                if task == "look_up" and input > 0:
+                    look_command[1] = input
+                elif task == "look_down" and input > 0:
+                    look_command[1] = -input
+                elif task == "look_left" and input > 0:
+                    look_command[0] = input
+                elif task == "look_right" and input > 0:
+                    look_command[0] = -input
+                if task == "squat":
+                    squat_command[0] = -input * self.squat_speed
 
         time_curr = self.step_curr * self.control_dt
         joint_target = self.squat_ref.get_state_ref(
@@ -108,10 +125,10 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
         joint_target[self.neck_pitch_idx] = self.neck_pitch_target
 
         joint_target[self.arm_joint_slice] = self.last_arm_joint_pos
-        # Get the motor target from the teleop node
-        if self.msg is not None:
-            if abs(time.time() - self.msg.time) < 0.1:
-                arm_motor_pos = self.msg.action
+        
+        if msg is not None:
+            if abs(time.time() - msg.time) < 0.1:
+                arm_motor_pos = msg.action
                 arm_joint_pos = arm_motor_pos * self.arm_gear_ratio
                 joint_target[self.arm_joint_slice] = arm_joint_pos
                 self.last_arm_joint_pos = arm_joint_pos
@@ -119,7 +136,3 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
                 print("stale message received, discarding")
 
         return joint_target
-
-    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
-        self.msg = self.get_msg()
-        return super().step(obs, is_real)
