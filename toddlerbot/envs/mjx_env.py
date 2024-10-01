@@ -288,7 +288,16 @@ class MJXEnv(PipelineEnv):
 
     def reset(self, rng: jax.Array) -> State:
         """Resets the environment to an initial state."""
-        rng, rng1, rng2, rng3, rng4, rng5, rng6 = jax.random.split(rng, 7)
+        (
+            rng,
+            rng_torso_pitch,
+            rng_torso_yaw,
+            rng_command,
+            rng_kp,
+            rng_kd,
+            rng_q_dot_tau_max,
+            rng_q_dot_max,
+        ) = jax.random.split(rng, 8)
 
         state_info = {
             "rng": rng,
@@ -309,8 +318,10 @@ class MJXEnv(PipelineEnv):
         }
 
         path_pos = jnp.zeros(3)
-        path_quat = jnp.array([1.0, 0.0, 0.0, 0.0])
-        command = self._sample_command(rng1)
+        torso_yaw = jax.random.uniform(rng_torso_yaw, (1,), minval=0, maxval=2 * jnp.pi)
+        path_quat = math.euler_to_quat(jnp.array([0.0, 0.0, torso_yaw[0]]))
+
+        command = self._sample_command(rng_command)
         state_info["phase_signal"] = self.motion_ref.get_phase_signal(0.0, command)
         state_ref = self.motion_ref.get_state_ref(path_pos, path_quat, 0.0, command)
         state_info["path_pos"] = path_pos
@@ -327,15 +338,15 @@ class MJXEnv(PipelineEnv):
         if self.add_noise:
             if not self.fixed_base:
                 noise_torso_pitch = self.reset_noise_torso_pitch * jax.random.normal(
-                    rng2, (1,)
+                    rng_torso_pitch, (1,)
                 )
                 noise_torso_quat = math.euler_to_quat(
-                    jnp.array([0.0, noise_torso_pitch[0], 0.0])
+                    jnp.array([0.0, noise_torso_pitch[0], torso_yaw[0]])
                 )
                 qpos = qpos.at[3:7].set(noise_torso_quat)
 
             noise_joint_pos = self.reset_noise_joint_pos * jax.random.normal(
-                rng2, (self.nq - self.q_start_idx,)
+                rng_torso_pitch, (self.nq - self.q_start_idx,)
             )
             qpos = qpos.at[self.q_start_idx :].add(noise_joint_pos)
 
@@ -361,25 +372,25 @@ class MJXEnv(PipelineEnv):
 
         if self.add_domain_rand:
             state_info["controller_kp"] *= jax.random.uniform(
-                rng3, (self.nu,), minval=self.kp_range[0], maxval=self.kp_range[1]
+                rng_kp, (self.nu,), minval=self.kp_range[0], maxval=self.kp_range[1]
             )
             state_info["controller_kd"] *= jax.random.uniform(
-                rng4, (self.nu,), minval=self.kd_range[0], maxval=self.kd_range[1]
+                rng_kd, (self.nu,), minval=self.kd_range[0], maxval=self.kd_range[1]
             )
             state_info["controller_tau_max"] *= jax.random.uniform(
-                rng4,
+                rng_kd,
                 (self.nu,),
                 minval=self.tau_max_range[0],
                 maxval=self.tau_max_range[1],
             )
             state_info["controller_q_dot_tau_max"] *= jax.random.uniform(
-                rng5,
+                rng_q_dot_tau_max,
                 (self.nu,),
                 minval=self.q_dot_tau_max_range[0],
                 maxval=self.q_dot_tau_max_range[1],
             )
             state_info["controller_q_dot_max"] *= jax.random.uniform(
-                rng6,
+                rng_q_dot_max,
                 (self.nu,),
                 minval=self.q_dot_max_range[0],
                 maxval=self.q_dot_max_range[1],
