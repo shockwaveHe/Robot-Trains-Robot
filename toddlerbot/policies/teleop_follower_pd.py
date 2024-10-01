@@ -6,6 +6,8 @@ import numpy.typing as npt
 
 from toddlerbot.policies.balance_pd import BalancePDPolicy
 from toddlerbot.ref_motion.squat_ref import SquatReference
+from toddlerbot.sensing.camera import Camera
+from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
 from toddlerbot.utils.comm_utils import ZMQNode
@@ -19,6 +21,8 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
         init_motor_pos: npt.NDArray[np.float32],
         joystick: Optional[Joystick] = None,
         zmq_node: Optional[ZMQNode] = None,
+        camera: Optional[Camera] = None,
+        zmq_sender: Optional[ZMQNode] = None,
         squat_speed=0.03,
     ):
         super().__init__(name, robot, init_motor_pos)
@@ -60,10 +64,23 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
             except Exception:
                 pass
 
+        # Initialize sensors
+        self.camera = None
+
         if zmq_node is None:
             self.zmq_node = ZMQNode(type="receiver")
         else:
             self.zmq_node = zmq_node
+
+        if camera is None:
+            try:
+                self.camera = Camera(camera_id=0)
+                self.zmq_sender = ZMQNode(type="sender", ip="192.168.46")
+            except Exception:
+                self.camera = None
+        else:
+            self.camera = camera
+            self.zmq_sender = zmq_sender
 
         self.msg = None
         self.last_control_inputs = None
@@ -141,3 +158,15 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
                 print("stale message received, discarding")
 
         return joint_target
+
+    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
+        if self.camera is not None:
+            t1 = time.time()
+            camera_frame = self.camera.get_state()
+            t2 = time.time()
+            print(f"camera_frame: {t2 - t1:.2f} s, current_time: {obs.time: .2f} s")
+        else:
+            camera_frame = None
+
+        # self.zmq_sender.send_msg({"camera_frame": self.curr_camera_frame})
+        return super().step(obs, is_real)
