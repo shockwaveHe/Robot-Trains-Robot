@@ -17,6 +17,7 @@ class TurnCfg(WalkCfg, env_name="turn"):
     @dataclass
     class RewardScales(WalkCfg.RewardsConfig.RewardScales):
         # Walk specific rewards
+        torso_quat: float = 0.0
         torso_pitch: float = 0.1
         lin_vel_xy: float = 0.5
         ang_vel_z: float = 5.0
