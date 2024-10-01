@@ -6,7 +6,7 @@ from toddlerbot.policies import BasePolicy
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
-from toddlerbot.utils.math_utils import euler2quat, interpolate_action
+from toddlerbot.utils.math_utils import interpolate_action
 
 
 class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
@@ -94,7 +94,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
             return action
 
         # Get the motor angles from the observation
-        self.data.joint(0).qpos[3:7] = euler2quat(obs.euler)
+        # self.data.joint(0).qpos[3:7] = euler2quat(obs.euler)
         motor_angles = dict(zip(self.robot.motor_ordering, obs.motor_pos))
         for name in motor_angles:
             self.data.joint(name).qpos = motor_angles[name]
