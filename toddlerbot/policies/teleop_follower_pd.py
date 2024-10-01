@@ -67,6 +67,7 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
             self.zmq_node = zmq_node
 
         self.msg = None
+        self.last_control_inputs = None
         self.last_arm_joint_pos = self.default_joint_pos[self.arm_joint_slice].copy()
 
     def reset(self):
@@ -78,16 +79,20 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
 
     def plan(self) -> npt.NDArray[np.float32]:
         # Get the motor target from the teleop node
-        if self.zmq_node is None:
+        if self.msg is not None:
             msg = self.msg
         else:
             msg = self.zmq_node.get_msg()
 
-        control_inputs = None
+        # print(f"msg: {msg}")
+
+        control_inputs = self.last_control_inputs 
         if self.joystick is not None:
             control_inputs = self.joystick.get_controller_input()
         elif msg is not None:
             control_inputs = msg.control_inputs
+
+        self.last_control_inputs = control_inputs
 
         look_command = np.zeros(2, dtype=np.float32)
         squat_command = np.zeros(1, dtype=np.float32)
@@ -125,8 +130,9 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
         joint_target[self.neck_pitch_idx] = self.neck_pitch_target
 
         joint_target[self.arm_joint_slice] = self.last_arm_joint_pos
-        
+
         if msg is not None:
+            # print(f"latency: {abs(time.time() - msg.time) * 1000:.2f} ms")
             if abs(time.time() - msg.time) < 0.1:
                 arm_motor_pos = msg.action
                 arm_joint_pos = arm_motor_pos * self.arm_gear_ratio

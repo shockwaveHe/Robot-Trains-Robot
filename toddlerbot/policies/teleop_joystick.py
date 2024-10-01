@@ -60,6 +60,7 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
 
         self.need_reset = False
         self.policy_prev = "balance"
+        self.last_control_inputs = None
 
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         if obs.time < self.prep_duration:
@@ -73,11 +74,13 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
 
         print(f"msg: {msg}")
 
-        control_inputs = None
+        control_inputs = self.last_control_inputs
         if self.joystick is not None:
             control_inputs = self.joystick.get_controller_input()
         elif msg is not None:
             control_inputs = msg.control_inputs
+
+        self.last_control_inputs = control_inputs
 
         command_scale = {key: 0 for key in self.policies}
         command_scale["balance"] = 1e-6
