@@ -24,6 +24,13 @@ class Camera:
         frame = np.array(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), dtype=np.uint8)
         return frame
 
+    def get_jpeg(self):
+        frame = self.get_state()
+        # Encode the frame as a JPEG with quality of 90
+        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
+        _, img_encoded_jpeg = cv2.imencode(".jpg", frame, encode_param)
+        return img_encoded_jpeg, frame
+
     def close(self):
         self.cap.release()
         cv2.destroyAllWindows()
