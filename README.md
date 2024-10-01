@@ -19,6 +19,16 @@ Recommended VSCode Extenstions:
 1. XML Tools
 1. Ruff
 
+### Steam Deck
+
+- Unlock the read-only filesystem
+- Shut down steam
+
+```
+sudo usermod -aG uucp $USER
+```
+
+VSCode shells somehow doesn't work. Use the built-in terminal.
 
 ### MuJoCo
 
