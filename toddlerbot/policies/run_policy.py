@@ -467,7 +467,6 @@ if __name__ == "__main__":
         policy = PolicyClass(args.policy, robot, init_motor_pos, args.run_name)
 
     elif issubclass(PolicyClass, MJXPolicy):
-        assert len(args.ckpt) > 0, "Need to provide a checkpoint for MJX policies"
         if len(args.command) > 0:
             fixed_command = np.array(args.command.split(" "), dtype=np.float32)
         else:

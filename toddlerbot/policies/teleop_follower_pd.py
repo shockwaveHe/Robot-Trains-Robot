@@ -64,6 +64,8 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
 
     def reset(self):
         super().reset()
+        self.neck_yaw_target = 0.0
+        self.neck_pitch_target = 0.0
         self.squat_ref.reset()
         self.last_arm_joint_pos = self.default_joint_pos[self.arm_joint_slice].copy()
 

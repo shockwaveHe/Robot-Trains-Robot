@@ -121,7 +121,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
 
         joint_target = self.plan()
 
-        print(f"hip_pitch_target: {joint_target[6]:.4f} {joint_target[12]:.4f}")
+        # print(f"hip_pitch_target: {joint_target[6]:.4f} {joint_target[12]:.4f}")
 
         com_jacp = np.zeros((3, self.model.nv))
         mujoco.mj_jacSubtreeCom(self.model, self.data, com_jacp, 0)
@@ -150,7 +150,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
         )
 
-        print(f"hip_pitch: {motor_target[6]:.4f} {motor_target[12]:.4f}")
+        # print(f"hip_pitch: {motor_target[6]:.4f} {motor_target[12]:.4f}")
 
         self.step_curr += 1
         self.last_motor_target = motor_target

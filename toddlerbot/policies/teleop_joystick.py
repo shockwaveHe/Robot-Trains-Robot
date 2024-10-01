@@ -24,10 +24,14 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
         )
         self.joystick = Joystick()
 
-        self.walk_policy = WalkPolicy("walk", robot, init_motor_pos, self.joystick)
-        self.turn_policy = TurnPolicy("turn", robot, init_motor_pos, self.joystick)
+        self.walk_policy = WalkPolicy(
+            "walk", robot, init_motor_pos, joystick=self.joystick
+        )
+        self.turn_policy = TurnPolicy(
+            "turn", robot, init_motor_pos, joystick=self.joystick
+        )
         self.balance_policy = TeleopFollowerPDPolicy(
-            "teleop_follower_pd", robot, init_motor_pos, self.joystick
+            "teleop_follower_pd", robot, init_motor_pos, joystick=self.joystick
         )
         self.reset_policy = ResetPDPolicy("reset_pd", robot, init_motor_pos)
 
@@ -71,8 +75,13 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
         if policy_curr != self.policy_prev:
             if (
                 not self.need_reset
-                and self.policy_prev != "reset"
+                and self.policy_prev == "balance"
                 and isinstance(self.policies[policy_curr], MJXPolicy)
+                and not np.allclose(
+                    self.balance_policy.last_motor_target,
+                    self.default_motor_pos,
+                    atol=0.1,
+                )
             ):
                 self.need_reset = True
                 self.reset_policy.last_motor_target = (
