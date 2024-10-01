@@ -52,6 +52,9 @@ class WalkPolicy(MJXPolicy, policy_name="walk"):
     ) -> npt.NDArray[np.float32]:
         # TODO: Remove the fixed command
         command = np.zeros_like(self.fixed_command)
+        if control_inputs is None:
+            control_inputs = self.joystick.get_controller_input()
+
         for task, input in control_inputs.items():
             if task == "walk_vertical":
                 command[0] = np.interp(

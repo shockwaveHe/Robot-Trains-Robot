@@ -46,6 +46,9 @@ class TurnPolicy(MJXPolicy, policy_name="turn"):
         if self.joystick is None:
             command = self.fixed_command
         else:
+            if control_inputs is None:
+                control_inputs = self.joystick.get_controller_input()
+
             command = np.zeros_like(self.fixed_command)
             for task, input in control_inputs.items():
                 if task == "turn":
