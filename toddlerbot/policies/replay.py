@@ -1,6 +1,6 @@
 import os
 import time
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 import joblib
 import numpy as np
@@ -81,12 +81,7 @@ class ReplayPolicy(BasePolicy, policy_name="replay"):
             converted_dict["motor_angles_list"].append(motor_angles)
         return converted_dict
 
-    def step(
-        self,
-        obs: Obs,
-        is_real: bool = False,
-        control_inputs: Optional[Dict[str, float]] = None,
-    ) -> npt.NDArray[np.float32]:
+    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         # action = self.action_arr[self.step_curr]
         # self.step_curr = self.step_curr + 1
 

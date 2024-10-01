@@ -1,12 +1,9 @@
-from typing import Dict, Optional
-
 import numpy as np
 import numpy.typing as npt
 
 from toddlerbot.policies import BasePolicy
-from toddlerbot.policies.look_pd import LookPDPolicy
 from toddlerbot.policies.reset_pd import ResetPDPolicy
-from toddlerbot.policies.squat_pd import SquatPDPolicy
+from toddlerbot.policies.teleop_follower_pd import TeleopFollowerPDPolicy
 from toddlerbot.policies.turn import TurnPolicy
 from toddlerbot.policies.walk import WalkPolicy
 from toddlerbot.sim import Obs
@@ -27,16 +24,24 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
         self.default_motor_pos = np.array(
             list(robot.default_motor_angles.values()), dtype=np.float32
         )
-        self.default_torso_z = robot.config["general"]["offsets"]["default_torso_z"]
-
         self.joystick = Joystick()
 
-        self.policies: Dict[str, BasePolicy] = {
-            "walk": WalkPolicy("walk", robot, init_motor_pos, WALK_CKPT, self.joystick),
-            "turn": TurnPolicy("turn", robot, init_motor_pos, TURN_CKPT, self.joystick),
-            "squat": SquatPDPolicy("squat_pd", robot, init_motor_pos, self.joystick),
-            "look": LookPDPolicy("look_pd", robot, init_motor_pos, self.joystick),
-            "reset": ResetPDPolicy("reset_pd", robot, init_motor_pos),
+        self.walk_policy = WalkPolicy(
+            "walk", robot, init_motor_pos, WALK_CKPT, self.joystick
+        )
+        self.turn_policy = TurnPolicy(
+            "turn", robot, init_motor_pos, TURN_CKPT, self.joystick
+        )
+        self.balance_policy = TeleopFollowerPDPolicy(
+            "teleop_follower_pd", robot, init_motor_pos, self.joystick
+        )
+        self.reset_policy = ResetPDPolicy("reset_pd", robot, init_motor_pos)
+
+        self.policies = {
+            "walk": self.walk_policy,
+            "turn": self.turn_policy,
+            "balance": self.balance_policy,
+            "reset": self.reset_policy,
         }
 
         self.prep_duration = 2.0
@@ -48,15 +53,10 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
             end_time=0.0,
         )
 
-        self.is_reset = True
-        self.last_policy = "squat"
+        self.need_reset = False
+        self.last_policy = "balance"
 
-    def step(
-        self,
-        obs: Obs,
-        is_real: bool = False,
-        control_inputs: Optional[Dict[str, float]] = None,
-    ) -> npt.NDArray[np.float32]:
+    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         if obs.time < self.prep_duration:
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
@@ -65,7 +65,7 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
 
         # TODO: Finish the current gait cycle before transitioning
         command_scale = {key: 0 for key in self.policies}
-        command_scale["squat"] = 1e-6
+        command_scale["balance"] = 1e-6
         control_inputs = self.joystick.get_controller_input()
         for task, input in control_inputs.items():
             for key in self.policies:
@@ -75,21 +75,29 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
 
         policy_curr = max(command_scale, key=command_scale.get)
 
-        self.is_reset = (
-            self.last_policy != "reset" and policy_curr not in ["walk", "turn"]
-        ) or np.allclose(obs.pos[2], self.default_torso_z, atol=1e-2)
+        if (
+            not self.need_reset
+            and policy_curr != self.last_policy
+            and self.last_policy != "reset"
+            and policy_curr in ["walk", "turn"]
+        ):
+            self.need_reset = True
+            self.reset_policy.last_motor_target = (
+                self.balance_policy.last_motor_target.copy()
+            )
+            self.balance_policy.reset()
 
-        if not self.is_reset:
+        if self.need_reset:
             policy_curr = "reset"
-            self.policies["squat"].reset()
-
-        if policy_curr != self.last_policy and self.last_policy != "squat":
-            self.policies[self.last_policy].reset()
 
         motor_target = self.policies[policy_curr].step(obs, is_real)
 
         # print(f"Policy: {policy_curr}")
-        # print(f"is_reset: {self.is_reset}")
+        # print(f"need_reset: {self.need_reset}")
+
+        if self.reset_policy.reset_time is None:
+            self.need_reset = False
+            self.reset_policy.reset()
 
         self.last_policy = policy_curr
 

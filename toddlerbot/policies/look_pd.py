@@ -4,7 +4,6 @@ import numpy as np
 import numpy.typing as npt
 
 from toddlerbot.policies.balance_pd import BalancePDPolicy
-from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
 
@@ -26,18 +25,13 @@ class LookPDPolicy(BalancePDPolicy, policy_name="look_pd"):
 
         self.neck_yaw_target = 0.0
         self.neck_pitch_target = 0.0
-        self.joint_target_curr = None
 
         if joystick is None:
             self.joystick = Joystick()
         else:
             self.joystick = joystick
 
-    def reset(self):
-        super().reset()
-        self.joint_target_curr = None
-
-    def plan(self, obs: Obs, time_curr: float) -> npt.NDArray[np.float32]:
+    def plan(self) -> npt.NDArray[np.float32]:
         control_inputs = self.joystick.get_controller_input()
         command = np.zeros(2, dtype=np.float32)
         for task, input in control_inputs.items():
@@ -59,15 +53,7 @@ class LookPDPolicy(BalancePDPolicy, policy_name="look_pd"):
             *self.neck_pitch_limits,
         )
 
-        if self.joint_target_curr is None:
-            joint_angles = self.robot.motor_to_joint_angles(
-                dict(zip(self.robot.motor_ordering, obs.motor_pos))
-            )
-            self.joint_target_curr = np.array(
-                list(joint_angles.values()), dtype=np.float32
-            )
-
-        joint_target = self.joint_target_curr.copy()
+        joint_target = self.default_joint_pos.copy()
         joint_target[self.neck_yaw_idx] = self.neck_yaw_target
         joint_target[self.neck_pitch_idx] = self.neck_pitch_target
 

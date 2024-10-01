@@ -1,5 +1,3 @@
-from typing import Dict, Optional
-
 import numpy as np
 import numpy.typing as npt
 
@@ -34,12 +32,7 @@ class BalancePDAnklePolicy(BasePolicy, policy_name="balance_pd_ankle"):
         self.kp = 1.0  # Proportional gain
         self.kd = 0.1  # Derivative gain
 
-    def step(
-        self,
-        obs: Obs,
-        is_real: bool = False,
-        control_inputs: Optional[Dict[str, float]] = None,
-    ) -> npt.NDArray[np.float32]:
+    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         # Preparation phase
         if obs.time < self.prep_time[-1]:
             action = np.asarray(

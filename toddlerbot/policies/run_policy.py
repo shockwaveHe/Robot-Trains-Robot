@@ -438,6 +438,12 @@ if __name__ == "__main__":
         default="",
         help="The policy run to replay.",
     )
+    parser.add_argument(
+        "--ip",
+        type=str,
+        default="127.0.0.1",
+        help="The ip address of the follower.",
+    )
     args = parser.parse_args()
 
     robot = Robot(args.robot)
@@ -474,18 +480,19 @@ if __name__ == "__main__":
         assert len(args.ckpt) > 0, "Need to provide a checkpoint for MJX policies"
 
         policy = PolicyClass(args.policy, robot, init_motor_pos, args.ckpt)
-    else:
-        if issubclass(PolicyClass, TeleopLeaderPolicy):
-            assert (
-                args.robot == "toddlerbot_arms"
-            ), "The teleop leader policy is only for the arms"
-            assert (
-                args.sim == "real"
-            ), "The sim needs to be the real world for the teleop leader policy"
-            for motor_name in robot.motor_ordering:
-                for gain_name in ["kp_real", "kd_real", "kff1_real", "kff2_real"]:
-                    robot.config["joints"][motor_name][gain_name] = 0.0
+    elif issubclass(PolicyClass, TeleopLeaderPolicy):
+        assert (
+            args.robot == "toddlerbot_arms"
+        ), "The teleop leader policy is only for the arms"
+        assert (
+            args.sim == "real"
+        ), "The sim needs to be the real world for the teleop leader policy"
+        for motor_name in robot.motor_ordering:
+            for gain_name in ["kp_real", "kd_real", "kff1_real", "kff2_real"]:
+                robot.config["joints"][motor_name][gain_name] = 0.0
 
+        policy = PolicyClass(args.policy, robot, init_motor_pos, ip=args.ip)
+    else:
         policy = PolicyClass(args.policy, robot, init_motor_pos)
 
     main(robot, sim, policy, args.vis)

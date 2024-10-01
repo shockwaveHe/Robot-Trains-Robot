@@ -1,6 +1,6 @@
 import functools
 import os
-from typing import Dict, Optional
+from typing import Optional
 
 import jax
 import jax.numpy as jnp
@@ -143,18 +143,11 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             end_time=5.0,
         )
 
-    def get_command(
-        self, control_inputs: Optional[Dict[str, float]]
-    ) -> npt.NDArray[np.float32]:
+    def get_command(self) -> npt.NDArray[np.float32]:
         return np.zeros(1, dtype=np.float32)
 
     # @profile()
-    def step(
-        self,
-        obs: Obs,
-        is_real: bool = False,
-        control_inputs: Optional[Dict[str, float]] = None,
-    ) -> npt.NDArray[np.float32]:
+    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         if obs.time < self.prep_duration:
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
@@ -166,8 +159,6 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         if self.joystick is None:
             command = self.fixed_command
         else:
-            # TODO: Implement joystick control
-            control_inputs = self.joystick.get_controller_input()
             command = self.get_command()
 
         phase_signal = self.motion_ref.get_phase_signal(time_curr, command)

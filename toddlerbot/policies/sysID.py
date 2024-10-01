@@ -278,12 +278,7 @@ class SysIDFixedPolicy(BasePolicy, policy_name="sysID"):
         self.action_arr = np.concatenate(action_list)
         self.n_steps_total = len(self.time_arr)
 
-    def step(
-        self,
-        obs: Obs,
-        is_real: bool = False,
-        control_inputs: Optional[Dict[str, float]] = None,
-    ) -> npt.NDArray[np.float32]:
+    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         action = np.asarray(
             interpolate_action(obs.time, self.time_arr, self.action_arr)
         )

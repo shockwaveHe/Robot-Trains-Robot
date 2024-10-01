@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -47,14 +47,10 @@ class WalkPolicy(MJXPolicy, policy_name="walk"):
             motion_ref,
         )
 
-    def get_command(
-        self, control_inputs: Optional[Dict[str, float]] = None
-    ) -> npt.NDArray[np.float32]:
+    def get_command(self) -> npt.NDArray[np.float32]:
         # TODO: Remove the fixed command
         command = np.zeros_like(self.fixed_command)
-        if control_inputs is None:
-            control_inputs = self.joystick.get_controller_input()
-
+        control_inputs = self.joystick.get_controller_input()
         for task, input in control_inputs.items():
             if task == "walk_vertical":
                 command[0] = np.interp(
