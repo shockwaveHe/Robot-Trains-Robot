@@ -44,6 +44,8 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
             init_motor_pos,
             joystick=self.joystick,
             zmq_node=self.zmq_node,
+            camera=None,
+            zmq_sender=None,
         )
         self.reset_policy = ResetPDPolicy("reset_pd", robot, init_motor_pos)
 

@@ -162,11 +162,11 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         if self.camera is not None:
             t1 = time.time()
-            camera_frame = self.camera.get_state()
+            jpeg_frame, raw_frame = self.camera.get_jpeg()
+            camera_frame = jpeg_frame
             t2 = time.time()
-            print(f"camera_frame: {t2 - t1:.2f} s, current_time: {obs.time: .2f} s")
         else:
             camera_frame = None
 
-        # self.zmq_sender.send_msg({"camera_frame": self.curr_camera_frame})
+        self.zmq_sender.send_msg({"time": time.time(), "camera_frame": camera_frame})
         return super().step(obs, is_real)
