@@ -73,7 +73,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         )
 
         # PD controller parameters
-        self.com_kp = np.array([1000, 1000], dtype=np.float32)
+        self.com_kp = np.array([2000, 2000], dtype=np.float32)
         self.com_kd = np.array([0, 0], dtype=np.float32)
 
         self.com_pos_error_prev = np.zeros(2, dtype=np.float32)

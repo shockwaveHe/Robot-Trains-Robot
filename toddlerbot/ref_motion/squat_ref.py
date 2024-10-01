@@ -8,7 +8,7 @@ from toddlerbot.utils.math_utils import gaussian_basis_functions
 
 
 class SquatReference(MotionReference):
-    def __init__(self, robot: Robot, control_dt: float):
+    def __init__(self, robot: Robot, control_dt: float, com_z_lower_limit_offset=0.01):
         super().__init__("squat", "episodic", robot)
 
         self.default_joint_pos = np.array(
@@ -50,7 +50,8 @@ class SquatReference(MotionReference):
                     * self.knee_to_ank_pitch_z
                     * np.cos(np.pi - knee_limits[1])
                 )
-                - self.hip_pitch_to_ank_pitch_z,
+                - self.hip_pitch_to_ank_pitch_z
+                + com_z_lower_limit_offset,
                 0.0,
             ],
             dtype=np.float32,

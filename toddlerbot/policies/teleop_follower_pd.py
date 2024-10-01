@@ -10,7 +10,7 @@ from toddlerbot.sensing.camera import Camera
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
-from toddlerbot.utils.comm_utils import ZMQMessage, ZMQNode
+from toddlerbot.utils.comm_utils import ZMQNode
 
 
 class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
