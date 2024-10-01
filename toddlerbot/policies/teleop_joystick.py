@@ -10,8 +10,9 @@ from toddlerbot.policies.walk import WalkPolicy
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
-from toddlerbot.utils.math_utils import interpolate_action
 from toddlerbot.utils.comm_utils import ZMQNode
+from toddlerbot.utils.math_utils import interpolate_action
+
 
 class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
     def __init__(
@@ -38,7 +39,11 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
             "turn", robot, init_motor_pos, joystick=self.joystick
         )
         self.balance_policy = TeleopFollowerPDPolicy(
-            "teleop_follower_pd", robot, init_motor_pos, joystick=self.joystick, zmq_node=self.zmq_node
+            "teleop_follower_pd",
+            robot,
+            init_motor_pos,
+            joystick=self.joystick,
+            zmq_node=self.zmq_node,
         )
         self.reset_policy = ResetPDPolicy("reset_pd", robot, init_motor_pos)
 

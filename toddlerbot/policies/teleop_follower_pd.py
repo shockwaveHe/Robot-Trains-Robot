@@ -6,10 +6,9 @@ import numpy.typing as npt
 
 from toddlerbot.policies.balance_pd import BalancePDPolicy
 from toddlerbot.ref_motion.squat_ref import SquatReference
-from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
-from toddlerbot.utils.comm_utils import ZMQNode, ZMQMessage
+from toddlerbot.utils.comm_utils import ZMQNode
 
 
 class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
@@ -54,7 +53,7 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
         self.squat_speed = squat_speed
         self.squat_ref = SquatReference(robot, self.control_dt)
 
-        self.joystick = joystick 
+        self.joystick = joystick
         if joystick is None:
             try:
                 self.joystick = Joystick()
@@ -86,7 +85,7 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
 
         # print(f"msg: {msg}")
 
-        control_inputs = self.last_control_inputs 
+        control_inputs = self.last_control_inputs
         if self.joystick is not None:
             control_inputs = self.joystick.get_controller_input()
         elif msg is not None:
