@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Dict, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -40,18 +40,16 @@ class TurnPolicy(MJXPolicy, policy_name="turn"):
             motion_ref,
         )
 
-    def get_command(self) -> npt.NDArray[np.float32]:
-        if self.joystick is None:
-            command = self.fixed_command
-        else:
-            control_inputs = self.joystick.get_controller_input()
-            command = np.zeros_like(self.fixed_command)
-            for task, input in control_inputs.items():
-                if task == "turn":
-                    command[2] = np.interp(
-                        input,
-                        [-1, 0, 1],
-                        [self.command_range[0][1], 0.0, self.command_range[0][0]],
-                    )
+    def get_command(
+        self, control_inputs: Optional[Dict[str, float]] = None
+    ) -> npt.NDArray[np.float32]:
+        command = np.zeros_like(self.fixed_command)
+        for task, input in control_inputs.items():
+            if task == "turn":
+                command[2] = np.interp(
+                    input,
+                    [-1, 0, 1],
+                    [self.command_range[0][1], 0.0, self.command_range[0][0]],
+                )
 
         return command

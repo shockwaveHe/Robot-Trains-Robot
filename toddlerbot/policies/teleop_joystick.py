@@ -87,6 +87,9 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
         elif msg is not None:
             control_inputs = msg.control_inputs
 
+        self.walk_policy.control_inputs = control_inputs
+        self.turn_policy.control_inputs = control_inputs
+
         self.last_control_inputs = control_inputs
 
         command_scale = {key: 0 for key in self.policies}
