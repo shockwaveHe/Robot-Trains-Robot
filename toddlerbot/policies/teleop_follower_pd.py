@@ -74,7 +74,7 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
 
         if camera is None:
             try:
-                self.camera = Camera(camera_id=0)
+                self.camera = Camera()
                 self.zmq_sender = ZMQNode(type="sender", ip="192.168.46")
             except Exception:
                 self.camera = None
