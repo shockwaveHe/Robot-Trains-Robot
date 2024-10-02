@@ -165,6 +165,7 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
             jpeg_frame, raw_frame = self.camera.get_jpeg()
             camera_frame = jpeg_frame
             t2 = time.time()
+            print(raw_frame.shape)
         else:
             camera_frame = None
 
