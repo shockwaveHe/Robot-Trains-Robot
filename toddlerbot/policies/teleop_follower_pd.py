@@ -20,8 +20,8 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
         robot: Robot,
         init_motor_pos: npt.NDArray[np.float32],
         joystick: Optional[Joystick] = None,
-        zmq_node: Optional[ZMQNode] = None,
         camera: Optional[Camera] = None,
+        zmq_receiver: Optional[ZMQNode] = None,
         zmq_sender: Optional[ZMQNode] = None,
         squat_speed=0.03,
     ):
@@ -65,22 +65,25 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
                 pass
 
         # Initialize sensors
-        self.camera = None
 
-        if zmq_node is None:
-            self.zmq_node = ZMQNode(type="receiver")
+        if zmq_receiver is None:
+            self.zmq_receiver = ZMQNode(type="receiver")
         else:
-            self.zmq_node = zmq_node
+            self.zmq_receiver = zmq_receiver
 
+        if zmq_sender is None:
+            self.zmq_sender = ZMQNode(type="sender")
+        else:
+            self.zmq_sender = zmq_sender
+
+        self.camera = None
         if camera is None:
             try:
                 self.camera = Camera(camera_id=0)
-                self.zmq_sender = ZMQNode(type="sender", ip="192.168.46")
             except Exception:
-                self.camera = None
+                pass
         else:
             self.camera = camera
-            self.zmq_sender = zmq_sender
 
         self.msg = None
         self.last_control_inputs = None
@@ -98,7 +101,7 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
         if self.msg is not None:
             msg = self.msg
         else:
-            msg = self.zmq_node.get_msg()
+            msg = self.zmq_receiver.get_msg()
 
         # print(f"msg: {msg}")
 
@@ -169,5 +172,9 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
         else:
             camera_frame = None
 
-        self.zmq_sender.send_msg({"time": time.time(), "camera_frame": camera_frame})
+        if self.zmq_sender is not None:
+            self.zmq_sender.send_msg(
+                {"time": time.time(), "camera_frame": camera_frame}
+            )
+
         return super().step(obs, is_real)
