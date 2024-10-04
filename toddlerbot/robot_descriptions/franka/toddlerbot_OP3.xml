@@ -2,6 +2,11 @@
   <body name="torso" pos="0 0 0" quat="1 0 0 0">
     <inertial pos="-0.00836725 0.00286063 0.0722273" quat="1.0 0.0 0.0 0.0" mass="0.666527" diaginertia="1.94347e-03 1.56665e-03 1.39601e-03" />
     <geom type="mesh" rgba="0.579662 0.741255 0.863591 1" mesh="torso_visual" class="visual" />
+    <site name="torso_left_front_site" pos="0.022 0.045 0.122" size="0.005" />
+    <site name="torso_right_front_site" pos="0.022 -0.045 0.122"  size="0.005" />
+    <site name="torso_left_hind_site" pos="-0.022 0.045 0.122"  size="0.005" />
+    <site name="torso_right_hind_site" pos="-0.022 -0.045 0.122"  size="0.005" />
+    
     <body name="spur_1m_20t" pos="-0.005 0 0.121487" quat="1 0 0 0">
       <inertial pos="0 0 0.0033746" quat="0.5 0.5 -0.5 0.5" mass="0.0015535" diaginertia="7.95589e-08 4.47265e-08 4.47265e-08" />
       <joint name="neck_yaw_drive" pos="0 0 0" axis="0 0 1" range="-2.87979 2.87979" damping="0.134" armature="0.0035" frictionloss="0.014" />

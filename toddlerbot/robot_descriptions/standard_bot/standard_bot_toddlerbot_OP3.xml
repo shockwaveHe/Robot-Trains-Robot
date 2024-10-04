@@ -1,6 +1,6 @@
 <mujoco model="sbot">
   <compiler angle="radian" autolimits="true"/>
-  <option>
+  <option integrator="RK4">
     <flag eulerdamp="disable" />
   </option>
   <asset>

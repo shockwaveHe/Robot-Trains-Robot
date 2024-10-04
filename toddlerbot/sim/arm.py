@@ -31,6 +31,7 @@ class BaseArm(ABC):
         if len(arm_name) > 0:
             arm_registry[arm_name] = cls
     
+    
 class StandradBotArm(BaseArm, arm_name="standard_bot"):
     def __init__(
             self, 

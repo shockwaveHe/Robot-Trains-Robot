@@ -27,14 +27,19 @@ class ArmToddlerSim(MuJoCoSim):
             vis_type: str = "",
         ):
         if len(xml_path) == 0 and len(xml_str) == 0:
-            xml_path = find_arm_toddler_file_path(arm.name, robot.name, suffix="_scene.xml")
+            suffix = "_fixed_scene.xml" if fixed_base else "_hang_scene.xml"
+            xml_path = find_arm_toddler_file_path(arm.name, robot.name, suffix=suffix)
         super(ArmToddlerSim, self).__init__(robot, n_frames, dt, fixed_base, xml_path, xml_str, assets, vis_type)
         self.arm = arm
         # TODO: should I add set function and relaod different attributes like `self.motor_vel_prev` or just reset their values?
         # TODO: what's the best practice for unused attributes like self.controller?
         self.motor_vel_prev = np.zeros(self.model.nu - arm.arm_dofs, dtype=np.float32)
-
+        if not self.fixed_base:
+            self.q_start_idx *= 2
+            self.qd_start_idx *= 2
+            self.motor_indices -= 1
         self.sensor_names = sensor_names
+        # import ipdb; ipdb.set_trace()
         self.arm_controller = JointController()
         self.target_motor_angles = np.zeros(self.model.nu - arm.arm_dofs, dtype=np.float32)
         self.target_arm_joint_angles = np.zeros(arm.arm_dofs, dtype=np.float32)
@@ -80,9 +85,8 @@ class ArmToddlerSim(MuJoCoSim):
         for _ in range(self.n_frames):
             # import ipdb; ipdb.set_trace()
             self.data.ctrl[:self.arm.arm_dofs] = self.arm_controller.step(self.target_arm_joint_angles) # DISCUSS
-            # import ipdb; ipdb.set_trace()
             self.data.ctrl[self.arm.arm_dofs:] = self.controller.step(
-                self.data.qpos[self.q_start_idx + self.motor_indices], # DISCUSS
+                self.data.qpos[self.q_start_idx + self.motor_indices],
                 self.data.qvel[self.qd_start_idx + self.motor_indices],
                 self.target_motor_angles,
             )

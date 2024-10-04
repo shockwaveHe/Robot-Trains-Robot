@@ -301,7 +301,7 @@ class MuJoCoSim(BaseSim):
         state_traj, _ = mujoco.rollout.rollout(
             self.model,
             self.data,
-            initial_state,
+            initial_state, 
             control,
         )
         state_traj = np.array(state_traj, dtype=np.float32).squeeze()[:: self.n_frames]

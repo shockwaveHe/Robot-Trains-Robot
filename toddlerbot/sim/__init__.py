@@ -18,7 +18,7 @@ class Obs:
     euler: npt.NDArray[np.float32] = np.zeros(3, dtype=np.float32)
     joint_pos: Optional[npt.NDArray[np.float32]] = None
     joint_vel: Optional[npt.NDArray[np.float32]] = None
-    sensor_data: Optional[Dict[str, np.float32]] = None
+    sensor_data: Optional[Dict[str, np.float32]] = None # TODO: ee_force, ee_torque, etc
     arm_joint_pos: Optional[npt.NDArray[np.float32]] = None
     arm_joint_vel: Optional[npt.NDArray[np.float32]] = None
     

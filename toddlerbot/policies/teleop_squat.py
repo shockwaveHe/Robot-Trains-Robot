@@ -59,9 +59,11 @@ class TeleopSquatPolicy(BasePolicy, policy_name="teleop_squat"):
         )
         if not fixed_base:
             # Disregard the free joint
-            self.joint_indices -= 1
+            self.joint_indices -= 2
+        import ipdb; ipdb.set_trace()
 
-        self.q_start_idx = 0 if fixed_base else 7
+        # self.q_start_idx = 0 if fixed_base else 7
+        self.q_start_idx = 0
 
         self.prep_duration = 2.0
         self.prep_time, self.prep_action = self.move(
