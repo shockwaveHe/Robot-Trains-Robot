@@ -23,4 +23,11 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = "furo"
+html_theme_options = {
+    "sidebar_hide_name": True,
+}
 html_static_path = ["_static"]
+# Add the custom CSS file
+html_css_files = [
+    "custom.css",
+]
