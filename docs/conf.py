@@ -13,7 +13,7 @@ author = "Haochen Shi, Weizhuo(Ken) Wang, Shuran Song, C. Karen Liu"
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = []
+extensions = ["sphinx_tabs.tabs"]
 
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
@@ -25,6 +25,8 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 html_theme = "furo"
 html_theme_options = {
     "sidebar_hide_name": True,
+    "light_logo": "logo_light.svg",
+    "dark_logo": "logo_dark.svg",
 }
 html_static_path = ["_static"]
 # Add the custom CSS file

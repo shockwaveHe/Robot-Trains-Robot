@@ -32,7 +32,7 @@ Contents
    :maxdepth: 2
    :caption: Setup
 
-   setup/setup
+   setup/general
    setup/jetson_orin
    setup/steam_deck
 

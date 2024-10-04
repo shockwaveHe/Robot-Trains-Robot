@@ -8,3 +8,10 @@ Q: How do I set up headless rendering for MuJoCo?
 
 A: Add ``export MUJOCO_GL="egl"`` to your ``.bashrc`` if headless
 rendering is desired. Then ``source ~/.bashrc``.
+
+
+If there is a `yourdfpy` import error, run this:
+
+::
+
+    pip install lxml==4.9.4
