@@ -1,3 +1,4 @@
+<!-- Franka arm with no setup terms -->
 <mujoco model="panda nohand">
   <compiler angle="radian" autolimits="true"/>
 

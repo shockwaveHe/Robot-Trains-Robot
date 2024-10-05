@@ -73,7 +73,8 @@ class ArmToddlerSim(MuJoCoSim):
             arm_joint_vel.append(arm_joint_state_dict[name].vel)
         obs.arm_joint_pos = np.array(arm_joint_pos, dtype=np.float32)
         obs.arm_joint_vel = np.array(arm_joint_vel, dtype=np.float32)
-        obs.sensor_data = self.get_sensor_data()
+        obs.ee_force_data = self.data.sensor("ee_force").data
+        obs.ee_torque_data = self.data.sensor("ee_torque").data
 
         return obs
 
