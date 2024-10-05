@@ -505,8 +505,8 @@ if __name__ == "__main__":
     else:
         robot_policy = RobotPolicyClass(args.toddler_policy, robot, init_motor_pos, fixed_base=fixed_base)
     if args.sim == "arm_toddler":
-        if args.arm_policy == "fix_arm":
-            arm_policy = ArmPolicyClass(args.arm_policy, robot, init_arm_joint_pos)
+        if args.arm_policy == "fix_arm" or args.arm_policy == "ee_arm":
+            arm_policy = ArmPolicyClass(args.arm_policy, arm, init_arm_joint_pos)
         else:
             raise ValueError("Unknown arm policy")
     input("Press Enter to start the simulation...")
