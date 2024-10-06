@@ -40,6 +40,7 @@ Contents
    :maxdepth: 2
    :caption: Tutorial
 
+   tutorial/dynamixel
    tutorial/walkthrough
    tutorial/tips
    tutorial/questions
