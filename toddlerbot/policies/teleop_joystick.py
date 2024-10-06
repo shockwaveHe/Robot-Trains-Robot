@@ -29,11 +29,10 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
         )
 
         self.joystick = None
-        if SYS_NAME != "Darwin":
-            try:
-                self.joystick = Joystick()
-            except Exception:
-                pass
+        try:
+            self.joystick = Joystick()
+        except Exception:
+            pass
 
         self.zmq_node = None
         if SYS_NAME != "Darwin":
@@ -83,6 +82,7 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
             )
             return action
 
+        msg = None
         if self.zmq_node is not None:
             msg = self.zmq_node.get_msg()
             self.balance_policy.msg = msg
