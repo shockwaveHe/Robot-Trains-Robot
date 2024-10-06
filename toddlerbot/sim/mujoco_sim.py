@@ -108,7 +108,11 @@ class MuJoCoSim(BaseSim):
         self.data.qpos = default_qpos.copy()
         self.data.qvel = np.zeros(self.model.nv, dtype=np.float32)
         self.data.ctrl = self.model.keyframe("home").ctrl.copy()
+        mocap_id = self.model.body("target").mocapid[0]
         self.forward()
+        if mocap_id != -1:
+            self.data.mocap_pos[mocap_id] = self.data.xpos[self.model.body("attachment").id]
+            mujoco.mju_mat2Quat(self.data.mocap_quat[mocap_id], self.data.xmat[self.model.body("attachment").id])
 
     def get_motor_state(self) -> Dict[str, JointState]:
         motor_state_dict: Dict[str, JointState] = {}

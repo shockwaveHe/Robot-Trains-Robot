@@ -22,6 +22,8 @@ class Obs:
     ee_torque_data: Optional[npt.NDArray[np.float32]] = None
     arm_joint_pos: Optional[npt.NDArray[np.float32]] = None
     arm_joint_vel: Optional[npt.NDArray[np.float32]] = None
+    mocap_pos: Optional[npt.NDArray[np.float32]] = None
+    mocap_quat: Optional[npt.NDArray[np.float32]] = None
     
 
 

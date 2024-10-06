@@ -148,7 +148,7 @@ class TeleopSquatPolicy(BasePolicy, policy_name="teleop_squat"):
 
         ctrl_jac = self.jac_kp * com_pos_error + self.jac_kd * com_pos_error_d
 
-        torso_euler_error = obs.euler[:2] - torso_euler[:2]
+        torso_euler_error = obs.euler[:2] - torso_euler[:2] # DISCUSS
         torso_euler_error_d = (
             torso_euler_error - self.torso_euler_error_prev
         ) / self.control_dt

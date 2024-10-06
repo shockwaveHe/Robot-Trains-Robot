@@ -172,3 +172,12 @@ cython_debug/
 standard_bot
 
 **/.DS_Store
+.Zone.Identifier
+*.TXT
+*.gitkeep
+archived
+test_*
+run_toddler.py
+mujoco_tutorial.ipynb
+key_frames
+ref_motion

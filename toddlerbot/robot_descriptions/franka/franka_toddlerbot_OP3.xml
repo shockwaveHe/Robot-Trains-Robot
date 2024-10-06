@@ -242,7 +242,6 @@
                     <geom mesh="link7_6" material="dark_grey" class="panda/visual"/>
                     <geom mesh="link7_7" material="white" class="panda/visual"/>
                     <geom mesh="link7_c" class="panda/collision"/>
-                    <site name="mount_site" pos="0 0 0" rgba="0 1 0 1" size="0.005"/>
                     <body name="attachment" pos="0 0 0" quat="1 0 0 0">
                       <site name="attachment_site" rgba="0 1 0 1" size="0.005"/>
                       <inertial pos="0 0 0" mass="0.0001" diaginertia="0 0 0" />

@@ -20,7 +20,7 @@ def get_arm_class(arm_name: str) -> Type["BaseArm"]:
 
 class BaseArm(ABC):
     @abstractmethod
-    def __init__(self, name: Optional[str] = "", arm_dofs: Optional[int] = None, arm_nbodies: Optional[int] = None, xml_path: Optional[Path] = None):
+    def __init__(self, name: str = "", arm_dofs: Optional[int] = None, arm_nbodies: Optional[int] = None, xml_path: Optional[Path] = None):
         self.name = name
         self.arm_dofs = arm_dofs
         self.arm_nbodies = arm_nbodies

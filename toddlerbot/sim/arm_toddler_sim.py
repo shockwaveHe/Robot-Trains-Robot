@@ -75,7 +75,8 @@ class ArmToddlerSim(MuJoCoSim):
         obs.arm_joint_vel = np.array(arm_joint_vel, dtype=np.float32)
         obs.ee_force_data = self.data.sensor("ee_force").data
         obs.ee_torque_data = self.data.sensor("ee_torque").data
-
+        obs.mocap_pos = self.data.mocap_pos[0]
+        obs.mocap_quat = self.data.mocap_quat[0]
         return obs
 
     def get_mass(self) -> float:
