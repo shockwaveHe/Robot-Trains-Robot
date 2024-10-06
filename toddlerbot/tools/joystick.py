@@ -1,5 +1,8 @@
 import contextlib
+import os
 from typing import Dict
+
+os.environ["SDL_VIDEODRIVER"] = "dummy"
 
 with contextlib.redirect_stdout(None):
     import pygame
