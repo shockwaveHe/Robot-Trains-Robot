@@ -1,3 +1,5 @@
+import platform
+
 import numpy as np
 import numpy.typing as npt
 
@@ -13,6 +15,8 @@ from toddlerbot.tools.joystick import Joystick
 from toddlerbot.utils.comm_utils import ZMQNode
 from toddlerbot.utils.math_utils import interpolate_action
 
+SYS_NAME = platform.system()
+
 
 class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
     def __init__(
@@ -25,12 +29,15 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
         )
 
         self.joystick = None
-        try:
-            self.joystick = Joystick()
-        except Exception:
-            pass
+        if SYS_NAME != "Darwin":
+            try:
+                self.joystick = Joystick()
+            except Exception:
+                pass
 
-        self.zmq_node = ZMQNode(type="receiver")
+        self.zmq_node = None
+        if SYS_NAME != "Darwin":
+            self.zmq_node = ZMQNode(type="receiver")
 
         self.walk_policy = WalkPolicy(
             "walk", robot, init_motor_pos, joystick=self.joystick
@@ -76,10 +83,10 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
             )
             return action
 
-        msg = self.zmq_node.get_msg()
-        self.balance_policy.msg = msg
-
-        print(f"msg: {msg}")
+        if self.zmq_node is not None:
+            msg = self.zmq_node.get_msg()
+            self.balance_policy.msg = msg
+            print(f"msg: {msg}")
 
         control_inputs = self.last_control_inputs
         if self.joystick is not None:
@@ -92,7 +99,7 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
 
         self.last_control_inputs = control_inputs
 
-        command_scale = {key: 0 for key in self.policies}
+        command_scale = {key: 0.0 for key in self.policies}
         command_scale["balance"] = 1e-6
 
         if control_inputs is not None:

@@ -163,9 +163,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         stance_mask = self.state_ref[-2:]
         return stance_mask[0] == 1.0 and stance_mask[1] == 1.0
 
-    def get_command(
-        self, control_inputs: Optional[Dict[str, float]] = None
-    ) -> npt.NDArray[np.float32]:
+    def get_command(self, control_inputs: Dict[str, float]) -> npt.NDArray[np.float32]:
         return np.zeros(1, dtype=np.float32)
 
     # @profile()
@@ -184,7 +182,11 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         elif self.joystick is not None:
             control_inputs = self.joystick.get_controller_input()
 
-        command = self.get_command(control_inputs)
+        if control_inputs is None:
+            command = self.fixed_command
+        else:
+            command = self.get_command(control_inputs)
+
         phase_signal = self.motion_ref.get_phase_signal(time_curr, command)
         self.state_ref = self.motion_ref.get_state_ref(
             np.zeros(3, dtype=np.float32),

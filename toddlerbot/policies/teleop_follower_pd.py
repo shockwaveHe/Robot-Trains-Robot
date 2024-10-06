@@ -1,3 +1,4 @@
+import platform
 import time
 from typing import Optional
 
@@ -11,6 +12,8 @@ from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
 from toddlerbot.utils.comm_utils import ZMQNode
+
+SYS_NAME = platform.system()
 
 
 class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
@@ -66,25 +69,27 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
 
         # Initialize sensors
 
-        if zmq_receiver is None:
-            self.zmq_receiver = ZMQNode(type="receiver")
-        else:
+        self.zmq_receiver = None
+        if zmq_receiver is not None:
             self.zmq_receiver = zmq_receiver
+        elif SYS_NAME != "Darwin":
+            self.zmq_receiver = ZMQNode(type="receiver")
 
-        if zmq_sender is None:
-            self.zmq_sender = ZMQNode(type="sender")
-        else:
+        self.zmq_sender = None
+        if zmq_sender is not None:
             self.zmq_sender = zmq_sender
+        elif SYS_NAME != "Darwin":
+            self.zmq_sender = ZMQNode(type="sender")
 
         self.camera = None
-        if camera is None:
+        if camera is not None:
+            self.camera = camera
+        elif SYS_NAME != "Darwin":
             try:
                 self.camera = Camera()
                 self.zmq_sender = ZMQNode(type="sender", ip="192.168.46")
             except Exception:
                 pass
-        else:
-            self.camera = camera
 
         self.msg = None
         self.last_control_inputs = None
@@ -99,9 +104,10 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
 
     def plan(self) -> npt.NDArray[np.float32]:
         # Get the motor target from the teleop node
+        msg = None
         if self.msg is not None:
             msg = self.msg
-        else:
+        elif self.zmq_receiver is not None:
             msg = self.zmq_receiver.get_msg()
 
         # print(f"msg: {msg}")
