@@ -319,7 +319,7 @@ class MJXEnv(PipelineEnv):
 
         path_pos = jnp.zeros(3)
         torso_yaw = jax.random.uniform(rng_torso_yaw, (1,), minval=0, maxval=2 * jnp.pi)
-        path_quat = math.euler_to_quat(jnp.array([0.0, 0.0, torso_yaw[0]]))
+        path_quat = math.euler_to_quat(jnp.array([0.0, 0.0, jnp.degrees(torso_yaw)[0]]))
 
         command = self._sample_command(rng_command)
         state_info["phase_signal"] = self.motion_ref.get_phase_signal(0.0, command)
@@ -330,8 +330,10 @@ class MJXEnv(PipelineEnv):
         state_info["state_ref"] = jnp.asarray(state_ref)
 
         qpos = self.default_qpos
-        arm_joint_pos = state_ref[self.ref_start_idx + self.arm_ref_indices]
+        qpos = qpos.at[:3].set(path_pos)
+        qpos = qpos.at[3:7].set(path_quat)
 
+        arm_joint_pos = state_ref[self.ref_start_idx + self.arm_ref_indices]
         arm_motor_pos = arm_joint_pos / self.arm_gear_ratio
         qpos = qpos.at[self.q_start_idx + self.arm_joint_indices].set(arm_joint_pos)  # type:ignore
         qpos = qpos.at[self.q_start_idx + self.arm_motor_indices].set(arm_motor_pos)  # type:ignore
@@ -341,7 +343,13 @@ class MJXEnv(PipelineEnv):
                     rng_torso_pitch, (1,)
                 )
                 noise_torso_quat = math.euler_to_quat(
-                    jnp.array([0.0, noise_torso_pitch[0], torso_yaw[0]])
+                    jnp.array(
+                        [
+                            0.0,
+                            jnp.degrees(noise_torso_pitch)[0],
+                            jnp.degrees(torso_yaw)[0],
+                        ]
+                    )
                 )
                 qpos = qpos.at[3:7].set(noise_torso_quat)
 
