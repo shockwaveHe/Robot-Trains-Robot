@@ -5,11 +5,13 @@ os.environ["USE_JAX"] = "true"
 
 import argparse
 import functools
+import importlib
 import json
+import pkgutil
 import shutil
 import time
 from dataclasses import asdict
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import Any, Dict, List, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -28,14 +30,26 @@ from orbax import checkpoint as ocp
 from tqdm import tqdm
 
 import wandb
-from toddlerbot.envs.balance_env import BalanceCfg, BalanceEnv
-from toddlerbot.envs.mjx_env import MJXEnv
+from toddlerbot.envs.mjx_config import get_env_cfg_class
+from toddlerbot.envs.mjx_env import MJXEnv, get_env_class
 from toddlerbot.envs.ppo_config import PPOConfig
-from toddlerbot.envs.rotate_torso_env import RotateTorsoCfg, RotateTorsoEnv
-from toddlerbot.envs.squat_env import SquatCfg, SquatEnv
-from toddlerbot.envs.walk_env import WalkCfg, WalkEnv
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
+
+
+def dynamic_import_envs(env_package: str):
+    """Dynamically import all modules in the given package."""
+    package = importlib.import_module(env_package)
+    package_path = package.__path__
+
+    # Iterate over all modules in the given package directory
+    for _, module_name, _ in pkgutil.iter_modules(package_path):
+        full_module_name = f"{env_package}.{module_name}"
+        importlib.import_module(full_module_name)
+
+
+# Call this to import all policies dynamically
+dynamic_import_envs("toddlerbot.envs")
 
 
 def render_video(
@@ -513,42 +527,13 @@ if __name__ == "__main__":
 
     robot = Robot(args.robot)
 
-    env_cfg: WalkCfg | SquatCfg | RotateTorsoCfg | BalanceCfg | None = None
-    train_cfg: PPOConfig | None = None
-    EnvClass: (
-        Type[WalkEnv] | Type[SquatEnv] | Type[RotateTorsoEnv] | Type[BalanceEnv] | None
-    ) = None
+    EnvClass = get_env_class(args.env)
+    env_cfg = get_env_cfg_class(args.env)()
+    train_cfg = PPOConfig()
 
-    if "walk" in args.env:
-        env_cfg = WalkCfg()
-        train_cfg = PPOConfig()
-        EnvClass = WalkEnv
-        fixed_command = jnp.array([0.1, 0.0, 0.0])
+    kwargs = {}
+    if len(args.ref) > 0:
         kwargs = {"ref_motion_type": args.ref}
-
-    elif "squat" in args.env:
-        env_cfg = SquatCfg()
-        train_cfg = PPOConfig()
-        EnvClass = SquatEnv
-        fixed_command = jnp.array([-0.0])
-        kwargs = {}
-
-    elif "rotate_torso" in args.env:
-        env_cfg = RotateTorsoCfg()
-        train_cfg = PPOConfig()
-        EnvClass = RotateTorsoEnv
-        fixed_command = jnp.array([0.2, 0.0])
-        kwargs = {}
-
-    elif "balance" in args.env:
-        env_cfg = BalanceCfg()
-        train_cfg = PPOConfig()
-        EnvClass = BalanceEnv
-        fixed_command = jnp.array([0.0])
-        kwargs = {}
-
-    else:
-        raise ValueError(f"Unknown env: {args.env}")
 
     if "fixed" in args.env:
         train_cfg.num_timesteps = 20_000_000
@@ -588,7 +573,6 @@ if __name__ == "__main__":
         robot,
         env_cfg,  # type: ignore
         fixed_base="fixed" in args.env,
-        fixed_command=fixed_command,
         add_noise=False,
         add_domain_rand=False,
         **kwargs,

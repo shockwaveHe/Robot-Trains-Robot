@@ -1,6 +1,6 @@
 import functools
 import os
-from typing import Optional
+from typing import Dict, Optional
 
 import jax
 import jax.numpy as jnp
@@ -16,7 +16,7 @@ from toddlerbot.policies import BasePolicy
 from toddlerbot.ref_motion import MotionReference
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
-from toddlerbot.tools.teleop.joystick import get_controller_input, initialize_joystick
+from toddlerbot.tools.joystick import Joystick
 from toddlerbot.utils.math_utils import (
     butterworth,
     exponential_moving_average,
@@ -33,6 +33,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         robot: Robot,
         init_motor_pos: npt.NDArray[np.float32],
         ckpt: str,
+        joystick: Optional[Joystick] = None,
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
         cfg: Optional[MJXConfig] = None,
         motion_ref: Optional[MotionReference] = None,
@@ -62,6 +63,9 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             [robot.joint_limits[name] for name in robot.motor_ordering]
         )
 
+        self.neck_yaw_idx = robot.motor_ordering.index("neck_yaw_drive")
+        self.neck_pitch_idx = robot.motor_ordering.index("neck_pitch_drive")
+
         # Filter
         self.filter_type = cfg.action.filter_type
         self.filter_order = cfg.action.filter_order
@@ -88,7 +92,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             self.last_motor_target, (self.filter_order, 1)
         )
 
-        self.last_command = np.zeros(cfg.commands.num_commands, dtype=np.float32)
+        self.state_ref = None
         self.last_action = np.zeros(robot.nu, dtype=np.float32)
         self.action_buffer = np.zeros(
             ((self.n_steps_delay + 1) * robot.nu), dtype=np.float32
@@ -112,23 +116,37 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         )
         make_policy = ppo_networks.make_inference_fn(ppo_network)
 
-        run_name = f"{robot.name}_{self.name}_ppo_{ckpt}"
-        policy_path = os.path.join("results", run_name, "best_policy")
-        if not os.path.exists(policy_path):
-            policy_path = os.path.join("results", run_name, "policy")
+        if len(ckpt) > 0:
+            run_name = f"{robot.name}_{self.name}_ppo_{ckpt}"
+            policy_path = os.path.join("results", run_name, "best_policy")
+            if not os.path.exists(policy_path):
+                policy_path = os.path.join("results", run_name, "policy")
+        else:
+            policy_path = os.path.join(
+                "toddlerbot",
+                "policies",
+                "checkpoints",
+                f"{robot.name}_{self.name}_policy",
+            )
+
+        print(f"Loading policy from {policy_path}")
 
         params = model.load_params(policy_path)
         inference_fn = make_policy(params, deterministic=True)
         # jit_inference_fn = inference_fn
         self.jit_inference_fn = jax.jit(inference_fn)
         self.rng = jax.random.PRNGKey(0)
+        inference_fn(self.obs_history, self.rng)
         self.jit_inference_fn(self.obs_history, self.rng)[0].block_until_ready()
 
-        self.joystick = None
-        try:
-            self.joystick = initialize_joystick()
-        except Exception:
-            pass
+        self.joystick = joystick
+        if joystick is None:
+            try:
+                self.joystick = Joystick()
+            except Exception:
+                pass
+
+        self.control_inputs = None
 
         self.prep_duration = 7.0
         self.prep_time, self.prep_action = self.move(
@@ -139,29 +157,42 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             end_time=5.0,
         )
 
+    def is_double_support(self) -> bool:
+        if self.state_ref is None:
+            return False
+
+        stance_mask = self.state_ref[-2:]
+        return stance_mask[0] == 1.0 and stance_mask[1] == 1.0
+
+    def get_command(self, control_inputs: Dict[str, float]) -> npt.NDArray[np.float32]:
+        return np.zeros(1, dtype=np.float32)
+
     # @profile()
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         if obs.time < self.prep_duration:
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
             )
-
             return action
 
-        if self.joystick is None:
+        time_curr = self.step_curr * self.control_dt
+
+        control_inputs = None
+        # import ipdb; ipdb.set_trace()
+        self.joystick = None
+
+        if self.control_inputs is not None:
+            control_inputs = self.control_inputs
+        elif self.joystick is not None:
+            control_inputs = self.joystick.get_controller_input()
+
+        if control_inputs is None:
             command = self.fixed_command
         else:
-            command = np.array(
-                get_controller_input(self.joystick, self.command_list), dtype=np.float32
-            )
+            command = self.get_command(control_inputs)
 
-        if not np.allclose(command, self.last_command):
-            # print(f"Command: {command}")
-            self.last_command = command
-
-        time_curr = self.step_curr * self.control_dt
         phase_signal = self.motion_ref.get_phase_signal(time_curr, command)
-        state_ref = self.motion_ref.get_state_ref(
+        self.state_ref = self.motion_ref.get_state_ref(
             np.zeros(3, dtype=np.float32),
             np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),
             time_curr,
@@ -197,7 +228,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
 
         motor_target = self.default_motor_pos + self.action_scale * action_delay
         motor_target = np.asarray(
-            self.motion_ref.override_motor_target(motor_target, state_ref)
+            self.motion_ref.override_motor_target(motor_target, self.state_ref)
         )
 
         if self.filter_type == "ema":
@@ -217,6 +248,10 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
                 self.butter_past_inputs,
                 self.butter_past_outputs,
             )
+
+        # Keep the neck joints the same
+        motor_target[self.neck_yaw_idx] = obs.motor_pos[self.neck_yaw_idx]
+        motor_target[self.neck_pitch_idx] = obs.motor_pos[self.neck_pitch_idx]
 
         motor_target = np.clip(
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]

@@ -1,5 +1,5 @@
 import glob
-import time
+import platform
 
 import numpy as np
 import serial
@@ -7,6 +7,10 @@ import serial
 
 class FSR:
     def __init__(self, port_pattern="/dev/tty.usbmodem*", baud_rate=115200):
+        # If on ubuntu
+        os_type = platform.system()
+        if os_type == "Linux":
+            port_pattern = "/dev/ttyACM*"
         # Automatically detect the correct serial port
         matching_ports = glob.glob(port_pattern)
         if not matching_ports:
@@ -43,14 +47,16 @@ class FSR:
                 data = self.ser.readline()
 
                 if data:
-                    # Decode and use the line of data
-                    latest_data = data.decode("utf-8").rstrip()
-                    posR = float(latest_data.split(",")[0])
-                    posL = float(latest_data.split(",")[1])
-                    posR = np.clip(posR, 0.0, 2.0) / 2.0 * 100
-                    posL = np.clip(posL, 0.0, 2.0) / 2.0 * 100
-                    print(f"Received: posL={posL}, posR={posR}")
-                    return posL, posR
+                    if len(data) == 15:
+                        # Decode and use the line of data
+                        latest_data = data.decode("utf-8").rstrip()
+                        # print(latest_data)
+                        posR = float(latest_data.split(",")[0])
+                        posL = float(latest_data.split(",")[1])
+                        posR = np.clip(posR, 0.0, 2.0) / 2.0 * 100
+                        posL = np.clip(posL, 0.0, 2.0) / 2.0 * 100
+                        # print(f"Received: posL={posL}, posR={posR}")
+                        return posL, posR
                 else:
                     return None, None
 

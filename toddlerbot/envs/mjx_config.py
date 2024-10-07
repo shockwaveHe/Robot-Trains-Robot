@@ -1,5 +1,15 @@
 from dataclasses import dataclass, field
-from typing import List
+from typing import Dict, List, Type
+
+# Global registry to store env names and their corresponding classes
+env_cfg_registry: Dict[str, Type["MJXConfig"]] = {}
+
+
+def get_env_cfg_class(env_name: str) -> Type["MJXConfig"]:
+    if env_name not in env_cfg_registry:
+        raise ValueError(f"Unknown env: {env_name}")
+
+    return env_cfg_registry[env_name]
 
 
 @dataclass
@@ -43,7 +53,7 @@ class MJXConfig:
         @dataclass
         class RewardScales:
             torso_pos: float = 0.0  # 1.0
-            torso_quat: float = 1.0
+            torso_quat: float = 1.0  # 1.0
             lin_vel_xy: float = 1.0
             lin_vel_z: float = 0.5
             ang_vel_xy: float = 0.5
@@ -102,11 +112,12 @@ class MJXConfig:
         q_dot_tau_max_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
         q_dot_max_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
         push_interval_s: int = 4  # seconds
-        push_vel: float = 0.1
+        push_vel: float = 0.2
 
     @dataclass
     class NoiseConfig:
-        reset_noise_pos: float = 0.05
+        reset_noise_joint_pos: float = 0.05
+        reset_noise_torso_pitch: float = 0.05
         obs_noise_scale: float = 0.05
         dof_pos: float = 1.0
         dof_vel: float = 2.0
@@ -123,3 +134,9 @@ class MJXConfig:
         self.commands = self.CommandsConfig()
         self.domain_rand = self.DomainRandConfig()
         self.noise = self.NoiseConfig()
+
+    # Automatic registration of subclasses
+    def __init_subclass__(cls, env_name: str = "", **kwargs):
+        super().__init_subclass__(**kwargs)
+        if len(env_name) > 0:
+            env_cfg_registry[env_name] = cls

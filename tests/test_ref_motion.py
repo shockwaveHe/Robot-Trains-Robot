@@ -120,10 +120,7 @@ if __name__ == "__main__":
     elif args.ref == "walk_zmp":
         cfg = WalkCfg()
         motion_ref = WalkZMPReference(
-            robot,
-            cfg.commands.command_list,
-            cfg.action.cycle_time,
-            cfg.sim.timestep * cfg.action.n_frames,
+            robot, cfg.action.cycle_time, cfg.sim.timestep * cfg.action.n_frames
         )
 
     elif args.ref == "squat":
@@ -143,9 +140,12 @@ if __name__ == "__main__":
 
     if "walk" in args.ref:
         command_list = [
-            np.array([0.1, 0, 0], dtype=np.float32),
-            np.array([0, -0.1, 0], dtype=np.float32),
-            np.array([0, 0.0, 0.2], dtype=np.float32),
+            np.array([0.2, 0, 0], dtype=np.float32),
+            np.array([-0.1, 0, 0], dtype=np.float32),
+            np.array([0, 0.1, 0], dtype=np.float32),
+            np.array([0.1, -0.1, 0], dtype=np.float32),
+            np.array([-0.05, 0.05, 0], dtype=np.float32),
+            np.array([0, 0.0, 0.5], dtype=np.float32),
             np.array([0, 0, 0], dtype=np.float32),
         ]
 

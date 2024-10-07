@@ -268,7 +268,6 @@ class MuJoCoSim(BaseSim):
             )
             mujoco.mj_step(self.model, self.data)
 
-        import ipdb; ipdb.set_trace()
         if self.visualizer is not None:
             self.visualizer.visualize(self.data)
 

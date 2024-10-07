@@ -1,5 +1,5 @@
 from dataclasses import asdict
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Tuple, Type
 
 import jax
 import mujoco
@@ -17,7 +17,24 @@ from toddlerbot.envs.mjx_config import MJXConfig
 from toddlerbot.ref_motion import MotionReference
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
-from toddlerbot.utils.math_utils import butterworth, exponential_moving_average
+from toddlerbot.utils.math_utils import (
+    butterworth,
+    exponential_moving_average,
+)
+
+# Global registry to store env names and their corresponding classes
+env_registry: Dict[str, Type["MJXEnv"]] = {}
+
+
+def get_env_class(env_name: str) -> Type["MJXEnv"]:
+    if env_name not in env_registry:
+        raise ValueError(f"Unknown env: {env_name}")
+
+    return env_registry[env_name]
+
+
+def get_env_names() -> List[str]:
+    return list(env_registry.keys())
 
 
 class MJXEnv(PipelineEnv):
@@ -28,7 +45,6 @@ class MJXEnv(PipelineEnv):
         cfg: MJXConfig,
         motion_ref: MotionReference,
         fixed_base: bool = False,
-        fixed_command: Optional[jax.Array] = None,
         add_noise: bool = True,
         add_domain_rand: bool = True,
         **kwargs: Any,
@@ -38,7 +54,6 @@ class MJXEnv(PipelineEnv):
         self.robot = robot
         self.motion_ref = motion_ref
         self.fixed_base = fixed_base
-        self.fixed_command = fixed_command
         self.add_noise = add_noise
         self.add_domain_rand = add_domain_rand
 
@@ -64,6 +79,12 @@ class MJXEnv(PipelineEnv):
 
         self._init_env()
         self._init_reward()
+
+    # Automatic registration of subclasses
+    def __init_subclass__(cls, env_name: str = "", **kwargs):
+        super().__init_subclass__(**kwargs)
+        if len(env_name) > 0:
+            env_registry[env_name] = cls
 
     def _init_env(self) -> None:
         self.nu = self.sys.nu
@@ -230,7 +251,8 @@ class MJXEnv(PipelineEnv):
                 jnp.ones(3) * self.cfg.noise.euler,
             ]
         )
-        self.reset_noise_pos = self.cfg.noise.reset_noise_pos
+        self.reset_noise_joint_pos = self.cfg.noise.reset_noise_joint_pos
+        self.reset_noise_torso_pitch = self.cfg.noise.reset_noise_torso_pitch
         self.backlash_scale = self.cfg.noise.backlash_scale
         self.backlash_activation = self.cfg.noise.backlash_activation
 
@@ -266,7 +288,16 @@ class MJXEnv(PipelineEnv):
 
     def reset(self, rng: jax.Array) -> State:
         """Resets the environment to an initial state."""
-        rng, rng1, rng2, rng3, rng4, rng5, rng6 = jax.random.split(rng, 7)
+        (
+            rng,
+            rng_torso_pitch,
+            rng_torso_yaw,
+            rng_command,
+            rng_kp,
+            rng_kd,
+            rng_q_dot_tau_max,
+            rng_q_dot_max,
+        ) = jax.random.split(rng, 8)
 
         state_info = {
             "rng": rng,
@@ -287,8 +318,10 @@ class MJXEnv(PipelineEnv):
         }
 
         path_pos = jnp.zeros(3)
-        path_quat = jnp.array([1.0, 0.0, 0.0, 0.0])
-        command = self._sample_command(rng1)
+        torso_yaw = jax.random.uniform(rng_torso_yaw, (1,), minval=0, maxval=2 * jnp.pi)
+        path_quat = math.euler_to_quat(jnp.array([0.0, 0.0, torso_yaw[0]]))
+
+        command = self._sample_command(rng_command)
         state_info["phase_signal"] = self.motion_ref.get_phase_signal(0.0, command)
         state_ref = self.motion_ref.get_state_ref(path_pos, path_quat, 0.0, command)
         state_info["path_pos"] = path_pos
@@ -303,10 +336,19 @@ class MJXEnv(PipelineEnv):
         qpos = qpos.at[self.q_start_idx + self.arm_joint_indices].set(arm_joint_pos)  # type:ignore
         qpos = qpos.at[self.q_start_idx + self.arm_motor_indices].set(arm_motor_pos)  # type:ignore
         if self.add_noise:
-            noise_pos = self.reset_noise_pos * jax.random.normal(
-                rng2, (self.nq - self.q_start_idx,)
+            if not self.fixed_base:
+                noise_torso_pitch = self.reset_noise_torso_pitch * jax.random.normal(
+                    rng_torso_pitch, (1,)
+                )
+                noise_torso_quat = math.euler_to_quat(
+                    jnp.array([0.0, noise_torso_pitch[0], torso_yaw[0]])
+                )
+                qpos = qpos.at[3:7].set(noise_torso_quat)
+
+            noise_joint_pos = self.reset_noise_joint_pos * jax.random.normal(
+                rng_torso_pitch, (self.nq - self.q_start_idx,)
             )
-            qpos = qpos.at[self.q_start_idx :].add(noise_pos)
+            qpos = qpos.at[self.q_start_idx :].add(noise_joint_pos)
 
         qvel = jnp.zeros(self.nv)
 
@@ -330,25 +372,25 @@ class MJXEnv(PipelineEnv):
 
         if self.add_domain_rand:
             state_info["controller_kp"] *= jax.random.uniform(
-                rng3, (self.nu,), minval=self.kp_range[0], maxval=self.kp_range[1]
+                rng_kp, (self.nu,), minval=self.kp_range[0], maxval=self.kp_range[1]
             )
             state_info["controller_kd"] *= jax.random.uniform(
-                rng4, (self.nu,), minval=self.kd_range[0], maxval=self.kd_range[1]
+                rng_kd, (self.nu,), minval=self.kd_range[0], maxval=self.kd_range[1]
             )
             state_info["controller_tau_max"] *= jax.random.uniform(
-                rng4,
+                rng_kd,
                 (self.nu,),
                 minval=self.tau_max_range[0],
                 maxval=self.tau_max_range[1],
             )
             state_info["controller_q_dot_tau_max"] *= jax.random.uniform(
-                rng5,
+                rng_q_dot_tau_max,
                 (self.nu,),
                 minval=self.q_dot_tau_max_range[0],
                 maxval=self.q_dot_tau_max_range[1],
             )
             state_info["controller_q_dot_max"] *= jax.random.uniform(
-                rng6,
+                rng_q_dot_max,
                 (self.nu,),
                 minval=self.q_dot_max_range[0],
                 maxval=self.q_dot_max_range[1],

@@ -128,10 +128,6 @@ class DynamixelController(BaseController):
     def reboot_motors(self):
         self.client.reboot(self.motor_ids)
 
-    def set_kp(self, kP: List[float]):
-        with self.lock:
-            self.client.sync_write(self.motor_ids, kP, 84, 2)
-
     # Only disable the torque, but stay connected through comm. If no id is provided, disable all motors
     def disable_motors(self, ids=None):
         open_clients: List[DynamixelClient] = list(DynamixelClient.OPEN_CLIENTS)  # type: ignore
@@ -139,11 +135,11 @@ class DynamixelController(BaseController):
             if ids is not None:
                 # get the intersecting list between ids and motor_ids
                 ids_to_disable = list(set(open_client.motor_ids) & set(ids))
-                print("Disabling motor id ", ids_to_disable)
-                open_client.set_torque_enabled(ids_to_disable, False)
+                print(f"\nDisabling motor id {ids_to_disable}\n")
+                open_client.set_torque_enabled(ids_to_disable, False, retries=0)
             else:
-                print("Disabling all motor")
-                open_client.set_torque_enabled(open_client.motor_ids, False)
+                print("\nDisabling all the motors\n")
+                open_client.set_torque_enabled(open_client.motor_ids, False, retries=0)
 
     def enable_motors(self, ids=None):
         open_clients: List[DynamixelClient] = list(DynamixelClient.OPEN_CLIENTS)  # type: ignore
@@ -151,17 +147,35 @@ class DynamixelController(BaseController):
             if ids is not None:
                 # get the intersecting list between ids and motor_ids
                 ids_to_enable = list(set(open_client.motor_ids) & set(ids))
-                print("Enabling motor id ", ids_to_enable)
+                print(f"\nEnabling motor id {ids_to_enable}\n")
                 open_client.set_torque_enabled(ids_to_enable, True)
             else:
-                print("Enabling all motor")
+                print("\nEnabling all the motors\n")
                 open_client.set_torque_enabled(open_client.motor_ids, True)
 
-    def set_kp_kd(self, kp, kd, ids=None):
-        log("Setting motor kp kd", header="Dynamixel")
+    def set_kp(self, kp: List[float]):
+        with self.lock:
+            self.client.sync_write(self.motor_ids, kp, 84, 2)
+
+    def set_kp_kd(self, kp: float, kd: float):
+        log(f"Setting motor kp={kp} kd={kd}", header="Dynamixel")
         with self.lock:
             self.client.sync_write(self.motor_ids, [kd] * len(self.motor_ids), 80, 2)
             self.client.sync_write(self.motor_ids, [kp] * len(self.motor_ids), 84, 2)
+
+    def set_parameters(self, kp=None, kd=None, ki=None, kff1=None, kff2=None, ids=None):
+        log("Setting motor parameters", header="Dynamixel")
+        with self.lock:
+            if kp is not None:
+                self.client.sync_write(ids, [kp], 84, 2)
+            if kd is not None:
+                self.client.sync_write(ids, [kd], 80, 2)
+            if ki is not None:
+                self.client.sync_write(ids, [ki], 82, 2)
+            if kff1 is not None:
+                self.client.sync_write(ids, [kff1], 90, 2)
+            if kff2 is not None:
+                self.client.sync_write(ids, [kff2], 88, 2)
 
     # @profile()
     def set_pos(

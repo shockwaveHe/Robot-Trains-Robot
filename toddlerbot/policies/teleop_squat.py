@@ -6,7 +6,7 @@ from toddlerbot.policies import BasePolicy
 from toddlerbot.ref_motion.squat_ref import SquatReference
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
-from toddlerbot.tools.teleop.joystick import get_controller_input, initialize_joystick
+# from toddlerbot.tools.teleop.joystick import get_controller_input, initialize_joystick
 from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.math_utils import interpolate_action, quat2euler
 
@@ -74,10 +74,10 @@ class TeleopSquatPolicy(BasePolicy, policy_name="teleop_squat"):
         )
 
         self.joystick = None
-        try:
-            self.joystick = initialize_joystick()
-        except Exception:
-            pass
+        # try:
+        #     self.joystick = initialize_joystick()
+        # except Exception:
+        #     pass
 
         self.command_list = [[-0.02], [0.02]]
         # PD controller parameters
@@ -103,11 +103,11 @@ class TeleopSquatPolicy(BasePolicy, policy_name="teleop_squat"):
 
         if self.joystick is None:
             command = self.fixed_command
-        else:
-            command = np.array(
-                get_controller_input(self.joystick, self.command_list),
-                dtype=np.float32,
-            )
+        # else:
+        #     command = np.array(
+        #         get_controller_input(self.joystick, self.command_list),
+        #         dtype=np.float32,
+        #     )
 
         time_curr = self.step_curr * self.control_dt
         state_ref = self.motion_ref.get_state_ref(

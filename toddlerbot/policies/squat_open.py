@@ -153,7 +153,7 @@ class SquatOpenPolicy(BasePolicy, policy_name="squat_open"):
         self.time_arr = np.concatenate(time_list)
         self.action_arr = np.concatenate(action_list)
 
-    def step(self, obs: Obs) -> npt.NDArray[np.float32]:
+    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         action = np.array(interpolate_action(obs.time, self.time_arr, self.action_arr))
 
         left_knee_pitch = obs.motor_pos[

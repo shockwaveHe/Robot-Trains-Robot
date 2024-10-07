@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Type
+from typing import Dict, List, Type
 
 import numpy as np
 import numpy.typing as npt
@@ -26,6 +26,15 @@ def get_arm_policy_class(arm_policy_name: str) -> Type["BaseArmPolicy"]:
 
     return arm_policy_registry[arm_policy_name]
 
+def get_policy_names() -> List[str]:
+    policy_names: List[str] = []
+    for key in policy_registry.keys():
+        policy_names.append(key)
+        policy_names.append(key + "_fixed")
+
+    return policy_names
+
+
 class BasePolicy(ABC):
     @abstractmethod
     def __init__(
@@ -50,10 +59,15 @@ class BasePolicy(ABC):
         if len(policy_name) > 0:
             policy_registry[policy_name] = cls
 
+    def reset(self):
+        pass
+
     @abstractmethod
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         pass
 
+    # duration: total length of the motion
+    # end_time: when motion should end, end time < time < duration will be static
     def move(
         self,
         time_curr: float,

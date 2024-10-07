@@ -8,7 +8,7 @@ from toddlerbot.utils.math_utils import gaussian_basis_functions
 
 
 class SquatReference(MotionReference):
-    def __init__(self, robot: Robot, control_dt: float):
+    def __init__(self, robot: Robot, control_dt: float, com_z_lower_limit_offset=0.01):
         super().__init__("squat", "episodic", robot)
 
         self.default_joint_pos = np.array(
@@ -37,7 +37,6 @@ class SquatReference(MotionReference):
         )
         self.shin_thigh_ratio = self.knee_to_ank_pitch_z / self.hip_pitch_to_knee_z
 
-        self.com_z_target = np.array([0.0], dtype=np.float32)
         knee_limits = np.array(
             self.robot.joint_limits["left_knee_pitch"], dtype=np.float32
         )
@@ -51,7 +50,8 @@ class SquatReference(MotionReference):
                     * self.knee_to_ank_pitch_z
                     * np.cos(np.pi - knee_limits[1])
                 )
-                - self.hip_pitch_to_ank_pitch_z,
+                - self.hip_pitch_to_ank_pitch_z
+                + com_z_lower_limit_offset,
                 0.0,
             ],
             dtype=np.float32,
@@ -66,7 +66,10 @@ class SquatReference(MotionReference):
             robot.joint_ordering.index("right_ank_pitch"),
         ]
 
-        self.num_joints = len(self.robot.joint_ordering)
+        self.com_z_target = np.zeros(1, dtype=np.float32)
+
+    def reset(self):
+        self.com_z_target = np.zeros(1, dtype=np.float32)
 
     def get_phase_signal(
         self, time_curr: float | ArrayType, command: ArrayType
@@ -96,8 +99,6 @@ class SquatReference(MotionReference):
             self.com_z_limits[0],
             self.com_z_limits[1],
         )
-
-        # print(f"com_z_target: {self.com_z_target}")
 
         joint_pos = self.default_joint_pos.copy()
         pitch_joint_pos = self.leg_ik(np.array(self.com_z_target, dtype=np.float32))

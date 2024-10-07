@@ -18,7 +18,10 @@ class DatasetLogger:
         state_entry = [time] + list(joint_angles) + fsr_data + [camera_frame_idx]
 
         self.data_dict["state_array"].append(state_entry)
-        self.data_dict["images"].append(camera_frame)
+        if camera_frame is not None:
+            self.data_dict["images"].append(camera_frame)
+        else:
+            self.data_dict["images"].append(np.zeros((1, 1, 3), dtype=np.uint8))
 
     # episode end index is the index of the last state entry in the episode +1
     def log_episode_end(self):

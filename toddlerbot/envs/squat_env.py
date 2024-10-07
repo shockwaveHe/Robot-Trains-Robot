@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -49,7 +49,6 @@ class SquatEnv(MJXEnv):
         robot: Robot,
         cfg: SquatCfg,
         fixed_base: bool = False,
-        fixed_command: Optional[jax.Array] = None,
         add_noise: bool = True,
         add_domain_rand: bool = True,
         **kwargs: Any,
@@ -65,17 +64,12 @@ class SquatEnv(MJXEnv):
             cfg,
             motion_ref,
             fixed_base=fixed_base,
-            fixed_command=fixed_command,
             add_noise=add_noise,
             add_domain_rand=add_domain_rand,
             **kwargs,
         )
 
     def _sample_command(self, rng: jax.Array) -> jax.Array:
-        if self.fixed_command is not None:
-            assert self.fixed_command.shape[0] == self.num_commands
-            return self.fixed_command
-
         rng, rng_1 = jax.random.split(rng)
         lin_vel_z = jax.random.uniform(
             rng_1,

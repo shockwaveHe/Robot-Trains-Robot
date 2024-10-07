@@ -39,7 +39,7 @@ while [[ $# -gt 0 ]]; do
             # ASSEMBLY_LIST="toddlerbot_legs"
             ;;
             toddlerbot_arms)
-            BODY_NAME="toddlerbot"
+            BODY_NAME="toddlerbot_arms"
             ARM_NAME="arm_hand"
             DOC_ID_LIST="6f1a2a766fbbc097a49abb91 cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
             ASSEMBLY_LIST="$BODY_NAME left_$ARM_NAME right_$ARM_NAME"

@@ -1,6 +1,6 @@
 import os
 import pickle
-from typing import List, Optional
+from typing import Optional
 
 import jax
 import numpy
@@ -13,13 +13,7 @@ from toddlerbot.utils.array_utils import array_lib as np
 
 
 class WalkZMPReference(MotionReference):
-    def __init__(
-        self,
-        robot: Robot,
-        command_list: List[List[float]],
-        cycle_time: float,
-        control_dt: float,
-    ):
+    def __init__(self, robot: Robot, cycle_time: float, control_dt: float):
         super().__init__("walk_zmp", "periodic", robot)
 
         self.cycle_time = cycle_time
@@ -53,7 +47,7 @@ class WalkZMPReference(MotionReference):
                 ) = pickle.load(f)
         else:
             lookup_keys, com_ref_list, leg_joint_pos_ref_list, stance_mask_ref_list = (
-                self.zmp_walk.build_lookup_table(command_list)
+                self.zmp_walk.build_lookup_table()
             )
             with open(lookup_table_path, "wb") as f:
                 pickle.dump(
