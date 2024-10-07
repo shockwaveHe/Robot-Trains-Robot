@@ -210,8 +210,8 @@ class MuJoCoSim(BaseSim):
             motor_tor=motor_tor_arr,
             lin_vel=torso_lin_vel,
             ang_vel=torso_ang_vel,
-            pos=torso_pos,
-            euler=torso_euler,
+            torso_pos=torso_pos,
+            torso_euler=torso_euler,
             joint_pos=joint_pos_arr,
             joint_vel=joint_vel_arr,
         )

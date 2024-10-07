@@ -41,7 +41,7 @@ class BalancePDAnklePolicy(BasePolicy, policy_name="balance_pd_ankle"):
             return action
 
         # PD controller to maintain torso pitch at 0
-        error = obs.euler[1]  # Torso pitch angle (obs.euler[1])
+        error = obs.torso_euler[1]  # Torso pitch angle (obs.euler[1])
         # Derivative of the error (rate of change)
         error_derivative = obs.ang_vel[1]
 

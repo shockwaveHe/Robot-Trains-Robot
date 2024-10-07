@@ -56,7 +56,7 @@ def load_datasets(robot: Robot, sim_data_path: str, real_data_path: str):
         data_dict["imu"] = {
             # "lin_vel": np.array([obs.lin_vel for obs in obs_list[:idx]]),
             "ang_vel": np.array([obs.ang_vel for obs in obs_list[:idx]]),
-            "euler": np.array([obs.euler for obs in obs_list[:idx]]),
+            "euler": np.array([obs.torso_euler for obs in obs_list[:idx]]),
         }
         for motor_name in robot.motor_ordering:
             data_dict[motor_name] = {}

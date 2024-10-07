@@ -209,7 +209,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
                 self.last_action,
                 # obs.lin_vel * self.obs_scales.lin_vel,
                 obs.ang_vel * self.obs_scales.ang_vel,
-                obs.euler * self.obs_scales.euler,
+                obs.torso_euler * self.obs_scales.euler,
             ]
         )
 

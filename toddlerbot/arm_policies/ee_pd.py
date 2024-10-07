@@ -2,9 +2,9 @@ import mink
 import mujoco
 import numpy as np
 import numpy.typing as npt
-from toddlerbot.policies import Obs, BaseArm, BaseArmPolicy
+from toddlerbot.arm_policies import Obs, BaseArm, BaseArmPolicy
 
-class EEArmPDPolicy(BaseArmPolicy, arm_policy_name="ee_arm_pd"):
+class EEPDArmPolicy(BaseArmPolicy, arm_policy_name="ee_pd"):
     def __init__(
         self,
         name: str,

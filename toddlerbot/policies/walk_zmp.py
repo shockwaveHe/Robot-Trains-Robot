@@ -120,7 +120,7 @@ class WalkZMPPolicy(BasePolicy, policy_name="walk_zmp"):
         mujoco.mj_jacSubtreeCom(self.model, self.data, com_jacp, 0)
 
         com_pos_ref = self.com_ref[self.step_curr]
-        error = obs.pos[:2] - com_pos_ref[:2]
+        error = obs.torso_pos[:2] - com_pos_ref[:2]
         error_derivative = (error - self.previous_error) / self.control_dt
         self.previous_error = error
 

@@ -1,8 +1,8 @@
 import numpy as np
 import numpy.typing as npt
-from toddlerbot.policies import Obs, BaseArm, BaseArmPolicy
+from toddlerbot.arm_policies import Obs, BaseArm, BaseArmPolicy
 
-class FixArmPolicy(BaseArmPolicy, arm_policy_name="fix_arm"):
+class FixedArmPolicy(BaseArmPolicy, arm_policy_name="fixed"):
     def __init__(
         self,
         name: str,

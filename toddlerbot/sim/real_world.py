@@ -203,7 +203,7 @@ class RealWorld(BaseSim):
 
             # obs.lin_vel = imu_lin_vel + np.cross(imu_ang_vel, -self.imu_pos)
             obs.ang_vel = np.asarray(rotate_vec(imu_ang_vel, quat_inv(self.imu_quat)))
-            obs.euler = np.asarray(rotate_vec(imu_euler, quat_inv(self.imu_quat)))
+            obs.torso_euler = np.asarray(rotate_vec(imu_euler, quat_inv(self.imu_quat)))
 
         return obs
 

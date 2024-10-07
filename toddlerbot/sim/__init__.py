@@ -14,8 +14,8 @@ class Obs:
     motor_tor: npt.NDArray[np.float32]
     lin_vel: npt.NDArray[np.float32] = np.zeros(3, dtype=np.float32)
     ang_vel: npt.NDArray[np.float32] = np.zeros(3, dtype=np.float32)
-    pos: npt.NDArray[np.float32] = np.zeros(3, dtype=np.float32)
-    euler: npt.NDArray[np.float32] = np.zeros(3, dtype=np.float32)
+    torso_pos: npt.NDArray[np.float32] = np.zeros(3, dtype=np.float32)
+    torso_euler: npt.NDArray[np.float32] = np.zeros(3, dtype=np.float32)
     joint_pos: Optional[npt.NDArray[np.float32]] = None
     joint_vel: Optional[npt.NDArray[np.float32]] = None
     ee_force_data: Optional[npt.NDArray[np.float32]] = None # note: should read ee_force_data[0] when rigid connected

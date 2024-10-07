@@ -12,7 +12,8 @@ import numpy as np
 import numpy.typing as npt
 from tqdm import tqdm
 
-from toddlerbot.policies import BasePolicy, BaseArmPolicy, get_policy_class, get_policy_names, get_arm_policy_class
+from toddlerbot.policies import BasePolicy, get_policy_class, get_policy_names
+from toddlerbot.arm_policies import BaseArmPolicy, get_arm_policy_class, get_arm_policy_names
 from toddlerbot.policies.calibrate import CalibratePolicy
 from toddlerbot.policies.dp_policy import DPPolicy
 from toddlerbot.policies.mjx_policy import MJXPolicy
@@ -49,6 +50,7 @@ def dynamic_import_policies(policy_package: str):
 
 # Call this to import all policies dynamically
 dynamic_import_policies("toddlerbot.policies")
+dynamic_import_policies("toddlerbot.arm_policies")
 
 
 def plot_results(
@@ -99,7 +101,7 @@ def plot_results(
         time_obs_list.append(obs.time)
         # lin_vel_obs_list.append(obs.lin_vel)
         ang_vel_obs_list.append(obs.ang_vel)
-        euler_obs_list.append(obs.euler)
+        euler_obs_list.append(obs.torso_euler)
         tor_obs_total_list.append(sum(obs.motor_tor))
 
         for j, motor_name in enumerate(robot.motor_ordering):
@@ -448,8 +450,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--arm-policy",
         type=str,
-        default="fix_arm",
+        default="fixed",
         help="The name of the arm policy.",
+        choices=get_arm_policy_names(),
     )
     parser.add_argument(
         "--rigid-connection",
@@ -536,7 +539,7 @@ if __name__ == "__main__":
         robot_policy = RobotPolicyClass(args.toddler_policy, robot, init_motor_pos, fixed_base=fixed_base)
     arm_policy = None
     if args.sim == "arm_toddler":
-        if args.arm_policy == "fix_arm" or "ee_arm"  in args.arm_policy:
+        if args.arm_policy == "fix_arm" or "ee"  in args.arm_policy:
             arm_policy = ArmPolicyClass(args.arm_policy, arm, init_arm_joint_pos)
         else:
             raise ValueError(f"Unknown arm policy {args.arm_policy}")

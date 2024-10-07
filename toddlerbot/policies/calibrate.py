@@ -49,7 +49,7 @@ class CalibratePolicy(BasePolicy, policy_name="calibrate"):
             return action
 
         # PD+I controller to maintain torso pitch at 0
-        error = obs.euler[1]
+        error = obs.torso_euler[1]
         error_derivative = obs.ang_vel[1]
 
         # Update integral error (with a basic anti-windup mechanism)
