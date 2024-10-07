@@ -330,7 +330,6 @@ class MJXEnv(PipelineEnv):
         state_info["state_ref"] = jnp.asarray(state_ref)
 
         qpos = self.default_qpos
-        qpos = qpos.at[:3].set(path_pos)
         qpos = qpos.at[3:7].set(path_quat)
 
         arm_joint_pos = state_ref[self.ref_start_idx + self.arm_ref_indices]
