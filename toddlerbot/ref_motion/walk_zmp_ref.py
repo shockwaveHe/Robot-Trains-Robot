@@ -5,7 +5,7 @@ from typing import Optional
 import jax
 import numpy
 
-from toddlerbot.algorithms.zmp.zmp_walk import ZMPWalk
+from toddlerbot.algorithms.zmp_walk import ZMPWalk
 from toddlerbot.ref_motion import MotionReference
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.array_utils import ArrayType, inplace_update

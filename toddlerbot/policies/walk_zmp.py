@@ -1,10 +1,10 @@
-from typing import List, Optional
+from typing import Optional
 
 import mujoco
 import numpy as np
 import numpy.typing as npt
 
-from toddlerbot.algorithms.zmp.zmp_walk import ZMPWalk
+from toddlerbot.algorithms.zmp_walk import ZMPWalk
 from toddlerbot.policies import BasePolicy
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot

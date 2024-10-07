@@ -3,7 +3,7 @@ from typing import List, Tuple
 import numpy
 from tqdm import tqdm
 
-from toddlerbot.algorithms.zmp.zmp_planner import ZMPPlanner
+from toddlerbot.algorithms.zmp_planner import ZMPPlanner
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.array_utils import ArrayType, inplace_update, loop_update
 from toddlerbot.utils.array_utils import array_lib as np
