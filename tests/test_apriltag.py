@@ -71,7 +71,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Read and process the image
-    image = cv2.imread(os.path.join("tests", "images", f"{args.image}.jpg")).astype(
+    image = cv2.imread(os.path.join("tests", "images", f"{args.image}")).astype(
         np.uint8
     )
 
@@ -113,7 +113,7 @@ if __name__ == "__main__":
 
     image_vis = april_detector.vis_tag(image, results)
 
-    cv2.imwrite(f"{args.image}_out.jpg", image_vis)
+    # cv2.imwrite(f"out_{args.image}", image_vis)
 
     # Display the annotated image
     cv2.imshow("AprilTag", image_vis)

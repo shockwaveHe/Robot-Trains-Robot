@@ -12,7 +12,7 @@ class TurnCfg(WalkCfg, env_name="turn"):
     @dataclass
     class CommandsConfig(WalkCfg.CommandsConfig):
         command_range: List[List[float]] = field(
-            default_factory=lambda: [[-0.1, 0.2, -0.5], [-0.1, 0.1, 0.5]]
+            default_factory=lambda: [[-0.1, 0.2], [-0.1, 0.1], [-0.5, 0.5]]
         )
         deadzone: float = 0.05
 
@@ -48,8 +48,8 @@ class TurnEnv(WalkEnv, env_name="turn"):
             z = jax.random.uniform(
                 rng_1,
                 (1,),
-                minval=self.command_range[0][0],
-                maxval=self.command_range[0][1],
+                minval=self.command_range[2][0],
+                maxval=self.command_range[2][1],
             )
             command = jnp.concatenate([x, y, z])
 
