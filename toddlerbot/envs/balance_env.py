@@ -55,7 +55,7 @@ class BalanceEnv(MJXEnv, env_name="balance"):
         add_domain_rand: bool = True,
         **kwargs: Any,
     ):
-        motion_ref = BalanceReference(robot, cfg.sim.timestep * cfg.action.n_frames)
+        motion_ref = BalanceReference(robot)
 
         self.command_range = jnp.array(cfg.commands.command_range)
         self.deadzone = jnp.array(cfg.commands.deadzone)

@@ -120,7 +120,7 @@ if __name__ == "__main__":
         )
     elif args.ref == "balance":
         cfg = BalanceCfg()
-        motion_ref = BalanceReference(robot, cfg.sim.timestep * cfg.action.n_frames)
+        motion_ref = BalanceReference(robot)
 
     else:
         raise ValueError("Unknown ref motion")

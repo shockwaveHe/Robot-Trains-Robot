@@ -13,13 +13,11 @@ class BalanceReference(MotionReference):
     def __init__(
         self,
         robot: Robot,
-        control_dt: float,
         arm_playback_speed: float = 1.0,
         com_z_lower_limit_offset: float = 0.01,
     ):
         super().__init__("balance", "perceptual", robot)
 
-        self.control_dt = control_dt
         self.default_joint_pos = np.array(
             list(robot.default_joint_angles.values()), dtype=np.float32
         )
@@ -41,8 +39,6 @@ class BalanceReference(MotionReference):
         self.neck_pitch_idx = robot.joint_ordering.index("neck_pitch_driven")
         self.neck_yaw_limits = robot.joint_limits["neck_yaw_driven"]
         self.neck_pitch_limits = robot.joint_limits["neck_pitch_driven"]
-        self.neck_yaw_target = 0.0
-        self.neck_pitch_target = 0.0
 
         ########## Arm Reference ##########
         arm_motor_names: List[str] = [
@@ -129,8 +125,6 @@ class BalanceReference(MotionReference):
             ]
         )
 
-        self.com_z_target = np.zeros(1, dtype=np.float32)
-
     def get_phase_signal(
         self, time_curr: float | ArrayType, command: ArrayType
     ) -> ArrayType:
@@ -158,13 +152,13 @@ class BalanceReference(MotionReference):
         linear_vel = np.array([0.0, 0.0, command_squat], dtype=np.float32)
         angular_vel = np.array([0.0, 0.0, 0.0], dtype=np.float32)
 
-        self.neck_yaw_target = np.clip(
-            self.neck_yaw_target + command_neck_yaw * self.control_dt,
+        neck_yaw = np.clip(
+            time_curr * command_neck_yaw,
             self.neck_yaw_limits[0],
             self.neck_yaw_limits[1],
         )
-        self.neck_pitch_target = np.clip(
-            self.neck_pitch_target + command_neck_pitch * self.control_dt,
+        neck_pitch = np.clip(
+            time_curr * command_neck_pitch,
             self.neck_pitch_limits[0],
             self.neck_pitch_limits[1],
         )
@@ -183,18 +177,16 @@ class BalanceReference(MotionReference):
             arm_joint_pos_end - arm_joint_pos_start
         ) * ((time_start - self.arm_time_ref[ref_idx]) / arm_duration)
 
-        self.com_z_target = np.clip(
-            self.com_z_target + self.control_dt * command_squat,
+        com_z_target = np.clip(
+            time_curr * command_neck_pitch,
             self.com_z_limits[0],
             self.com_z_limits[1],
         )
-        leg_pitch_joint_pos = self.leg_ik(np.array(self.com_z_target, dtype=np.float32))
+        leg_pitch_joint_pos = self.leg_ik(np.array(com_z_target, dtype=np.float32))
 
         joint_pos = self.default_joint_pos.copy()
-        joint_pos = inplace_update(joint_pos, self.neck_yaw_idx, self.neck_yaw_target)
-        joint_pos = inplace_update(
-            joint_pos, self.neck_pitch_idx, self.neck_pitch_target
-        )
+        joint_pos = inplace_update(joint_pos, self.neck_yaw_idx, neck_yaw)
+        joint_pos = inplace_update(joint_pos, self.neck_pitch_idx, neck_pitch)
         joint_pos = inplace_update(
             joint_pos,
             self.arm_actuator_indices,
