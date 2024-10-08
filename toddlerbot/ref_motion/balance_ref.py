@@ -37,14 +37,12 @@ class BalanceReference(MotionReference):
                     self.neck_gear_ratio, i, -motor_config["gear_ratio"]
                 )
 
-        self.neck_joint_limits = np.array(
-            [
-                robot.joint_limits["neck_yaw_driven"],
-                robot.joint_limits["neck_pitch_driven"],
-            ],
-            dtype=np.float32,
-        ).T
-        self.neck_joint_pos = np.zeros(2, dtype=np.float32)
+        self.neck_yaw_idx = robot.joint_ordering.index("neck_yaw_driven")
+        self.neck_pitch_idx = robot.joint_ordering.index("neck_pitch_driven")
+        self.neck_yaw_limits = robot.joint_limits["neck_yaw_driven"]
+        self.neck_pitch_limits = robot.joint_limits["neck_pitch_driven"]
+        self.neck_yaw_target = 0.0
+        self.neck_pitch_target = 0.0
 
         ########## Arm Reference ##########
         arm_motor_names: List[str] = [
@@ -151,7 +149,8 @@ class BalanceReference(MotionReference):
         if command is None:
             raise ValueError(f"command is required for {self.name}")
 
-        command_neck = command[:2]
+        command_neck_yaw = command[0]
+        command_neck_pitch = command[1]
         command_arm = command[2]
         command_squat = command[3]
 
@@ -159,10 +158,15 @@ class BalanceReference(MotionReference):
         linear_vel = np.array([0.0, 0.0, command_squat], dtype=np.float32)
         angular_vel = np.array([0.0, 0.0, 0.0], dtype=np.float32)
 
-        self.neck_joint_pos = np.clip(
-            self.neck_joint_pos + command_neck * self.control_dt,
-            self.neck_joint_limits[0],
-            self.neck_joint_limits[1],
+        self.neck_yaw_target = np.clip(
+            self.neck_yaw_target + command_neck_yaw * self.control_dt,
+            self.neck_yaw_limits[0],
+            self.neck_yaw_limits[1],
+        )
+        self.neck_pitch_target = np.clip(
+            self.neck_pitch_target + command_neck_pitch * self.control_dt,
+            self.neck_pitch_limits[0],
+            self.neck_pitch_limits[1],
         )
 
         command_ref_idx = (command_arm * (self.arm_ref_size - 2)).astype(int)
@@ -187,10 +191,9 @@ class BalanceReference(MotionReference):
         leg_pitch_joint_pos = self.leg_ik(np.array(self.com_z_target, dtype=np.float32))
 
         joint_pos = self.default_joint_pos.copy()
+        joint_pos = inplace_update(joint_pos, self.neck_yaw_idx, self.neck_yaw_target)
         joint_pos = inplace_update(
-            joint_pos,
-            self.neck_actuator_indices,
-            self.neck_joint_pos,
+            joint_pos, self.neck_pitch_idx, self.neck_pitch_target
         )
         joint_pos = inplace_update(
             joint_pos,
