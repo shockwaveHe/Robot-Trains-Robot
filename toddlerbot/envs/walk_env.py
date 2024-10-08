@@ -49,7 +49,7 @@ class WalkEnv(MJXEnv, env_name="walk"):
         name: str,
         robot: Robot,
         cfg: WalkCfg,
-        ref_motion_type: str = "simple",
+        ref_motion_type: str = "zmp",
         fixed_base: bool = False,
         add_noise: bool = True,
         add_domain_rand: bool = True,

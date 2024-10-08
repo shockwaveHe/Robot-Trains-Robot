@@ -15,8 +15,8 @@ from toddlerbot.sim.robot import Robot
 class BalanceCfg(MJXConfig, env_name="balance"):
     @dataclass
     class ObsConfig(MJXConfig.ObsConfig):
-        num_single_obs: int = 107
-        num_single_privileged_obs: int = 146
+        num_single_obs: int = 101
+        num_single_privileged_obs: int = 140
 
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):
@@ -44,7 +44,7 @@ class BalanceCfg(MJXConfig, env_name="balance"):
         self.rewards.scales = self.RewardScales()
 
 
-class BalanceEnv(MJXEnv):
+class BalanceEnv(MJXEnv, env_name="balance"):
     def __init__(
         self,
         name: str,
@@ -57,9 +57,8 @@ class BalanceEnv(MJXEnv):
     ):
         motion_ref = BalanceReference(robot, cfg.sim.timestep * cfg.action.n_frames)
 
-        self.num_commands = cfg.commands.num_commands
-        self.command_range = cfg.commands.command_range
-        self.deadzone = cfg.commands.deadzone
+        self.command_range = jnp.array(cfg.commands.command_range)
+        self.deadzone = jnp.array(cfg.commands.deadzone)
 
         super().__init__(
             name,
@@ -73,26 +72,34 @@ class BalanceEnv(MJXEnv):
         )
 
     def _sample_command(self, rng: jax.Array) -> jax.Array:
-        rng, rng_1, rng_2, rng_3 = jax.random.split(rng, 4)
-        neck_command = jax.random.uniform(
+        rng, rng_1, rng_2, rng_3, rng_4 = jax.random.split(rng, 5)
+        neck_yaw_command = jax.random.uniform(
             rng_1,
-            (2,),
-            minval=self.command_range[:2][0],
-            maxval=self.command_range[:2][1],
+            (1,),
+            minval=self.command_range[0][0],
+            maxval=self.command_range[0][1],
+        )
+        neck_pitch_command = jax.random.uniform(
+            rng_2,
+            (1,),
+            minval=self.command_range[1][0],
+            maxval=self.command_range[1][1],
         )
         arm_command = jax.random.uniform(
-            rng_2,
+            rng_3,
             (1,),
             minval=self.command_range[2][0],
             maxval=self.command_range[2][1],
         )
         squat_command = jax.random.uniform(
-            rng_3,
+            rng_4,
             (1,),
             minval=self.command_range[3][0],
             maxval=self.command_range[3][1],
         )
-        command = jnp.concatenate([neck_command, arm_command, squat_command])
+        command = jnp.concatenate(
+            [neck_yaw_command, neck_pitch_command, arm_command, squat_command]
+        )
 
         # Set small commands to zero based on norm condition
         mask = (jnp.abs(command) > self.deadzone).astype(jnp.float32)
