@@ -3,6 +3,7 @@ from typing import Any, List, Tuple
 
 import jax
 import jax.numpy as jnp
+from brax import base, math
 
 from toddlerbot.envs.mjx_config import MJXConfig
 from toddlerbot.envs.mjx_env import MJXEnv
@@ -11,22 +12,29 @@ from toddlerbot.sim.robot import Robot
 
 
 @dataclass
-class BalanceCfg(MJXConfig):
+class BalanceCfg(MJXConfig, env_name="balance"):
     @dataclass
     class ObsConfig(MJXConfig.ObsConfig):
-        num_single_obs: int = 104
-        num_single_privileged_obs: int = 143
+        num_single_obs: int = 107
+        num_single_privileged_obs: int = 146
 
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):
-        resample_time: float = 100.0  # No resampling
-        num_commands: int = 1
-        sample_range: List[float] = field(default_factory=lambda: [0.0, 1.0])
+        num_commands: int = 4
+        command_range: List[List[float]] = field(
+            default_factory=lambda: [
+                [-1.0, 1.0],
+                [-1.0, 1.0],
+                [0.0, 0.8],
+                [-0.03, 0.03],
+            ]
+        )
+        deadzone: List[float] = [0.05, 0.05, 0.0, 0.005]
 
     @dataclass
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
         # Balance specific rewards
-        pass
+        torso_pitch: float = 0.1
 
     def __init__(self):
         super().__init__()
@@ -47,10 +55,11 @@ class BalanceEnv(MJXEnv):
         add_domain_rand: bool = True,
         **kwargs: Any,
     ):
-        motion_ref = BalanceReference(robot)
+        motion_ref = BalanceReference(robot, cfg.sim.timestep * cfg.action.n_frames)
 
         self.num_commands = cfg.commands.num_commands
-        self.sample_range = cfg.commands.sample_range
+        self.command_range = cfg.commands.command_range
+        self.deadzone = cfg.commands.deadzone
 
         super().__init__(
             name,
@@ -64,17 +73,44 @@ class BalanceEnv(MJXEnv):
         )
 
     def _sample_command(self, rng: jax.Array) -> jax.Array:
-        rng, rng_1 = jax.random.split(rng)
-        command = jax.random.uniform(
+        rng, rng_1, rng_2, rng_3 = jax.random.split(rng, 4)
+        neck_command = jax.random.uniform(
             rng_1,
-            (1,),
-            minval=self.sample_range[0],
-            maxval=self.sample_range[1],
+            (2,),
+            minval=self.command_range[:2][0],
+            maxval=self.command_range[:2][1],
         )
+        arm_command = jax.random.uniform(
+            rng_2,
+            (1,),
+            minval=self.command_range[2][0],
+            maxval=self.command_range[2][1],
+        )
+        squat_command = jax.random.uniform(
+            rng_3,
+            (1,),
+            minval=self.command_range[3][0],
+            maxval=self.command_range[3][1],
+        )
+        command = jnp.concatenate([neck_command, arm_command, squat_command])
+
+        # Set small commands to zero based on norm condition
+        mask = (jnp.abs(command) > self.deadzone).astype(jnp.float32)
+        command = command.at[:].set(command * mask)
+
         return command
 
     def _extract_command(self, command: jax.Array) -> Tuple[jax.Array, jax.Array]:
-        lin_vel = jnp.array([0.0, 0.0, 0.0])
+        lin_vel = jnp.array([0.0, 0.0, command[-1]])
         ang_vel = jnp.array([0.0, 0.0, 0.0])
 
         return lin_vel, ang_vel
+
+    def _reward_torso_pitch(
+        self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
+    ):
+        """Reward for torso pitch"""
+        torso_quat = pipeline_state.x.rot[0]
+        torso_pitch = math.quat_to_euler(torso_quat)[1]
+        reward = -(torso_pitch**2)
+        return reward

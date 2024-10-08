@@ -50,8 +50,6 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
 
         self.motion_ref = motion_ref
 
-        self.command_list = cfg.commands.command_list
-
         self.obs_scales = cfg.obs.scales  # Assume all the envs have the same scales
         self.default_motor_pos = np.array(
             list(robot.default_motor_angles.values()), dtype=np.float32
@@ -92,7 +90,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             self.last_motor_target, (self.filter_order, 1)
         )
 
-        self.state_ref = None
+        self.state_ref: npt.NDArray[np.float32] | None = None
         self.last_action = np.zeros(robot.nu, dtype=np.float32)
         self.action_buffer = np.zeros(
             ((self.n_steps_delay + 1) * robot.nu), dtype=np.float32
@@ -161,7 +159,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             return False
 
         stance_mask = self.state_ref[-2:]
-        return stance_mask[0] == 1.0 and stance_mask[1] == 1.0
+        return stance_mask[0].item() == 1.0 and stance_mask[1].item() == 1.0
 
     def get_command(self, control_inputs: Dict[str, float]) -> npt.NDArray[np.float32]:
         return np.zeros(1, dtype=np.float32)
@@ -188,12 +186,13 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             command = self.get_command(control_inputs)
 
         phase_signal = self.motion_ref.get_phase_signal(time_curr, command)
-        self.state_ref = self.motion_ref.get_state_ref(
+        state_ref = self.motion_ref.get_state_ref(
             np.zeros(3, dtype=np.float32),
             np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),
             time_curr,
             command,
         )
+        self.state_ref = np.asarray(state_ref)
         motor_pos_delta = obs.motor_pos - self.default_motor_pos
 
         obs_arr = np.concatenate(
@@ -235,8 +234,8 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         elif self.filter_type == "butter":
             (
                 motor_target,
-                self.butter_past_inputs,
-                self.butter_past_outputs,
+                butter_past_inputs,
+                butter_past_outputs,
             ) = butterworth(
                 self.butter_b_coef,
                 self.butter_a_coef,
@@ -244,6 +243,8 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
                 self.butter_past_inputs,
                 self.butter_past_outputs,
             )
+            self.butter_past_inputs = np.asarray(butter_past_inputs)
+            self.butter_past_outputs = np.asarray(butter_past_outputs)
 
         # Keep the neck joints the same
         motor_target[self.neck_yaw_idx] = obs.motor_pos[self.neck_yaw_idx]

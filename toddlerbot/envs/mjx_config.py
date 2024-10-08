@@ -97,7 +97,6 @@ class MJXConfig:
     class CommandsConfig:
         num_commands: int = 3
         resample_time: float = 5.0
-        command_list: List[List[float]] = field(default_factory=lambda: [[0.0]])
 
     @dataclass
     class DomainRandConfig:

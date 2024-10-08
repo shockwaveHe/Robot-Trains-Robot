@@ -57,14 +57,16 @@ class SquatReference(MotionReference):
             dtype=np.float32,
         )
 
-        self.pitch_joint_indicies = [
-            robot.joint_ordering.index("left_hip_pitch"),
-            robot.joint_ordering.index("left_knee_pitch"),
-            robot.joint_ordering.index("left_ank_pitch"),
-            robot.joint_ordering.index("right_hip_pitch"),
-            robot.joint_ordering.index("right_knee_pitch"),
-            robot.joint_ordering.index("right_ank_pitch"),
-        ]
+        self.pitch_joint_indicies = np.array(
+            [
+                robot.joint_ordering.index("left_hip_pitch"),
+                robot.joint_ordering.index("left_knee_pitch"),
+                robot.joint_ordering.index("left_ank_pitch"),
+                robot.joint_ordering.index("right_hip_pitch"),
+                robot.joint_ordering.index("right_knee_pitch"),
+                robot.joint_ordering.index("right_ank_pitch"),
+            ]
+        )
 
         self.com_z_target = np.zeros(1, dtype=np.float32)
 

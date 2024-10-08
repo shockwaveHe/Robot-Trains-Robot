@@ -137,20 +137,24 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
                     squat_command[0] = -input * self.squat_speed
 
         time_curr = self.step_curr * self.control_dt
-        joint_target = self.squat_ref.get_state_ref(
+        state_ref = self.squat_ref.get_state_ref(
             np.zeros(3, dtype=np.float32),
             np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),
             time_curr,
             squat_command,
-        )[13 : 13 + self.robot.nu]
+        )
+
+        joint_target = np.asarray(state_ref[13 : 13 + self.robot.nu])
 
         self.neck_yaw_target = np.clip(
             self.neck_yaw_target + look_command[0] * self.control_dt,
-            *self.neck_yaw_limits,
+            self.neck_yaw_limits[0],
+            self.neck_yaw_limits[1],
         )
         self.neck_pitch_target = np.clip(
             self.neck_pitch_target + look_command[1] * self.control_dt,
-            *self.neck_pitch_limits,
+            self.neck_pitch_limits[0],
+            self.neck_pitch_limits[1],
         )
         joint_target[self.neck_yaw_idx] = self.neck_yaw_target
         joint_target[self.neck_pitch_idx] = self.neck_pitch_target

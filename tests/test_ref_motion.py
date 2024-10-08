@@ -9,13 +9,9 @@ from tqdm import tqdm
 
 from toddlerbot.envs.balance_env import BalanceCfg
 from toddlerbot.envs.mjx_config import MJXConfig
-from toddlerbot.envs.rotate_torso_env import RotateTorsoCfg
-from toddlerbot.envs.squat_env import SquatCfg
 from toddlerbot.envs.walk_env import WalkCfg
 from toddlerbot.ref_motion import MotionReference
 from toddlerbot.ref_motion.balance_ref import BalanceReference
-from toddlerbot.ref_motion.rotate_torso_ref import RotateTorsoReference
-from toddlerbot.ref_motion.squat_ref import SquatReference
 from toddlerbot.ref_motion.walk_simple_ref import WalkSimpleReference
 from toddlerbot.ref_motion.walk_zmp_ref import WalkZMPReference
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
@@ -78,7 +74,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--robot",
         type=str,
-        default="toddlerbot",
+        default="toddlerbot_OP3",
         help="The name of the robot. Need to match the name in robot_descriptions.",
     )
     parser.add_argument(
@@ -122,18 +118,9 @@ if __name__ == "__main__":
         motion_ref = WalkZMPReference(
             robot, cfg.action.cycle_time, cfg.sim.timestep * cfg.action.n_frames
         )
-
-    elif args.ref == "squat":
-        cfg = SquatCfg()
-        motion_ref = SquatReference(robot)
-
-    elif args.ref == "rotate_torso":
-        cfg = RotateTorsoCfg()
-        motion_ref = RotateTorsoReference(robot)
-
     elif args.ref == "balance":
         cfg = BalanceCfg()
-        motion_ref = BalanceReference(robot)
+        motion_ref = BalanceReference(robot, cfg.sim.timestep * cfg.action.n_frames)
 
     else:
         raise ValueError("Unknown ref motion")
@@ -148,24 +135,12 @@ if __name__ == "__main__":
             np.array([0, 0.0, 0.5], dtype=np.float32),
             np.array([0, 0, 0], dtype=np.float32),
         ]
-
-    elif "squat" in args.ref:
-        command_list = [
-            np.array([0.05, 0, 0], dtype=np.float32),
-            np.array([-0.05, 0, 0], dtype=np.float32),
-        ]
-
-    elif "rotate_torso" in args.ref:
-        command_list = [
-            np.array([0.2, 0], dtype=np.float32),
-            np.array([0, 1.0], dtype=np.float32),
-        ]
-
     else:
         command_list = [
-            np.array([0.0], dtype=np.float32),
-            np.array([0.5], dtype=np.float32),
-            np.array([1.0], dtype=np.float32),
+            np.array([0.1, 0.2, 0.0, -0.03], dtype=np.float32),
+            np.array([-0.1, 0.2, 0.1, -0.03], dtype=np.float32),
+            np.array([0.1, -0.2, 0.2, -0.03], dtype=np.float32),
+            np.array([-0.1, -0.2, 0.3, -0.03], dtype=np.float32),
         ]
 
     test_motion_ref(robot, sim, motion_ref, command_list, vis_type=args.vis)
