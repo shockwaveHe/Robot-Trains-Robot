@@ -29,7 +29,7 @@ class BalanceCfg(MJXConfig, env_name="balance"):
                 [-0.03, 0.03],
             ]
         )
-        deadzone: List[float] = [0.05, 0.05, 0.0, 0.005]
+        deadzone: List[float] = field(default_factory=lambda: [0.05, 0.05, 0.0, 0.005])
 
     @dataclass
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
