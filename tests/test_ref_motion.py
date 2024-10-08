@@ -137,10 +137,10 @@ if __name__ == "__main__":
         ]
     else:
         command_list = [
-            np.array([0.1, 0.2, 0.0, -0.03], dtype=np.float32),
-            np.array([-0.1, 0.2, 0.1, -0.03], dtype=np.float32),
-            np.array([0.1, -0.2, 0.2, -0.03], dtype=np.float32),
-            np.array([-0.1, -0.2, 0.3, -0.03], dtype=np.float32),
+            np.array([0.1, 0.2, 0.0, 0.1, 0.2, -0.03], dtype=np.float32),
+            np.array([-0.1, 0.2, 0.1, -0.1, 0.2, -0.03], dtype=np.float32),
+            np.array([0.1, -0.2, 0.2, 0.1, -0.2, -0.03], dtype=np.float32),
+            np.array([-0.1, -0.2, 0.3, -0.1, -0.2, -0.03], dtype=np.float32),
         ]
 
     test_motion_ref(robot, sim, motion_ref, command_list, vis_type=args.vis)
