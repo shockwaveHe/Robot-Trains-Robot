@@ -165,43 +165,43 @@ class MuJoCoSim(BaseSim):
         joint_pos_arr = np.array(joint_pos, dtype=np.float32)
         joint_vel_arr = np.array(joint_vel, dtype=np.float32)
 
-        if self.fixed_base:
-            torso_lin_vel = np.zeros(3, dtype=np.float32)
-            torso_ang_vel = np.zeros(3, dtype=np.float32)
-            torso_pos = np.zeros(3, dtype=np.float32)
-            torso_euler = np.zeros(3, dtype=np.float32)
-        else:
-            lin_vel_global = np.array(
-                self.data.body("torso").cvel[3:],
-                dtype=np.float32,
-                copy=True,
-            )
-            ang_vel_global = np.array(
-                self.data.body("torso").cvel[:3],
-                dtype=np.float32,
-                copy=True,
-            )
-            torso_pos = np.array(
-                self.data.body("torso").xpos,
-                dtype=np.float32,
-                copy=True,
-            )
-            torso_quat = np.array(
-                self.data.body("torso").xquat,
-                dtype=np.float32,
-                copy=True,
-            )
-            if np.linalg.norm(torso_quat) == 0:
-                torso_quat = np.array([1, 0, 0, 0], dtype=np.float32)
+        # if self.fixed_base: # TODO: resolve better
+        #     torso_lin_vel = np.zeros(3, dtype=np.float32)
+        #     torso_ang_vel = np.zeros(3, dtype=np.float32)
+        #     torso_pos = np.zeros(3, dtype=np.float32)
+        #     torso_euler = np.zeros(3, dtype=np.float32)
+        # else:
+        lin_vel_global = np.array(
+            self.data.body("torso").cvel[3:],
+            dtype=np.float32,
+            copy=True,
+        )
+        ang_vel_global = np.array(
+            self.data.body("torso").cvel[:3],
+            dtype=np.float32,
+            copy=True,
+        )
+        torso_pos = np.array(
+            self.data.body("torso").xpos,
+            dtype=np.float32,
+            copy=True,
+        )
+        torso_quat = np.array(
+            self.data.body("torso").xquat,
+            dtype=np.float32,
+            copy=True,
+        )
+        if np.linalg.norm(torso_quat) == 0:
+            torso_quat = np.array([1, 0, 0, 0], dtype=np.float32)
 
-            torso_lin_vel = np.asarray(rotate_vec(lin_vel_global, quat_inv(torso_quat)))
-            torso_ang_vel = np.asarray(rotate_vec(ang_vel_global, quat_inv(torso_quat)))
+        torso_lin_vel = np.asarray(rotate_vec(lin_vel_global, quat_inv(torso_quat)))
+        torso_ang_vel = np.asarray(rotate_vec(ang_vel_global, quat_inv(torso_quat)))
 
-            torso_euler = np.asarray(quat2euler(torso_quat))
-            torso_euler_delta = torso_euler - self.torso_euler_prev
-            torso_euler_delta = (torso_euler_delta + np.pi) % (2 * np.pi) - np.pi
-            torso_euler = self.torso_euler_prev + torso_euler_delta
-            self.torso_euler_prev = np.asarray(torso_euler, dtype=np.float32)
+        torso_euler = np.asarray(quat2euler(torso_quat))
+        torso_euler_delta = torso_euler - self.torso_euler_prev
+        torso_euler_delta = (torso_euler_delta + np.pi) % (2 * np.pi) - np.pi
+        torso_euler = self.torso_euler_prev + torso_euler_delta
+        self.torso_euler_prev = np.asarray(torso_euler, dtype=np.float32)
 
         obs = Obs(
             time=time,

@@ -507,8 +507,9 @@ if __name__ == "__main__":
         fixed_base = "fixed" in args.toddler_policy or args.rigid_connection
         sim = ArmToddlerSim(robot, arm, n_frames=5, vis_type=args.vis, fixed_base=fixed_base, sensor_names=sensors)
         sim.load_keyframe()
-        init_arm_joint_pos = sim.get_observation().arm_joint_pos
-        init_motor_pos = sim.get_observation().motor_pos
+        obs = sim.get_observation()
+        init_arm_joint_pos = obs.arm_joint_pos
+        init_motor_pos = obs.motor_pos
 
     elif args.sim == "real":
         sim = RealWorld(robot)

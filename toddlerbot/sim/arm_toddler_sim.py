@@ -34,10 +34,10 @@ class ArmToddlerSim(MuJoCoSim):
         # TODO: should I add set function and relaod different attributes like `self.motor_vel_prev` or just reset their values?
         # TODO: what's the best practice for unused attributes like self.controller?
         self.motor_vel_prev = np.zeros(self.model.nu - arm.arm_dofs, dtype=np.float32)
-        if not self.fixed_base:
-            self.q_start_idx *= 2
-            self.qd_start_idx *= 2
-            self.motor_indices -= 1
+        # if not self.fixed_base:
+        #     self.q_start_idx *= 2
+        #     self.qd_start_idx *= 2
+        #     self.motor_indices -= 1
         self.sensor_names = sensor_names
         # import ipdb; ipdb.set_trace()
         self.arm_controller = JointController()
@@ -75,6 +75,7 @@ class ArmToddlerSim(MuJoCoSim):
         obs.arm_joint_vel = np.array(arm_joint_vel, dtype=np.float32)
         obs.ee_force_data = self.data.sensor("ee_force").data
         obs.ee_torque_data = self.data.sensor("ee_torque").data
+        self.data.mocap_pos[0] = obs.torso_pos
         obs.mocap_pos = self.data.mocap_pos[0]
         obs.mocap_quat = self.data.mocap_quat[0]
         return obs
@@ -87,6 +88,7 @@ class ArmToddlerSim(MuJoCoSim):
         for _ in range(self.n_frames):
             # import ipdb; ipdb.set_trace()
             self.data.ctrl[:self.arm.arm_dofs] = self.arm_controller.step(self.target_arm_joint_angles) # DISCUSS
+            # import ipdb; ipdb.set_trace()
             self.data.ctrl[self.arm.arm_dofs:] = self.controller.step(
                 self.data.qpos[self.q_start_idx + self.motor_indices],
                 self.data.qvel[self.qd_start_idx + self.motor_indices],
