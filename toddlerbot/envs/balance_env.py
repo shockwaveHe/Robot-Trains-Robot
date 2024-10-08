@@ -76,7 +76,7 @@ class BalanceEnv(MJXEnv, env_name="balance"):
         )
 
     def _sample_command(self, rng: jax.Array) -> jax.Array:
-        rng, rng_1, rng_2, rng_3, rng_4, rng_5, rng_6 = jax.random.split(rng, 5)
+        rng, rng_1, rng_2, rng_3, rng_4, rng_5, rng_6 = jax.random.split(rng, 7)
         neck_yaw_command = jax.random.uniform(
             rng_1,
             (1,),

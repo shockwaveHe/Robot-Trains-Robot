@@ -73,10 +73,13 @@ class BalanceReference(MotionReference):
         self.arm_ref_size = len(self.arm_time_ref)
 
     def _setup_waist(self):
-        self.waist_coef = [
-            self.robot.config["general"]["offsets"]["waist_roll_coef"],
-            self.robot.config["general"]["offsets"]["waist_yaw_coef"],
-        ]
+        self.waist_coef = np.array(
+            [
+                self.robot.config["general"]["offsets"]["waist_roll_coef"],
+                self.robot.config["general"]["offsets"]["waist_yaw_coef"],
+            ],
+            dtype=np.float32,
+        )
         self.waist_roll_idx = self.robot.joint_ordering.index("waist_roll")
         self.waist_yaw_idx = self.robot.joint_ordering.index("waist_yaw")
         self.waist_roll_limits = self.robot.joint_limits["waist_roll"]
