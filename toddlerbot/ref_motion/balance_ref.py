@@ -263,7 +263,7 @@ class BalanceReference(MotionReference):
         )
         hip_pitch_angle = knee_angle - ank_pitch_angle
 
-        return np.vstack(
+        return np.concatenate(
             [
                 -hip_pitch_angle,
                 knee_angle,
@@ -271,6 +271,5 @@ class BalanceReference(MotionReference):
                 hip_pitch_angle,
                 -knee_angle,
                 -ank_pitch_angle,
-            ],
-            dtype=np.float32,
-        ).T
+            ]
+        )
