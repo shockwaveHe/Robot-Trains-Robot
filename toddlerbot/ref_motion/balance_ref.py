@@ -243,7 +243,7 @@ class BalanceReference(MotionReference):
         arm_motor_pos = arm_joint_pos / self.arm_gear_ratio
         return arm_motor_pos
 
-    def leg_ik(self, delta_z: ArrayType):
+    def leg_ik(self, delta_z: ArrayType) -> ArrayType:
         knee_angle_cos = (
             self.hip_pitch_to_knee_z**2
             + self.knee_to_ank_pitch_z**2
@@ -258,7 +258,7 @@ class BalanceReference(MotionReference):
         )
         hip_pitch_angle = knee_angle - ank_pitch_angle
 
-        return np.concatenate(
+        return np.array(
             [
                 -hip_pitch_angle,
                 knee_angle,
@@ -266,5 +266,6 @@ class BalanceReference(MotionReference):
                 hip_pitch_angle,
                 -knee_angle,
                 -ank_pitch_angle,
-            ]
+            ],
+            dtype=np.float32,
         )
