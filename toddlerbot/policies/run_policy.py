@@ -301,6 +301,7 @@ def main(robot: Robot, arm: BaseArm, sim: BaseSim, policy: BasePolicy, arm_polic
 
             p_bar_steps = int(1 / policy.control_dt)
             if step_idx % p_bar_steps == 0:
+                print(f"Step: {step_idx}/{n_steps_total}")
                 p_bar.update(p_bar_steps)
 
             step_end = time.time()

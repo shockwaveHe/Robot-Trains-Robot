@@ -174,11 +174,10 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
             )
             return action
-
+        print("MJX policy starts")
         time_curr = self.step_curr * self.control_dt
 
         control_inputs = None
-        # import ipdb; ipdb.set_trace()
         self.joystick = None
 
         if self.control_inputs is not None:

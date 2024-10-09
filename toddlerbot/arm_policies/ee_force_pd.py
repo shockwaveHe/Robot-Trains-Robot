@@ -4,7 +4,7 @@ import numpy as np
 import numpy.typing as npt
 from toddlerbot.arm_policies import Obs, BaseArm, BaseArmPolicy
 
-class EEPDArmPolicy(BaseArmPolicy, arm_policy_name="ee_pd"):
+class EEForcePDArmPolicy(BaseArmPolicy, arm_policy_name="ee_force_pd"):
     def __init__(
         self,
         name: str,
@@ -17,6 +17,7 @@ class EEPDArmPolicy(BaseArmPolicy, arm_policy_name="ee_pd"):
         self.arm_data = mujoco.MjData(self.arm_model)
 
         self.gravity_compensation: bool = False
+        self.arm_model.body_gravcomp[:] = float(self.gravity_compensation)
         ## =================== ##
         ## Setup IK.
         ## =================== ##
@@ -25,8 +26,8 @@ class EEPDArmPolicy(BaseArmPolicy, arm_policy_name="ee_pd"):
         self.dt: float = 0.002
         # Gains for the twist computation. These should be between 0 and 1. 0 means no
         # movement, 1 means move the end-effector to the target in one integration step.
-        self.Kpos: float = 0.95
-        self.Kori: float = 0.95
+        self.Kforce: float = 0.000095
+        self.Ktorque: float = 0.95
         # Nullspace P gain.
         self.Kn = np.asarray([10.0, 10.0, 10.0, 10.0, 5.0, 5.0, 5.0])
         # Maximum allowable joint velocity in rad/s.
@@ -41,15 +42,12 @@ class EEPDArmPolicy(BaseArmPolicy, arm_policy_name="ee_pd"):
         self.arm_data.ctrl[:] = init_joint_pos
         mujoco.mj_forward(self.arm_model, self.arm_data)
 
-        # self.arm_model.opt.timestep = self.dt
-        self.arm_model.body_gravcomp[:] = float(self.gravity_compensation)
         self.ee_jac = np.zeros((6, self.arm.arm_dofs))
         self.diag = self.damping * np.eye(6)
         self.eye = np.eye(self.arm.arm_dofs)
         self.twist = np.zeros(6)
-        self.site_quat = np.zeros(4)
-        self.site_quat_conj = np.zeros(4)
-        self.error_quat = np.zeros(4)
+        self.target_force = np.array([0.0, 0.0, 27.0], dtype=np.float32)
+        self.target_xyz = np.array([0.01766377, 0., 1.52856866], dtype=np.float32)
         self.site_id = self.arm_model.site("attachment_site").id
         self.q0 = init_joint_pos
 
@@ -57,15 +55,21 @@ class EEPDArmPolicy(BaseArmPolicy, arm_policy_name="ee_pd"):
         self.arm_data.qpos[:] = obs.arm_joint_pos
         self.arm_data.qvel[:] = obs.arm_joint_vel
         mujoco.mj_step(self.arm_model, self.arm_data)
-        error_pos = obs.mocap_pos - self.arm_data.site(self.site_id).xpos
-
-        self.twist[:3] = self.Kpos * error_pos / self.integration_dt
-        mujoco.mju_mat2Quat(self.site_quat, self.arm_data.site(self.site_id).xmat)
-        mujoco.mju_negQuat(self.site_quat_conj, self.site_quat)
-        mujoco.mju_mulQuat(self.error_quat, obs.mocap_quat, self.site_quat_conj)
-        mujoco.mju_quat2Vel(self.twist[3:], self.error_quat, 1.0)
-        self.twist[3:] *= self.Kori / self.integration_dt
-        print(obs.mocap_pos, error_pos, self.twist)
+        # import ipdb; ipdb.set_trace()
+        # the force the end-effector is applying to the toddlerbot in the world frame
+        force_world_frame = self.arm_data.site(self.site_id).xmat.reshape(3, 3) @ obs.ee_force_data
+        error_force = (self.target_force - force_world_frame)
+        # error_force[:2] = 0.0
+        self.twist[:3] = self.Kforce * error_force / self.integration_dt
+        print(force_world_frame, self.twist[:3])
+        # TODO: how to handle this error_quat from ee_torque?
+        # TODO: how to make sure the robot not going too far?
+        # TODO: axis transform matrix for force orientation
+        # mujoco.mju_mat2Quat(self.site_quat, self.arm_data.site(self.site_id).xmat)
+        # mujoco.mju_negQuat(self.site_quat_conj, self.site_quat)
+        # mujoco.mju_mulQuat(self.error_quat, obs.mocap_quat, self.site_quat_conj)
+        # mujoco.mju_quat2Vel(self.twist[3:], self.error_quat, 1.0)
+        # self.twist[3:] *= self.Kori / self.integration_dt
 
         mujoco.mj_jacSite(self.arm_model, self.arm_data, self.ee_jac[:3], self.ee_jac[3:], self.site_id) # TODO: is this changing?
 
