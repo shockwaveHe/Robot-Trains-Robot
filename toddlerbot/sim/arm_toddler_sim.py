@@ -11,6 +11,10 @@ from toddlerbot.actuation import JointState
 from toddlerbot.actuation.mujoco.mujoco_control import JointController
 from toddlerbot.utils.file_utils import find_arm_toddler_file_path
 from toddlerbot.sim import Obs
+from toddlerbot.actuation.mujoco.mujoco_control import (
+    MotorController,
+    PositionController,
+)
 
 class ArmToddlerSim(MuJoCoSim):
     def __init__(
@@ -34,6 +38,7 @@ class ArmToddlerSim(MuJoCoSim):
         # TODO: should I add set function and relaod different attributes like `self.motor_vel_prev` or just reset their values?
         # TODO: what's the best practice for unused attributes like self.controller?
         self.motor_vel_prev = np.zeros(self.model.nu - arm.arm_dofs, dtype=np.float32)
+        self.controller = MotorController(robot)
         # if not self.fixed_base:
         #     self.q_start_idx *= 2
         #     self.qd_start_idx *= 2

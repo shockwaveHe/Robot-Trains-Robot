@@ -126,7 +126,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
                 "toddlerbot",
                 "policies",
                 "checkpoints",
-                f"{robot.name}_{self.name}_policy",
+                f"{robot.name}_{self.name.replace('_fixed', '')}_policy",
             )
 
         print(f"Loading policy from {policy_path}")
@@ -173,8 +173,9 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
             )
+            print(action)
             return action
-        print("MJX policy starts")
+
         time_curr = self.step_curr * self.control_dt
 
         control_inputs = None
@@ -211,7 +212,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
                 obs.torso_euler * self.obs_scales.euler,
             ]
         )
-
+        # import ipdb; ipdb.set_trace()
         self.obs_history = np.roll(self.obs_history, obs_arr.size)
         self.obs_history[: obs_arr.size] = obs_arr
 
