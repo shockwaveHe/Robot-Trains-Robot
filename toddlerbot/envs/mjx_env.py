@@ -304,8 +304,6 @@ class MJXEnv(PipelineEnv):
             "contact_forces": jnp.zeros((self.num_colliders, self.num_colliders, 3)),
             "left_foot_contact_mask": jnp.zeros(len(self.left_foot_collider_indices)),
             "right_foot_contact_mask": jnp.zeros(len(self.right_foot_collider_indices)),
-            "stance_mask": jnp.ones(2),
-            "last_stance_mask": jnp.ones(2),
             "feet_air_time": jnp.zeros(2),
             "action_buffer": jnp.zeros((self.n_steps_delay + 1) * self.nu),
             "last_last_act": jnp.zeros(self.nu),
@@ -317,23 +315,43 @@ class MJXEnv(PipelineEnv):
             "step": 0,
         }
 
-        path_pos = jnp.zeros(3)
         torso_yaw = jax.random.uniform(rng_torso_yaw, (1,), minval=0, maxval=2 * jnp.pi)
-        path_quat = math.euler_to_quat(jnp.array([0.0, 0.0, jnp.degrees(torso_yaw)[0]]))
 
-        command = self._sample_command(rng_command)
-        state_info["phase_signal"] = self.motion_ref.get_phase_signal(0.0, command)
-        state_ref = self.motion_ref.get_state_ref(path_pos, path_quat, 0.0, command)
-        state_info["path_pos"] = path_pos
-        state_info["path_quat"] = path_quat
-        state_info["command"] = command
-        state_info["state_ref"] = jnp.asarray(state_ref)
+        torso_pos = jnp.zeros(3)
+        torso_quat = math.euler_to_quat(
+            jnp.array([0.0, 0.0, jnp.degrees(torso_yaw)[0]])
+        )
+        torso_lin_vel = jnp.zeros(3)
+        torso_ang_vel = jnp.zeros(3)
 
         qpos = self.default_qpos
-        qpos = qpos.at[3:7].set(path_quat)
+        qvel = jnp.zeros(self.nv)
+        joint_pos = qpos[self.q_start_idx + self.joint_indices]
+        joint_vel = qvel[self.qd_start_idx + self.joint_indices]
+        stance_mask = jnp.ones(2)
+
+        state_init = jnp.concatenate(
+            [
+                torso_pos,
+                torso_quat,
+                torso_lin_vel,
+                torso_ang_vel,
+                joint_pos,
+                joint_vel,
+                stance_mask,
+            ]
+        )
+        command = self._sample_command(rng_command)
+        state_ref = self.motion_ref.get_state_ref(state_init, 0.0, command)
+        state_info["command"] = command
+        state_info["state_ref"] = state_ref
+        state_info["stance_mask"] = state_ref[-2:]
+        state_info["last_stance_mask"] = state_ref[-2:]
+        state_info["phase_signal"] = self.motion_ref.get_phase_signal(0.0)
 
         arm_joint_pos = state_ref[self.ref_start_idx + self.arm_ref_indices]
         arm_motor_pos = arm_joint_pos / self.arm_gear_ratio
+        qpos = qpos.at[3:7].set(torso_quat)
         qpos = qpos.at[self.q_start_idx + self.arm_joint_indices].set(arm_joint_pos)  # type:ignore
         qpos = qpos.at[self.q_start_idx + self.arm_motor_indices].set(arm_motor_pos)  # type:ignore
         if self.add_noise:
@@ -356,8 +374,6 @@ class MJXEnv(PipelineEnv):
                 rng_torso_pitch, (self.nq - self.q_start_idx,)
             )
             qpos = qpos.at[self.q_start_idx :].add(noise_joint_pos)
-
-        qvel = jnp.zeros(self.nv)
 
         pipeline_state = self.pipeline_init(qpos, qvel)
 
@@ -449,21 +465,11 @@ class MJXEnv(PipelineEnv):
         rng, cmd_rng, push_rng = jax.random.split(state.info["rng"], 3)
 
         time_curr = state.info["step"] * self.dt
-        path_pos, path_quat = self._integrate_path_frame(state.info)
-        phase_signal = self.motion_ref.get_phase_signal(
-            time_curr, state.info["command"]
-        )
         state_ref = self.motion_ref.get_state_ref(
-            path_pos,
-            path_quat,
-            time_curr,
-            state.info["command"],
+            state.info["state_ref"], time_curr, state.info["command"]
         )
-
-        state.info["path_pos"] = path_pos
-        state.info["path_quat"] = path_quat
-        state.info["phase_signal"] = phase_signal
         state.info["state_ref"] = state_ref
+        state.info["phase_signal"] = self.motion_ref.get_phase_signal(time_curr)
         state.info["action_buffer"] = (
             jnp.roll(state.info["action_buffer"], self.nu).at[: self.nu].set(action)
         )
@@ -585,45 +591,6 @@ class MJXEnv(PipelineEnv):
         # placeholder
         return jnp.zeros(1)
 
-    def _extract_command(self, command: jax.Array) -> Tuple[jax.Array, jax.Array]:
-        # placeholder
-        return jnp.zeros(3), jnp.zeros(3)
-
-    def _integrate_path_frame(
-        self, info: Dict[str, Any]
-    ) -> Tuple[jax.Array, jax.Array]:
-        pos = info["path_pos"]
-        quat = info["path_quat"]
-
-        lin_vel, ang_vel = self._extract_command(info["command"])
-
-        # Update position
-        pos += lin_vel * self.dt
-
-        # Compute the angle of rotation for each axis
-        theta_roll = ang_vel[0] * self.dt / 2.0
-        theta_pitch = ang_vel[1] * self.dt / 2.0
-        theta_yaw = ang_vel[2] * self.dt / 2.0
-
-        # Compute the quaternion for each rotational axis
-        roll_quat = jnp.array([jnp.cos(theta_roll), jnp.sin(theta_roll), 0.0, 0.0])
-        pitch_quat = jnp.array([jnp.cos(theta_pitch), 0.0, jnp.sin(theta_pitch), 0.0])
-        yaw_quat = jnp.array([jnp.cos(theta_yaw), 0.0, 0.0, jnp.sin(theta_yaw)])
-
-        # Normalize each quaternion
-        roll_quat /= jnp.linalg.norm(roll_quat)
-        pitch_quat /= jnp.linalg.norm(pitch_quat)
-        yaw_quat /= jnp.linalg.norm(yaw_quat)
-
-        # Combine the quaternions to get the full rotation (roll * pitch * yaw)
-        full_quat = math.quat_mul(math.quat_mul(roll_quat, pitch_quat), yaw_quat)
-
-        # Update the current quaternion by applying the new rotation
-        quat = math.quat_mul(quat, full_quat)
-        quat /= jnp.linalg.norm(quat)
-
-        return pos, quat
-
     def _get_contact_forces(self, data: mjx.Data):
         # Extract geom1 and geom2 directly
         geom1 = data.contact.geom1
@@ -725,8 +692,8 @@ class MJXEnv(PipelineEnv):
             obs += self.obs_noise_scale * jax.random.normal(info["rng"], obs.shape)
 
         # jax.debug.breakpoint()
-
         # obs = jnp.clip(obs, -100.0, 100.0)
+
         # stack observations through time
         obs = jnp.roll(obs_history, obs.size).at[: obs.size].set(obs)
 

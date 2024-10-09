@@ -12,7 +12,7 @@ class TurnCfg(WalkCfg, env_name="turn"):
     @dataclass
     class CommandsConfig(WalkCfg.CommandsConfig):
         command_range: List[List[float]] = field(default_factory=lambda: [[-0.5, 0.5]])
-        deadzone: float = 0.05
+        deadzone: float = 0.1
 
     @dataclass
     class RewardScales(WalkCfg.RewardsConfig.RewardScales):

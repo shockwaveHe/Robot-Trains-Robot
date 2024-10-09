@@ -23,10 +23,10 @@ class BalanceCfg(MJXConfig, env_name="balance"):
         num_commands: int = 4
         command_range: List[List[float]] = field(
             default_factory=lambda: [
-                [-1.0, 1.0],
-                [-1.0, 1.0],
+                [-1.5, 1.5],
+                [-1.5, 1.5],
                 [0.0, 0.8],
-                [-1.0, 1.0],
+                [-0.3, 0.3],
                 [-1.0, 1.0],
                 [-0.03, 0.03],
             ]
@@ -59,7 +59,7 @@ class BalanceEnv(MJXEnv, env_name="balance"):
         add_domain_rand: bool = True,
         **kwargs: Any,
     ):
-        motion_ref = BalanceReference(robot)
+        motion_ref = BalanceReference(robot, cfg.sim.timestep * cfg.action.n_frames)
 
         self.command_range = jnp.array(cfg.commands.command_range)
         self.deadzone = jnp.array(cfg.commands.deadzone)

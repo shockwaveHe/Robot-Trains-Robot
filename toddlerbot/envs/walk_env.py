@@ -58,11 +58,13 @@ class WalkEnv(MJXEnv, env_name="walk"):
         motion_ref: WalkSimpleReference | WalkZMPReference | None = None
 
         if ref_motion_type == "simple":
-            motion_ref = WalkSimpleReference(robot, cfg.action.cycle_time)
+            motion_ref = WalkSimpleReference(
+                robot, cfg.sim.timestep * cfg.action.n_frames, cfg.action.cycle_time
+            )
 
         elif ref_motion_type == "zmp":
             motion_ref = WalkZMPReference(
-                robot, cfg.action.cycle_time, cfg.sim.timestep * cfg.action.n_frames
+                robot, cfg.sim.timestep * cfg.action.n_frames, cfg.action.cycle_time
             )
         else:
             raise ValueError(f"Unknown ref_motion_type: {ref_motion_type}")

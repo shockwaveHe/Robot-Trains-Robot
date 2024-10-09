@@ -6,7 +6,7 @@ import numpy as np
 import numpy.typing as npt
 
 from toddlerbot.policies.balance_pd import BalancePDPolicy
-from toddlerbot.ref_motion.squat_ref import SquatReference
+from toddlerbot.ref_motion.balance_ref import BalanceReference
 from toddlerbot.sensing.camera import Camera
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
@@ -58,7 +58,7 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
         self.neck_pitch_target = 0.0
 
         self.squat_speed = squat_speed
-        self.squat_ref = SquatReference(robot, self.control_dt)
+        self.balance_ref = BalanceReference(robot, self.control_dt)
 
         self.joystick = joystick
         if joystick is None:
@@ -99,7 +99,6 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
         super().reset()
         self.neck_yaw_target = 0.0
         self.neck_pitch_target = 0.0
-        self.squat_ref.reset()
         self.last_arm_joint_pos = self.default_joint_pos[self.arm_joint_slice].copy()
 
     def plan(self) -> npt.NDArray[np.float32]:
@@ -137,7 +136,7 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
                     squat_command[0] = -input * self.squat_speed
 
         time_curr = self.step_curr * self.control_dt
-        state_ref = self.squat_ref.get_state_ref(
+        state_ref = self.balance_ref.get_state_ref(
             np.zeros(3, dtype=np.float32),
             np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),
             time_curr,

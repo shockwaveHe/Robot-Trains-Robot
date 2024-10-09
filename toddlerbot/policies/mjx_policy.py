@@ -54,6 +54,9 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         self.default_motor_pos = np.array(
             list(robot.default_motor_angles.values()), dtype=np.float32
         )
+        self.default_joint_pos = np.array(
+            list(robot.default_joint_angles.values()), dtype=np.float32
+        )
         self.action_scale = cfg.action.action_scale
         self.n_steps_delay = cfg.action.n_steps_delay
 
@@ -90,7 +93,18 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             self.last_motor_target, (self.filter_order, 1)
         )
 
-        self.state_ref: npt.NDArray[np.float32] | None = None
+        state_init = np.concatenate(
+            [
+                np.zeros(3, dtype=np.float32),  # Position
+                np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),  # Quaternion
+                np.zeros(3, dtype=np.float32),  # Linear velocity
+                np.zeros(3, dtype=np.float32),  # Angular velocity
+                self.default_joint_pos,  # Joint positions
+                np.zeros_like(self.default_joint_pos),  # Joint velocities
+                np.ones(2, dtype=np.float32),  # Stance mask
+            ]
+        )
+        self.state_ref = state_init
         self.last_action = np.zeros(robot.nu, dtype=np.float32)
         self.action_buffer = np.zeros(
             ((self.n_steps_delay + 1) * robot.nu), dtype=np.float32
@@ -155,9 +169,6 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         )
 
     def is_double_support(self) -> bool:
-        if self.state_ref is None:
-            return False
-
         stance_mask = self.state_ref[-2:]
         return stance_mask[0].item() == 1.0 and stance_mask[1].item() == 1.0
 
@@ -185,14 +196,10 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         else:
             command = self.get_command(control_inputs)
 
-        phase_signal = self.motion_ref.get_phase_signal(time_curr, command)
-        state_ref = self.motion_ref.get_state_ref(
-            np.zeros(3, dtype=np.float32),
-            np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),
-            time_curr,
-            command,
+        phase_signal = self.motion_ref.get_phase_signal(time_curr)
+        self.state_ref = np.asarray(
+            self.motion_ref.get_state_ref(self.state_ref, time_curr, command)
         )
-        self.state_ref = np.asarray(state_ref)
         motor_pos_delta = obs.motor_pos - self.default_motor_pos
 
         obs_arr = np.concatenate(

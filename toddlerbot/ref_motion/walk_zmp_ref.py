@@ -1,9 +1,8 @@
 import os
 import pickle
-from typing import Optional
+from typing import Tuple
 
 import jax
-import numpy
 
 from toddlerbot.algorithms.zmp_walk import ZMPWalk
 from toddlerbot.ref_motion import MotionReference
@@ -13,21 +12,10 @@ from toddlerbot.utils.array_utils import array_lib as np
 
 
 class WalkZMPReference(MotionReference):
-    def __init__(self, robot: Robot, cycle_time: float, control_dt: float):
-        super().__init__("walk_zmp", "periodic", robot)
+    def __init__(self, robot: Robot, dt: float, cycle_time: float):
+        super().__init__("walk_zmp", "periodic", robot, dt)
 
         self.cycle_time = cycle_time
-        self.control_dt = control_dt
-
-        self.default_joint_pos = np.array(
-            list(robot.default_joint_angles.values()), dtype=np.float32
-        )
-        self.default_joint_vel = np.zeros_like(self.default_joint_pos)
-
-        joint_groups = numpy.array(
-            [robot.joint_groups[name] for name in robot.joint_ordering]
-        )
-        self.leg_joint_indices = np.arange(robot.nu)[joint_groups == "leg"]
 
         self.left_hip_yaw_idx = robot.motor_ordering.index("left_hip_yaw_drive")
         self.right_hip_yaw_idx = robot.motor_ordering.index("right_hip_yaw_drive")
@@ -96,9 +84,7 @@ class WalkZMPReference(MotionReference):
             self.stance_mask_lookup = jax.device_put(self.stance_mask_lookup)
             self.leg_joint_pos_lookup = jax.device_put(self.leg_joint_pos_lookup)
 
-    def get_phase_signal(
-        self, time_curr: float | ArrayType, command: ArrayType
-    ) -> ArrayType:
+    def get_phase_signal(self, time_curr: float | ArrayType) -> ArrayType:
         phase_signal = np.array(
             [
                 np.sin(2 * np.pi * time_curr / self.cycle_time),
@@ -108,28 +94,24 @@ class WalkZMPReference(MotionReference):
         )
         return phase_signal
 
+    def get_vel(self, command: ArrayType) -> Tuple[ArrayType, ArrayType]:
+        lin_vel = np.array([command[0], command[1], 0.0], dtype=np.float32)
+        ang_vel = np.array([0.0, 0.0, command[2]], dtype=np.float32)
+        return lin_vel, ang_vel
+
     # @profile()
     def get_state_ref(
-        self,
-        path_pos: ArrayType,
-        path_quat: ArrayType,
-        time_curr: Optional[float | ArrayType] = None,
-        command: Optional[ArrayType] = None,
+        self, state_curr: ArrayType, time_curr: float | ArrayType, command: ArrayType
     ) -> ArrayType:
-        if time_curr is None:
-            raise ValueError(f"time_curr is required for {self.name}")
-
-        if command is None:
-            raise ValueError(f"command is required for {self.name}")
-
-        linear_vel = np.array([command[0], command[1], 0.0], dtype=np.float32)
-        angular_vel = np.array([0.0, 0.0, command[2]], dtype=np.float32)
+        torso_state = self.integrate_torso_state(
+            state_curr[:3], state_curr[3:7], command
+        )
 
         # is_zero_commmand = np.linalg.norm(command) < 1e-6
         nearest_command_idx = np.argmin(
             np.linalg.norm(self.lookup_keys - command, axis=1)
         )
-        idx = np.round(time_curr / self.control_dt).astype(int)
+        idx = np.round(time_curr / self.dt).astype(int)
         joint_pos = self.default_joint_pos.copy()
         joint_pos = inplace_update(
             joint_pos,
@@ -145,17 +127,7 @@ class WalkZMPReference(MotionReference):
             (idx % self.lookup_length[nearest_command_idx]).astype(int)
         ]
 
-        return np.concatenate(
-            (
-                path_pos,
-                path_quat,
-                linear_vel,
-                angular_vel,
-                joint_pos,
-                joint_vel,
-                stance_mask,
-            )
-        )
+        return np.concatenate((torso_state, joint_pos, joint_vel, stance_mask))
 
     def override_motor_target(
         self, motor_target: ArrayType, state_ref: ArrayType
@@ -175,15 +147,5 @@ class WalkZMPReference(MotionReference):
             self.waist_actuator_indices,
             self.default_motor_pos[self.waist_actuator_indices],
         )
-        # motor_target = inplace_update(
-        #     motor_target,
-        #     self.left_hip_yaw_idx,
-        #     self.default_motor_pos[self.left_hip_yaw_idx],
-        # )
-        # motor_target = inplace_update(
-        #     motor_target,
-        #     self.right_hip_yaw_idx,
-        #     self.default_motor_pos[self.right_hip_yaw_idx],
-        # )
 
         return motor_target

@@ -23,8 +23,8 @@ class TurnPolicy(MJXPolicy, policy_name="turn"):
         env_cfg = TurnCfg()
         motion_ref = WalkZMPReference(
             robot,
-            env_cfg.action.cycle_time,
             env_cfg.sim.timestep * env_cfg.action.n_frames,
+            env_cfg.action.cycle_time,
         )
 
         self.command_range = env_cfg.commands.command_range
