@@ -45,5 +45,5 @@ class BaseArmPolicy(ABC):
         self.control_dt = control_dt
 
     @abstractmethod
-    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
+    def step(self, obs: Obs, robot_command:  npt.NDArray[np.float32], is_real: bool = False) -> npt.NDArray[np.float32]:
         pass

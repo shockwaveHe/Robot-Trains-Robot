@@ -173,8 +173,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
             )
-            print(action)
-            return action
+            return action, None
 
         time_curr = self.step_curr * self.control_dt
 
@@ -261,4 +260,4 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         self.last_action = action_delay
         self.step_curr += 1
 
-        return motor_target
+        return motor_target, command

@@ -53,7 +53,7 @@ class EEPDArmPolicy(BaseArmPolicy, arm_policy_name="ee_pd"):
         self.site_id = self.arm_model.site("attachment_site").id
         self.q0 = init_joint_pos
 
-    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
+    def step(self, obs: Obs, command: npt.NDArray[np.float32] | None = None, is_real: bool = False) -> npt.NDArray[np.float32]:
         self.arm_data.qpos[:] = obs.arm_joint_pos
         self.arm_data.qvel[:] = obs.arm_joint_vel
         mujoco.mj_step(self.arm_model, self.arm_data)
@@ -65,7 +65,7 @@ class EEPDArmPolicy(BaseArmPolicy, arm_policy_name="ee_pd"):
         mujoco.mju_mulQuat(self.error_quat, obs.mocap_quat, self.site_quat_conj)
         mujoco.mju_quat2Vel(self.twist[3:], self.error_quat, 1.0)
         self.twist[3:] *= self.Kori / self.integration_dt
-        print(obs.mocap_pos, error_pos, self.twist)
+        # print(obs.mocap_pos, error_pos, self.twist)
 
         mujoco.mj_jacSite(self.arm_model, self.arm_data, self.ee_jac[:3], self.ee_jac[3:], self.site_id) # TODO: is this changing?
 

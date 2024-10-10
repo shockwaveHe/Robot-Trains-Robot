@@ -276,7 +276,7 @@ def main(robot: Robot, arm: BaseArm, sim: BaseSim, policy: BasePolicy, arm_polic
 
                 policy.toggle_motor = False
 
-            motor_target = policy.step(obs, "real" in sim.name)
+            motor_target, robot_command = policy.step(obs, "real" in sim.name)
 
             inference_time = time.time()
 
@@ -288,7 +288,7 @@ def main(robot: Robot, arm: BaseArm, sim: BaseSim, policy: BasePolicy, arm_polic
             set_action_time = time.time()
 
             if arm_policy is not None:
-                arm_joint_targets = arm_policy.step(obs, "real" in sim.name)
+                arm_joint_targets = arm_policy.step(obs, robot_command, "real" in sim.name)
                 sim.set_target_arm_joint_angles(arm_joint_targets) # DISCUSS: should I change BaseSim?
 
             sim.step()
