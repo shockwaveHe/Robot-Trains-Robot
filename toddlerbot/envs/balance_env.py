@@ -20,7 +20,7 @@ class BalanceCfg(MJXConfig, env_name="balance"):
 
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):
-        num_commands: int = 4
+        num_commands: int = 6
         command_range: List[List[float]] = field(
             default_factory=lambda: [
                 [-1.5, 1.5],
@@ -39,6 +39,7 @@ class BalanceCfg(MJXConfig, env_name="balance"):
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
         # Balance specific rewards
         torso_pitch: float = 0.1
+        lin_vel_z: float = 5.0
 
     def __init__(self):
         super().__init__()

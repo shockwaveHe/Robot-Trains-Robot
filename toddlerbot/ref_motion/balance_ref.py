@@ -7,7 +7,6 @@ from toddlerbot.ref_motion import MotionReference
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.array_utils import ArrayType, inplace_update
 from toddlerbot.utils.array_utils import array_lib as np
-from toddlerbot.utils.math_utils import euler2quat, quat2euler
 
 
 class BalanceReference(MotionReference):

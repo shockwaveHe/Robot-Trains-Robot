@@ -54,15 +54,14 @@ class WalkZMPReference(MotionReference):
             dtype=np.float32,
         )
 
-        num_commands = len(stance_mask_ref_list)
         num_total_steps_max = max(
             [len(stance_mask_ref) for stance_mask_ref in stance_mask_ref_list]
         )
         self.stance_mask_lookup = np.zeros(
-            (num_commands, num_total_steps_max, 2), dtype=np.float32
+            (len(stance_mask_ref_list), num_total_steps_max, 2), dtype=np.float32
         )
         self.leg_joint_pos_lookup = np.zeros(
-            (num_commands, num_total_steps_max, 12), dtype=np.float32
+            (len(stance_mask_ref_list), num_total_steps_max, 12), dtype=np.float32
         )
         for i, (stance_mask_ref, leg_joint_pos_ref) in enumerate(
             zip(stance_mask_ref_list, leg_joint_pos_ref_list)

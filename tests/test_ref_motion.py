@@ -46,7 +46,7 @@ def test_motion_ref(
             command = np.zeros(len(command_range), dtype=np.float32)
             if "walk" in motion_ref.name:
                 for task, input in control_inputs.items():
-                    axis = -1
+                    axis = None
                     if task == "walk_vertical":
                         axis = 0
                     elif task == "walk_horizontal":
@@ -54,7 +54,7 @@ def test_motion_ref(
                     elif task == "turn":
                         axis = 2
 
-                    if axis >= 0:
+                    if axis is not None:
                         command[axis] = np.interp(
                             input,
                             [-1, 0, 1],
@@ -63,7 +63,7 @@ def test_motion_ref(
 
             elif "balance" in motion_ref.name:
                 for task, input in control_inputs.items():
-                    if task in "look_left" and input > 0:
+                    if task == "look_left" and input > 0:
                         command[0] = input * command_range[0][1]
                     elif task == "look_right" and input > 0:
                         command[0] = input * command_range[0][0]

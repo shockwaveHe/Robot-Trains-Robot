@@ -253,10 +253,6 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             self.butter_past_inputs = np.asarray(butter_past_inputs)
             self.butter_past_outputs = np.asarray(butter_past_outputs)
 
-        # Keep the neck joints the same
-        motor_target[self.neck_yaw_idx] = obs.motor_pos[self.neck_yaw_idx]
-        motor_target[self.neck_pitch_idx] = obs.motor_pos[self.neck_pitch_idx]
-
         motor_target = np.clip(
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
         )
