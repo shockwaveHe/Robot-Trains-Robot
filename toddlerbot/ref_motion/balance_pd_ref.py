@@ -151,6 +151,7 @@ class BalancePDReference(MotionReference):
         xml_path = find_robot_file_path(self.robot.name, suffix="_scene.xml")
         model = mujoco.MjModel.from_xml_path(xml_path)
         data = mujoco.MjData(model)
+        self.default_qpos = np.array(model.keyframe("home").qpos)
         self.q_start_idx = 7  # Account for the free joint
         self.mj_joint_indices = np.array(
             [
@@ -162,12 +163,10 @@ class BalancePDReference(MotionReference):
 
         if self.use_jax:
             self.model = mjx.put_model(model)
-            self.data = mjx.put_data(data)
             self.forward = mjx.forward
 
-            def jac_subtree_com(body):
+            def jac_subtree_com(d, body):
                 jacp = np.zeros((3, self.model.nv))
-                jacp_b = np.zeros(3 * self.model.nv)
                 # Forward pass starting from body
                 for b in range(body, self.model.nbody):
                     # End of body subtree, break from the loop
@@ -176,9 +175,9 @@ class BalancePDReference(MotionReference):
 
                     # b is in the body subtree, add mass-weighted Jacobian into jacp
                     jacp_b, _ = support.jac(
-                        self.model, self.data, self.data.xipos[3 * b : 3 * b + 3], b
+                        self.model, d, d.xipos[3 * b : 3 * b + 3], b
                     )
-                    jacp += jacp_b * self.model.body_mass[b]
+                    jacp += jacp_b.T * self.model.body_mass[b]
 
                 # Normalize by subtree mass
                 jacp /= self.model.body_subtreemass[body]
@@ -190,14 +189,12 @@ class BalancePDReference(MotionReference):
             self.data = data
             self.forward = mujoco.mj_forward
 
-            def jac_subtree_com(body):
+            def jac_subtree_com(d, body):
                 jacp = np.zeros((3, self.model.nv))
-                mujoco.mj_jacSubtreeCom(self.model, self.data, jacp, body)
+                mujoco.mj_jacSubtreeCom(self.model, d, jacp, body)
                 return jacp
 
         self.jac_subtree_com = jac_subtree_com
-        self.data.qpos = np.array(self.model.keyframe("home").qpos)
-        self.forward(self.model, self.data)
         self.com_pos_init = np.array(
             [0.01, 0.0, 0.313], dtype=np.float32
         )  # self.data.subtree_com[0].copy()
@@ -262,17 +259,24 @@ class BalancePDReference(MotionReference):
             joint_pos, self.leg_pitch_joint_indicies, leg_pitch_joint_pos
         )
 
-        self.data.qpos = inplace_update(
-            self.data.qpos, self.q_start_idx + self.mj_joint_indices, joint_pos
+        qpos = inplace_update(
+            self.default_qpos, self.q_start_idx + self.mj_joint_indices, joint_pos
         )
-        self.forward(self.model, self.data)
+        if self.use_jax:
+            data = mjx.make_data(self.model)
+            data = data.replace(qpos=qpos)
+        else:
+            data = self.data
+            data.qpos = qpos
+
+        self.forward(self.model, data)
 
         # Get the center of mass position
-        com_pos = self.data.subtree_com[0].copy()
+        com_pos = data.subtree_com[0].copy()
         # PD controller on CoM position
         com_pos_error = com_pos[:2] - self.com_pos_init[:2]
         com_ctrl = self.com_kp * com_pos_error
-        com_jacp = self.jac_subtree_com(0)
+        com_jacp = self.jac_subtree_com(data, 0)
 
         # print(f"com_pos: {com_pos}")
         # print(f"com_pos_init: {self.com_pos_init}")
