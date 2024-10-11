@@ -1,3 +1,4 @@
+import os
 from abc import ABC, abstractmethod
 from typing import Tuple
 
@@ -15,6 +16,7 @@ class MotionReference(ABC):
         self.motion_type = motion_type
         self.robot = robot
         self.dt = dt
+        self.use_jax = os.environ.get("USE_JAX", "false") == "true"
 
         self.default_joint_pos = np.array(
             list(robot.default_joint_angles.values()), dtype=np.float32

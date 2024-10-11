@@ -8,7 +8,7 @@ from toddlerbot.envs.balance_env import BalanceCfg
 from toddlerbot.envs.turn_env import TurnCfg
 from toddlerbot.envs.walk_env import WalkCfg
 from toddlerbot.ref_motion import MotionReference
-from toddlerbot.ref_motion.balance_ref import BalanceReference
+from toddlerbot.ref_motion.balance_pd_ref import BalancePDReference
 from toddlerbot.ref_motion.walk_simple_ref import WalkSimpleReference
 from toddlerbot.ref_motion.walk_zmp_ref import WalkZMPReference
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
@@ -171,7 +171,7 @@ if __name__ == "__main__":
     elif "balance" in args.ref:
         balance_cfg = BalanceCfg()
         command_range = balance_cfg.commands.command_range
-        motion_ref = BalanceReference(
+        motion_ref = BalancePDReference(
             robot, balance_cfg.sim.timestep * balance_cfg.action.n_frames
         )
 

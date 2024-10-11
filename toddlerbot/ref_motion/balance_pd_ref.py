@@ -2,32 +2,33 @@ import os
 from typing import List, Tuple
 
 import joblib
+import mujoco
+from mujoco import mjx
+from mujoco.mjx._src import support  # type: ignore
 
 from toddlerbot.ref_motion import MotionReference
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.array_utils import ArrayType, inplace_update
 from toddlerbot.utils.array_utils import array_lib as np
+from toddlerbot.utils.file_utils import find_robot_file_path
 
 
-class BalanceReference(MotionReference):
+class BalancePDReference(MotionReference):
     def __init__(
         self,
         robot: Robot,
         dt: float,
         arm_playback_speed: float = 1.0,
         com_z_lower_limit_offset: float = 0.01,
+        com_kp: List[float] = [2000.0, 2000.0],
     ):
-        super().__init__("balance", "perceptual", robot, dt)
-
-        self.default_joint_pos = np.array(
-            list(robot.default_joint_angles.values()), dtype=np.float32
-        )
-        self.default_joint_vel = np.zeros_like(self.default_joint_pos)
+        super().__init__("balance_pd", "perceptual", robot, dt)
 
         self._setup_neck()
         self._setup_arm(arm_playback_speed)
         self._setup_waist()
         self._setup_leg(com_z_lower_limit_offset)
+        self._setup_mjx(com_kp)
 
     def _get_gear_ratios(self, motor_names: List[str]) -> ArrayType:
         gear_ratios = np.ones(len(motor_names), dtype=np.float32)
@@ -134,6 +135,73 @@ class BalanceReference(MotionReference):
                 ]
             ]
         )
+        self.leg_roll_joint_indicies = np.array(
+            [
+                self.robot.joint_ordering.index(joint_name)
+                for joint_name in [
+                    "left_hip_roll",
+                    "left_ank_roll",
+                    "right_hip_roll",
+                    "right_ank_roll",
+                ]
+            ]
+        )
+
+    def _setup_mjx(self, com_kp: List[float]):
+        xml_path = find_robot_file_path(self.robot.name, suffix="_scene.xml")
+        model = mujoco.MjModel.from_xml_path(xml_path)
+        data = mujoco.MjData(model)
+        self.q_start_idx = 7  # Account for the free joint
+        self.mj_joint_indices = np.array(
+            [
+                mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, name)
+                for name in self.robot.joint_ordering
+            ]
+        )
+        self.mj_joint_indices -= 1  # Account for the free joint
+
+        if self.use_jax:
+            self.model = mjx.put_model(model)
+            self.data = mjx.put_data(data)
+            self.forward = mjx.forward
+
+            def jac_subtree_com(body):
+                jacp = np.zeros((3, self.model.nv))
+                jacp_b = np.zeros(3 * self.model.nv)
+                # Forward pass starting from body
+                for b in range(body, self.model.nbody):
+                    # End of body subtree, break from the loop
+                    if b > body and self.model.body_parentid[b] < body:
+                        break
+
+                    # b is in the body subtree, add mass-weighted Jacobian into jacp
+                    jacp_b, _ = support.jac(
+                        self.model, self.data, self.data.xipos[3 * b : 3 * b + 3], b
+                    )
+                    jacp += jacp_b * self.model.body_mass[b]
+
+                # Normalize by subtree mass
+                jacp /= self.model.body_subtreemass[body]
+
+                return jacp
+
+        else:
+            self.model = model
+            self.data = data
+            self.forward = mujoco.mj_forward
+
+            def jac_subtree_com(body):
+                jacp = np.zeros((3, self.model.nv))
+                mujoco.mj_jacSubtreeCom(self.model, self.data, jacp, body)
+                return jacp
+
+        self.jac_subtree_com = jac_subtree_com
+        self.data.qpos = np.array(self.model.keyframe("home").qpos)
+        self.forward(self.model, self.data)
+        self.com_pos_init = np.array(
+            [0.01, 0.0, 0.313], dtype=np.float32
+        )  # self.data.subtree_com[0].copy()
+        self.com_kp = np.array(com_kp, dtype=np.float32)
 
     def get_phase_signal(self, time_curr: float | ArrayType) -> ArrayType:
         return np.zeros(1, dtype=np.float32)
@@ -192,6 +260,39 @@ class BalanceReference(MotionReference):
         joint_pos = inplace_update(joint_pos, self.waist_joint_indices, waist_joint_pos)
         joint_pos = inplace_update(
             joint_pos, self.leg_pitch_joint_indicies, leg_pitch_joint_pos
+        )
+
+        self.data.qpos = inplace_update(
+            self.data.qpos, self.q_start_idx + self.mj_joint_indices, joint_pos
+        )
+        self.forward(self.model, self.data)
+
+        # Get the center of mass position
+        com_pos = self.data.subtree_com[0].copy()
+        # PD controller on CoM position
+        com_pos_error = com_pos[:2] - self.com_pos_init[:2]
+        com_ctrl = self.com_kp * com_pos_error
+        com_jacp = self.jac_subtree_com(0)
+
+        # print(f"com_pos: {com_pos}")
+        # print(f"com_pos_init: {self.com_pos_init}")
+        # print(f"com_pos_error: {com_pos_error}")
+        # print(f"com_ctrl: {com_ctrl}")
+
+        # Update joint positions based on the PD controller command
+        joint_pos[self.leg_pitch_joint_indicies] -= (
+            com_ctrl[0]
+            * com_jacp[
+                0,
+                self.q_start_idx + self.mj_joint_indices[self.leg_pitch_joint_indicies],
+            ]
+        )
+        joint_pos[self.leg_roll_joint_indicies] -= (
+            com_ctrl[1]
+            * com_jacp[
+                1,
+                self.q_start_idx + self.mj_joint_indices[self.leg_roll_joint_indicies],
+            ]
         )
 
         joint_vel = self.default_joint_vel.copy()

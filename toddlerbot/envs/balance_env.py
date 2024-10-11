@@ -7,7 +7,7 @@ from brax import base, math
 
 from toddlerbot.envs.mjx_config import MJXConfig
 from toddlerbot.envs.mjx_env import MJXEnv
-from toddlerbot.ref_motion.balance_ref import BalanceReference
+from toddlerbot.ref_motion.balance_pd_ref import BalancePDReference
 from toddlerbot.sim.robot import Robot
 
 
@@ -60,7 +60,7 @@ class BalanceEnv(MJXEnv, env_name="balance"):
         add_domain_rand: bool = True,
         **kwargs: Any,
     ):
-        motion_ref = BalanceReference(robot, cfg.sim.timestep * cfg.action.n_frames)
+        motion_ref = BalancePDReference(robot, cfg.sim.timestep * cfg.action.n_frames)
 
         self.command_range = jnp.array(cfg.commands.command_range)
         self.deadzone = jnp.array(cfg.commands.deadzone)

@@ -77,7 +77,7 @@ class WalkZMPReference(MotionReference):
                 leg_joint_pos_ref,
             )
 
-        if os.environ.get("USE_JAX", "false") == "true":
+        if self.use_jax:
             self.lookup_keys = jax.device_put(self.lookup_keys)
             self.lookup_length = jax.device_put(self.lookup_length)
             self.stance_mask_lookup = jax.device_put(self.stance_mask_lookup)

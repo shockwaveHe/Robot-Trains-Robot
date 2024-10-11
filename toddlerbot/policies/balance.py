@@ -5,7 +5,7 @@ import numpy.typing as npt
 
 from toddlerbot.envs.balance_env import BalanceCfg
 from toddlerbot.policies.mjx_policy import MJXPolicy
-from toddlerbot.ref_motion.balance_ref import BalanceReference
+from toddlerbot.ref_motion.balance_pd_ref import BalancePDeReference
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
 
@@ -21,7 +21,7 @@ class BalancePolicy(MJXPolicy, policy_name="balance"):
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
     ):
         env_cfg = BalanceCfg()
-        motion_ref = BalanceReference(
+        motion_ref = BalancePDeReference(
             robot,
             env_cfg.sim.timestep * env_cfg.action.n_frames,
         )
