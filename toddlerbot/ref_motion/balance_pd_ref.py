@@ -150,7 +150,6 @@ class BalancePDReference(MotionReference):
     def _setup_mjx(self, com_kp: List[float]):
         xml_path = find_robot_file_path(self.robot.name, suffix="_scene.xml")
         model = mujoco.MjModel.from_xml_path(xml_path)
-        data = mujoco.MjData(model)
         self.default_qpos = np.array(model.keyframe("home").qpos)
         self.q_start_idx = 7  # Account for the free joint
         self.mj_joint_indices = np.array(
@@ -163,7 +162,6 @@ class BalancePDReference(MotionReference):
 
         if self.use_jax:
             self.model = mjx.put_model(model)
-            self.forward = mjx.forward
 
             def jac_subtree_com(d, body):
                 jacp = np.zeros((3, self.model.nv))
@@ -185,7 +183,6 @@ class BalancePDReference(MotionReference):
 
         else:
             self.model = model
-            self.forward = mujoco.mj_forward
 
             def jac_subtree_com(d, body):
                 jacp = np.zeros((3, self.model.nv))
@@ -263,11 +260,11 @@ class BalancePDReference(MotionReference):
         if self.use_jax:
             data = mjx.make_data(self.model)
             data = data.replace(qpos=qpos)
+            data = mjx.forward(self.model, data)
         else:
             data = mujoco.MjData(self.model)
             data.qpos = qpos
-
-        self.forward(self.model, data)
+            mujoco.mj_forward(self.model, data)
 
         # Get the center of mass position
         com_pos = data.subtree_com[0].copy()
