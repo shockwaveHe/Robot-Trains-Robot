@@ -8,7 +8,7 @@ from mujoco.mjx._src import support  # type: ignore
 
 from toddlerbot.ref_motion import MotionReference
 from toddlerbot.sim.robot import Robot
-from toddlerbot.utils.array_utils import ArrayType, inplace_update
+from toddlerbot.utils.array_utils import ArrayType, inplace_add, inplace_update
 from toddlerbot.utils.array_utils import array_lib as np
 from toddlerbot.utils.file_utils import find_robot_file_path
 
@@ -174,10 +174,9 @@ class BalancePDReference(MotionReference):
                         break
 
                     # b is in the body subtree, add mass-weighted Jacobian into jacp
-                    jacp_b, _ = support.jac(
-                        self.model, d, d.xipos[3 * b : 3 * b + 3], b
-                    )
-                    jacp += jacp_b.T * self.model.body_mass[b]
+                    jacp_b, _ = support.jac(self.model, d, d.xipos[b], b)
+                    # print(f"jacp_b: {jacp_b}")
+                    jacp = jacp.at[:].add(jacp_b.T * self.model.body_mass[b])
 
                 # Normalize by subtree mass
                 jacp /= self.model.body_subtreemass[body]
@@ -186,7 +185,6 @@ class BalancePDReference(MotionReference):
 
         else:
             self.model = model
-            self.data = data
             self.forward = mujoco.mj_forward
 
             def jac_subtree_com(d, body):
@@ -266,7 +264,7 @@ class BalancePDReference(MotionReference):
             data = mjx.make_data(self.model)
             data = data.replace(qpos=qpos)
         else:
-            data = self.data
+            data = mujoco.MjData(self.model)
             data.qpos = qpos
 
         self.forward(self.model, data)
@@ -282,21 +280,26 @@ class BalancePDReference(MotionReference):
         # print(f"com_pos_init: {self.com_pos_init}")
         # print(f"com_pos_error: {com_pos_error}")
         # print(f"com_ctrl: {com_ctrl}")
+        # print(f"com_jacp: {com_jacp}")
 
         # Update joint positions based on the PD controller command
-        joint_pos[self.leg_pitch_joint_indicies] -= (
-            com_ctrl[0]
+        joint_pos = inplace_add(
+            joint_pos,
+            self.leg_pitch_joint_indicies,
+            -com_ctrl[0]
             * com_jacp[
                 0,
                 self.q_start_idx + self.mj_joint_indices[self.leg_pitch_joint_indicies],
-            ]
+            ],
         )
-        joint_pos[self.leg_roll_joint_indicies] -= (
-            com_ctrl[1]
+        joint_pos = inplace_add(
+            joint_pos,
+            self.leg_roll_joint_indicies,
+            -com_ctrl[1]
             * com_jacp[
                 1,
                 self.q_start_idx + self.mj_joint_indices[self.leg_roll_joint_indicies],
-            ]
+            ],
         )
 
         joint_vel = self.default_joint_vel.copy()
