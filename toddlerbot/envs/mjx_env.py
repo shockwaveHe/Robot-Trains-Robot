@@ -1,5 +1,5 @@
 from dataclasses import asdict
-from typing import Any, Callable, Dict, List, Tuple, Type
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type
 
 import jax
 import mujoco
@@ -569,7 +569,7 @@ class MJXEnv(PipelineEnv):
         # sample new command if more than 500 timesteps achieved
         state.info["command"] = jnp.where(
             state.info["step"] > self.resample_steps,
-            self._sample_command(cmd_rng),
+            self._sample_command(cmd_rng, state.info["command"]),
             state.info["command"],
         )
 
@@ -587,9 +587,10 @@ class MJXEnv(PipelineEnv):
             done=done.astype(jnp.float32),
         )
 
-    def _sample_command(self, rng: jax.Array) -> jax.Array:
-        # placeholder
-        return jnp.zeros(1)
+    def _sample_command(
+        self, rng: jax.Array, last_command: Optional[jax.Array] = None
+    ) -> jax.Array:
+        raise NotImplementedError
 
     def _get_contact_forces(self, data: mjx.Data):
         # Extract geom1 and geom2 directly

@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, List, Tuple
+from typing import Any, List, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -88,7 +88,9 @@ class WalkEnv(MJXEnv, env_name="walk"):
             **kwargs,
         )
 
-    def _sample_command(self, rng: jax.Array) -> jax.Array:
+    def _sample_command(
+        self, rng: jax.Array, last_command: Optional[jax.Array] = None
+    ) -> jax.Array:
         # Randomly sample an index from the command list
         rng, rng_1, rng_2 = jax.random.split(rng, 3)
 

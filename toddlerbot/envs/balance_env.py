@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, List, Tuple
+from typing import Any, List, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -21,6 +21,7 @@ class BalanceCfg(MJXConfig, env_name="balance"):
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):
         num_commands: int = 6
+        resample_time: float = 1.0
         command_range: List[List[float]] = field(
             default_factory=lambda: [
                 [-1.5, 1.5],
@@ -77,7 +78,9 @@ class BalanceEnv(MJXEnv, env_name="balance"):
             **kwargs,
         )
 
-    def _sample_command(self, rng: jax.Array) -> jax.Array:
+    def _sample_command(
+        self, rng: jax.Array, last_command: Optional[jax.Array] = None
+    ) -> jax.Array:
         rng, rng_1, rng_2, rng_3, rng_4, rng_5, rng_6 = jax.random.split(rng, 7)
         neck_yaw_command = jax.random.uniform(
             rng_1,
@@ -91,12 +94,16 @@ class BalanceEnv(MJXEnv, env_name="balance"):
             minval=self.command_range[1][0],
             maxval=self.command_range[1][1],
         )
-        arm_command = jax.random.uniform(
-            rng_3,
-            (1,),
-            minval=self.command_range[2][0],
-            maxval=self.command_range[2][1],
-        )
+        if last_command is None:
+            arm_command = jax.random.uniform(
+                rng_3,
+                (1,),
+                minval=self.command_range[2][0],
+                maxval=self.command_range[2][1],
+            )
+        else:
+            arm_command = last_command[2:3].copy()
+
         waist_roll_command = jax.random.uniform(
             rng_4,
             (1,),

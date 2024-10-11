@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 
 import jax
 import jax.numpy as jnp
@@ -32,7 +32,9 @@ class TurnCfg(WalkCfg, env_name="turn"):
 
 
 class TurnEnv(WalkEnv, env_name="turn"):
-    def _sample_command(self, rng: jax.Array) -> jax.Array:
+    def _sample_command(
+        self, rng: jax.Array, last_command: Optional[jax.Array] = None
+    ) -> jax.Array:
         # Randomly sample an index from the command list
         rng, rng_1 = jax.random.split(rng, 2)
 
