@@ -118,15 +118,6 @@ class WalkEnv(MJXEnv, env_name="walk"):
 
         return command
 
-    def _extract_command(self, command: jax.Array) -> Tuple[jax.Array, jax.Array]:
-        x_vel = command[0]
-        y_vel = command[1]
-        yaw_vel = command[2]
-
-        lin_vel = jnp.array([x_vel, y_vel, 0.0])
-        ang_vel = jnp.array([0.0, 0.0, yaw_vel])
-        return lin_vel, ang_vel
-
     def _reward_torso_pitch(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ):

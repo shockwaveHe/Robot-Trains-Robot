@@ -216,6 +216,12 @@ class MuJoCoSim(BaseSim):
         subtree_mass = float(self.model.body(0).subtreemass)
         return subtree_mass
 
+    def set_torso_pos(self, torso_pos: npt.NDArray[np.float32]):
+        self.data.joint(0).qpos[:3] = torso_pos
+
+    def set_torso_quat(self, torso_quat: npt.NDArray[np.float32]):
+        self.data.joint(0).qpos[3:7] = torso_quat
+
     def set_motor_kps(self, motor_kps: Dict[str, float]):
         for name, kp in motor_kps.items():
             if isinstance(self.controller, MotorController):

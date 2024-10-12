@@ -19,7 +19,7 @@ class BalancePDReference(MotionReference):
         robot: Robot,
         dt: float,
         arm_playback_speed: float = 1.0,
-        com_kp: List[float] = [2000.0, 2000.0],
+        com_kp: List[float] = [2000.0, 200.0, 0.0],
     ):
         super().__init__("balance_pd", "perceptual", robot, dt)
 
@@ -95,7 +95,6 @@ class BalancePDReference(MotionReference):
         xml_path = find_robot_file_path(self.robot.name, suffix="_scene.xml")
         model = mujoco.MjModel.from_xml_path(xml_path)
         self.default_qpos = np.array(model.keyframe("home").qpos)
-        self.q_start_idx = 7  # Account for the free joint
         self.mj_joint_indices = np.array(
             [
                 mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, name)
@@ -212,9 +211,9 @@ class BalancePDReference(MotionReference):
         joint_pos = inplace_update(joint_pos, self.arm_joint_indices, arm_joint_pos)
         joint_pos = inplace_update(joint_pos, self.waist_joint_indices, waist_joint_pos)
 
-        qpos = inplace_update(
-            self.default_qpos, self.q_start_idx + self.mj_joint_indices, joint_pos
-        )
+        qpos = self.default_qpos.copy()
+        qpos = inplace_update(qpos, slice(3, 7), torso_state[3:7])
+        qpos = inplace_update(qpos, 7 + self.mj_joint_indices, joint_pos)
         if self.use_jax:
             data = mjx.make_data(self.model)
             data = data.replace(qpos=qpos)
@@ -225,9 +224,9 @@ class BalancePDReference(MotionReference):
             mujoco.mj_forward(self.model, data)
 
         # Get the center of mass position
-        com_pos = data.subtree_com[0].copy()
+        com_pos = np.array(data.subtree_com[0], dtype=np.float32)
         # PD controller on CoM position
-        com_pos_error = com_pos[:2] - self.com_pos_init[:2]
+        com_pos_error = com_pos - self.com_pos_init
         com_ctrl = self.com_kp * com_pos_error
         com_jacp = self.jac_subtree_com(data, 0)
 
@@ -235,26 +234,19 @@ class BalancePDReference(MotionReference):
         # print(f"com_pos_init: {self.com_pos_init}")
         # print(f"com_pos_error: {com_pos_error}")
         # print(f"com_ctrl: {com_ctrl}")
-        # print(f"com_jacp: {com_jacp}")
 
         # Update joint positions based on the PD controller command
         joint_pos = inplace_add(
             joint_pos,
             self.leg_pitch_joint_indicies,
             -com_ctrl[0]
-            * com_jacp[
-                0,
-                self.q_start_idx + self.mj_joint_indices[self.leg_pitch_joint_indicies],
-            ],
+            * com_jacp[0, 7 + self.mj_joint_indices[self.leg_pitch_joint_indicies]],
         )
         joint_pos = inplace_add(
             joint_pos,
             self.leg_roll_joint_indicies,
             -com_ctrl[1]
-            * com_jacp[
-                1,
-                self.q_start_idx + self.mj_joint_indices[self.leg_roll_joint_indicies],
-            ],
+            * com_jacp[1, 7 + self.mj_joint_indices[self.leg_roll_joint_indicies]],
         )
 
         joint_vel = self.default_joint_vel.copy()

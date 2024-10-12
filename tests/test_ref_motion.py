@@ -79,27 +79,20 @@ def test_motion_ref(
                         command[4] = input * command_range[4][0]
                     elif task == "twist_right" and input > 0:
                         command[4] = input * command_range[4][1]
-                    elif task == "squat":
-                        command[5] = np.interp(
-                            input,
-                            [-1, 0, 1],
-                            [command_range[5][1], 0.0, command_range[5][0]],
-                        )
 
             state_ref = motion_ref.get_state_ref(state_ref, time_curr, command)
             joint_angles = np.asarray(state_ref[13 : 13 + robot.nu])
 
-            sim.set_joint_angles(dict(zip(robot.joint_ordering, joint_angles)))
-            sim.forward()
-
-            # motor_angles = robot.joint_to_motor_angles(
-            #     dict(zip(robot.joint_ordering, joint_angles))
-            # )
-            # sim.set_motor_angles(motor_angles)
-            # sim.step()
-
-            # obs = sim.get_observation()
-            # print(obs)
+            if "walk" in motion_ref.name:
+                sim.set_torso_quat(np.asarray(state_ref[3:7]))
+                sim.set_joint_angles(dict(zip(robot.joint_ordering, joint_angles)))
+                sim.forward()
+            else:
+                motor_angles = robot.joint_to_motor_angles(
+                    dict(zip(robot.joint_ordering, joint_angles))
+                )
+                sim.set_motor_angles(motor_angles)
+                sim.step()
 
             time_curr += sim.control_dt
             time.sleep(sim.control_dt)
