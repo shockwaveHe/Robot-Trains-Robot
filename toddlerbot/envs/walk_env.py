@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional
 
 import jax
 import jax.numpy as jnp
@@ -20,8 +20,17 @@ class WalkCfg(MJXConfig, env_name="walk"):
 
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):
+        reset_time: float = 5.0
         command_range: List[List[float]] = field(
-            default_factory=lambda: [[-0.1, 0.2], [-0.1, 0.1]]
+            default_factory=lambda: [
+                [0.0, 1.0],
+                [0.0, 1.0],
+                [0.0, 1.0],
+                [0.0, 1.0],
+                [0.0, 1.0],
+                [-0.1, 0.2],
+                [-0.1, 0.1],
+            ]
         )
         deadzone: float = 0.05
 
@@ -92,29 +101,35 @@ class WalkEnv(MJXEnv, env_name="walk"):
         self, rng: jax.Array, last_command: Optional[jax.Array] = None
     ) -> jax.Array:
         # Randomly sample an index from the command list
-        rng, rng_1, rng_2 = jax.random.split(rng, 3)
+        rng, rng_1, rng_2, rng_3 = jax.random.split(rng, 4)
+        pose_command = jax.random.uniform(
+            rng_1,
+            (5,),
+            minval=self.command_range[:5, 0],
+            maxval=self.command_range[:5, 1],
+        )
 
         # Sample random angles uniformly between 0 and 2*pi
-        theta = jax.random.uniform(rng_1, (1,), minval=0, maxval=2 * jnp.pi)
-        r = jax.random.uniform(rng_2, (1,), minval=0, maxval=1)
+        theta = jax.random.uniform(rng_2, (1,), minval=0, maxval=2 * jnp.pi)
+        r = jax.random.uniform(rng_3, (1,), minval=0, maxval=1)
 
         # Parametric equation of ellipse
         x = jnp.where(
             jnp.sin(theta) > 0,
-            self.command_range[0][1] * r * jnp.sin(theta),
-            -self.command_range[0][0] * r * jnp.sin(theta),
+            self.command_range[5][1] * r * jnp.sin(theta),
+            -self.command_range[5][0] * r * jnp.sin(theta),
         )
         y = jnp.where(
             jnp.cos(theta) > 0,
-            self.command_range[1][1] * r * jnp.cos(theta),
-            -self.command_range[1][0] * r * jnp.cos(theta),
+            self.command_range[6][1] * r * jnp.cos(theta),
+            -self.command_range[6][0] * r * jnp.cos(theta),
         )
         z = jnp.zeros(1)
-        command = jnp.concatenate([x, y, z])
+        command = jnp.concatenate([pose_command, x, y, z])
 
         # Set small commands to zero based on norm condition
-        mask = (jnp.linalg.norm(command[:2]) > self.deadzone).astype(jnp.float32)
-        command = command.at[:2].set(command[:2] * mask)
+        mask = (jnp.linalg.norm(command[5:]) > self.deadzone).astype(jnp.float32)
+        command = command.at[5:].set(command[5:] * mask)
 
         return command
 

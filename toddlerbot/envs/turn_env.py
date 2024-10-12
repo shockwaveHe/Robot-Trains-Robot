@@ -11,7 +11,17 @@ from toddlerbot.envs.walk_env import WalkCfg, WalkEnv
 class TurnCfg(WalkCfg, env_name="turn"):
     @dataclass
     class CommandsConfig(WalkCfg.CommandsConfig):
-        command_range: List[List[float]] = field(default_factory=lambda: [[-0.5, 0.5]])
+        reset_time: float = 5.0
+        command_range: List[List[float]] = field(
+            default_factory=lambda: [
+                [0.0, 1.0],
+                [0.0, 1.0],
+                [0.0, 1.0],
+                [0.0, 1.0],
+                [0.0, 1.0],
+                [-0.5, 0.5],
+            ]
+        )
         deadzone: float = 0.05
 
     @dataclass
@@ -36,21 +46,27 @@ class TurnEnv(WalkEnv, env_name="turn"):
         self, rng: jax.Array, last_command: Optional[jax.Array] = None
     ) -> jax.Array:
         # Randomly sample an index from the command list
-        rng, rng_1 = jax.random.split(rng, 2)
+        rng, rng_1, rng_2 = jax.random.split(rng, 2)
+        pose_command = jax.random.uniform(
+            rng_1,
+            (5,),
+            minval=self.command_range[:5, 0],
+            maxval=self.command_range[:5, 1],
+        )
 
         # Parametric equation of ellipse
         x = jnp.zeros(1)
         y = jnp.zeros(1)
         z = jax.random.uniform(
-            rng_1,
+            rng_2,
             (1,),
             minval=self.command_range[0][0],
             maxval=self.command_range[0][1],
         )
-        command = jnp.concatenate([x, y, z])
+        command = jnp.concatenate([pose_command, x, y, z])
 
         # Set small commands to zero based on norm condition
-        mask = (jnp.abs(command[2]) > self.deadzone).astype(jnp.float32)
-        command = command.at[2].set(command[2] * mask)
+        mask = (jnp.linalg.norm(command[5:]) > self.deadzone).astype(jnp.float32)
+        command = command.at[5:].set(command[5:] * mask)
 
         return command

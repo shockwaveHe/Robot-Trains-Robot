@@ -19,7 +19,6 @@ class SquatCfg(MJXConfig, env_name="squat"):
 
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):
-        num_commands: int = 6
         resample_time: float = 1.0
         command_range: List[List[float]] = field(
             default_factory=lambda: [

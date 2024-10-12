@@ -47,14 +47,15 @@ def test_motion_ref(
 
             command = np.zeros(len(command_range), dtype=np.float32)
             if "walk" in motion_ref.name:
+                command[:5] = np.array([0.1, 0.3, 0.5, 0.7, 0.9], dtype=np.float32)
                 for task, input in control_inputs.items():
                     axis = None
                     if task == "walk_vertical":
-                        axis = 0
+                        axis = 5
                     elif task == "walk_horizontal":
-                        axis = 1
+                        axis = 6
                     elif task == "turn":
-                        axis = 2
+                        axis = 7
 
                     if axis is not None:
                         command[axis] = np.interp(
@@ -155,7 +156,7 @@ if __name__ == "__main__":
         walk_cfg = WalkCfg()
         turn_cfg = TurnCfg()
         command_range = (
-            walk_cfg.commands.command_range + turn_cfg.commands.command_range
+            walk_cfg.commands.command_range + turn_cfg.commands.command_range[-1:]
         )
 
         if args.ref == "walk_simple":

@@ -19,7 +19,6 @@ class BalanceCfg(MJXConfig, env_name="balance"):
 
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):
-        num_commands: int = 5
         resample_time: float = 1.0
         command_range: List[List[float]] = field(
             default_factory=lambda: [

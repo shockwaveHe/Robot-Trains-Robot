@@ -34,8 +34,8 @@ class MJXConfig:
 
         frame_stack: int = 15
         c_frame_stack: int = 15
-        num_single_obs: int = 101
-        num_single_privileged_obs: int = 140
+        num_single_obs: int = 106
+        num_single_privileged_obs: int = 145
         scales: ObsScales = ObsScales()
 
     @dataclass
