@@ -14,8 +14,8 @@ from toddlerbot.sim.robot import Robot
 class SquatCfg(MJXConfig, env_name="squat"):
     @dataclass
     class ObsConfig(MJXConfig.ObsConfig):
-        num_single_obs: int = 102
-        num_single_privileged_obs: int = 141
+        num_single_obs: int = 103
+        num_single_privileged_obs: int = 142
 
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):
@@ -77,12 +77,12 @@ class SquatEnv(MJXEnv, env_name="squat"):
     def _sample_command(
         self, rng: jax.Array, last_command: Optional[jax.Array] = None
     ) -> jax.Array:
-        rng, rng_1, rng_2 = jax.random.split(rng, 6)
+        rng, rng_1, rng_2 = jax.random.split(rng, 3)
         pose_command = jax.random.uniform(
             rng_1,
             (5,),
-            minval=self.command_range[:5][0],
-            maxval=self.command_range[:5][1],
+            minval=self.command_range[:5, 0],
+            maxval=self.command_range[:5, 1],
         )
         squat_command = jax.random.uniform(
             rng_2,
@@ -93,7 +93,7 @@ class SquatEnv(MJXEnv, env_name="squat"):
         command = jnp.concatenate([pose_command, squat_command])
 
         # Set small commands to zero based on norm condition
-        mask = (jnp.abs(command[-1]) > self.deadzone).astype(jnp.float32)
-        command = command.at[-1].set(command * mask)
+        mask = (jnp.abs(command[5:]) > self.deadzone).astype(jnp.float32)
+        command = command.at[5:].set(command[5:] * mask)
 
         return command
