@@ -19,7 +19,6 @@ class BalancePDReference(MotionReference):
         robot: Robot,
         dt: float,
         arm_playback_speed: float = 1.0,
-        com_z_lower_limit_offset: float = 0.01,
         com_kp: List[float] = [2000.0, 2000.0],
     ):
         super().__init__("balance_pd", "perceptual", robot, dt)
@@ -27,7 +26,6 @@ class BalancePDReference(MotionReference):
         self._setup_neck()
         self._setup_arm(arm_playback_speed)
         self._setup_waist()
-        self._setup_leg(com_z_lower_limit_offset)
         self._setup_mjx(com_kp)
 
     def _get_gear_ratios(self, motor_names: List[str]) -> ArrayType:
@@ -93,35 +91,19 @@ class BalancePDReference(MotionReference):
             dtype=np.float32,
         ).T
 
-    def _setup_leg(self, com_z_lower_limit_offset: float):
-        self.knee_pitch_default = self.default_joint_pos[
-            self.robot.joint_ordering.index("left_knee_pitch")
-        ]
-        self.hip_pitch_to_knee_z = self.robot.data_dict["offsets"][
-            "hip_pitch_to_knee_z"
-        ]
-        self.knee_to_ank_pitch_z = self.robot.data_dict["offsets"][
-            "knee_to_ank_pitch_z"
-        ]
-        self.hip_pitch_to_ank_pitch_z = np.sqrt(
-            self.hip_pitch_to_knee_z**2
-            + self.knee_to_ank_pitch_z**2
-            - 2
-            * self.hip_pitch_to_knee_z
-            * self.knee_to_ank_pitch_z
-            * np.cos(np.pi - self.knee_pitch_default)
-        )
-        self.shin_thigh_ratio = self.knee_to_ank_pitch_z / self.hip_pitch_to_knee_z
-
-        self.com_z_limits = np.array(
+    def _setup_mjx(self, com_kp: List[float]):
+        xml_path = find_robot_file_path(self.robot.name, suffix="_scene.xml")
+        model = mujoco.MjModel.from_xml_path(xml_path)
+        self.default_qpos = np.array(model.keyframe("home").qpos)
+        self.q_start_idx = 7  # Account for the free joint
+        self.mj_joint_indices = np.array(
             [
-                self.leg_fk(self.robot.joint_limits["left_knee_pitch"][1]).item()
-                + com_z_lower_limit_offset,
-                0.0,
-            ],
-            dtype=np.float32,
+                mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, name)
+                for name in self.robot.joint_ordering
+            ]
         )
-        self.left_knee_pitch_idx = self.robot.joint_ordering.index("left_knee_pitch")
+        self.mj_joint_indices -= 1  # Account for the free joint
+
         self.leg_pitch_joint_indicies = np.array(
             [
                 self.robot.joint_ordering.index(joint_name)
@@ -146,19 +128,6 @@ class BalancePDReference(MotionReference):
                 ]
             ]
         )
-
-    def _setup_mjx(self, com_kp: List[float]):
-        xml_path = find_robot_file_path(self.robot.name, suffix="_scene.xml")
-        model = mujoco.MjModel.from_xml_path(xml_path)
-        self.default_qpos = np.array(model.keyframe("home").qpos)
-        self.q_start_idx = 7  # Account for the free joint
-        self.mj_joint_indices = np.array(
-            [
-                mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, name)
-                for name in self.robot.joint_ordering
-            ]
-        )
-        self.mj_joint_indices -= 1  # Account for the free joint
 
         if self.use_jax:
             self.model = mjx.put_model(model)
@@ -199,7 +168,7 @@ class BalancePDReference(MotionReference):
         return np.zeros(1, dtype=np.float32)
 
     def get_vel(self, command: ArrayType) -> Tuple[ArrayType, ArrayType]:
-        lin_vel = np.array([0.0, 0.0, command[5]], dtype=np.float32)
+        lin_vel = np.array([0.0, 0.0, 0.0], dtype=np.float32)
         ang_vel = np.array([-command[3], 0.0, -command[4]], dtype=np.float32)
         return lin_vel, ang_vel
 
@@ -211,7 +180,7 @@ class BalancePDReference(MotionReference):
         )
         joint_pos_curr = state_curr[13 : 13 + self.robot.nu]
 
-        # neck yaw, neck pitch, arm, waist roll, waist yaw, squat
+        # neck yaw, neck pitch, arm, waist roll, waist yaw
         neck_joint_pos = np.clip(
             joint_pos_curr[self.neck_joint_indices] + self.dt * command[:2],
             self.neck_joint_limits[0],
@@ -238,21 +207,10 @@ class BalancePDReference(MotionReference):
             self.waist_joint_limits[1],
         )
 
-        com_z_curr = self.leg_fk(joint_pos_curr[self.left_knee_pitch_idx])
-        com_z_target = np.clip(
-            com_z_curr + self.dt * command[5],
-            self.com_z_limits[0],
-            self.com_z_limits[1],
-        )
-        leg_pitch_joint_pos = self.leg_ik(com_z_target)
-
         joint_pos = self.default_joint_pos.copy()
         joint_pos = inplace_update(joint_pos, self.neck_joint_indices, neck_joint_pos)
         joint_pos = inplace_update(joint_pos, self.arm_joint_indices, arm_joint_pos)
         joint_pos = inplace_update(joint_pos, self.waist_joint_indices, waist_joint_pos)
-        joint_pos = inplace_update(
-            joint_pos, self.leg_pitch_joint_indicies, leg_pitch_joint_pos
-        )
 
         qpos = inplace_update(
             self.default_qpos, self.q_start_idx + self.mj_joint_indices, joint_pos
@@ -349,46 +307,3 @@ class BalancePDReference(MotionReference):
         waist_act_1 = (-waist_roll + waist_yaw) / 2
         waist_act_2 = (waist_roll + waist_yaw) / 2
         return np.array([waist_act_1, waist_act_2], dtype=np.float32)
-
-    def leg_fk(self, knee_angle: float | ArrayType) -> ArrayType:
-        # Compute the length from hip pitch to ankle pitch along the z-axis
-        com_z_target = np.array(
-            np.sqrt(
-                self.hip_pitch_to_knee_z**2
-                + self.knee_to_ank_pitch_z**2
-                - 2
-                * self.hip_pitch_to_knee_z
-                * self.knee_to_ank_pitch_z
-                * np.cos(np.pi - knee_angle)
-            )
-            - self.hip_pitch_to_ank_pitch_z,
-            dtype=np.float32,
-        )
-        return com_z_target
-
-    def leg_ik(self, com_z_target: ArrayType) -> ArrayType:
-        knee_angle_cos = (
-            self.hip_pitch_to_knee_z**2
-            + self.knee_to_ank_pitch_z**2
-            - (self.hip_pitch_to_ank_pitch_z + com_z_target) ** 2
-        ) / (2 * self.hip_pitch_to_knee_z * self.knee_to_ank_pitch_z)
-        knee_angle_cos = np.clip(knee_angle_cos, -1.0, 1.0)
-        knee_angle = np.abs(np.pi - np.arccos(knee_angle_cos))
-
-        ank_pitch_angle = np.arctan2(
-            np.sin(knee_angle),
-            np.cos(knee_angle) + self.shin_thigh_ratio,
-        )
-        hip_pitch_angle = knee_angle - ank_pitch_angle
-
-        return np.array(
-            [
-                -hip_pitch_angle,
-                knee_angle,
-                -ank_pitch_angle,
-                hip_pitch_angle,
-                -knee_angle,
-                -ank_pitch_angle,
-            ],
-            dtype=np.float32,
-        )
