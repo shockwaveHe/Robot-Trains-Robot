@@ -5,10 +5,12 @@ from typing import List
 import numpy as np
 
 from toddlerbot.envs.balance_env import BalanceCfg
+from toddlerbot.envs.squat_env import SquatCfg
 from toddlerbot.envs.turn_env import TurnCfg
 from toddlerbot.envs.walk_env import WalkCfg
 from toddlerbot.ref_motion import MotionReference
 from toddlerbot.ref_motion.balance_pd_ref import BalancePDReference
+from toddlerbot.ref_motion.squat_ref import SquatReference
 from toddlerbot.ref_motion.walk_simple_ref import WalkSimpleReference
 from toddlerbot.ref_motion.walk_zmp_ref import WalkZMPReference
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
@@ -79,6 +81,14 @@ def test_motion_ref(
                         command[4] = input * command_range[4][0]
                     elif task == "twist_right" and input > 0:
                         command[4] = input * command_range[4][1]
+
+            elif "squat" in motion_ref.name:
+                command[:5] = np.array([0.1, 0.3, 0.5, 0.7, 0.9], dtype=np.float32)
+                command[5] = np.interp(
+                    control_inputs["squat"],
+                    [-1, 0, 1],
+                    [command_range[5][1], 0.0, command_range[5][0]],
+                )
 
             state_ref = motion_ref.get_state_ref(state_ref, time_curr, command)
             joint_angles = np.asarray(state_ref[13 : 13 + robot.nu])
@@ -166,6 +176,13 @@ if __name__ == "__main__":
         command_range = balance_cfg.commands.command_range
         motion_ref = BalancePDReference(
             robot, balance_cfg.sim.timestep * balance_cfg.action.n_frames
+        )
+
+    elif "squat" in args.ref:
+        squat_cfg = SquatCfg()
+        command_range = squat_cfg.commands.command_range
+        motion_ref = SquatReference(
+            robot, squat_cfg.sim.timestep * squat_cfg.action.n_frames
         )
 
     else:

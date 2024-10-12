@@ -94,3 +94,64 @@ class MotionReference(ABC):
         self, motor_target: ArrayType, state_ref: ArrayType
     ) -> ArrayType:
         pass
+
+    def neck_ik(self, neck_joint_pos: ArrayType) -> ArrayType:
+        neck_motor_pos = neck_joint_pos / self.neck_gear_ratio
+        return neck_motor_pos
+
+    def arm_fk(self, arm_motor_pos: ArrayType) -> ArrayType:
+        arm_joint_pos = arm_motor_pos * self.arm_gear_ratio
+        return arm_joint_pos
+
+    def arm_ik(self, arm_joint_pos: ArrayType) -> ArrayType:
+        arm_motor_pos = arm_joint_pos / self.arm_gear_ratio
+        return arm_motor_pos
+
+    def waist_ik(self, waist_joint_pos: ArrayType) -> ArrayType:
+        waist_roll, waist_yaw = waist_joint_pos / self.waist_coef
+        waist_act_1 = (-waist_roll + waist_yaw) / 2
+        waist_act_2 = (waist_roll + waist_yaw) / 2
+        return np.array([waist_act_1, waist_act_2], dtype=np.float32)
+
+    def leg_fk(self, knee_angle: float | ArrayType) -> ArrayType:
+        # Compute the length from hip pitch to ankle pitch along the z-axis
+        com_z_target = np.array(
+            np.sqrt(
+                self.hip_pitch_to_knee_z**2
+                + self.knee_to_ank_pitch_z**2
+                - 2
+                * self.hip_pitch_to_knee_z
+                * self.knee_to_ank_pitch_z
+                * np.cos(np.pi - knee_angle)
+            )
+            - self.hip_pitch_to_ank_pitch_z,
+            dtype=np.float32,
+        )
+        return com_z_target
+
+    def leg_ik(self, com_z_target: ArrayType) -> ArrayType:
+        knee_angle_cos = (
+            self.hip_pitch_to_knee_z**2
+            + self.knee_to_ank_pitch_z**2
+            - (self.hip_pitch_to_ank_pitch_z + com_z_target) ** 2
+        ) / (2 * self.hip_pitch_to_knee_z * self.knee_to_ank_pitch_z)
+        knee_angle_cos = np.clip(knee_angle_cos, -1.0, 1.0)
+        knee_angle = np.abs(np.pi - np.arccos(knee_angle_cos))
+
+        ank_pitch_angle = np.arctan2(
+            np.sin(knee_angle),
+            np.cos(knee_angle) + self.shin_thigh_ratio,
+        )
+        hip_pitch_angle = knee_angle - ank_pitch_angle
+
+        return np.array(
+            [
+                -hip_pitch_angle,
+                knee_angle,
+                -ank_pitch_angle,
+                hip_pitch_angle,
+                -knee_angle,
+                -ank_pitch_angle,
+            ],
+            dtype=np.float32,
+        )
