@@ -227,6 +227,8 @@ class MJXEnv(PipelineEnv):
         # x vel, y vel, yaw vel, heading
         self.resample_time = self.cfg.commands.resample_time
         self.resample_steps = int(self.resample_time / self.dt)
+        self.reset_time = self.cfg.commands.reset_time
+        self.reset_steps = int(self.reset_time / self.dt)
 
         # observation
         self.ref_start_idx = 7 + 6
@@ -566,7 +568,7 @@ class MJXEnv(PipelineEnv):
         state.info["rng"] = rng
         state.info["step"] += 1
 
-        # sample new command if more than 500 timesteps achieved
+        # sample new command
         state.info["command"] = jnp.where(
             state.info["step"] > self.resample_steps,
             self._sample_command(cmd_rng, state.info["command"]),
@@ -575,7 +577,7 @@ class MJXEnv(PipelineEnv):
 
         # reset the step counter when done
         state.info["step"] = jnp.where(
-            done | (state.info["step"] > self.resample_steps), 0, state.info["step"]
+            done | (state.info["step"] > self.reset_steps), 0, state.info["step"]
         )
         state.metrics.update(reward_dict)
 
@@ -1032,6 +1034,4 @@ class MJXEnv(PipelineEnv):
     def _reward_survival(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
-        return -(info["done"] & (info["step"] < self.resample_steps)).astype(
-            jnp.float32
-        )
+        return -(info["done"] & (info["step"] < self.reset_steps)).astype(jnp.float32)

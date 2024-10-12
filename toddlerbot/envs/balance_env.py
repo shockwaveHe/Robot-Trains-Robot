@@ -40,8 +40,7 @@ class BalanceCfg(MJXConfig, env_name="balance"):
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
         # Balance specific rewards
         torso_quat: float = 0.0
-        lin_vel_z: float = 5.0
-        torso_pitch: float = 0.1
+        torso_pitch: float = 0.0
 
     def __init__(self):
         super().__init__()
