@@ -111,10 +111,10 @@ class MJXEnv(PipelineEnv):
         self.left_foot_collider_indices = jnp.array(left_foot_collider_indices)
         self.right_foot_collider_indices = jnp.array(right_foot_collider_indices)
 
-        foot_link_mask = jnp.array(
+        feet_link_mask = jnp.array(
             np.char.find(self.sys.link_names, self.robot.foot_name) >= 0
         )
-        self.feet_link_ids = jnp.arange(self.sys.num_links())[foot_link_mask]
+        self.feet_link_ids = jnp.arange(self.sys.num_links())[feet_link_mask]
 
         self.contact_force_threshold = self.cfg.action.contact_force_threshold
 

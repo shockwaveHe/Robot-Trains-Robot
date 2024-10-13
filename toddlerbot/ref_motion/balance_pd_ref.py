@@ -19,14 +19,17 @@ class BalancePDReference(MotionReference):
         robot: Robot,
         dt: float,
         arm_playback_speed: float = 1.0,
-        com_kp: List[float] = [2000.0, 200.0, 0.0],
+        com_kp: List[float] = [2000.0, 2000.0, 0.0],
     ):
         super().__init__("balance_pd", "perceptual", robot, dt)
 
+        self.arm_playback_speed = arm_playback_speed
+        self.com_kp = np.array(com_kp, dtype=np.float32)
+
         self._setup_neck()
-        self._setup_arm(arm_playback_speed)
+        self._setup_arm()
         self._setup_waist()
-        self._setup_mjx(com_kp)
+        self._setup_mjx()
 
     def _get_gear_ratios(self, motor_names: List[str]) -> ArrayType:
         gear_ratios = np.ones(len(motor_names), dtype=np.float32)
@@ -51,29 +54,30 @@ class BalancePDReference(MotionReference):
             dtype=np.float32,
         ).T
 
-    def _setup_arm(self, arm_playback_speed: float):
+    def _setup_arm(self):
         arm_motor_names = [
             self.robot.motor_ordering[i] for i in self.arm_actuator_indices
         ]
         self.arm_gear_ratio = self._get_gear_ratios(arm_motor_names)
 
-        # Load the balance dataset
-        data_path = os.path.join("toddlerbot", "ref_motion", "balance_dataset.lz4")
-        data_dict = joblib.load(data_path)
-        # state_array: [time(1), motor_pos(14), fsrL(1), fsrR(1), camera_frame_idx(1)]
-        state_arr = data_dict["state_array"]
-        self.arm_time_ref = (
-            np.array(state_arr[:, 0] - state_arr[0, 0], dtype=np.float32)
-            / arm_playback_speed
-        )
-        self.arm_joint_pos_ref = np.array(
-            [
-                self.arm_fk(arm_motor_pos)
-                for arm_motor_pos in state_arr[:, 1 + self.arm_actuator_indices]
-            ],
-            dtype=np.float32,
-        )
-        self.arm_ref_size = len(self.arm_time_ref)
+        if self.arm_playback_speed > 0:
+            # Load the balance dataset
+            data_path = os.path.join("toddlerbot", "ref_motion", "balance_dataset.lz4")
+            data_dict = joblib.load(data_path)
+            # state_array: [time(1), motor_pos(14), fsrL(1), fsrR(1), camera_frame_idx(1)]
+            state_arr = data_dict["state_array"]
+            self.arm_time_ref = (
+                np.array(state_arr[:, 0] - state_arr[0, 0], dtype=np.float32)
+                / self.arm_playback_speed
+            )
+            self.arm_joint_pos_ref = np.array(
+                [
+                    self.arm_fk(arm_motor_pos)
+                    for arm_motor_pos in state_arr[:, 1 + self.arm_actuator_indices]
+                ],
+                dtype=np.float32,
+            )
+            self.arm_ref_size = len(self.arm_time_ref)
 
     def _setup_waist(self):
         self.waist_coef = np.array(
@@ -91,7 +95,7 @@ class BalancePDReference(MotionReference):
             dtype=np.float32,
         ).T
 
-    def _setup_mjx(self, com_kp: List[float]):
+    def _setup_mjx(self):
         xml_path = find_robot_file_path(self.robot.name, suffix="_scene.xml")
         model = mujoco.MjModel.from_xml_path(xml_path)
         self.default_qpos = np.array(model.keyframe("home").qpos)
@@ -131,6 +135,11 @@ class BalancePDReference(MotionReference):
         if self.use_jax:
             self.model = mjx.put_model(model)
 
+            def forward(qpos):
+                data = mjx.make_data(self.model)
+                data = data.replace(qpos=qpos)
+                return mjx.forward(self.model, data)
+
             def jac_subtree_com(d, body):
                 jacp = np.zeros((3, self.model.nv))
                 # Forward pass starting from body
@@ -152,16 +161,27 @@ class BalancePDReference(MotionReference):
         else:
             self.model = model
 
+            def forward(qpos):
+                data = mujoco.MjData(self.model)
+                data.qpos = qpos
+                mujoco.mj_forward(self.model, data)
+                return data
+
             def jac_subtree_com(d, body):
                 jacp = np.zeros((3, self.model.nv))
                 mujoco.mj_jacSubtreeCom(self.model, d, jacp, body)
                 return jacp
 
+        self.forward = forward
         self.jac_subtree_com = jac_subtree_com
-        self.com_pos_init = np.array(
-            [0.01, 0.0, 0.313], dtype=np.float32
-        )  # self.data.subtree_com[0].copy()
-        self.com_kp = np.array(com_kp, dtype=np.float32)
+
+        qpos = self.default_qpos.copy()
+        if self.arm_playback_speed > 0:
+            qpos = inplace_update(
+                qpos, self.arm_joint_indices, self.arm_joint_pos_ref[0]
+            )
+        data = self.forward(qpos)
+        self.com_pos_init = np.array(data.subtree_com[0], dtype=np.float32)
 
     def get_phase_signal(self, time_curr: float | ArrayType) -> ArrayType:
         return np.zeros(1, dtype=np.float32)
@@ -178,6 +198,7 @@ class BalancePDReference(MotionReference):
             state_curr[:3], state_curr[3:7], command
         )
         joint_pos_curr = state_curr[13 : 13 + self.robot.nu]
+        joint_pos = self.default_joint_pos.copy()
 
         # neck yaw, neck pitch, arm, waist roll, waist yaw
         neck_joint_pos = np.clip(
@@ -185,44 +206,41 @@ class BalancePDReference(MotionReference):
             self.neck_joint_limits[0],
             self.neck_joint_limits[1],
         )
+        joint_pos = inplace_update(joint_pos, self.neck_joint_indices, neck_joint_pos)
 
-        command_ref_idx = (command[2] * (self.arm_ref_size - 2)).astype(int)
-        time_ref = self.arm_time_ref[command_ref_idx] + time_curr
-        ref_idx = np.minimum(
-            np.searchsorted(self.arm_time_ref, time_ref, side="right") - 1,
-            self.arm_ref_size - 2,
-        )
-        # Linearly interpolate between p_start and p_end
-        arm_joint_pos_start = self.arm_joint_pos_ref[ref_idx]
-        arm_joint_pos_end = self.arm_joint_pos_ref[ref_idx + 1]
-        arm_duration = self.arm_time_ref[ref_idx + 1] - self.arm_time_ref[ref_idx]
-        arm_joint_pos = arm_joint_pos_start + (
-            arm_joint_pos_end - arm_joint_pos_start
-        ) * ((time_ref - self.arm_time_ref[ref_idx]) / arm_duration)
+        if self.arm_playback_speed > 0:
+            command_ref_idx = (command[2] * (self.arm_ref_size - 2)).astype(int)
+            time_ref = self.arm_time_ref[command_ref_idx] + time_curr
+            ref_idx = np.minimum(
+                np.searchsorted(self.arm_time_ref, time_ref, side="right") - 1,
+                self.arm_ref_size - 2,
+            )
+            # Linearly interpolate between p_start and p_end
+            arm_joint_pos_start = self.arm_joint_pos_ref[ref_idx]
+            arm_joint_pos_end = self.arm_joint_pos_ref[ref_idx + 1]
+            arm_duration = self.arm_time_ref[ref_idx + 1] - self.arm_time_ref[ref_idx]
+            arm_joint_pos = arm_joint_pos_start + (
+                arm_joint_pos_end - arm_joint_pos_start
+            ) * ((time_ref - self.arm_time_ref[ref_idx]) / arm_duration)
+            joint_pos = inplace_update(joint_pos, self.arm_joint_indices, arm_joint_pos)
+        else:
+            joint_pos = inplace_update(
+                joint_pos,
+                self.arm_joint_indices,
+                joint_pos_curr[self.arm_joint_indices],
+            )
 
         waist_joint_pos = np.clip(
             joint_pos_curr[self.waist_joint_indices] + self.dt * command[3:5],
             self.waist_joint_limits[0],
             self.waist_joint_limits[1],
         )
-
-        joint_pos = self.default_joint_pos.copy()
-        joint_pos = inplace_update(joint_pos, self.neck_joint_indices, neck_joint_pos)
-        joint_pos = inplace_update(joint_pos, self.arm_joint_indices, arm_joint_pos)
         joint_pos = inplace_update(joint_pos, self.waist_joint_indices, waist_joint_pos)
 
         qpos = self.default_qpos.copy()
         qpos = inplace_update(qpos, slice(3, 7), torso_state[3:7])
         qpos = inplace_update(qpos, 7 + self.mj_joint_indices, joint_pos)
-        if self.use_jax:
-            data = mjx.make_data(self.model)
-            data = data.replace(qpos=qpos)
-            data = mjx.forward(self.model, data)
-        else:
-            data = mujoco.MjData(self.model)
-            data.qpos = qpos
-            mujoco.mj_forward(self.model, data)
-
+        data = self.forward(qpos)
         # Get the center of mass position
         com_pos = np.array(data.subtree_com[0], dtype=np.float32)
         # PD controller on CoM position
@@ -248,6 +266,8 @@ class BalancePDReference(MotionReference):
             -com_ctrl[1]
             * com_jacp[1, 7 + self.mj_joint_indices[self.leg_roll_joint_indicies]],
         )
+        # print(com_jacp[0, 7 + self.mj_joint_indices[self.leg_pitch_joint_indicies]])
+        # print(com_jacp[1, 7 + self.mj_joint_indices[self.leg_roll_joint_indicies]])
 
         joint_vel = self.default_joint_vel.copy()
 

@@ -5,18 +5,20 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 
-from toddlerbot.policies.balance_pd import BalancePDPolicy
+from toddlerbot.envs.balance_env import BalanceCfg
+from toddlerbot.policies import BasePolicy
 from toddlerbot.ref_motion.balance_pd_ref import BalancePDReference
 from toddlerbot.sensing.camera import Camera
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
 from toddlerbot.utils.comm_utils import ZMQNode
+from toddlerbot.utils.math_utils import interpolate_action
 
 SYS_NAME = platform.system()
 
 
-class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
+class TeleopFollowerPDPolicy(BasePolicy, policy_name="teleop_follower_pd"):
     def __init__(
         self,
         name: str,
@@ -26,39 +28,41 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
         camera: Optional[Camera] = None,
         zmq_receiver: Optional[ZMQNode] = None,
         zmq_sender: Optional[ZMQNode] = None,
-        squat_speed=0.03,
     ):
         super().__init__(name, robot, init_motor_pos)
 
-        self.arm_joint_slice = slice(
-            robot.joint_ordering.index("left_sho_pitch"),
-            robot.joint_ordering.index("right_wrist_roll") + 1,
+        self.default_motor_pos = np.array(
+            list(robot.default_motor_angles.values()), dtype=np.float32
+        )
+        self.default_joint_pos = np.array(
+            list(robot.default_joint_angles.values()), dtype=np.float32
+        )
+        self.motor_limits = np.array(
+            [robot.joint_limits[name] for name in robot.motor_ordering]
         )
 
-        arm_gear_ratio_list = []
-        for i, motor_name in enumerate(robot.motor_ordering):
-            if robot.joint_groups[motor_name] == "arm":
-                motor_config = robot.config["joints"][motor_name]
-                if (
-                    motor_config["transmission"] == "gear"
-                    or motor_config["transmission"] == "rack_and_pinion"
-                ):
-                    arm_gear_ratio_list.append(-motor_config["gear_ratio"])
-                else:
-                    arm_gear_ratio_list.append(1.0)
-
-        self.arm_gear_ratio = np.array(arm_gear_ratio_list, dtype=np.float32)
-
-        self.neck_yaw_idx = robot.joint_ordering.index("neck_yaw_driven")
-        self.neck_pitch_idx = robot.joint_ordering.index("neck_pitch_driven")
-        self.neck_yaw_limits = robot.joint_limits["neck_yaw_driven"]
-        self.neck_pitch_limits = robot.joint_limits["neck_pitch_driven"]
-
-        self.neck_yaw_target = 0.0
-        self.neck_pitch_target = 0.0
-
-        self.squat_speed = squat_speed
-        self.balance_ref = BalancePDReference(robot, self.control_dt)
+        self.balance_ref = BalancePDReference(
+            robot, self.control_dt, arm_playback_speed=0.0
+        )
+        self.balance_cfg = BalanceCfg()
+        self.command_range = np.array(
+            self.balance_cfg.commands.command_range, dtype=np.float32
+        )
+        self.state_ref = np.concatenate(
+            [
+                np.zeros(3, dtype=np.float32),  # Position
+                np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),  # Quaternion
+                np.zeros(3, dtype=np.float32),  # Linear velocity
+                np.zeros(3, dtype=np.float32),  # Angular velocity
+                self.default_joint_pos,  # Joint positions
+                np.zeros_like(self.default_joint_pos),  # Joint velocities
+                np.ones(2, dtype=np.float32),  # Stance mask
+            ]
+        )
+        self.arm_joint_indices = np.array(self.balance_ref.arm_joint_indices)
+        self.arm_gear_ratio = np.asarray(
+            self.balance_ref.arm_gear_ratio, dtype=np.float32
+        )
 
         self.joystick = joystick
         if joystick is None:
@@ -93,15 +97,39 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
 
         self.msg = None
         self.last_control_inputs = None
-        self.last_arm_joint_pos = self.default_joint_pos[self.arm_joint_slice].copy()
+        self.step_curr = 0
 
-    def reset(self):
-        super().reset()
-        self.neck_yaw_target = 0.0
-        self.neck_pitch_target = 0.0
-        self.last_arm_joint_pos = self.default_joint_pos[self.arm_joint_slice].copy()
+        self.prep_duration = 2.0
+        self.prep_time, self.prep_action = self.move(
+            -self.control_dt,
+            init_motor_pos,
+            self.default_motor_pos,
+            self.prep_duration,
+            end_time=0.0,
+        )
 
-    def plan(self) -> npt.NDArray[np.float32]:
+    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
+        if self.camera is not None:
+            # t1 = time.time()
+            jpeg_frame, raw_frame = self.camera.get_jpeg()
+            camera_frame = jpeg_frame
+            # t2 = time.time()
+            print(raw_frame.shape)
+        else:
+            camera_frame = None
+
+        if self.zmq_sender is not None:
+            self.zmq_sender.send_msg(
+                {"time": time.time(), "camera_frame": camera_frame}
+            )
+
+        # Preparation phase
+        if obs.time < self.prep_time[-1]:
+            action = np.asarray(
+                interpolate_action(obs.time, self.prep_time, self.prep_action)
+            )
+            return action
+
         # Get the motor target from the teleop node
         msg = None
         if self.msg is not None:
@@ -119,72 +147,62 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
 
         self.last_control_inputs = control_inputs
 
-        look_command = np.zeros(2, dtype=np.float32)
-        squat_command = np.zeros(1, dtype=np.float32)
-
+        command = np.zeros(len(self.command_range), dtype=np.float32)
         if control_inputs is not None:
             for task, input in control_inputs.items():
-                if task == "look_up" and input > 0:
-                    look_command[1] = input
-                elif task == "look_down" and input > 0:
-                    look_command[1] = -input
-                elif task == "look_left" and input > 0:
-                    look_command[0] = input
+                if task == "look_left" and input > 0:
+                    command[0] = input * self.command_range[0][1]
                 elif task == "look_right" and input > 0:
-                    look_command[0] = -input
-                if task == "squat":
-                    squat_command[0] = -input * self.squat_speed
+                    command[0] = input * self.command_range[0][0]
+                elif task == "look_up" and input > 0:
+                    command[1] = input * self.command_range[1][1]
+                elif task == "look_down" and input > 0:
+                    command[1] = input * self.command_range[1][0]
+                elif task == "lean_left" and input > 0:
+                    command[3] = input * self.command_range[3][0]
+                elif task == "lean_right" and input > 0:
+                    command[3] = input * self.command_range[3][1]
+                elif task == "twist_left" and input > 0:
+                    command[4] = input * self.command_range[4][0]
+                elif task == "twist_right" and input > 0:
+                    command[4] = input * self.command_range[4][1]
 
+        # print(f"command: {command}")
+        # motor_angles = dict(zip(self.robot.motor_ordering, obs.motor_pos))
+        # joint_pos = np.array(
+        #     list(self.robot.motor_to_joint_angles(motor_angles).values()),
+        #     dtype=np.float32,
+        # )
         time_curr = self.step_curr * self.control_dt
-        state_ref = self.balance_ref.get_state_ref(
-            np.zeros(3, dtype=np.float32),
-            np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),
-            time_curr,
-            squat_command,
-        )
 
-        joint_target = np.asarray(state_ref[13 : 13 + self.robot.nu])
-
-        self.neck_yaw_target = np.clip(
-            self.neck_yaw_target + look_command[0] * self.control_dt,
-            self.neck_yaw_limits[0],
-            self.neck_yaw_limits[1],
-        )
-        self.neck_pitch_target = np.clip(
-            self.neck_pitch_target + look_command[1] * self.control_dt,
-            self.neck_pitch_limits[0],
-            self.neck_pitch_limits[1],
-        )
-        joint_target[self.neck_yaw_idx] = self.neck_yaw_target
-        joint_target[self.neck_pitch_idx] = self.neck_pitch_target
-
-        joint_target[self.arm_joint_slice] = self.last_arm_joint_pos
-
+        joint_pos = self.state_ref[13 : 13 + self.robot.nu].copy()
         if msg is not None:
             # print(f"latency: {abs(time.time() - msg.time) * 1000:.2f} ms")
             if abs(time.time() - msg.time) < 0.1:
                 arm_motor_pos = msg.action
                 arm_joint_pos = arm_motor_pos * self.arm_gear_ratio
-                joint_target[self.arm_joint_slice] = arm_joint_pos
-                self.last_arm_joint_pos = arm_joint_pos
+                joint_pos[self.arm_joint_indices] = arm_joint_pos
             else:
                 print("stale message received, discarding")
 
-        return joint_target
+        self.state_ref[13 : 13 + self.robot.nu] = joint_pos
+        self.state_ref = self.balance_ref.get_state_ref(
+            self.state_ref, time_curr, command
+        )
 
-    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
-        if self.camera is not None:
-            t1 = time.time()
-            jpeg_frame, raw_frame = self.camera.get_jpeg()
-            camera_frame = jpeg_frame
-            t2 = time.time()
-            print(raw_frame.shape)
-        else:
-            camera_frame = None
+        joint_angles = dict(
+            zip(self.robot.joint_ordering, self.state_ref[13 : 13 + self.robot.nu])
+        )
+        # Convert joint positions to motor angles
+        motor_target = np.array(
+            list(self.robot.joint_to_motor_angles(joint_angles).values()),
+            dtype=np.float32,
+        )
+        # Override motor target with reference motion or teleop motion
+        motor_target = np.clip(
+            motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
+        )
 
-        if self.zmq_sender is not None:
-            self.zmq_sender.send_msg(
-                {"time": time.time(), "camera_frame": camera_frame}
-            )
+        self.step_curr += 1
 
-        return super().step(obs, is_real)
+        return motor_target
