@@ -173,20 +173,6 @@ class MJXEnv(PipelineEnv):
             [self.robot.joint_limits[name] for name in self.robot.motor_ordering]
         )
 
-        arm_motor_names: List[str] = [
-            self.robot.motor_ordering[i] for i in self.arm_actuator_indices
-        ]
-        self.arm_gear_ratio = jnp.ones(len(arm_motor_names))
-        for i, motor_name in enumerate(arm_motor_names):
-            motor_config = self.robot.config["joints"][motor_name]
-            if (
-                motor_config["transmission"] == "gear"
-                or motor_config["transmission"] == "rack_and_pinion"
-            ):
-                self.arm_gear_ratio = self.arm_gear_ratio.at[i].set(
-                    -motor_config["gear_ratio"]
-                )
-
         self.joint_ref_indices = jnp.arange(len(self.robot.joint_ordering))
         self.leg_ref_indices = self.joint_ref_indices[joint_groups == "leg"]
         self.arm_ref_indices = self.joint_ref_indices[joint_groups == "arm"]
@@ -351,11 +337,21 @@ class MJXEnv(PipelineEnv):
         state_info["last_stance_mask"] = state_ref[-2:]
         state_info["phase_signal"] = self.motion_ref.get_phase_signal(0.0)
 
+        neck_joint_pos = state_ref[self.ref_start_idx + self.neck_ref_indices]
+        neck_motor_pos = self.motion_ref.neck_ik(neck_joint_pos)
         arm_joint_pos = state_ref[self.ref_start_idx + self.arm_ref_indices]
-        arm_motor_pos = arm_joint_pos / self.arm_gear_ratio
+        arm_motor_pos = self.motion_ref.arm_ik(arm_joint_pos)
+        waist_joint_pos = state_ref[self.ref_start_idx + self.waist_ref_indices]
+        waist_motor_pos = self.motion_ref.waist_ik(waist_joint_pos)
+
         qpos = qpos.at[3:7].set(torso_quat)
-        qpos = qpos.at[self.q_start_idx + self.arm_joint_indices].set(arm_joint_pos)  # type:ignore
-        qpos = qpos.at[self.q_start_idx + self.arm_motor_indices].set(arm_motor_pos)  # type:ignore
+        qpos = qpos.at[self.q_start_idx + self.neck_joint_indices].set(neck_joint_pos)
+        qpos = qpos.at[self.q_start_idx + self.neck_motor_indices].set(neck_motor_pos)
+        qpos = qpos.at[self.q_start_idx + self.arm_joint_indices].set(arm_joint_pos)
+        qpos = qpos.at[self.q_start_idx + self.arm_motor_indices].set(arm_motor_pos)
+        qpos = qpos.at[self.q_start_idx + self.waist_joint_indices].set(waist_joint_pos)
+        qpos = qpos.at[self.q_start_idx + self.waist_motor_indices].set(waist_motor_pos)
+
         if self.add_noise:
             if not self.fixed_base:
                 noise_torso_pitch = self.reset_noise_torso_pitch * jax.random.normal(

@@ -77,12 +77,13 @@ class SquatEnv(MJXEnv, env_name="squat"):
         self, rng: jax.Array, last_command: Optional[jax.Array] = None
     ) -> jax.Array:
         rng, rng_1, rng_2 = jax.random.split(rng, 3)
-        pose_command = jax.random.uniform(
+        pose_command_ = jax.random.uniform(
             rng_1,
             (5,),
             minval=self.command_range[:5, 0],
             maxval=self.command_range[:5, 1],
         )
+        pose_command = 0.5 * jnp.ones(5) + 0.1 * pose_command_
         squat_command = jax.random.uniform(
             rng_2,
             (1,),

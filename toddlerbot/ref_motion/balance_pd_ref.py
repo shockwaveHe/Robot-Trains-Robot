@@ -1,7 +1,5 @@
-import os
 from typing import List, Tuple
 
-import joblib
 import mujoco
 from mujoco import mjx
 from mujoco.mjx._src import support  # type: ignore
@@ -24,76 +22,11 @@ class BalancePDReference(MotionReference):
         super().__init__("balance_pd", "perceptual", robot, dt)
 
         self.arm_playback_speed = arm_playback_speed
+        self.arm_time_ref /= arm_playback_speed
+
         self.com_kp = np.array(com_kp, dtype=np.float32)
 
-        self._setup_neck()
-        self._setup_arm()
-        self._setup_waist()
         self._setup_mjx()
-
-    def _get_gear_ratios(self, motor_names: List[str]) -> ArrayType:
-        gear_ratios = np.ones(len(motor_names), dtype=np.float32)
-        for i, motor_name in enumerate(motor_names):
-            motor_config = self.robot.config["joints"][motor_name]
-            if motor_config["transmission"] in ["gear", "rack_and_pinion"]:
-                gear_ratios = inplace_update(
-                    gear_ratios, i, -motor_config["gear_ratio"]
-                )
-        return gear_ratios
-
-    def _setup_neck(self):
-        neck_motor_names = [
-            self.robot.motor_ordering[i] for i in self.neck_actuator_indices
-        ]
-        self.neck_gear_ratio = self._get_gear_ratios(neck_motor_names)
-        self.neck_joint_limits = np.array(
-            [
-                self.robot.joint_limits["neck_yaw_driven"],
-                self.robot.joint_limits["neck_pitch_driven"],
-            ],
-            dtype=np.float32,
-        ).T
-
-    def _setup_arm(self):
-        arm_motor_names = [
-            self.robot.motor_ordering[i] for i in self.arm_actuator_indices
-        ]
-        self.arm_gear_ratio = self._get_gear_ratios(arm_motor_names)
-
-        if self.arm_playback_speed > 0:
-            # Load the balance dataset
-            data_path = os.path.join("toddlerbot", "ref_motion", "balance_dataset.lz4")
-            data_dict = joblib.load(data_path)
-            # state_array: [time(1), motor_pos(14), fsrL(1), fsrR(1), camera_frame_idx(1)]
-            state_arr = data_dict["state_array"]
-            self.arm_time_ref = (
-                np.array(state_arr[:, 0] - state_arr[0, 0], dtype=np.float32)
-                / self.arm_playback_speed
-            )
-            self.arm_joint_pos_ref = np.array(
-                [
-                    self.arm_fk(arm_motor_pos)
-                    for arm_motor_pos in state_arr[:, 1 + self.arm_actuator_indices]
-                ],
-                dtype=np.float32,
-            )
-            self.arm_ref_size = len(self.arm_time_ref)
-
-    def _setup_waist(self):
-        self.waist_coef = np.array(
-            [
-                self.robot.config["general"]["offsets"]["waist_roll_coef"],
-                self.robot.config["general"]["offsets"]["waist_yaw_coef"],
-            ],
-            dtype=np.float32,
-        )
-        self.waist_joint_limits = np.array(
-            [
-                self.robot.joint_limits["waist_roll"],
-                self.robot.joint_limits["waist_yaw"],
-            ],
-            dtype=np.float32,
-        ).T
 
     def _setup_mjx(self):
         xml_path = find_robot_file_path(self.robot.name, suffix="_scene.xml")
