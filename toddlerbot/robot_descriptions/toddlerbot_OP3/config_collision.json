@@ -182,7 +182,7 @@
     "neck_yaw_link": {
         "has_collision": false
     },
-    "spur_gear_(13_teeth)": {
+    "spur_gear_13_teeth": {
         "has_collision": false
     },
     "neck_pitch_link": {
@@ -380,7 +380,7 @@
     "xc330": {
         "has_collision": false
     },
-    "spur_gear_(14_teeth)": {
+    "spur_gear_14_teeth": {
         "has_collision": false
     },
     "gripper_connector_2": {
