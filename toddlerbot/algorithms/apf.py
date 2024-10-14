@@ -7,7 +7,7 @@ import numpy as np
 class APF:
     def __init__(
         self,
-        table_bounds: Tuple[float, float, float, float],
+        table_bounds: List[float],
         k_att: float = 1.0,
         k_rep: float = 100.0,
         Q_star: float = 0.5,
@@ -89,6 +89,7 @@ class APF:
         self.vx = 0.0
         self.vy = 0.0
         self.path: List[Tuple[float, float]] = [(self.x, self.y)]
+        self.velocities: List[Tuple[float, float]] = [(self.vx, self.vy)]
 
         for i in range(self.max_iters):
             # Compute forces
@@ -102,6 +103,7 @@ class APF:
             # Update velocity
             self.vx += F_total_x * self.dt
             self.vy += F_total_y * self.dt
+            self.velocities.append((self.vx, self.vy))
 
             # Update position
             self.x += self.vx * self.dt
@@ -160,7 +162,7 @@ def plot_apf(apf: APF) -> None:
 
 
 # Table boundaries (rectangle)
-table_bounds = (1.0, 1.0, 3.0, 2.0)  # (x1, y1, x2, y2)
+table_bounds = [1.0, 1.0, 3.0, 2.0]  # (x1, y1, x2, y2)
 
 # Start and goal positions
 x_start, y_start = 0.0, 0.0

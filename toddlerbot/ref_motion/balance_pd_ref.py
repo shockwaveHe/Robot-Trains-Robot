@@ -22,7 +22,8 @@ class BalancePDReference(MotionReference):
         super().__init__("balance_pd", "perceptual", robot, dt)
 
         self.arm_playback_speed = arm_playback_speed
-        self.arm_time_ref /= arm_playback_speed
+        if self.arm_playback_speed > 0.0:
+            self.arm_time_ref /= arm_playback_speed
 
         self.com_kp = np.array(com_kp, dtype=np.float32)
 

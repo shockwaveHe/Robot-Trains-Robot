@@ -128,8 +128,13 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         )
         make_policy = ppo_networks.make_inference_fn(ppo_network)
 
+        if "walk" in self.name:
+            policy_name = "walk"
+        else:
+            policy_name = self.name
+
         if len(ckpt) > 0:
-            run_name = f"{robot.name}_{self.name}_ppo_{ckpt}"
+            run_name = f"{robot.name}_{policy_name}_ppo_{ckpt}"
             policy_path = os.path.join("results", run_name, "best_policy")
             if not os.path.exists(policy_path):
                 policy_path = os.path.join("results", run_name, "policy")
@@ -138,7 +143,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
                 "toddlerbot",
                 "policies",
                 "checkpoints",
-                f"{robot.name}_{self.name}_policy",
+                f"{robot.name}_{policy_name}_policy",
             )
 
         print(f"Loading policy from {policy_path}")
