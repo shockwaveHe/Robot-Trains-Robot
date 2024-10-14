@@ -17,7 +17,7 @@ class BalancePDReference(MotionReference):
         robot: Robot,
         dt: float,
         arm_playback_speed: float = 1.0,
-        com_kp: List[float] = [2000.0, 2000.0, 0.0],
+        com_kp: List[float] = [200.0, 200.0, 0.0],
     ):
         super().__init__("balance_pd", "perceptual", robot, dt)
 
@@ -191,16 +191,14 @@ class BalancePDReference(MotionReference):
             joint_pos,
             self.leg_pitch_joint_indicies,
             -com_ctrl[0]
-            * com_jacp[0, 7 + self.mj_joint_indices[self.leg_pitch_joint_indicies]],
+            * com_jacp[0, 6 + self.mj_joint_indices[self.leg_pitch_joint_indicies]],
         )
         joint_pos = inplace_add(
             joint_pos,
             self.leg_roll_joint_indicies,
             -com_ctrl[1]
-            * com_jacp[1, 7 + self.mj_joint_indices[self.leg_roll_joint_indicies]],
+            * com_jacp[1, 6 + self.mj_joint_indices[self.leg_roll_joint_indicies]],
         )
-        # print(com_jacp[0, 7 + self.mj_joint_indices[self.leg_pitch_joint_indicies]])
-        # print(com_jacp[1, 7 + self.mj_joint_indices[self.leg_roll_joint_indicies]])
 
         joint_vel = self.default_joint_vel.copy()
 

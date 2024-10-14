@@ -102,6 +102,8 @@ class Joystick:
             "X": "look_left",
             "B": "look_right",
         }
+        self.joystick = None
+
         # List all input devices
         joystick_count = pygame.joystick.get_count()
         if joystick_count == 0:
@@ -134,26 +136,21 @@ class Joystick:
             else:
                 print(f"Unsupported controller detected: {device_name}")
 
-    def get_axis(self, axis_name: str) -> float:
-        axis_id = self.axis_mapping[axis_name]
-        return self.joystick.get_axis(axis_id)
-
-    def get_button(self, button_name: str) -> float:
-        button_id = self.button_mapping[button_name]
-        return self.joystick.get_button(button_id)
-
     def get_controller_input(self) -> Dict[str, float]:
         # Process pygame events
         pygame.event.pump()
 
         control_inputs: Dict[str, float] = {}
-        for key, task in self.joystick_mapping.items():
-            if key in self.button_mapping:
-                value = self.get_button(key)
-                control_inputs[task] = 0.0 if abs(value) < self.dead_zone else value
-            elif key in self.axis_mapping:
-                value = self.get_axis(key)
-                control_inputs[task] = 0.0 if abs(value) < self.dead_zone else value
+        if self.joystick is not None:
+            for key, task in self.joystick_mapping.items():
+                if key in self.button_mapping:
+                    button_id = self.button_mapping[key]
+                    value = self.joystick.get_button(button_id)
+                    control_inputs[task] = 0.0 if abs(value) < self.dead_zone else value
+                elif key in self.axis_mapping:
+                    axis_id = self.axis_mapping[key]
+                    value = self.joystick.get_axis(axis_id)
+                    control_inputs[task] = 0.0 if abs(value) < self.dead_zone else value
 
         return control_inputs
 
