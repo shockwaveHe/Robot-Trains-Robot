@@ -1,8 +1,13 @@
 import numpy as np
 import torch
 import zarr
-from diffusion_policy_minimal.utils.dataset_utils import create_sample_indices, get_data_stats, normalize_data, sample_sequence
 
+from toddlerbot.manipulation.dp.utils.dataset_utils import (
+    create_sample_indices,
+    get_data_stats,
+    normalize_data,
+    sample_sequence,
+)
 
 # ### **Dataset**
 #
@@ -33,7 +38,7 @@ class PushTImageDataset(torch.utils.data.Dataset):
 
         # float32, [0,1], (N,96,96,3)
         train_image_data = dataset_root["data"]["img"][:]
-        train_image_data = np.moveaxis(train_image_data, -1, 1) # (N,3,96,96)
+        train_image_data = np.moveaxis(train_image_data, -1, 1)  # (N,3,96,96)
 
         # (N, D)
         train_data = {
@@ -60,7 +65,7 @@ class PushTImageDataset(torch.utils.data.Dataset):
             normalized_train_data[key] = normalize_data(data, stats[key])
 
         # images are already normalized
-        normalized_train_data["image"] = train_image_data/255.0
+        normalized_train_data["image"] = train_image_data / 255.0
 
         self.indices = indices
         self.stats = stats
@@ -92,4 +97,3 @@ class PushTImageDataset(torch.utils.data.Dataset):
         nsample["image"] = nsample["image"][: self.obs_horizon, :]
         nsample["agent_pos"] = nsample["agent_pos"][: self.obs_horizon, :]
         return nsample
-

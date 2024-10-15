@@ -6,12 +6,12 @@ import torch.nn as nn
 from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
 from tqdm.auto import tqdm
 
-from diffusion_policy_minimal.models.diffusion_model import ConditionalUnet1D
-from diffusion_policy_minimal.utils.dataset_utils import (
+from toddlerbot.manipulation.dp.models.diffusion_model import ConditionalUnet1D
+from toddlerbot.manipulation.dp.utils.dataset_utils import (
     normalize_data,
     unnormalize_data,
 )
-from diffusion_policy_minimal.utils.model_utils import get_resnet, replace_bn_with_gn
+from toddlerbot.manipulation.dp.utils.model_utils import get_resnet, replace_bn_with_gn
 
 
 class DPModel:
@@ -160,7 +160,7 @@ if __name__ == "__main__":
     from skvideo.io import vwrite
 
     from datasets.pusht_dataset import PushTImageDataset
-    from diffusion_policy_minimal.envs.pusht_env import PushTImageEnv
+    from toddlerbot.manipulation.dp.envs.pusht_env import PushTImageEnv
 
     pred_horizon, obs_horizon, action_horizon = 16, 2, 8
     lowdim_obs_dim, action_dim = 2, 2

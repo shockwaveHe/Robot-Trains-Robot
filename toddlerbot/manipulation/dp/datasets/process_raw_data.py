@@ -12,7 +12,6 @@ action: (N, na)
 
 import cv2
 import joblib
-import matplotlib.pyplot as plt
 import numpy as np
 
 # new format is: raw_data.keys():

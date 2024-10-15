@@ -1,23 +1,21 @@
 import collections
 import os
 
+import gdown
 import numpy as np
 import torch
 import torch.nn as nn
+from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
+from envs.pusht_env import PushTImageEnv
+from models.diffusion_model import ConditionalUnet1D
 from skvideo.io import vwrite
 from tqdm.auto import tqdm
-from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
-
-from datasets.pusht_dataset import PushTImageDataset 
 from utils.dataset_utils import normalize_data, unnormalize_data
-from envs.pusht_env import PushTImageEnv
 from utils.model_utils import get_resnet, replace_bn_with_gn
-from models.diffusion_model import ConditionalUnet1D
 
-import gdown
+from datasets.pusht_dataset import PushTImageDataset
 
 if __name__ == "__main__":
-
     # construct ResNet18 encoder
     # if you have multiple camera views, use seperate encoder weights for each view.
     vision_encoder = get_resnet("resnet18")
@@ -42,7 +40,7 @@ if __name__ == "__main__":
     # |o|o|                             observations: 2
     # | |a|a|a|a|a|a|a|a|               actions executed: 8
     # |p|p|p|p|p|p|p|p|p|p|p|p|p|p|p|p| actions predicted: 16
-    
+
     # create dataset from file
     dataset_path = "pusht_cchi_v7_replay.zarr.zip"
     dataset = PushTImageDataset(
@@ -80,7 +78,6 @@ if __name__ == "__main__":
     # device transfer
     device = torch.device("mps")
     _ = nets.to(device)
-
 
     # ### **Inference**
 
@@ -133,7 +130,9 @@ if __name__ == "__main__":
             # device transfer
             nimages = torch.from_numpy(nimages).to(device, dtype=torch.float32)
             # (2,3,96,96)
-            nagent_poses = torch.from_numpy(nagent_poses).to(device, dtype=torch.float32)
+            nagent_poses = torch.from_numpy(nagent_poses).to(
+                device, dtype=torch.float32
+            )
             # (2,2)
 
             # infer action
