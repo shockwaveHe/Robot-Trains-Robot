@@ -31,4 +31,4 @@ RELATIVE_PATH="results/${ROBOT}_${ENV}_ppo_${TIME_STR}"
 REMOTE_FOLDER_PATH="${REMOTE_REPO_PATH}/${RELATIVE_PATH}"
 LOCAL_FOLDER_PATH="${LOCAL_REPO_PATH}/${RELATIVE_PATH}"
 
-rsync -avz --exclude '__pycache__' ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_FOLDER_PATH}/{*policy,*.json,*.mp4,envs} ${LOCAL_FOLDER_PATH}/
+rsync -avzP --exclude '__pycache__' ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_FOLDER_PATH}/{*policy,*.json,*.mp4,envs} ${LOCAL_FOLDER_PATH}/
