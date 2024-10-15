@@ -100,6 +100,7 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
                     self.is_button_pressed = False  # Reset button pressed state
 
         fsrL, fsrR = 0.0, 0.0
+        action = self.default_motor_pos.copy()
         if self.is_logging:
             action = obs.motor_pos
             if self.fsr is not None:
@@ -108,7 +109,7 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
                 except Exception as e:
                     print(e)
         else:
-            if self.reset_time is None:
+            if self.is_button_pressed and self.reset_time is None:
                 self.reset_time, self.reset_action = self.move(
                     obs.time - self.control_dt,
                     obs.motor_pos,
@@ -117,13 +118,13 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
                     end_time=self.reset_end_time,
                 )
 
-            if obs.time < self.reset_time[-1]:
-                action = np.asarray(
-                    interpolate_action(obs.time, self.reset_time, self.reset_action)
-                )
-            else:
-                self.reset_time = None
-                action = self.default_motor_pos.copy()
+            if self.reset_time is not None:
+                if obs.time < self.reset_time[-1]:
+                    action = np.asarray(
+                        interpolate_action(obs.time, self.reset_time, self.reset_action)
+                    )
+                else:
+                    self.reset_time = None
 
         # compile data to send to follower
         msg = ZMQMessage(

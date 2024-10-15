@@ -1,4 +1,3 @@
-import pickle
 import time
 
 import cv2
@@ -10,16 +9,16 @@ receiver = ZMQNode(type="receiver")
 
 # Receive data continuously
 while True:
-    data_dict = receiver.get_msg()
+    msg = receiver.get_msg()
 
-    if data_dict is None:
+    if msg is None:
         # time.sleep(0.3)
         # print("No data received")
         continue
 
-    msg_time = data_dict["time"]
+    msg_time = msg.time
 
-    frame = data_dict["camera_frame"]
+    frame = msg.camera_frame
     frame = np.frombuffer(frame, np.uint8)
     frame = cv2.cvtColor(cv2.imdecode(frame, cv2.IMREAD_COLOR), cv2.COLOR_RGB2BGR)
 
@@ -30,5 +29,3 @@ while True:
 
     cv2.imshow("Received Image", frame)
     cv2.waitKey(1)
-
-    print(data_dict.keys())
