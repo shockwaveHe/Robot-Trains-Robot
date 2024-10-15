@@ -1,4 +1,5 @@
 import platform
+import subprocess
 import time
 from typing import Dict, Optional
 
@@ -29,8 +30,16 @@ class TeleopFollowerPDPolicy(BasePolicy, policy_name="teleop_follower_pd"):
         camera: Optional[Camera] = None,
         zmq_receiver: Optional[ZMQNode] = None,
         zmq_sender: Optional[ZMQNode] = None,
+        ip: str = "127.0.0.1",
     ):
         super().__init__(name, robot, init_motor_pos)
+
+        command = f"sudo ntpdate -u {ip}"
+        # Run the command
+        result = subprocess.run(
+            command, shell=True, text=True, check=True, stdout=subprocess.PIPE
+        )
+        print(result.stdout.strip())
 
         self.default_motor_pos = np.array(
             list(robot.default_motor_angles.values()), dtype=np.float32
@@ -86,7 +95,7 @@ class TeleopFollowerPDPolicy(BasePolicy, policy_name="teleop_follower_pd"):
         if zmq_sender is not None:
             self.zmq_sender = zmq_sender
         elif SYS_NAME != "Darwin":
-            self.zmq_sender = ZMQNode(type="sender")
+            self.zmq_sender = ZMQNode(type="sender", ip=ip)
 
         self.camera = None
         if camera is not None:
@@ -94,7 +103,6 @@ class TeleopFollowerPDPolicy(BasePolicy, policy_name="teleop_follower_pd"):
         elif SYS_NAME != "Darwin":
             try:
                 self.camera = Camera()
-                self.zmq_sender = ZMQNode(type="sender", ip="192.168.46")
             except Exception:
                 pass
 
@@ -137,7 +145,7 @@ class TeleopFollowerPDPolicy(BasePolicy, policy_name="teleop_follower_pd"):
         joint_pos = self.state_ref[13 : 13 + self.robot.nu].copy()
         if msg is not None:
             print(f"latency: {abs(time.time() - msg.time) * 1000:.2f} ms")
-            if abs(time.time() - msg.time) < 0.1:
+            if abs(time.time() - msg.time) < 1:
                 self.is_logging = msg.is_logging
                 self.remote_fsr = msg.fsr
                 arm_motor_pos = msg.action

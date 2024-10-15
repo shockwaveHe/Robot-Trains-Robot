@@ -9,6 +9,7 @@ from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.array_utils import ArrayType, inplace_add, inplace_update
 from toddlerbot.utils.array_utils import array_lib as np
 from toddlerbot.utils.file_utils import find_robot_file_path
+from toddlerbot.utils.math_utils import mat2quat
 
 
 class BalancePDReference(MotionReference):
@@ -115,7 +116,41 @@ class BalancePDReference(MotionReference):
                 qpos, self.arm_joint_indices, self.arm_joint_pos_ref[0]
             )
         data = self.forward(qpos)
-        self.com_pos_init = np.array(data.subtree_com[0], dtype=np.float32)
+
+        self.foot_names = [
+            f"{self.robot.foot_name}_collision",
+            f"{self.robot.foot_name}_2_collision",
+        ]
+        self.desired_com = np.array([0, 0, qpos[2]], dtype=np.float32)
+        for i, foot_name in enumerate(self.foot_names):
+            foot_geom_pos = np.array(data.geom(foot_name).xpos)
+            foot_geom_mat = np.array(data.geom(foot_name).xmat).reshape(3, 3)
+            foot_geom_size = np.array(model.geom(foot_name).size)
+            # Define the local coordinates of the bounding box corners
+            local_bbox_corners = np.array(
+                [
+                    [-foot_geom_size[0], -foot_geom_size[1], 0.0],
+                    [foot_geom_size[0], -foot_geom_size[1], 0.0],
+                    [-foot_geom_size[0], foot_geom_size[1], 0.0],
+                    [foot_geom_size[0], foot_geom_size[1], 0.0],
+                ]
+            )
+
+            # Transform local bounding box corners to world coordinates
+            world_bbox_corners = (
+                foot_geom_mat @ local_bbox_corners.T
+            ).T + foot_geom_pos
+
+            if i == 0:
+                self.left_foot_pose = np.eye(4, dtype=np.float32)
+                self.left_foot_pose = inplace_update(
+                    self.left_foot_pose, (slice(0, 3), slice(0, 3)), foot_geom_mat
+                )
+                self.left_foot_pose = inplace_update(
+                    (self.left_foot_pose, slice(0, 3), 3), foot_geom_pos
+                )
+
+            self.desired_com += np.mean(world_bbox_corners, axis=0) / 2
 
     def get_phase_signal(self, time_curr: float | ArrayType) -> ArrayType:
         return np.zeros(1, dtype=np.float32)
@@ -172,20 +207,37 @@ class BalancePDReference(MotionReference):
         joint_pos = inplace_update(joint_pos, self.waist_joint_indices, waist_joint_pos)
 
         qpos = self.default_qpos.copy()
-        qpos = inplace_update(qpos, slice(3, 7), torso_state[3:7])
         qpos = inplace_update(qpos, 7 + self.mj_joint_indices, joint_pos)
         data = self.forward(qpos)
+
+        left_foot_pose = np.eye(4, dtype=np.float32)
+        left_foot_pose = inplace_update(
+            left_foot_pose,
+            (slice(0, 3), slice(0, 3)),
+            np.array(data.geom(self.foot_names[0]).xmat).reshape(3, 3),
+        )
+        left_foot_pose = inplace_update(
+            left_foot_pose,
+            (slice(0, 3), 3),
+            np.array(data.geom(self.foot_names[0]).xpos),
+        )
+
+        torso_pose = left_foot_pose @ np.linalg.inv(self.left_foot_pose)
+        qpos = inplace_update(qpos, slice(3, 7), mat2quat(torso_pose[:3, :3]))
+        qpos = inplace_update(qpos, slice(0, 3), torso_pose[:3, 3])
+        data = self.forward(qpos)
+
         # Get the center of mass position
         com_pos = np.array(data.subtree_com[0], dtype=np.float32)
         # PD controller on CoM position
-        com_pos_error = com_pos - self.com_pos_init
+        com_pos_error = com_pos - self.desired_com
         com_ctrl = self.com_kp * com_pos_error
         com_jacp = self.jac_subtree_com(data, 0)
 
-        # print(f"com_pos: {com_pos}")
-        # print(f"com_pos_init: {self.com_pos_init}")
-        # print(f"com_pos_error: {com_pos_error}")
-        # print(f"com_ctrl: {com_ctrl}")
+        print(f"com_pos: {com_pos}")
+        print(f"com_pos_init: {self.desired_com}")
+        print(f"com_pos_error: {com_pos_error}")
+        print(f"com_ctrl: {com_ctrl}")
 
         # Update joint positions based on the PD controller command
         joint_pos = inplace_add(

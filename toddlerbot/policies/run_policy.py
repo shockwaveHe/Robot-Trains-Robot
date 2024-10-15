@@ -490,6 +490,8 @@ if __name__ == "__main__":
                 robot.config["joints"][motor_name][gain_name] = 0.0
 
         policy = PolicyClass(args.policy, robot, init_motor_pos, ip=args.ip)
+    elif issubclass(PolicyClass, TeleopFollowerPDPolicy):
+        policy = PolicyClass(args.policy, robot, init_motor_pos, ip=args.ip)
     else:
         policy = PolicyClass(args.policy, robot, init_motor_pos)
 
