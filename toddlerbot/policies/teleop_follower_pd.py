@@ -1,6 +1,6 @@
 import platform
 import time
-from typing import Optional
+from typing import Dict, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -12,7 +12,8 @@ from toddlerbot.sensing.camera import Camera
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
-from toddlerbot.utils.comm_utils import ZMQNode
+from toddlerbot.utils.comm_utils import ZMQMessage, ZMQNode
+from toddlerbot.utils.dataset_utils import Data, DatasetLogger
 from toddlerbot.utils.math_utils import interpolate_action
 
 SYS_NAME = platform.system()
@@ -64,6 +65,8 @@ class TeleopFollowerPDPolicy(BasePolicy, policy_name="teleop_follower_pd"):
             self.balance_ref.arm_gear_ratio, dtype=np.float32
         )
 
+        self.dataset_logger = DatasetLogger()
+
         self.joystick = joystick
         if joystick is None:
             try:
@@ -96,8 +99,13 @@ class TeleopFollowerPDPolicy(BasePolicy, policy_name="teleop_follower_pd"):
                 pass
 
         self.msg = None
-        self.last_control_inputs = None
+        self.last_control_inputs: Dict[str, float] | None = None
         self.step_curr = 0
+
+        self.is_logging = False
+        self.remote_fsr = np.zeros(2, dtype=np.float32)
+        self.toggle_motor = True
+        self.n_logs = 1
 
         self.prep_duration = 2.0
         self.prep_time, self.prep_action = self.move(
@@ -108,21 +116,9 @@ class TeleopFollowerPDPolicy(BasePolicy, policy_name="teleop_follower_pd"):
             end_time=0.0,
         )
 
+        print('\nBy default, logging is disabled. Press "menu" to toggle logging.\n')
+
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
-        if self.camera is not None:
-            # t1 = time.time()
-            jpeg_frame, raw_frame = self.camera.get_jpeg()
-            camera_frame = jpeg_frame
-            # t2 = time.time()
-            print(raw_frame.shape)
-        else:
-            camera_frame = None
-
-        if self.zmq_sender is not None:
-            self.zmq_sender.send_msg(
-                {"time": time.time(), "camera_frame": camera_frame}
-            )
-
         # Preparation phase
         if obs.time < self.prep_time[-1]:
             action = np.asarray(
@@ -130,7 +126,6 @@ class TeleopFollowerPDPolicy(BasePolicy, policy_name="teleop_follower_pd"):
             )
             return action
 
-        # Get the motor target from the teleop node
         msg = None
         if self.msg is not None:
             msg = self.msg
@@ -138,6 +133,36 @@ class TeleopFollowerPDPolicy(BasePolicy, policy_name="teleop_follower_pd"):
             msg = self.zmq_receiver.get_msg()
 
         # print(f"msg: {msg}")
+        time_curr = self.step_curr * self.control_dt
+        joint_pos = self.state_ref[13 : 13 + self.robot.nu].copy()
+        if msg is not None:
+            print(f"latency: {abs(time.time() - msg.time) * 1000:.2f} ms")
+            if abs(time.time() - msg.time) < 0.1:
+                self.is_logging = msg.is_logging
+                self.remote_fsr = msg.fsr
+                arm_motor_pos = msg.action
+                arm_joint_pos = arm_motor_pos * self.arm_gear_ratio
+                joint_pos[self.arm_joint_indices] = arm_joint_pos
+            else:
+                print("stale message received, discarding")
+
+        if self.camera is not None:
+            jpeg_frame, camera_frame = self.camera.get_jpeg()
+        else:
+            jpeg_frame = None
+
+        if self.zmq_sender is not None:
+            send_msg = ZMQMessage(time=time.time(), camera_frame=jpeg_frame)
+            self.zmq_sender.send_msg(send_msg)
+
+        # Log the data
+        if self.is_logging:
+            self.dataset_logger.log_entry(
+                Data(obs.time, obs.motor_pos, self.remote_fsr, camera_frame)
+            )
+        else:
+            # clean up the log when not logging.
+            self.dataset_logger.maintain_log()
 
         control_inputs = self.last_control_inputs
         if self.joystick is not None:
@@ -166,24 +191,6 @@ class TeleopFollowerPDPolicy(BasePolicy, policy_name="teleop_follower_pd"):
                     command[4] = input * self.command_range[4][0]
                 elif task == "twist_right" and input > 0:
                     command[4] = input * self.command_range[4][1]
-
-        # print(f"command: {command}")
-        # motor_angles = dict(zip(self.robot.motor_ordering, obs.motor_pos))
-        # joint_pos = np.array(
-        #     list(self.robot.motor_to_joint_angles(motor_angles).values()),
-        #     dtype=np.float32,
-        # )
-        time_curr = self.step_curr * self.control_dt
-
-        joint_pos = self.state_ref[13 : 13 + self.robot.nu].copy()
-        if msg is not None:
-            # print(f"latency: {abs(time.time() - msg.time) * 1000:.2f} ms")
-            if abs(time.time() - msg.time) < 0.1:
-                arm_motor_pos = msg.action
-                arm_joint_pos = arm_motor_pos * self.arm_gear_ratio
-                joint_pos[self.arm_joint_indices] = arm_joint_pos
-            else:
-                print("stale message received, discarding")
 
         self.state_ref[13 : 13 + self.robot.nu] = joint_pos
         self.state_ref = self.balance_ref.get_state_ref(

@@ -81,4 +81,22 @@ install ntp package to sync time of the jetson to server.
 
    sudo apt install ntp
    sudo systemctl enable ntp
-   sudo service ntp start
+
+
+nano /etc/ntp.conf
+
+comment out the following lines:
+
+# pool 0.ubuntu.pool.ntp.org iburst
+# pool 1.ubuntu.pool.ntp.org iburst
+# pool 2.ubuntu.pool.ntp.org iburst
+# pool 3.ubuntu.pool.ntp.org iburst
+# pool ntp.ubuntu.com
+
+add:
+
+server <server_ip_address> iburst
+
+::
+
+   sudo systemctl start ntp

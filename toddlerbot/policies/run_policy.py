@@ -17,7 +17,7 @@ from toddlerbot.policies.calibrate import CalibratePolicy
 from toddlerbot.policies.dp_policy import DPPolicy
 from toddlerbot.policies.mjx_policy import MJXPolicy
 from toddlerbot.policies.sysID import SysIDFixedPolicy
-from toddlerbot.policies.teleop_follower import TeleopFollowerPolicy
+from toddlerbot.policies.teleop_follower_pd import TeleopFollowerPDPolicy
 from toddlerbot.policies.teleop_leader import TeleopLeaderPolicy
 from toddlerbot.sim import BaseSim, Obs
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
@@ -347,7 +347,7 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
     dump_profiling_data(prof_path)
 
     if isinstance(policy, TeleopLeaderPolicy) or isinstance(
-        policy, TeleopFollowerPolicy
+        policy, TeleopFollowerPDPolicy
     ):
         policy.dataset_logger.save(os.path.join(exp_folder_path, "dataset.lz4"))
 
@@ -467,10 +467,9 @@ if __name__ == "__main__":
         policy = PolicyClass(args.policy, robot, init_motor_pos, args.run_name)
 
     elif issubclass(PolicyClass, MJXPolicy):
+        fixed_command = None
         if len(args.command) > 0:
             fixed_command = np.array(args.command.split(" "), dtype=np.float32)
-        else:
-            fixed_command = None
 
         policy = PolicyClass(
             args.policy, robot, init_motor_pos, args.ckpt, fixed_command=fixed_command

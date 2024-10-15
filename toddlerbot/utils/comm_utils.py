@@ -1,6 +1,6 @@
 import pickle
 from dataclasses import dataclass
-from typing import List
+from typing import Dict, List, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -10,11 +10,12 @@ import zmq
 @dataclass
 class ZMQMessage:
     time: float
-    is_logging: bool
-    control_inputs: dict
-    action: npt.NDArray[np.float32]
-    fsr: npt.NDArray[np.float32]
-    trial: int
+    is_logging: bool = False
+    control_inputs: Optional[Dict[str, float]] = None
+    action: Optional[npt.NDArray[np.float32]] = None
+    fsr: Optional[npt.NDArray[np.float32]] = None
+    camera_frame: Optional[npt.NDArray[np.uint8]] = None
+    trial: int = 0
 
 
 """

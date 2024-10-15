@@ -1,5 +1,9 @@
+from dataclasses import dataclass, fields
+from typing import Optional
+
 import joblib
 import numpy as np
+import numpy.typing as npt
 
 """
 Dataset format:
@@ -9,32 +13,33 @@ images: [n,h,w,3], RGB images uint8
 """
 
 
+@dataclass
+class Data:
+    time: float
+    arm_motor_pos: npt.NDArray[np.float32]
+    fsr_data: npt.NDArray[np.float32]
+    image: Optional[npt.NDArray[np.uint8]] = None
+
+
 class DatasetLogger:
     def __init__(self):
-        self.data_dict = {"state_array": [], "images": [], "episode_ends": []}
+        self.data_list = []
+        self.episode_ends = []
 
-    def log_entry(self, time, joint_angles, fsr_data, camera_frame):
-        camera_frame_idx = len(self.data_dict["images"])
-        state_entry = [time] + list(joint_angles) + fsr_data + [camera_frame_idx]
-
-        self.data_dict["state_array"].append(state_entry)
-        if camera_frame is not None:
-            self.data_dict["images"].append(camera_frame)
-        else:
-            self.data_dict["images"].append(np.zeros((1, 1, 3), dtype=np.uint8))
+    def log_entry(self, data: Data):
+        self.data_list.append(data)
 
     # episode end index is the index of the last state entry in the episode +1
     def log_episode_end(self):
-        self.data_dict["episode_ends"].append(len(self.data_dict["state_array"]))
+        self.episode_ends.append(len(self.data_list))
 
     def maintain_log(self):
-        if len(self.data_dict["episode_ends"]) > 0:
-            len_dataset = self.data_dict["episode_ends"][-1]
-            self.data_dict["state_array"] = self.data_dict["state_array"][:len_dataset]
-            self.data_dict["images"] = self.data_dict["images"][:len_dataset]
+        if len(self.episode_ends) > 0:
+            len_dataset = self.episode_ends[-1]
+            self.data_list = self.data_list[:len_dataset]
 
     # TODO: Implement this function
-    def _set_to_rate(self, rate):
+    def _set_to_rate(self, rate: float):
         # state_array = self.data_dict["state_array"]
         # images = self.data_dict["images"]
 
@@ -51,14 +56,17 @@ class DatasetLogger:
 
     def save(self, path: str):
         # watchout for saving time in float32, it will get truncated to 100s accuracy
-        self.data_dict["state_array"] = np.array(self.data_dict["state_array"])
-        self.data_dict["start_time"] = self.data_dict["state_array"][0, 0]
-
-        # convert list to np array, image to uint8 to save space (4x)
-        self.data_dict["images"] = np.array(self.data_dict["images"], dtype=np.uint8)
+        # Assuming self.data_list is a list of Data instances
+        data_dict = {
+            field.name: np.array(
+                [getattr(data, field.name) for data in self.data_list],
+            )
+            for field in fields(Data)
+        }
+        data_dict["start_time"] = self.data_list[0].time
 
         # downsample everything to 10hz
         self._set_to_rate(10)
 
         # dump to lz4 format
-        joblib.dump(self.data_dict, path, compress="lz4")
+        joblib.dump(data_dict, path, compress="lz4")

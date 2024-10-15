@@ -10,7 +10,7 @@ from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
 from toddlerbot.utils.comm_utils import ZMQMessage, ZMQNode
-from toddlerbot.utils.dataset_utils import DatasetLogger
+from toddlerbot.utils.dataset_utils import Data, DatasetLogger
 from toddlerbot.utils.math_utils import interpolate_action
 
 
@@ -43,14 +43,11 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
         self.is_button_pressed = False
         self.n_logs = 1
         self.trial_idx = 0
-        # self.last_time = time.time()
 
-        self.joystick = joystick
         if joystick is None:
-            try:
-                self.joystick = Joystick()
-            except Exception:
-                pass
+            self.joystick = Joystick()
+        else:
+            self.joystick = joystick
 
         self.prep_duration = 2.0
         self.prep_time, self.prep_action = self.move(
@@ -117,6 +114,8 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
                     end_time=self.reset_end_time,
                 )
 
+            assert self.reset_time is not None
+
             if obs.time < self.reset_time[-1]:
                 action = np.asarray(
                     interpolate_action(obs.time, self.reset_time, self.reset_action)
@@ -142,7 +141,9 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
 
         # Log the data
         if self.is_logging:
-            self.dataset_logger.log_entry(obs.time, action, [fsrL, fsrR], None)
+            self.dataset_logger.log_entry(
+                Data(obs.time, obs.motor_pos, np.array([fsrL, fsrR]), None)
+            )
         else:
             # clean up the log when not logging.
             self.dataset_logger.maintain_log()
