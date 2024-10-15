@@ -1,5 +1,3 @@
-import time
-
 import cv2
 import numpy as np
 
@@ -29,7 +27,7 @@ class Camera:
     def get_jpeg(self):
         frame = self.get_state()
         # Encode the frame as a JPEG with quality of 90
-        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 20]
+        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 30]
         _, img_encoded_jpeg = cv2.imencode(".jpg", frame, encode_param)
         return img_encoded_jpeg, frame
 

@@ -143,7 +143,7 @@ class TeleopFollowerPDPolicy(BasePolicy, policy_name="teleop_follower_pd"):
         time_curr = self.step_curr * self.control_dt
         joint_pos = self.state_ref[13 : 13 + self.robot.nu].copy()
         if msg is not None:
-            print(f"latency: {abs(time.time() - msg.time) * 1000:.2f} ms")
+            # print(f"latency: {abs(time.time() - msg.time) * 1000:.2f} ms")
             if abs(time.time() - msg.time) < 1:
                 self.remote_fsr = msg.fsr
                 arm_motor_pos = msg.action
