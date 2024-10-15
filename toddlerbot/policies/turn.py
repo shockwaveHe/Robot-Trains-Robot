@@ -41,10 +41,12 @@ class TurnPolicy(MJXPolicy, policy_name="turn"):
         )
 
     def get_command(self, control_inputs: Dict[str, float]) -> npt.NDArray[np.float32]:
-        command = np.zeros_like(self.fixed_command)
+        command = 0.5 * np.ones(self.num_commands, dtype=np.float32)
+        command[5] = 0.0
+        command[6] = 0.0
         for task, input in control_inputs.items():
             if task == "turn":
-                command[2] = np.interp(
+                command[7] = np.interp(
                     input,
                     [-1, 0, 1],
                     [self.command_range[0][1], 0.0, self.command_range[0][0]],

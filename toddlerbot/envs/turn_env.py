@@ -19,6 +19,8 @@ class TurnCfg(WalkCfg, env_name="turn"):
                 [0.0, 1.0],
                 [0.0, 1.0],
                 [0.0, 1.0],
+                [0.0, 0.0],
+                [0.0, 0.0],
                 [-0.5, 0.5],
             ]
         )
@@ -64,8 +66,8 @@ class TurnEnv(WalkEnv, env_name="turn"):
         z = jax.random.uniform(
             rng_2,
             (1,),
-            minval=self.command_range[0][0],
-            maxval=self.command_range[0][1],
+            minval=self.command_range[7][0],
+            maxval=self.command_range[7][1],
         )
         command = jnp.concatenate([pose_command, x, y, z])
 

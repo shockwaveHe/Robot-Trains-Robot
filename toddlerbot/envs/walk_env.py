@@ -30,6 +30,7 @@ class WalkCfg(MJXConfig, env_name="walk"):
                 [0.0, 1.0],
                 [-0.1, 0.2],
                 [-0.1, 0.1],
+                [0.0, 0.0],
             ]
         )
         deadzone: float = 0.05
