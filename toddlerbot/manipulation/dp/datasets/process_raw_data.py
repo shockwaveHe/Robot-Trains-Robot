@@ -28,7 +28,7 @@ def load_raw_dataset():
     result_dir = "/Users/weizhuo2/Documents/gits/toddleroid/results/"
     # dataset_path = "toddlerbot_arms_teleop_fixed_mujoco_20240909_204445/dataset.lz4"
     dataset_path = (
-        "toddlerbot_OP3_teleop_follower_pd_real_world_20241014_202953/dataset.lz4"
+        "toddlerbot_OP3_teleop_follower_pd_real_world_20241014_223229/dataset.lz4"
     )
     raw_data = joblib.load(result_dir + dataset_path)
 
@@ -47,7 +47,8 @@ def load_raw_dataset():
     raw_data_converted["start_time"] = raw_data["start_time"]
 
     print(raw_data.keys())
-    return raw_data
+    print(raw_data_converted.keys())
+    return raw_data_converted
 
 
 def main():
@@ -101,7 +102,9 @@ def main():
     output_dataset["episode_ends"] = raw_data["episode_ends"]
 
     # save the dataset
-    output_path = "/Users/weizhuo2/Documents/gits/diffusion_policy_minimal/teleop_data/teleop_dataset.lz4"
+    output_path = (
+        "/Users/weizhuo2/Documents/gits/toddleroid/datasets/teleop_dataset_neo.lz4"
+    )
     joblib.dump(output_dataset, output_path)
 
 
