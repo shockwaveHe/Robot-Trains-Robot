@@ -23,8 +23,8 @@ class WalkPolicy(MJXPolicy, policy_name="walk"):
         env_cfg = WalkCfg()
         motion_ref = WalkZMPReference(
             robot,
-            env_cfg.action.cycle_time,
             env_cfg.sim.timestep * env_cfg.action.n_frames,
+            env_cfg.action.cycle_time,
         )
 
         self.command_range = env_cfg.commands.command_range
@@ -41,20 +41,20 @@ class WalkPolicy(MJXPolicy, policy_name="walk"):
         )
 
     def get_command(self, control_inputs: Dict[str, float]) -> npt.NDArray[np.float32]:
-        command = np.zeros_like(self.fixed_command)
+        command = 0.5 * np.ones(self.num_commands, dtype=np.float32)
+        command[7] = 0.0
         for task, input in control_inputs.items():
+            axis = None
             if task == "walk_vertical":
-                command[0] = np.interp(
-                    input,
-                    [-1, 0, 1],
-                    [self.command_range[0][1], 0.0, self.command_range[0][0]],
-                )
-
+                axis = 5
             elif task == "walk_horizontal":
-                command[1] = np.interp(
+                axis = 6
+
+            if axis is not None:
+                command[axis] = np.interp(
                     input,
                     [-1, 0, 1],
-                    [self.command_range[1][1], 0.0, self.command_range[1][0]],
+                    [self.command_range[axis][1], 0.0, self.command_range[axis][0]],
                 )
 
         return command

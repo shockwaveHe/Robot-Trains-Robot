@@ -1,32 +1,42 @@
 from dataclasses import dataclass, field
-from typing import Any, List, Tuple
+from typing import Any, List, Optional
 
 import jax
 import jax.numpy as jnp
 
 from toddlerbot.envs.mjx_config import MJXConfig
 from toddlerbot.envs.mjx_env import MJXEnv
-from toddlerbot.ref_motion.balance_ref import BalanceReference
+from toddlerbot.ref_motion.balance_pd_ref import BalancePDReference
 from toddlerbot.sim.robot import Robot
 
 
 @dataclass
-class BalanceCfg(MJXConfig):
+class BalanceCfg(MJXConfig, env_name="balance"):
     @dataclass
     class ObsConfig(MJXConfig.ObsConfig):
-        num_single_obs: int = 104
-        num_single_privileged_obs: int = 143
+        num_single_obs: int = 102
+        num_single_privileged_obs: int = 141
 
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):
-        resample_time: float = 100.0  # No resampling
-        num_commands: int = 1
-        sample_range: List[float] = field(default_factory=lambda: [0.0, 1.0])
+        resample_time: float = 2.0
+        command_range: List[List[float]] = field(
+            default_factory=lambda: [
+                [-1.5, 1.5],
+                [-1.5, 1.5],
+                [0.0, 0.5],
+                [-0.3, 0.3],
+                [-1.0, 1.0],
+            ]
+        )
+        deadzone: List[float] = field(
+            default_factory=lambda: [0.05, 0.05, 0.0, 0.05, 0.05]
+        )
 
     @dataclass
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
         # Balance specific rewards
-        pass
+        torso_quat: float = 0.0
 
     def __init__(self):
         super().__init__()
@@ -36,7 +46,7 @@ class BalanceCfg(MJXConfig):
         self.rewards.scales = self.RewardScales()
 
 
-class BalanceEnv(MJXEnv):
+class BalanceEnv(MJXEnv, env_name="balance"):
     def __init__(
         self,
         name: str,
@@ -47,10 +57,10 @@ class BalanceEnv(MJXEnv):
         add_domain_rand: bool = True,
         **kwargs: Any,
     ):
-        motion_ref = BalanceReference(robot)
+        motion_ref = BalancePDReference(robot, cfg.sim.timestep * cfg.action.n_frames)
 
-        self.num_commands = cfg.commands.num_commands
-        self.sample_range = cfg.commands.sample_range
+        self.command_range = jnp.array(cfg.commands.command_range)
+        self.deadzone = jnp.array(cfg.commands.deadzone)
 
         super().__init__(
             name,
@@ -63,18 +73,56 @@ class BalanceEnv(MJXEnv):
             **kwargs,
         )
 
-    def _sample_command(self, rng: jax.Array) -> jax.Array:
-        rng, rng_1 = jax.random.split(rng)
-        command = jax.random.uniform(
+    def _sample_command(
+        self, rng: jax.Array, last_command: Optional[jax.Array] = None
+    ) -> jax.Array:
+        rng, rng_1, rng_2, rng_3, rng_4, rng_5 = jax.random.split(rng, 6)
+        neck_yaw_command = jax.random.uniform(
             rng_1,
             (1,),
-            minval=self.sample_range[0],
-            maxval=self.sample_range[1],
+            minval=self.command_range[0][0],
+            maxval=self.command_range[0][1],
         )
+        neck_pitch_command = jax.random.uniform(
+            rng_2,
+            (1,),
+            minval=self.command_range[1][0],
+            maxval=self.command_range[1][1],
+        )
+        if last_command is None:
+            arm_command = jax.random.uniform(
+                rng_3,
+                (1,),
+                minval=self.command_range[2][0],
+                maxval=self.command_range[2][1],
+            )
+        else:
+            arm_command = last_command[2:3].copy()
+
+        waist_roll_command = jax.random.uniform(
+            rng_4,
+            (1,),
+            minval=self.command_range[3][0],
+            maxval=self.command_range[3][1],
+        )
+        waist_yaw_command = jax.random.uniform(
+            rng_5,
+            (1,),
+            minval=self.command_range[4][0],
+            maxval=self.command_range[4][1],
+        )
+        command = jnp.concatenate(
+            [
+                neck_yaw_command,
+                neck_pitch_command,
+                arm_command,
+                waist_roll_command,
+                waist_yaw_command,
+            ]
+        )
+
+        # Set small commands to zero based on norm condition
+        mask = (jnp.abs(command) > self.deadzone).astype(jnp.float32)
+        command = command.at[:].set(command * mask)
+
         return command
-
-    def _extract_command(self, command: jax.Array) -> Tuple[jax.Array, jax.Array]:
-        lin_vel = jnp.array([0.0, 0.0, 0.0])
-        ang_vel = jnp.array([0.0, 0.0, 0.0])
-
-        return lin_vel, ang_vel

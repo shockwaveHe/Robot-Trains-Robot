@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Tuple
 
 from toddlerbot.ref_motion import MotionReference
 from toddlerbot.sim.robot import Robot
@@ -10,17 +10,14 @@ class WalkSimpleReference(MotionReference):
     def __init__(
         self,
         robot: Robot,
+        dt: float,
         cycle_time: float,
         max_knee_pitch: float = np.pi / 3,
         double_support_phase: float = 0.1,
     ):
-        super().__init__("walk_simple", "periodic", robot)
+        super().__init__("walk_simple", "periodic", robot, dt)
 
         self.cycle_time = cycle_time
-        self.default_joint_pos = np.array(
-            list(robot.default_joint_angles.values()), dtype=np.float32
-        )
-        self.default_joint_vel = np.zeros_like(self.default_joint_pos)
 
         self.knee_pitch_default = self.default_joint_pos[
             self.robot.joint_ordering.index("left_knee_pitch")
@@ -34,16 +31,22 @@ class WalkSimpleReference(MotionReference):
             / self.robot.data_dict["offsets"]["hip_pitch_to_knee_z"]
         )
 
-        self.left_hip_pitch_idx = self.robot.joint_ordering.index("left_hip_pitch")
-        self.left_knee_pitch_idx = self.robot.joint_ordering.index("left_knee_pitch")
-        self.left_ank_pitch_idx = self.robot.joint_ordering.index("left_ank_pitch")
-        self.right_hip_pitch_idx = self.robot.joint_ordering.index("right_hip_pitch")
-        self.right_knee_pitch_idx = self.robot.joint_ordering.index("right_knee_pitch")
-        self.right_ank_pitch_idx = self.robot.joint_ordering.index("right_ank_pitch")
+        self.left_pitch_joint_indices = np.array(
+            [
+                self.robot.joint_ordering.index("left_hip_pitch"),
+                self.robot.joint_ordering.index("left_knee_pitch"),
+                self.robot.joint_ordering.index("left_ank_pitch"),
+            ]
+        )
+        self.right_pitch_joint_indices = np.array(
+            [
+                self.robot.joint_ordering.index("right_hip_pitch"),
+                self.robot.joint_ordering.index("right_knee_pitch"),
+                self.robot.joint_ordering.index("right_ank_pitch"),
+            ]
+        )
 
-    def get_phase_signal(
-        self, time_curr: float | ArrayType, command: ArrayType
-    ) -> ArrayType:
+    def get_phase_signal(self, time_curr: float | ArrayType) -> ArrayType:
         phase_signal = np.array(
             [
                 np.sin(2 * np.pi * time_curr / self.cycle_time),
@@ -53,35 +56,32 @@ class WalkSimpleReference(MotionReference):
         )
         return phase_signal
 
-    def get_state_ref(
-        self,
-        path_pos: ArrayType,
-        path_quat: ArrayType,
-        time_curr: Optional[float | ArrayType] = None,
-        command: Optional[ArrayType] = None,
-    ) -> ArrayType:
-        if time_curr is None:
-            raise ValueError(f"time_curr is required for {self.name}")
+    def get_vel(self, command: ArrayType) -> Tuple[ArrayType, ArrayType]:
+        lin_vel = np.array([command[0], command[1], 0.0], dtype=np.float32)
+        ang_vel = np.array([0.0, 0.0, command[2]], dtype=np.float32)
+        return lin_vel, ang_vel
 
-        if command is None:
-            raise ValueError(f"command is required for {self.name}")
+    def get_state_ref(
+        self, state_curr: ArrayType, time_curr: float | ArrayType, command: ArrayType
+    ) -> ArrayType:
+        torso_state = self.integrate_torso_state(
+            state_curr[:3], state_curr[3:7], command
+        )
 
         sin_phase_signal = np.sin(2 * np.pi * time_curr / self.cycle_time)
         signal_left = np.clip(sin_phase_signal, 0, None)
         signal_right = np.clip(sin_phase_signal, None, 0)
 
-        linear_vel = np.array([command[0], command[1], 0.0], dtype=np.float32)
-        angular_vel = np.array([0.0, 0.0, command[2]], dtype=np.float32)
+        left_leg_angles = self.leg_ik(signal_left, True)
+        right_leg_angles = self.leg_ik(signal_right, False)
 
         joint_pos = self.default_joint_pos.copy()
-
-        left_leg_angles = self.calculate_leg_angles(signal_left, True)
-        right_leg_angles = self.calculate_leg_angles(signal_right, False)
-        leg_angles = {**left_leg_angles, **right_leg_angles}
-
-        for idx, angle in leg_angles.items():
-            joint_pos = inplace_update(joint_pos, idx, angle)
-
+        joint_pos = inplace_update(
+            joint_pos, self.left_pitch_joint_indices, left_leg_angles
+        )
+        joint_pos = inplace_update(
+            joint_pos, self.right_pitch_joint_indices, right_leg_angles
+        )
         double_support_mask = np.abs(sin_phase_signal) < self.double_support_phase
         joint_pos = np.where(double_support_mask, self.default_joint_pos, joint_pos)
 
@@ -92,19 +92,9 @@ class WalkSimpleReference(MotionReference):
         stance_mask = inplace_update(stance_mask, 1, np.any(sin_phase_signal < 0))
         stance_mask = np.where(double_support_mask, 1, stance_mask)
 
-        return np.concatenate(
-            (
-                path_pos,
-                path_quat,
-                linear_vel,
-                angular_vel,
-                joint_pos,
-                joint_vel,
-                stance_mask,
-            )
-        )
+        return np.concatenate((torso_state, joint_pos, joint_vel, stance_mask))
 
-    def calculate_leg_angles(self, signal: ArrayType, is_left: bool):
+    def leg_ik(self, signal: ArrayType, is_left: bool):
         knee_angle = np.abs(
             signal * (self.max_knee_pitch - self.knee_pitch_default)
             + (2 * int(is_left) - 1) * self.knee_pitch_default
@@ -116,17 +106,13 @@ class WalkSimpleReference(MotionReference):
         hip_pitch_angle = knee_angle - ank_pitch_angle
 
         if is_left:
-            return {
-                self.left_hip_pitch_idx: -hip_pitch_angle,
-                self.left_knee_pitch_idx: knee_angle,
-                self.left_ank_pitch_idx: -ank_pitch_angle,
-            }
+            return np.array(
+                [-hip_pitch_angle, knee_angle, -ank_pitch_angle], dtype=np.float32
+            )
         else:
-            return {
-                self.right_hip_pitch_idx: hip_pitch_angle,
-                self.right_knee_pitch_idx: -knee_angle,
-                self.right_ank_pitch_idx: -ank_pitch_angle,
-            }
+            return np.array(
+                [hip_pitch_angle, -knee_angle, -ank_pitch_angle], dtype=np.float32
+            )
 
     def override_motor_target(
         self, motor_target: ArrayType, state_ref: ArrayType

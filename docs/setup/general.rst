@@ -147,6 +147,7 @@ We need to install MeshLab to simplify the meshes downloaded from OnShape in the
          import shutil
          if shutil.which('meshlabserver') is None:
 
+      TODO: Automate this change in the script.
 
 Run the following script and follow the instructions:
 

@@ -34,8 +34,8 @@ class MJXConfig:
 
         frame_stack: int = 15
         c_frame_stack: int = 15
-        num_single_obs: int = 101
-        num_single_privileged_obs: int = 140
+        num_single_obs: int = 106
+        num_single_privileged_obs: int = 145
         scales: ObsScales = ObsScales()
 
     @dataclass
@@ -74,8 +74,8 @@ class MJXConfig:
             arm_action_acc: float = 0.0  # 1e-2
             neck_action_rate: float = 0.0  # 1e-2
             neck_action_acc: float = 0.0  # 1e-2
-            waist_action_rate: float = 1e-2
-            waist_action_acc: float = 1e-2
+            waist_action_rate: float = 0.0  # 1e-2
+            waist_action_acc: float = 0.0  # 1e-2
             feet_contact: float = 0.5
             feet_contact_number: float = 0.0
             collision: float = 0.0  # 1.0
@@ -95,9 +95,8 @@ class MJXConfig:
 
     @dataclass
     class CommandsConfig:
-        num_commands: int = 3
         resample_time: float = 5.0
-        command_list: List[List[float]] = field(default_factory=lambda: [[0.0]])
+        reset_time: float = 100.0  # No resetting by default
 
     @dataclass
     class DomainRandConfig:

@@ -15,8 +15,22 @@ Welcome to the Toddlerbot documentation! This documentation is a comprehensive g
 The Toddlerbot is a low-cost, open-source, and easy-to-build robot designed for educational purposes. 
 The robot is designed to be easy to build and use, and is intended to be used as a platform for learning about robotics and programming.
 
+
 Contents
 ------------------------
+
+.. toctree::
+   :maxdepth: 2
+   :caption: New to toddlerbot?
+
+   tutorial/001_getting_started
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Returning Users
+
+   tutorial/questions
+
 
 .. toctree::
    :maxdepth: 2

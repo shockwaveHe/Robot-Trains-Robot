@@ -520,7 +520,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--ref",
         type=str,
-        default="zmp",
+        default="",
         help="Path to the checkpoint folder.",
     )
     args = parser.parse_args()

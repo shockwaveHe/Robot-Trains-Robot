@@ -39,3 +39,23 @@ Test the Joystick by running this script:
 ::
 
    python tests/test_joystick.py
+
+
+For the accuracy of teleoperation and logging over network, we need to
+install ntp package to sync time of the jetson to server.
+
+::
+
+   sudo pacman -S ntp
+   sudo systemctl enable ntp
+
+
+nano /etc/ntp.conf
+
+add:
+
+restrict <client_ip_address> mask 255.255.255.255 nomodify notrap
+
+::
+
+   sudo systemctl start ntp

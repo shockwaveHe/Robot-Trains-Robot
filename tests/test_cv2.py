@@ -143,10 +143,14 @@ while True:
     ret, frame = cap.read()
     orig_frame = frame.copy()
 
+    # Encode the frame as a JPEG with quality of 90
+    encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
+    _, img_encoded_jpeg = cv2.imencode(".jpg", frame, encode_param)
+
     # # resize frame to 171x96
-    frame = cv2.resize(frame, (171, 96))
+    # frame = cv2.resize(frame, (171, 96))
     # # crop center part of frame to 96x96
-    frame = frame[0:96, 38:134]
+    # frame = frame[0:96, 38:134]
 
     # If frame was not captured successfully, break the loop
     if not ret:
