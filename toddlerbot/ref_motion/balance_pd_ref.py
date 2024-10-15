@@ -9,7 +9,6 @@ from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.array_utils import ArrayType, inplace_add, inplace_update
 from toddlerbot.utils.array_utils import array_lib as np
 from toddlerbot.utils.file_utils import find_robot_file_path
-from toddlerbot.utils.math_utils import mat2quat, quat2mat
 
 
 class BalancePDReference(MotionReference):
@@ -18,7 +17,7 @@ class BalancePDReference(MotionReference):
         robot: Robot,
         dt: float,
         arm_playback_speed: float = 1.0,
-        com_kp: List[float] = [200.0, 200.0, 0.0],
+        com_kp: List[float] = [250.0, 250.0, 0.0],
     ):
         super().__init__("balance_pd", "perceptual", robot, dt)
 
@@ -119,33 +118,34 @@ class BalancePDReference(MotionReference):
             )
         data = self.forward(qpos)
 
-        self.foot_names = [
-            f"{self.robot.foot_name}_collision",
-            f"{self.robot.foot_name}_2_collision",
-        ]
-        self.desired_com = np.zeros(3, dtype=np.float32)
-        for i, foot_name in enumerate(self.foot_names):
-            foot_geom_pos = np.array(data.geom(foot_name).xpos)
-            foot_geom_mat = np.array(data.geom(foot_name).xmat).reshape(3, 3)
-            foot_geom_size = np.array(model.geom(foot_name).size)
-            # Define the local coordinates of the bounding box corners
-            local_bbox_corners = np.array(
-                [
-                    [-foot_geom_size[0], -foot_geom_size[1], 0.0],
-                    [foot_geom_size[0], -foot_geom_size[1], 0.0],
-                    [-foot_geom_size[0], foot_geom_size[1], 0.0],
-                    [foot_geom_size[0], foot_geom_size[1], 0.0],
-                ]
-            )
+        self.desired_com = np.array(data.subtree_com[0], dtype=np.float32)
+        # foot_names = [
+        #     f"{self.robot.foot_name}_collision",
+        #     f"{self.robot.foot_name}_2_collision",
+        # ]
+        # self.desired_com = np.zeros(3, dtype=np.float32)
+        # for i, foot_name in enumerate(foot_names):
+        #     foot_geom_pos = np.array(data.geom(foot_name).xpos)
+        #     foot_geom_mat = np.array(data.geom(foot_name).xmat).reshape(3, 3)
+        #     foot_geom_size = np.array(model.geom(foot_name).size)
+        #     # Define the local coordinates of the bounding box corners
+        #     local_bbox_corners = np.array(
+        #         [
+        #             [-foot_geom_size[0], -foot_geom_size[1], 0.0],
+        #             [foot_geom_size[0], -foot_geom_size[1], 0.0],
+        #             [-foot_geom_size[0], foot_geom_size[1], 0.0],
+        #             [foot_geom_size[0], foot_geom_size[1], 0.0],
+        #         ]
+        #     )
 
-            # Transform local bounding box corners to world coordinates
-            world_bbox_corners = (
-                foot_geom_mat @ local_bbox_corners.T
-            ).T + foot_geom_pos
+        #     # Transform local bounding box corners to world coordinates
+        #     world_bbox_corners = (
+        #         foot_geom_mat @ local_bbox_corners.T
+        #     ).T + foot_geom_pos
 
-            self.desired_com += np.mean(world_bbox_corners, axis=0) / 2
+        #     self.desired_com += np.mean(world_bbox_corners, axis=0) / 2
 
-        self.desired_com = inplace_update(self.desired_com, 2, qpos[2])
+        # self.desired_com = inplace_update(self.desired_com, 2, qpos[2])
 
     def get_phase_signal(self, time_curr: float | ArrayType) -> ArrayType:
         return np.zeros(1, dtype=np.float32)
@@ -213,10 +213,10 @@ class BalancePDReference(MotionReference):
         com_ctrl = self.com_kp * com_pos_error
         com_jacp = self.jac_subtree_com(data, 0)
 
-        print(f"com_pos: {com_pos}")
-        print(f"desired_com: {self.desired_com}")
-        print(f"com_pos_error: {com_pos_error}")
-        print(f"com_ctrl: {com_ctrl}")
+        # print(f"com_pos: {com_pos}")
+        # print(f"desired_com: {self.desired_com}")
+        # print(f"com_pos_error: {com_pos_error}")
+        # print(f"com_ctrl: {com_ctrl}")
 
         # Update joint positions based on the PD controller command
         joint_pos = inplace_add(

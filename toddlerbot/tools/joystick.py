@@ -107,7 +107,7 @@ class Joystick:
         # List all input devices
         joystick_count = pygame.joystick.get_count()
         if joystick_count == 0:
-            print("No joystick detected.")
+            raise ValueError("No joystick detected.")
             return
 
         for i in range(joystick_count):
@@ -134,7 +134,7 @@ class Joystick:
                 self.joystick = joystick
                 break
             else:
-                print(f"Unsupported controller detected: {device_name}")
+                raise ValueError(f"Unsupported controller detected: {device_name}")
 
     def get_controller_input(self) -> Dict[str, float]:
         # Process pygame events
