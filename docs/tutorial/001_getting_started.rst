@@ -60,18 +60,21 @@ Jetson is the brain of the Toddlerbot. It's a powerful little computer that can 
 .. note::
     At this point you should have a working toddlerbot! Here are the optional parts that would make your life cooler (and easier).
 
+[Optional] Test Stand
+-------------
+For the safety of the toddy (and you), we designed a test stand that you can lift it up in the air and test without requiring it to be on the ground. The instructions are here: :ref:`test_stand`
+
 [Optional] Steam Deck
 -------------
 Simply put, steam deck is a handheld sized desktop computer. It runs Arch Linux and can run all the software stacks that you would run on a desktop. With steam deck, you are truly wireless. You can bring the toddlerbot anywhere and control it from the steam deck. The setup instructions are here: :ref:`steam_deck`
+
+[Optional] Teleoperation
+-------------
+You can for sure develop any teleoperation solution you want. We find a simple yet effective solution is to simply build another upper body (as leader) to teleoperate the full body toddlerbot. It's quite intuitive as you can just hold it's hand and instruct it like a baby. The instructions of building are here: :ref:`teleoperation_arms`. The toddlerbot API have everything already written to teleoperate the toddlerbot this way.
 
 [Optional] DIY battery pack for more battery life
 -------------
 You can get up to doubled battery life by switching from a LiPo pack to 4x 21700 cells.
 
-[Optional] Test Stand
--------------
-For the safety of the toddy (and you), we designed a test stand that you can lift it up in the air and test without requiring it to be on the ground. The instructions are here: :ref:`test_stand`
-
-[Optional] Teleoperation
--------------
-You can for sure develop any teleoperation solution you want. We find a simple yet effective solution is to simply build another upper body (as leader) to teleoperate the full body toddlerbot. It's quite intuitive as you can just hold it's hand and instruct it like a baby. The instructions of building are here: :ref:`teleoperation_arms`. The toddlerbot API have everything already written to teleoperate the toddlerbot this way.
+.. warning::
+    21700 Battery contains a lot of energy, and can be dangerous if not handled properly. Please be careful when handling them. Please be extra careful to not poke through the insulation layer.
