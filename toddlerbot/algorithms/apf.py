@@ -161,18 +161,19 @@ def plot_apf(apf: APF) -> None:
     plt.show()
 
 
-# Table boundaries (rectangle)
-table_bounds = [1.0, 1.0, 3.0, 2.0]  # (x1, y1, x2, y2)
+if __name__ == "__main__":
+    # Table boundaries (rectangle)
+    table_bounds = [1.0, 1.0, 3.0, 2.0]  # (x1, y1, x2, y2)
 
-# Start and goal positions
-x_start, y_start = 0.0, 0.0
-x_goal, y_goal = 2.0, 2.5
+    # Start and goal positions
+    x_start, y_start = 0.0, 0.0
+    x_goal, y_goal = 2.0, 2.5
 
-# Create an instance of APF
-apf = APF(table_bounds)
+    # Create an instance of APF
+    apf = APF(table_bounds)
 
-# Plan the path
-apf.plan_path(x_start, y_start, x_goal, y_goal)
+    # Plan the path
+    apf.plan_path(x_start, y_start, x_goal, y_goal)
 
-# Plot the results
-plot_apf(apf)
+    # Plot the results
+    plot_apf(apf)

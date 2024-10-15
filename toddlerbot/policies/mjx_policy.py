@@ -43,8 +43,11 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         assert cfg is not None, "cfg is required in the subclass!"
         assert motion_ref is not None, "motion_ref is required in the subclass!"
 
+        self.commmand_range = cfg.commands.command_range
+        self.num_commands = len(self.commmand_range)
+
         if fixed_command is None:
-            self.fixed_command = np.zeros(cfg.commands.num_commands, dtype=np.float32)
+            self.fixed_command = np.zeros(self.num_commands, dtype=np.float32)
         else:
             self.fixed_command = fixed_command
 

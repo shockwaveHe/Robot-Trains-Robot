@@ -16,6 +16,7 @@ requirements.extend(
         "cmaes==0.10.0",
         "optuna-dashboard==0.15.1",
         "psycopg2-binary==2.9.9",
+        "sphinx-autobuild",
     ]
 )
 

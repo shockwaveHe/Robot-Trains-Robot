@@ -3,14 +3,14 @@ from typing import Dict, Optional
 import numpy as np
 import numpy.typing as npt
 
-from toddlerbot.envs.walk_env import WalkCfg
+from toddlerbot.envs.squat_env import SquatCfg
 from toddlerbot.policies.mjx_policy import MJXPolicy
-from toddlerbot.ref_motion.walk_zmp_ref import WalkZMPReference
+from toddlerbot.ref_motion.squat_ref import SquatReference
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
 
 
-class WalkPolicy(MJXPolicy, policy_name="walk"):
+class SquatPolicy(MJXPolicy, policy_name="squat"):
     def __init__(
         self,
         name: str,
@@ -20,11 +20,9 @@ class WalkPolicy(MJXPolicy, policy_name="walk"):
         joystick: Optional[Joystick] = None,
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
     ):
-        env_cfg = WalkCfg()
-        motion_ref = WalkZMPReference(
-            robot,
-            env_cfg.sim.timestep * env_cfg.action.n_frames,
-            env_cfg.action.cycle_time,
+        env_cfg = SquatCfg()
+        motion_ref = SquatReference(
+            robot, env_cfg.sim.timestep * env_cfg.action.n_frames
         )
 
         self.command_range = env_cfg.commands.command_range
@@ -42,19 +40,12 @@ class WalkPolicy(MJXPolicy, policy_name="walk"):
 
     def get_command(self, control_inputs: Dict[str, float]) -> npt.NDArray[np.float32]:
         command = 0.5 * np.ones(self.num_commands, dtype=np.float32)
-        command[7] = 0.0
         for task, input in control_inputs.items():
-            axis = None
-            if task == "walk_vertical":
-                axis = 5
-            elif task == "walk_horizontal":
-                axis = 6
-
-            if axis is not None:
-                command[axis] = np.interp(
+            if task == "squat":
+                command[5] = np.interp(
                     input,
                     [-1, 0, 1],
-                    [self.command_range[axis][1], 0.0, self.command_range[axis][0]],
+                    [self.command_range[5][1], 0.0, self.command_range[5][0]],
                 )
 
         return command

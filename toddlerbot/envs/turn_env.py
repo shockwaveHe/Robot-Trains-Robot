@@ -19,6 +19,8 @@ class TurnCfg(WalkCfg, env_name="turn"):
                 [0.0, 1.0],
                 [0.0, 1.0],
                 [0.0, 1.0],
+                [0.0, 0.0],
+                [0.0, 0.0],
                 [-0.5, 0.5],
             ]
         )
@@ -45,14 +47,18 @@ class TurnEnv(WalkEnv, env_name="turn"):
     def _sample_command(
         self, rng: jax.Array, last_command: Optional[jax.Array] = None
     ) -> jax.Array:
-        # Randomly sample an index from the command list
-        rng, rng_1, rng_2 = jax.random.split(rng, 2)
-        pose_command = jax.random.uniform(
-            rng_1,
-            (5,),
-            minval=self.command_range[:5, 0],
-            maxval=self.command_range[:5, 1],
-        )
+        rng, rng_1, rng_2 = jax.random.split(rng, 3)
+        if last_command is not None:
+            pose_command = last_command[:5]
+        else:
+            pose_command = jax.random.uniform(
+                rng_1,
+                (5,),
+                minval=self.command_range[:5, 0],
+                maxval=self.command_range[:5, 1],
+            )
+            pose_command = pose_command.at[3].set(0.5)
+            pose_command = pose_command.at[4].set(0.5)
 
         # Parametric equation of ellipse
         x = jnp.zeros(1)
@@ -60,8 +66,8 @@ class TurnEnv(WalkEnv, env_name="turn"):
         z = jax.random.uniform(
             rng_2,
             (1,),
-            minval=self.command_range[0][0],
-            maxval=self.command_range[0][1],
+            minval=self.command_range[7][0],
+            maxval=self.command_range[7][1],
         )
         command = jnp.concatenate([pose_command, x, y, z])
 

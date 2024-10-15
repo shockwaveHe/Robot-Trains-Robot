@@ -1,6 +1,7 @@
 import platform
+import subprocess
 import time
-from typing import Optional
+from typing import Dict, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -12,7 +13,8 @@ from toddlerbot.sensing.camera import Camera
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
-from toddlerbot.utils.comm_utils import ZMQNode
+from toddlerbot.utils.comm_utils import ZMQMessage, ZMQNode
+from toddlerbot.utils.dataset_utils import Data, DatasetLogger
 from toddlerbot.utils.math_utils import interpolate_action
 
 SYS_NAME = platform.system()
@@ -28,8 +30,16 @@ class TeleopFollowerPDPolicy(BasePolicy, policy_name="teleop_follower_pd"):
         camera: Optional[Camera] = None,
         zmq_receiver: Optional[ZMQNode] = None,
         zmq_sender: Optional[ZMQNode] = None,
+        ip: str = "127.0.0.1",
     ):
         super().__init__(name, robot, init_motor_pos)
+
+        command = f"sudo ntpdate -u {ip}"
+        # Run the command
+        result = subprocess.run(
+            command, shell=True, text=True, check=True, stdout=subprocess.PIPE
+        )
+        print(result.stdout.strip())
 
         self.default_motor_pos = np.array(
             list(robot.default_motor_angles.values()), dtype=np.float32
@@ -64,6 +74,8 @@ class TeleopFollowerPDPolicy(BasePolicy, policy_name="teleop_follower_pd"):
             self.balance_ref.arm_gear_ratio, dtype=np.float32
         )
 
+        self.dataset_logger = DatasetLogger()
+
         self.joystick = joystick
         if joystick is None:
             try:
@@ -83,7 +95,7 @@ class TeleopFollowerPDPolicy(BasePolicy, policy_name="teleop_follower_pd"):
         if zmq_sender is not None:
             self.zmq_sender = zmq_sender
         elif SYS_NAME != "Darwin":
-            self.zmq_sender = ZMQNode(type="sender")
+            self.zmq_sender = ZMQNode(type="sender", ip=ip)
 
         self.camera = None
         if camera is not None:
@@ -91,12 +103,15 @@ class TeleopFollowerPDPolicy(BasePolicy, policy_name="teleop_follower_pd"):
         elif SYS_NAME != "Darwin":
             try:
                 self.camera = Camera()
-                self.zmq_sender = ZMQNode(type="sender", ip="192.168.46")
             except Exception:
                 pass
 
         self.msg = None
-        self.last_control_inputs = None
+        self.is_logging = False
+        self.is_button_pressed = False
+        self.n_logs = 1
+        self.remote_fsr = np.zeros(2, dtype=np.float32)
+        self.last_control_inputs: Dict[str, float] | None = None
         self.step_curr = 0
 
         self.prep_duration = 2.0
@@ -108,21 +123,9 @@ class TeleopFollowerPDPolicy(BasePolicy, policy_name="teleop_follower_pd"):
             end_time=0.0,
         )
 
+        print('\nBy default, logging is disabled. Press "menu" to toggle logging.\n')
+
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
-        if self.camera is not None:
-            # t1 = time.time()
-            jpeg_frame, raw_frame = self.camera.get_jpeg()
-            camera_frame = jpeg_frame
-            # t2 = time.time()
-            print(raw_frame.shape)
-        else:
-            camera_frame = None
-
-        if self.zmq_sender is not None:
-            self.zmq_sender.send_msg(
-                {"time": time.time(), "camera_frame": camera_frame}
-            )
-
         # Preparation phase
         if obs.time < self.prep_time[-1]:
             action = np.asarray(
@@ -130,7 +133,6 @@ class TeleopFollowerPDPolicy(BasePolicy, policy_name="teleop_follower_pd"):
             )
             return action
 
-        # Get the motor target from the teleop node
         msg = None
         if self.msg is not None:
             msg = self.msg
@@ -138,6 +140,26 @@ class TeleopFollowerPDPolicy(BasePolicy, policy_name="teleop_follower_pd"):
             msg = self.zmq_receiver.get_msg()
 
         # print(f"msg: {msg}")
+        time_curr = self.step_curr * self.control_dt
+        joint_pos = self.state_ref[13 : 13 + self.robot.nu].copy()
+        if msg is not None:
+            print(f"latency: {abs(time.time() - msg.time) * 1000:.2f} ms")
+            if abs(time.time() - msg.time) < 1:
+                self.remote_fsr = msg.fsr
+                arm_motor_pos = msg.action
+                arm_joint_pos = arm_motor_pos * self.arm_gear_ratio
+                joint_pos[self.arm_joint_indices] = arm_joint_pos
+            else:
+                print("stale message received, discarding")
+
+        if self.camera is not None:
+            jpeg_frame, camera_frame = self.camera.get_jpeg()
+        else:
+            jpeg_frame = None
+
+        if self.zmq_sender is not None:
+            send_msg = ZMQMessage(time=time.time(), camera_frame=jpeg_frame)
+            self.zmq_sender.send_msg(send_msg)
 
         control_inputs = self.last_control_inputs
         if self.joystick is not None:
@@ -150,7 +172,27 @@ class TeleopFollowerPDPolicy(BasePolicy, policy_name="teleop_follower_pd"):
         command = np.zeros(len(self.command_range), dtype=np.float32)
         if control_inputs is not None:
             for task, input in control_inputs.items():
-                if task == "look_left" and input > 0:
+                if task == "log":
+                    if abs(input) > 0.5:
+                        # Button is pressed
+                        if not self.is_button_pressed:
+                            self.is_button_pressed = True  # Mark the button as pressed
+                            self.is_logging = not self.is_logging  # Toggle logging
+
+                            # Log the episode end if logging is toggled to off
+                            if not self.is_logging:
+                                self.dataset_logger.log_episode_end()
+                                print(f"Logged {self.n_logs} entries.")
+                                self.n_logs += 1
+
+                            print(
+                                f"\nLogging is now {'enabled' if self.is_logging else 'disabled'}.\n"
+                            )
+                    else:
+                        # Button is released
+                        self.is_button_pressed = False  # Reset button pressed state
+
+                elif task == "look_left" and input > 0:
                     command[0] = input * self.command_range[0][1]
                 elif task == "look_right" and input > 0:
                     command[0] = input * self.command_range[0][0]
@@ -166,24 +208,6 @@ class TeleopFollowerPDPolicy(BasePolicy, policy_name="teleop_follower_pd"):
                     command[4] = input * self.command_range[4][0]
                 elif task == "twist_right" and input > 0:
                     command[4] = input * self.command_range[4][1]
-
-        # print(f"command: {command}")
-        # motor_angles = dict(zip(self.robot.motor_ordering, obs.motor_pos))
-        # joint_pos = np.array(
-        #     list(self.robot.motor_to_joint_angles(motor_angles).values()),
-        #     dtype=np.float32,
-        # )
-        time_curr = self.step_curr * self.control_dt
-
-        joint_pos = self.state_ref[13 : 13 + self.robot.nu].copy()
-        if msg is not None:
-            # print(f"latency: {abs(time.time() - msg.time) * 1000:.2f} ms")
-            if abs(time.time() - msg.time) < 0.1:
-                arm_motor_pos = msg.action
-                arm_joint_pos = arm_motor_pos * self.arm_gear_ratio
-                joint_pos[self.arm_joint_indices] = arm_joint_pos
-            else:
-                print("stale message received, discarding")
 
         self.state_ref[13 : 13 + self.robot.nu] = joint_pos
         self.state_ref = self.balance_ref.get_state_ref(
@@ -202,6 +226,15 @@ class TeleopFollowerPDPolicy(BasePolicy, policy_name="teleop_follower_pd"):
         motor_target = np.clip(
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
         )
+
+        # Log the data
+        if self.is_logging:
+            self.dataset_logger.log_entry(
+                Data(obs.time, obs.motor_pos, self.remote_fsr, camera_frame)
+            )
+        else:
+            # clean up the log when not logging.
+            self.dataset_logger.maintain_log()
 
         self.step_curr += 1
 

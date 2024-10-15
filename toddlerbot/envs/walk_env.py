@@ -30,6 +30,7 @@ class WalkCfg(MJXConfig, env_name="walk"):
                 [0.0, 1.0],
                 [-0.1, 0.2],
                 [-0.1, 0.1],
+                [0.0, 0.0],
             ]
         )
         deadzone: float = 0.05
@@ -102,12 +103,17 @@ class WalkEnv(MJXEnv, env_name="walk"):
     ) -> jax.Array:
         # Randomly sample an index from the command list
         rng, rng_1, rng_2, rng_3 = jax.random.split(rng, 4)
-        pose_command = jax.random.uniform(
-            rng_1,
-            (5,),
-            minval=self.command_range[:5, 0],
-            maxval=self.command_range[:5, 1],
-        )
+        if last_command is not None:
+            pose_command = last_command[:5]
+        else:
+            pose_command = jax.random.uniform(
+                rng_1,
+                (5,),
+                minval=self.command_range[:5, 0],
+                maxval=self.command_range[:5, 1],
+            )
+            pose_command = pose_command.at[3].set(0.5)
+            pose_command = pose_command.at[4].set(0.5)
 
         # Sample random angles uniformly between 0 and 2*pi
         theta = jax.random.uniform(rng_2, (1,), minval=0, maxval=2 * jnp.pi)
