@@ -1,16 +1,21 @@
+import argparse
+import os
+
 import numpy as np
 import torch
 import torch.nn as nn
 from diffusers.optimization import get_scheduler
 from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
 from diffusers.training_utils import EMAModel
+from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 from utils.model_utils import get_resnet, replace_bn_with_gn
 
 from toddlerbot.manipulation.dp.datasets.teleop_dataset import TeleopImageDataset
 from toddlerbot.manipulation.dp.models.diffusion_model import ConditionalUnet1D
 
-if __name__ == "__main__":
+
+def main(dataset_path: str, ckpt_path: str):
     # ### **Network Demo**
 
     # construct ResNet18 encoder
@@ -37,9 +42,6 @@ if __name__ == "__main__":
     # | |a|a|a|a|a|a|a|a|               actions executed: 8
     # |p|p|p|p|p|p|p|p|p|p|p|p|p|p|p|p| actions predicted: 16
 
-    # dataset_path = "/Users/weizhuo2/Documents/gits/toddleroid/results/toddlerbot_arms_teleop_fixed_mujoco_20240831_165026/dataset.lz4"
-    dataset_path = "teleop_data/teleop_dataset.lz4"
-
     # create dataset from file
     dataset = TeleopImageDataset(
         dataset_path=dataset_path,
@@ -59,10 +61,10 @@ if __name__ == "__main__":
     #     action_horizon=action_horizon,
     # )
 
-    stats = dataset.stats  # save training data statistics (min, max) for each dim
+    # stats = dataset.stats  # save training data statistics (min, max) for each dim
 
     # create dataloader
-    dataloader = torch.utils.data.DataLoader(
+    dataloader: DataLoader = DataLoader(
         dataset,
         batch_size=32,  # was 64
         num_workers=2,
@@ -181,6 +183,22 @@ if __name__ == "__main__":
     # is used for inference
     ema_nets = nets
     ema.copy_to(ema_nets.parameters())
+    # Save model checkpoint to disk
+    torch.save(ema_nets.state_dict(), "checkpoints/teleop_model.pth")
 
-# Save model checkpoint to disk
-# torch.save(ema_nets.state_dict(), "checkpoints/teleop_model.pth")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Process raw data to create dataset.")
+    parser.add_argument(
+        "--time-str",
+        type=str,
+        default="",
+        help="The time str of the dataset.",
+    )
+    args = parser.parse_args()
+
+    dataset_path = os.path.join("datasets", f"teleop_dataset_{args.time_str}.lz4")
+    ckpt_path = os.path.join(
+        "toddlerbot", "policies", "checkpoints", "teleop_model.pth"
+    )
+    main(dataset_path, ckpt_path)

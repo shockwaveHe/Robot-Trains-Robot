@@ -10,6 +10,9 @@ state: (N, ns)
 action: (N, na)
 """
 
+import argparse
+import os
+
 import cv2
 import joblib
 import numpy as np
@@ -23,13 +26,8 @@ import numpy as np
 # start_time (1,)
 
 
-def load_raw_dataset():
-    result_dir = "/Users/weizhuo2/Documents/gits/toddleroid/results/"
-    # dataset_path = "toddlerbot_arms_teleop_fixed_mujoco_20240909_204445/dataset.lz4"
-    dataset_path = (
-        "toddlerbot_OP3_teleop_follower_pd_real_world_20241014_223229/dataset.lz4"
-    )
-    raw_data = joblib.load(result_dir + dataset_path)
+def load_raw_dataset(dataset_path: str):
+    raw_data = joblib.load(dataset_path)
 
     # convert the format of data class to dict
     raw_data_converted = dict()
@@ -50,9 +48,8 @@ def load_raw_dataset():
     return raw_data_converted
 
 
-def main():
-    output_dataset = dict()
-    raw_data = load_raw_dataset()
+def main(dataset_path: str, output_path: str):
+    raw_data = load_raw_dataset(dataset_path)
 
     # convert from 30hz to 10hz
     low_freq_state_array = np.array([])
@@ -73,6 +70,7 @@ def main():
     raw_data["episode_ends"] = low_freq_epi_ends
     raw_data["images"] = raw_data["images"][low_freq_state_array[:, -1].astype(int)]
 
+    output_dataset = {}
     # convert images to 171x96 resolution
     # resized_images = [cv2.resize(image, (171, 96)) for image in raw_data["images"]]
     # output_dataset["images"] = np.array(resized_images, dtype=np.float32)[
@@ -83,29 +81,53 @@ def main():
         :, :96, 16:112
     ]
 
+    # import matplotlib.pyplot as plt
+
+    # plt.imshow(resized_images[0])
+    # plt.show()
+
     # assign state and action
     output_dataset["agent_pos"] = raw_data["state_array"][:, 1:17].astype(np.float32)
-    output_dataset["action"] = []
+    action_list = []
     last_idx = 0
     offset = 2
     for idx in raw_data["episode_ends"]:
         shifted_state = raw_data["state_array"][last_idx + offset : idx, 1:17]
-        repeated_last_rows = np.tile(
-            shifted_state[-1], (offset, 1)
-        )  # Create n copies of the last row
+        # Create n copies of the last row
+        repeated_last_rows = np.tile(shifted_state[-1], (offset, 1))
         shifted_state = np.vstack([shifted_state, repeated_last_rows])
-        output_dataset["action"].append(shifted_state)
+        action_list.append(shifted_state)
         last_idx = idx
-    output_dataset["action"] = np.vstack(output_dataset["action"]).astype(np.float32)
-    # output_dataset['action'] = raw_data['state_array'][:, 1:17]
+
+    output_dataset["action"] = np.vstack(action_list).astype(np.float32)
     output_dataset["episode_ends"] = raw_data["episode_ends"]
 
-    # save the dataset
-    output_path = (
-        "/Users/weizhuo2/Documents/gits/toddleroid/datasets/teleop_dataset_neo.lz4"
-    )
     joblib.dump(output_dataset, output_path)
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Process raw data to create dataset.")
+    parser.add_argument(
+        "--robot",
+        type=str,
+        default="toddlerbot_OP3",
+        help="The name of the robot. Need to match the name in robot_descriptions.",
+        choices=["toddlerbot_OP3", "toddlerbot_arms"],
+    )
+    parser.add_argument(
+        "--time-str",
+        type=str,
+        default="",
+        help="The time str of the dataset.",
+    )
+    args = parser.parse_args()
+
+    dataset_path = os.path.join(
+        "results",
+        f"{args.robot}_teleop_follower_pd_real_world_{args.time_str}",
+        "dataset.lz4",
+    )
+    # save the dataset
+    output_path = os.path.join("datasets", f"teleop_dataset_{args.time_str}.lz4")
+
+    main(dataset_path, output_path)
