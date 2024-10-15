@@ -64,6 +64,7 @@ class DatasetLogger:
             for field in fields(Data)
         }
         data_dict["start_time"] = self.data_list[0].time
+        data_dict["episode_ends"] = self.episode_ends
 
         # downsample everything to 10hz
         self._set_to_rate(10)
