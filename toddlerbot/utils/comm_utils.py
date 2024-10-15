@@ -10,12 +10,10 @@ import zmq
 @dataclass
 class ZMQMessage:
     time: float
-    is_logging: bool = False
     control_inputs: Optional[Dict[str, float]] = None
     action: Optional[npt.NDArray[np.float32]] = None
     fsr: Optional[npt.NDArray[np.float32]] = None
     camera_frame: Optional[npt.NDArray[np.uint8]] = None
-    trial: int = 0
 
 
 """

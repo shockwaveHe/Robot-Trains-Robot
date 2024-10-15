@@ -107,13 +107,12 @@ class TeleopFollowerPDPolicy(BasePolicy, policy_name="teleop_follower_pd"):
                 pass
 
         self.msg = None
+        self.is_logging = False
+        self.is_button_pressed = False
+        self.n_logs = 1
+        self.remote_fsr = np.zeros(2, dtype=np.float32)
         self.last_control_inputs: Dict[str, float] | None = None
         self.step_curr = 0
-
-        self.is_logging = False
-        self.remote_fsr = np.zeros(2, dtype=np.float32)
-        self.toggle_motor = True
-        self.n_logs = 1
 
         self.prep_duration = 2.0
         self.prep_time, self.prep_action = self.move(
@@ -146,7 +145,6 @@ class TeleopFollowerPDPolicy(BasePolicy, policy_name="teleop_follower_pd"):
         if msg is not None:
             print(f"latency: {abs(time.time() - msg.time) * 1000:.2f} ms")
             if abs(time.time() - msg.time) < 1:
-                self.is_logging = msg.is_logging
                 self.remote_fsr = msg.fsr
                 arm_motor_pos = msg.action
                 arm_joint_pos = arm_motor_pos * self.arm_gear_ratio
@@ -163,15 +161,6 @@ class TeleopFollowerPDPolicy(BasePolicy, policy_name="teleop_follower_pd"):
             send_msg = ZMQMessage(time=time.time(), camera_frame=jpeg_frame)
             self.zmq_sender.send_msg(send_msg)
 
-        # Log the data
-        if self.is_logging:
-            self.dataset_logger.log_entry(
-                Data(obs.time, obs.motor_pos, self.remote_fsr, camera_frame)
-            )
-        else:
-            # clean up the log when not logging.
-            self.dataset_logger.maintain_log()
-
         control_inputs = self.last_control_inputs
         if self.joystick is not None:
             control_inputs = self.joystick.get_controller_input()
@@ -183,7 +172,27 @@ class TeleopFollowerPDPolicy(BasePolicy, policy_name="teleop_follower_pd"):
         command = np.zeros(len(self.command_range), dtype=np.float32)
         if control_inputs is not None:
             for task, input in control_inputs.items():
-                if task == "look_left" and input > 0:
+                if task == "log":
+                    if abs(input) > 0.5:
+                        # Button is pressed
+                        if not self.is_button_pressed:
+                            self.is_button_pressed = True  # Mark the button as pressed
+                            self.is_logging = not self.is_logging  # Toggle logging
+
+                            # Log the episode end if logging is toggled to off
+                            if not self.is_logging:
+                                self.dataset_logger.log_episode_end()
+                                print(f"Logged {self.n_logs} entries.")
+                                self.n_logs += 1
+
+                            print(
+                                f"\nLogging is now {'enabled' if self.is_logging else 'disabled'}.\n"
+                            )
+                    else:
+                        # Button is released
+                        self.is_button_pressed = False  # Reset button pressed state
+
+                elif task == "look_left" and input > 0:
                     command[0] = input * self.command_range[0][1]
                 elif task == "look_right" and input > 0:
                     command[0] = input * self.command_range[0][0]
@@ -217,6 +226,15 @@ class TeleopFollowerPDPolicy(BasePolicy, policy_name="teleop_follower_pd"):
         motor_target = np.clip(
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
         )
+
+        # Log the data
+        if self.is_logging:
+            self.dataset_logger.log_entry(
+                Data(obs.time, obs.motor_pos, self.remote_fsr, camera_frame)
+            )
+        else:
+            # clean up the log when not logging.
+            self.dataset_logger.maintain_log()
 
         self.step_curr += 1
 
