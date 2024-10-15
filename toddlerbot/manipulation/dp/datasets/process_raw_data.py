@@ -12,7 +12,6 @@ action: (N, na)
 
 import cv2
 import joblib
-import matplotlib.pyplot as plt
 import numpy as np
 
 # new format is: raw_data.keys():
@@ -101,7 +100,7 @@ def main():
     output_dataset["episode_ends"] = raw_data["episode_ends"]
 
     # save the dataset
-    output_path = "/Users/weizhuo2/Documents/gits/diffusion_policy_minimal/teleop_data/teleop_dataset.lz4"
+    output_path = "/Users/weizhuo2/Documents/gits/toddlerbot.manipulation.dp/teleop_data/teleop_dataset.lz4"
     joblib.dump(output_dataset, output_path)
 
 

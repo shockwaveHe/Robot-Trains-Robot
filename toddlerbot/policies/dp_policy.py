@@ -72,15 +72,17 @@ class DPPolicy(BasePolicy, policy_name="dp"):
         listener.start()
 
     def load_model(self):
-        from diffusion_policy_minimal.datasets.teleop_dataset import TeleopImageDataset
-        from diffusion_policy_minimal.inference_class import DPModel
+        from toddlerbot.manipulation.dp.datasets.teleop_dataset import (
+            TeleopImageDataset,
+        )
+        from toddlerbot.manipulation.dp.inference_class import DPModel
 
-        model_path = "/home/weizhuo2/Documents/gits/diffusion_policy_minimal/checkpoints/teleop_model.pth"
+        model_path = "/home/weizhuo2/Documents/gits/toddlerbot.manipulation.dp/checkpoints/teleop_model.pth"
         pred_horizon, obs_horizon, action_horizon = 16, 2, 8
         lowdim_obs_dim, action_dim = 14, 14
 
         # create dataset from file
-        dataset_path = "/home/weizhuo2/Documents/gits/diffusion_policy_minimal/teleop_data/teleop_dataset.lz4"
+        dataset_path = "/home/weizhuo2/Documents/gits/toddlerbot.manipulation.dp/teleop_data/teleop_dataset.lz4"
         dataset = TeleopImageDataset(
             dataset_path=dataset_path,
             pred_horizon=pred_horizon,

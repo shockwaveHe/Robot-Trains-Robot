@@ -10,7 +10,8 @@ import skimage.transform as st
 from gym import spaces
 from pymunk.vec2d import Vec2d
 
-from diffusion_policy_minimal.utils.env_utils import pymunk_to_shapely, DrawOptions
+from toddlerbot.manipulation.dp.utils.env_utils import DrawOptions, pymunk_to_shapely
+
 
 class PushTEnv(gym.Env):
     metadata = {"render.modes": ["human", "rgb_array"], "video.frames_per_second": 10}

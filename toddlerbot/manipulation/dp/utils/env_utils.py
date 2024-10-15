@@ -1,13 +1,12 @@
+from typing import Sequence, Tuple
+
 import numpy as np
 import pygame
 import pymunk
 import pymunk.pygame_util
-from pymunk.vec2d import Vec2d
-
-from typing import Sequence, Tuple
-
 import shapely.geometry as sg
 from pymunk.space_debug_draw_options import SpaceDebugColor
+from pymunk.vec2d import Vec2d
 
 positive_y_is_up: bool = False
 """Make increasing values of y point upwards.

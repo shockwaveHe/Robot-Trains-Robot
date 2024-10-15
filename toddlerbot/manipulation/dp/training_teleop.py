@@ -6,9 +6,9 @@ from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
 from diffusers.training_utils import EMAModel
 from tqdm.auto import tqdm
 from utils.model_utils import get_resnet, replace_bn_with_gn
-from diffusion_policy_minimal.models.diffusion_model import ConditionalUnet1D
-from diffusion_policy_minimal.datasets.pusht_dataset import PushTImageDataset
-from diffusion_policy_minimal.datasets.teleop_dataset import TeleopImageDataset
+
+from toddlerbot.manipulation.dp.datasets.teleop_dataset import TeleopImageDataset
+from toddlerbot.manipulation.dp.models.diffusion_model import ConditionalUnet1D
 
 if __name__ == "__main__":
     # ### **Network Demo**
@@ -22,9 +22,11 @@ if __name__ == "__main__":
     # performance will tank if you forget to do this!
     vision_encoder = replace_bn_with_gn(vision_encoder)
 
-    vision_feature_dim = 512 # ResNet18 has output dim of 512
-    lowdim_obs_dim = 16       # agent_pos is 2 dimensional
-    obs_dim = vision_feature_dim + lowdim_obs_dim # observation feature has 514 dims in total per step
+    vision_feature_dim = 512  # ResNet18 has output dim of 512
+    lowdim_obs_dim = 16  # agent_pos is 2 dimensional
+    obs_dim = (
+        vision_feature_dim + lowdim_obs_dim
+    )  # observation feature has 514 dims in total per step
     action_dim = 16
 
     # parameters
@@ -37,7 +39,7 @@ if __name__ == "__main__":
 
     # dataset_path = "/Users/weizhuo2/Documents/gits/toddleroid/results/toddlerbot_arms_teleop_fixed_mujoco_20240831_165026/dataset.lz4"
     dataset_path = "teleop_data/teleop_dataset.lz4"
-    
+
     # create dataset from file
     dataset = TeleopImageDataset(
         dataset_path=dataset_path,
@@ -57,7 +59,7 @@ if __name__ == "__main__":
     #     action_horizon=action_horizon,
     # )
 
-    stats = dataset.stats           # save training data statistics (min, max) for each dim
+    stats = dataset.stats  # save training data statistics (min, max) for each dim
 
     # create dataloader
     dataloader = torch.utils.data.DataLoader(
@@ -97,7 +99,6 @@ if __name__ == "__main__":
     # device transfer
     device = torch.device("cpu")
     _ = nets.to(device)
-
 
     # ### **Training**
     num_epochs = 100
@@ -141,7 +142,10 @@ if __name__ == "__main__":
 
                     # sample a diffusion iteration for each data point
                     timesteps = torch.randint(
-                        0, noise_scheduler.config.num_train_timesteps, (B,), device=device
+                        0,
+                        noise_scheduler.config.num_train_timesteps,
+                        (B,),
+                        device=device,
                     ).long()
 
                     # add noise to the clean images according to the noise magnitude at each diffusion iteration

@@ -1,9 +1,16 @@
+import joblib
 import numpy as np
 import torch
-import joblib
-from diffusion_policy_minimal.utils.dataset_utils import create_sample_indices, get_data_stats, normalize_data, sample_sequence
 
-# episode_ends idx is the index of the next start. In other words, you can use 
+from toddlerbot.manipulation.dp.utils.dataset_utils import (
+    create_sample_indices,
+    get_data_stats,
+    normalize_data,
+    sample_sequence,
+)
+
+
+# episode_ends idx is the index of the next start. In other words, you can use
 # train_data[:episode_ends[idx]], and train_data[episode_ends[idx]:episode_ends[idx+1]]
 class TeleopImageDataset(torch.utils.data.Dataset):
     def __init__(
@@ -81,4 +88,3 @@ class TeleopImageDataset(torch.utils.data.Dataset):
         nsample["image"] = nsample["image"][: self.obs_horizon, :]
         nsample["agent_pos"] = nsample["agent_pos"][: self.obs_horizon, :]
         return nsample
-

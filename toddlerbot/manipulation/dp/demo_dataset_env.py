@@ -1,13 +1,13 @@
 import os
+
+import gdown
 import numpy as np
 import torch
-
 from envs.pusht_env import PushTImageEnv
+
 from datasets.pusht_dataset import PushTImageDataset
-import gdown
 
 if __name__ == "__main__":
-
     ### **Env Demo**
     # Standard Gym Env (0.21.0 API)
     # 0. create env object
@@ -75,4 +75,3 @@ if __name__ == "__main__":
     print("batch['image'].shape:", batch["image"].shape)
     print("batch['agent_pos'].shape:", batch["agent_pos"].shape)
     print("batch['action'].shape", batch["action"].shape)
-
