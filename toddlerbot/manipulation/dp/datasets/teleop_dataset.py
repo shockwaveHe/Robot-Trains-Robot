@@ -57,8 +57,6 @@ class TeleopImageDataset(torch.utils.data.Dataset):
 
         # images are already normalized
         normalized_train_data["image"] = train_image_data
-        normalized_train_data["agent_pos"][:, -2:] = 0
-        normalized_train_data["action"][:, -2:] = 0
 
         self.indices = indices
         self.stats = stats

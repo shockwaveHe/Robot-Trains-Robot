@@ -66,10 +66,21 @@ def get_data_stats(data):
 
 
 def normalize_data(data, stats):
-    # nomalize to [0,1]
-    ndata = (data - stats["min"]) / (stats["max"] - stats["min"])
-    # normalize to [-1, 1]
-    ndata = ndata * 2 - 1
+    # Calculate the range and create a mask where the range is zero
+    range_vals = stats["max"] - stats["min"]
+    zero_range_mask = range_vals == 0
+
+    # Initialize normalized data with zeros for indices with zero range
+    ndata = np.zeros_like(data)
+
+    # Normalize to [0, 1] at non-zero range indices
+    ndata[:, ~zero_range_mask] = (
+        data[:, ~zero_range_mask] - stats["min"][~zero_range_mask]
+    ) / range_vals[~zero_range_mask]
+
+    # Scale to [-1, 1] only at non-zero range indices
+    ndata[:, ~zero_range_mask] = ndata[:, ~zero_range_mask] * 2 - 1
+
     return ndata
 
 
