@@ -78,7 +78,7 @@ class MotionReference(ABC):
         self.arm_gear_ratio = self._get_gear_ratios(arm_motor_names)
 
         # Load the balance dataset
-        data_path = os.path.join("toddlerbot", "ref_motion", "balance_dataset.lz4")
+        data_path = os.path.join("toddlerbot", "motion", "balance_dataset.lz4")
         data_dict = joblib.load(data_path)
         # state_array: [time(1), motor_pos(14), fsrL(1), fsrR(1), camera_frame_idx(1)]
         state_arr = data_dict["state_array"]

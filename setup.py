@@ -22,9 +22,9 @@ requirements.extend(
 
 # Determine the operating system and append the appropriate JAX package
 if platform.system() == "Linux":  # Check if the system is Linux
-    requirements.append("jax[cuda12]")
+    requirements.append("jax[cuda12]==0.4.28")
 else:
-    requirements.append("jax")  # Use the CPU version for macOS and Windows
+    requirements.append("jax==0.4.28")  # Use the CPU version for macOS and Windows
 
 
 setup(

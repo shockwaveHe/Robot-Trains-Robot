@@ -19,7 +19,7 @@ class SquatCfg(MJXConfig, env_name="squat"):
 
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):
-        resample_time: float = 1.0
+        resample_time: float = 2.0
         command_range: List[List[float]] = field(
             default_factory=lambda: [
                 [0.0, 1.0],
@@ -35,9 +35,12 @@ class SquatCfg(MJXConfig, env_name="squat"):
     @dataclass
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
         # Balance specific rewards
-        lin_vel_z: float = 5.0
         arm_joint_pos: float = 5.0
+        arm_action_rate: float = 1e-2
+        arm_action_acc: float = 1e-2
         leg_joint_pos: float = 0.0
+        leg_action_rate: float = 0.0
+        leg_action_acc: float = 0.0
 
     def __init__(self):
         super().__init__()

@@ -49,7 +49,7 @@ def dynamic_import_envs(env_package: str):
 
 
 # Call this to import all policies dynamically
-dynamic_import_envs("toddlerbot.envs")
+dynamic_import_envs("toddlerbot.locomotion")
 
 
 def render_video(
