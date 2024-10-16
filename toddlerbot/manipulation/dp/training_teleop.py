@@ -184,7 +184,7 @@ def main(dataset_path: str, ckpt_path: str):
     ema_nets = nets
     ema.copy_to(ema_nets.parameters())
     # Save model checkpoint to disk
-    torch.save(ema_nets.state_dict(), ckpt_path)
+    torch.save({"state_dict": ema_nets.state_dict(), "stats": dataset.stats}, ckpt_path)
 
 
 if __name__ == "__main__":

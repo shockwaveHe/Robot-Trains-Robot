@@ -23,7 +23,6 @@ class DPModel:
         action_horizon,
         lowdim_obs_dim,
         action_dim,
-        stats=None,
     ):
         # |o|o|                             observations: 2
         # | |a|a|a|a|a|a|a|a|               actions executed: 8
@@ -51,15 +50,10 @@ class DPModel:
             prediction_type="epsilon",
         )
 
-        # stats is get from dataset to denormalize data
-        if stats is not None:
-            self.stats = stats
-
         # initialize the network
-        self.ckpt_path = ckpt_path
-        self.load_model()
+        self.load_model(ckpt_path)
 
-    def load_model(self):
+    def load_model(self, ckpt_path):
         # Construct the network
         vision_encoder = get_resnet("resnet18")
         vision_encoder = replace_bn_with_gn(vision_encoder)
@@ -78,8 +72,9 @@ class DPModel:
             self.device = torch.device("mps")
         self.ema_nets = self.ema_nets.to(self.device)
 
-        state_dict = torch.load(self.ckpt_path, map_location=self.device)
-        self.ema_nets.load_state_dict(state_dict)
+        state_dict = torch.load(ckpt_path, map_location=self.device)
+        self.ema_nets.load_state_dict(state_dict["state_dict"])
+        self.stats = state_dict["stats"]
         print("Pretrained weights loaded.")
 
         self.ema_nets.eval()
@@ -184,7 +179,6 @@ if __name__ == "__main__":
         action_horizon,
         lowdim_obs_dim,
         action_dim,
-        stats,
     )
 
     # ### **Inference**
