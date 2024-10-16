@@ -116,7 +116,7 @@ class ZMQReceiver:
 
 send_to_remote = True
 if send_to_remote:
-    sender = ZMQNode(type="sender", ip="10.5.6.248")
+    sender = ZMQNode(type="sender", ip="192.168.0.46")
 
 # Open the camera (0 is the default camera)
 cap = cv2.VideoCapture(0)

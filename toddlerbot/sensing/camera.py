@@ -1,9 +1,21 @@
+import subprocess
+
 import cv2
 import numpy as np
 
 
 class Camera:
     def __init__(self, camera_id=0):
+        # Run the command
+        result = subprocess.run(
+            f"v4l2-ctl --device=/dev/video{camera_id} --set-ctrl=auto_exposure=1,exposure_time_absolute=70",
+            shell=True,
+            text=True,
+            check=True,
+            stdout=subprocess.PIPE,
+        )
+        print(result.stdout.strip())
+
         self.camera_id = camera_id
         self.cap = cv2.VideoCapture(self.camera_id)
         self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
@@ -27,7 +39,7 @@ class Camera:
     def get_jpeg(self):
         frame = self.get_state()
         # Encode the frame as a JPEG with quality of 90
-        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 30]
+        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 50]
         _, img_encoded_jpeg = cv2.imencode(".jpg", frame, encode_param)
         return img_encoded_jpeg, frame
 

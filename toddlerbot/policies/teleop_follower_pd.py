@@ -26,31 +26,21 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
         zmq_receiver: Optional[ZMQNode] = None,
         zmq_sender: Optional[ZMQNode] = None,
         ip: str = "127.0.0.1",
+        fixed_command: Optional[npt.NDArray[np.float32]] = None,
     ):
         super().__init__(
-            name, robot, init_motor_pos, joystick, camera, zmq_receiver, zmq_sender, ip
+            name,
+            robot,
+            init_motor_pos,
+            joystick,
+            camera,
+            zmq_receiver,
+            zmq_sender,
+            ip,
+            fixed_command,
         )
 
         self.dataset_logger = DatasetLogger()
-
-        self.msg = None
-        self.is_logging = False
-        self.is_button_pressed = False
-        self.n_logs = 1
-        self.remote_fsr = np.zeros(2, dtype=np.float32)
-        self.last_control_inputs: Dict[str, float] | None = None
-        self.step_curr = 0
-
-        self.prep_duration = 2.0
-        self.prep_time, self.prep_action = self.move(
-            -self.control_dt,
-            init_motor_pos,
-            self.default_motor_pos,
-            self.prep_duration,
-            end_time=0.0,
-        )
-
-        print('\nBy default, logging is disabled. Press "menu" to toggle logging.\n')
 
     def get_command(self, control_inputs: Dict[str, float]) -> npt.NDArray[np.float32]:
         command = np.zeros(len(self.command_range), dtype=np.float32)
@@ -65,11 +55,11 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
                         # Log the episode end if logging is toggled to off
                         if not self.is_logging:
                             self.dataset_logger.log_episode_end()
-                            print(f"Logged {self.n_logs} entries.")
+                            print(f"\nLogged {self.n_logs} entries.")
                             self.n_logs += 1
 
                         print(
-                            f"\nLogging is now {'enabled' if self.is_logging else 'disabled'}.\n"
+                            f"\nLogging is now {'enabled' if self.is_logging else 'disabled'}."
                         )
                 else:
                     # Button is released

@@ -90,7 +90,7 @@ class DPModel:
         agent_poses = np.stack([x["agent_pos"] for x in obs_deque])
 
         # normalize observation
-        nagent_poses = normalize_data(agent_poses, stats=stats["agent_pos"])
+        nagent_poses = normalize_data(agent_poses, stats=self.stats["agent_pos"])
         # images are already normalized to [0,1]
         nimages = images
 
@@ -179,12 +179,12 @@ if __name__ == "__main__":
 
     model = DPModel(
         "pusht_vision_100ep.ckpt",
-        stats,
         pred_horizon,
         obs_horizon,
         action_horizon,
         lowdim_obs_dim,
         action_dim,
+        stats,
     )
 
     # ### **Inference**

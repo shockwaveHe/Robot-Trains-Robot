@@ -475,10 +475,6 @@ if __name__ == "__main__":
         policy = PolicyClass(
             args.policy, robot, init_motor_pos, args.ckpt, fixed_command=fixed_command
         )
-    elif issubclass(PolicyClass, DPPolicy):
-        assert len(args.ckpt) > 0, "Need to provide a checkpoint for MJX policies"
-
-        policy = PolicyClass(args.policy, robot, init_motor_pos, args.ckpt)
     elif issubclass(PolicyClass, TeleopLeaderPolicy):
         assert (
             args.robot == "toddlerbot_arms"

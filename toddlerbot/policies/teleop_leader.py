@@ -85,7 +85,7 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
                         # Log the episode end if logging is toggled to off
                         if not self.is_logging:
                             self.dataset_logger.log_episode_end()
-                            print(f"Logged {self.n_logs} entries.")
+                            print(f"\nLogged {self.n_logs} entries.\n")
                             self.n_logs += 1
 
                         print(

@@ -130,7 +130,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
             end_time=0.0,
         )
 
-        print('\nBy default, logging is disabled. Press "menu" to toggle logging.\n')
+        print('\nBy default, logging is disabled. Press "menu" to toggle logging.')
 
     def get_command(self, control_inputs: Dict[str, float]) -> npt.NDArray[np.float32]:
         return self.fixed_command
@@ -160,7 +160,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
                 self.fsr = msg.fsr
                 self.arm_motor_pos = msg.action
             else:
-                print("stale message received, discarding")
+                print("\nstale message received, discarding")
 
         if self.camera is not None:
             jpeg_frame, self.camera_frame = self.camera.get_jpeg()
