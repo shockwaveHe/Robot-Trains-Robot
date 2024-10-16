@@ -13,6 +13,7 @@ import numpy.typing as npt
 from tqdm import tqdm
 
 from toddlerbot.policies import BasePolicy, get_policy_class, get_policy_names
+from toddlerbot.policies.balance_pd import BalancePDPolicy
 from toddlerbot.policies.calibrate import CalibratePolicy
 from toddlerbot.policies.dp_policy import DPPolicy
 from toddlerbot.policies.mjx_policy import MJXPolicy
@@ -490,8 +491,14 @@ if __name__ == "__main__":
                 robot.config["joints"][motor_name][gain_name] = 0.0
 
         policy = PolicyClass(args.policy, robot, init_motor_pos, ip=args.ip)
-    elif issubclass(PolicyClass, TeleopFollowerPDPolicy):
-        policy = PolicyClass(args.policy, robot, init_motor_pos, ip=args.ip)
+    elif issubclass(PolicyClass, BalancePDPolicy):
+        fixed_command = None
+        if len(args.command) > 0:
+            fixed_command = np.array(args.command.split(" "), dtype=np.float32)
+
+        policy = PolicyClass(
+            args.policy, robot, init_motor_pos, ip=args.ip, fixed_command=fixed_command
+        )
     else:
         policy = PolicyClass(args.policy, robot, init_motor_pos)
 

@@ -9,7 +9,7 @@ class APF:
         self,
         table_bounds: List[float],
         k_att: float = 1.0,
-        k_rep: float = 100.0,
+        k_rep: float = 1.0,
         Q_star: float = 0.5,
         dt: float = 0.02,
         max_iters: int = 10000,

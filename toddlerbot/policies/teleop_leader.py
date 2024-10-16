@@ -74,7 +74,7 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
 
         control_inputs = self.joystick.get_controller_input()
         for task, input in control_inputs.items():
-            if task == "log":
+            if task == "manipulate":
                 if abs(input) > 0.5:
                     # Button is pressed
                     if not self.is_button_pressed:

@@ -1,19 +1,48 @@
-import mujoco
+import platform
+import subprocess
+import time
+from typing import Dict, Optional
+
 import numpy as np
 import numpy.typing as npt
 
+from toddlerbot.envs.balance_env import BalanceCfg
 from toddlerbot.policies import BasePolicy
+from toddlerbot.ref_motion.balance_pd_ref import BalancePDReference
+from toddlerbot.sensing.camera import Camera
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
-from toddlerbot.utils.file_utils import find_robot_file_path
+from toddlerbot.tools.joystick import Joystick
+from toddlerbot.utils.comm_utils import ZMQMessage, ZMQNode
 from toddlerbot.utils.math_utils import interpolate_action
+
+SYS_NAME = platform.system()
 
 
 class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
     def __init__(
-        self, name: str, robot: Robot, init_motor_pos: npt.NDArray[np.float32]
+        self,
+        name: str,
+        robot: Robot,
+        init_motor_pos: npt.NDArray[np.float32],
+        joystick: Optional[Joystick] = None,
+        camera: Optional[Camera] = None,
+        zmq_receiver: Optional[ZMQNode] = None,
+        zmq_sender: Optional[ZMQNode] = None,
+        ip: str = "127.0.0.1",
+        fixed_command: Optional[npt.NDArray[np.float32]] = None,
     ):
         super().__init__(name, robot, init_motor_pos)
+
+        # Run the command
+        result = subprocess.run(
+            f"sudo ntpdate -u {ip}",
+            shell=True,
+            text=True,
+            check=True,
+            stdout=subprocess.PIPE,
+        )
+        print(result.stdout.strip())
 
         self.default_motor_pos = np.array(
             list(robot.default_motor_angles.values()), dtype=np.float32
@@ -25,43 +54,72 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
             [robot.joint_limits[name] for name in robot.motor_ordering]
         )
 
-        # Indices for the pitch joints
-        self.pitch_joint_indicies = [
-            robot.joint_ordering.index("left_hip_pitch"),
-            robot.joint_ordering.index("left_knee_pitch"),
-            robot.joint_ordering.index("left_ank_pitch"),
-            robot.joint_ordering.index("right_hip_pitch"),
-            robot.joint_ordering.index("right_knee_pitch"),
-            robot.joint_ordering.index("right_ank_pitch"),
-        ]
-        self.roll_joint_indicies = [
-            robot.joint_ordering.index("left_hip_roll"),
-            robot.joint_ordering.index("left_ank_roll"),
-            robot.joint_ordering.index("right_hip_roll"),
-            robot.joint_ordering.index("right_ank_roll"),
-        ]
-        self.pitch_joint_signs = np.array([1, 1, 1, -1, -1, 1], dtype=np.float32)
+        self.balance_ref = BalancePDReference(
+            robot, self.control_dt, arm_playback_speed=0.0
+        )
+        cfg = BalanceCfg()
+        self.command_range = np.array(cfg.commands.command_range, dtype=np.float32)
+        self.num_commands = len(self.command_range)
 
-        self.neck_yaw_idx = robot.joint_ordering.index("neck_yaw_driven")
-        self.neck_pitch_idx = robot.joint_ordering.index("neck_pitch_driven")
+        if fixed_command is None:
+            self.fixed_command = np.zeros(self.num_commands, dtype=np.float32)
+        else:
+            self.fixed_command = fixed_command
 
-        xml_path = find_robot_file_path(self.robot.name, suffix="_scene.xml")
-        self.model = mujoco.MjModel.from_xml_path(xml_path)
-        self.data = mujoco.MjData(self.model)
-        mujoco.mj_forward(self.model, self.data)
-        self.com_pos_init = np.asarray(self.data.body(0).subtree_com, dtype=np.float32)
-
-        self.joint_indices = np.array(
+        self.state_ref = np.concatenate(
             [
-                mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, name)
-                for name in self.robot.joint_ordering
+                np.zeros(3, dtype=np.float32),  # Position
+                np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),  # Quaternion
+                np.zeros(3, dtype=np.float32),  # Linear velocity
+                np.zeros(3, dtype=np.float32),  # Angular velocity
+                self.default_joint_pos,  # Joint positions
+                np.zeros_like(self.default_joint_pos),  # Joint velocities
+                np.ones(2, dtype=np.float32),  # Stance mask
             ]
         )
-        if "fixed" not in self.name:
-            # Disregard the free joint
-            self.joint_indices -= 1
+        self.arm_motor_indices = np.array(self.balance_ref.arm_actuator_indices)
+        self.arm_joint_indices = np.array(self.balance_ref.arm_joint_indices)
+        self.arm_gear_ratio = np.asarray(
+            self.balance_ref.arm_gear_ratio, dtype=np.float32
+        )
 
-        self.q_start_idx = 0 if "fixed" in self.name else 7
+        self.joystick = joystick
+        if joystick is None:
+            try:
+                self.joystick = Joystick()
+            except Exception:
+                pass
+
+        self.zmq_receiver = None
+        if zmq_receiver is not None:
+            self.zmq_receiver = zmq_receiver
+        elif SYS_NAME != "Darwin":
+            self.zmq_receiver = ZMQNode(type="receiver")
+
+        self.zmq_sender = None
+        if zmq_sender is not None:
+            self.zmq_sender = zmq_sender
+        elif SYS_NAME != "Darwin":
+            self.zmq_sender = ZMQNode(type="sender", ip=ip)
+
+        self.camera = None
+        if camera is not None:
+            self.camera = camera
+        elif SYS_NAME != "Darwin":
+            try:
+                self.camera = Camera()
+            except Exception:
+                pass
+
+        self.msg = None
+        self.is_logging = False
+        self.is_button_pressed = False
+        self.n_logs = 1
+        self.last_control_inputs: Dict[str, float] | None = None
+        self.step_curr = 0
+
+        self.fsr = np.zeros(2, dtype=np.float32)
+        self.camera_frame = None
 
         self.prep_duration = 2.0
         self.prep_time, self.prep_action = self.move(
@@ -72,18 +130,13 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
             end_time=0.0,
         )
 
-        # PD controller parameters
-        self.com_kp = np.array([2000, 2000], dtype=np.float32)
-        self.com_kd = np.array([0, 0], dtype=np.float32)
+        print('\nBy default, logging is disabled. Press "menu" to toggle logging.\n')
 
-        self.com_pos_error_prev = np.zeros(2, dtype=np.float32)
-        self.step_curr = 0
-        self.last_motor_target = self.default_motor_pos.copy()
+    def get_command(self, control_inputs: Dict[str, float]) -> npt.NDArray[np.float32]:
+        return self.fixed_command
 
-    def reset(self):
-        self.com_pos_error_prev = np.zeros(2, dtype=np.float32)
-        self.step_curr = 0
-        self.last_motor_target = self.default_motor_pos.copy()
+    def get_arm_motor_pos(self) -> npt.NDArray[np.float32]:
+        return self.default_motor_pos[self.arm_motor_indices]
 
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         # Preparation phase
@@ -93,76 +146,64 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
             )
             return action
 
-        # Get the motor angles from the observation
-        # self.data.joint(0).qpos[3:7] = euler2quat(obs.euler)
-        motor_angles = dict(zip(self.robot.motor_ordering, obs.motor_pos))
-        for name in motor_angles:
-            self.data.joint(name).qpos = motor_angles[name]
+        msg = None
+        if self.msg is not None:
+            msg = self.msg
+        elif self.zmq_receiver is not None:
+            msg = self.zmq_receiver.get_msg()
 
-        joint_angles = self.robot.motor_to_joint_angles(motor_angles)
-        for name in joint_angles:
-            self.data.joint(name).qpos = joint_angles[name]
+        # print(f"msg: {msg}")
 
-        mujoco.mj_forward(self.model, self.data)
+        if msg is not None:
+            # print(f"latency: {abs(time.time() - msg.time) * 1000:.2f} ms")
+            if abs(time.time() - msg.time) < 1:
+                self.fsr = msg.fsr
+                self.arm_motor_pos = msg.action
+            else:
+                print("stale message received, discarding")
 
-        # Get the center of mass position
-        com_pos = np.asarray(self.data.body(0).subtree_com, dtype=np.float32)
+        if self.camera is not None:
+            jpeg_frame, self.camera_frame = self.camera.get_jpeg()
+        else:
+            jpeg_frame = None
 
-        # PD controller on CoM position
-        com_pos_error = com_pos[:2] - self.com_pos_init[:2]
-        com_pos_error_d = (com_pos_error - self.com_pos_error_prev) / self.control_dt
-        self.com_pos_error_prev = com_pos_error
+        if self.zmq_sender is not None:
+            send_msg = ZMQMessage(time=time.time(), camera_frame=jpeg_frame)
+            self.zmq_sender.send_msg(send_msg)
 
-        # print(f"com_pos: {com_pos}")
-        # print(f"com_pos_init: {self.com_pos_init}")
-        # print(f"com_pos_error: {com_pos_error}")
+        control_inputs = self.last_control_inputs
+        if self.joystick is not None:
+            control_inputs = self.joystick.get_controller_input()
+        elif msg is not None:
+            control_inputs = msg.control_inputs
 
-        ctrl_com = self.com_kp * com_pos_error + self.com_kd * com_pos_error_d
+        self.last_control_inputs = control_inputs
 
-        joint_target = self.plan()
+        if control_inputs is None:
+            command = self.fixed_command
+        else:
+            command = self.get_command(control_inputs)
 
-        # print(f"hip_pitch_target: {joint_target[6]:.4f} {joint_target[12]:.4f}")
-
-        com_jacp = np.zeros((3, self.model.nv))
-        mujoco.mj_jacSubtreeCom(self.model, self.data, com_jacp, 0)
-
-        # Update joint positions based on the PD controller command
-        joint_target[self.pitch_joint_indicies] -= (
-            ctrl_com[0]
-            * com_jacp[
-                0, self.q_start_idx + self.joint_indices[self.pitch_joint_indicies]
-            ]
-        )
-        joint_target[self.roll_joint_indicies] -= (
-            ctrl_com[1]
-            * com_jacp[
-                1, self.q_start_idx + self.joint_indices[self.roll_joint_indicies]
-            ]
+        time_curr = self.step_curr * self.control_dt
+        arm_joint_pos = self.get_arm_motor_pos() * self.arm_gear_ratio
+        self.state_ref[13 + self.arm_joint_indices] = arm_joint_pos
+        self.state_ref = self.balance_ref.get_state_ref(
+            self.state_ref, time_curr, command
         )
 
+        joint_angles = dict(
+            zip(self.robot.joint_ordering, self.state_ref[13 : 13 + self.robot.nu])
+        )
         # Convert joint positions to motor angles
-        motor_angles = self.robot.joint_to_motor_angles(
-            dict(zip(self.robot.joint_ordering, joint_target))
+        motor_target = np.array(
+            list(self.robot.joint_to_motor_angles(joint_angles).values()),
+            dtype=np.float32,
         )
-        motor_target = np.array(list(motor_angles.values()), dtype=np.float32)
         # Override motor target with reference motion or teleop motion
         motor_target = np.clip(
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
         )
 
-        # print(f"hip_pitch: {motor_target[6]:.4f} {motor_target[12]:.4f}")
-
         self.step_curr += 1
-        self.last_motor_target = motor_target
 
         return motor_target
-
-    def plan(self) -> npt.NDArray[np.float32]:
-        joint_target = self.default_joint_pos.copy()
-        joint_angles = self.robot.motor_to_joint_angles(
-            dict(zip(self.robot.motor_ordering, self.last_motor_target))
-        )
-        joint_target[self.neck_yaw_idx] = joint_angles["neck_yaw_driven"]
-        joint_target[self.neck_pitch_idx] = joint_angles["neck_pitch_driven"]
-
-        return joint_target

@@ -4,6 +4,7 @@ scripts/run_*_remote.sh
 scripts/run_*_remote.py
 wandb/
 tests/images/
+toddlerbot/policies/checkpoints/*teleop*
 
 ### Python ###
 

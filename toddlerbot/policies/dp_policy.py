@@ -1,100 +1,45 @@
-# type: ignore
-import collections
+import os
+from collections import deque
+from typing import List, Optional
 
 import cv2
 import numpy as np
 import numpy.typing as npt
 
-from toddlerbot.policies import BasePolicy
+from toddlerbot.manipulation.dp.inference_class import DPModel
+from toddlerbot.policies.balance_pd import BalancePDPolicy
 from toddlerbot.sensing.camera import Camera
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
-
-default_pose = np.array(
-    [
-        -0.60745645,
-        -0.9265244,
-        0.02147579,
-        1.2348546,
-        0.52922344,
-        0.49394178,
-        -1.125942,
-        0.5123496,
-        -0.96180606,
-        -0.25003886,
-        1.2195148,
-        -0.35128164,
-        -0.6504078,
-        -1.1535536,
-    ]
-)
+from toddlerbot.tools.joystick import Joystick
+from toddlerbot.utils.comm_utils import ZMQNode
 
 
-class DPPolicy(BasePolicy, policy_name="dp"):
-    def __init__(self, robot: Robot, model_path: str, dest: str):
-        super().__init__(name="replay_fixed", robot=robot, init_motor_pos=default_pose)
-
-        # self.default_action = np.array(
-        #     list(robot.default_motor_angles.values()), dtype=np.float32
-        # )
-
-        self.model_path = model_path
-        self.toggle_motor = False
-
-        self.log = False
-        self.stop_inference = True
-        self.blend_percentage = 0.0
-        self.default_pose = default_pose
-
-        self.camera = Camera(camera_id=0)
-
-        self.load_model()
-        # deque for observation
-        self.obs_deque = collections.deque([], maxlen=self.model.obs_horizon)
-        self.model_action_seq = []
-
-        self._start_keyboard_listener()
-
-    def _start_keyboard_listener(self):
-        def on_press(key):
-            try:
-                if key == keyboard.Key.space:
-                    self.stop_inference = not self.stop_inference
-                    self.blend_percentage = 0.0
-                    if self.stop_inference:
-                        print("\nInference stopped, resetting to default pose\n")
-                    else:
-                        print("\nInference started, leader controlled by model now.\n")
-            except AttributeError:
-                pass
-
-        listener = keyboard.Listener(on_press=on_press)
-        listener.start()
-
-    def load_model(self):
-        from toddlerbot.manipulation.dp.datasets.teleop_dataset import (
-            TeleopImageDataset,
+class DPPolicy(BalancePDPolicy, policy_name="dp"):
+    def __init__(
+        self,
+        name: str,
+        robot: Robot,
+        init_motor_pos: npt.NDArray[np.float32],
+        joystick: Optional[Joystick] = None,
+        camera: Optional[Camera] = None,
+        zmq_receiver: Optional[ZMQNode] = None,
+        zmq_sender: Optional[ZMQNode] = None,
+        ip: str = "127.0.0.1",
+    ):
+        super().__init__(
+            name, robot, init_motor_pos, joystick, camera, zmq_receiver, zmq_sender, ip
         )
-        from toddlerbot.manipulation.dp.inference_class import DPModel
 
-        model_path = "/home/weizhuo2/Documents/gits/toddlerbot.manipulation.dp/checkpoints/teleop_model.pth"
+        policy_path = os.path.join(
+            "toddlerbot", "policies", "checkpoints", "teleop_model.pth"
+        )
+
         pred_horizon, obs_horizon, action_horizon = 16, 2, 8
         lowdim_obs_dim, action_dim = 14, 14
 
-        # create dataset from file
-        dataset_path = "/home/weizhuo2/Documents/gits/toddlerbot.manipulation.dp/teleop_data/teleop_dataset.lz4"
-        dataset = TeleopImageDataset(
-            dataset_path=dataset_path,
-            pred_horizon=pred_horizon,
-            obs_horizon=obs_horizon,
-            action_horizon=action_horizon,
-        )
-        # save training data statistics (min, max) for each dim
-        stats = dataset.stats
-
         self.model = DPModel(
-            model_path,
-            stats,
+            policy_path,
             pred_horizon,
             obs_horizon,
             action_horizon,
@@ -102,40 +47,32 @@ class DPPolicy(BasePolicy, policy_name="dp"):
             action_dim,
         )
 
-    def inference_step(self) -> npt.NDArray[np.float32]:
-        model_action = self.model.get_action_from_obs(self.obs_deque)
-        return list(model_action)
+        # deque for observation
+        self.obs_deque: deque = deque([], maxlen=self.model.obs_horizon)
+        self.model_action_seq: List[npt.NDArray[np.float32]] = []
 
-    def reset_slowly(self, obs_real):
-        leader_action = (
-            self.default_pose * self.blend_percentage
-            + obs_real.motor_pos * (1 - self.blend_percentage)
-        )
-        self.blend_percentage += 0.002
-        self.blend_percentage = min(1, self.blend_percentage)
-        return leader_action
-
-    def step(self, obs: Obs, obs_real: Obs) -> npt.NDArray[np.float32]:
-        # manage obs_deque
-        camera_frame = self.camera.get_state()
-        camera_frame = cv2.resize(camera_frame, (171, 96))[:96, 38:134] / 255.0
-        camera_frame = camera_frame.transpose(2, 0, 1)
-        obs_entry = {"image": camera_frame, "agent_pos": obs_real.motor_pos}
-        self.obs_deque.append(obs_entry)
-
-        leader_action = obs_real.motor_pos
+    def get_arm_motor_pos(self) -> npt.NDArray[np.float32]:
         if len(self.obs_deque) == self.model.obs_horizon:
             if len(self.model_action_seq) == 0:
-                self.model_action_sequence = self.inference_step()
-            sim_action = self.model_action_sequence.pop(0)
+                self.model_action_seq = list(
+                    self.model.get_action_from_obs(self.obs_deque)
+                )
+            arm_motor_pos = self.model_action_seq.pop(0)
         else:
-            sim_action = obs_real.motor_pos
+            arm_motor_pos = self.default_motor_pos[self.arm_motor_indices]
 
-        if self.stop_inference:
-            leader_action = self.reset_slowly(obs_real)
-            # if self.blend_percentage >= 0.99:
-            # self.log = True
-            # self.toggle_motor = True
-        # else:
-        #     leader_action = sim_action
-        return sim_action, leader_action
+        return arm_motor_pos
+
+    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
+        motor_target = super().step(obs, is_real)
+
+        assert self.camera_frame is not None
+
+        self.camera_frame = (
+            cv2.resize(self.camera_frame, (171, 96))[:96, 38:134] / 255.0
+        ).transpose(2, 0, 1)
+
+        obs_entry = {"image": self.camera_frame, "agent_pos": obs.motor_pos}
+        self.obs_deque.append(obs_entry)
+
+        return motor_target

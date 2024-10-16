@@ -181,7 +181,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         return stance_mask[0].item() == 1.0 and stance_mask[1].item() == 1.0
 
     def get_command(self, control_inputs: Dict[str, float]) -> npt.NDArray[np.float32]:
-        return np.zeros(1, dtype=np.float32)
+        return self.fixed_command
 
     # @profile()
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:

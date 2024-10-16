@@ -88,7 +88,7 @@ class Joystick:
         self.dead_zone = dead_zone
         self.joystick_mapping = {
             "view": "stand",
-            "menu": "log",
+            "menu": "manipulate",
             "left_joystick_vertical": "walk_vertical",
             "left_joystick_horizontal": "walk_horizontal",
             "right_joystick_vertical": "squat",

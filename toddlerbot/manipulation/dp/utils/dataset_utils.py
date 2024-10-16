@@ -29,8 +29,8 @@ def create_sample_indices(
             indices.append(
                 [buffer_start_idx, buffer_end_idx, sample_start_idx, sample_end_idx]
             )
-    indices = np.array(indices)
-    return indices
+    indices_arr = np.array(indices)
+    return indices_arr
 
 
 def sample_sequence(
