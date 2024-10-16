@@ -41,31 +41,6 @@ class BalancePDReference(MotionReference):
         )
         self.mj_joint_indices -= 1  # Account for the free joint
 
-        self.leg_pitch_joint_indicies = np.array(
-            [
-                self.robot.joint_ordering.index(joint_name)
-                for joint_name in [
-                    "left_hip_pitch",
-                    "left_knee_pitch",
-                    "left_ank_pitch",
-                    "right_hip_pitch",
-                    "right_knee_pitch",
-                    "right_ank_pitch",
-                ]
-            ]
-        )
-        self.leg_roll_joint_indicies = np.array(
-            [
-                self.robot.joint_ordering.index(joint_name)
-                for joint_name in [
-                    "left_hip_roll",
-                    "left_ank_roll",
-                    "right_hip_roll",
-                    "right_ank_roll",
-                ]
-            ]
-        )
-
         if self.use_jax:
             self.model = mjx.put_model(model)
 
@@ -119,6 +94,7 @@ class BalancePDReference(MotionReference):
         data = self.forward(qpos)
 
         self.desired_com = np.array(data.subtree_com[0], dtype=np.float32)
+
         # foot_names = [
         #     f"{self.robot.foot_name}_collision",
         #     f"{self.robot.foot_name}_2_collision",
@@ -146,9 +122,6 @@ class BalancePDReference(MotionReference):
         #     self.desired_com += np.mean(world_bbox_corners, axis=0) / 2
 
         # self.desired_com = inplace_update(self.desired_com, 2, qpos[2])
-
-    def get_phase_signal(self, time_curr: float | ArrayType) -> ArrayType:
-        return np.zeros(1, dtype=np.float32)
 
     def get_vel(self, command: ArrayType) -> Tuple[ArrayType, ArrayType]:
         lin_vel = np.array([0.0, 0.0, 0.0], dtype=np.float32)
@@ -200,6 +173,14 @@ class BalancePDReference(MotionReference):
             self.waist_joint_limits[1],
         )
         joint_pos = inplace_update(joint_pos, self.waist_joint_indices, waist_joint_pos)
+
+        com_z_target = self.com_z_limits[0] + command[5] * (
+            self.com_z_limits[1] - self.com_z_limits[0]
+        )
+        leg_pitch_joint_pos = self.com_ik(com_z_target)
+        joint_pos = inplace_update(
+            joint_pos, self.leg_pitch_joint_indicies, leg_pitch_joint_pos
+        )
 
         qpos = self.default_qpos.copy()
         qpos = inplace_update(qpos, slice(3, 7), torso_state[3:7])

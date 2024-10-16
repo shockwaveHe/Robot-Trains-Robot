@@ -10,9 +10,6 @@ class SquatReference(MotionReference):
     def __init__(self, robot: Robot, dt: float):
         super().__init__("squat", "perceptual", robot, dt)
 
-    def get_phase_signal(self, time_curr: float | ArrayType) -> ArrayType:
-        return np.zeros(1, dtype=np.float32)
-
     def get_vel(self, command: ArrayType) -> Tuple[ArrayType, ArrayType]:
         lin_vel = np.array([0.0, 0.0, command[-1]], dtype=np.float32)
         ang_vel = np.array([0.0, 0.0, 0.0], dtype=np.float32)

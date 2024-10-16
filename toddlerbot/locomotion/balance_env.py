@@ -14,8 +14,8 @@ from toddlerbot.sim.robot import Robot
 class BalanceCfg(MJXConfig, env_name="balance"):
     @dataclass
     class ObsConfig(MJXConfig.ObsConfig):
-        num_single_obs: int = 102
-        num_single_privileged_obs: int = 141
+        num_single_obs: int = 103
+        num_single_privileged_obs: int = 142
 
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):
@@ -26,11 +26,12 @@ class BalanceCfg(MJXConfig, env_name="balance"):
                 [-1.5, 1.5],
                 [0.0, 0.5],
                 [-0.3, 0.3],
-                [-1.0, 1.0],
+                [-0.6, 0.6],
+                [0.0, 1.0],
             ]
         )
         deadzone: List[float] = field(
-            default_factory=lambda: [0.05, 0.05, 0.0, 0.05, 0.05]
+            default_factory=lambda: [0.05, 0.05, 0.0, 0.05, 0.05, 0.0]
         )
 
     @dataclass
@@ -76,7 +77,24 @@ class BalanceEnv(MJXEnv, env_name="balance"):
     def _sample_command(
         self, rng: jax.Array, last_command: Optional[jax.Array] = None
     ) -> jax.Array:
-        rng, rng_1, rng_2, rng_3, rng_4, rng_5 = jax.random.split(rng, 6)
+        rng, rng_1, rng_2, rng_3, rng_4, rng_5, rng_6 = jax.random.split(rng, 7)
+        if last_command is None:
+            arm_command = jax.random.uniform(
+                rng_3,
+                (1,),
+                minval=self.command_range[2][0],
+                maxval=self.command_range[2][1],
+            )
+            squat_command = jax.random.uniform(
+                rng_6,
+                (1,),
+                minval=self.command_range[5][0],
+                maxval=self.command_range[5][1],
+            )
+        else:
+            arm_command = last_command[2:3]
+            squat_command = last_command[5:6]
+
         neck_yaw_command = jax.random.uniform(
             rng_1,
             (1,),
@@ -89,16 +107,6 @@ class BalanceEnv(MJXEnv, env_name="balance"):
             minval=self.command_range[1][0],
             maxval=self.command_range[1][1],
         )
-        if last_command is None:
-            arm_command = jax.random.uniform(
-                rng_3,
-                (1,),
-                minval=self.command_range[2][0],
-                maxval=self.command_range[2][1],
-            )
-        else:
-            arm_command = last_command[2:3].copy()
-
         waist_roll_command = jax.random.uniform(
             rng_4,
             (1,),
@@ -118,6 +126,7 @@ class BalanceEnv(MJXEnv, env_name="balance"):
                 arm_command,
                 waist_roll_command,
                 waist_yaw_command,
+                squat_command,
             ]
         )
 

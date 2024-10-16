@@ -168,9 +168,8 @@ class MotionReference(ABC):
             ]
         )
 
-    @abstractmethod
     def get_phase_signal(self, time_curr: float | ArrayType) -> ArrayType:
-        pass
+        return np.zeros(1, dtype=np.float32)
 
     @abstractmethod
     def get_vel(self, command: ArrayType) -> Tuple[ArrayType, ArrayType]:
