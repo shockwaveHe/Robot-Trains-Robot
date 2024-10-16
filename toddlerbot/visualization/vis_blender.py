@@ -152,7 +152,7 @@ if __name__ == "__main__":
     blend_file_path = bpy.path.abspath("//")
     repo_path = os.path.join(blend_file_path, "../../")
 
-    robot_dir = os.path.join(repo_path, "toddlerbot", "robot_descriptions", robot_name)
+    robot_dir = os.path.join(repo_path, "toddlerbot", "descriptions", robot_name)
     if os.path.exists(robot_dir):
         xml_path = os.path.join(robot_dir, robot_name + ".xml")
     else:

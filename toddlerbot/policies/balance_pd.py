@@ -6,9 +6,9 @@ from typing import Dict, Optional
 import numpy as np
 import numpy.typing as npt
 
-from toddlerbot.envs.balance_env import BalanceCfg
+from toddlerbot.locomotion.balance_env import BalanceCfg
+from toddlerbot.motion.balance_pd_ref import BalancePDReference
 from toddlerbot.policies import BasePolicy
-from toddlerbot.ref_motion.balance_pd_ref import BalancePDReference
 from toddlerbot.sensing.camera import Camera
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot

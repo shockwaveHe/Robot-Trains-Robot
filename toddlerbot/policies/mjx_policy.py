@@ -10,10 +10,10 @@ import scipy
 from brax.io import model
 from brax.training.agents.ppo import networks as ppo_networks
 
-from toddlerbot.envs.mjx_config import MJXConfig
-from toddlerbot.envs.ppo_config import PPOConfig
+from toddlerbot.locomotion.mjx_config import MJXConfig
+from toddlerbot.locomotion.ppo_config import PPOConfig
+from toddlerbot.motion.motion_ref import MotionReference
 from toddlerbot.policies import BasePolicy
-from toddlerbot.ref_motion import MotionReference
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick

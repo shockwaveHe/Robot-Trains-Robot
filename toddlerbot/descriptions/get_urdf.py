@@ -87,7 +87,7 @@ def process_urdf_and_stl_files(assembly_path: str):
 
 
 def run_onshape_to_robot(onshape_config: OnShapeConfig):
-    assembly_dir = os.path.join("toddlerbot", "robot_descriptions", "assemblies")
+    assembly_dir = os.path.join("toddlerbot", "descriptions", "assemblies")
 
     # Process each assembly in series
     for doc_id, assembly_name in zip(

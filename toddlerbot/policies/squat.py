@@ -3,9 +3,9 @@ from typing import Dict, Optional
 import numpy as np
 import numpy.typing as npt
 
-from toddlerbot.envs.squat_env import SquatCfg
+from toddlerbot.locomotion.squat_env import SquatCfg
+from toddlerbot.motion.squat_ref import SquatReference
 from toddlerbot.policies.mjx_policy import MJXPolicy
-from toddlerbot.ref_motion.squat_ref import SquatReference
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
 

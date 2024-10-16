@@ -347,7 +347,7 @@ def evaluate(
         json.dump(opt_values_dict, f, indent=4)
 
     dyn_config_path = os.path.join(
-        "toddlerbot", "robot_descriptions", robot.name, "config_dynamics.json"
+        "toddlerbot", "descriptions", robot.name, "config_dynamics.json"
     )
     if os.path.exists(dyn_config_path):
         dyn_config = json.load(open(dyn_config_path, "r"))
@@ -502,7 +502,7 @@ def main():
         "--robot",
         type=str,
         default="toddlerbot",
-        help="The name of the robot. Need to match the name in robot_descriptions.",
+        help="The name of the robot. Need to match the name in descriptions.",
     )
     parser.add_argument(
         "--sim",

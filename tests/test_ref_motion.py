@@ -4,15 +4,15 @@ from typing import List
 
 import numpy as np
 
-from toddlerbot.envs.balance_env import BalanceCfg
-from toddlerbot.envs.squat_env import SquatCfg
-from toddlerbot.envs.turn_env import TurnCfg
-from toddlerbot.envs.walk_env import WalkCfg
-from toddlerbot.ref_motion import MotionReference
-from toddlerbot.ref_motion.balance_pd_ref import BalancePDReference
-from toddlerbot.ref_motion.squat_ref import SquatReference
-from toddlerbot.ref_motion.walk_simple_ref import WalkSimpleReference
-from toddlerbot.ref_motion.walk_zmp_ref import WalkZMPReference
+from toddlerbot.locomotion.balance_env import BalanceCfg
+from toddlerbot.locomotion.squat_env import SquatCfg
+from toddlerbot.locomotion.turn_env import TurnCfg
+from toddlerbot.locomotion.walk_env import WalkCfg
+from toddlerbot.motion.balance_pd_ref import BalancePDReference
+from toddlerbot.motion.motion_ref import MotionReference
+from toddlerbot.motion.squat_ref import SquatReference
+from toddlerbot.motion.walk_simple_ref import WalkSimpleReference
+from toddlerbot.motion.walk_zmp_ref import WalkZMPReference
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
@@ -121,7 +121,7 @@ if __name__ == "__main__":
         "--robot",
         type=str,
         default="toddlerbot_OP3",
-        help="The name of the robot. Need to match the name in robot_descriptions.",
+        help="The name of the robot. Need to match the name in descriptions.",
     )
     parser.add_argument(
         "--sim",

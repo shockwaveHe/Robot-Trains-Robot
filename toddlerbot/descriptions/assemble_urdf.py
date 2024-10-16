@@ -71,7 +71,7 @@ def update_link_names_and_references(body_root: ET.Element, part_root: ET.Elemen
 
 def assemble_urdf(urdf_config: URDFConfig):
     # Parse the target URDF
-    description_dir = os.path.join("toddlerbot", "robot_descriptions")
+    description_dir = os.path.join("toddlerbot", "descriptions")
     assembly_dir = os.path.join(description_dir, "assemblies")
 
     body_urdf_path = os.path.join(
@@ -169,7 +169,7 @@ def main():
         "--robot",
         type=str,
         default="toddlerbot",
-        help="The name of the robot. Need to match the name in robot_descriptions.",
+        help="The name of the robot. Need to match the name in descriptions.",
     )
     parser.add_argument(
         "--body-name",

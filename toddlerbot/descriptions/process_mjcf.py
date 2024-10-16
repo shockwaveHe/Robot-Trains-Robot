@@ -916,14 +916,14 @@ def process_mjcf_file(root: ET.Element, robot: Robot):
 
 def get_mjcf_files(robot_name: str):
     cache_file_path = os.path.join(
-        "toddlerbot", "robot_descriptions", robot_name, f"{robot_name}_data.pkl"
+        "toddlerbot", "descriptions", robot_name, f"{robot_name}_data.pkl"
     )
     if os.path.exists(cache_file_path):
         os.remove(cache_file_path)
 
     robot = Robot(robot_name)
 
-    robot_dir = os.path.join("toddlerbot", "robot_descriptions", robot_name)
+    robot_dir = os.path.join("toddlerbot", "descriptions", robot_name)
     urdf_path = os.path.join(robot_dir, robot_name + ".urdf")
     source_mjcf_path = os.path.join("mjmodel.xml")
     mjcf_vis_path = os.path.join(robot_dir, robot_name + "_vis.xml")
@@ -991,7 +991,7 @@ def main():
         "--robot",
         type=str,
         default="toddlerbot",
-        help="The name of the robot. Need to match the name in robot_descriptions.",
+        help="The name of the robot. Need to match the name in descriptions.",
     )
     args = parser.parse_args()
 

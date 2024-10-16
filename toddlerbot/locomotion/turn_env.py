@@ -4,7 +4,7 @@ from typing import List, Optional
 import jax
 import jax.numpy as jnp
 
-from toddlerbot.envs.walk_env import WalkCfg, WalkEnv
+from toddlerbot.locomotion.walk_env import WalkCfg, WalkEnv
 
 
 @dataclass

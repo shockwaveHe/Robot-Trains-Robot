@@ -13,8 +13,8 @@ from mujoco import mjx
 from mujoco.mjx._src import support  # type: ignore
 
 from toddlerbot.actuation.mujoco.mujoco_control import MotorController
-from toddlerbot.envs.mjx_config import MJXConfig
-from toddlerbot.ref_motion import MotionReference
+from toddlerbot.locomotion.mjx_config import MJXConfig
+from toddlerbot.motion.motion_ref import MotionReference
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.math_utils import (

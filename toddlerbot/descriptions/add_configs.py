@@ -194,7 +194,7 @@ def main() -> None:
         "--robot",
         type=str,
         default="toddlerbot",
-        help="The name of the robot. Need to match the name in robot_descriptions.",
+        help="The name of the robot. Need to match the name in descriptions.",
     )
     # baud is either 3 or 4 int
     # parser.add_argument(
@@ -211,7 +211,7 @@ def main() -> None:
     else:
         baud = 2
 
-    robot_dir = os.path.join("toddlerbot", "robot_descriptions", args.robot)
+    robot_dir = os.path.join("toddlerbot", "descriptions", args.robot)
     general_config: Dict[str, Any] = {
         "is_fixed": True,
         "has_imu": False,
@@ -261,7 +261,7 @@ def main() -> None:
         for motor_name in motor_name_list:
             sysID_result_path = os.path.join(
                 "toddlerbot",
-                "robot_descriptions",
+                "descriptions",
                 f"sysID_{motor_name}",
                 "config_dynamics.json",
             )

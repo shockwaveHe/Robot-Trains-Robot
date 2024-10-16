@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 import numpy.typing as npt
 
-from toddlerbot.manipulation.dp.inference_class import DPModel
+from toddlerbot.manipulation.inference_class import DPModel
 from toddlerbot.policies.balance_pd import BalancePDPolicy
 from toddlerbot.sensing.camera import Camera
 from toddlerbot.sim import Obs

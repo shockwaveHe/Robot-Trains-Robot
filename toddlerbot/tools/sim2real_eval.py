@@ -244,7 +244,7 @@ def main():
         "--robot",
         type=str,
         default="toddlerbot",
-        help="The name of the robot. Need to match the name in robot_descriptions.",
+        help="The name of the robot. Need to match the name in descriptions.",
     )
     parser.add_argument(
         "--policy",

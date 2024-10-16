@@ -137,7 +137,7 @@ if __name__ == "__main__":
         "--robot",
         type=str,
         default="toddlerbot",
-        help="The name of the robot. Need to match the name in robot_descriptions.",
+        help="The name of the robot. Need to match the name in descriptions.",
     )
     args = parser.parse_args()
 

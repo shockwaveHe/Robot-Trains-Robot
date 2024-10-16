@@ -10,7 +10,7 @@ import skimage.transform as st
 from gym import spaces
 from pymunk.vec2d import Vec2d
 
-from toddlerbot.manipulation.dp.utils.env_utils import DrawOptions, pymunk_to_shapely
+from toddlerbot.manipulation.utils.env_utils import DrawOptions, pymunk_to_shapely
 
 
 class PushTEnv(gym.Env):

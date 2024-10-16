@@ -48,6 +48,7 @@ class MotionReference(ABC):
         self._setup_arm()
         self._setup_waist()
         self._setup_leg()
+        self._setup_com()
 
     def _get_gear_ratios(self, motor_names: List[str]) -> ArrayType:
         gear_ratios = np.ones(len(motor_names), dtype=np.float32)
@@ -112,6 +113,60 @@ class MotionReference(ABC):
     def _setup_leg(self):
         leg_motor_names = [self.robot.motor_ordering[i] for i in self.leg_motor_indices]
         self.leg_gear_ratio = self._get_gear_ratios(leg_motor_names)
+
+    def _setup_com(self, com_z_lower_limit_offset: float = 0.01):
+        self.knee_pitch_default = self.default_joint_pos[
+            self.robot.joint_ordering.index("left_knee_pitch")
+        ]
+        self.hip_pitch_to_knee_z = self.robot.data_dict["offsets"][
+            "hip_pitch_to_knee_z"
+        ]
+        self.knee_to_ank_pitch_z = self.robot.data_dict["offsets"][
+            "knee_to_ank_pitch_z"
+        ]
+        self.hip_pitch_to_ank_pitch_z = np.sqrt(
+            self.hip_pitch_to_knee_z**2
+            + self.knee_to_ank_pitch_z**2
+            - 2
+            * self.hip_pitch_to_knee_z
+            * self.knee_to_ank_pitch_z
+            * np.cos(np.pi - self.knee_pitch_default)
+        )
+        self.shin_thigh_ratio = self.knee_to_ank_pitch_z / self.hip_pitch_to_knee_z
+
+        self.com_z_limits = np.array(
+            [
+                self.com_fk(self.robot.joint_limits["left_knee_pitch"][1]).item()
+                + com_z_lower_limit_offset,
+                0.0,
+            ],
+            dtype=np.float32,
+        )
+        self.left_knee_pitch_idx = self.robot.joint_ordering.index("left_knee_pitch")
+        self.leg_pitch_joint_indicies = np.array(
+            [
+                self.robot.joint_ordering.index(joint_name)
+                for joint_name in [
+                    "left_hip_pitch",
+                    "left_knee_pitch",
+                    "left_ank_pitch",
+                    "right_hip_pitch",
+                    "right_knee_pitch",
+                    "right_ank_pitch",
+                ]
+            ]
+        )
+        self.leg_roll_joint_indicies = np.array(
+            [
+                self.robot.joint_ordering.index(joint_name)
+                for joint_name in [
+                    "left_hip_roll",
+                    "left_ank_roll",
+                    "right_hip_roll",
+                    "right_ank_roll",
+                ]
+            ]
+        )
 
     @abstractmethod
     def get_phase_signal(self, time_curr: float | ArrayType) -> ArrayType:
@@ -186,3 +241,46 @@ class MotionReference(ABC):
     def leg_ik(self, leg_joint_pos: ArrayType) -> ArrayType:
         leg_motor_pos = leg_joint_pos / self.leg_gear_ratio
         return leg_motor_pos
+
+    def com_fk(self, knee_angle: float | ArrayType) -> ArrayType:
+        # Compute the length from hip pitch to ankle pitch along the z-axis
+        com_z = np.array(
+            np.sqrt(
+                self.hip_pitch_to_knee_z**2
+                + self.knee_to_ank_pitch_z**2
+                - 2
+                * self.hip_pitch_to_knee_z
+                * self.knee_to_ank_pitch_z
+                * np.cos(np.pi - knee_angle)
+            )
+            - self.hip_pitch_to_ank_pitch_z,
+            dtype=np.float32,
+        )
+        return com_z
+
+    def com_ik(self, com_z: ArrayType) -> ArrayType:
+        knee_angle_cos = (
+            self.hip_pitch_to_knee_z**2
+            + self.knee_to_ank_pitch_z**2
+            - (self.hip_pitch_to_ank_pitch_z + com_z) ** 2
+        ) / (2 * self.hip_pitch_to_knee_z * self.knee_to_ank_pitch_z)
+        knee_angle_cos = np.clip(knee_angle_cos, -1.0, 1.0)
+        knee_angle = np.abs(np.pi - np.arccos(knee_angle_cos))
+
+        ank_pitch_angle = np.arctan2(
+            np.sin(knee_angle),
+            np.cos(knee_angle) + self.shin_thigh_ratio,
+        )
+        hip_pitch_angle = knee_angle - ank_pitch_angle
+
+        return np.array(
+            [
+                -hip_pitch_angle,
+                knee_angle,
+                -ank_pitch_angle,
+                hip_pitch_angle,
+                -knee_angle,
+                -ank_pitch_angle,
+            ],
+            dtype=np.float32,
+        )

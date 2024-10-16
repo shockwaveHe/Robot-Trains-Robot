@@ -3,9 +3,9 @@ from typing import Dict, Optional
 import numpy as np
 import numpy.typing as npt
 
-from toddlerbot.envs.turn_env import TurnCfg
+from toddlerbot.locomotion.turn_env import TurnCfg
+from toddlerbot.motion.walk_zmp_ref import WalkZMPReference
 from toddlerbot.policies.mjx_policy import MJXPolicy
-from toddlerbot.ref_motion.walk_zmp_ref import WalkZMPReference
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
 

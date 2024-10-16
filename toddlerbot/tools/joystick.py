@@ -145,7 +145,7 @@ class Joystick:
             for key, task in self.joystick_mapping.items():
                 if key in self.button_mapping:
                     button_id = self.button_mapping[key]
-                    value = self.joystick.get_button(button_id)
+                    value = float(self.joystick.get_button(button_id))
                     control_inputs[task] = 0.0 if abs(value) < self.dead_zone else value
                 elif key in self.axis_mapping:
                     axis_id = self.axis_mapping[key]

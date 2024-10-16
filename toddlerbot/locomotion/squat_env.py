@@ -4,9 +4,9 @@ from typing import Any, List, Optional
 import jax
 import jax.numpy as jnp
 
-from toddlerbot.envs.mjx_config import MJXConfig
-from toddlerbot.envs.mjx_env import MJXEnv
-from toddlerbot.ref_motion.squat_ref import SquatReference
+from toddlerbot.locomotion.mjx_config import MJXConfig
+from toddlerbot.locomotion.mjx_env import MJXEnv
+from toddlerbot.motion.squat_ref import SquatReference
 from toddlerbot.sim.robot import Robot
 
 

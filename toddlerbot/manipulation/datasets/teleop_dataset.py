@@ -1,31 +1,18 @@
+import joblib
 import numpy as np
 import torch
-import zarr
 
-from toddlerbot.manipulation.dp.utils.dataset_utils import (
+from toddlerbot.manipulation.utils.dataset_utils import (
     create_sample_indices,
     get_data_stats,
     normalize_data,
     sample_sequence,
 )
 
-# ### **Dataset**
-#
-# Defines `PushTImageDataset` and helper functions
-#
-# The dataset class
-# - Load data ((image, agent_pos), action) from a zarr storage
-# - Normalizes each dimension of agent_pos and action to [-1,1]
-# - Returns
-#  - All possible segments with length `pred_horizon`
-#  - Pads the beginning and the end of each episode with repetition
-#  - key `image`: shape (obs_hoirzon, 3, 96, 96)
-#  - key `agent_pos`: shape (obs_hoirzon, 2)
-#  - key `action`: shape (pred_horizon, 2)
 
-
-# dataset
-class PushTImageDataset(torch.utils.data.Dataset):
+# episode_ends idx is the index of the next start. In other words, you can use
+# train_data[:episode_ends[idx]], and train_data[episode_ends[idx]:episode_ends[idx+1]]
+class TeleopImageDataset(torch.utils.data.Dataset):
     def __init__(
         self,
         dataset_path: str,
@@ -34,19 +21,23 @@ class PushTImageDataset(torch.utils.data.Dataset):
         action_horizon: int,
     ):
         # read from zarr dataset
-        dataset_root = zarr.open(dataset_path, "r")
+        dataset_root = joblib.load(dataset_path)
+        # dataset_root['state_array'] = dataset_root['state_array'].astype(np.float32)
+        # dataset_root['images'] = dataset_root['images'].astype(np.float32)
 
         # float32, [0,1], (N,96,96,3)
-        train_image_data = dataset_root["data"]["img"][:]
-        train_image_data = np.moveaxis(train_image_data, -1, 1)  # (N,3,96,96)
+        train_image_data = dataset_root["images"]
+        train_image_data = np.moveaxis(train_image_data, -1, 1)
+        # (N,3,96,96)
 
         # (N, D)
         train_data = {
             # first two dims of state vector are agent (i.e. gripper) locations
-            "agent_pos": dataset_root["data"]["state"][:, :2],
-            "action": dataset_root["data"]["action"][:],
+            "agent_pos": dataset_root["agent_pos"],
+            "action": dataset_root["action"],
         }
-        episode_ends = dataset_root["meta"]["episode_ends"][:]
+        episode_ends = dataset_root["episode_ends"]
+        # episode_ends = np.array([len(dataset_root["state_array"])])
 
         # compute start and end of each state-action sequence
         # also handles padding
@@ -65,7 +56,7 @@ class PushTImageDataset(torch.utils.data.Dataset):
             normalized_train_data[key] = normalize_data(data, stats[key])
 
         # images are already normalized
-        normalized_train_data["image"] = train_image_data / 255.0
+        normalized_train_data["image"] = train_image_data
 
         self.indices = indices
         self.stats = stats

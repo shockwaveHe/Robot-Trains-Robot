@@ -4,7 +4,7 @@ import mujoco
 from mujoco import mjx
 from mujoco.mjx._src import support  # type: ignore
 
-from toddlerbot.ref_motion import MotionReference
+from toddlerbot.motion.motion_ref import MotionReference
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.array_utils import ArrayType, inplace_add, inplace_update
 from toddlerbot.utils.array_utils import array_lib as np

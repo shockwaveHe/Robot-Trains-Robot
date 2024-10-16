@@ -5,10 +5,10 @@ import jax
 import jax.numpy as jnp
 from brax import base, math
 
-from toddlerbot.envs.mjx_config import MJXConfig
-from toddlerbot.envs.mjx_env import MJXEnv
-from toddlerbot.ref_motion.walk_simple_ref import WalkSimpleReference
-from toddlerbot.ref_motion.walk_zmp_ref import WalkZMPReference
+from toddlerbot.locomotion.mjx_config import MJXConfig
+from toddlerbot.locomotion.mjx_env import MJXEnv
+from toddlerbot.motion.walk_simple_ref import WalkSimpleReference
+from toddlerbot.motion.walk_zmp_ref import WalkZMPReference
 from toddlerbot.sim.robot import Robot
 
 

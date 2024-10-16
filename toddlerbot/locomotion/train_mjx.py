@@ -30,9 +30,9 @@ from orbax import checkpoint as ocp
 from tqdm import tqdm
 
 import wandb
-from toddlerbot.envs.mjx_config import get_env_cfg_class
-from toddlerbot.envs.mjx_env import MJXEnv, get_env_class
-from toddlerbot.envs.ppo_config import PPOConfig
+from toddlerbot.locomotion.mjx_config import get_env_cfg_class
+from toddlerbot.locomotion.mjx_env import MJXEnv, get_env_class
+from toddlerbot.locomotion.ppo_config import PPOConfig
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
 
@@ -497,7 +497,7 @@ if __name__ == "__main__":
         "--robot",
         type=str,
         default="toddlerbot",
-        help="The name of the robot. Need to match the name in robot_descriptions.",
+        help="The name of the robot. Need to match the name in descriptions.",
     )
     parser.add_argument(
         "--env",

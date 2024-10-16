@@ -29,7 +29,7 @@ class Robot:
         self.id = 0
         self.name = robot_name
 
-        self.root_path = os.path.join("toddlerbot", "robot_descriptions", self.name)
+        self.root_path = os.path.join("toddlerbot", "descriptions", self.name)
         self.config_path = os.path.join(self.root_path, "config.json")
         self.collision_config_path = os.path.join(
             self.root_path, "config_collision.json"

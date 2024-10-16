@@ -11,8 +11,8 @@ from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 from utils.model_utils import get_resnet, replace_bn_with_gn
 
-from toddlerbot.manipulation.dp.datasets.teleop_dataset import TeleopImageDataset
-from toddlerbot.manipulation.dp.models.diffusion_model import ConditionalUnet1D
+from toddlerbot.manipulation.datasets.teleop_dataset import TeleopImageDataset
+from toddlerbot.manipulation.models.diffusion_model import ConditionalUnet1D
 
 
 def main(dataset_path: str, ckpt_path: str):

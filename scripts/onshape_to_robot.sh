@@ -87,9 +87,9 @@ if [[ -z "$ROBOT_NAME" ]]; then
 fi
 
 REPO_NAME="toddlerbot"
-URDF_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/$ROBOT_NAME.urdf
-MJCF_VIS_SCENE_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/${ROBOT_NAME}_vis_scene.xml
-CONFIG_PATH=$REPO_NAME/robot_descriptions/$ROBOT_NAME/config.json
+URDF_PATH=$REPO_NAME/descriptions/$ROBOT_NAME/$ROBOT_NAME.urdf
+MJCF_VIS_SCENE_PATH=$REPO_NAME/descriptions/$ROBOT_NAME/${ROBOT_NAME}_vis_scene.xml
+CONFIG_PATH=$REPO_NAME/descriptions/$ROBOT_NAME/config.json
 
 source "$HOME/.bashrc"
 
@@ -98,7 +98,7 @@ read -r -p " > " run_onshape
 
 if [ "$run_onshape" == "y" ]; then
     printf "Exporting...\n\n"
-    python $REPO_NAME/robot_descriptions/get_urdf.py --doc-id-list $DOC_ID_LIST --assembly-list $ASSEMBLY_LIST
+    python $REPO_NAME/descriptions/get_urdf.py --doc-id-list $DOC_ID_LIST --assembly-list $ASSEMBLY_LIST
 else
     printf "Export skipped.\n\n"
 fi
@@ -109,7 +109,7 @@ read -r -p " > " run_process
 if [ "$run_process" == "y" ]; then
     printf "Processing...\n\n"
     # Construct the command with mandatory arguments
-    cmd="python $REPO_NAME/robot_descriptions/assemble_urdf.py --robot $ROBOT_NAME --body-name $BODY_NAME"
+    cmd="python $REPO_NAME/descriptions/assemble_urdf.py --robot $ROBOT_NAME --body-name $BODY_NAME"
     if [ -n "$ARM_NAME" ]; then
         cmd+=" --arm-name $ARM_NAME"
     fi
@@ -121,7 +121,7 @@ if [ "$run_process" == "y" ]; then
     # printf "Visualizing the kinematic tree...\n\n"
     # python $REPO_NAME/visualization/vis_kine_tree.py \
     #     --path $URDF_PATH \
-    #     -o $REPO_NAME/robot_descriptions/$ROBOT_NAME/${ROBOT_NAME}_kine_tree.png
+    #     -o $REPO_NAME/descriptions/$ROBOT_NAME/${ROBOT_NAME}_kine_tree.png
 else
     printf "Process skipped.\n\n"
 fi
@@ -132,20 +132,20 @@ if [ -f "$CONFIG_PATH" ]; then
     read -r -p " > " overwrite_config
     if [ "$overwrite_config" == "y" ]; then
         printf "Overwriting the configuration file...\n\n"
-        python $REPO_NAME/robot_descriptions/add_configs.py --robot $ROBOT_NAME
+        python $REPO_NAME/descriptions/add_configs.py --robot $ROBOT_NAME
     else
         printf "Configuration file not written.\n\n"
     fi
 else
     printf "Generating the configuration file...\n\n"
-    python $REPO_NAME/robot_descriptions/add_configs.py --robot $ROBOT_NAME
+    python $REPO_NAME/descriptions/add_configs.py --robot $ROBOT_NAME
 fi
 
 printf "Do you want to update the collision files? If so, make sure you have edited config_collision.json! (y/n)"
 read -r -p " > " update_collision
 if [ "$update_collision" == "y" ]; then
     printf "Generating the collision files...\n\n"
-    python $REPO_NAME/robot_descriptions/update_collisions.py --robot $ROBOT_NAME
+    python $REPO_NAME/descriptions/update_collisions.py --robot $ROBOT_NAME
 else
     printf "Collision files not updated.\n\n"
 fi
@@ -158,7 +158,7 @@ if [ "$run_convert" == "y" ]; then
     python -m mujoco.viewer --mjcf=$URDF_PATH
 
     printf "Processing...\n\n"
-    python $REPO_NAME/robot_descriptions/process_mjcf.py --robot $ROBOT_NAME
+    python $REPO_NAME/descriptions/process_mjcf.py --robot $ROBOT_NAME
 else
     printf "Process skipped.\n\n"
 fi

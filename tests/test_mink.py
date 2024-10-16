@@ -31,7 +31,7 @@ _XML = (
     _HERE
     / ".."
     / "toddlerbot"
-    / "robot_descriptions"
+    / "descriptions"
     / "toddlerbot_OP3"
     / "toddlerbot_OP3_scene.xml"
 )

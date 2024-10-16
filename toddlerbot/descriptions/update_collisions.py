@@ -80,7 +80,7 @@ def compute_bounding_cylinder(mesh: trimesh.Trimesh):
 
 
 def update_collisons(robot_name: str):
-    robot_dir = os.path.join("toddlerbot", "robot_descriptions", robot_name)
+    robot_dir = os.path.join("toddlerbot", "descriptions", robot_name)
     collision_config_file_path = os.path.join(robot_dir, "config_collision.json")
     urdf_path = os.path.join(robot_dir, f"{robot_name}.urdf")
 
@@ -182,7 +182,7 @@ if __name__ == "__main__":
         "--robot",
         type=str,
         default="toddlerbot",
-        help="The name of the robot. Need to match the name in robot_descriptions.",
+        help="The name of the robot. Need to match the name in descriptions.",
     )
     args = parser.parse_args()
 
