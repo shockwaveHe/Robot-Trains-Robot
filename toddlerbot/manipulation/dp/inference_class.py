@@ -18,12 +18,12 @@ class DPModel:
     def __init__(
         self,
         ckpt_path,
-        stats,
         pred_horizon,
         obs_horizon,
         action_horizon,
         lowdim_obs_dim,
         action_dim,
+        stats=None,
     ):
         # |o|o|                             observations: 2
         # | |a|a|a|a|a|a|a|a|               actions executed: 8
@@ -52,7 +52,8 @@ class DPModel:
         )
 
         # stats is get from dataset to denormalize data
-        self.stats = stats
+        if stats is not None:
+            self.stats = stats
 
         # initialize the network
         self.ckpt_path = ckpt_path

@@ -99,7 +99,7 @@ def main(dataset_path: str, ckpt_path: str):
     )
 
     # device transfer
-    device = torch.device("cpu")
+    device = torch.device("cuda")
     _ = nets.to(device)
 
     # ### **Training**
@@ -184,7 +184,7 @@ def main(dataset_path: str, ckpt_path: str):
     ema_nets = nets
     ema.copy_to(ema_nets.parameters())
     # Save model checkpoint to disk
-    torch.save(ema_nets.state_dict(), "checkpoints/teleop_model.pth")
+    torch.save(ema_nets.state_dict(), ckpt_path)
 
 
 if __name__ == "__main__":
