@@ -17,7 +17,7 @@ class BalancePDReference(MotionReference):
         robot: Robot,
         dt: float,
         arm_playback_speed: float = 1.0,
-        com_kp: List[float] = [250.0, 250.0, 0.0],
+        com_kp: List[float] = [500.0, 500.0, 0.0],
     ):
         super().__init__("balance_pd", "perceptual", robot, dt)
 
@@ -174,8 +174,8 @@ class BalancePDReference(MotionReference):
         )
         joint_pos = inplace_update(joint_pos, self.waist_joint_indices, waist_joint_pos)
 
-        com_z_target = self.com_z_limits[0] + command[5] * (
-            self.com_z_limits[1] - self.com_z_limits[0]
+        com_z_target = np.interp(
+            command[5], [-1, 0, 1], [self.com_z_limits[0], 0.0, self.com_z_limits[1]]
         )
         leg_pitch_joint_pos = self.com_ik(com_z_target)
         joint_pos = inplace_update(
@@ -194,10 +194,10 @@ class BalancePDReference(MotionReference):
         com_ctrl = self.com_kp * com_pos_error
         com_jacp = self.jac_subtree_com(data, 0)
 
-        # print(f"com_pos: {com_pos}")
-        # print(f"desired_com: {self.desired_com}")
-        # print(f"com_pos_error: {com_pos_error}")
-        # print(f"com_ctrl: {com_ctrl}")
+        print(f"com_pos: {com_pos}")
+        print(f"desired_com: {self.desired_com}")
+        print(f"com_pos_error: {com_pos_error}")
+        print(f"com_ctrl: {com_ctrl}")
 
         # Update joint positions based on the PD controller command
         joint_pos = inplace_add(
@@ -209,7 +209,7 @@ class BalancePDReference(MotionReference):
         joint_pos = inplace_add(
             joint_pos,
             self.leg_roll_joint_indicies,
-            -com_ctrl[1]
+            com_ctrl[1]
             * com_jacp[1, 6 + self.mj_joint_indices[self.leg_roll_joint_indicies]],
         )
 

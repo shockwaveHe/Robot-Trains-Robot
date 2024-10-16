@@ -41,8 +41,7 @@ class WalkPolicy(MJXPolicy, policy_name="walk"):
         )
 
     def get_command(self, control_inputs: Dict[str, float]) -> npt.NDArray[np.float32]:
-        command = 0.5 * np.ones(self.num_commands, dtype=np.float32)
-        command[7] = 0.0
+        command = np.zeros(self.num_commands, dtype=np.float32)
         for task, input in control_inputs.items():
             axis = None
             if task == "walk_vertical":

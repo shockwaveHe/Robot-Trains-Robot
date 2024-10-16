@@ -23,18 +23,33 @@ class SquatReference(MotionReference):
         )
         joint_pos_curr = state_curr[13 : 13 + self.robot.nu]
 
-        # neck yaw, neck pitch, arm, waist roll, waist yaw, squat
-        neck_joint_pos = self.neck_joint_limits[0] + command[:2] * (
-            self.neck_joint_limits[1] - self.neck_joint_limits[0]
+        neck_yaw_pos = np.interp(
+            command[0],
+            [-1, 0, 1],
+            [self.neck_joint_limits[0, 0], 0.0, self.neck_joint_limits[0, 1]],
         )
+        neck_pitch_pos = np.interp(
+            command[1],
+            [-1, 0, 1],
+            [self.neck_joint_limits[1, 0], 0.0, self.neck_joint_limits[1, 1]],
+        )
+        neck_joint_pos = np.array([neck_yaw_pos, neck_pitch_pos])
 
         ref_idx = (command[2] * (self.arm_ref_size - 2)).astype(int)
         # Linearly interpolate between p_start and p_end
         arm_joint_pos = self.arm_joint_pos_ref[ref_idx]
 
-        waist_joint_pos = self.waist_joint_limits[0] + command[3:5] * (
-            self.waist_joint_limits[1] - self.waist_joint_limits[0]
+        waist_roll_pos = np.interp(
+            command[3],
+            [-1, 0, 1],
+            [self.waist_joint_limits[0, 0], 0.0, self.waist_joint_limits[0, 1]],
         )
+        waist_yaw_pos = np.interp(
+            command[4],
+            [-1, 0, 1],
+            [self.waist_joint_limits[1, 0], 0.0, self.waist_joint_limits[1, 1]],
+        )
+        waist_joint_pos = np.array([waist_roll_pos, waist_yaw_pos])
 
         com_z_curr = self.com_fk(joint_pos_curr[self.left_knee_pitch_idx])
         com_z_target = np.clip(

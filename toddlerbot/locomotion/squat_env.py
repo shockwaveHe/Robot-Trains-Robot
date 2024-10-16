@@ -22,11 +22,11 @@ class SquatCfg(MJXConfig, env_name="squat"):
         resample_time: float = 2.0
         command_range: List[List[float]] = field(
             default_factory=lambda: [
-                [0.0, 1.0],
-                [0.0, 1.0],
-                [0.0, 1.0],
-                [0.0, 1.0],
-                [0.0, 1.0],
+                [-1.0, 1.0],
+                [-1.0, 1.0],
+                [-1.0, 1.0],
+                [-1.0, 1.0],
+                [-1.0, 1.0],
                 [-0.03, 0.03],
             ]
         )

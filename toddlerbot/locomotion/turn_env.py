@@ -14,11 +14,11 @@ class TurnCfg(WalkCfg, env_name="turn"):
         reset_time: float = 5.0
         command_range: List[List[float]] = field(
             default_factory=lambda: [
-                [0.0, 1.0],
-                [0.0, 1.0],
-                [0.0, 1.0],
-                [0.0, 1.0],
-                [0.0, 1.0],
+                [-1.0, 1.0],
+                [-1.0, 1.0],
+                [-1.0, 1.0],
+                [-1.0, 1.0],
+                [-1.0, 1.0],
                 [0.0, 0.0],
                 [0.0, 0.0],
                 [-0.5, 0.5],

@@ -39,7 +39,7 @@ class SquatPolicy(MJXPolicy, policy_name="squat"):
         )
 
     def get_command(self, control_inputs: Dict[str, float]) -> npt.NDArray[np.float32]:
-        command = 0.5 * np.ones(self.num_commands, dtype=np.float32)
+        command = np.zeros(self.num_commands, dtype=np.float32)
         for task, input in control_inputs.items():
             if task == "squat":
                 command[5] = np.interp(

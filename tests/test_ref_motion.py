@@ -82,14 +82,33 @@ def test_motion_ref(
                         command[4] = input * command_range[4][0]
                     elif task == "twist_right" and input > 0:
                         command[4] = input * command_range[4][1]
+                    elif task == "squat":
+                        command[5] = input
 
             elif "squat" in motion_ref.name:
-                command[:5] = np.array([0.1, 0.3, 0.5, 0.7, 0.9], dtype=np.float32)
-                command[5] = np.interp(
-                    control_inputs["squat"],
-                    [-1, 0, 1],
-                    [command_range[5][1], 0.0, command_range[5][0]],
-                )
+                for task, input in control_inputs.items():
+                    if task == "look_left" and input > 0:
+                        command[0] = input * command_range[0][1]
+                    elif task == "look_right" and input > 0:
+                        command[0] = input * command_range[0][0]
+                    elif task == "look_up" and input > 0:
+                        command[1] = input * command_range[1][1]
+                    elif task == "look_down" and input > 0:
+                        command[1] = input * command_range[1][0]
+                    elif task == "lean_left" and input > 0:
+                        command[3] = input * command_range[3][0]
+                    elif task == "lean_right" and input > 0:
+                        command[3] = input * command_range[3][1]
+                    elif task == "twist_left" and input > 0:
+                        command[4] = input * command_range[4][0]
+                    elif task == "twist_right" and input > 0:
+                        command[4] = input * command_range[4][1]
+                    elif task == "squat":
+                        command[5] = np.interp(
+                            control_inputs["squat"],
+                            [-1, 0, 1],
+                            [command_range[5][1], 0.0, command_range[5][0]],
+                        )
 
             state_ref = motion_ref.get_state_ref(state_ref, time_curr, command)
             joint_angles = np.asarray(state_ref[13 : 13 + robot.nu])
