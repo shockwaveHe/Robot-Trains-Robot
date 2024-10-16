@@ -35,18 +35,19 @@ class MotionReference(ABC):
         joint_groups = numpy.array(
             [robot.joint_groups[name] for name in robot.joint_ordering]
         )
-        self.leg_actuator_indices = indices[motor_groups == "leg"]
+        self.leg_motor_indices = indices[motor_groups == "leg"]
         self.leg_joint_indices = indices[joint_groups == "leg"]
-        self.arm_actuator_indices = indices[motor_groups == "arm"]
+        self.arm_motor_indices = indices[motor_groups == "arm"]
         self.arm_joint_indices = indices[joint_groups == "arm"]
-        self.neck_actuator_indices = indices[motor_groups == "neck"]
+        self.neck_motor_indices = indices[motor_groups == "neck"]
         self.neck_joint_indices = indices[joint_groups == "neck"]
-        self.waist_actuator_indices = indices[motor_groups == "waist"]
+        self.waist_motor_indices = indices[motor_groups == "waist"]
         self.waist_joint_indices = indices[joint_groups == "waist"]
 
         self._setup_neck()
         self._setup_arm()
         self._setup_waist()
+        self._setup_leg()
 
     def _get_gear_ratios(self, motor_names: List[str]) -> ArrayType:
         gear_ratios = np.ones(len(motor_names), dtype=np.float32)
@@ -60,7 +61,7 @@ class MotionReference(ABC):
 
     def _setup_neck(self):
         neck_motor_names = [
-            self.robot.motor_ordering[i] for i in self.neck_actuator_indices
+            self.robot.motor_ordering[i] for i in self.neck_motor_indices
         ]
         self.neck_gear_ratio = self._get_gear_ratios(neck_motor_names)
         self.neck_joint_limits = np.array(
@@ -72,9 +73,7 @@ class MotionReference(ABC):
         ).T
 
     def _setup_arm(self):
-        arm_motor_names = [
-            self.robot.motor_ordering[i] for i in self.arm_actuator_indices
-        ]
+        arm_motor_names = [self.robot.motor_ordering[i] for i in self.arm_motor_indices]
         self.arm_gear_ratio = self._get_gear_ratios(arm_motor_names)
 
         # Load the balance dataset
@@ -88,7 +87,7 @@ class MotionReference(ABC):
         self.arm_joint_pos_ref = np.array(
             [
                 self.arm_fk(arm_motor_pos)
-                for arm_motor_pos in state_arr[:, 1 + self.arm_actuator_indices]
+                for arm_motor_pos in state_arr[:, 1 + self.arm_motor_indices]
             ],
             dtype=np.float32,
         )
@@ -109,6 +108,10 @@ class MotionReference(ABC):
             ],
             dtype=np.float32,
         ).T
+
+    def _setup_leg(self):
+        leg_motor_names = [self.robot.motor_ordering[i] for i in self.leg_motor_indices]
+        self.leg_gear_ratio = self._get_gear_ratios(leg_motor_names)
 
     @abstractmethod
     def get_phase_signal(self, time_curr: float | ArrayType) -> ArrayType:
@@ -179,3 +182,7 @@ class MotionReference(ABC):
         waist_act_1 = (-waist_roll + waist_yaw) / 2
         waist_act_2 = (waist_roll + waist_yaw) / 2
         return np.array([waist_act_1, waist_act_2], dtype=np.float32)
+
+    def leg_ik(self, leg_joint_pos: ArrayType) -> ArrayType:
+        leg_motor_pos = leg_joint_pos / self.leg_gear_ratio
+        return leg_motor_pos

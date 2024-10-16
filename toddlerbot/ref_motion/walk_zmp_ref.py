@@ -148,25 +148,25 @@ class WalkZMPReference(MotionReference):
     def override_motor_target(
         self, motor_target: ArrayType, state_ref: ArrayType
     ) -> ArrayType:
-        neck_joint_pos = state_ref[13 + self.neck_actuator_indices]
+        neck_joint_pos = state_ref[13 + self.neck_motor_indices]
         neck_motor_pos = self.neck_ik(neck_joint_pos)
         motor_target = inplace_update(
             motor_target,
-            self.neck_actuator_indices,
+            self.neck_motor_indices,
             neck_motor_pos,
         )
-        arm_joint_pos = state_ref[13 + self.arm_actuator_indices]
+        arm_joint_pos = state_ref[13 + self.arm_motor_indices]
         arm_motor_pos = self.arm_ik(arm_joint_pos)
         motor_target = inplace_update(
             motor_target,
-            self.arm_actuator_indices,
+            self.arm_motor_indices,
             arm_motor_pos,
         )
-        waist_joint_pos = state_ref[13 + self.waist_actuator_indices]
+        waist_joint_pos = state_ref[13 + self.waist_motor_indices]
         waist_motor_pos = self.waist_ik(waist_joint_pos)
         motor_target = inplace_update(
             motor_target,
-            self.waist_actuator_indices,
+            self.waist_motor_indices,
             waist_motor_pos,
         )
 

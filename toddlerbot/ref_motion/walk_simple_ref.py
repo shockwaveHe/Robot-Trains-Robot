@@ -72,15 +72,15 @@ class WalkSimpleReference(MotionReference):
         signal_left = np.clip(sin_phase_signal, 0, None)
         signal_right = np.clip(sin_phase_signal, None, 0)
 
-        left_leg_angles = self.leg_ik(signal_left, True)
-        right_leg_angles = self.leg_ik(signal_right, False)
+        left_leg_pitch_pos = self.get_leg_pitch_pos(signal_left, True)
+        right_leg_pitch_pos = self.get_leg_pitch_pos(signal_right, False)
 
         joint_pos = self.default_joint_pos.copy()
         joint_pos = inplace_update(
-            joint_pos, self.left_pitch_joint_indices, left_leg_angles
+            joint_pos, self.left_pitch_joint_indices, left_leg_pitch_pos
         )
         joint_pos = inplace_update(
-            joint_pos, self.right_pitch_joint_indices, right_leg_angles
+            joint_pos, self.right_pitch_joint_indices, right_leg_pitch_pos
         )
         double_support_mask = np.abs(sin_phase_signal) < self.double_support_phase
         joint_pos = np.where(double_support_mask, self.default_joint_pos, joint_pos)
@@ -94,7 +94,7 @@ class WalkSimpleReference(MotionReference):
 
         return np.concatenate((torso_state, joint_pos, joint_vel, stance_mask))
 
-    def leg_ik(self, signal: ArrayType, is_left: bool):
+    def get_leg_pitch_pos(self, signal: ArrayType, is_left: bool):
         knee_angle = np.abs(
             signal * (self.max_knee_pitch - self.knee_pitch_default)
             + (2 * int(is_left) - 1) * self.knee_pitch_default
@@ -119,13 +119,13 @@ class WalkSimpleReference(MotionReference):
     ) -> ArrayType:
         motor_target = inplace_update(
             motor_target,
-            self.neck_actuator_indices,
-            self.default_motor_pos[self.neck_actuator_indices],
+            self.neck_motor_indices,
+            self.default_motor_pos[self.neck_motor_indices],
         )
         motor_target = inplace_update(
             motor_target,
-            self.arm_actuator_indices,
-            self.default_motor_pos[self.arm_actuator_indices],
+            self.arm_motor_indices,
+            self.default_motor_pos[self.arm_motor_indices],
         )
 
         return motor_target

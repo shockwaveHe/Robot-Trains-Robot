@@ -10,9 +10,9 @@ class SquatReference(MotionReference):
     def __init__(self, robot: Robot, dt: float, com_z_lower_limit_offset: float = 0.01):
         super().__init__("squat", "perceptual", robot, dt)
 
-        self._setup_leg(com_z_lower_limit_offset)
+        self._setup_com_ik(com_z_lower_limit_offset)
 
-    def _setup_leg(self, com_z_lower_limit_offset: float):
+    def _setup_com_ik(self, com_z_lower_limit_offset: float):
         self.knee_pitch_default = self.default_joint_pos[
             self.robot.joint_ordering.index("left_knee_pitch")
         ]
@@ -34,7 +34,7 @@ class SquatReference(MotionReference):
 
         self.com_z_limits = np.array(
             [
-                self.leg_fk(self.robot.joint_limits["left_knee_pitch"][1]).item()
+                self.get_com_z(self.robot.joint_limits["left_knee_pitch"][1]).item()
                 + com_z_lower_limit_offset,
                 0.0,
             ],
@@ -95,13 +95,13 @@ class SquatReference(MotionReference):
             self.waist_joint_limits[1] - self.waist_joint_limits[0]
         )
 
-        com_z_curr = self.leg_fk(joint_pos_curr[self.left_knee_pitch_idx])
+        com_z_curr = self.get_com_z(joint_pos_curr[self.left_knee_pitch_idx])
         com_z_target = np.clip(
             com_z_curr + self.dt * command[5],
             self.com_z_limits[0],
             self.com_z_limits[1],
         )
-        leg_pitch_joint_pos = self.leg_ik(com_z_target)
+        leg_pitch_joint_pos = self.get_leg_pitch_pos(com_z_target)
 
         joint_pos = self.default_joint_pos.copy()
         joint_pos = inplace_update(joint_pos, self.neck_joint_indices, neck_joint_pos)
@@ -120,33 +120,33 @@ class SquatReference(MotionReference):
     def override_motor_target(
         self, motor_target: ArrayType, state_ref: ArrayType
     ) -> ArrayType:
-        neck_joint_pos = state_ref[13 + self.neck_actuator_indices]
+        neck_joint_pos = state_ref[13 + self.neck_motor_indices]
         neck_motor_pos = self.neck_ik(neck_joint_pos)
         motor_target = inplace_update(
             motor_target,
-            self.neck_actuator_indices,
+            self.neck_motor_indices,
             neck_motor_pos,
         )
-        arm_joint_pos = state_ref[13 + self.arm_actuator_indices]
-        arm_motor_pos = self.arm_ik(arm_joint_pos)
-        motor_target = inplace_update(
-            motor_target,
-            self.arm_actuator_indices,
-            arm_motor_pos,
-        )
-        waist_joint_pos = state_ref[13 + self.waist_actuator_indices]
+        waist_joint_pos = state_ref[13 + self.waist_motor_indices]
         waist_motor_pos = self.waist_ik(waist_joint_pos)
         motor_target = inplace_update(
             motor_target,
-            self.waist_actuator_indices,
+            self.waist_motor_indices,
             waist_motor_pos,
+        )
+        leg_joint_pos = state_ref[13 + self.leg_motor_indices]
+        leg_motor_pos = self.leg_ik(leg_joint_pos)
+        motor_target = inplace_update(
+            motor_target,
+            self.leg_motor_indices,
+            leg_motor_pos,
         )
 
         return motor_target
 
-    def leg_fk(self, knee_angle: float | ArrayType) -> ArrayType:
+    def get_com_z(self, knee_angle: float | ArrayType) -> ArrayType:
         # Compute the length from hip pitch to ankle pitch along the z-axis
-        com_z_target = np.array(
+        com_z = np.array(
             np.sqrt(
                 self.hip_pitch_to_knee_z**2
                 + self.knee_to_ank_pitch_z**2
@@ -158,9 +158,9 @@ class SquatReference(MotionReference):
             - self.hip_pitch_to_ank_pitch_z,
             dtype=np.float32,
         )
-        return com_z_target
+        return com_z
 
-    def leg_ik(self, com_z_target: ArrayType) -> ArrayType:
+    def get_leg_pitch_pos(self, com_z_target: ArrayType) -> ArrayType:
         knee_angle_cos = (
             self.hip_pitch_to_knee_z**2
             + self.knee_to_ank_pitch_z**2

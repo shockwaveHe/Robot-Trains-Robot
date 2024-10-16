@@ -77,7 +77,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
                 np.ones(2, dtype=np.float32),  # Stance mask
             ]
         )
-        self.arm_motor_indices = np.array(self.balance_ref.arm_actuator_indices)
+        self.arm_motor_indices = np.array(self.balance_ref.arm_motor_indices)
         self.arm_joint_indices = np.array(self.balance_ref.arm_joint_indices)
         self.arm_gear_ratio = np.asarray(
             self.balance_ref.arm_gear_ratio, dtype=np.float32
