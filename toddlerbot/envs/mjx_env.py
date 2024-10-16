@@ -303,17 +303,18 @@ class MJXEnv(PipelineEnv):
             "step": 0,
         }
 
-        torso_yaw = jax.random.uniform(rng_torso_yaw, (1,), minval=0, maxval=2 * jnp.pi)
+        qpos = self.default_qpos
+        qvel = jnp.zeros(self.nv)
 
-        torso_pos = jnp.zeros(3)
+        torso_pos = qpos[:3]
+
+        torso_yaw = jax.random.uniform(rng_torso_yaw, (1,), minval=0, maxval=2 * jnp.pi)
         torso_quat = math.euler_to_quat(
             jnp.array([0.0, 0.0, jnp.degrees(torso_yaw)[0]])
         )
         torso_lin_vel = jnp.zeros(3)
         torso_ang_vel = jnp.zeros(3)
 
-        qpos = self.default_qpos
-        qvel = jnp.zeros(self.nv)
         joint_pos = qpos[self.q_start_idx + self.joint_indices]
         joint_vel = qvel[self.qd_start_idx + self.joint_indices]
         stance_mask = jnp.ones(2)
@@ -732,8 +733,8 @@ class MJXEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ):
         """Reward for track torso position"""
-        torso_pos = pipeline_state.x.pos[0, :2]  # Assuming [:2] extracts xy components
-        torso_pos_ref = info["state_ref"][:2]
+        torso_pos = pipeline_state.x.pos[0]  # Assuming [:2] extracts xy components
+        torso_pos_ref = info["state_ref"][:3]
         error = jnp.linalg.norm(torso_pos - torso_pos_ref, axis=-1)
         reward = jnp.exp(-200.0 * error**2)
         return reward
