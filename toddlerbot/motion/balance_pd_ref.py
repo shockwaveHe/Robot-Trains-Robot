@@ -142,7 +142,6 @@ class BalancePDReference(MotionReference):
             command[5],
             np.array([-1, 0, 1]),
             np.array([self.com_z_limits[0], 0.0, self.com_z_limits[1]]),
-            dtype=np.float32,
         )
 
         # print(f"com_pos: {com_pos}")
