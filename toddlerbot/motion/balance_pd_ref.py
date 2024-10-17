@@ -139,7 +139,10 @@ class BalancePDReference(MotionReference):
         com_pos_error = self.desired_com[:2] - com_pos[:2]
         com_ctrl = self.com_kp * com_pos_error
         com_z_target = np.interp(
-            command[5], [-1, 0, 1], [self.com_z_limits[0], 0.0, self.com_z_limits[1]]
+            command[5],
+            np.array([-1, 0, 1]),
+            np.array([self.com_z_limits[0], 0.0, self.com_z_limits[1]]),
+            dtype=np.float32,
         )
 
         # print(f"com_pos: {com_pos}")

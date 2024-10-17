@@ -112,13 +112,13 @@ class WalkZMPReference(MotionReference):
 
         neck_yaw_pos = np.interp(
             command[0],
-            [-1, 0, 1],
-            [self.neck_joint_limits[0, 0], 0.0, self.neck_joint_limits[0, 1]],
+            np.array([-1, 0, 1]),
+            np.array([self.neck_joint_limits[0, 0], 0.0, self.neck_joint_limits[1, 0]]),
         )
         neck_pitch_pos = np.interp(
             command[1],
-            [-1, 0, 1],
-            [self.neck_joint_limits[1, 0], 0.0, self.neck_joint_limits[1, 1]],
+            np.array([-1, 0, 1]),
+            np.array([self.neck_joint_limits[0, 1], 0.0, self.neck_joint_limits[1, 1]]),
         )
         neck_joint_pos = np.array([neck_yaw_pos, neck_pitch_pos])
 
@@ -128,13 +128,17 @@ class WalkZMPReference(MotionReference):
 
         waist_roll_pos = np.interp(
             command[3],
-            [-1, 0, 1],
-            [self.waist_joint_limits[0, 0], 0.0, self.waist_joint_limits[0, 1]],
+            np.array([-1, 0, 1]),
+            np.array(
+                [self.waist_joint_limits[0, 0], 0.0, self.waist_joint_limits[1, 0]]
+            ),
         )
         waist_yaw_pos = np.interp(
             command[4],
-            [-1, 0, 1],
-            [self.waist_joint_limits[1, 0], 0.0, self.waist_joint_limits[1, 1]],
+            np.array([-1, 0, 1]),
+            np.array(
+                [self.waist_joint_limits[0, 1], 0.0, self.waist_joint_limits[1, 1]]
+            ),
         )
         waist_joint_pos = np.array([waist_roll_pos, waist_yaw_pos])
 
