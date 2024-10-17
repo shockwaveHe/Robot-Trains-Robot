@@ -26,7 +26,7 @@ class WalkZMPReference(MotionReference):
         self.zmp_walk = ZMPWalk(self.robot, cycle_time)
 
         lookup_table_path = os.path.join(
-            "toddlerbot", "ref_motion", "walk_zmp_lookup_table.pkl"
+            "toddlerbot", "motion", "walk_zmp_lookup_table.pkl"
         )
         if os.path.exists(lookup_table_path):
             with open(lookup_table_path, "rb") as f:

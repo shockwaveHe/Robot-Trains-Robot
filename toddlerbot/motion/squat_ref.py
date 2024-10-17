@@ -11,7 +11,7 @@ class SquatReference(MotionReference):
         super().__init__("squat", "perceptual", robot, dt)
 
     def get_vel(self, command: ArrayType) -> Tuple[ArrayType, ArrayType]:
-        lin_vel = np.array([0.0, 0.0, command[-1]], dtype=np.float32)
+        lin_vel = np.array([0.0, 0.0, command[5]], dtype=np.float32)
         ang_vel = np.array([0.0, 0.0, 0.0], dtype=np.float32)
         return lin_vel, ang_vel
 

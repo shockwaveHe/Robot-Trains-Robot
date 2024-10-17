@@ -344,7 +344,8 @@ def train(
 
     # Copy the Python scripts
     shutil.copytree(
-        os.path.join("toddlerbot", "envs"), os.path.join(exp_folder_path, "envs")
+        os.path.join("toddlerbot", "locomotion"),
+        os.path.join(exp_folder_path, "locomotion"),
     )
 
     wandb.init(
