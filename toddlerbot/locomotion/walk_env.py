@@ -112,8 +112,8 @@ class WalkEnv(MJXEnv, env_name="walk"):
                 minval=self.command_range[:5, 0],
                 maxval=self.command_range[:5, 1],
             )
-            pose_command = pose_command.at[3].set(0.5)
-            pose_command = pose_command.at[4].set(0.5)
+            pose_command = pose_command.at[3].set(0.0)
+            pose_command = pose_command.at[4].set(0.0)
 
         # Sample random angles uniformly between 0 and 2*pi
         theta = jax.random.uniform(rng_2, (1,), minval=0, maxval=2 * jnp.pi)
