@@ -30,6 +30,7 @@ class MuJoCoSim(BaseSim):
         n_frames: int = 20,
         dt: float = 0.001,
         fixed_base: bool = False,
+        hang_force: float = 0.0,
         xml_path: str = "",
         xml_str: str = "",
         assets: Any = None,
@@ -43,6 +44,7 @@ class MuJoCoSim(BaseSim):
         self.dt = dt
         self.control_dt = n_frames * dt
         self.fixed_base = fixed_base # DISCUSS, do I still need this?
+        self.hang_force = hang_force
 
         if len(xml_str) > 0 and assets is not None:
             model = mujoco.MjModel.from_xml_string(xml_str, assets)
@@ -52,8 +54,11 @@ class MuJoCoSim(BaseSim):
                     xml_path = find_robot_file_path(
                         robot.name, suffix="_fixed_scene.xml"
                     )
+                elif hang_force > 0.0:
+                    xml_path = find_robot_file_path(robot.name, suffix="_hang_scene.xml")
                 else:
                     xml_path = find_robot_file_path(robot.name, suffix="_scene.xml")
+
             print(xml_path)
             model = mujoco.MjModel.from_xml_path(xml_path)
 
@@ -102,6 +107,9 @@ class MuJoCoSim(BaseSim):
             self.visualizer = MuJoCoRenderer(self.model)
         elif vis_type == "view":
             self.visualizer = MuJoCoViewer(self.model, self.data)
+
+        self.hang_motors = 12 if self.hang_force > 0.0 else 0
+        self.hang_dofs = 8 if self.hang_force > 0.0 else 0
 
     def load_keyframe(self):
         default_qpos = np.array(self.model.keyframe("home").qpos, dtype=np.float32)
@@ -261,11 +269,23 @@ class MuJoCoSim(BaseSim):
 
     def step(self):
         for _ in range(self.n_frames):
-            self.data.ctrl = self.controller.step(
+            self.data.ctrl[:self.data.ctrl.shape[0]-self.hang_motors] = self.controller.step(
                 self.data.qpos[self.q_start_idx + self.motor_indices],
                 self.data.qvel[self.qd_start_idx + self.motor_indices],
                 self.target_motor_angles,
             )
+            if self.hang_force > 0.0:
+                # import ipdb; ipdb.set_trace()
+                torso_position = self.data.xpos[self.model.body("torso").id][:2]
+                position_offset = [[0.022, 0.045], [-0.022, 0.045], [0.022, -0.045], [-0.022, -0.045]]
+                for i, hang_position in enumerate(["left_front", "right_front", "left_back", "right_back"]):
+                    self.data.actuator("hang_" + hang_position).ctrl = -self.hang_force
+                    self.data.actuator("hang_" + hang_position + "_x").ctrl = torso_position[0] + position_offset[i][0]
+                    self.data.actuator("hang_" + hang_position + "_y").ctrl = torso_position[1] + position_offset[i][1]
+                    # site_id = self.data.site("torso_" + hang_position + "_site").id
+                    # self.data.actuator("hang_" + hang_position + "_x").ctrl = self.data.xpos[site_id][0] + self.model.opt.timestep * self.data.cvel[site_id][3]
+                    # self.data.actuator("hang_" + hang_position + "_y").ctrl = self.data.xpos[site_id][1] + self.model.opt.timestep * self.data.cvel[site_id][4]
+
             mujoco.mj_step(self.model, self.data)
 
         if self.visualizer is not None:

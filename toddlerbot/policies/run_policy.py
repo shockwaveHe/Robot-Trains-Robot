@@ -490,6 +490,12 @@ if __name__ == "__main__":
         default="",
         help="The reference motion to track."
     )
+    parser.add_argument(
+        "--hang-force",
+        type=float,
+        default=0.0,
+        help="The force to apply to the robot to simulate hanging.",
+    )
     args = parser.parse_args()
 
     robot = Robot(args.robot)
@@ -500,7 +506,7 @@ if __name__ == "__main__":
     sim: BaseSim | None = None
     if args.sim == "mujoco":
         fixed_base="fixed" in args.toddler_policy
-        sim = MuJoCoSim(robot, vis_type=args.vis, fixed_base=fixed_base)
+        sim = MuJoCoSim(robot, vis_type=args.vis, fixed_base=fixed_base, hang_force=args.hang_force)
         init_motor_pos = sim.get_observation().motor_pos
     elif args.sim == "arm_toddler":
         rigid_connection = args.rigid_connection
