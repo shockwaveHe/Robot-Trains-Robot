@@ -86,6 +86,7 @@ class MuJoCoSim(BaseSim):
         self.q_start_idx = 0 if self.fixed_base else 7
         self.qd_start_idx = 0 if self.fixed_base else 6
 
+        self.controller: MotorController | PositionController
         # Check if the actuator is a motor or position actuator
         if (
             self.model.actuator(0).gainprm[0] == 1

@@ -11,6 +11,7 @@ import numpy.typing as npt
 import optuna
 from optuna.logging import _get_library_root_logger
 
+from toddlerbot.actuation.mujoco.mujoco_control import MotorController
 from toddlerbot.sim import Obs
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.robot import Robot
@@ -243,6 +244,7 @@ def optimize_parameters(
         frictionloss=float(sim.model.joint(joint_name).frictionloss),
     )
     if "sysID" in robot.name:
+        assert isinstance(sim.controller, MotorController)
         initial_trial.update(
             dict(
                 tau_max=float(sim.controller.tau_max),
