@@ -35,7 +35,7 @@ class SquatCfg(MJXConfig, env_name="squat"):
     @dataclass
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
         # Balance specific rewards
-        arm_joint_pos: float = 5.0
+        arm_joint_pos: float = 1.0
         arm_action_rate: float = 1e-2
         arm_action_acc: float = 1e-2
         leg_joint_pos: float = 0.0
