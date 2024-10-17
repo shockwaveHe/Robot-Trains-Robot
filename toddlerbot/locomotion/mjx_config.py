@@ -97,6 +97,7 @@ class MJXConfig:
     class CommandsConfig:
         resample_time: float = 5.0
         reset_time: float = 100.0  # No resetting by default
+        mean_reversion: float = 0.5
 
     @dataclass
     class DomainRandConfig:

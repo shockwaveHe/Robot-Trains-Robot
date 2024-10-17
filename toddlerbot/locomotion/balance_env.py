@@ -62,6 +62,7 @@ class BalanceEnv(MJXEnv, env_name="balance"):
 
         self.command_range = jnp.array(cfg.commands.command_range)
         self.deadzone = jnp.array(cfg.commands.deadzone)
+        self.mean_reversion = cfg.commands.mean_reversion
 
         super().__init__(
             name,
@@ -79,46 +80,37 @@ class BalanceEnv(MJXEnv, env_name="balance"):
     ) -> jax.Array:
         rng, rng_1, rng_2, rng_3, rng_4, rng_5, rng_6 = jax.random.split(rng, 7)
         if last_command is None:
-            arm_command = jax.random.uniform(
-                rng_3,
-                (1,),
-                minval=self.command_range[2][0],
-                maxval=self.command_range[2][1],
+            neck_yaw_command = self._sample_command_uniform(
+                rng_1, self.command_range[0:1]
             )
-            squat_command = jax.random.uniform(
-                rng_6,
-                (1,),
-                minval=self.command_range[5][0],
-                maxval=self.command_range[5][1],
+            neck_pitch_command = self._sample_command_uniform(
+                rng_2, self.command_range[1:2]
             )
+            arm_command = self._sample_command_uniform(rng_3, self.command_range[2:3])
+            waist_roll_command = self._sample_command_uniform(
+                rng_4, self.command_range[3:4]
+            )
+            waist_yaw_command = self._sample_command_uniform(
+                rng_5, self.command_range[4:5]
+            )
+            squat_command = self._sample_command_uniform(rng_6, self.command_range[5:6])
         else:
+            # Sample neck and waist commands using Gaussian distribution with mean reversion towards last command
+            neck_yaw_command = self._sample_command_normal_reversion(
+                rng_1, self.command_range[0:1], last_command[0:1]
+            )
+            neck_pitch_command = self._sample_command_normal_reversion(
+                rng_2, self.command_range[1:2], last_command[1:2]
+            )
             arm_command = last_command[2:3]
+            waist_roll_command = self._sample_command_normal_reversion(
+                rng_4, self.command_range[3:4], last_command[3:4]
+            )
+            waist_yaw_command = self._sample_command_normal_reversion(
+                rng_5, self.command_range[4:5], last_command[4:5]
+            )
             squat_command = last_command[5:6]
 
-        neck_yaw_command = jax.random.uniform(
-            rng_1,
-            (1,),
-            minval=self.command_range[0][0],
-            maxval=self.command_range[0][1],
-        )
-        neck_pitch_command = jax.random.uniform(
-            rng_2,
-            (1,),
-            minval=self.command_range[1][0],
-            maxval=self.command_range[1][1],
-        )
-        waist_roll_command = jax.random.uniform(
-            rng_4,
-            (1,),
-            minval=self.command_range[3][0],
-            maxval=self.command_range[3][1],
-        )
-        waist_yaw_command = jax.random.uniform(
-            rng_5,
-            (1,),
-            minval=self.command_range[4][0],
-            maxval=self.command_range[4][1],
-        )
         command = jnp.concatenate(
             [
                 neck_yaw_command,

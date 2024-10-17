@@ -215,6 +215,7 @@ class MJXEnv(PipelineEnv):
         self.resample_steps = int(self.resample_time / self.dt)
         self.reset_time = self.cfg.commands.reset_time
         self.reset_steps = int(self.reset_time / self.dt)
+        self.mean_reversion = self.cfg.commands.mean_reversion
 
         # observation
         self.ref_start_idx = 7 + 6
@@ -565,11 +566,12 @@ class MJXEnv(PipelineEnv):
         state.info["rng"] = rng
         state.info["step"] += 1
 
-        # sample new command
-        state.info["command"] = jnp.where(
-            state.info["step"] > self.resample_steps,
-            self._sample_command(cmd_rng, state.info["command"]),
-            state.info["command"],
+        # jax.debug.print("step: {}", state.info["step"])
+
+        state.info["command"] = jax.lax.cond(
+            state.info["step"] % self.resample_steps == 0,
+            lambda: self._sample_command(cmd_rng, state.info["command"]),
+            lambda: state.info["command"],
         )
 
         # reset the step counter when done
@@ -590,6 +592,39 @@ class MJXEnv(PipelineEnv):
         self, rng: jax.Array, last_command: Optional[jax.Array] = None
     ) -> jax.Array:
         raise NotImplementedError
+
+    def _sample_command_uniform(
+        self, rng: jax.Array, command_range: jax.Array
+    ) -> jax.Array:
+        return jax.random.uniform(
+            rng,
+            (command_range.shape[0],),
+            minval=command_range[:, 0],
+            maxval=command_range[:, 1],
+        )
+
+    def _sample_command_normal(
+        self, rng: jax.Array, command_range: jax.Array
+    ) -> jax.Array:
+        return jnp.clip(
+            jax.random.normal(rng, (command_range.shape[0],))
+            * command_range[:, 1]
+            / 3.0,
+            command_range[:, 0],
+            command_range[:, 1],
+        )
+
+    def _sample_command_normal_reversion(
+        self, rng: jax.Array, command_range: jax.Array, last_command: jax.Array
+    ) -> jax.Array:
+        return jnp.clip(
+            jax.random.normal(rng, (command_range.shape[0],))
+            * command_range[:, 1]
+            / 3.0
+            - self.mean_reversion * last_command,
+            command_range[:, 0],
+            command_range[:, 1],
+        )
 
     def _get_contact_forces(self, data: mjx.Data):
         # Extract geom1 and geom2 directly
