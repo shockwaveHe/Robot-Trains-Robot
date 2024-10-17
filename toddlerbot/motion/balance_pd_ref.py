@@ -2,12 +2,10 @@ from typing import List, Tuple
 
 import mujoco
 from mujoco import mjx
-from mujoco.mjx._src import support  # type: ignore
-from scipy.linalg import null_space
 
 from toddlerbot.motion.motion_ref import MotionReference
 from toddlerbot.sim.robot import Robot
-from toddlerbot.utils.array_utils import ArrayType, inplace_add, inplace_update
+from toddlerbot.utils.array_utils import ArrayType, inplace_update
 from toddlerbot.utils.array_utils import array_lib as np
 from toddlerbot.utils.file_utils import find_robot_file_path
 
@@ -18,7 +16,7 @@ class BalancePDReference(MotionReference):
         robot: Robot,
         dt: float,
         arm_playback_speed: float = 1.0,
-        com_kp: List[float] = [500.0, 500.0, 0.0],
+        com_kp: List[float] = [1.0, 1.0],
     ):
         super().__init__("balance_pd", "perceptual", robot, dt)
 
@@ -57,29 +55,6 @@ class BalancePDReference(MotionReference):
                 data = data.replace(qpos=qpos)
                 return mjx.forward(self.model, data)
 
-            def jac_site(d, site):
-                jacp = np.zeros((3, self.model.nv))
-                jacp = support.jac(self.model, d, d.site_xpos[site], site)
-                return jacp
-
-            def jac_subtree_com(d, body):
-                jacp = np.zeros((3, self.model.nv))
-                # Forward pass starting from body
-                for b in range(body, self.model.nbody):
-                    # End of body subtree, break from the loop
-                    if b > body and self.model.body_parentid[b] < body:
-                        break
-
-                    # b is in the body subtree, add mass-weighted Jacobian into jacp
-                    jacp_b, _ = support.jac(self.model, d, d.xipos[b], b)
-                    # print(f"jacp_b: {jacp_b}")
-                    jacp = jacp.at[:].add(jacp_b.T * self.model.body_mass[b])
-
-                # Normalize by subtree mass
-                jacp /= self.model.body_subtreemass[body]
-
-                return jacp
-
         else:
             self.model = model
 
@@ -89,19 +64,7 @@ class BalancePDReference(MotionReference):
                 mujoco.mj_forward(self.model, data)
                 return data
 
-            def jac_site(d, site):
-                jacp = np.zeros((3, self.model.nv))
-                mujoco.mj_jacSite(self.model, d, jacp, None, site)
-                return jacp
-
-            def jac_subtree_com(d, body):
-                jacp = np.zeros((3, self.model.nv))
-                mujoco.mj_jacSubtreeCom(self.model, d, jacp, body)
-                return jacp
-
         self.forward = forward
-        self.jac_site = jac_site
-        self.jac_subtree_com = jac_subtree_com
 
         qpos = self.default_qpos.copy()
         if self.arm_playback_speed > 0:
@@ -113,34 +76,6 @@ class BalancePDReference(MotionReference):
         data = self.forward(qpos)
 
         self.desired_com = np.array(data.subtree_com[0], dtype=np.float32)
-
-        # foot_names = [
-        #     f"{self.robot.foot_name}_collision",
-        #     f"{self.robot.foot_name}_2_collision",
-        # ]
-        # self.desired_com = np.zeros(3, dtype=np.float32)
-        # for i, foot_name in enumerate(foot_names):
-        #     foot_geom_pos = np.array(data.geom(foot_name).xpos)
-        #     foot_geom_mat = np.array(data.geom(foot_name).xmat).reshape(3, 3)
-        #     foot_geom_size = np.array(model.geom(foot_name).size)
-        #     # Define the local coordinates of the bounding box corners
-        #     local_bbox_corners = np.array(
-        #         [
-        #             [-foot_geom_size[0], -foot_geom_size[1], 0.0],
-        #             [foot_geom_size[0], -foot_geom_size[1], 0.0],
-        #             [-foot_geom_size[0], foot_geom_size[1], 0.0],
-        #             [foot_geom_size[0], foot_geom_size[1], 0.0],
-        #         ]
-        #     )
-
-        #     # Transform local bounding box corners to world coordinates
-        #     world_bbox_corners = (
-        #         foot_geom_mat @ local_bbox_corners.T
-        #     ).T + foot_geom_pos
-
-        #     self.desired_com += np.mean(world_bbox_corners, axis=0) / 2
-
-        # self.desired_com = inplace_update(self.desired_com, 2, qpos[2])
 
     def get_vel(self, command: ArrayType) -> Tuple[ArrayType, ArrayType]:
         lin_vel = np.array([0.0, 0.0, 0.0], dtype=np.float32)
@@ -193,14 +128,6 @@ class BalancePDReference(MotionReference):
         )
         joint_pos = inplace_update(joint_pos, self.waist_joint_indices, waist_joint_pos)
 
-        com_z_target = np.interp(
-            command[5], [-1, 0, 1], [self.com_z_limits[0], 0.0, self.com_z_limits[1]]
-        )
-        leg_pitch_joint_pos = self.com_ik(com_z_target)
-        joint_pos = inplace_update(
-            joint_pos, self.leg_pitch_joint_indicies, leg_pitch_joint_pos
-        )
-
         qpos = self.default_qpos.copy()
         qpos = inplace_update(qpos, slice(3, 7), torso_state[3:7])
         qpos = inplace_update(qpos, 7 + self.mj_joint_indices, joint_pos)
@@ -209,45 +136,24 @@ class BalancePDReference(MotionReference):
         # Get the center of mass position
         com_pos = np.array(data.subtree_com[0], dtype=np.float32)
         # PD controller on CoM position
-        com_pos_error = com_pos - self.desired_com
+        com_pos_error = self.desired_com[:2] - com_pos[:2]
         com_ctrl = self.com_kp * com_pos_error
+        com_z_target = np.interp(
+            command[5], [-1, 0, 1], [self.com_z_limits[0], 0.0, self.com_z_limits[1]]
+        )
 
-        jac_com = self.jac_subtree_com(data, 0)
-        jac_left_foot = self.jac_site(data, self.left_foot_site_id)
-        jac_right_foot = self.jac_site(data, self.right_foot_site_id)
-        # jac_world = jac_com - (jac_left_foot + jac_right_foot) / 2
+        # print(f"com_pos: {com_pos}")
+        # print(f"desired_com: {self.desired_com}")
+        # print(f"com_pos_error: {com_pos_error}")
+        # print(f"com_ctrl: {com_ctrl}")
+        # print(f"com_z_target: {com_z_target}")
 
-        N = null_space(np.vstack([jac_left_foot, jac_right_foot]))
-
-        # Project jac_com onto the null space
-        jac_com_null = jac_com @ N
-
-        # Solve for movements in the null space
-        y = np.linalg.lstsq(jac_com_null, com_ctrl, rcond=None)[0]
-
-        # Calculate the joint angle changes
-        delta_q = N @ y
-
-        joint_pos = inplace_add(joint_pos, slice(None), delta_q[self.mj_joint_indices])
-
-        print(f"com_pos: {com_pos}")
-        print(f"desired_com: {self.desired_com}")
-        print(f"com_pos_error: {com_pos_error}")
-        print(f"com_ctrl: {com_ctrl}")
-
-        # # Update joint positions based on the PD controller command
-        # joint_pos = inplace_add(
-        #     joint_pos,
-        #     self.leg_pitch_joint_indicies,
-        #     -com_ctrl[0]
-        #     * jac_world[0, 6 + self.mj_joint_indices[self.leg_pitch_joint_indicies]],
-        # )
-        # joint_pos = inplace_add(
-        #     joint_pos,
-        #     self.leg_roll_joint_indicies,
-        #     com_ctrl[1]
-        #     * jac_world[1, 6 + self.mj_joint_indices[self.leg_roll_joint_indicies]],
-        # )
+        # Update joint positions based on the PD controller command
+        joint_pos = inplace_update(
+            joint_pos,
+            self.leg_joint_indices,
+            self.com_ik(com_z_target, com_ctrl[0], com_ctrl[1]),
+        )
 
         joint_vel = self.default_joint_vel.copy()
 

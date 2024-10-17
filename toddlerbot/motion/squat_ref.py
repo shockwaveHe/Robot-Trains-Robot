@@ -51,21 +51,19 @@ class SquatReference(MotionReference):
         )
         waist_joint_pos = np.array([waist_roll_pos, waist_yaw_pos])
 
-        com_z_curr = self.com_fk(joint_pos_curr[self.left_knee_pitch_idx])
+        com_curr = self.com_fk(joint_pos_curr[self.left_knee_pitch_idx])
         com_z_target = np.clip(
-            com_z_curr + self.dt * command[5],
+            com_curr[2] + self.dt * command[5],
             self.com_z_limits[0],
             self.com_z_limits[1],
         )
-        leg_pitch_joint_pos = self.com_ik(com_z_target)
+        leg_joint_pos = self.com_ik(com_z_target)
 
         joint_pos = self.default_joint_pos.copy()
         joint_pos = inplace_update(joint_pos, self.neck_joint_indices, neck_joint_pos)
         joint_pos = inplace_update(joint_pos, self.arm_joint_indices, arm_joint_pos)
         joint_pos = inplace_update(joint_pos, self.waist_joint_indices, waist_joint_pos)
-        joint_pos = inplace_update(
-            joint_pos, self.leg_pitch_joint_indicies, leg_pitch_joint_pos
-        )
+        joint_pos = inplace_update(joint_pos, self.leg_joint_indices, leg_joint_pos)
 
         joint_vel = self.default_joint_vel.copy()
 
