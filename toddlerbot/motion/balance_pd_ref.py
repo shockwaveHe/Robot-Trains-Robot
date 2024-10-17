@@ -3,6 +3,7 @@ from typing import List, Tuple
 import mujoco
 from mujoco import mjx
 from mujoco.mjx._src import support  # type: ignore
+from scipy.linalg import null_space
 
 from toddlerbot.motion.motion_ref import MotionReference
 from toddlerbot.sim.robot import Robot
@@ -41,6 +42,13 @@ class BalancePDReference(MotionReference):
         )
         self.mj_joint_indices -= 1  # Account for the free joint
 
+        self.left_foot_site_id = mujoco.mj_name2id(
+            model, mujoco.mjtObj.mjOBJ_SITE, "left_foot_center"
+        )
+        self.right_foot_site_id = mujoco.mj_name2id(
+            model, mujoco.mjtObj.mjOBJ_SITE, "right_foot_center"
+        )
+
         if self.use_jax:
             self.model = mjx.put_model(model)
 
@@ -48,6 +56,11 @@ class BalancePDReference(MotionReference):
                 data = mjx.make_data(self.model)
                 data = data.replace(qpos=qpos)
                 return mjx.forward(self.model, data)
+
+            def jac_site(d, site):
+                jacp = np.zeros((3, self.model.nv))
+                jacp = support.jac(self.model, d, d.site_xpos[site], site)
+                return jacp
 
             def jac_subtree_com(d, body):
                 jacp = np.zeros((3, self.model.nv))
@@ -76,12 +89,18 @@ class BalancePDReference(MotionReference):
                 mujoco.mj_forward(self.model, data)
                 return data
 
+            def jac_site(d, site):
+                jacp = np.zeros((3, self.model.nv))
+                mujoco.mj_jacSite(self.model, d, jacp, None, site)
+                return jacp
+
             def jac_subtree_com(d, body):
                 jacp = np.zeros((3, self.model.nv))
                 mujoco.mj_jacSubtreeCom(self.model, d, jacp, body)
                 return jacp
 
         self.forward = forward
+        self.jac_site = jac_site
         self.jac_subtree_com = jac_subtree_com
 
         qpos = self.default_qpos.copy()
@@ -192,26 +211,43 @@ class BalancePDReference(MotionReference):
         # PD controller on CoM position
         com_pos_error = com_pos - self.desired_com
         com_ctrl = self.com_kp * com_pos_error
-        com_jacp = self.jac_subtree_com(data, 0)
+
+        jac_com = self.jac_subtree_com(data, 0)
+        jac_left_foot = self.jac_site(data, self.left_foot_site_id)
+        jac_right_foot = self.jac_site(data, self.right_foot_site_id)
+        # jac_world = jac_com - (jac_left_foot + jac_right_foot) / 2
+
+        N = null_space(np.vstack([jac_left_foot, jac_right_foot]))
+
+        # Project jac_com onto the null space
+        jac_com_null = jac_com @ N
+
+        # Solve for movements in the null space
+        y = np.linalg.lstsq(jac_com_null, com_ctrl, rcond=None)[0]
+
+        # Calculate the joint angle changes
+        delta_q = N @ y
+
+        joint_pos = inplace_add(joint_pos, slice(None), delta_q[self.mj_joint_indices])
 
         print(f"com_pos: {com_pos}")
         print(f"desired_com: {self.desired_com}")
         print(f"com_pos_error: {com_pos_error}")
         print(f"com_ctrl: {com_ctrl}")
 
-        # Update joint positions based on the PD controller command
-        joint_pos = inplace_add(
-            joint_pos,
-            self.leg_pitch_joint_indicies,
-            -com_ctrl[0]
-            * com_jacp[0, 6 + self.mj_joint_indices[self.leg_pitch_joint_indicies]],
-        )
-        joint_pos = inplace_add(
-            joint_pos,
-            self.leg_roll_joint_indicies,
-            com_ctrl[1]
-            * com_jacp[1, 6 + self.mj_joint_indices[self.leg_roll_joint_indicies]],
-        )
+        # # Update joint positions based on the PD controller command
+        # joint_pos = inplace_add(
+        #     joint_pos,
+        #     self.leg_pitch_joint_indicies,
+        #     -com_ctrl[0]
+        #     * jac_world[0, 6 + self.mj_joint_indices[self.leg_pitch_joint_indicies]],
+        # )
+        # joint_pos = inplace_add(
+        #     joint_pos,
+        #     self.leg_roll_joint_indicies,
+        #     com_ctrl[1]
+        #     * jac_world[1, 6 + self.mj_joint_indices[self.leg_roll_joint_indicies]],
+        # )
 
         joint_vel = self.default_joint_vel.copy()
 

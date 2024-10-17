@@ -652,6 +652,42 @@ def add_body_link(root: ET.Element, urdf_path: str, offsets: Dict[str, float]):
         body_link.append(element)
 
 
+def add_foot_sites(root: ET.Element, general_config: Dict[str, Any]):
+    # Foot names should be specified in your general configuration
+    foot_name = general_config["foot_name"]
+
+    # Site specifications
+    site_specifications = {
+        "type": "sphere",
+        "size": "0.005",  # Radius of 1 cm, adjust as necessary
+        "rgba": "0.9 0.1 0.1 0.8",  # Semi-transparent red color
+    }
+
+    target_geoms: Dict[str, Tuple[ET.Element, ET.Element]] = {}
+    for parent in root.iter():
+        for geom in parent.findall("geom"):
+            name = geom.attrib.get("name", "")
+            if foot_name in name and "collision" in name:
+                # Store both the parent and the geom in the dictionary
+                target_geoms[name] = (parent, geom)
+
+    for i, (name, (parent, target_geom)) in enumerate(target_geoms.items()):
+        geom_pos = list(map(float, target_geom.attrib["pos"].split()))
+        geom_size = list(map(float, target_geom.attrib["size"].split()))
+
+        bottom_center_pos = [geom_pos[0] - geom_size[0], geom_pos[1], geom_pos[2]]
+
+        ET.SubElement(
+            parent,
+            "site",
+            {
+                "name": "left_foot_center" if i == 0 else "right_foot_center",
+                "pos": " ".join([str(x) for x in bottom_center_pos]),
+                **site_specifications,
+            },
+        )
+
+
 def replace_box_collision(root: ET.Element, general_config: Dict[str, Any]):
     # Search for the target geom using the substring condition
     foot_name = general_config["foot_name"]
@@ -895,6 +931,8 @@ def process_mjcf_file(root: ET.Element, robot: Robot):
 
     if robot.config["general"]["is_ankle_closed_loop"]:
         add_ankle_constraints(root, robot.config["general"])
+
+    add_foot_sites(root, robot.config["general"])
 
     if "sysID" not in robot.name:
         has_gripper = False
