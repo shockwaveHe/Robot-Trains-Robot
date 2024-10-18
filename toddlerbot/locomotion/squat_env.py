@@ -31,7 +31,7 @@ class SquatCfg(MJXConfig, env_name="squat"):
             ]
         )
         deadzone: List[float] = field(default_factory=lambda: [0.05])
-        command_obs_indices: List[int] = [5]
+        command_obs_indices: List[int] = field(default_factory=lambda: [5])
 
     @dataclass
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
