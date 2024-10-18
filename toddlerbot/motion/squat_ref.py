@@ -113,19 +113,19 @@ class SquatReference(MotionReference):
             self.neck_motor_indices,
             neck_motor_pos,
         )
+        arm_joint_pos = state_ref[13 + self.arm_motor_indices]
+        arm_motor_pos = self.arm_ik(arm_joint_pos)
+        motor_target = inplace_update(
+            motor_target,
+            self.arm_motor_indices,
+            arm_motor_pos,
+        )
         waist_joint_pos = state_ref[13 + self.waist_motor_indices]
         waist_motor_pos = self.waist_ik(waist_joint_pos)
         motor_target = inplace_update(
             motor_target,
             self.waist_motor_indices,
             waist_motor_pos,
-        )
-        leg_joint_pos = state_ref[13 + self.leg_motor_indices]
-        leg_motor_pos = self.leg_ik(leg_joint_pos)
-        motor_target = inplace_update(
-            motor_target,
-            self.leg_motor_indices,
-            leg_motor_pos,
         )
 
         return motor_target
