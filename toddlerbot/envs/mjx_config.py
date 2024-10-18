@@ -126,6 +126,12 @@ class MJXConfig:
         backlash_scale: float = 0.02
         backlash_activation: float = 0.1
 
+    @dataclass
+    class HangConfig:
+        init_hang_force: float = 5.0
+        final_hang_force: float = 0.025
+        hang_force_decay_episodes: int = 50_000
+
     def __init__(self):
         self.sim = self.SimConfig()
         self.obs = self.ObsConfig()

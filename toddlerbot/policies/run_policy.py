@@ -430,7 +430,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--vis",
         type=str,
-        default="render",
+        default="view",
         choices=["render", "view", "none"],
         help="The visualization type.",
     )

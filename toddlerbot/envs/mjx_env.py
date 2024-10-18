@@ -57,8 +57,12 @@ class MJXEnv(PipelineEnv):
         self.add_noise = add_noise
         self.add_domain_rand = add_domain_rand
 
+        # TODO: eval in original environment
         if fixed_base:
             xml_path = find_robot_file_path(robot.name, suffix="_fixed_scene.xml")
+        elif cfg.HangConfig.init_hang_force > 0.0:
+            xml_path = find_robot_file_path(robot.name, suffix="_hang_scene.xml")
+            self.hang_positions = ["left_front", "right_front", "left_back", "right_back"]
         else:
             xml_path = find_robot_file_path(robot.name, suffix="_scene.xml")
 
@@ -90,6 +94,16 @@ class MJXEnv(PipelineEnv):
         self.nu = self.sys.nu
         self.nq = self.sys.nq
         self.nv = self.sys.nv
+
+        if self.cfg.HangConfig.init_hang_force > 0.0:
+            self.hang_motors = 12
+            self.hang_dofs = 8
+            self.nu -= self.hang_motors
+            self.nq -= self.hang_dofs
+            self.nv -= self.hang_dofs
+        else:
+            self.hang_motors = 0
+            self.hang_dofs = 0
 
         # colliders
         pair_geom1 = self.sys.pair_geom1
@@ -265,6 +279,8 @@ class MJXEnv(PipelineEnv):
         self.push_interval = np.ceil(self.cfg.domain_rand.push_interval_s / self.dt)
         self.push_vel = self.cfg.domain_rand.push_vel
 
+        self.num_episode = 0 # episode counter
+
     def _init_reward(self) -> None:
         """Prepares a list of reward functions, which will be called to compute the total reward.
         Looks for self._reward_<REWARD_NAME>, where <REWARD_NAME> are names of all non zero reward scales in the cfg.
@@ -299,6 +315,15 @@ class MJXEnv(PipelineEnv):
             rng_q_dot_max,
         ) = jax.random.split(rng, 8)
 
+        def get_hang_force() -> float:
+            if self.cfg.HangConfig.init_hang_force > 0.0:
+                return self.cfg.HangConfig.init_hang_force - (
+                    self.cfg.HangConfig.init_hang_force
+                    - self.cfg.HangConfig.final_hang_force
+                ) * min(self.num_episode / self.cfg.HangConfig.hang_force_decay_episodes, 1.0)
+            else:
+                return 0.0
+            
         state_info = {
             "rng": rng,
             "contact_forces": jnp.zeros((self.num_colliders, self.num_colliders, 3)),
@@ -315,6 +340,7 @@ class MJXEnv(PipelineEnv):
             "push": jnp.zeros(2),
             "done": False,
             "step": 0,
+            "hang_force": get_hang_force(),
         }
 
         path_pos = jnp.zeros(3)
@@ -348,10 +374,9 @@ class MJXEnv(PipelineEnv):
             noise_joint_pos = self.reset_noise_joint_pos * jax.random.normal(
                 rng_torso_pitch, (self.nq - self.q_start_idx,)
             )
-            qpos = qpos.at[self.q_start_idx :].add(noise_joint_pos)
+            qpos = qpos.at[self.q_start_idx : self.nq].add(noise_joint_pos) # no noise for hang_dofs
 
-        qvel = jnp.zeros(self.nv)
-
+        qvel = jnp.zeros(self.nv + self.hang_dofs)
         pipeline_state = self.pipeline_init(qpos, qvel)
 
         state_info["init_feet_height"] = pipeline_state.x.pos[self.feet_link_ids, 2]
@@ -411,6 +436,10 @@ class MJXEnv(PipelineEnv):
         metrics: Dict[str, Any] = {}
         for k in self.reward_names:
             metrics[k] = zero
+        
+        metrics["num_episode"] = self.num_episode
+        metrics["hang_force"] = state_info["hang_force"]
+        self.num_episode += 1
 
         return State(
             pipeline_state, obs, privileged_obs, reward, done, metrics, state_info
@@ -430,6 +459,17 @@ class MJXEnv(PipelineEnv):
                 state.info["controller_q_dot_tau_max"],
                 state.info["controller_q_dot_max"],
             )
+            # import ipdb; ipdb.set_trace()
+            # concatenate hang_motors dim to ctrl
+            if self.hang_motors > 0:
+                ctrl = jnp.concatenate([ctrl, jnp.zeros(self.hang_motors)])
+                torso_xy = pipeline_state.q[:2]
+                position_offset = [[0.022, 0.045], [-0.022, 0.045], [0.022, -0.045], [-0.022, -0.045]]
+                for i, pos in enumerate(position_offset):
+                    ctrl = ctrl.at[self.nu + 3 * i].set(-state.info["hang_force"])
+                    ctrl = ctrl.at[self.nu + 3 * i + 1].set(pos[0] + torso_xy[0])
+                    ctrl = ctrl.at[self.nu + 3 * i + 2].set(pos[1] + torso_xy[1])
+
             return (
                 self._pipeline.step(self.sys, pipeline_state, ctrl, self._debug),
                 None,
@@ -437,6 +477,10 @@ class MJXEnv(PipelineEnv):
 
         return jax.lax.scan(f, state.pipeline_state, (), self._n_frames)[0]
 
+    @property
+    def action_size(self) -> int: # override default action_size for hang motors
+        return self.nu
+    
     def step(self, state: State, action: jax.Array) -> State:
         """Runs one timestep of the environment's dynamics."""
         rng, cmd_rng, push_rng = jax.random.split(state.info["rng"], 3)
@@ -566,6 +610,7 @@ class MJXEnv(PipelineEnv):
             done | (state.info["step"] > self.resample_steps), 0, state.info["step"]
         )
         state.metrics.update(reward_dict)
+        state.metrics.update({"num_episode": self.num_episode, "hang_force": state.info["hang_force"]})
 
         return state.replace(
             pipeline_state=pipeline_state,

@@ -128,6 +128,11 @@ def log_metrics(
     if "eval/avg_episode_length" in metrics:
         log_string += f"""{'Mean episode length:':>{pad}} {metrics['eval/avg_episode_length']:.3f}\n"""
 
+    if 'hang_force' in metrics:
+        log_string += f"""{'Hang force:':>{pad}} {metrics['hang_force']:.3f}\n""" 
+    if "num_episode" in metrics:
+        log_string += f"""{'Num episodes:':>{pad}} {metrics['num_episodes']}\n"""
+    
     if num_steps > 0 and num_total_steps > 0:
         log_string += (
             f"""{'Computation:':>{pad}} {(num_steps / time_elapsed ):.1f} steps/s\n"""
@@ -139,8 +144,11 @@ def log_metrics(
     return log_data
 
 
-def get_body_mass_attr_range(robot: Robot, body_mass_range: List[float], num_envs: int):
-    xml_path: str = find_robot_file_path(robot.name, suffix="_scene.xml")
+def get_body_mass_attr_range(robot: Robot, body_mass_range: List[float], init_hang_force: float, num_envs: int):
+    if init_hang_force > 0:
+        xml_path: str = find_robot_file_path(robot.name, suffix="_hang_scene.xml")
+    else:
+        xml_path: str = find_robot_file_path(robot.name, suffix="_scene.xml")
 
     model = mujoco.MjModel.from_xml_path(xml_path)
     data = mujoco.MjData(model)
@@ -374,7 +382,7 @@ def train(
     body_mass_attr_range = None
     if env.cfg.domain_rand.added_mass_range is not None and not env.fixed_base:
         body_mass_attr_range = get_body_mass_attr_range(
-            env.robot, env.cfg.domain_rand.added_mass_range, train_cfg.num_envs
+            env.robot, env.cfg.domain_rand.added_mass_range, env.cfg.HangConfig.init_hang_force, train_cfg.num_envs
         )
 
     domain_randomize_fn = functools.partial(

@@ -350,25 +350,25 @@
       </body>
     </body>
     <body name="anchor_left_front" pos="0.022 0.045 0.6">
-      <inertial pos="0 0 0" mass="1e-2" diaginertia="1e-1 1e-1 1e-1"/>
+      <inertial pos="0 0 0" mass="1e-2" diaginertia="1e-4 1e-4 1e-4"/>
       <joint name="hang_left_front_x" type="slide" axis="1 0 0"/>
       <joint name="hang_left_front_y" type="slide" axis="0 1 0"/>
       <site name="anchor_left_front_site" pos="0 0 0" size="0.003" rgba="0 0 1 1"/>
     </body>
     <body name="anchor_left_back" pos="-0.022 0.045 0.6">
-      <inertial pos="0 0 0" mass="1e-2" diaginertia="1e-1 1e-1 1e-1"/>
+      <inertial pos="0 0 0" mass="1e-2" diaginertia="1e-4 1e-4 1e-4"/>
       <joint name="hang_left_back_x" type="slide" axis="1 0 0"/>
       <joint name="hang_left_back_y" type="slide" axis="0 1 0"/>
       <site name="anchor_left_back_site" pos="0 0 0" size="0.003" rgba="0 0 1 1"/>
     </body>
     <body name="anchor_right_front" pos="0.022 -0.045 0.6">
-      <inertial pos="0 0 0" mass="1e-2" diaginertia="1e-1 1e-1 1e-1"/>
+      <inertial pos="0 0 0" mass="1e-2" diaginertia="1e-4 1e-4 1e-4"/>
       <joint name="hang_right_front_x" type="slide" axis="1 0 0"/>
       <joint name="hang_right_front_y" type="slide" axis="0 1 0"/>
       <site name="anchor_right_front_site" pos="0 0 0" size="0.003" rgba="0 0 1 1"/>
     </body>
     <body name="anchor_right_back" pos="-0.022 -0.045 0.6">
-      <inertial pos="0 0 0" mass="1e-2" diaginertia="1e-1 1e-1 1e-1"/>
+      <inertial pos="0 0 0" mass="1e-2" diaginertia="1e-4 1e-4 1e-4"/>
       <joint name="hang_right_back_x" type="slide" axis="1 0 0"/>
       <joint name="hang_right_back_y" type="slide" axis="0 1 0"/>
       <site name="anchor_right_back_site" pos="0 0 0" size="0.003" rgba="0 0 1 1"/>
@@ -463,12 +463,12 @@
     <general name="hang_left_front" tendon="tendon_left_front" class="hang_motor"/>
     <position name="hang_left_front_x" joint="hang_left_front_x" class="slide_anchor_motor"/>
     <position name="hang_left_front_y" joint="hang_left_front_y" class="slide_anchor_motor"/>
-    <general name="hang_left_back" tendon="tendon_left_back" class="hang_motor"/>
-    <position name="hang_left_back_x" joint="hang_left_back_x" class="slide_anchor_motor"/>
-    <position name="hang_left_back_y" joint="hang_left_back_y" class="slide_anchor_motor"/>
     <general name="hang_right_front" tendon="tendon_right_front" class="hang_motor"/>
     <position name="hang_right_front_x" joint="hang_right_front_x" class="slide_anchor_motor"/>
     <position name="hang_right_front_y" joint="hang_right_front_y" class="slide_anchor_motor"/>
+    <general name="hang_left_back" tendon="tendon_left_back" class="hang_motor"/>
+    <position name="hang_left_back_x" joint="hang_left_back_x" class="slide_anchor_motor"/>
+    <position name="hang_left_back_y" joint="hang_left_back_y" class="slide_anchor_motor"/>
     <general name="hang_right_back" tendon="tendon_right_back" class="hang_motor"/>
     <position name="hang_right_back_x" joint="hang_right_back_x" class="slide_anchor_motor"/>
     <position name="hang_right_back_y" joint="hang_right_back_y" class="slide_anchor_motor"/>
@@ -476,10 +476,10 @@
   <default>
     <geom type="mesh" solref="0.004 1" />
     <default class="slide_anchor_motor">
-      <position kp="0.1" dampratio="1" ctrllimited="true" ctrlrange="-10 10"/>
+      <position kp="0.1" dampratio="1"/>
     </default>
     <default class="hang_motor">
-      <general gainprm="1.0" ctrlrange="-6.6 0"/>
+      <general gainprm="1.0"/>
     </default>
     <default class="anchor_tendon">
       <tendon limited="true" range="0.1 0.6" damping="10" width="0.002"/>
@@ -506,10 +506,4 @@
       <motor ctrlrange="-1 1" />
     </default>
   </default>
-  <sensor>
-    <tendonlimitfrc name="tendon_left_front" tendon="tendon_left_front"/>
-    <tendonlimitfrc name="tendon_left_back" tendon="tendon_left_back"/>
-    <tendonlimitfrc name="tendon_right_front" tendon="tendon_right_front"/>
-    <tendonlimitfrc name="tendon_right_back" tendon="tendon_right_back"/>
-  </sensor>
 </mujoco>
