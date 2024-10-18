@@ -45,6 +45,7 @@ class WalkCfg(MJXConfig, env_name="walk"):
         feet_air_time: float = 50.0
         feet_distance: float = 0.5
         feet_slip: float = 0.1
+        feet_clearance: float = 0.1
         stand_still: float = 1.0
 
     def __init__(self):
@@ -156,6 +157,16 @@ class WalkEnv(MJXEnv, env_name="walk"):
         reward = jnp.sum(info["feet_air_time"] * first_contact)
         # no reward for zero command
         reward *= jnp.linalg.norm(info["command"]) > self.deadzone
+        return reward
+
+    def _reward_feet_clearance(
+        self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
+    ) -> jax.Array:
+        feet_height = pipeline_state.x.pos[self.feet_link_ids, 2]
+        feet_z_delta = feet_height - info["init_feet_height"]
+        jax.debug.print("feet_z_delta: {}", feet_z_delta)
+        is_close = jnp.abs(feet_z_delta - self.target_feet_z_delta) < 0.01
+        reward = jnp.sum(is_close * (1 - info["stance_mask"]))
         return reward
 
     def _reward_feet_distance(
