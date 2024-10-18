@@ -8,7 +8,7 @@ import numpy
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.array_utils import ArrayType, inplace_update
 from toddlerbot.utils.array_utils import array_lib as np
-from toddlerbot.utils.math_utils import quat_mult
+from toddlerbot.utils.math_utils import euler2quat, quat_mult, rotate_vec
 
 
 class MotionReference(ABC):
@@ -153,12 +153,9 @@ class MotionReference(ABC):
         pass
 
     def integrate_torso_state(
-        self, torso_pos: ArrayType, torso_quat: ArrayType, command: ArrayType
-    ) -> Tuple[ArrayType, ArrayType]:
+        self, state_curr: ArrayType, command: ArrayType
+    ) -> ArrayType:
         lin_vel, ang_vel = self.get_vel(command)
-
-        # Update position
-        torso_pos += lin_vel * self.dt
 
         # Compute the angle of rotation for each axis
         theta_roll = ang_vel[0] * self.dt / 2.0
@@ -179,8 +176,16 @@ class MotionReference(ABC):
         full_quat = quat_mult(quat_mult(roll_quat, pitch_quat), yaw_quat)
 
         # Update the current quaternion by applying the new rotation
-        torso_quat = quat_mult(torso_quat, full_quat)
+        torso_quat = quat_mult(state_curr[3:7], full_quat)
         torso_quat /= np.linalg.norm(torso_quat)
+
+        waist_joint_pos = state_curr[13 + self.waist_joint_indices]
+        waist_euler_inv = np.array([waist_joint_pos[0], 0.0, waist_joint_pos[1]])
+        waist_quat_inv = euler2quat(waist_euler_inv)
+        path_quat = quat_mult(torso_quat, waist_quat_inv)
+
+        # Update position
+        torso_pos = state_curr[:3] + rotate_vec(lin_vel, path_quat) * self.dt
 
         return np.concatenate([torso_pos, torso_quat, lin_vel, ang_vel])
 

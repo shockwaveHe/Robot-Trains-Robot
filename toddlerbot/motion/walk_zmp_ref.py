@@ -106,9 +106,7 @@ class WalkZMPReference(MotionReference):
     def get_state_ref(
         self, state_curr: ArrayType, time_curr: float | ArrayType, command: ArrayType
     ) -> ArrayType:
-        torso_state = self.integrate_torso_state(
-            state_curr[:3], state_curr[3:7], command
-        )
+        torso_state = self.integrate_torso_state(state_curr, command)
 
         neck_yaw_pos = np.interp(
             command[0],

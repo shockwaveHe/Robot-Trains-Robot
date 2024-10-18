@@ -85,9 +85,7 @@ class BalancePDReference(MotionReference):
     def get_state_ref(
         self, state_curr: ArrayType, time_curr: float | ArrayType, command: ArrayType
     ) -> ArrayType:
-        torso_state = self.integrate_torso_state(
-            state_curr[:3], state_curr[3:7], command
-        )
+        torso_state = self.integrate_torso_state(state_curr, command)
         joint_pos_curr = state_curr[13 : 13 + self.robot.nu]
         joint_pos = self.default_joint_pos.copy()
 

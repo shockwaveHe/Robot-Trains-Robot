@@ -64,9 +64,7 @@ class WalkSimpleReference(MotionReference):
     def get_state_ref(
         self, state_curr: ArrayType, time_curr: float | ArrayType, command: ArrayType
     ) -> ArrayType:
-        torso_state = self.integrate_torso_state(
-            state_curr[:3], state_curr[3:7], command
-        )
+        torso_state = self.integrate_torso_state(state_curr, command)
 
         sin_phase_signal = np.sin(2 * np.pi * time_curr / self.cycle_time)
         signal_left = np.clip(sin_phase_signal, 0, None)

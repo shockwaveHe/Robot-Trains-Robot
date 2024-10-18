@@ -40,6 +40,10 @@ def test_motion_ref(
             np.ones(2, dtype=np.float32),  # Stance mask
         ]
     )
+    pose_command = np.random.uniform(-1, 1, 5)
+    pose_command[3] = 0.0
+    pose_command[4] = 0.0
+
     time_curr = 0.0
     while True:
         try:
@@ -47,7 +51,7 @@ def test_motion_ref(
 
             command = np.zeros(len(command_range), dtype=np.float32)
             if "walk" in motion_ref.name:
-                command[:5] = np.array([0.1, 0.3, 0.5, 0.7, 0.9], dtype=np.float32)
+                command[:5] = pose_command
                 for task, input in control_inputs.items():
                     axis = None
                     if task == "walk_vertical":
@@ -174,9 +178,8 @@ if __name__ == "__main__":
     if "walk" in args.ref:
         walk_cfg = WalkCfg()
         turn_cfg = TurnCfg()
-        command_range = (
-            walk_cfg.commands.command_range + turn_cfg.commands.command_range[-1:]
-        )
+        command_range = walk_cfg.commands.command_range
+        command_range[-1] = turn_cfg.commands.command_range[-1]
 
         if args.ref == "walk_simple":
             motion_ref = WalkSimpleReference(

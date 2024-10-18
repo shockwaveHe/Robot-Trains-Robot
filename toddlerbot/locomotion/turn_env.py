@@ -52,8 +52,8 @@ class TurnEnv(WalkEnv, env_name="turn"):
             pose_command = last_command[:5]
         else:
             pose_command = self._sample_command_uniform(rng_1, self.command_range[:5])
-            pose_command = pose_command.at[3].set(0.5)
-            pose_command = pose_command.at[4].set(0.5)
+            pose_command = pose_command.at[3].set(0.0)
+            pose_command = pose_command.at[4].set(0.0)
 
         # Parametric equation of ellipse
         x = jnp.zeros(1)

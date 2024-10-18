@@ -281,12 +281,13 @@ class MJXEnv(PipelineEnv):
             rng,
             rng_torso_pitch,
             rng_torso_yaw,
+            rng_joint_pos,
             rng_command,
             rng_kp,
             rng_kd,
             rng_q_dot_tau_max,
             rng_q_dot_max,
-        ) = jax.random.split(rng, 8)
+        ) = jax.random.split(rng, 9)
 
         state_info = {
             "rng": rng,
@@ -308,7 +309,6 @@ class MJXEnv(PipelineEnv):
         qvel = jnp.zeros(self.nv)
 
         torso_pos = qpos[:3]
-
         torso_yaw = jax.random.uniform(rng_torso_yaw, (1,), minval=0, maxval=2 * jnp.pi)
         torso_quat = math.euler_to_quat(
             jnp.array([0.0, 0.0, jnp.degrees(torso_yaw)[0]])
@@ -320,7 +320,7 @@ class MJXEnv(PipelineEnv):
         joint_vel = qvel[self.qd_start_idx + self.joint_indices]
         stance_mask = jnp.ones(2)
 
-        state_init = jnp.concatenate(
+        state_ref_init = jnp.concatenate(
             [
                 torso_pos,
                 torso_quat,
@@ -332,12 +332,9 @@ class MJXEnv(PipelineEnv):
             ]
         )
         command = self._sample_command(rng_command)
-        state_ref = self.motion_ref.get_state_ref(state_init, 0.0, command)
-        state_info["command"] = command
-        state_info["state_ref"] = state_ref
-        state_info["stance_mask"] = state_ref[-2:]
-        state_info["last_stance_mask"] = state_ref[-2:]
-        state_info["phase_signal"] = self.motion_ref.get_phase_signal(0.0)
+        state_ref = jnp.asarray(
+            self.motion_ref.get_state_ref(state_ref_init, 0.0, command)
+        )
 
         neck_joint_pos = state_ref[self.ref_start_idx + self.neck_ref_indices]
         neck_motor_pos = self.motion_ref.neck_ik(neck_joint_pos)
@@ -346,7 +343,6 @@ class MJXEnv(PipelineEnv):
         waist_joint_pos = state_ref[self.ref_start_idx + self.waist_ref_indices]
         waist_motor_pos = self.motion_ref.waist_ik(waist_joint_pos)
 
-        qpos = qpos.at[3:7].set(torso_quat)
         qpos = qpos.at[self.q_start_idx + self.neck_joint_indices].set(neck_joint_pos)
         qpos = qpos.at[self.q_start_idx + self.neck_motor_indices].set(neck_motor_pos)
         qpos = qpos.at[self.q_start_idx + self.arm_joint_indices].set(arm_joint_pos)
@@ -359,24 +355,33 @@ class MJXEnv(PipelineEnv):
                 noise_torso_pitch = self.reset_noise_torso_pitch * jax.random.normal(
                     rng_torso_pitch, (1,)
                 )
-                noise_torso_quat = math.euler_to_quat(
-                    jnp.array(
-                        [
-                            0.0,
-                            jnp.degrees(noise_torso_pitch)[0],
-                            jnp.degrees(torso_yaw)[0],
-                        ]
-                    )
-                )
-                qpos = qpos.at[3:7].set(noise_torso_quat)
+                torso_euler = jnp.array([0.0, noise_torso_pitch[0], torso_yaw[0]])
+                torso_quat = math.euler_to_quat(jnp.degrees(torso_euler))
 
             noise_joint_pos = self.reset_noise_joint_pos * jax.random.normal(
-                rng_torso_pitch, (self.nq - self.q_start_idx,)
+                rng_joint_pos, (self.nq - self.q_start_idx,)
             )
             qpos = qpos.at[self.q_start_idx :].add(noise_joint_pos)
 
+        waist_joint_pos = qpos[self.q_start_idx + self.waist_joint_indices]
+        waist_euler = jnp.array([-waist_joint_pos[0], 0.0, -waist_joint_pos[1]])
+        waist_quat = math.euler_to_quat(jnp.degrees(waist_euler))
+        torso_quat = math.quat_mul(torso_quat, waist_quat)
+
+        state_ref = state_ref.at[3:7].set(torso_quat)
+        qpos = qpos.at[3:7].set(torso_quat)
+
+        # jax.debug.print("euler: {}", math.quat_to_euler(torso_quat))
+        # jax.debug.print("torso_euler: {}", torso_euler)
+        # jax.debug.print("waist_euler: {}", waist_euler)
+
         pipeline_state = self.pipeline_init(qpos, qvel)
 
+        state_info["command"] = command
+        state_info["state_ref"] = state_ref
+        state_info["stance_mask"] = state_ref[-2:]
+        state_info["last_stance_mask"] = state_ref[-2:]
+        state_info["phase_signal"] = self.motion_ref.get_phase_signal(0.0)
         state_info["init_feet_height"] = pipeline_state.x.pos[self.feet_link_ids, 2]
         last_motor_target = pipeline_state.qpos[self.q_start_idx + self.motor_indices]
         state_info["last_motor_target"] = last_motor_target
@@ -386,7 +391,6 @@ class MJXEnv(PipelineEnv):
         state_info["butter_past_outputs"] = jnp.tile(
             last_motor_target, (self.filter_order, 1)
         )
-
         state_info["controller_kp"] = self.controller.kp.copy()
         state_info["controller_kd"] = self.controller.kd.copy()
         state_info["controller_tau_max"] = self.controller.tau_max.copy()
