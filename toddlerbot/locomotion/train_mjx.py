@@ -411,18 +411,22 @@ def train(
 
     times = [time.time()]
 
+    last_ckpt_step = 0
     best_ckpt_step = 0
     best_episode_reward = -float("inf")
 
     def progress(num_steps: int, metrics: Dict[str, Any]):
-        nonlocal best_episode_reward, best_ckpt_step
+        nonlocal best_episode_reward, best_ckpt_step, last_ckpt_step
 
         times.append(time.time())
 
-        shutil.copy2(
-            os.path.join(exp_folder_path, str(num_steps), "policy"),
-            os.path.join(exp_folder_path, "policy"),
-        )
+        if last_ckpt_step > 0:
+            shutil.copy2(
+                os.path.join(exp_folder_path, str(last_ckpt_step), "policy"),
+                os.path.join(exp_folder_path, "policy"),
+            )
+
+        last_ckpt_step = num_steps
 
         episode_reward = float(metrics.get("eval/episode_reward", 0.0))
         if episode_reward > best_episode_reward:
