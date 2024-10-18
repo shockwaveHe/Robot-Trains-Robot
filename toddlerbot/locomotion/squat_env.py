@@ -30,7 +30,7 @@ class SquatCfg(MJXConfig, env_name="squat"):
                 [-0.03, 0.03],
             ]
         )
-        deadzone: List[float] = field(default_factory=lambda: [0.05])
+        deadzone: List[float] = field(default_factory=lambda: [0.005])
         command_obs_indices: List[int] = field(default_factory=lambda: [5])
 
     @dataclass

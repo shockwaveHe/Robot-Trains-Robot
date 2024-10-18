@@ -419,6 +419,11 @@ def train(
 
         times.append(time.time())
 
+        shutil.copy2(
+            os.path.join(exp_folder_path, str(num_steps), "policy"),
+            os.path.join(exp_folder_path, "policy"),
+        )
+
         episode_reward = float(metrics.get("eval/episode_reward", 0.0))
         if episode_reward > best_episode_reward:
             best_episode_reward = episode_reward
