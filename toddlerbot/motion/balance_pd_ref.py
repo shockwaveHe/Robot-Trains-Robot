@@ -66,15 +66,7 @@ class BalancePDReference(MotionReference):
 
         self.forward = forward
 
-        qpos = self.default_qpos.copy()
-        if self.arm_playback_speed > 0:
-            qpos = inplace_update(
-                qpos,
-                7 + self.mj_joint_indices[self.arm_joint_indices],
-                self.arm_joint_pos_ref[0],
-            )
-        data = self.forward(qpos)
-
+        data = self.forward(self.default_qpos)
         self.desired_com = np.array(data.subtree_com[0], dtype=np.float32)
 
     def get_vel(self, command: ArrayType) -> Tuple[ArrayType, ArrayType]:
@@ -87,6 +79,7 @@ class BalancePDReference(MotionReference):
     ) -> ArrayType:
         torso_state = self.integrate_torso_state(state_curr, command)
         joint_pos_curr = state_curr[13 : 13 + self.robot.nu]
+
         joint_pos = self.default_joint_pos.copy()
 
         # neck yaw, neck pitch, arm, waist roll, waist yaw

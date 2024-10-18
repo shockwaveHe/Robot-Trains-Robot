@@ -246,7 +246,7 @@ class MotionReference(ABC):
                 np.arcsin(
                     self.knee_to_ank_pitch / hip_pitch_to_ank_pitch * np.sin(knee_angle)
                 )
-                - hip_pitch_angle
+                + hip_pitch_angle
             )
 
         if hip_roll_angle is None:
