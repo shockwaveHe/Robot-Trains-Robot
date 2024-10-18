@@ -3,11 +3,14 @@ from abc import ABC, abstractmethod
 from typing import List, Optional, Tuple
 
 import joblib
+import mujoco
 import numpy
+from mujoco import mjx
 
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.array_utils import ArrayType, inplace_update
 from toddlerbot.utils.array_utils import array_lib as np
+from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.math_utils import euler2quat, quat_mult, rotate_vec
 
 
@@ -113,12 +116,9 @@ class MotionReference(ABC):
     def _setup_leg(self):
         leg_motor_names = [self.robot.motor_ordering[i] for i in self.leg_motor_indices]
         self.leg_gear_ratio = self._get_gear_ratios(leg_motor_names)
-        self.left_hip_pitch_idx = self.robot.joint_ordering.index("left_hip_pitch")
         self.left_knee_pitch_idx = self.robot.joint_ordering.index("left_knee_pitch")
-        self.left_ank_pitch_idx = self.robot.joint_ordering.index("left_ank_pitch")
-        self.right_hip_pitch_idx = self.robot.joint_ordering.index("right_hip_pitch")
-        self.right_knee_pitch_idx = self.robot.joint_ordering.index("right_knee_pitch")
-        self.right_ank_pitch_idx = self.robot.joint_ordering.index("right_ank_pitch")
+        self.left_hip_pitch_idx = self.robot.joint_ordering.index("left_hip_pitch")
+        self.left_hip_roll_idx = self.robot.joint_ordering.index("left_hip_roll")
 
     def _setup_com(self, com_z_lower_limit_offset: float = 0.01):
         self.knee_pitch_default = self.default_joint_pos[
@@ -144,6 +144,40 @@ class MotionReference(ABC):
             ],
             dtype=np.float32,
         )
+
+    def _setup_mjx(self):
+        xml_path = find_robot_file_path(self.robot.name, suffix="_scene.xml")
+        model = mujoco.MjModel.from_xml_path(xml_path)
+        self.default_qpos = np.array(model.keyframe("home").qpos)
+        self.mj_joint_indices = np.array(
+            [
+                mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, name)
+                for name in self.robot.joint_ordering
+            ]
+        )
+        self.mj_joint_indices -= 1  # Account for the free joint
+
+        if self.use_jax:
+            self.model = mjx.put_model(model)
+
+            def forward(qpos):
+                data = mjx.make_data(self.model)
+                data = data.replace(qpos=qpos)
+                return mjx.forward(self.model, data)
+
+        else:
+            self.model = model
+
+            def forward(qpos):
+                data = mujoco.MjData(self.model)
+                data.qpos = qpos
+                mujoco.mj_forward(self.model, data)
+                return data
+
+        self.forward = forward
+
+        data = self.forward(self.default_qpos)
+        self.desired_com = np.array(data.subtree_com[0], dtype=np.float32)
 
     def get_phase_signal(self, time_curr: float | ArrayType) -> ArrayType:
         return np.zeros(1, dtype=np.float32)

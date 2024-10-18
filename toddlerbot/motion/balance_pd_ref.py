@@ -1,13 +1,9 @@
 from typing import List, Tuple
 
-import mujoco
-from mujoco import mjx
-
 from toddlerbot.motion.motion_ref import MotionReference
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.array_utils import ArrayType, inplace_update
 from toddlerbot.utils.array_utils import array_lib as np
-from toddlerbot.utils.file_utils import find_robot_file_path
 
 
 class BalancePDReference(MotionReference):
@@ -27,47 +23,6 @@ class BalancePDReference(MotionReference):
         self.com_kp = np.array(com_kp, dtype=np.float32)
 
         self._setup_mjx()
-
-    def _setup_mjx(self):
-        xml_path = find_robot_file_path(self.robot.name, suffix="_scene.xml")
-        model = mujoco.MjModel.from_xml_path(xml_path)
-        self.default_qpos = np.array(model.keyframe("home").qpos)
-        self.mj_joint_indices = np.array(
-            [
-                mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, name)
-                for name in self.robot.joint_ordering
-            ]
-        )
-        self.mj_joint_indices -= 1  # Account for the free joint
-
-        self.left_foot_site_id = mujoco.mj_name2id(
-            model, mujoco.mjtObj.mjOBJ_SITE, "left_foot_center"
-        )
-        self.right_foot_site_id = mujoco.mj_name2id(
-            model, mujoco.mjtObj.mjOBJ_SITE, "right_foot_center"
-        )
-
-        if self.use_jax:
-            self.model = mjx.put_model(model)
-
-            def forward(qpos):
-                data = mjx.make_data(self.model)
-                data = data.replace(qpos=qpos)
-                return mjx.forward(self.model, data)
-
-        else:
-            self.model = model
-
-            def forward(qpos):
-                data = mujoco.MjData(self.model)
-                data.qpos = qpos
-                mujoco.mj_forward(self.model, data)
-                return data
-
-        self.forward = forward
-
-        data = self.forward(self.default_qpos)
-        self.desired_com = np.array(data.subtree_com[0], dtype=np.float32)
 
     def get_vel(self, command: ArrayType) -> Tuple[ArrayType, ArrayType]:
         lin_vel = np.array([0.0, 0.0, 0.0], dtype=np.float32)
@@ -124,7 +79,6 @@ class BalancePDReference(MotionReference):
         qpos = inplace_update(qpos, 7 + self.mj_joint_indices, joint_pos)
         data = self.forward(qpos)
 
-        # Get the center of mass position
         com_pos = np.array(data.subtree_com[0], dtype=np.float32)
         # PD controller on CoM position
         com_pos_error = self.desired_com[:2] - com_pos[:2]
@@ -135,13 +89,13 @@ class BalancePDReference(MotionReference):
             np.array([self.com_z_limits[0], 0.0, self.com_z_limits[1]]),
         )
 
+        # print(f"command: {command[5]}")
         # print(f"com_pos: {com_pos}")
         # print(f"desired_com: {self.desired_com}")
         # print(f"com_pos_error: {com_pos_error}")
         # print(f"com_ctrl: {com_ctrl}")
         # print(f"com_z_target: {com_z_target}")
 
-        # Update joint positions based on the PD controller command
         joint_pos = inplace_update(
             joint_pos,
             self.leg_joint_indices,

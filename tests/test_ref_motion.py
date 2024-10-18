@@ -26,13 +26,13 @@ def test_motion_ref(
 ):
     joystick = Joystick()
 
+    default_qpos = np.array(sim.model.keyframe("home").qpos)
     default_joint_pos = np.array(
         list(robot.default_joint_angles.values()), dtype=np.float32
     )
     state_ref = np.concatenate(
         [
-            np.zeros(3, dtype=np.float32),  # Position
-            np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),  # Quaternion
+            default_qpos[:7],
             np.zeros(3, dtype=np.float32),  # Linear velocity
             np.zeros(3, dtype=np.float32),  # Angular velocity
             default_joint_pos,  # Joint positions
@@ -41,8 +41,6 @@ def test_motion_ref(
         ]
     )
     pose_command = np.random.uniform(-1, 1, 5)
-    pose_command[3] = 0.0
-    pose_command[4] = 0.0
 
     time_curr = 0.0
     while True:
@@ -51,7 +49,7 @@ def test_motion_ref(
 
             command = np.zeros(len(command_range), dtype=np.float32)
             if "walk" in motion_ref.name:
-                command[:5] = pose_command
+                command[:3] = pose_command[:3]
                 for task, input in control_inputs.items():
                     axis = None
                     if task == "walk_vertical":
@@ -69,6 +67,7 @@ def test_motion_ref(
                         )
 
             elif "balance" in motion_ref.name:
+                command[5] = pose_command[0]
                 for task, input in control_inputs.items():
                     if task == "look_left" and input > 0:
                         command[0] = input * command_range[0][1]
@@ -86,28 +85,11 @@ def test_motion_ref(
                         command[4] = input * command_range[4][0]
                     elif task == "twist_right" and input > 0:
                         command[4] = input * command_range[4][1]
-                    elif task == "squat":
-                        command[5] = input
 
             elif "squat" in motion_ref.name:
+                command[:3] = pose_command[:3]
                 for task, input in control_inputs.items():
-                    if task == "look_left" and input > 0:
-                        command[0] = input * command_range[0][1]
-                    elif task == "look_right" and input > 0:
-                        command[0] = input * command_range[0][0]
-                    elif task == "look_up" and input > 0:
-                        command[1] = input * command_range[1][1]
-                    elif task == "look_down" and input > 0:
-                        command[1] = input * command_range[1][0]
-                    elif task == "lean_left" and input > 0:
-                        command[3] = input * command_range[3][0]
-                    elif task == "lean_right" and input > 0:
-                        command[3] = input * command_range[3][1]
-                    elif task == "twist_left" and input > 0:
-                        command[4] = input * command_range[4][0]
-                    elif task == "twist_right" and input > 0:
-                        command[4] = input * command_range[4][1]
-                    elif task == "squat":
+                    if task == "squat":
                         command[5] = np.interp(
                             control_inputs["squat"],
                             [-1, 0, 1],
@@ -118,6 +100,7 @@ def test_motion_ref(
             joint_angles = np.asarray(state_ref[13 : 13 + robot.nu])
 
             if "walk" in motion_ref.name:
+                sim.set_torso_pos(np.asarray(state_ref[:3]))
                 sim.set_torso_quat(np.asarray(state_ref[3:7]))
                 sim.set_joint_angles(dict(zip(robot.joint_ordering, joint_angles)))
                 sim.forward()
