@@ -442,9 +442,6 @@ def train(
 
     _, params, _ = train_fn(environment=env, eval_env=eval_env, progress_fn=progress)
 
-    model_path = os.path.join(exp_folder_path, "policy")
-    model.save_params(model_path, params)
-
     shutil.copy2(
         os.path.join(exp_folder_path, str(best_ckpt_step), "policy"),
         os.path.join(exp_folder_path, "best_policy"),
