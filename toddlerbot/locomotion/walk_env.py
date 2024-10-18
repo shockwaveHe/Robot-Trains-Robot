@@ -163,10 +163,9 @@ class WalkEnv(MJXEnv, env_name="walk"):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
         feet_height = pipeline_state.x.pos[self.feet_link_ids, 2]
-        feet_z_delta = feet_height - info["init_feet_height"]
-        jax.debug.print("feet_z_delta: {}", feet_z_delta)
-        is_close = jnp.abs(feet_z_delta - self.target_feet_z_delta) < 0.01
-        reward = jnp.sum(is_close * (1 - info["stance_mask"]))
+        feet_z_delta = feet_height - info["feet_height_init"]
+        is_above_target = feet_z_delta >= self.target_feet_z_delta
+        reward = jnp.sum(is_above_target * (1 - info["stance_mask"]))
         return reward
 
     def _reward_feet_distance(

@@ -389,7 +389,7 @@ class MJXEnv(PipelineEnv):
         state_info["stance_mask"] = state_ref[-2:]
         state_info["last_stance_mask"] = state_ref[-2:]
         state_info["phase_signal"] = self.motion_ref.get_phase_signal(0.0)
-        state_info["init_feet_height"] = pipeline_state.x.pos[self.feet_link_ids, 2]
+        state_info["feet_height_init"] = pipeline_state.x.pos[self.feet_link_ids, 2]
         last_motor_target = pipeline_state.qpos[self.q_start_idx + self.motor_indices]
         state_info["last_motor_target"] = last_motor_target
         state_info["butter_past_inputs"] = jnp.tile(
