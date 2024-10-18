@@ -34,8 +34,8 @@ class MJXConfig:
 
         frame_stack: int = 15
         c_frame_stack: int = 15
-        num_single_obs: int = 106
-        num_single_privileged_obs: int = 145
+        num_single_obs: int = 101
+        num_single_privileged_obs: int = 140
         scales: ObsScales = ObsScales()
 
     @dataclass
@@ -98,6 +98,9 @@ class MJXConfig:
         resample_time: float = 5.0
         reset_time: float = 100.0  # No resetting by default
         mean_reversion: float = 0.5
+        command_range: List[List[float]] = field(default_factory=lambda: [[]])
+        deadzone: List[float] = field(default_factory=lambda: [])
+        command_obs_indices: List[int] = field(default_factory=lambda: [])
 
     @dataclass
     class DomainRandConfig:

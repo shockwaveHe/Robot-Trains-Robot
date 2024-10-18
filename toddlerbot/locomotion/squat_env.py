@@ -14,8 +14,8 @@ from toddlerbot.sim.robot import Robot
 class SquatCfg(MJXConfig, env_name="squat"):
     @dataclass
     class ObsConfig(MJXConfig.ObsConfig):
-        num_single_obs: int = 103
-        num_single_privileged_obs: int = 142
+        num_single_obs: int = 98
+        num_single_privileged_obs: int = 137
 
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):
@@ -30,12 +30,13 @@ class SquatCfg(MJXConfig, env_name="squat"):
                 [-0.03, 0.03],
             ]
         )
-        deadzone: float = 0.005
+        deadzone: List[float] = field(default_factory=lambda: [0.05])
+        command_obs_indices: List[int] = [5]
 
     @dataclass
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
         # Balance specific rewards
-        arm_joint_pos: float = 1.0
+        arm_joint_pos: float = 0.5
         arm_action_rate: float = 1e-2
         arm_action_acc: float = 1e-2
         leg_joint_pos: float = 0.0
@@ -63,9 +64,6 @@ class SquatEnv(MJXEnv, env_name="squat"):
     ):
         motion_ref = SquatReference(robot, cfg.sim.timestep * cfg.action.n_frames)
 
-        self.command_range = jnp.array(cfg.commands.command_range)
-        self.deadzone = jnp.array(cfg.commands.deadzone)
-
         super().__init__(
             name,
             robot,
@@ -91,7 +89,7 @@ class SquatEnv(MJXEnv, env_name="squat"):
         command = jnp.concatenate([pose_command, squat_command])
 
         # Set small commands to zero based on norm condition
-        mask = (jnp.abs(command[5:]) > self.deadzone).astype(jnp.float32)
+        mask = (jnp.linalg.norm(command[5:]) > self.deadzone).astype(jnp.float32)
         command = command.at[5:].set(command[5:] * mask)
 
         return command

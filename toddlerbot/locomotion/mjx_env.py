@@ -216,6 +216,13 @@ class MJXEnv(PipelineEnv):
         self.reset_time = self.cfg.commands.reset_time
         self.reset_steps = int(self.reset_time / self.dt)
         self.mean_reversion = self.cfg.commands.mean_reversion
+        self.command_range = jnp.array(self.cfg.commands.command_range)
+        self.deadzone = (
+            jnp.array(self.cfg.commands.deadzone)
+            if len(self.cfg.commands.deadzone) > 1
+            else self.cfg.commands.deadzone[0]
+        )
+        self.command_obs_indices = jnp.array(self.cfg.commands.command_obs_indices)
 
         # observation
         self.ref_start_idx = 7 + 6
@@ -701,7 +708,7 @@ class MJXEnv(PipelineEnv):
         obs = jnp.concatenate(
             [
                 info["phase_signal"],
-                info["command"],
+                info["command"][self.command_obs_indices],
                 motor_pos_delta * self.obs_scales.dof_pos + motor_backlash,
                 motor_vel * self.obs_scales.dof_vel,
                 info["last_act"],
@@ -713,7 +720,7 @@ class MJXEnv(PipelineEnv):
         privileged_obs = jnp.concatenate(
             [
                 info["phase_signal"],
-                info["command"],
+                info["command"][self.command_obs_indices],
                 motor_pos_delta * self.obs_scales.dof_pos,
                 motor_vel * self.obs_scales.dof_vel,
                 info["last_act"],

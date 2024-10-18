@@ -33,7 +33,8 @@ class WalkCfg(MJXConfig, env_name="walk"):
                 [0.0, 0.0],
             ]
         )
-        deadzone: float = 0.05
+        deadzone: List[float] = field(default_factory=lambda: [0.05])
+        command_obs_indices: List[int] = field(default_factory=lambda: [5, 6, 7])
 
     @dataclass
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
@@ -80,8 +81,6 @@ class WalkEnv(MJXEnv, env_name="walk"):
             raise ValueError(f"Unknown ref_motion_type: {ref_motion_type}")
 
         self.cycle_time = jnp.array(cfg.action.cycle_time)
-        self.command_range = jnp.array(cfg.commands.command_range)
-        self.deadzone = jnp.array(cfg.commands.deadzone)
         self.torso_pitch_range = cfg.rewards.torso_pitch_range
         self.min_feet_y_dist = cfg.rewards.min_feet_y_dist
         self.max_feet_y_dist = cfg.rewards.max_feet_y_dist

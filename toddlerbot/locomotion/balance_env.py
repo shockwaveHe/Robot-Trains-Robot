@@ -14,8 +14,8 @@ from toddlerbot.sim.robot import Robot
 class BalanceCfg(MJXConfig, env_name="balance"):
     @dataclass
     class ObsConfig(MJXConfig.ObsConfig):
-        num_single_obs: int = 103
-        num_single_privileged_obs: int = 142
+        num_single_obs: int = 101
+        num_single_privileged_obs: int = 140
 
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):
@@ -33,6 +33,7 @@ class BalanceCfg(MJXConfig, env_name="balance"):
         deadzone: List[float] = field(
             default_factory=lambda: [0.05, 0.05, 0.0, 0.05, 0.05, 0.0]
         )
+        command_obs_indices: List[int] = field(default_factory=lambda: [0, 1, 3, 4])
 
     @dataclass
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
@@ -59,10 +60,6 @@ class BalanceEnv(MJXEnv, env_name="balance"):
         **kwargs: Any,
     ):
         motion_ref = BalancePDReference(robot, cfg.sim.timestep * cfg.action.n_frames)
-
-        self.command_range = jnp.array(cfg.commands.command_range)
-        self.deadzone = jnp.array(cfg.commands.deadzone)
-        self.mean_reversion = cfg.commands.mean_reversion
 
         super().__init__(
             name,
