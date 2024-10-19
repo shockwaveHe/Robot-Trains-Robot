@@ -33,7 +33,7 @@ class WalkCfg(MJXConfig, env_name="walk"):
                 [0.0, 0.0],
             ]
         )
-        deadzone: List[float] = field(default_factory=lambda: [0.05])
+        deadzone: List[float] = field(default_factory=lambda: [0.01])
         command_obs_indices: List[int] = field(default_factory=lambda: [5, 6, 7])
 
     @dataclass
