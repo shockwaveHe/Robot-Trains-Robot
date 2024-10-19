@@ -494,6 +494,13 @@ def evaluate(
 
     try:
         render_video(env, rollout, run_name)
+        wandb.log(
+            {
+                "video": wandb.Video(
+                    os.path.join("results", run_name, "eval.mp4"), format="mp4"
+                )
+            }
+        )
     except Exception:
         print("Failed to render the video. Skipped.")
 
