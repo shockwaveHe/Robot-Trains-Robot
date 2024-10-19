@@ -43,7 +43,10 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
         self.dataset_logger = DatasetLogger()
 
     def get_arm_motor_pos(self) -> npt.NDArray[np.float32]:
-        return self.arm_motor_pos
+        if self.arm_motor_pos is None:
+            return self.default_motor_pos[self.arm_motor_indices]
+        else:
+            return self.arm_motor_pos
 
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         motor_target = super().step(obs, is_real)
@@ -52,12 +55,14 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
             self.dataset_logger.log_entry(
                 Data(obs.time, obs.motor_pos, self.fsr, self.camera_frame)
             )
-        elif self.is_button_pressed:
-            self.dataset_logger.log_episode_end()
-            print(f"\nLogged {self.n_logs} entries.")
-            self.n_logs += 1
         else:
             # clean up the log when not logging.
             self.dataset_logger.maintain_log()
+
+        if self.is_logging_ended:
+            self.is_logging_ended = False
+            self.dataset_logger.log_episode_end()
+            print(f"\nLogged {self.n_logs} entries.")
+            self.n_logs += 1
 
         return motor_target
