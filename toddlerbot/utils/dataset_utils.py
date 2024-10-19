@@ -39,22 +39,6 @@ class DatasetLogger:
             len_dataset = self.episode_ends[-1]
             self.data_list = self.data_list[:len_dataset]
 
-    # TODO: Implement this function
-    def _set_to_rate(self, rate: float):
-        # state_array = self.data_dict["state_array"]
-        # images = self.data_dict["images"]
-
-        # ds_state = []
-        # ds_images = []
-        # for i in range(0, len(state_array)):
-        #     if state
-        #         ds_state.append(state_array[i])
-        #         ds_images.append(images[i])
-
-        # self.data_dict["state_array"] = state_array.tolist()
-        # self.data_dict["images"] = images.tolist()
-        pass
-
     def save(self, path: str):
         # watchout for saving time in float32, it will get truncated to 100s accuracy
         # Assuming self.data_list is a list of Data instances
@@ -66,9 +50,6 @@ class DatasetLogger:
         }
         data_dict["start_time"] = self.data_list[0].time
         data_dict["episode_ends"] = self.episode_ends
-
-        # downsample everything to 10hz
-        self._set_to_rate(10)
 
         # dump to lz4 format
         joblib.dump(data_dict, path, compress="lz4")
