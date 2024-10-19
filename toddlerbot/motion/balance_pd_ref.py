@@ -2,7 +2,7 @@ from typing import List, Tuple
 
 from toddlerbot.motion.motion_ref import MotionReference
 from toddlerbot.sim.robot import Robot
-from toddlerbot.utils.array_utils import ArrayType, inplace_add, inplace_update
+from toddlerbot.utils.array_utils import ArrayType, inplace_update
 from toddlerbot.utils.array_utils import array_lib as np
 
 
@@ -75,21 +75,17 @@ class BalancePDReference(MotionReference):
         )
         joint_pos = inplace_update(joint_pos, self.waist_joint_indices, waist_joint_pos)
 
-        qpos = self.default_qpos.copy()
-        qpos = inplace_update(qpos, slice(3, 7), torso_state[3:7])
-
-        com_ctrl = np.zeros(2, dtype=np.float32)
         com_z_target = np.interp(
             command[5],
             np.array([-1, 0, 1]),
             np.array([self.com_z_limits[0], 0.0, self.com_z_limits[1]]),
         )
         joint_pos = inplace_update(
-            joint_pos,
-            self.leg_joint_indices,
-            self.com_ik(com_z_target, com_ctrl[0], com_ctrl[1]),
+            joint_pos, self.leg_joint_indices, self.com_ik(com_z_target)
         )
-        # for i in range(self.ik_iters):
+
+        qpos = self.default_qpos.copy()
+        qpos = inplace_update(qpos, slice(3, 7), torso_state[3:7])
         qpos = inplace_update(qpos, 7 + self.mj_joint_indices, joint_pos)
         data = self.forward(qpos)
 

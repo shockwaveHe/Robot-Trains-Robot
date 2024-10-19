@@ -7,7 +7,7 @@ from toddlerbot.utils.array_utils import array_lib as np
 
 
 class SquatReference(MotionReference):
-    def __init__(self, robot: Robot, dt: float, com_kp: List[float] = [1.0, 1.0]):
+    def __init__(self, robot: Robot, dt: float, com_kp: List[float] = [1.5, 1.0]):
         super().__init__("squat", "perceptual", robot, dt)
 
         self.com_kp = np.array(com_kp, dtype=np.float32)
@@ -64,6 +64,16 @@ class SquatReference(MotionReference):
 
         qpos = self.default_qpos.copy()
         qpos = inplace_update(qpos, slice(3, 7), torso_state[3:7])
+
+        com_curr = self.com_fk(joint_pos_curr[self.left_knee_pitch_idx])
+        com_z_target = np.clip(
+            com_curr[2] + self.dt * command[5],
+            self.com_z_limits[0],
+            self.com_z_limits[1],
+        )
+        joint_pos = inplace_update(
+            joint_pos, self.leg_joint_indices, self.com_ik(com_z_target)
+        )
         qpos = inplace_update(qpos, 7 + self.mj_joint_indices, joint_pos)
         data = self.forward(qpos)
 
@@ -71,17 +81,6 @@ class SquatReference(MotionReference):
         # PD controller on CoM position
         com_pos_error = self.desired_com[:2] - com_pos[:2]
         com_ctrl = self.com_kp * com_pos_error
-        com_curr = self.com_fk(
-            joint_pos_curr[self.left_knee_pitch_idx],
-            joint_pos_curr[self.left_hip_pitch_idx],
-            joint_pos_curr[self.left_hip_roll_idx],
-        )
-
-        com_z_target = np.clip(
-            com_curr[2] + self.dt * command[5],
-            self.com_z_limits[0],
-            self.com_z_limits[1],
-        )
 
         # print(f"command: {command[5]}")
         # print(f"com_pos: {com_pos}")
