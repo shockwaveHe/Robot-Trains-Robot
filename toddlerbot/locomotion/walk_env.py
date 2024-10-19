@@ -42,7 +42,7 @@ class WalkCfg(MJXConfig, env_name="walk"):
         torso_pitch: float = 0.1
         lin_vel_xy: float = 5.0
         ang_vel_z: float = 1.0
-        feet_air_time: float = 10.0
+        feet_air_time: float = 50.0
         feet_distance: float = 0.5
         feet_slip: float = 0.1
         feet_clearance: float = 1.0
@@ -152,10 +152,9 @@ class WalkEnv(MJXEnv, env_name="walk"):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
         # Reward air time.
-        reward = jnp.sum(
-            jnp.clip(info["feet_air_time"], max=self.cycle_time / 2)
-            * (1 - info["stance_mask"])
-        )
+        contact_filter = jnp.logical_or(info["stance_mask"], info["last_stance_mask"])
+        first_contact = (info["feet_air_time"] > 0) * contact_filter
+        reward = jnp.sum(info["feet_air_time"] * first_contact)
         # no reward for zero command
         reward *= jnp.linalg.norm(info["command"]) > self.deadzone
         return reward
@@ -163,13 +162,9 @@ class WalkEnv(MJXEnv, env_name="walk"):
     def _reward_feet_clearance(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
-        reward = jnp.sum(
-            jnp.clip(
-                info["feet_air_dist"],
-                max=self.cycle_time / 2 / self.dt * self.target_feet_z_delta / 2,
-            )
-            * (1 - info["stance_mask"])
-        )
+        contact_filter = jnp.logical_or(info["stance_mask"], info["last_stance_mask"])
+        first_contact = (info["feet_air_dist"] > 0) * contact_filter
+        reward = jnp.sum(info["feet_air_dist"] * first_contact)
         # no reward for zero command
         reward *= jnp.linalg.norm(info["command"]) > self.deadzone
         return reward
