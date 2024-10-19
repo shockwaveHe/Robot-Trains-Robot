@@ -86,7 +86,7 @@ class MJXConfig:
                     setattr(self, key, 0.0)
 
         healthy_z_range: List[float] = field(default_factory=lambda: [0.2, 0.4])
-        tracking_sigma: float = 5.0
+        tracking_sigma: float = 10.0
         min_feet_y_dist: float = 0.05
         max_feet_y_dist: float = 0.13
         torso_pitch_range: List[float] = field(default_factory=lambda: [-0.2, 0.2])
