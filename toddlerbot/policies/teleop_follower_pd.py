@@ -51,7 +51,12 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         motor_target = super().step(obs, is_real)
         # Log the data
-        if self.is_logging:
+        if self.is_logging_ended:
+            self.is_logging_ended = False
+            self.dataset_logger.log_episode_end()
+            print(f"\nLogged {self.n_logs} entries.")
+            self.n_logs += 1
+        elif self.is_logging:
             self.dataset_logger.log_entry(
                 Data(obs.time, obs.motor_pos, self.fsr, self.camera_frame)
             )
@@ -59,10 +64,5 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
             # clean up the log when not logging.
             self.dataset_logger.maintain_log()
 
-        if self.is_logging_ended:
-            self.is_logging_ended = False
-            self.dataset_logger.log_episode_end()
-            print(f"\nLogged {self.n_logs} entries.")
-            self.n_logs += 1
 
         return motor_target

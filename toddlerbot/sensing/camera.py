@@ -8,7 +8,7 @@ class Camera:
     def __init__(self, camera_id=0):
         # Run the command
         result = subprocess.run(
-            f"v4l2-ctl --device=/dev/video{camera_id} --set-ctrl=auto_exposure=1,exposure_time_absolute=70",
+            f"v4l2-ctl --device=/dev/video{camera_id} --set-ctrl=auto_exposure=1,exposure_time_absolute=30",
             shell=True,
             text=True,
             check=True,

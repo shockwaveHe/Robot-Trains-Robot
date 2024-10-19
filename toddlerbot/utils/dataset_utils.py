@@ -32,6 +32,7 @@ class DatasetLogger:
     # episode end index is the index of the last state entry in the episode +1
     def log_episode_end(self):
         self.episode_ends.append(len(self.data_list))
+        print(f"Episode ended at {self.episode_ends}")
 
     def maintain_log(self):
         if len(self.episode_ends) > 0:
