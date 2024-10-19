@@ -24,7 +24,7 @@ from toddlerbot.utils.math_utils import (
 
 # Global registry to store env names and their corresponding classes
 env_registry: Dict[str, Type["MJXEnv"]] = {}
-
+num_episode = 0
 
 def get_env_class(env_name: str) -> Type["MJXEnv"]:
     if env_name not in env_registry:
@@ -60,7 +60,7 @@ class MJXEnv(PipelineEnv):
         # TODO: eval in original environment
         if fixed_base:
             xml_path = find_robot_file_path(robot.name, suffix="_fixed_scene.xml")
-        elif cfg.HangConfig.init_hang_force > 0.0:
+        elif cfg.hang.init_hang_force > 0.0:
             xml_path = find_robot_file_path(robot.name, suffix="_hang_scene.xml")
             self.hang_positions = ["left_front", "right_front", "left_back", "right_back"]
         else:
@@ -95,7 +95,7 @@ class MJXEnv(PipelineEnv):
         self.nq = self.sys.nq
         self.nv = self.sys.nv
 
-        if self.cfg.HangConfig.init_hang_force > 0.0:
+        if self.cfg.hang.init_hang_force > 0.0:
             self.hang_motors = 12
             self.hang_dofs = 8
             self.nu -= self.hang_motors
@@ -279,7 +279,7 @@ class MJXEnv(PipelineEnv):
         self.push_interval = np.ceil(self.cfg.domain_rand.push_interval_s / self.dt)
         self.push_vel = self.cfg.domain_rand.push_vel
 
-        self.num_episode = 0 # episode counter
+
 
     def _init_reward(self) -> None:
         """Prepares a list of reward functions, which will be called to compute the total reward.
@@ -302,7 +302,7 @@ class MJXEnv(PipelineEnv):
         self.healthy_z_range = self.cfg.rewards.healthy_z_range
         self.tracking_sigma = self.cfg.rewards.tracking_sigma
 
-    def reset(self, rng: jax.Array) -> State:
+    def reset(self, rng: jax.Array, current_step: int) -> State:
         """Resets the environment to an initial state."""
         (
             rng,
@@ -314,13 +314,15 @@ class MJXEnv(PipelineEnv):
             rng_q_dot_tau_max,
             rng_q_dot_max,
         ) = jax.random.split(rng, 8)
-
+        # import ipdb; ipdb.set_trace()
+        jax.debug.print("Current step inside {current_step}", current_step=current_step)
         def get_hang_force() -> float:
-            if self.cfg.HangConfig.init_hang_force > 0.0:
-                return self.cfg.HangConfig.init_hang_force - (
-                    self.cfg.HangConfig.init_hang_force
-                    - self.cfg.HangConfig.final_hang_force
-                ) * min(self.num_episode / self.cfg.HangConfig.hang_force_decay_episodes, 1.0)
+            global num_episode
+            if self.cfg.hang.init_hang_force > 0.0:
+                return self.cfg.hang.init_hang_force - (
+                    self.cfg.hang.init_hang_force
+                    - self.cfg.hang.final_hang_force
+                ) * min(num_episode / self.cfg.hang.hang_force_decay_episodes, 1.0)
             else:
                 return 0.0
             
@@ -437,9 +439,10 @@ class MJXEnv(PipelineEnv):
         for k in self.reward_names:
             metrics[k] = zero
         
-        metrics["num_episode"] = self.num_episode
+        global num_episode
+        metrics["num_episode"] = num_episode
         metrics["hang_force"] = state_info["hang_force"]
-        self.num_episode += 1
+        num_episode = num_episode + 1
 
         return State(
             pipeline_state, obs, privileged_obs, reward, done, metrics, state_info
@@ -590,7 +593,7 @@ class MJXEnv(PipelineEnv):
             state.info["feet_air_time"] += self.dt
             state.info["feet_air_time"] *= 1.0 - stance_mask
 
-        state.info["push"] = push
+
         state.info["last_last_act"] = state.info["last_act"].copy()
         state.info["last_act"] = action_delay.copy()
         state.info["last_torso_euler"] = torso_euler
@@ -610,7 +613,7 @@ class MJXEnv(PipelineEnv):
             done | (state.info["step"] > self.resample_steps), 0, state.info["step"]
         )
         state.metrics.update(reward_dict)
-        state.metrics.update({"num_episode": self.num_episode, "hang_force": state.info["hang_force"]})
+        state.metrics.update({"num_episode": num_episode, "hang_force": state.info["hang_force"]})
 
         return state.replace(
             pipeline_state=pipeline_state,

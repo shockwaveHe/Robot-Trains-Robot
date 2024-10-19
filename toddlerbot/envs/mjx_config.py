@@ -128,7 +128,7 @@ class MJXConfig:
 
     @dataclass
     class HangConfig:
-        init_hang_force: float = 5.0
+        init_hang_force: float = 2.0
         final_hang_force: float = 0.025
         hang_force_decay_episodes: int = 50_000
 
@@ -140,9 +140,19 @@ class MJXConfig:
         self.commands = self.CommandsConfig()
         self.domain_rand = self.DomainRandConfig()
         self.noise = self.NoiseConfig()
+        self.hang = self.HangConfig()
 
     # Automatic registration of subclasses
     def __init_subclass__(cls, env_name: str = "", **kwargs):
         super().__init_subclass__(**kwargs)
         if len(env_name) > 0:
             env_cfg_registry[env_name] = cls
+
+if __name__ == "__main__":
+    from copy import deepcopy
+    mjx_config = MJXConfig()
+    mjx_config_copy = deepcopy(mjx_config)
+    mjx_config_copy.HangConfig.init_hang_force = 1.0
+    print(mjx_config.HangConfig.init_hang_force) # fake deepcopy
+    mjx_config_copy.hang.init_hang_force = 1.0
+    print(mjx_config.hang.init_hang_force) # real deepcopy

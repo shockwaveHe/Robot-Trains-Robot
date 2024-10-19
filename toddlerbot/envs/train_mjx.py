@@ -1,3 +1,4 @@
+from copy import deepcopy
 import os
 
 os.environ["XLA_FLAGS"] = "--xla_gpu_triton_gemm_any=true"
@@ -130,8 +131,6 @@ def log_metrics(
 
     if 'hang_force' in metrics:
         log_string += f"""{'Hang force:':>{pad}} {metrics['hang_force']:.3f}\n""" 
-    if "num_episode" in metrics:
-        log_string += f"""{'Num episodes:':>{pad}} {metrics['num_episodes']}\n"""
     
     if num_steps > 0 and num_total_steps > 0:
         log_string += (
@@ -382,7 +381,10 @@ def train(
     body_mass_attr_range = None
     if env.cfg.domain_rand.added_mass_range is not None and not env.fixed_base:
         body_mass_attr_range = get_body_mass_attr_range(
-            env.robot, env.cfg.domain_rand.added_mass_range, env.cfg.HangConfig.init_hang_force, train_cfg.num_envs
+            env.robot, env.cfg.domain_rand.added_mass_range, env.cfg.hang.init_hang_force, train_cfg.num_envs
+        )
+        eval_body_mass_attr_range = get_body_mass_attr_range(
+            eval_env.robot, env.cfg.domain_rand.added_mass_range, eval_env.cfg.hang.init_hang_force, train_cfg.num_envs
         )
 
     domain_randomize_fn = functools.partial(
@@ -393,7 +395,14 @@ def train(
         frictionloss_range=env.cfg.domain_rand.frictionloss_range,
         body_mass_attr_range=body_mass_attr_range,
     )
-
+    eval_domain_randomize_fn = functools.partial(
+        domain_randomize,
+        friction_range=eval_env.cfg.domain_rand.friction_range,
+        damping_range=eval_env.cfg.domain_rand.damping_range,
+        armature_range=eval_env.cfg.domain_rand.armature_range,
+        frictionloss_range=eval_env.cfg.domain_rand.frictionloss_range,
+        body_mass_attr_range=eval_body_mass_attr_range,
+    )
     train_fn = functools.partial(
         ppo.train,
         num_timesteps=train_cfg.num_timesteps,
@@ -412,6 +421,7 @@ def train(
         seed=train_cfg.seed,
         network_factory=make_networks_factory,
         randomization_fn=domain_randomize_fn,
+        eval_randomization_fn=eval_domain_randomize_fn,
         policy_params_fn=policy_params_fn,
         restore_checkpoint_path=restore_checkpoint_path,
     )
@@ -537,6 +547,7 @@ if __name__ == "__main__":
 
     EnvClass = get_env_class(args.env)
     env_cfg = get_env_cfg_class(args.env)()
+    # TODO: fix bug when init_hang_force is 0.0
     train_cfg = PPOConfig()
 
     kwargs = {}
@@ -569,17 +580,20 @@ if __name__ == "__main__":
         fixed_base="fixed" in args.env,
         **kwargs,  # type: ignore
     )
+
+    eval_env_cfg = deepcopy(env_cfg)
+    eval_env_cfg.hang.init_hang_force = 0.0 
     eval_env = EnvClass(
         args.env,
         robot,
-        env_cfg,  # type: ignore
+        eval_env_cfg,  # type: ignore
         fixed_base="fixed" in args.env,
         **kwargs,  # type: ignore
     )
     test_env = EnvClass(
         args.env,
         robot,
-        env_cfg,  # type: ignore
+        eval_env_cfg,  # type: ignore
         fixed_base="fixed" in args.env,
         add_noise=False,
         add_domain_rand=False,
