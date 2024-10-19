@@ -89,6 +89,7 @@ class MJXConfig:
         tracking_sigma: float = 10.0
         min_feet_y_dist: float = 0.05
         max_feet_y_dist: float = 0.13
+        target_feet_z_delta: float = 0.05
         torso_pitch_range: List[float] = field(default_factory=lambda: [-0.2, 0.2])
         scales: RewardScales = RewardScales()
 
