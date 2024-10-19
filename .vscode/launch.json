@@ -4,6 +4,21 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
+        {
+            "name": "Python: process_dataset",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/manipulation/datasets/process_raw_data.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--time-str",
+                // "20241015_142438",
+                // "20241018_184113",
+                "20241019_135640",
+            ]
+        },
         {
             "cwd": "${workspaceRoot}",
             "executable": "toddlerbot/actuation/sunny_sky/knee_esc/motorcontrol.elf",

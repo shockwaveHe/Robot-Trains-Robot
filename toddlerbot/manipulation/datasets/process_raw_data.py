@@ -48,6 +48,29 @@ def load_raw_dataset(dataset_path: str):
     return raw_data_converted
 
 
+def get_idle_idx(seq, threshold=0.1):
+    """
+    Get the index of the last idle state in the sequence.
+    """
+    idle_idx = 0
+    for idx, state in enumerate(seq):
+        diff = np.abs(state - seq[0])
+        if np.any(diff > threshold):
+            idle_idx = idx
+        else:
+            break
+    return idle_idx
+
+
+"""
+Output dataset entry:
+images: (N, 96, 96, 3)
+episode_ends: (N,)
+agent_pos: (N, ns)
+action: (N, na)
+"""
+
+
 def main(dataset_path: str, output_path: str):
     raw_data = load_raw_dataset(dataset_path)
 
@@ -99,8 +122,41 @@ def main(dataset_path: str, output_path: str):
         action_list.append(shifted_state)
         last_idx = idx
 
-    output_dataset["action"] = np.vstack(action_list).astype(np.float32)
     output_dataset["episode_ends"] = raw_data["episode_ends"]
+    output_dataset["action"] = action_list
+    output_dataset["action"] = np.vstack(output_dataset["action"]).astype(np.float32)
+
+    # remove the idle time in each sequence
+    last_idx = 0
+    temp_dict = {"agent_pos": [], "action": [], "images": [], "episode_ends": []}
+    for idx in output_dataset["episode_ends"]:
+        seq_agent_pos = output_dataset["agent_pos"][last_idx:idx]
+        seq_action = output_dataset["action"][last_idx:idx]
+        seq_image = output_dataset["images"][last_idx:idx]
+        idle_idx = get_idle_idx(seq_agent_pos)
+
+        # reassign them to the output dataset
+        seq_agent_pos = seq_agent_pos[idle_idx:]
+        seq_action = seq_action[idle_idx:]
+        seq_image = seq_image[idle_idx:]
+
+        temp_dict["agent_pos"].append(seq_agent_pos)
+        temp_dict["action"].append(seq_action)
+        temp_dict["images"].append(seq_image)
+        if len(temp_dict["episode_ends"]) == 0:
+            temp_dict["episode_ends"].append(seq_agent_pos.shape[0])
+        else:
+            temp_dict["episode_ends"].append(
+                temp_dict["episode_ends"][-1] + seq_agent_pos.shape[0]
+            )
+
+        last_idx = idx
+
+    temp_dict["images"] = np.vstack(temp_dict["images"])
+    temp_dict["agent_pos"] = np.vstack(temp_dict["agent_pos"])
+    temp_dict["action"] = np.vstack(temp_dict["action"])
+
+    output_dataset = temp_dict
 
     joblib.dump(output_dataset, output_path)
 
@@ -125,7 +181,7 @@ if __name__ == "__main__":
     dataset_path = os.path.join(
         "results",
         f"{args.robot}_teleop_follower_pd_real_world_{args.time_str}",
-        "dataset.lz4",
+        "toddlerbot_0.lz4",
     )
     # save the dataset
     output_path = os.path.join("datasets", f"teleop_dataset_{args.time_str}.lz4")
