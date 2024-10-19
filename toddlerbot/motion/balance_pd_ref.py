@@ -12,7 +12,7 @@ class BalancePDReference(MotionReference):
         robot: Robot,
         dt: float,
         arm_playback_speed: float = 1.0,
-        com_kp: List[float] = [1.0, 1.0],
+        com_kp: List[float] = [1.5, 1.0],
     ):
         super().__init__("balance_pd", "perceptual", robot, dt)
 
