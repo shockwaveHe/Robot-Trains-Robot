@@ -346,10 +346,8 @@ def main(robot: Robot, sim: BaseSim, policy: BasePolicy, vis_type: str):
     prof_path = os.path.join(exp_folder_path, "profile_output.lprof")
     dump_profiling_data(prof_path)
 
-    if isinstance(policy, TeleopLeaderPolicy) or isinstance(
-        policy, TeleopFollowerPDPolicy
-    ):
-        policy.dataset_logger.save(os.path.join(exp_folder_path, "dataset.lz4"))
+    if isinstance(policy, TeleopFollowerPDPolicy):
+        policy.dataset_logger.move_files_to_exp_folder(exp_folder_path)
 
     if isinstance(policy, CalibratePolicy):
         motor_config_path = os.path.join(robot.root_path, "config_motors.json")

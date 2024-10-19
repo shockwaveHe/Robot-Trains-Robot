@@ -53,16 +53,10 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
         # Log the data
         if self.is_logging_ended:
             self.is_logging_ended = False
-            self.dataset_logger.log_episode_end()
-            print(f"\nLogged {self.n_logs} entries.")
-            self.n_logs += 1
+            self.dataset_logger.save()
         elif self.is_logging:
             self.dataset_logger.log_entry(
                 Data(obs.time, obs.motor_pos, self.fsr, self.camera_frame)
             )
-        else:
-            # clean up the log when not logging.
-            self.dataset_logger.maintain_log()
-
 
         return motor_target

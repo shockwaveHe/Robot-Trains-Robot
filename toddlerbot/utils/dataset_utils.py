@@ -1,3 +1,5 @@
+import os
+import shutil
 from dataclasses import dataclass, fields
 from typing import Optional
 
@@ -24,24 +26,18 @@ class Data:
 class DatasetLogger:
     def __init__(self):
         self.data_list = []
-        self.episode_ends = []
+        self.n_episodes = 0
 
     def log_entry(self, data: Data):
         self.data_list.append(data)
 
     # episode end index is the index of the last state entry in the episode +1
-    def log_episode_end(self):
-        self.episode_ends.append(len(self.data_list))
-        print(f"Episode ended at {self.episode_ends}")
-
-    def maintain_log(self):
-        if len(self.episode_ends) > 0:
-            len_dataset = self.episode_ends[-1]
-            self.data_list = self.data_list[:len_dataset]
-
-    def save(self, path: str):
+    def save(self):
         # watchout for saving time in float32, it will get truncated to 100s accuracy
         # Assuming self.data_list is a list of Data instances
+        print(
+            f"\nLogged {self.n_episodes} episodes. Episode length: {len(self.data_list)}"
+        )
         data_dict = {
             field.name: np.array(
                 [getattr(data, field.name) for data in self.data_list],
@@ -49,7 +45,25 @@ class DatasetLogger:
             for field in fields(Data)
         }
         data_dict["start_time"] = self.data_list[0].time
-        data_dict["episode_ends"] = self.episode_ends
 
         # dump to lz4 format
-        joblib.dump(data_dict, path, compress="lz4")
+        joblib.dump(data_dict, f"/tmp/toddlerbot_{self.n_episodes}.lz4", compress="lz4")
+
+        self.data_list = []
+        self.n_episodes += 1
+
+    def move_files_to_exp_folder(self, exp_folder_path: str):
+        # Find all files that match the pattern
+        lz4_files = [
+            f
+            for f in os.listdir("/tmp")
+            if f.startswith("toddlerbot_") and f.endswith(".lz4")
+        ]
+
+        # Move each file to the exp_folder
+        for file_name in lz4_files:
+            source = os.path.join("/tmp", file_name)
+            destination = os.path.join(exp_folder_path, file_name)
+            shutil.move(source, destination)
+
+        print(f"Moved {len(lz4_files)} files to {exp_folder_path}")

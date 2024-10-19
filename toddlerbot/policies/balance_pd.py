@@ -115,7 +115,6 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         self.is_logging = False
         self.is_button_pressed = False
         self.is_logging_ended = False
-        self.n_logs = 1
         self.last_control_inputs: Dict[str, float] | None = None
         self.step_curr = 0
 
