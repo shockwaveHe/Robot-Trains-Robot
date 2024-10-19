@@ -89,27 +89,27 @@ class BalancePDReference(MotionReference):
             self.leg_joint_indices,
             self.com_ik(com_z_target, com_ctrl[0], com_ctrl[1]),
         )
-        for i in range(self.ik_iters):
-            qpos = inplace_update(qpos, 7 + self.mj_joint_indices, joint_pos)
-            data = self.forward(qpos)
+        # for i in range(self.ik_iters):
+        qpos = inplace_update(qpos, 7 + self.mj_joint_indices, joint_pos)
+        data = self.forward(qpos)
 
-            feet_center = (
-                data.site_xpos[self.left_foot_site_id]
-                + data.site_xpos[self.right_foot_site_id]
-            ) / 2.0
-            qpos = inplace_add(qpos, slice(0, 3), self.feet_center_init - feet_center)
-            data = self.forward(qpos)
+        # feet_center = (
+        #     data.site_xpos[self.left_foot_site_id]
+        #     + data.site_xpos[self.right_foot_site_id]
+        # ) / 2.0
+        # qpos = inplace_add(qpos, slice(0, 3), self.feet_center_init - feet_center)
+        # data = self.forward(qpos)
 
-            com_pos = np.array(data.subtree_com[0], dtype=np.float32)
-            # PD controller on CoM position
-            com_pos_error = self.desired_com[:2] - com_pos[:2]
-            com_ctrl = self.com_kp * com_pos_error
+        com_pos = np.array(data.subtree_com[0], dtype=np.float32)
+        # PD controller on CoM position
+        com_pos_error = self.desired_com[:2] - com_pos[:2]
+        com_ctrl = self.com_kp * com_pos_error
 
-            joint_pos = inplace_update(
-                joint_pos,
-                self.leg_joint_indices,
-                self.com_ik(com_z_target, com_ctrl[0], com_ctrl[1]),
-            )
+        joint_pos = inplace_update(
+            joint_pos,
+            self.leg_joint_indices,
+            self.com_ik(com_z_target, com_ctrl[0], com_ctrl[1]),
+        )
 
         joint_vel = self.default_joint_vel.copy()
 

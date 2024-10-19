@@ -181,10 +181,10 @@ class MotionReference(ABC):
                 data = mujoco.MjData(self.model)
                 data.qpos = qpos
                 mujoco.mj_forward(self.model, data)
-                renderer.update_scene(data)
-                pixels = renderer.render()
-                plt.imshow(pixels)
-                plt.show()
+                # renderer.update_scene(data)
+                # pixels = renderer.render()
+                # plt.imshow(pixels)
+                # plt.show()
                 return data
 
         self.forward = forward
