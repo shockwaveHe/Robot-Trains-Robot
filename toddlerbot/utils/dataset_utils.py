@@ -35,9 +35,6 @@ class DatasetLogger:
     def save(self):
         # watchout for saving time in float32, it will get truncated to 100s accuracy
         # Assuming self.data_list is a list of Data instances
-        print(
-            f"\nLogged {self.n_episodes} episodes. Episode length: {len(self.data_list)}"
-        )
         data_dict = {
             field.name: np.array(
                 [getattr(data, field.name) for data in self.data_list],
@@ -49,8 +46,13 @@ class DatasetLogger:
         # dump to lz4 format
         joblib.dump(data_dict, f"/tmp/toddlerbot_{self.n_episodes}.lz4", compress="lz4")
 
-        self.data_list = []
         self.n_episodes += 1
+
+        print(
+            f"\nLogged {self.n_episodes} episodes. Episode length: {len(self.data_list)}"
+        )
+
+        self.data_list = []
 
     def move_files_to_exp_folder(self, exp_folder_path: str):
         # Find all files that match the pattern
