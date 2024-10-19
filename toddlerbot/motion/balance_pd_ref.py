@@ -2,7 +2,7 @@ from typing import List, Tuple
 
 from toddlerbot.motion.motion_ref import MotionReference
 from toddlerbot.sim.robot import Robot
-from toddlerbot.utils.array_utils import ArrayType, inplace_add, inplace_update
+from toddlerbot.utils.array_utils import ArrayType, inplace_update
 from toddlerbot.utils.array_utils import array_lib as np
 
 
@@ -12,7 +12,7 @@ class BalancePDReference(MotionReference):
         robot: Robot,
         dt: float,
         arm_playback_speed: float = 1.0,
-        com_kp: List[float] = [1.0, 1.0],
+        com_kp: List[float] = [1.5, 1.0],
     ):
         super().__init__("balance_pd", "perceptual", robot, dt)
 
@@ -75,41 +75,37 @@ class BalancePDReference(MotionReference):
         )
         joint_pos = inplace_update(joint_pos, self.waist_joint_indices, waist_joint_pos)
 
-        qpos = self.default_qpos.copy()
-        qpos = inplace_update(qpos, slice(3, 7), torso_state[3:7])
-
-        com_ctrl = np.zeros(2, dtype=np.float32)
         com_z_target = np.interp(
             command[5],
             np.array([-1, 0, 1]),
             np.array([self.com_z_limits[0], 0.0, self.com_z_limits[1]]),
         )
         joint_pos = inplace_update(
+            joint_pos, self.leg_joint_indices, self.com_ik(com_z_target)
+        )
+
+        qpos = self.default_qpos.copy()
+        qpos = inplace_update(qpos, slice(3, 7), torso_state[3:7])
+        qpos = inplace_update(qpos, 7 + self.mj_joint_indices, joint_pos)
+        data = self.forward(qpos)
+
+        # feet_center = (
+        #     data.site_xpos[self.left_foot_site_id]
+        #     + data.site_xpos[self.right_foot_site_id]
+        # ) / 2.0
+        # qpos = inplace_add(qpos, slice(0, 3), self.feet_center_init - feet_center)
+        # data = self.forward(qpos)
+
+        com_pos = np.array(data.subtree_com[0], dtype=np.float32)
+        # PD controller on CoM position
+        com_pos_error = self.desired_com[:2] - com_pos[:2]
+        com_ctrl = self.com_kp * com_pos_error
+
+        joint_pos = inplace_update(
             joint_pos,
             self.leg_joint_indices,
             self.com_ik(com_z_target, com_ctrl[0], com_ctrl[1]),
         )
-        for i in range(self.ik_iters):
-            qpos = inplace_update(qpos, 7 + self.mj_joint_indices, joint_pos)
-            data = self.forward(qpos)
-
-            feet_center = (
-                data.site_xpos[self.left_foot_site_id]
-                + data.site_xpos[self.right_foot_site_id]
-            ) / 2.0
-            qpos = inplace_add(qpos, slice(0, 3), self.feet_center_init - feet_center)
-            data = self.forward(qpos)
-
-            com_pos = np.array(data.subtree_com[0], dtype=np.float32)
-            # PD controller on CoM position
-            com_pos_error = self.desired_com[:2] - com_pos[:2]
-            com_ctrl = self.com_kp * com_pos_error
-
-            joint_pos = inplace_update(
-                joint_pos,
-                self.leg_joint_indices,
-                self.com_ik(com_z_target, com_ctrl[0], com_ctrl[1]),
-            )
 
         joint_vel = self.default_joint_vel.copy()
 

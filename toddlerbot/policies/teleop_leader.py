@@ -10,7 +10,6 @@ from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
 from toddlerbot.utils.comm_utils import ZMQMessage, ZMQNode
-from toddlerbot.utils.dataset_utils import Data, DatasetLogger
 from toddlerbot.utils.math_utils import interpolate_action
 
 
@@ -29,7 +28,6 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
             list(robot.default_motor_angles.values()), dtype=np.float32
         )
 
-        self.dataset_logger = DatasetLogger()
         self.zmq = ZMQNode(type="sender", ip=ip)
 
         self.fsr = None
@@ -41,7 +39,6 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
         self.is_logging = False
         self.toggle_motor = True
         self.is_button_pressed = False
-        self.n_logs = 1
 
         if joystick is None:
             self.joystick = Joystick()
@@ -81,12 +78,6 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
                         self.is_button_pressed = True  # Mark the button as pressed
                         self.is_logging = not self.is_logging  # Toggle logging
                         self.toggle_motor = True
-
-                        # Log the episode end if logging is toggled to off
-                        if not self.is_logging:
-                            self.dataset_logger.log_episode_end()
-                            print(f"\nLogged {self.n_logs} entries.\n")
-                            self.n_logs += 1
 
                         print(
                             f"\nLogging is now {'enabled' if self.is_logging else 'disabled'}.\n"
@@ -131,16 +122,6 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
         )
         # print(f"Sending: {msg}")
         self.zmq.send_msg(msg)
-
-        # Log the data
-        if self.is_logging:
-            self.dataset_logger.log_entry(
-                Data(obs.time, obs.motor_pos, np.array([fsrL, fsrR]), None)
-            )
-        else:
-            # clean up the log when not logging.
-            self.dataset_logger.maintain_log()
-            # time.sleep(0.1)
 
         # time_curr = time.time()
         # print(f"Loop time: {1000 * (time_curr - self.last_time):.2f} ms")

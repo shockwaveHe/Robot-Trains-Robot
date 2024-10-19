@@ -64,7 +64,7 @@ class MJXConfig:
             arm_joint_vel: float = 0.0  # 1e-3
             waist_joint_pos: float = 0.0  # 50.0
             waist_joint_vel: float = 0.0  # 1e-3
-            leg_joint_pos: float = 5.0
+            leg_joint_pos: float = 1.0
             leg_joint_vel: float = 0.0  # 1e-4
             motor_torque: float = 5e-3
             joint_acc: float = 5e-7
@@ -86,10 +86,10 @@ class MJXConfig:
                     setattr(self, key, 0.0)
 
         healthy_z_range: List[float] = field(default_factory=lambda: [0.2, 0.4])
-        tracking_sigma: float = 5.0
+        tracking_sigma: float = 10.0
         min_feet_y_dist: float = 0.05
         max_feet_y_dist: float = 0.13
-        target_feet_z_delta: float = 0.03
+        target_feet_z_delta: float = 0.05
         torso_pitch_range: List[float] = field(default_factory=lambda: [-0.2, 0.2])
         scales: RewardScales = RewardScales()
 

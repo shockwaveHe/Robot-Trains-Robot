@@ -114,10 +114,11 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         self.msg = None
         self.is_logging = False
         self.is_button_pressed = False
-        self.n_logs = 1
+        self.is_logging_ended = False
         self.last_control_inputs: Dict[str, float] | None = None
         self.step_curr = 0
 
+        self.arm_motor_pos = None
         self.fsr = np.zeros(2, dtype=np.float32)
         self.camera_frame = None
 
@@ -141,6 +142,9 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
                     if not self.is_button_pressed:
                         self.is_button_pressed = True  # Mark the button as pressed
                         self.is_logging = not self.is_logging  # Toggle logging
+
+                        if not self.is_logging:
+                            self.is_logging_ended = True
 
                         print(
                             f"\nLogging is now {'enabled' if self.is_logging else 'disabled'}."

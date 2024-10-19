@@ -302,6 +302,7 @@ class MJXEnv(PipelineEnv):
             "left_foot_contact_mask": jnp.zeros(len(self.left_foot_collider_indices)),
             "right_foot_contact_mask": jnp.zeros(len(self.right_foot_collider_indices)),
             "feet_air_time": jnp.zeros(2),
+            "feet_air_dist": jnp.zeros(2),
             "action_buffer": jnp.zeros((self.n_steps_delay + 1) * self.nu),
             "last_last_act": jnp.zeros(self.nu),
             "last_act": jnp.zeros(self.nu),
@@ -531,6 +532,7 @@ class MJXEnv(PipelineEnv):
         # )
         # jax.debug.print("stance_mask: {}", state.info["stance_mask"])
         # jax.debug.print("feet_air_time: {}", state.info["feet_air_time"])
+        # jax.debug.print("feet_air_dist: {}", state.info["feet_air_dist"])
 
         if not self.fixed_base:
             contact_forces, left_foot_contact_mask, right_foot_contact_mask = (
@@ -569,6 +571,13 @@ class MJXEnv(PipelineEnv):
             state.info["last_stance_mask"] = stance_mask.copy()
             state.info["feet_air_time"] += self.dt
             state.info["feet_air_time"] *= 1.0 - stance_mask
+
+            feet_z_delta = (
+                pipeline_state.x.pos[self.feet_link_ids, 2]
+                - state.info["feet_height_init"]
+            )
+            state.info["feet_air_dist"] += feet_z_delta
+            state.info["feet_air_dist"] *= 1.0 - stance_mask
 
         state.info["last_last_act"] = state.info["last_act"].copy()
         state.info["last_act"] = action_delay.copy()

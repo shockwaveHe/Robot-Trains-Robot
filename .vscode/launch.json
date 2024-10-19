@@ -288,7 +288,7 @@
             ]
         },
         {
-            "name": "Python: teleop_ankle_toddlerbot_mujoco",
+            "name": "Python: teleop_toddlerbot_OP3_mujoco",
             "type": "python",
             "request": "launch",
             "program": "toddlerbot/policies/run_policy.py",
@@ -296,11 +296,15 @@
             "justMyCode": true,
             "args": [
                 "--robot",
-                "toddlerbot",
+                "toddlerbot_OP3",
                 "--sim",
                 "mujoco",
+                "--vis",
+                "view",
                 "--policy",
-                "teleop_ankle"
+                "teleop_follower_pd",
+                "--ip",
+                "192.168.0.102"
             ]
         },
         {

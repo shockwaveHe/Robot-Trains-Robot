@@ -149,7 +149,7 @@ class MotionReference(ABC):
     def _setup_mjx(self):
         xml_path = find_robot_file_path(self.robot.name, suffix="_scene.xml")
         model = mujoco.MjModel.from_xml_path(xml_path)
-        renderer = mujoco.Renderer(model)
+        # self.renderer = mujoco.Renderer(model)
         self.default_qpos = np.array(model.keyframe("home").qpos)
         self.mj_joint_indices = np.array(
             [
@@ -181,10 +181,10 @@ class MotionReference(ABC):
                 data = mujoco.MjData(self.model)
                 data.qpos = qpos
                 mujoco.mj_forward(self.model, data)
-                renderer.update_scene(data)
-                pixels = renderer.render()
-                plt.imshow(pixels)
-                plt.show()
+                # self.renderer.update_scene(data)
+                # pixels = self.renderer.render()
+                # plt.imshow(pixels)
+                # plt.savefig("test.png")
                 return data
 
         self.forward = forward

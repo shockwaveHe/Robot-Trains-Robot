@@ -33,7 +33,7 @@ class WalkCfg(MJXConfig, env_name="walk"):
                 [0.0, 0.0],
             ]
         )
-        deadzone: List[float] = field(default_factory=lambda: [0.05])
+        deadzone: List[float] = field(default_factory=lambda: [0.01])
         command_obs_indices: List[int] = field(default_factory=lambda: [5, 6, 7])
 
     @dataclass
@@ -45,7 +45,7 @@ class WalkCfg(MJXConfig, env_name="walk"):
         feet_air_time: float = 50.0
         feet_distance: float = 0.5
         feet_slip: float = 0.1
-        feet_clearance: float = 0.1
+        feet_clearance: float = 1.0
         stand_still: float = 1.0
 
     def __init__(self):
@@ -162,10 +162,11 @@ class WalkEnv(MJXEnv, env_name="walk"):
     def _reward_feet_clearance(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
-        feet_height = pipeline_state.x.pos[self.feet_link_ids, 2]
-        feet_z_delta = feet_height - info["feet_height_init"]
-        is_above_target = feet_z_delta >= self.target_feet_z_delta
-        reward = jnp.sum(is_above_target * (1 - info["stance_mask"]))
+        contact_filter = jnp.logical_or(info["stance_mask"], info["last_stance_mask"])
+        first_contact = (info["feet_air_dist"] > 0) * contact_filter
+        reward = jnp.sum(info["feet_air_dist"] * first_contact)
+        # no reward for zero command
+        reward *= jnp.linalg.norm(info["command"]) > self.deadzone
         return reward
 
     def _reward_feet_distance(
