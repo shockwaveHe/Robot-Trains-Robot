@@ -386,6 +386,7 @@ class MJXEnv(PipelineEnv):
         pipeline_state = self.pipeline_init(qpos, qvel)
 
         state_info["command"] = command
+        state_info["command_obs"] = command[self.command_obs_indices]
         state_info["state_ref"] = state_ref
         state_info["stance_mask"] = state_ref[-2:]
         state_info["last_stance_mask"] = state_ref[-2:]
@@ -593,6 +594,7 @@ class MJXEnv(PipelineEnv):
             lambda: self._sample_command(cmd_rng, state.info["command"]),
             lambda: state.info["command"],
         )
+        state.info["command_obs"] = state.info["command"][self.command_obs_indices]
 
         # reset the step counter when done
         state.info["step"] = jnp.where(
@@ -717,7 +719,7 @@ class MJXEnv(PipelineEnv):
         obs = jnp.concatenate(
             [
                 info["phase_signal"],
-                info["command"][self.command_obs_indices],
+                info["command_obs"],
                 motor_pos_delta * self.obs_scales.dof_pos + motor_backlash,
                 motor_vel * self.obs_scales.dof_vel,
                 info["last_act"],
@@ -729,7 +731,7 @@ class MJXEnv(PipelineEnv):
         privileged_obs = jnp.concatenate(
             [
                 info["phase_signal"],
-                info["command"][self.command_obs_indices],
+                info["command_obs"],
                 motor_pos_delta * self.obs_scales.dof_pos,
                 motor_vel * self.obs_scales.dof_vel,
                 info["last_act"],

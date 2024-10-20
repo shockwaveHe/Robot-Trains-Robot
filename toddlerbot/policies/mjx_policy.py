@@ -43,7 +43,8 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         assert cfg is not None, "cfg is required in the subclass!"
         assert motion_ref is not None, "motion_ref is required in the subclass!"
 
-        self.commmand_range = cfg.commands.command_range
+        self.command_obs_indices = cfg.commands.command_obs_indices
+        self.commmand_range = np.array(cfg.commands.command_range, dtype=np.float32)
         self.num_commands = len(self.commmand_range)
 
         if fixed_command is None:
@@ -163,15 +164,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
                 pass
 
         self.control_inputs = None
-
-        self.prep_duration = 7.0
-        self.prep_time, self.prep_action = self.move(
-            -self.control_dt,
-            init_motor_pos,
-            self.default_motor_pos,
-            self.prep_duration,
-            end_time=5.0,
-        )
+        self.is_prepared = False
 
     def is_double_support(self) -> bool:
         stance_mask = self.state_ref[-2:]
@@ -182,6 +175,17 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
 
     # @profile()
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
+        if not self.is_prepared:
+            self.is_prepared = True
+            self.prep_duration = 7.0 if is_real else 2.0
+            self.prep_time, self.prep_action = self.move(
+                -self.control_dt,
+                self.init_motor_pos,
+                self.default_motor_pos,
+                self.prep_duration,
+                end_time=5.0 if is_real else 0.0,
+            )
+
         if obs.time < self.prep_duration:
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
@@ -210,7 +214,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         obs_arr = np.concatenate(
             [
                 phase_signal,
-                command,
+                command[self.command_obs_indices],
                 motor_pos_delta * self.obs_scales.dof_pos,
                 obs.motor_vel * self.obs_scales.dof_vel,
                 self.last_action,

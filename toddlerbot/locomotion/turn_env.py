@@ -36,6 +36,7 @@ class TurnCfg(WalkCfg, env_name="turn"):
         feet_air_time: float = 50.0
         feet_distance: float = 0.5
         feet_slip: float = 0.1
+        feet_clearance: float = 1.0
         stand_still: float = 1.0
 
     def __init__(self):
