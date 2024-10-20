@@ -313,7 +313,7 @@ class MJXEnv(PipelineEnv):
             "step": 0,
         }
 
-        qpos = self.default_qpos
+        qpos = self.default_qpos.copy()
         qvel = jnp.zeros(self.nv)
 
         torso_pos = qpos[:3]
@@ -343,21 +343,6 @@ class MJXEnv(PipelineEnv):
         state_ref = jnp.asarray(
             self.motion_ref.get_state_ref(state_ref_init, 0.0, command)
         )
-
-        neck_joint_pos = state_ref[self.ref_start_idx + self.neck_ref_indices]
-        neck_motor_pos = self.motion_ref.neck_ik(neck_joint_pos)
-        arm_joint_pos = state_ref[self.ref_start_idx + self.arm_ref_indices]
-        arm_motor_pos = self.motion_ref.arm_ik(arm_joint_pos)
-        waist_joint_pos = state_ref[self.ref_start_idx + self.waist_ref_indices]
-        waist_motor_pos = self.motion_ref.waist_ik(waist_joint_pos)
-
-        qpos = qpos.at[self.q_start_idx + self.neck_joint_indices].set(neck_joint_pos)
-        qpos = qpos.at[self.q_start_idx + self.neck_motor_indices].set(neck_motor_pos)
-        qpos = qpos.at[self.q_start_idx + self.arm_joint_indices].set(arm_joint_pos)
-        qpos = qpos.at[self.q_start_idx + self.arm_motor_indices].set(arm_motor_pos)
-        qpos = qpos.at[self.q_start_idx + self.waist_joint_indices].set(waist_joint_pos)
-        qpos = qpos.at[self.q_start_idx + self.waist_motor_indices].set(waist_motor_pos)
-
         if self.add_noise:
             if not self.fixed_base:
                 noise_torso_pitch = self.reset_noise_torso_pitch * jax.random.normal(
@@ -367,17 +352,13 @@ class MJXEnv(PipelineEnv):
                 torso_quat = math.euler_to_quat(jnp.degrees(torso_euler))
 
             noise_joint_pos = self.reset_noise_joint_pos * jax.random.normal(
-                rng_joint_pos, (self.nq - self.q_start_idx,)
+                rng_joint_pos, (self.nu,)
             )
-            qpos = qpos.at[self.q_start_idx :].add(noise_joint_pos)
+            state_ref = state_ref.at[
+                self.ref_start_idx : self.ref_start_idx + self.nu
+            ].add(noise_joint_pos)
 
-        waist_joint_pos = qpos[self.q_start_idx + self.waist_joint_indices]
-        waist_euler = jnp.array([-waist_joint_pos[0], 0.0, -waist_joint_pos[1]])
-        waist_quat = math.euler_to_quat(jnp.degrees(waist_euler))
-        torso_quat = math.quat_mul(torso_quat, waist_quat)
-
-        state_ref = state_ref.at[3:7].set(torso_quat)
-        qpos = qpos.at[3:7].set(torso_quat)
+        qpos = jnp.asarray(self.motion_ref.get_qpos_ref(state_ref))
 
         # jax.debug.print("euler: {}", math.quat_to_euler(torso_quat))
         # jax.debug.print("torso_euler: {}", torso_euler)

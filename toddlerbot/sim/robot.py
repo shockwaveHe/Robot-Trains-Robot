@@ -200,6 +200,18 @@ class Robot:
                 self.motor_to_joint_name[motor_name] = [joint_name]
                 self.joint_to_motor_name[joint_name] = [motor_name]
 
+        self.passive_joint_names = []
+        for joint_name in self.joint_ordering:
+            transmission = joints_config[joint_name]["transmission"]
+            if transmission == "linkage":
+                for suffix in [
+                    "_front_rev_1",
+                    "_front_rev_2",
+                    "_back_rev_1",
+                    "_back_rev_2",
+                ]:
+                    self.passive_joint_names.append(joint_name + suffix)
+
         if "foot_name" in self.config["general"]:
             self.foot_name = self.config["general"]["foot_name"]
 
@@ -593,6 +605,24 @@ class Robot:
             )
 
         return motor_angles
+
+    def joint_to_passive_angles(
+        self, joint_angles: Dict[str, float]
+    ) -> Dict[str, float]:
+        passive_angles: Dict[str, float] = {}
+        joints_config = self.config["joints"]
+        for joint_name, joint_pos in joint_angles.items():
+            transmission = joints_config[joint_name]["transmission"]
+            if transmission == "linkage":
+                for suffix in [
+                    "_front_rev_1",
+                    "_front_rev_2",
+                    "_back_rev_1",
+                    "_back_rev_2",
+                ]:
+                    passive_angles[joint_name + suffix] = -joint_pos
+
+        return passive_angles
 
     def sample_motor_angles(self) -> Dict[str, float]:
         random_motor_angles: Dict[str, float] = {}

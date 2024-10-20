@@ -7,12 +7,10 @@ from toddlerbot.utils.array_utils import array_lib as np
 
 
 class SquatReference(MotionReference):
-    def __init__(self, robot: Robot, dt: float, com_kp: List[float] = [1.5, 1.0]):
+    def __init__(self, robot: Robot, dt: float, com_kp: List[float] = [1.0, 1.0]):
         super().__init__("squat", "perceptual", robot, dt)
 
         self.com_kp = np.array(com_kp, dtype=np.float32)
-
-        self._setup_mjx()
 
     def get_vel(self, command: ArrayType) -> Tuple[ArrayType, ArrayType]:
         lin_vel = np.array([0.0, 0.0, command[5]], dtype=np.float32)
@@ -74,21 +72,15 @@ class SquatReference(MotionReference):
         joint_pos = inplace_update(
             joint_pos, self.leg_joint_indices, self.com_ik(com_z_target)
         )
-        qpos = inplace_update(qpos, 7 + self.mj_joint_indices, joint_pos)
+
+        state_ref = np.concatenate((torso_state, joint_pos, self.default_joint_vel))
+        qpos = self.get_qpos_ref(state_ref)
         data = self.forward(qpos)
 
         com_pos = np.array(data.subtree_com[0], dtype=np.float32)
         # PD controller on CoM position
         com_pos_error = self.desired_com[:2] - com_pos[:2]
         com_ctrl = self.com_kp * com_pos_error
-
-        # print(f"command: {command[5]}")
-        # print(f"com_pos: {com_pos}")
-        # print(f"desired_com: {self.desired_com}")
-        # print(f"com_pos_error: {com_pos_error}")
-        # print(f"com_ctrl: {com_ctrl}")
-        # print(f"com_curr: {com_curr}")
-        # print(f"com_z_target: {com_z_target}")
 
         joint_pos = inplace_update(
             joint_pos,

@@ -12,7 +12,7 @@ class BalancePDReference(MotionReference):
         robot: Robot,
         dt: float,
         arm_playback_speed: float = 1.0,
-        com_kp: List[float] = [1.5, 1.0],
+        com_kp: List[float] = [1.0, 1.0],
     ):
         super().__init__("balance_pd", "perceptual", robot, dt)
 
@@ -22,8 +22,6 @@ class BalancePDReference(MotionReference):
 
         self.com_kp = np.array(com_kp, dtype=np.float32)
         self.ik_iters = 1
-
-        self._setup_mjx()
 
     def get_vel(self, command: ArrayType) -> Tuple[ArrayType, ArrayType]:
         lin_vel = np.array([0.0, 0.0, 0.0], dtype=np.float32)
@@ -84,17 +82,9 @@ class BalancePDReference(MotionReference):
             joint_pos, self.leg_joint_indices, self.com_ik(com_z_target)
         )
 
-        qpos = self.default_qpos.copy()
-        qpos = inplace_update(qpos, slice(3, 7), torso_state[3:7])
-        qpos = inplace_update(qpos, 7 + self.mj_joint_indices, joint_pos)
+        state_ref = np.concatenate((torso_state, joint_pos, self.default_joint_vel))
+        qpos = self.get_qpos_ref(state_ref)
         data = self.forward(qpos)
-
-        # feet_center = (
-        #     data.site_xpos[self.left_foot_site_id]
-        #     + data.site_xpos[self.right_foot_site_id]
-        # ) / 2.0
-        # qpos = inplace_add(qpos, slice(0, 3), self.feet_center_init - feet_center)
-        # data = self.forward(qpos)
 
         com_pos = np.array(data.subtree_com[0], dtype=np.float32)
         # PD controller on CoM position
