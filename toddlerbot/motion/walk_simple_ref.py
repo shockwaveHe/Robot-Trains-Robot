@@ -12,17 +12,14 @@ class WalkSimpleReference(MotionReference):
         robot: Robot,
         dt: float,
         cycle_time: float,
-        max_knee_pitch: float = np.pi / 3,
+        max_knee: float = np.pi / 3,
         double_support_phase: float = 0.1,
     ):
         super().__init__("walk_simple", "periodic", robot, dt)
 
         self.cycle_time = cycle_time
 
-        self.knee_pitch_default = self.default_joint_pos[
-            self.robot.joint_ordering.index("left_knee_pitch")
-        ]
-        self.max_knee_pitch = max_knee_pitch
+        self.max_knee = max_knee
         self.double_support_phase = double_support_phase
 
         self.num_joints = len(self.robot.joint_ordering)
@@ -34,14 +31,14 @@ class WalkSimpleReference(MotionReference):
         self.left_pitch_joint_indices = np.array(
             [
                 self.robot.joint_ordering.index("left_hip_pitch"),
-                self.robot.joint_ordering.index("left_knee_pitch"),
+                self.robot.joint_ordering.index("left_knee"),
                 self.robot.joint_ordering.index("left_ank_pitch"),
             ]
         )
         self.right_pitch_joint_indices = np.array(
             [
                 self.robot.joint_ordering.index("right_hip_pitch"),
-                self.robot.joint_ordering.index("right_knee_pitch"),
+                self.robot.joint_ordering.index("right_knee"),
                 self.robot.joint_ordering.index("right_ank_pitch"),
             ]
         )
@@ -94,8 +91,8 @@ class WalkSimpleReference(MotionReference):
 
     def get_leg_pitch_pos(self, signal: ArrayType, is_left: bool):
         knee_angle = np.abs(
-            signal * (self.max_knee_pitch - self.knee_pitch_default)
-            + (2 * int(is_left) - 1) * self.knee_pitch_default
+            signal * (self.max_knee - self.knee_default)
+            + (2 * int(is_left) - 1) * self.knee_default
         )
         ank_pitch_angle = np.arctan2(
             np.sin(knee_angle),

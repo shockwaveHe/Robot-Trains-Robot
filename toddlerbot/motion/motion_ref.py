@@ -72,7 +72,7 @@ class MotionReference(ABC):
         self.neck_joint_limits = np.array(
             [
                 self.robot.joint_limits["neck_yaw_driven"],
-                self.robot.joint_limits["neck_pitch_driven"],
+                self.robot.joint_limits["neck_pitch"],
             ],
             dtype=np.float32,
         ).T
@@ -117,14 +117,12 @@ class MotionReference(ABC):
     def _setup_leg(self):
         leg_motor_names = [self.robot.motor_ordering[i] for i in self.leg_motor_indices]
         self.leg_gear_ratio = self._get_gear_ratios(leg_motor_names)
-        self.left_knee_pitch_idx = self.robot.joint_ordering.index("left_knee_pitch")
+        self.left_knee_idx = self.robot.joint_ordering.index("left_knee")
         self.left_hip_pitch_idx = self.robot.joint_ordering.index("left_hip_pitch")
         self.left_hip_roll_idx = self.robot.joint_ordering.index("left_hip_roll")
 
     def _setup_com(self, com_z_lower_limit_offset: float = 0.01):
-        self.knee_pitch_default = self.default_joint_pos[
-            self.robot.joint_ordering.index("left_knee_pitch")
-        ]
+        self.knee_default = self.default_joint_pos[self.left_knee_idx]
         self.hip_pitch_to_knee = self.robot.data_dict["offsets"]["hip_pitch_to_knee_z"]
         self.knee_to_ank_pitch = self.robot.data_dict["offsets"]["knee_to_ank_pitch_z"]
         self.hip_pitch_to_ank_pitch_z = np.sqrt(
@@ -133,13 +131,13 @@ class MotionReference(ABC):
             - 2
             * self.hip_pitch_to_knee
             * self.knee_to_ank_pitch
-            * np.cos(np.pi - self.knee_pitch_default)
+            * np.cos(np.pi - self.knee_default)
         )
         self.shin_thigh_ratio = self.knee_to_ank_pitch / self.hip_pitch_to_knee
 
         self.com_z_limits = np.array(
             [
-                self.com_fk(self.robot.joint_limits["left_knee_pitch"][1])[2]
+                self.com_fk(self.robot.joint_limits["left_knee"][1])[2]
                 + com_z_lower_limit_offset,
                 0.0,
             ],

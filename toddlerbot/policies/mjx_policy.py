@@ -67,9 +67,6 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             [robot.joint_limits[name] for name in robot.motor_ordering]
         )
 
-        self.neck_yaw_idx = robot.motor_ordering.index("neck_yaw_drive")
-        self.neck_pitch_idx = robot.motor_ordering.index("neck_pitch_drive")
-
         # Filter
         self.filter_type = cfg.action.filter_type
         self.filter_order = cfg.action.filter_order

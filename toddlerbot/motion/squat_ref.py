@@ -65,7 +65,7 @@ class SquatReference(MotionReference):
         qpos = self.default_qpos.copy()
         qpos = inplace_update(qpos, slice(3, 7), torso_state[3:7])
 
-        com_curr = self.com_fk(joint_pos_curr[self.left_knee_pitch_idx])
+        com_curr = self.com_fk(joint_pos_curr[self.left_knee_idx])
         com_z_target = np.clip(
             com_curr[2] + self.dt * command[5],
             self.com_z_limits[0],

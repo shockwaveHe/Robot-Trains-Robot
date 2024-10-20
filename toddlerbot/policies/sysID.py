@@ -51,14 +51,14 @@ class SysIDFixedPolicy(BasePolicy, policy_name="sysID"):
             # XM430_kp_list = [2400.0, 2700.0, 3000.0]
             joint_sysID_specs = {
                 # "neck_yaw_driven": SysIDSpecs(amplitude_max=np.pi / 2),
-                # "neck_pitch_driven": SysIDSpecs(),
+                # "neck_pitch": SysIDSpecs(),
                 "ank_roll": SysIDSpecs(
                     amplitude_list=[0.25, 0.5, 0.75], kp_list=XC330_kp_list
                 ),
                 "ank_pitch": SysIDSpecs(
                     amplitude_list=[0.25, 0.5, 0.75], kp_list=XC330_kp_list
                 ),
-                # "knee_pitch": SysIDSpecs(
+                # "knee": SysIDSpecs(
                 #     amplitude_list=[0.25, 0.5, 0.75],
                 #     warm_up_angles={
                 #         "left_sho_roll": -np.pi / 12,

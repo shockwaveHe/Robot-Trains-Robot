@@ -400,5 +400,26 @@
     },
     "spur_gear_(14_teeth)_2": {
         "has_collision": false
+    },
+    "neck_yaw_link_v2": {
+        "has_collision": false
+    },
+    "head": {
+        "has_collision": false
+    },
+    "motor_plate": {
+        "has_collision": false
+    },
+    "neck_rod": {
+        "has_collision": false
+    },
+    "neck_rod_2": {
+        "has_collision": false
+    },
+    "bearing_683_5": {
+        "has_collision": false
+    },
+    "bearing_683_6": {
+        "has_collision": false
     }
 }
