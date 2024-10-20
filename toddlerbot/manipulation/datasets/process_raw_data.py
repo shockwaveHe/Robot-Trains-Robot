@@ -34,7 +34,7 @@ def load_raw_dataset(dataset_path: str):
     raw_data_converted["state_array"] = np.hstack(
         [
             raw_data["time"].reshape(-1, 1),
-            raw_data["arm_motor_pos"][:, 16:30],
+            raw_data["motor_pos"][:, 16:30],
             raw_data["fsr_data"],
             np.arange(len(raw_data["time"])).reshape(-1, 1),
         ]

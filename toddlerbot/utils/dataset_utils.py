@@ -18,7 +18,7 @@ images: [n,h,w,3], RGB images uint8
 @dataclass
 class Data:
     time: float
-    arm_motor_pos: npt.NDArray[np.float32]
+    motor_pos: npt.NDArray[np.float32]
     fsr_data: npt.NDArray[np.float32]
     image: Optional[npt.NDArray[np.uint8]] = None
 

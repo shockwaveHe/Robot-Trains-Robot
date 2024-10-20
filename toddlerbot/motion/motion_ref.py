@@ -84,15 +84,13 @@ class MotionReference(ABC):
         # Load the balance dataset
         data_path = os.path.join("toddlerbot", "motion", "balance_dataset.lz4")
         data_dict = joblib.load(data_path)
-        # state_array: [time(1), motor_pos(14), fsrL(1), fsrR(1), camera_frame_idx(1)]
-        state_arr = data_dict["state_array"]
-        self.arm_time_ref = np.array(
-            state_arr[:, 0] - state_arr[0, 0], dtype=np.float32
-        )
+        time_arr = data_dict["time"]
+        motor_pos_arr = data_dict["motor_pos"]
+        self.arm_time_ref = np.array(time_arr - time_arr[0], dtype=np.float32)
         self.arm_joint_pos_ref = np.array(
             [
                 self.arm_fk(arm_motor_pos)
-                for arm_motor_pos in state_arr[:, 1 + self.arm_motor_indices]
+                for arm_motor_pos in motor_pos_arr[:, self.arm_motor_indices]
             ],
             dtype=np.float32,
         )
