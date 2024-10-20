@@ -77,8 +77,8 @@ class BalancePDReference(MotionReference):
 
         com_z_target = np.interp(
             command[5],
-            np.array([-1, 0, 1]),
-            np.array([self.com_z_limits[0], 0.0, self.com_z_limits[1]]),
+            np.array([-1, 0]),
+            np.array([self.com_z_limits[0], self.com_z_limits[1]]),
         )
         joint_pos = inplace_update(
             joint_pos, self.leg_joint_indices, self.com_ik(com_z_target)

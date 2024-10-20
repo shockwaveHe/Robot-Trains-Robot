@@ -102,7 +102,7 @@ class MuJoCoSim(BaseSim):
         if vis_type == "render":
             self.visualizer = MuJoCoRenderer(self.model)
         elif vis_type == "view":
-            self.visualizer = MuJoCoViewer(self.model, self.data)
+            self.visualizer = MuJoCoViewer(robot, self.model, self.data)
 
     def load_keyframe(self):
         default_qpos = np.array(self.model.keyframe("home").qpos, dtype=np.float32)
