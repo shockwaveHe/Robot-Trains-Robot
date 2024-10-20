@@ -210,6 +210,8 @@ def add_keyframes(
 
     if has_upper_body and has_lower_body:  # neck
         qpos_str += "0 0 0 0 "
+        if general_config["is_neck_closed_loop"]:
+            qpos_str += "0 0 0 0 "
 
     if has_lower_body:  # waist and legs
         qpos_str += "0 0 0 0 "
@@ -390,6 +392,29 @@ def add_contacts(
         ET.SubElement(contact, "exclude", body1=body1_name, body2=body2_name)
 
 
+def add_neck_constraints(root: ET.Element, general_config: Dict[str, Any]):
+    # Ensure there is an <equality> element
+    equality = root.find("./equality")
+    if equality is None:
+        equality = ET.SubElement(root, "equality")
+
+    body_pairs: List[Tuple[str, str]] = [
+        ("neck_rod", "bearing_683"),
+        ("neck_rod_2", "bearing_683_2"),
+    ]
+
+    # Add equality constraints for each pair
+    for body1, body2 in body_pairs:
+        ET.SubElement(
+            equality,
+            "weld",
+            body1=body1,
+            body2=body2,
+            solimp="0.9999 0.9999 0.001 0.5 2",
+            solref=f"{general_config['solref'][0]} {general_config['solref'][1]}",
+        )
+
+
 def add_waist_constraints(root: ET.Element, general_config: Dict[str, Any]):
     # Ensure there is an <equality> element
     tendon = root.find("tendon")
@@ -436,10 +461,10 @@ def add_knee_constraints(root: ET.Element, general_config: Dict[str, Any]):
         equality = ET.SubElement(root, "equality")
 
     body_pairs: List[Tuple[str, str]] = [
-        ("knee_rod", "bearing_683"),
-        ("knee_rod_2", "bearing_683_2"),
-        ("knee_rod_3", "bearing_683_3"),
-        ("knee_rod_4", "bearing_683_4"),
+        ("knee_rod", "bearing_683_3"),
+        ("knee_rod_2", "bearing_683_4"),
+        ("knee_rod_3", "bearing_683_5"),
+        ("knee_rod_4", "bearing_683_6"),
     ]
 
     # Add equality constraints for each pair
@@ -922,6 +947,9 @@ def process_mjcf_file(root: ET.Element, robot: Robot):
     update_joint_params(root, robot.config["joints"])
     update_geom_classes(root, ["contype", "conaffinity", "group", "density"])
     add_joint_constraints(root, robot.config["general"], robot.config["joints"])
+
+    if robot.config["general"]["is_neck_closed_loop"]:
+        add_neck_constraints(root, robot.config["general"])
 
     if robot.config["general"]["is_waist_closed_loop"]:
         add_waist_constraints(root, robot.config["general"])

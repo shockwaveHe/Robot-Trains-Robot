@@ -509,8 +509,8 @@ class Robot:
                 joint_angles["waist_roll"] = 0.0
                 joint_angles["waist_yaw"] = 0.0
                 waist_act_pos.append(motor_pos)
-            elif transmission == "knee":
-                joint_angles[motor_name.replace("_act", "_pitch")] = motor_pos
+            elif transmission == "linkage":
+                joint_angles[motor_name.replace("_act", "")] = motor_pos
             elif transmission == "ankle":
                 if "left" in motor_name:
                     joint_angles["left_ank_roll"] = 0.0
@@ -563,8 +563,8 @@ class Robot:
                 motor_angles["waist_act_1"] = 0.0
                 motor_angles["waist_act_2"] = 0.0
                 waist_pos.append(joint_pos)
-            elif transmission == "knee":
-                motor_angles[joint_name.replace("_pitch", "_act")] = joint_pos
+            elif transmission == "linkage":
+                motor_angles[joint_name + "_act"] = joint_pos
             elif transmission == "ankle":
                 if "left" in joint_name:
                     motor_angles["left_ank_act_1"] = 0.0

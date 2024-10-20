@@ -18,6 +18,7 @@ def get_default_config(
     config_dict: Dict[str, Dict[str, Any]] = {"general": general_config, "joints": {}}
 
     # Define the URDF file path
+    is_neck_closed_loop = False
     is_waist_closed_loop = False
     is_knee_closed_loop = False
     is_ankle_closed_loop = False
@@ -26,6 +27,8 @@ def get_default_config(
         if joint_name is None:
             continue
 
+        if "neck" in joint_name and "act" in joint_name:
+            is_neck_closed_loop = True
         if "waist" in joint_name and "act" in joint_name:
             is_waist_closed_loop = True
         if "knee" in joint_name and "act" in joint_name:
@@ -33,6 +36,7 @@ def get_default_config(
         if "ank" in joint_name and "act" in joint_name:
             is_ankle_closed_loop = True
 
+    config_dict["general"]["is_neck_closed_loop"] = is_neck_closed_loop
     config_dict["general"]["is_waist_closed_loop"] = is_waist_closed_loop
     config_dict["general"]["is_knee_closed_loop"] = is_knee_closed_loop
     config_dict["general"]["is_ankle_closed_loop"] = is_ankle_closed_loop
@@ -76,29 +80,35 @@ def get_default_config(
 
         is_passive = False
         transmission = "none"
+
         if "drive" in joint_name:
             transmission = "gear"
             if "driven" in joint_name:
                 is_passive = True
 
-        if "gripper" in joint_name:
-            transmission = "rack_and_pinion"
-            if "pinion" in joint_name:
+        elif "neck" in joint_name and is_neck_closed_loop:
+            transmission = "linkage"
+            if "act" not in joint_name:
                 is_passive = True
 
-        if "waist" in joint_name and is_waist_closed_loop:
+        elif "waist" in joint_name and is_waist_closed_loop:
             transmission = "waist"
             if "act" not in joint_name:
                 is_passive = True
 
-        if "knee" in joint_name and is_knee_closed_loop:
-            transmission = "knee"
+        elif "knee" in joint_name and is_knee_closed_loop:
+            transmission = "linkage"
             if "act" not in joint_name:
                 is_passive = True
 
-        if "ank" in joint_name and is_ankle_closed_loop:
+        elif "ank" in joint_name and is_ankle_closed_loop:
             transmission = "ankle"
             if "act" not in joint_name:
+                is_passive = True
+
+        elif "gripper" in joint_name:
+            transmission = "rack_and_pinion"
+            if "pinion" in joint_name:
                 is_passive = True
 
         group = "none"
@@ -294,19 +304,19 @@ def main() -> None:
     collision_config_file_path = os.path.join(robot_dir, "config_collision.json")
     if not os.path.exists(collision_config_file_path):
         collision_config = {}
-        for link in root.findall("link"):
-            link_name = link.get("name")
+    else:
+        with open(collision_config_file_path, "r") as f:
+            collision_config = json.load(f)
 
-            if link_name is None:
-                continue
+    for link in root.findall("link"):
+        link_name = link.get("name")
 
+        if link_name is not None and link_name not in collision_config:
             collision_config[link_name] = {"has_collision": False}
 
-        with open(collision_config_file_path, "w") as f:
-            f.write(json.dumps(collision_config, indent=4))
-            print(f"Collision config file saved to {collision_config_file_path}")
-
-    print("Done")
+    with open(collision_config_file_path, "w") as f:
+        f.write(json.dumps(collision_config, indent=4))
+        print(f"Collision config file saved to {collision_config_file_path}")
 
 
 if __name__ == "__main__":
