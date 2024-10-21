@@ -35,7 +35,7 @@ class MJXConfig:
         frame_stack: int = 15
         c_frame_stack: int = 15
         num_single_obs: int = 101
-        num_single_privileged_obs: int = 140
+        num_single_privileged_obs: int = 141
         scales: ObsScales = ObsScales()
 
     @dataclass
@@ -55,8 +55,8 @@ class MJXConfig:
             torso_pos: float = 0.0  # 1.0
             torso_quat: float = 1.0  # 1.0
             lin_vel_xy: float = 1.0
-            lin_vel_z: float = 0.5
-            ang_vel_xy: float = 0.5
+            lin_vel_z: float = 1.0
+            ang_vel_xy: float = 1.0
             ang_vel_z: float = 1.0
             neck_joint_pos: float = 0.0  # 0.1
             neck_joint_vel: float = 0.0  # 1e-3
@@ -116,6 +116,7 @@ class MJXConfig:
         q_dot_max_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
         push_interval_s: int = 4  # seconds
         push_vel: float = 0.2
+        push_phi_max: float = 0.2
 
     @dataclass
     class NoiseConfig:

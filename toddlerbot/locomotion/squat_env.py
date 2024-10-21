@@ -15,7 +15,7 @@ class SquatCfg(MJXConfig, env_name="squat"):
     @dataclass
     class ObsConfig(MJXConfig.ObsConfig):
         num_single_obs: int = 98
-        num_single_privileged_obs: int = 137
+        num_single_privileged_obs: int = 138
 
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):

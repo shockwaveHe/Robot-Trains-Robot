@@ -15,7 +15,7 @@ class BalanceCfg(MJXConfig, env_name="balance"):
     @dataclass
     class ObsConfig(MJXConfig.ObsConfig):
         num_single_obs: int = 101
-        num_single_privileged_obs: int = 140
+        num_single_privileged_obs: int = 141
 
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):

@@ -260,6 +260,7 @@ class MJXEnv(PipelineEnv):
 
         self.push_interval = np.ceil(self.cfg.domain_rand.push_interval_s / self.dt)
         self.push_vel = self.cfg.domain_rand.push_vel
+        self.push_phi_max = self.cfg.domain_rand.push_phi_max
 
     def _init_reward(self) -> None:
         """Prepares a list of reward functions, which will be called to compute the total reward.
@@ -308,7 +309,7 @@ class MJXEnv(PipelineEnv):
             "last_act": jnp.zeros(self.nu),
             "last_torso_euler": jnp.zeros(3),
             "rewards": {k: 0.0 for k in self.reward_names},
-            "push": jnp.zeros(2),
+            "push": jnp.zeros(3),
             "done": False,
             "step": 0,
         }
@@ -350,6 +351,7 @@ class MJXEnv(PipelineEnv):
                 )
                 torso_euler = jnp.array([0.0, noise_torso_pitch[0], torso_yaw[0]])
                 torso_quat = math.euler_to_quat(jnp.degrees(torso_euler))
+                state_ref = state_ref.at[3:7].set(torso_quat)
 
             noise_joint_pos = self.reset_noise_joint_pos * jax.random.normal(
                 rng_joint_pos, (self.nu,)
@@ -497,11 +499,25 @@ class MJXEnv(PipelineEnv):
         state.info["last_motor_target"] = motor_target.copy()
 
         if self.add_domain_rand:
-            push_theta = jax.random.uniform(push_rng, maxval=2 * jnp.pi)
-            push = jnp.array([jnp.cos(push_theta), jnp.sin(push_theta)])
+            # Sample push direction in 3D using spherical coordinates
+            push_theta = jax.random.uniform(push_rng, minval=0, maxval=2 * jnp.pi)
+            push_phi = jax.random.uniform(
+                push_rng, minval=-self.push_phi_max, maxval=self.push_phi_max
+            )
+
+            # Convert spherical coordinates to Cartesian coordinates for the 3D push vector
+            push_x = jnp.sin(push_phi) * jnp.cos(push_theta)
+            push_y = jnp.sin(push_phi) * jnp.sin(push_theta)
+            push_z = jnp.cos(push_phi)
+
+            push = jnp.array([push_x, push_y, push_z])
+            # Apply the push only at certain intervals
             push *= jnp.mod(state.info["step"], self.push_interval) == 0
+
+            # Apply the push to the first three velocity components
             qvel = state.pipeline_state.qd
-            qvel = qvel.at[:2].set(push * self.push_vel + qvel[:2])
+            qvel = qvel.at[:3].set(push * self.push_vel + qvel[:3])
+
             state = state.tree_replace({"pipeline_state.qd": qvel})
             state.info["push"] = push
 

@@ -33,13 +33,13 @@ class WalkCfg(MJXConfig, env_name="walk"):
                 [0.0, 0.0],
             ]
         )
-        deadzone: List[float] = field(default_factory=lambda: [0.01])
+        deadzone: List[float] = field(default_factory=lambda: [0.02])
         command_obs_indices: List[int] = field(default_factory=lambda: [5, 6, 7])
 
     @dataclass
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
         # Walk specific rewards
-        torso_pitch: float = 0.1
+        torso_pitch: float = 0.2
         lin_vel_xy: float = 5.0
         ang_vel_z: float = 1.0
         feet_air_time: float = 50.0
