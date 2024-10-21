@@ -1,5 +1,6 @@
 import argparse
 import os
+from datetime import datetime
 
 import numpy as np
 import torch
@@ -36,7 +37,7 @@ def main(dataset_path: str, ckpt_path: str):
 
     # parameters
     pred_horizon = 16
-    obs_horizon = 2
+    obs_horizon = 5
     action_horizon = 8
     # |o|o|                             observations: 2
     # | |a|a|a|a|a|a|a|a|               actions executed: 8
@@ -198,7 +199,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     dataset_path = os.path.join("datasets", f"teleop_dataset_{args.time_str}.lz4")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
     ckpt_path = os.path.join(
-        "toddlerbot", "policies", "checkpoints", "teleop_model.pth"
+        "toddlerbot", "policies", "checkpoints", f"teleop_model_{timestamp}.pth"
     )
+    print(ckpt_path)
     main(dataset_path, ckpt_path)
