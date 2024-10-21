@@ -20,7 +20,7 @@ class SquatReference(MotionReference):
     def get_state_ref(
         self, state_curr: ArrayType, time_curr: float | ArrayType, command: ArrayType
     ) -> ArrayType:
-        torso_state = self.integrate_torso_state(state_curr, command)
+        path_state = self.integrate_path_state(state_curr, command)
         joint_pos_curr = state_curr[13 : 13 + self.robot.nu]
 
         joint_pos = self.default_joint_pos.copy()
@@ -61,7 +61,7 @@ class SquatReference(MotionReference):
         joint_pos = inplace_update(joint_pos, self.waist_joint_indices, waist_joint_pos)
 
         qpos = self.default_qpos.copy()
-        qpos = inplace_update(qpos, slice(3, 7), torso_state[3:7])
+        qpos = inplace_update(qpos, slice(3, 7), path_state[3:7])
 
         com_curr = self.com_fk(joint_pos_curr[self.left_knee_idx])
         com_z_target = np.clip(
@@ -73,7 +73,7 @@ class SquatReference(MotionReference):
             joint_pos, self.leg_joint_indices, self.com_ik(com_z_target)
         )
 
-        state_ref = np.concatenate((torso_state, joint_pos, self.default_joint_vel))
+        state_ref = np.concatenate((path_state, joint_pos, self.default_joint_vel))
         qpos = self.get_qpos_ref(state_ref)
         data = self.forward(qpos)
 
@@ -92,7 +92,7 @@ class SquatReference(MotionReference):
 
         stance_mask = np.ones(2, dtype=np.float32)
 
-        return np.concatenate((torso_state, joint_pos, joint_vel, stance_mask))
+        return np.concatenate((path_state, joint_pos, joint_vel, stance_mask))
 
     def override_motor_target(
         self, motor_target: ArrayType, state_ref: ArrayType

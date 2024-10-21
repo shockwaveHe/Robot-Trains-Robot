@@ -106,7 +106,7 @@ class WalkZMPReference(MotionReference):
     def get_state_ref(
         self, state_curr: ArrayType, time_curr: float | ArrayType, command: ArrayType
     ) -> ArrayType:
-        torso_state = self.integrate_torso_state(state_curr, command)
+        path_state = self.integrate_path_state(state_curr, command)
 
         neck_yaw_pos = np.interp(
             command[0],
@@ -160,7 +160,7 @@ class WalkZMPReference(MotionReference):
             (step_idx % self.lookup_length[nearest_command_idx]).astype(int)
         ]
 
-        return np.concatenate((torso_state, joint_pos, joint_vel, stance_mask))
+        return np.concatenate((path_state, joint_pos, joint_vel, stance_mask))
 
     def override_motor_target(
         self, motor_target: ArrayType, state_ref: ArrayType

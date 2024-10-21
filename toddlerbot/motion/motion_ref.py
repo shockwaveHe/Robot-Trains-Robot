@@ -205,9 +205,13 @@ class MotionReference(ABC):
 
         data = self.forward(self.default_qpos)
         self.feet_center_init = (
-            data.site_xpos[self.left_foot_site_id]
-            + data.site_xpos[self.right_foot_site_id]
-        ) / 2.0
+            np.asarray(
+                data.site_xpos[self.left_foot_site_id]
+                + data.site_xpos[self.right_foot_site_id]
+            )
+            / 2.0
+        )
+        self.torso_pos_init = np.asarray(data.qpos[:3])
         self.desired_com = (
             self.feet_center_init
         )  # np.array(data.subtree_com[0], dtype=np.float32)
@@ -219,7 +223,7 @@ class MotionReference(ABC):
     def get_vel(self, command: ArrayType) -> Tuple[ArrayType, ArrayType]:
         pass
 
-    def integrate_torso_state(
+    def integrate_path_state(
         self, state_curr: ArrayType, command: ArrayType
     ) -> ArrayType:
         lin_vel, ang_vel = self.get_vel(command)
@@ -243,18 +247,13 @@ class MotionReference(ABC):
         full_quat = quat_mult(quat_mult(roll_quat, pitch_quat), yaw_quat)
 
         # Update the current quaternion by applying the new rotation
-        torso_quat = quat_mult(state_curr[3:7], full_quat)
-        torso_quat /= np.linalg.norm(torso_quat)
-
-        waist_joint_pos = state_curr[13 + self.waist_joint_indices]
-        waist_euler_inv = np.array([waist_joint_pos[0], 0.0, waist_joint_pos[1]])
-        waist_quat_inv = euler2quat(waist_euler_inv)
-        path_quat = quat_mult(torso_quat, waist_quat_inv)
+        path_quat = quat_mult(state_curr[3:7], full_quat)
+        path_quat /= np.linalg.norm(path_quat)
 
         # Update position
-        torso_pos = state_curr[:3] + rotate_vec(lin_vel, path_quat) * self.dt
+        path_pos = state_curr[:3] + rotate_vec(lin_vel, path_quat) * self.dt
 
-        return np.concatenate([torso_pos, torso_quat, lin_vel, ang_vel])
+        return np.concatenate([path_pos, path_quat, lin_vel, ang_vel])
 
     @abstractmethod
     def get_state_ref(
@@ -401,6 +400,7 @@ class MotionReference(ABC):
         waist_euler = np.array([-waist_joint_pos[0], 0.0, -waist_joint_pos[1]])
         waist_quat = euler2quat(waist_euler)
         torso_quat = quat_mult(state_ref[3:7], waist_quat)
+        qpos = inplace_update(qpos, slice(3, 7), torso_quat)
 
         data = self.forward(qpos)
 
@@ -408,9 +408,13 @@ class MotionReference(ABC):
             data.site_xpos[self.left_foot_site_id]
             + data.site_xpos[self.right_foot_site_id]
         ) / 2.0
-        torso_pos = np.asarray(state_ref[:3]) + self.feet_center_init - feet_center
+        torso_pos = (
+            self.torso_pos_init
+            + np.asarray(state_ref[:3])
+            + self.feet_center_init
+            - feet_center
+        )
 
         qpos = inplace_update(qpos, slice(0, 3), torso_pos)
-        qpos = inplace_update(qpos, slice(3, 7), torso_quat)
 
         return qpos

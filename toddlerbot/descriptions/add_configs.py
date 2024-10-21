@@ -235,8 +235,8 @@ def main() -> None:
         general_config["has_imu"] = True
         general_config["foot_name"] = "ank_roll_link"
         general_config["offsets"] = {
-            "torso_z": 0.3442,
-            "default_torso_z": 0.336,
+            "torso_z": 0.3451,
+            "default_torso_z": 0.3383,
             # "imu_x": 0.0282,
             # "imu_y": 0.0,
             # "imu_z": 0.105483,

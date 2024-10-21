@@ -317,41 +317,38 @@ class MJXEnv(PipelineEnv):
         qpos = self.default_qpos.copy()
         qvel = jnp.zeros(self.nv)
 
-        torso_pos = qpos[:3]
-        torso_yaw = jax.random.uniform(rng_torso_yaw, (1,), minval=0, maxval=2 * jnp.pi)
-        torso_quat = math.euler_to_quat(
-            jnp.array([0.0, 0.0, jnp.degrees(torso_yaw)[0]])
-        )
-        torso_lin_vel = jnp.zeros(3)
-        torso_ang_vel = jnp.zeros(3)
-
+        path_pos = jnp.zeros(3)
+        path_yaw = jax.random.uniform(rng_torso_yaw, (1,), minval=0, maxval=2 * jnp.pi)
+        path_euler = jnp.array([0.0, 0.0, jnp.degrees(path_yaw)[0]])
+        path_quat = math.euler_to_quat(path_euler)
+        lin_vel = jnp.zeros(3)
+        ang_vel = jnp.zeros(3)
         joint_pos = qpos[self.q_start_idx + self.joint_indices]
         joint_vel = qvel[self.qd_start_idx + self.joint_indices]
         stance_mask = jnp.ones(2)
 
-        state_ref_init = jnp.concatenate(
+        state_ref = jnp.concatenate(
             [
-                torso_pos,
-                torso_quat,
-                torso_lin_vel,
-                torso_ang_vel,
+                path_pos,
+                path_quat,
+                lin_vel,
+                ang_vel,
                 joint_pos,
                 joint_vel,
                 stance_mask,
             ]
         )
         command = self._sample_command(rng_command)
-        state_ref = jnp.asarray(
-            self.motion_ref.get_state_ref(state_ref_init, 0.0, command)
-        )
+        state_ref = jnp.asarray(self.motion_ref.get_state_ref(state_ref, 0.0, command))
+
+        noise_quat = jnp.array([1.0, 0.0, 0.0, 0.0])
         if self.add_noise:
             if not self.fixed_base:
                 noise_torso_pitch = self.reset_noise_torso_pitch * jax.random.normal(
                     rng_torso_pitch, (1,)
                 )
-                torso_euler = jnp.array([0.0, noise_torso_pitch[0], torso_yaw[0]])
-                torso_quat = math.euler_to_quat(jnp.degrees(torso_euler))
-                state_ref = state_ref.at[3:7].set(torso_quat)
+                noise_euler = jnp.array([0.0, noise_torso_pitch[0], 0.0])
+                noise_quat = math.euler_to_quat(jnp.degrees(noise_euler))
 
             noise_joint_pos = self.reset_noise_joint_pos * jax.random.normal(
                 rng_joint_pos, (self.nu,)
@@ -361,6 +358,7 @@ class MJXEnv(PipelineEnv):
             ].add(noise_joint_pos)
 
         qpos = jnp.asarray(self.motion_ref.get_qpos_ref(state_ref))
+        qpos = qpos.at[3:7].set(math.quat_mul(qpos[3:7], noise_quat))
 
         # jax.debug.print("euler: {}", math.quat_to_euler(torso_quat))
         # jax.debug.print("torso_euler: {}", torso_euler)
@@ -798,7 +796,13 @@ class MJXEnv(PipelineEnv):
     ):
         """Reward for track torso orientation"""
         torso_quat = pipeline_state.x.rot[0]
-        torso_quat_ref = info["state_ref"][3:7]
+        path_quat_ref = info["state_ref"][3:7]
+
+        waist_joint_pos = info["state_ref"][self.ref_start_idx + self.waist_ref_indices]
+        waist_euler = jnp.array([-waist_joint_pos[0], 0.0, -waist_joint_pos[1]])
+        waist_quat = math.euler_to_quat(jnp.degrees(waist_euler))
+        torso_quat_ref = math.quat_mul(path_quat_ref, waist_quat)
+
         # Quaternion dot product (cosine of the half-angle)
         dot_product = jnp.sum(torso_quat * torso_quat_ref, axis=-1)
         # Ensure the dot product is within the valid range

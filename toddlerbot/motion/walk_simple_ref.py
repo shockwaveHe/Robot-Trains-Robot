@@ -61,7 +61,7 @@ class WalkSimpleReference(MotionReference):
     def get_state_ref(
         self, state_curr: ArrayType, time_curr: float | ArrayType, command: ArrayType
     ) -> ArrayType:
-        torso_state = self.integrate_torso_state(state_curr, command)
+        path_state = self.integrate_path_state(state_curr, command)
 
         sin_phase_signal = np.sin(2 * np.pi * time_curr / self.cycle_time)
         signal_left = np.clip(sin_phase_signal, 0, None)
@@ -87,7 +87,7 @@ class WalkSimpleReference(MotionReference):
         stance_mask = inplace_update(stance_mask, 1, np.any(sin_phase_signal < 0))
         stance_mask = np.where(double_support_mask, 1, stance_mask)
 
-        return np.concatenate((torso_state, joint_pos, joint_vel, stance_mask))
+        return np.concatenate((path_state, joint_pos, joint_vel, stance_mask))
 
     def get_leg_pitch_pos(self, signal: ArrayType, is_left: bool):
         knee_angle = np.abs(
