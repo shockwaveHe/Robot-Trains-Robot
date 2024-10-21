@@ -25,13 +25,13 @@ class BalancePDReference(MotionReference):
 
     def get_vel(self, command: ArrayType) -> Tuple[ArrayType, ArrayType]:
         lin_vel = np.array([0.0, 0.0, 0.0], dtype=np.float32)
-        ang_vel = np.array([-command[3], 0.0, -command[4]], dtype=np.float32)
+        ang_vel = np.array([0.0, 0.0, 0.0], dtype=np.float32)
         return lin_vel, ang_vel
 
     def get_state_ref(
         self, state_curr: ArrayType, time_curr: float | ArrayType, command: ArrayType
     ) -> ArrayType:
-        torso_state = self.integrate_torso_state(state_curr, command)
+        path_state = self.integrate_path_state(state_curr, command)
         joint_pos_curr = state_curr[13 : 13 + self.robot.nu]
 
         joint_pos = self.default_joint_pos.copy()
@@ -82,14 +82,30 @@ class BalancePDReference(MotionReference):
             joint_pos, self.leg_joint_indices, self.com_ik(com_z_target)
         )
 
-        state_ref = np.concatenate((torso_state, joint_pos, self.default_joint_vel))
+        # print("start ik")
+        # for i in range(self.ik_iters):
+        state_ref = np.concatenate((path_state, joint_pos, self.default_joint_vel))
         qpos = self.get_qpos_ref(state_ref)
         data = self.forward(qpos)
+
+        # import cv2
+        # import mujoco
+
+        # renderer = mujoco.Renderer(self.model)
+        # renderer.update_scene(data)
+        # pixels = renderer.render()
+        # pixels_bgr = cv2.cvtColor(pixels, cv2.COLOR_RGB2BGR)
+        # cv2.imshow("Simulation", pixels_bgr)
+        # cv2.waitKey(1)  # This ensures the window updates without blocking
 
         com_pos = np.array(data.subtree_com[0], dtype=np.float32)
         # PD controller on CoM position
         com_pos_error = self.desired_com[:2] - com_pos[:2]
         com_ctrl = self.com_kp * com_pos_error
+
+        # print(
+        #     f"{i}: com_pos: {com_pos}, com_pos_error: {com_pos_error}, com_ctrl: {com_ctrl}"
+        # )
 
         joint_pos = inplace_update(
             joint_pos,
@@ -101,7 +117,7 @@ class BalancePDReference(MotionReference):
 
         stance_mask = np.ones(2, dtype=np.float32)
 
-        return np.concatenate((torso_state, joint_pos, joint_vel, stance_mask))
+        return np.concatenate((path_state, joint_pos, joint_vel, stance_mask))
 
     def override_motor_target(
         self, motor_target: ArrayType, state_ref: ArrayType
