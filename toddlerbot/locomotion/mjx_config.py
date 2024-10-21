@@ -64,7 +64,7 @@ class MJXConfig:
             arm_joint_vel: float = 0.0  # 1e-3
             waist_joint_pos: float = 0.0  # 50.0
             waist_joint_vel: float = 0.0  # 1e-3
-            leg_joint_pos: float = 1.0
+            leg_joint_pos: float = 10.0
             leg_joint_vel: float = 0.0  # 1e-4
             motor_torque: float = 5e-3
             joint_acc: float = 5e-7
