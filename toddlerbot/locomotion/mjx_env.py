@@ -506,9 +506,9 @@ class MJXEnv(PipelineEnv):
             )
 
             # Convert spherical coordinates to Cartesian coordinates for the 3D push vector
-            push_x = jnp.sin(push_phi) * jnp.cos(push_theta)
-            push_y = jnp.sin(push_phi) * jnp.sin(push_theta)
-            push_z = jnp.cos(push_phi)
+            push_x = jnp.cos(push_phi) * jnp.cos(push_theta)
+            push_y = jnp.cos(push_phi) * jnp.sin(push_theta)
+            push_z = jnp.sin(push_phi)
 
             push = jnp.array([push_x, push_y, push_z])
             # Apply the push only at certain intervals
