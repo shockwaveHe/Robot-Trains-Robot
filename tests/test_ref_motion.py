@@ -3,6 +3,7 @@ import time
 from typing import List
 
 import numpy as np
+from tqdm import tqdm
 
 from toddlerbot.locomotion.balance_env import BalanceCfg
 from toddlerbot.locomotion.squat_env import SquatCfg
@@ -23,6 +24,7 @@ def test_motion_ref(
     sim: MuJoCoSim,
     motion_ref: MotionReference,
     command_range: List[List[float]],
+    vis_type: str,
 ):
     joystick = Joystick()
 
@@ -42,7 +44,8 @@ def test_motion_ref(
     )
     pose_command = np.random.uniform(-1, 1, 5)
 
-    time_curr = 0.0
+    p_bar = tqdm(desc="Running the test")
+    step_idx = 0
     while True:
         try:
             control_inputs = joystick.get_controller_input()
@@ -96,23 +99,33 @@ def test_motion_ref(
                             [command_range[5][1], 0.0, command_range[5][0]],
                         )
 
+            time_curr = step_idx * sim.control_dt
             state_ref = motion_ref.get_state_ref(state_ref, time_curr, command)
-            joint_angles = np.asarray(state_ref[13 : 13 + robot.nu])
+            joint_angles = dict(
+                zip(robot.joint_ordering, np.asarray(state_ref[13 : 13 + robot.nu]))
+            )
+
+            if step_idx == 0:
+                qpos = motion_ref.get_qpos_ref(state_ref)
+                sim.set_qpos(qpos)
+                sim.forward()
 
             if "walk" in motion_ref.name:
-                sim.set_torso_pos(np.asarray(state_ref[:3]))
-                sim.set_torso_quat(np.asarray(state_ref[3:7]))
-                sim.set_joint_angles(dict(zip(robot.joint_ordering, joint_angles)))
+                sim.set_joint_angles(joint_angles)
                 sim.forward()
             else:
-                motor_angles = robot.joint_to_motor_angles(
-                    dict(zip(robot.joint_ordering, joint_angles))
-                )
+                motor_angles = robot.joint_to_motor_angles(joint_angles)
                 sim.set_motor_angles(motor_angles)
                 sim.step()
 
-            time_curr += sim.control_dt
-            time.sleep(sim.control_dt)
+            step_idx += 1
+
+            p_bar_steps = int(1 / sim.control_dt)
+            if step_idx % p_bar_steps == 0:
+                p_bar.update(p_bar_steps)
+
+            if vis_type == "view":
+                time.sleep(sim.control_dt)
 
         except KeyboardInterrupt:
             print("KeyboardInterrupt: Stopping the simulation...")
@@ -194,4 +207,4 @@ if __name__ == "__main__":
     else:
         raise ValueError("Unknown ref motion")
 
-    test_motion_ref(robot, sim, motion_ref, command_range)
+    test_motion_ref(robot, sim, motion_ref, command_range, args.vis)

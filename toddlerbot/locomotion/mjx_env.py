@@ -260,6 +260,7 @@ class MJXEnv(PipelineEnv):
 
         self.push_interval = np.ceil(self.cfg.domain_rand.push_interval_s / self.dt)
         self.push_vel = self.cfg.domain_rand.push_vel
+        self.push_phi_max = self.cfg.domain_rand.push_phi_max
 
     def _init_reward(self) -> None:
         """Prepares a list of reward functions, which will be called to compute the total reward.
@@ -308,76 +309,56 @@ class MJXEnv(PipelineEnv):
             "last_act": jnp.zeros(self.nu),
             "last_torso_euler": jnp.zeros(3),
             "rewards": {k: 0.0 for k in self.reward_names},
-            "push": jnp.zeros(2),
+            "push": jnp.zeros(3),
             "done": False,
             "step": 0,
         }
 
-        qpos = self.default_qpos
+        qpos = self.default_qpos.copy()
         qvel = jnp.zeros(self.nv)
 
-        torso_pos = qpos[:3]
-        torso_yaw = jax.random.uniform(rng_torso_yaw, (1,), minval=0, maxval=2 * jnp.pi)
-        torso_quat = math.euler_to_quat(
-            jnp.array([0.0, 0.0, jnp.degrees(torso_yaw)[0]])
-        )
-        torso_lin_vel = jnp.zeros(3)
-        torso_ang_vel = jnp.zeros(3)
-
+        path_pos = jnp.zeros(3)
+        path_yaw = jax.random.uniform(rng_torso_yaw, (1,), minval=0, maxval=2 * jnp.pi)
+        path_euler = jnp.array([0.0, 0.0, jnp.degrees(path_yaw)[0]])
+        path_quat = math.euler_to_quat(path_euler)
+        lin_vel = jnp.zeros(3)
+        ang_vel = jnp.zeros(3)
         joint_pos = qpos[self.q_start_idx + self.joint_indices]
         joint_vel = qvel[self.qd_start_idx + self.joint_indices]
         stance_mask = jnp.ones(2)
 
-        state_ref_init = jnp.concatenate(
+        state_ref = jnp.concatenate(
             [
-                torso_pos,
-                torso_quat,
-                torso_lin_vel,
-                torso_ang_vel,
+                path_pos,
+                path_quat,
+                lin_vel,
+                ang_vel,
                 joint_pos,
                 joint_vel,
                 stance_mask,
             ]
         )
         command = self._sample_command(rng_command)
-        state_ref = jnp.asarray(
-            self.motion_ref.get_state_ref(state_ref_init, 0.0, command)
-        )
+        state_ref = jnp.asarray(self.motion_ref.get_state_ref(state_ref, 0.0, command))
 
-        neck_joint_pos = state_ref[self.ref_start_idx + self.neck_ref_indices]
-        neck_motor_pos = self.motion_ref.neck_ik(neck_joint_pos)
-        arm_joint_pos = state_ref[self.ref_start_idx + self.arm_ref_indices]
-        arm_motor_pos = self.motion_ref.arm_ik(arm_joint_pos)
-        waist_joint_pos = state_ref[self.ref_start_idx + self.waist_ref_indices]
-        waist_motor_pos = self.motion_ref.waist_ik(waist_joint_pos)
-
-        qpos = qpos.at[self.q_start_idx + self.neck_joint_indices].set(neck_joint_pos)
-        qpos = qpos.at[self.q_start_idx + self.neck_motor_indices].set(neck_motor_pos)
-        qpos = qpos.at[self.q_start_idx + self.arm_joint_indices].set(arm_joint_pos)
-        qpos = qpos.at[self.q_start_idx + self.arm_motor_indices].set(arm_motor_pos)
-        qpos = qpos.at[self.q_start_idx + self.waist_joint_indices].set(waist_joint_pos)
-        qpos = qpos.at[self.q_start_idx + self.waist_motor_indices].set(waist_motor_pos)
-
+        noise_quat = jnp.array([1.0, 0.0, 0.0, 0.0])
         if self.add_noise:
             if not self.fixed_base:
                 noise_torso_pitch = self.reset_noise_torso_pitch * jax.random.normal(
                     rng_torso_pitch, (1,)
                 )
-                torso_euler = jnp.array([0.0, noise_torso_pitch[0], torso_yaw[0]])
-                torso_quat = math.euler_to_quat(jnp.degrees(torso_euler))
+                noise_euler = jnp.array([0.0, noise_torso_pitch[0], 0.0])
+                noise_quat = math.euler_to_quat(jnp.degrees(noise_euler))
 
             noise_joint_pos = self.reset_noise_joint_pos * jax.random.normal(
-                rng_joint_pos, (self.nq - self.q_start_idx,)
+                rng_joint_pos, (self.nu,)
             )
-            qpos = qpos.at[self.q_start_idx :].add(noise_joint_pos)
+            state_ref = state_ref.at[
+                self.ref_start_idx : self.ref_start_idx + self.nu
+            ].add(noise_joint_pos)
 
-        waist_joint_pos = qpos[self.q_start_idx + self.waist_joint_indices]
-        waist_euler = jnp.array([-waist_joint_pos[0], 0.0, -waist_joint_pos[1]])
-        waist_quat = math.euler_to_quat(jnp.degrees(waist_euler))
-        torso_quat = math.quat_mul(torso_quat, waist_quat)
-
-        state_ref = state_ref.at[3:7].set(torso_quat)
-        qpos = qpos.at[3:7].set(torso_quat)
+        qpos = jnp.asarray(self.motion_ref.get_qpos_ref(state_ref))
+        qpos = qpos.at[3:7].set(math.quat_mul(qpos[3:7], noise_quat))
 
         # jax.debug.print("euler: {}", math.quat_to_euler(torso_quat))
         # jax.debug.print("torso_euler: {}", torso_euler)
@@ -386,6 +367,7 @@ class MJXEnv(PipelineEnv):
         pipeline_state = self.pipeline_init(qpos, qvel)
 
         state_info["command"] = command
+        state_info["command_obs"] = command[self.command_obs_indices]
         state_info["state_ref"] = state_ref
         state_info["stance_mask"] = state_ref[-2:]
         state_info["last_stance_mask"] = state_ref[-2:]
@@ -515,11 +497,25 @@ class MJXEnv(PipelineEnv):
         state.info["last_motor_target"] = motor_target.copy()
 
         if self.add_domain_rand:
-            push_theta = jax.random.uniform(push_rng, maxval=2 * jnp.pi)
-            push = jnp.array([jnp.cos(push_theta), jnp.sin(push_theta)])
+            # Sample push direction in 3D using spherical coordinates
+            push_theta = jax.random.uniform(push_rng, minval=0, maxval=2 * jnp.pi)
+            push_phi = jax.random.uniform(
+                push_rng, minval=-self.push_phi_max, maxval=self.push_phi_max
+            )
+
+            # Convert spherical coordinates to Cartesian coordinates for the 3D push vector
+            push_x = jnp.cos(push_phi) * jnp.cos(push_theta)
+            push_y = jnp.cos(push_phi) * jnp.sin(push_theta)
+            push_z = jnp.sin(push_phi)
+
+            push = jnp.array([push_x, push_y, push_z])
+            # Apply the push only at certain intervals
             push *= jnp.mod(state.info["step"], self.push_interval) == 0
+
+            # Apply the push to the first three velocity components
             qvel = state.pipeline_state.qd
-            qvel = qvel.at[:2].set(push * self.push_vel + qvel[:2])
+            qvel = qvel.at[:3].set(push * self.push_vel + qvel[:3])
+
             state = state.tree_replace({"pipeline_state.qd": qvel})
             state.info["push"] = push
 
@@ -593,6 +589,7 @@ class MJXEnv(PipelineEnv):
             lambda: self._sample_command(cmd_rng, state.info["command"]),
             lambda: state.info["command"],
         )
+        state.info["command_obs"] = state.info["command"][self.command_obs_indices]
 
         # reset the step counter when done
         state.info["step"] = jnp.where(
@@ -717,7 +714,7 @@ class MJXEnv(PipelineEnv):
         obs = jnp.concatenate(
             [
                 info["phase_signal"],
-                info["command"][self.command_obs_indices],
+                info["command_obs"],
                 motor_pos_delta * self.obs_scales.dof_pos + motor_backlash,
                 motor_vel * self.obs_scales.dof_vel,
                 info["last_act"],
@@ -729,7 +726,7 @@ class MJXEnv(PipelineEnv):
         privileged_obs = jnp.concatenate(
             [
                 info["phase_signal"],
-                info["command"][self.command_obs_indices],
+                info["command_obs"],
                 motor_pos_delta * self.obs_scales.dof_pos,
                 motor_vel * self.obs_scales.dof_vel,
                 info["last_act"],
@@ -799,7 +796,13 @@ class MJXEnv(PipelineEnv):
     ):
         """Reward for track torso orientation"""
         torso_quat = pipeline_state.x.rot[0]
-        torso_quat_ref = info["state_ref"][3:7]
+        path_quat_ref = info["state_ref"][3:7]
+
+        waist_joint_pos = info["state_ref"][self.ref_start_idx + self.waist_ref_indices]
+        waist_euler = jnp.array([-waist_joint_pos[0], 0.0, -waist_joint_pos[1]])
+        waist_quat = math.euler_to_quat(jnp.degrees(waist_euler))
+        torso_quat_ref = math.quat_mul(path_quat_ref, waist_quat)
+
         # Quaternion dot product (cosine of the half-angle)
         dot_product = jnp.sum(torso_quat * torso_quat_ref, axis=-1)
         # Ensure the dot product is within the valid range

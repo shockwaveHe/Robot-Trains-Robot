@@ -102,7 +102,7 @@ class MuJoCoSim(BaseSim):
         if vis_type == "render":
             self.visualizer = MuJoCoRenderer(self.model)
         elif vis_type == "view":
-            self.visualizer = MuJoCoViewer(self.model, self.data)
+            self.visualizer = MuJoCoViewer(robot, self.model, self.data)
 
     def load_keyframe(self):
         default_qpos = np.array(self.model.keyframe("home").qpos, dtype=np.float32)
@@ -244,6 +244,17 @@ class MuJoCoSim(BaseSim):
     def set_joint_angles(self, joint_angles: Dict[str, float]):
         for name in joint_angles:
             self.data.joint(name).qpos = joint_angles[name]
+
+        motor_angles = self.robot.joint_to_motor_angles(joint_angles)
+        for name in motor_angles:
+            self.data.joint(name).qpos = motor_angles[name]
+
+        passive_angles = self.robot.joint_to_passive_angles(joint_angles)
+        for name in passive_angles:
+            self.data.joint(name).qpos = passive_angles[name]
+
+    def set_qpos(self, qpos: npt.NDArray[np.float32]):
+        self.data.qpos = qpos
 
     def set_joint_dynamics(self, joint_dyn: Dict[str, Dict[str, float]]):
         for joint_name, dyn in joint_dyn.items():

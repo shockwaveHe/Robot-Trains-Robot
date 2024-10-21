@@ -12,20 +12,44 @@ import numpy as np
 import numpy.typing as npt
 from moviepy.editor import VideoFileClip, clips_array
 
+from toddlerbot.sim.robot import Robot
+
 # Suppress specific warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="moviepy")
 
 
 class MuJoCoViewer:
-    def __init__(self, model: Any, data: Any):
-        self.viewer = mujoco.viewer.launch_passive(model, data)
+    def __init__(self, robot: Robot, model: Any, data: Any):
+        self.robot = robot
         self.model = model
+        self.viewer = mujoco.viewer.launch_passive(model, data)
 
-    def visualize(self, data: Any, vis_flags: Dict[str, bool] = {"com": True}):
+        self.foot_names = [
+            f"{self.robot.foot_name}_collision",
+            f"{self.robot.foot_name}_2_collision",
+        ]
+        foot_geom_size = np.array(self.model.geom(self.foot_names[0]).size)
+        # Define the local coordinates of the bounding box corners
+        self.local_bbox_corners = np.array(
+            [
+                [0.0, -foot_geom_size[1], -foot_geom_size[2]],
+                [0.0, -foot_geom_size[1], foot_geom_size[2]],
+                [0.0, foot_geom_size[1], foot_geom_size[2]],
+                [0.0, foot_geom_size[1], -foot_geom_size[2]],
+            ]
+        )
+
+    def visualize(
+        self,
+        data: Any,
+        vis_flags: Dict[str, bool] = {"com": True, "support_poly": True},
+    ):
         with self.viewer.lock():
             self.viewer.user_scn.ngeom = 0
             if vis_flags["com"]:
                 self.visualize_com(data)
+            if vis_flags["support_poly"]:
+                self.visualize_support_poly(data)
 
         self.viewer.sync()
 
@@ -41,6 +65,44 @@ class MuJoCoViewer:
             rgba=[1, 0, 0, 1],
         )
         self.viewer.user_scn.ngeom = i + 1
+
+    def visualize_support_poly(self, data: Any):
+        i = self.viewer.user_scn.ngeom
+
+        for foot_name in self.foot_names:
+            foot_geom_pos = np.array(data.geom(foot_name).xpos)
+            foot_geom_mat = np.array(data.geom(foot_name).xmat).reshape(3, 3)
+
+            # Transform local bounding box corners to world coordinates
+            world_bbox_corners = (
+                foot_geom_mat @ self.local_bbox_corners.T
+            ).T + foot_geom_pos
+
+            for j in range(len(world_bbox_corners)):
+                p1 = world_bbox_corners[j]
+                p2 = world_bbox_corners[(j + 1) % len(world_bbox_corners)]
+                p1[2] = 0.0
+                p2[2] = 0.0
+
+                # Create a line geometry
+                mujoco.mjv_initGeom(
+                    self.viewer.user_scn.geoms[i],
+                    type=mujoco.mjtGeom.mjGEOM_LINE,
+                    size=np.zeros(3),
+                    pos=np.zeros(3),
+                    mat=np.eye(3).flatten(),
+                    rgba=[0, 0, 1, 1],
+                )
+                mujoco.mjv_connector(
+                    self.viewer.user_scn.geoms[i],
+                    mujoco.mjtGeom.mjGEOM_LINE,
+                    2,
+                    p1,
+                    p2,
+                )
+                i += 1
+
+        self.viewer.user_scn.ngeom = i
 
     def close(self):
         self.viewer.close()

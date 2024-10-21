@@ -24,18 +24,19 @@ class TurnCfg(WalkCfg, env_name="turn"):
                 [-0.5, 0.5],
             ]
         )
-        deadzone: List[float] = field(default_factory=lambda: [0.05])
+        deadzone: List[float] = field(default_factory=lambda: [0.1])
         command_obs_indices: List[int] = field(default_factory=lambda: [5, 6, 7])
 
     @dataclass
     class RewardScales(WalkCfg.RewardsConfig.RewardScales):
         # Walk specific rewards
-        torso_pitch: float = 0.1
+        torso_pitch: float = 0.2
         lin_vel_xy: float = 1.0
         ang_vel_z: float = 5.0
-        feet_air_time: float = 50.0
+        feet_air_time: float = 100.0
         feet_distance: float = 0.5
         feet_slip: float = 0.1
+        feet_clearance: float = 10.0
         stand_still: float = 1.0
 
     def __init__(self):

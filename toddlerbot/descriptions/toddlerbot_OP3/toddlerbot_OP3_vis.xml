@@ -4,9 +4,13 @@
   <asset>
     <mesh name="torso_visual" file="../assemblies/toddlerbot/meshes/torso_visual.stl" />
     <mesh name="spur_1m_20t_visual" file="../assemblies/toddlerbot/meshes/spur_1m_20t_visual.stl" />
-    <mesh name="neck_yaw_link_visual" file="../assemblies/toddlerbot/meshes/neck_yaw_link_visual.stl" />
-    <mesh name="neck_pitch_link_visual" file="../assemblies/toddlerbot/meshes/neck_pitch_link_visual.stl" />
-    <mesh name="spur_gear_13_teeth_visual" file="../assemblies/toddlerbot/meshes/spur_gear_13_teeth_visual.stl" />
+    <mesh name="neck_yaw_link_v2_visual" file="../assemblies/toddlerbot/meshes/neck_yaw_link_v2_visual.stl" />
+    <mesh name="head_visual" file="../assemblies/toddlerbot/meshes/head_visual.stl" />
+    <mesh name="motor_plate_visual" file="../assemblies/toddlerbot/meshes/motor_plate_visual.stl" />
+    <mesh name="bearing_683_visual" file="../assemblies/toddlerbot/meshes/bearing_683_visual.stl" />
+    <mesh name="bearing_683_2_visual" file="../assemblies/toddlerbot/meshes/bearing_683_2_visual.stl" />
+    <mesh name="neck_rod_visual" file="../assemblies/toddlerbot/meshes/neck_rod_visual.stl" />
+    <mesh name="neck_rod_2_visual" file="../assemblies/toddlerbot/meshes/neck_rod_2_visual.stl" />
     <mesh name="waist_gears_visual" file="../assemblies/toddlerbot/meshes/waist_gears_visual.stl" />
     <mesh name="waist_link_visual" file="../assemblies/toddlerbot/meshes/waist_link_visual.stl" />
     <mesh name="spiral_bevel_1m_14t_30deg_visual" file="../assemblies/toddlerbot/meshes/spiral_bevel_1m_14t_30deg_visual.stl" />
@@ -68,25 +72,45 @@
   </asset>
 
   <worldbody>
-    <geom type="mesh" rgba="0.636106 0.788756 0.895042 1" mesh="torso_visual" class="visual" />
+    <geom type="mesh" rgba="0.635163 0.789819 0.896631 1" mesh="torso_visual" class="visual" />
     <body name="spur_1m_20t" pos="-0.005 0 0.121487" quat="1 0 0 0">
       <inertial pos="0 0 0.00338423" quat="0.5 0.5 -0.5 0.5" mass="0.0015778" diaginertia="8.17371e-08 4.58744e-08 4.58744e-08" />
       <joint name="neck_yaw_drive" pos="0 0 0" axis="0 0 1" range="-2.87979 2.87979" damping="0.134" armature="0.0035" frictionloss="0.014" />
       <geom type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="spur_1m_20t_visual" class="visual" />
     </body>
-    <body name="neck_yaw_link" pos="0.016 0 0.122487" quat="0 0 0 1">
-      <inertial pos="2.72259e-05 -0.000199414 0.0115135" quat="0.706972 0.0137886 -0.0133174 0.706981" mass="0.00851683" diaginertia="1.1281e-06 1.04379e-06 3.16175e-07" />
+    <body name="neck_yaw_link_v2" pos="0.016 0 0.122487" quat="1 0 0 0">
+      <inertial pos="-1.1404e-06 -1.18419e-10 0.00825718" quat="0.707105 -0.00174547 -0.00174547 0.707105" mass="0.00672988" diaginertia="6.12185e-07 5.22667e-07 2.80623e-07" />
       <joint name="neck_yaw_driven" pos="0 0 0" axis="0 0 1" range="-2.61799 2.61799" damping="0.0" armature="0.0" frictionloss="0.0" />
-      <geom type="mesh" rgba="0.336363 0.486808 0.749761 1" mesh="neck_yaw_link_visual" class="visual" />
-      <body name="neck_pitch_link" pos="3.75e-10 -0.00515 0.0275" quat="0 0 0.707107 0.707107">
-        <inertial pos="0.00749418 0.0361065 -0.00264504" quat="0.474724 0.822605 -0.280606 -0.138631" mass="0.0743" diaginertia="6.91897e-05 6.15087e-05 1.93388e-05" />
-        <joint name="neck_pitch_driven" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.0" armature="0.0" frictionloss="0.0" />
-        <geom type="mesh" rgba="0.634889 0.782176 0.838502 1" mesh="neck_pitch_link_visual" class="visual" />
-        <body name="spur_gear_13_teeth" pos="0 0.01565 -0.0088" quat="0.707107 0 0 -0.707107">
-          <inertial pos="4.92054e-09 1.14471e-08 0.00897071" mass="0.000918775" diaginertia="2.26629e-08 2.26628e-08 2.09847e-08" />
-          <joint name="neck_pitch_drive" pos="0 0 0" axis="0 0 1" range="-2.17495 2.17495" damping="0.134" armature="0.0035" frictionloss="0.014" />
-          <geom type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="spur_gear_13_teeth_visual" class="visual" />
+      <geom type="mesh" rgba="0.231373 0.380392 0.705882 1" mesh="neck_yaw_link_v2_visual" class="visual" />
+      <body name="head" pos="0 0.004 0.0194" quat="-0.499092 -0.499092 -0.500906 0.500906">
+        <inertial pos="-0.0438326 -0.0104902 -0.00040226" quat="0.968184 -0.235784 -0.0566948 0.0617352" mass="0.127721" diaginertia="0.00011586 0.000102768 8.14402e-05" />
+        <joint name="neck_pitch" pos="0 0 0" axis="0 0 1" range="-1.39626 0.610865" damping="0.0" armature="0.0" frictionloss="0.0" />
+        <geom type="mesh" rgba="0.626858 0.794552 0.876526 1" mesh="head_visual" class="visual" />
+        <body name="motor_plate" pos="-0.0326157 -0.027 0.0025" quat="0 0 1 0">
+          <inertial pos="0 0 -0.00282818" quat="0.092296 0.701057 -0.092296 0.701057" mass="0.0017" diaginertia="9.21947e-08 5.20711e-08 4.77616e-08" />
+          <joint name="neck_pitch_act" pos="0 0 0" axis="0 0 1" range="-1.39626 0.610865" damping="0.134" armature="0.0035" frictionloss="0.014" />
+          <geom type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="motor_plate_visual" class="visual" />
+          <body name="bearing_683" pos="-0.00194114 -0.00724444 -0.0055" quat="0.904588 0 0 0.426286">
+            <inertial pos="0 0 -0.00155" quat="0.5 0.5 -0.5 0.5" mass="0.000486947" diaginertia="3.53036e-09 2.15515e-09 2.15515e-09" />
+            <joint name="neck_pitch_front_rev_2" pos="0 0 0" axis="0 0 1" range="-6.28319 6.28319" damping="0.0" armature="0.0" frictionloss="0.0" />
+            <geom type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="bearing_683_visual" class="visual" />
+          </body>
+          <body name="bearing_683_2" pos="0.00194114 0.00724444 -0.0055" quat="0.905205 0 0 0.424976">
+            <inertial pos="0 0 -0.00155" quat="0.5 0.5 -0.5 0.5" mass="0.000486947" diaginertia="3.53036e-09 2.15515e-09 2.15515e-09" />
+            <joint name="neck_pitch_back_rev_2" pos="0 0 0" axis="0 0 1" range="-6.28319 6.28319" damping="0.0" armature="0.0" frictionloss="0.0" />
+            <geom type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="bearing_683_2_visual" class="visual" />
+          </body>
         </body>
+      </body>
+      <body name="neck_rod" pos="-0.00724444 -0.004 0.0174589" quat="0.302589 -0.302589 -0.639093 -0.639093">
+        <inertial pos="0.017943 -4.23023e-05 -0.00160238" quat="0.000198565 0.707349 -0.000198429 0.706864" mass="0.00316295" diaginertia="8.05739e-07 7.94302e-07 1.61826e-08" />
+        <joint name="neck_pitch_front_rev_1" pos="0 0 0" axis="0 0 1" range="-6.28319 6.28319" damping="0.0" armature="0.0" frictionloss="0.0" />
+        <geom type="mesh" rgba="0.620516 0.786408 0.885943 1" mesh="neck_rod_visual" class="visual" />
+      </body>
+      <body name="neck_rod_2" pos="0.00724444 -0.004 0.0213411" quat="-0.301664 0.301664 0.63953 0.63953">
+        <inertial pos="0.0179011 4.23023e-05 -0.00160238" quat="-0.000198322 0.707349 0.000198186 0.706865" mass="0.00316295" diaginertia="8.04875e-07 7.93438e-07 1.61826e-08" />
+        <joint name="neck_pitch_back_rev_1" pos="0 0 0" axis="0 0 1" range="-6.28319 6.28319" damping="0.0" armature="0.0" frictionloss="0.0" />
+        <geom type="mesh" rgba="0.620516 0.786408 0.885943 1" mesh="neck_rod_2_visual" class="visual" />
       </body>
     </body>
     <body name="waist_gears" pos="0 0 0" quat="0 0 0 1">
@@ -107,7 +131,7 @@
           <joint name="waist_act_2" pos="0 0 0" axis="0 0 1" range="-4.67748 4.67748" damping="0.134" armature="0.0035" frictionloss="0.014" />
           <geom type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="spiral_bevel_1m_14t_30deg_2_visual" class="visual" />
         </body>
-        <body name="spur_gear_19_teeth" pos="-0.037 0.0311 -0.0392" quat="0 0 -0.707107 -0.707107">
+        <body name="spur_gear_19_teeth" pos="-0.037 0.0311 -0.0392" quat="0 0 0.707107 0.707107">
           <inertial pos="3.98262e-10 -1.60016e-10 0.0101085" quat="0.5 0.5 -0.5 0.5" mass="0.0010325" diaginertia="4.06876e-08 3.32386e-08 3.32386e-08" />
           <joint name="left_hip_yaw_drive" pos="0 0 0" axis="0 0 1" range="-1.73614 1.73614" damping="0.134" armature="0.0035" frictionloss="0.014" />
           <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="spur_gear_19_teeth_visual" class="visual" />
@@ -116,8 +140,8 @@
           <inertial pos="-2.35688e-12 0 0.0142238" quat="0.5 0.5 0.5 0.5" mass="0.0190254" diaginertia="7.88717e-06 7.83448e-06 2.82998e-06" />
           <joint name="left_hip_yaw_driven" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.0" armature="0.0" frictionloss="0.685" />
           <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="spur_gear_21_teeth_visual" class="visual" />
-          <geom pos="0 0 0.005" quat="0 1 0 0" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="left_hip_yaw_link_visual" class="visual" />
-          <body name="hip_roll_link" pos="0.019 0 0.031" quat="-0.707107 0 -0.707107 0">
+          <geom pos="0 0 0.005" quat="0 -1 0 0" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="left_hip_yaw_link_visual" class="visual" />
+          <body name="hip_roll_link" pos="0.019 0 0.031" quat="0.707107 0 0.707107 0">
             <inertial pos="-0.0119998 -0.000495981 -0.0185041" quat="-0.273471 0.652073 -0.267709 0.654482" mass="0.1106" diaginertia="3.14464e-05 3.02975e-05 2.28182e-05" />
             <joint name="left_hip_roll" pos="0 0 0" axis="0 0 1" range="-0.785398 0.785398" damping="0.075" armature="0.0044" frictionloss="0.252" />
             <geom type="mesh" rgba="0.516987 0.503478 0.490506 1" mesh="left_hip_roll_link_visual" class="visual" />
@@ -126,15 +150,15 @@
               <joint name="left_hip_pitch" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.075" armature="0.0044" frictionloss="0.252" />
               <geom type="mesh" rgba="0.870722 0.72641 0.247852 1" mesh="left_hip_pitch_link_xm430_visual" class="visual" />
               <body name="left_calf_link" pos="0 -0.096 -0.0092" quat="1 0 0 0">
-                <inertial pos="-0.0044699 -0.0405377 -0.00940432" quat="0.694858 0.718366 0.0105632 0.0318104" mass="0.031" diaginertia="3.24439e-05 2.73391e-05 7.60778e-06" />
-                <joint name="left_knee_pitch" pos="0 0 0" axis="0 0 1" range="0 2.0944" damping="0.0" armature="0.0" frictionloss="0.0" />
+                <inertial pos="-0.00445232 -0.0407105 -0.00939617" quat="0.69479 0.718422 0.0108806 0.0319238" mass="0.031" diaginertia="3.27619e-05 2.76362e-05 7.62792e-06" />
+                <joint name="left_knee" pos="0 0 0" axis="0 0 1" range="0 2.0944" damping="0.0" armature="0.0" frictionloss="0.0" />
                 <geom type="mesh" rgba="0.522707 0.7074 0.875332 1" mesh="left_calf_link_visual" class="visual" />
-                <body name="bearing_683" pos="-0.00574025 0.0138582 -0.0262" quat="0.705054 0 0 0.709153">
+                <body name="bearing_683_3" pos="-0.00574025 0.0138582 -0.0262" quat="0.705054 0 0 0.709153">
                   <inertial pos="0 0 -0.00155" quat="0.5 0.5 -0.5 0.5" mass="0.000486947" diaginertia="3.53036e-09 2.15515e-09 2.15515e-09" />
                   <joint name="left_knee_front_rev_2" pos="0 0 0" axis="0 0 1" range="-6.28319 6.28319" damping="0.0" armature="0.0" frictionloss="0.0" />
                   <geom type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="left_bearing_683_visual" class="visual" />
                 </body>
-                <body name="bearing_683_2" pos="0.00574025 -0.0138582 -0.0262" quat="0.706081 0 0 0.708131">
+                <body name="bearing_683_4" pos="0.00574025 -0.0138582 -0.0262" quat="0.706081 0 0 0.708131">
                   <inertial pos="0 0 -0.00155" quat="0.5 0.5 -0.5 0.5" mass="0.000486947" diaginertia="3.53036e-09 2.15515e-09 2.15515e-09" />
                   <joint name="left_knee_back_rev_2" pos="0 0 0" axis="0 0 1" range="-6.28319 6.28319" damping="0.0" armature="0.0" frictionloss="0.0" />
                   <geom type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="left_bearing_683_2_visual" class="visual" />
@@ -144,7 +168,7 @@
                   <joint name="left_ank_pitch" pos="0 0 0" axis="0 0 1" range="-1.74533 0.785398" damping="0.127" armature="0.004" frictionloss="0.069" />
                   <geom type="mesh" rgba="0.428388 0.551287 0.741289 1" mesh="left_ank_pitch_link_visual" class="visual" />
                   <body name="ank_roll_link" pos="0 0.02275 0.019" quat="0 0 0.707107 0.707107">
-                    <inertial pos="-0.0269812 2.00109e-12 -0.0337332" quat="0.706434 0.0308367 0.0308367 0.706434" mass="0.0426" diaginertia="3.76215e-05 3.74798e-05 9.91691e-06" />
+                    <inertial pos="-0.0270366 2.02954e-12 -0.0336202" quat="0.706436 0.0307846 0.0307846 0.706436" mass="0.0426" diaginertia="3.78543e-05 3.77309e-05 9.97247e-06" />
                     <joint name="left_ank_roll" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.127" armature="0.004" frictionloss="0.069" />
                     <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="left_ank_roll_link_visual" class="visual" />
                     <geom name="ank_roll_link_collision" size="0.0245 0.021 0.06" pos="-0.0145 0 -0.039" type="box" rgba="0.615686 0.811765 0.929412 1" class="collision" />
@@ -170,7 +194,7 @@
             </body>
           </body>
         </body>
-        <body name="spur_gear_19_teeth_2" pos="0.037 0.0311 -0.0392" quat="0 0 -0.707107 -0.707107">
+        <body name="spur_gear_19_teeth_2" pos="0.037 0.0311 -0.0392" quat="0 0 0.707107 0.707107">
           <inertial pos="3.98262e-10 -1.60016e-10 0.0101085" quat="0.5 0.5 -0.5 0.5" mass="0.0010325" diaginertia="4.06876e-08 3.32386e-08 3.32386e-08" />
           <joint name="right_hip_yaw_drive" pos="0 0 0" axis="0 0 1" range="-1.73614 1.73614" damping="0.134" armature="0.0035" frictionloss="0.014" />
           <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="spur_gear_19_teeth_2_visual" class="visual" />
@@ -179,8 +203,8 @@
           <inertial pos="-2.35688e-12 0 0.0142244" quat="0.5 0.5 0.5 0.5" mass="0.0190254" diaginertia="7.88691e-06 7.83448e-06 2.82972e-06" />
           <joint name="right_hip_yaw_driven" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.0" armature="0.0" frictionloss="0.685" />
           <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="spur_gear_21_teeth_2_visual" class="visual" />
-          <geom pos="0 0 0.005" quat="0 1 0 0" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="right_hip_yaw_link_visual" class="visual" />
-          <body name="hip_roll_link_2" pos="-0.019 0 0.031" quat="0 0.707107 0 -0.707107">
+          <geom pos="0 0 0.005" quat="0 -1 0 0" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="right_hip_yaw_link_visual" class="visual" />
+          <body name="hip_roll_link_2" pos="-0.019 0 0.031" quat="0 -0.707107 0 0.707107">
             <inertial pos="-0.0119998 -0.000495981 -0.0185041" quat="-0.273471 0.652073 -0.267709 0.654482" mass="0.1106" diaginertia="3.14464e-05 3.02975e-05 2.28182e-05" />
             <joint name="right_hip_roll" pos="0 0 0" axis="0 0 1" range="-0.785398 0.785398" damping="0.075" armature="0.0044" frictionloss="0.252" />
             <geom type="mesh" rgba="0.516987 0.503478 0.490506 1" mesh="right_hip_roll_link_visual" class="visual" />
@@ -189,15 +213,15 @@
               <joint name="right_hip_pitch" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.075" armature="0.0044" frictionloss="0.252" />
               <geom type="mesh" rgba="0.870722 0.72641 0.247852 1" mesh="right_hip_pitch_link_xm430_visual" class="visual" />
               <body name="right_calf_link" pos="0 -0.096 -0.0092" quat="0 0 0 1">
-                <inertial pos="-0.0044699 0.0405377 -0.00940432" quat="0.718366 0.694858 -0.0318104 -0.0105632" mass="0.031" diaginertia="3.24439e-05 2.73391e-05 7.60778e-06" />
-                <joint name="right_knee_pitch" pos="0 0 0" axis="0 0 1" range="-2.0944 0" damping="0.0" armature="0.0" frictionloss="0.0" />
+                <inertial pos="-0.00445232 0.0407105 -0.00939617" quat="0.718422 0.69479 -0.0319238 -0.0108806" mass="0.031" diaginertia="3.27619e-05 2.76362e-05 7.62792e-06" />
+                <joint name="right_knee" pos="0 0 0" axis="0 0 1" range="-2.0944 0" damping="0.0" armature="0.0" frictionloss="0.0" />
                 <geom type="mesh" rgba="0.522707 0.7074 0.875332 1" mesh="right_calf_link_visual" class="visual" />
-                <body name="bearing_683_3" pos="-0.00574025 -0.0138582 -0.0262" quat="0.00281484 0 0 0.999996">
+                <body name="bearing_683_5" pos="-0.00574025 -0.0138582 -0.0262" quat="0.00281484 0 0 0.999996">
                   <inertial pos="0 0 -0.00155" quat="0.5 0.5 -0.5 0.5" mass="0.000486947" diaginertia="3.53036e-09 2.15515e-09 2.15515e-09" />
                   <joint name="right_knee_front_rev_2" pos="0 0 0" axis="0 0 1" range="-6.28319 6.28319" damping="0.0" armature="0.0" frictionloss="0.0" />
                   <geom type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="right_bearing_683_visual" class="visual" />
                 </body>
-                <body name="bearing_683_4" pos="0.00574025 0.0138582 -0.0262" quat="0.00284659 0 0 0.999996">
+                <body name="bearing_683_6" pos="0.00574025 0.0138582 -0.0262" quat="0.00284659 0 0 0.999996">
                   <inertial pos="0 0 -0.00155" quat="0.5 0.5 -0.5 0.5" mass="0.000486947" diaginertia="3.53036e-09 2.15515e-09 2.15515e-09" />
                   <joint name="right_knee_back_rev_2" pos="0 0 0" axis="0 0 1" range="-6.28319 6.28319" damping="0.0" armature="0.0" frictionloss="0.0" />
                   <geom type="mesh" rgba="0.647059 0.647059 0.647059 1" mesh="right_bearing_683_2_visual" class="visual" />
@@ -207,7 +231,7 @@
                   <joint name="right_ank_pitch" pos="0 0 0" axis="0 0 1" range="-1.74533 0.785398" damping="0.127" armature="0.004" frictionloss="0.069" />
                   <geom type="mesh" rgba="0.428388 0.551287 0.741289 1" mesh="right_ank_pitch_link_visual" class="visual" />
                   <body name="ank_roll_link_2" pos="0 0.02275 0.019" quat="0 0 0.707107 0.707107">
-                    <inertial pos="-0.0269812 2.0011e-12 -0.0337332" quat="0.706434 0.0308367 0.0308367 0.706434" mass="0.0426" diaginertia="3.76215e-05 3.74798e-05 9.91691e-06" />
+                    <inertial pos="-0.0270366 2.02955e-12 -0.0336202" quat="0.706436 0.0307846 0.0307846 0.706436" mass="0.0426" diaginertia="3.78543e-05 3.77309e-05 9.97247e-06" />
                     <joint name="right_ank_roll" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" damping="0.127" armature="0.004" frictionloss="0.069" />
                     <geom type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="right_ank_roll_link_visual" class="visual" />
                     <geom name="ank_roll_link_2_collision" size="0.0245 0.021 0.06" pos="-0.0145 0 -0.039" type="box" rgba="0.615686 0.811765 0.929412 1" class="collision" />
@@ -349,7 +373,6 @@
   </option>
   <equality>
     <joint joint1="neck_yaw_driven" joint2="neck_yaw_drive" polycoef="0 -0.722222 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
-    <joint joint1="neck_pitch_driven" joint2="neck_pitch_drive" polycoef="0 -0.909091 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
     <joint joint1="left_hip_yaw_driven" joint2="left_hip_yaw_drive" polycoef="0 -0.904762 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
     <joint joint1="right_hip_yaw_driven" joint2="right_hip_yaw_drive" polycoef="0 -0.904762 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
     <joint joint1="left_sho_yaw_driven" joint2="left_sho_yaw_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
@@ -358,10 +381,12 @@
     <joint joint1="right_sho_yaw_driven" joint2="right_sho_yaw_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
     <joint joint1="right_elbow_yaw_driven" joint2="right_elbow_yaw_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
     <joint joint1="right_wrist_pitch_driven" joint2="right_wrist_pitch_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
-    <weld body1="knee_rod" body2="bearing_683" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
-    <weld body1="knee_rod_2" body2="bearing_683_2" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
-    <weld body1="knee_rod_3" body2="bearing_683_3" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
-    <weld body1="knee_rod_4" body2="bearing_683_4" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <weld body1="neck_rod" body2="bearing_683" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <weld body1="neck_rod_2" body2="bearing_683_2" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <weld body1="knee_rod" body2="bearing_683_3" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <weld body1="knee_rod_2" body2="bearing_683_4" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <weld body1="knee_rod_3" body2="bearing_683_5" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
+    <weld body1="knee_rod_4" body2="bearing_683_6" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1" />
   </equality>
   <tendon>
     <fixed name="waist_roll_coupling" limited="true" range="-0.03 0.03">
@@ -376,7 +401,7 @@
     </fixed>
   </tendon>
   <keyframe>
-    <key name="home" qpos="0 0 0 0 0 0 0 0 0 0 0 -0.267268 0.523599 -0.523599 -0.523599 -0.25637 0 0.523599 -0.523599 -0.523599 0 0 0 0.267268 -0.523599 0.523599 0.523599 -0.25637 0 -0.523599 0.523599 0.523599 0.174533 -0.261799 1.0472 -1.0472 0.523599 -1.0472 1.0472 1.309 -1.309 0 -0.174533 -0.261799 -1.0472 1.0472 0.523599 1.0472 -1.0472 -1.309 1.309 0" />
+    <key name="home" qpos="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -0.267268 0.523599 -0.523599 -0.523599 -0.25637 0 0.523599 -0.523599 -0.523599 0 0 0 0.267268 -0.523599 0.523599 0.523599 -0.25637 0 -0.523599 0.523599 0.523599 0.174533 -0.261799 1.0472 -1.0472 0.523599 -1.0472 1.0472 1.309 -1.309 0 -0.174533 -0.261799 -1.0472 1.0472 0.523599 1.0472 -1.0472 -1.309 1.309 0" />
   </keyframe>
   <contact>
     <exclude body1="ank_roll_link" body2="ank_roll_link_2" />
@@ -384,7 +409,7 @@
   </contact>
   <actuator>
     <position name="neck_yaw_drive" joint="neck_yaw_drive" kp="11.71875" ctrlrange="-2.87979 2.87979" class="XC330" />
-    <position name="neck_pitch_drive" joint="neck_pitch_drive" kp="11.71875" ctrlrange="-2.17495 2.17495" class="XC330" />
+    <position name="neck_pitch_act" joint="neck_pitch_act" kp="11.71875" ctrlrange="-1.39626 0.610865" class="XC330" />
     <position name="waist_act_1" joint="waist_act_1" kp="11.71875" ctrlrange="-4.67748 4.67748" class="XC330" />
     <position name="waist_act_2" joint="waist_act_2" kp="11.71875" ctrlrange="-4.67748 4.67748" class="XC330" />
     <position name="left_hip_yaw_drive" joint="left_hip_yaw_drive" kp="11.71875" ctrlrange="-1.73614 1.73614" class="XC330" />
@@ -399,20 +424,20 @@
     <position name="right_knee_act" joint="right_knee_act" kp="21.09375" ctrlrange="-2.0944 0" class="XM430" />
     <position name="right_ank_roll" joint="right_ank_roll" kp="16.40625" ctrlrange="-1.5708 1.5708" class="XC430" />
     <position name="right_ank_pitch" joint="right_ank_pitch" kp="16.40625" ctrlrange="-1.74533 0.785398" class="XC430" />
-    <position name="left_sho_pitch" joint="left_sho_pitch" kp="16.40625" ctrlrange="-3.14159 1.5708" class="XC430" />
-    <position name="left_sho_roll" joint="left_sho_roll" kp="16.40625" ctrlrange="-1.5708 0.349066" class="2XL430" />
-    <position name="left_sho_yaw_drive" joint="left_sho_yaw_drive" kp="16.40625" ctrlrange="-2.61799 2.61799" class="2XL430" />
-    <position name="left_elbow_roll" joint="left_elbow_roll" kp="16.40625" ctrlrange="-1.91986 2.44346" class="2XL430" />
-    <position name="left_elbow_yaw_drive" joint="left_elbow_yaw_drive" kp="16.40625" ctrlrange="-2.61799 2.61799" class="2XL430" />
-    <position name="left_wrist_pitch_drive" joint="left_wrist_pitch_drive" kp="16.40625" ctrlrange="-1.91986 1.39626" class="2XL430" />
-    <position name="left_wrist_roll" joint="left_wrist_roll" kp="16.40625" ctrlrange="-1.91986 1.39626" class="2XL430" />
-    <position name="right_sho_pitch" joint="right_sho_pitch" kp="16.40625" ctrlrange="-1.5708 3.14159" class="XC430" />
-    <position name="right_sho_roll" joint="right_sho_roll" kp="16.40625" ctrlrange="-1.5708 0.349066" class="2XL430" />
-    <position name="right_sho_yaw_drive" joint="right_sho_yaw_drive" kp="16.40625" ctrlrange="-2.61799 2.61799" class="2XL430" />
-    <position name="right_elbow_roll" joint="right_elbow_roll" kp="16.40625" ctrlrange="-1.91986 2.44346" class="2XL430" />
-    <position name="right_elbow_yaw_drive" joint="right_elbow_yaw_drive" kp="16.40625" ctrlrange="-2.61799 2.61799" class="2XL430" />
-    <position name="right_wrist_pitch_drive" joint="right_wrist_pitch_drive" kp="16.40625" ctrlrange="-1.39626 1.91986" class="2XL430" />
-    <position name="right_wrist_roll" joint="right_wrist_roll" kp="16.40625" ctrlrange="-1.39626 1.91986" class="2XL430" />
+    <position name="left_sho_pitch" joint="left_sho_pitch" kp="5.46875" ctrlrange="-3.14159 1.5708" class="XC430" />
+    <position name="left_sho_roll" joint="left_sho_roll" kp="5.46875" ctrlrange="-1.5708 0.349066" class="2XL430" />
+    <position name="left_sho_yaw_drive" joint="left_sho_yaw_drive" kp="5.46875" ctrlrange="-2.61799 2.61799" class="2XL430" />
+    <position name="left_elbow_roll" joint="left_elbow_roll" kp="5.46875" ctrlrange="-1.91986 2.44346" class="2XL430" />
+    <position name="left_elbow_yaw_drive" joint="left_elbow_yaw_drive" kp="5.46875" ctrlrange="-2.61799 2.61799" class="2XL430" />
+    <position name="left_wrist_pitch_drive" joint="left_wrist_pitch_drive" kp="5.46875" ctrlrange="-1.91986 1.39626" class="2XL430" />
+    <position name="left_wrist_roll" joint="left_wrist_roll" kp="5.46875" ctrlrange="-1.91986 1.39626" class="2XL430" />
+    <position name="right_sho_pitch" joint="right_sho_pitch" kp="5.46875" ctrlrange="-1.5708 3.14159" class="XC430" />
+    <position name="right_sho_roll" joint="right_sho_roll" kp="5.46875" ctrlrange="-1.5708 0.349066" class="2XL430" />
+    <position name="right_sho_yaw_drive" joint="right_sho_yaw_drive" kp="5.46875" ctrlrange="-2.61799 2.61799" class="2XL430" />
+    <position name="right_elbow_roll" joint="right_elbow_roll" kp="5.46875" ctrlrange="-1.91986 2.44346" class="2XL430" />
+    <position name="right_elbow_yaw_drive" joint="right_elbow_yaw_drive" kp="5.46875" ctrlrange="-2.61799 2.61799" class="2XL430" />
+    <position name="right_wrist_pitch_drive" joint="right_wrist_pitch_drive" kp="5.46875" ctrlrange="-1.39626 1.91986" class="2XL430" />
+    <position name="right_wrist_roll" joint="right_wrist_roll" kp="5.46875" ctrlrange="-1.39626 1.91986" class="2XL430" />
   </actuator>
   <default>
     <geom type="mesh" solref="0.004 1" />

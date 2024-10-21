@@ -11,11 +11,12 @@
         ],
         "foot_name": "ank_roll_link",
         "offsets": {
-            "torso_z": 0.3442,
-            "default_torso_z": 0.336,
+            "torso_z": 0.3451,
+            "default_torso_z": 0.3383,
             "waist_roll_coef": 0.29166667,
             "waist_yaw_coef": 0.20833333
         },
+        "is_neck_closed_loop": true,
         "is_waist_closed_loop": true,
         "is_knee_closed_loop": true,
         "is_ankle_closed_loop": false,
@@ -50,12 +51,12 @@
             "q_dot_max": 10.0,
             "gear_ratio": 0.7222222222222222
         },
-        "neck_pitch_drive": {
+        "neck_pitch_act": {
             "is_passive": false,
-            "transmission": "gear",
+            "transmission": "linkage",
             "group": "neck",
-            "lower_limit": -2.174948760177549,
-            "upper_limit": 2.174948760177549,
+            "lower_limit": -1.3962634015954636,
+            "upper_limit": 0.6108652381980153,
             "damping": 0.134,
             "armature": 0.0035,
             "frictionloss": 0.014,
@@ -74,8 +75,7 @@
             "kd_sim": 0.0,
             "tau_max": 0.99,
             "q_dot_tau_max": 3.29,
-            "q_dot_max": 10.0,
-            "gear_ratio": 0.9090909090909091
+            "q_dot_max": 10.0
         },
         "waist_act_1": {
             "is_passive": false,
@@ -210,7 +210,7 @@
         },
         "left_knee_act": {
             "is_passive": false,
-            "transmission": "knee",
+            "transmission": "linkage",
             "group": "leg",
             "lower_limit": 0.0,
             "upper_limit": 2.0943951023931953,
@@ -367,7 +367,7 @@
         },
         "right_knee_act": {
             "is_passive": false,
-            "transmission": "knee",
+            "transmission": "linkage",
             "group": "leg",
             "lower_limit": -2.0943951023931953,
             "upper_limit": 0.0,
@@ -833,9 +833,19 @@
             "armature": 0.0,
             "frictionloss": 0.685
         },
+        "left_knee": {
+            "is_passive": true,
+            "transmission": "linkage",
+            "group": "leg",
+            "lower_limit": 0.0,
+            "upper_limit": 2.0943951023931953,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0
+        },
         "left_knee_back_rev_1": {
             "is_passive": true,
-            "transmission": "knee",
+            "transmission": "linkage",
             "group": "leg",
             "lower_limit": -6.283185307179586,
             "upper_limit": 6.283185307179586,
@@ -845,7 +855,7 @@
         },
         "left_knee_back_rev_2": {
             "is_passive": true,
-            "transmission": "knee",
+            "transmission": "linkage",
             "group": "leg",
             "lower_limit": -6.283185307179586,
             "upper_limit": 6.283185307179586,
@@ -855,7 +865,7 @@
         },
         "left_knee_front_rev_1": {
             "is_passive": true,
-            "transmission": "knee",
+            "transmission": "linkage",
             "group": "leg",
             "lower_limit": -6.283185307179586,
             "upper_limit": 6.283185307179586,
@@ -865,20 +875,10 @@
         },
         "left_knee_front_rev_2": {
             "is_passive": true,
-            "transmission": "knee",
+            "transmission": "linkage",
             "group": "leg",
             "lower_limit": -6.283185307179586,
             "upper_limit": 6.283185307179586,
-            "damping": 0.0,
-            "armature": 0.0,
-            "frictionloss": 0.0
-        },
-        "left_knee_pitch": {
-            "is_passive": true,
-            "transmission": "knee",
-            "group": "leg",
-            "lower_limit": 0.0,
-            "upper_limit": 2.0943951023931953,
             "damping": 0.0,
             "armature": 0.0,
             "frictionloss": 0.0
@@ -903,12 +903,52 @@
             "armature": 0.0,
             "frictionloss": 0.0
         },
-        "neck_pitch_driven": {
+        "neck_pitch": {
             "is_passive": true,
-            "transmission": "gear",
+            "transmission": "linkage",
             "group": "neck",
-            "lower_limit": -1.5707963267948966,
-            "upper_limit": 1.5707963267948966,
+            "lower_limit": -1.3962634015954636,
+            "upper_limit": 0.6108652381980153,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0
+        },
+        "neck_pitch_back_rev_1": {
+            "is_passive": true,
+            "transmission": "linkage",
+            "group": "neck",
+            "lower_limit": -6.283185307179586,
+            "upper_limit": 6.283185307179586,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0
+        },
+        "neck_pitch_back_rev_2": {
+            "is_passive": true,
+            "transmission": "linkage",
+            "group": "neck",
+            "lower_limit": -6.283185307179586,
+            "upper_limit": 6.283185307179586,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0
+        },
+        "neck_pitch_front_rev_1": {
+            "is_passive": true,
+            "transmission": "linkage",
+            "group": "neck",
+            "lower_limit": -6.283185307179586,
+            "upper_limit": 6.283185307179586,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0
+        },
+        "neck_pitch_front_rev_2": {
+            "is_passive": true,
+            "transmission": "linkage",
+            "group": "neck",
+            "lower_limit": -6.283185307179586,
+            "upper_limit": 6.283185307179586,
             "damping": 0.0,
             "armature": 0.0,
             "frictionloss": 0.0
@@ -943,9 +983,19 @@
             "armature": 0.0,
             "frictionloss": 0.685
         },
+        "right_knee": {
+            "is_passive": true,
+            "transmission": "linkage",
+            "group": "leg",
+            "lower_limit": -2.0943951023931953,
+            "upper_limit": 0.0,
+            "damping": 0.0,
+            "armature": 0.0,
+            "frictionloss": 0.0
+        },
         "right_knee_back_rev_1": {
             "is_passive": true,
-            "transmission": "knee",
+            "transmission": "linkage",
             "group": "leg",
             "lower_limit": -6.283185307179586,
             "upper_limit": 6.283185307179586,
@@ -955,7 +1005,7 @@
         },
         "right_knee_back_rev_2": {
             "is_passive": true,
-            "transmission": "knee",
+            "transmission": "linkage",
             "group": "leg",
             "lower_limit": -6.283185307179586,
             "upper_limit": 6.283185307179586,
@@ -965,7 +1015,7 @@
         },
         "right_knee_front_rev_1": {
             "is_passive": true,
-            "transmission": "knee",
+            "transmission": "linkage",
             "group": "leg",
             "lower_limit": -6.283185307179586,
             "upper_limit": 6.283185307179586,
@@ -975,20 +1025,10 @@
         },
         "right_knee_front_rev_2": {
             "is_passive": true,
-            "transmission": "knee",
+            "transmission": "linkage",
             "group": "leg",
             "lower_limit": -6.283185307179586,
             "upper_limit": 6.283185307179586,
-            "damping": 0.0,
-            "armature": 0.0,
-            "frictionloss": 0.0
-        },
-        "right_knee_pitch": {
-            "is_passive": true,
-            "transmission": "knee",
-            "group": "leg",
-            "lower_limit": -2.0943951023931953,
-            "upper_limit": 0.0,
             "damping": 0.0,
             "armature": 0.0,
             "frictionloss": 0.0

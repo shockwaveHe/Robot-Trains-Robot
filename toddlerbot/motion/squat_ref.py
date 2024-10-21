@@ -7,12 +7,10 @@ from toddlerbot.utils.array_utils import array_lib as np
 
 
 class SquatReference(MotionReference):
-    def __init__(self, robot: Robot, dt: float, com_kp: List[float] = [1.5, 1.0]):
+    def __init__(self, robot: Robot, dt: float, com_kp: List[float] = [1.0, 1.0]):
         super().__init__("squat", "perceptual", robot, dt)
 
         self.com_kp = np.array(com_kp, dtype=np.float32)
-
-        self._setup_mjx()
 
     def get_vel(self, command: ArrayType) -> Tuple[ArrayType, ArrayType]:
         lin_vel = np.array([0.0, 0.0, command[5]], dtype=np.float32)
@@ -22,7 +20,7 @@ class SquatReference(MotionReference):
     def get_state_ref(
         self, state_curr: ArrayType, time_curr: float | ArrayType, command: ArrayType
     ) -> ArrayType:
-        torso_state = self.integrate_torso_state(state_curr, command)
+        path_state = self.integrate_path_state(state_curr, command)
         joint_pos_curr = state_curr[13 : 13 + self.robot.nu]
 
         joint_pos = self.default_joint_pos.copy()
@@ -63,9 +61,9 @@ class SquatReference(MotionReference):
         joint_pos = inplace_update(joint_pos, self.waist_joint_indices, waist_joint_pos)
 
         qpos = self.default_qpos.copy()
-        qpos = inplace_update(qpos, slice(3, 7), torso_state[3:7])
+        qpos = inplace_update(qpos, slice(3, 7), path_state[3:7])
 
-        com_curr = self.com_fk(joint_pos_curr[self.left_knee_pitch_idx])
+        com_curr = self.com_fk(joint_pos_curr[self.left_knee_idx])
         com_z_target = np.clip(
             com_curr[2] + self.dt * command[5],
             self.com_z_limits[0],
@@ -74,21 +72,15 @@ class SquatReference(MotionReference):
         joint_pos = inplace_update(
             joint_pos, self.leg_joint_indices, self.com_ik(com_z_target)
         )
-        qpos = inplace_update(qpos, 7 + self.mj_joint_indices, joint_pos)
+
+        state_ref = np.concatenate((path_state, joint_pos, self.default_joint_vel))
+        qpos = self.get_qpos_ref(state_ref)
         data = self.forward(qpos)
 
         com_pos = np.array(data.subtree_com[0], dtype=np.float32)
         # PD controller on CoM position
         com_pos_error = self.desired_com[:2] - com_pos[:2]
         com_ctrl = self.com_kp * com_pos_error
-
-        # print(f"command: {command[5]}")
-        # print(f"com_pos: {com_pos}")
-        # print(f"desired_com: {self.desired_com}")
-        # print(f"com_pos_error: {com_pos_error}")
-        # print(f"com_ctrl: {com_ctrl}")
-        # print(f"com_curr: {com_curr}")
-        # print(f"com_z_target: {com_z_target}")
 
         joint_pos = inplace_update(
             joint_pos,
@@ -100,7 +92,7 @@ class SquatReference(MotionReference):
 
         stance_mask = np.ones(2, dtype=np.float32)
 
-        return np.concatenate((torso_state, joint_pos, joint_vel, stance_mask))
+        return np.concatenate((path_state, joint_pos, joint_vel, stance_mask))
 
     def override_motor_target(
         self, motor_target: ArrayType, state_ref: ArrayType

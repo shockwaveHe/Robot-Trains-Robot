@@ -39,13 +39,13 @@ class WalkCfg(MJXConfig, env_name="walk"):
     @dataclass
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
         # Walk specific rewards
-        torso_pitch: float = 0.1
+        torso_pitch: float = 0.2
         lin_vel_xy: float = 5.0
         ang_vel_z: float = 1.0
-        feet_air_time: float = 50.0
+        feet_air_time: float = 100.0
         feet_distance: float = 0.5
         feet_slip: float = 0.1
-        feet_clearance: float = 1.0
+        feet_clearance: float = 10.0
         stand_still: float = 1.0
 
     def __init__(self):
@@ -156,7 +156,7 @@ class WalkEnv(MJXEnv, env_name="walk"):
         first_contact = (info["feet_air_time"] > 0) * contact_filter
         reward = jnp.sum(info["feet_air_time"] * first_contact)
         # no reward for zero command
-        reward *= jnp.linalg.norm(info["command"]) > self.deadzone
+        reward *= jnp.linalg.norm(info["command_obs"]) > self.deadzone
         return reward
 
     def _reward_feet_clearance(
@@ -166,7 +166,7 @@ class WalkEnv(MJXEnv, env_name="walk"):
         first_contact = (info["feet_air_dist"] > 0) * contact_filter
         reward = jnp.sum(info["feet_air_dist"] * first_contact)
         # no reward for zero command
-        reward *= jnp.linalg.norm(info["command"]) > self.deadzone
+        reward *= jnp.linalg.norm(info["command_obs"]) > self.deadzone
         return reward
 
     def _reward_feet_distance(
@@ -205,5 +205,5 @@ class WalkEnv(MJXEnv, env_name="walk"):
             )
         )
         reward = -(qpos_diff**2)
-        reward *= jnp.linalg.norm(info["command"]) < self.deadzone
+        reward *= jnp.linalg.norm(info["command_obs"]) < self.deadzone
         return reward

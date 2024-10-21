@@ -46,10 +46,10 @@ class WalkZMPPolicy(BasePolicy, policy_name="walk_zmp"):
         # Indices for the pitch joints
         self.pitch_joint_indicies = [
             robot.joint_ordering.index("left_hip_pitch"),
-            robot.joint_ordering.index("left_knee_pitch"),
+            robot.joint_ordering.index("left_knee"),
             robot.joint_ordering.index("left_ank_pitch"),
             robot.joint_ordering.index("right_hip_pitch"),
-            robot.joint_ordering.index("right_knee_pitch"),
+            robot.joint_ordering.index("right_knee"),
             robot.joint_ordering.index("right_ank_pitch"),
         ]
         self.roll_joint_indicies = [

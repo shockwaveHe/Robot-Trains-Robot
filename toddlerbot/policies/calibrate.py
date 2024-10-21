@@ -31,10 +31,10 @@ class CalibratePolicy(BasePolicy, policy_name="calibrate"):
                 self.robot.joint_ordering.index(joint_name)
                 for joint_name in [
                     "left_hip_pitch",
-                    "left_knee_pitch",
+                    "left_knee",
                     "left_ank_pitch",
                     "right_hip_pitch",
-                    "right_knee_pitch",
+                    "right_knee",
                     "right_ank_pitch",
                 ]
             ]

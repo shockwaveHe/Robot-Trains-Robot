@@ -46,7 +46,7 @@ class DPPolicy(BalancePDPolicy, policy_name="dp"):
             "toddlerbot", "policies", "checkpoints", "teleop_model.pth"
         )
 
-        pred_horizon, obs_horizon, action_horizon = 16, 2, 8
+        pred_horizon, obs_horizon, action_horizon = 16, 5, 8
         action_dim = len(self.arm_motor_indices) + 2
         lowdim_obs_dim = action_dim
 
