@@ -92,10 +92,10 @@
         "kff2": 0.0
     },
     "left_ank_pitch": {
-        "motor": "XC430",
+        "motor": "XM430",
         "init_pos": 1.5324468612670898,
         "default_pos": -0.253132,
-        "kp": 2100.0,
+        "kp": 2700.0,
         "ki": 0.0,
         "kd": 0.0,
         "kff1": 0.0,
@@ -153,10 +153,10 @@
         "kff2": 0.0
     },
     "right_ank_pitch": {
-        "motor": "XC430",
+        "motor": "XM430",
         "init_pos": 3.1415927410125732,
         "default_pos": -0.253132,
-        "kp": 2100.0,
+        "kp": 2700.0,
         "ki": 0.0,
         "kd": 0.0,
         "kff1": 0.0,
