@@ -28,13 +28,13 @@ def test_motion_ref(
 ):
     joystick = Joystick()
 
-    default_qpos = np.array(sim.model.keyframe("home").qpos)
     default_joint_pos = np.array(
         list(robot.default_joint_angles.values()), dtype=np.float32
     )
     state_ref = np.concatenate(
         [
-            default_qpos[:7],
+            np.zeros(3, dtype=np.float32),  # Position
+            np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),  # Orientation
             np.zeros(3, dtype=np.float32),  # Linear velocity
             np.zeros(3, dtype=np.float32),  # Angular velocity
             default_joint_pos,  # Joint positions
