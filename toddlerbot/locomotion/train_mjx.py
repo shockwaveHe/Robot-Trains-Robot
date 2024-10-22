@@ -440,7 +440,12 @@ def train(
         # Log metrics to wandb
         wandb.log(log_data)
 
-    _, params, _ = train_fn(environment=env, eval_env=eval_env, progress_fn=progress)
+    try:
+        _, params, _ = train_fn(
+            environment=env, eval_env=eval_env, progress_fn=progress
+        )
+    except KeyboardInterrupt:
+        pass
 
     shutil.copy2(
         os.path.join(exp_folder_path, str(best_ckpt_step), "policy"),
@@ -612,5 +617,4 @@ if __name__ == "__main__":
             raise FileNotFoundError(f"Run {args.eval} not found.")
     else:
         train(env, eval_env, make_networks_factory, train_cfg, run_name, args.restore)
-
         evaluate(test_env, make_networks_factory, run_name)
