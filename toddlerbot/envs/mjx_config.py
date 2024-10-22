@@ -128,9 +128,9 @@ class MJXConfig:
 
     @dataclass
     class HangConfig:
-        init_hang_force: float = 2.0
-        final_hang_force: float = 0.025
-        hang_force_decay_episodes: int = 50_000
+        init_hang_force: float = 2.00
+        final_hang_force: float = 0.01
+        hang_force_decay_episodes: float = 100.0
 
     def __init__(self):
         self.sim = self.SimConfig()

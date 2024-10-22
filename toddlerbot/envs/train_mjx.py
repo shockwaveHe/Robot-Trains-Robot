@@ -131,7 +131,9 @@ def log_metrics(
 
     if 'hang_force' in metrics:
         log_string += f"""{'Hang force:':>{pad}} {metrics['hang_force']:.3f}\n""" 
-    
+    if 'episode_num' in metrics:
+        log_string += f"""{'Episode num:':>{pad}} {metrics['episode_num']}\n"""
+        
     if num_steps > 0 and num_total_steps > 0:
         log_string += (
             f"""{'Computation:':>{pad}} {(num_steps / time_elapsed ):.1f} steps/s\n"""
@@ -599,7 +601,7 @@ if __name__ == "__main__":
         add_domain_rand=False,
         **kwargs,
     )
-
+    print(f"training with hang force: {env.cfg.hang.init_hang_force}, eval with hang force: {eval_env.cfg.hang.init_hang_force}")
     make_networks_factory = functools.partial(
         ppo_networks.make_ppo_networks,
         policy_hidden_layer_sizes=train_cfg.policy_hidden_layer_sizes,
