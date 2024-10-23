@@ -478,12 +478,6 @@ class MJXEnv(PipelineEnv):
         )
         state.info["hang_force"] = hang_force
 
-        jax.debug.print(
-            "progress: {progress}, hang_force: {hang_force}, episode_num: {episode_num}",
-            progress=progress,
-            hang_force=state.info["hang_force"],
-            episode_num=state.info["episode_num"],
-        )
 
         def f(pipeline_state, _):
             ctrl = self.controller.step(

@@ -4,6 +4,7 @@ import inspect
 import logging
 import subprocess
 import time
+from dataclasses import asdict, is_dataclass
 from typing import Any, Callable, TypeVar
 
 from colorama import Fore, init
@@ -154,3 +155,34 @@ def set_seed(seed: int):
     os.environ["PYTHONHASHSEED"] = str(seed)
     # torch.cuda.manual_seed(seed)
     # torch.cuda.manual_seed_all(seed)
+
+
+def parse_value(value: str):
+    """Helper function to parse value from string to int/float/bool if needed."""
+    if value.lower() == "true":
+        return True
+    elif value.lower() == "false":
+        return False
+    try:
+        if "." in value:
+            return float(value)
+        else:
+            return int(value)
+    except ValueError:
+        return value  # Return as string if not a number
+
+
+def dataclass2dict(obj):
+    """
+    Recursively convert a dataclass to a dictionary.
+    Handles nested dataclasses by directly accessing their fields.
+    """
+    assert is_dataclass(obj)
+    if len(asdict(obj)) == 0:
+        return {
+            attr: asdict(getattr(obj, attr))
+            for attr in dir(obj)
+            if not attr.startswith("_") and not callable(getattr(obj, attr))
+        }
+    else:
+        return {key: value for key, value in asdict(obj).items()}

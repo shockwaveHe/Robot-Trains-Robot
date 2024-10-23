@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Any, List, Optional
 
+import gin
 import jax
 import jax.numpy as jnp
 from brax import base, math
@@ -12,12 +13,15 @@ from toddlerbot.motion.walk_zmp_ref import WalkZMPReference
 from toddlerbot.sim.robot import Robot
 
 
+@gin.configurable
 @dataclass
 class WalkCfg(MJXConfig, env_name="walk"):
+    @gin.configurable
     @dataclass
     class ActionConfig(MJXConfig.ActionConfig):
         cycle_time: float = 0.72
 
+    @gin.configurable
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):
         reset_time: float = 5.0
@@ -36,6 +40,7 @@ class WalkCfg(MJXConfig, env_name="walk"):
         deadzone: List[float] = field(default_factory=lambda: [0.01])
         command_obs_indices: List[int] = field(default_factory=lambda: [5, 6, 7])
 
+    @gin.configurable
     @dataclass
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
         # Walk specific rewards

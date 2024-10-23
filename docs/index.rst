@@ -41,6 +41,7 @@ Contents
    assembly/assembly_manual
    assembly/electronics
    assembly/teleoperation_arms
+   assembly/test_stand
 
 .. toctree::
    :maxdepth: 2

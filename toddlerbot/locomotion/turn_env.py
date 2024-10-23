@@ -1,14 +1,17 @@
 from dataclasses import dataclass, field
 from typing import List, Optional
 
+import gin
 import jax
 import jax.numpy as jnp
 
 from toddlerbot.locomotion.walk_env import WalkCfg, WalkEnv
 
 
+@gin.configurable
 @dataclass
 class TurnCfg(WalkCfg, env_name="turn"):
+    @gin.configurable
     @dataclass
     class CommandsConfig(WalkCfg.CommandsConfig):
         reset_time: float = 5.0
@@ -27,6 +30,7 @@ class TurnCfg(WalkCfg, env_name="turn"):
         deadzone: List[float] = field(default_factory=lambda: [0.1])
         command_obs_indices: List[int] = field(default_factory=lambda: [5, 6, 7])
 
+    @gin.configurable
     @dataclass
     class RewardScales(WalkCfg.RewardsConfig.RewardScales):
         # Walk specific rewards

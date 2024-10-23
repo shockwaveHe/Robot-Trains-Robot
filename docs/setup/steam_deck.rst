@@ -1,3 +1,5 @@
+.. _steam_deck:
+
 Steam Deck
 ==========
 

@@ -424,7 +424,7 @@ if __name__ == "__main__":
         "--robot",
         type=str,
         default="toddlerbot_OP3",
-        help="The name of the robot. Need to match the name in robot_descriptions.",
+        help="The name of the robot. Need to match the name in descriptions.",
         choices=["toddlerbot_OP3", "toddlerbot_arms"],
     )
     parser.add_argument(

@@ -1,7 +1,10 @@
 from dataclasses import dataclass
 from typing import Tuple
 
+import gin
 
+
+@gin.configurable
 @dataclass
 class PPOConfig:
     policy_hidden_layer_sizes: Tuple[int, ...] = (256,) * 3

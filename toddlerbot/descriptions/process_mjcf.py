@@ -834,7 +834,7 @@ def add_hanging(root: ET.Element, general_config: Dict[str, Any]):
         anchor = ET.Element(
             "body",
             name=f"anchor_{hanging_names[i]}",
-            pos=f"{offset[0]} {offset[1]} 0.6",
+            pos=f"{offset[0]} {offset[1]} 0.7",
         )
         ET.SubElement(
             anchor, "inertial", pos="0 0 0", mass="1e-3", diaginertia="1e-4 1e-4 1e-4"
@@ -1165,7 +1165,7 @@ def get_mjcf_files(robot_name: str, generate_hanging: bool = False):
         add_contacts(
             xml_root, robot.collision_config, robot.config["general"]["foot_name"]
         )
-        replace_box_collision(xml_root, robot.config["general"])
+        # replace_box_collision(xml_root, robot.config["general"])
 
         add_motor_actuators_to_mjcf(xml_root, robot.config["joints"])
         add_default_settings(
@@ -1198,7 +1198,7 @@ def main():
         help="Generate the MJCF file with hanging sites.",
     )
     args = parser.parse_args()
-
+    print(f"Generating MJCF files for {args.robot}...")
     get_mjcf_files(args.robot, args.generate_hanging)
 
 

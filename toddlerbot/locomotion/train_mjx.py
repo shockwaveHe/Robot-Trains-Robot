@@ -11,9 +11,9 @@ import json
 import pkgutil
 import shutil
 import time
-from dataclasses import asdict
 from typing import Any, Dict, List, Optional, Tuple
 
+import gin
 import jax
 import jax.numpy as jnp
 import mediapy as media
@@ -36,6 +36,22 @@ from toddlerbot.locomotion.mjx_env import MJXEnv, get_env_class
 from toddlerbot.locomotion.ppo_config import PPOConfig
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
+from toddlerbot.utils.misc_utils import dataclass2dict, parse_value
+
+
+def dynamic_import_envs(env_package: str):
+    """Dynamically import all modules in the given package."""
+    package = importlib.import_module(env_package)
+    package_path = package.__path__
+
+    # Iterate over all modules in the given package directory
+    for _, module_name, _ in pkgutil.iter_modules(package_path):
+        full_module_name = f"{env_package}.{module_name}"
+        importlib.import_module(full_module_name)
+
+
+# Call this to import all policies dynamically
+dynamic_import_envs("toddlerbot.locomotion")
 
 # jax.config.update("jax_debug_nans", True)
 # jax.config.update("jax_enable_x64", True)
@@ -349,11 +365,23 @@ def train(
         os.path.abspath(restore_path) if len(restore_path) > 0 else None
     )
 
+    # Save train config to a file and print it
+    train_config_dict = dataclass2dict(train_cfg)  # Convert dataclass to dictionary
     with open(os.path.join(exp_folder_path, "train_config.json"), "w") as f:
-        json.dump(asdict(train_cfg), f, indent=4)
+        json.dump(train_config_dict, f, indent=4)
 
+    # Print the train config
+    print("Train Config:")
+    print(json.dumps(train_config_dict, indent=4))  # Pretty-print the config
+
+    # Save env config to a file and print it
+    env_config_dict = dataclass2dict(env.cfg)  # Convert dataclass to dictionary
     with open(os.path.join(exp_folder_path, "env_config.json"), "w") as f:
-        json.dump(asdict(env.cfg), f, indent=4)
+        json.dump(env_config_dict, f, indent=4)
+
+    # Print the env config
+    print("Env Config:")
+    print(json.dumps(env_config_dict, indent=4))  # Pretty-print the config
 
     # Copy the Python scripts
     shutil.copytree(
@@ -363,10 +391,10 @@ def train(
 
     wandb.init(
         project="ToddlerBot",
-        # group="V2",
+        tags=["V2"],
         sync_tensorboard=True,
         name=run_name,
-        config=asdict(train_cfg),
+        config=dataclass2dict(train_cfg),
     )
 
     orbax_checkpointer = ocp.PyTreeCheckpointer()
@@ -573,7 +601,29 @@ if __name__ == "__main__":
         default="",
         help="Path to the checkpoint folder.",
     )
+    parser.add_argument(
+        "--gin_files",
+        type=str,
+        default="",
+        help="List of gin config files",
+    )
+    parser.add_argument(
+        "--config_override",
+        type=str,
+        default="",
+        help="Override config parameters (e.g., SimConfig.timestep=0.01 ObsConfig.frame_stack=10)",
+    )
     args = parser.parse_args()
+
+    # Load gin config file
+    if len(args.gin_files) > 0:
+        gin.parse_config_files_and_bindings(args.gin_files.split(" "), [])
+
+    # Bind parameters from --config_override
+    if len(args.config_override) > 0:
+        for override in args.config_override.split(" "):
+            key, value = override.split("=", 1)  # Split into key-value pair
+            gin.bind_parameter(key, parse_value(value))
 
     robot = Robot(args.robot)
 

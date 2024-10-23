@@ -8,6 +8,7 @@ diffusers==0.30.3
 dynamixel-sdk==3.7.31
 furo==2024.8.6
 gdown==5.2.0
+gin-config==0.5.0
 gym==0.26.2
 joblib==1.4.2
 line_profiler==4.1.3
