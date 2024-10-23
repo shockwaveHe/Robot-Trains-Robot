@@ -1,8 +1,9 @@
-import mink
 import mujoco
 import numpy as np
 import numpy.typing as npt
-from toddlerbot.arm_policies import Obs, BaseArm, BaseArmPolicy
+
+from toddlerbot.arm_policies import BaseArm, BaseArmPolicy, Obs
+
 
 class EEForcePDArmPolicy(BaseArmPolicy, arm_policy_name="ee_force_pd"):
     def __init__(
@@ -10,7 +11,7 @@ class EEForcePDArmPolicy(BaseArmPolicy, arm_policy_name="ee_force_pd"):
         name: str,
         arm: BaseArm,
         init_joint_pos: npt.NDArray[np.float32],
-        control_dt: float = 0.02, # TODO: should this be dt or integration_dt?
+        control_dt: float = 0.02,  # TODO: should this be dt or integration_dt?
     ):
         super().__init__(name, arm, init_joint_pos, control_dt)
         self.arm_model = mujoco.MjModel.from_xml_path(arm.xml_path.as_posix())
@@ -47,7 +48,7 @@ class EEForcePDArmPolicy(BaseArmPolicy, arm_policy_name="ee_force_pd"):
         self.eye = np.eye(self.arm.arm_dofs)
         self.twist = np.zeros(6)
         self.target_force = np.array([0.0, 0.0, 27.0], dtype=np.float32)
-        self.target_xyz = np.array([0.01766377, 0., 1.52856866], dtype=np.float32)
+        self.target_xyz = np.array([0.01766377, 0.0, 1.52856866], dtype=np.float32)
         self.site_id = self.arm_model.site("attachment_site").id
         self.q0 = init_joint_pos
 
@@ -57,8 +58,10 @@ class EEForcePDArmPolicy(BaseArmPolicy, arm_policy_name="ee_force_pd"):
         mujoco.mj_step(self.arm_model, self.arm_data)
         # import ipdb; ipdb.set_trace()
         # the force the end-effector is applying to the toddlerbot in the world frame
-        force_world_frame = self.arm_data.site(self.site_id).xmat.reshape(3, 3) @ obs.ee_force_data
-        error_force = (self.target_force - force_world_frame)
+        force_world_frame = (
+            self.arm_data.site(self.site_id).xmat.reshape(3, 3) @ obs.ee_force_data
+        )
+        error_force = self.target_force - force_world_frame
         # error_force[:2] = 0.0
         self.twist[:3] = self.Kforce * error_force / self.integration_dt
         print(force_world_frame, self.twist[:3])
@@ -71,23 +74,32 @@ class EEForcePDArmPolicy(BaseArmPolicy, arm_policy_name="ee_force_pd"):
         # mujoco.mju_quat2Vel(self.twist[3:], self.error_quat, 1.0)
         # self.twist[3:] *= self.Kori / self.integration_dt
 
-        mujoco.mj_jacSite(self.arm_model, self.arm_data, self.ee_jac[:3], self.ee_jac[3:], self.site_id) # TODO: is this changing?
+        mujoco.mj_jacSite(
+            self.arm_model,
+            self.arm_data,
+            self.ee_jac[:3],
+            self.ee_jac[3:],
+            self.site_id,
+        )  # TODO: is this changing?
 
-        dq = self.ee_jac.T @ np.linalg.solve(self.ee_jac @ self.ee_jac.T + self.diag, self.twist)
+        dq = self.ee_jac.T @ np.linalg.solve(
+            self.ee_jac @ self.ee_jac.T + self.diag, self.twist
+        )
         if self.arm.arm_dofs > 6:
-            dq += (self.eye - np.linalg.pinv(self.ee_jac) @ self.ee_jac) @ (self.Kn * (self.q0 - self.arm_data.qpos))
+            dq += (self.eye - np.linalg.pinv(self.ee_jac) @ self.ee_jac) @ (
+                self.Kn * (self.q0 - self.arm_data.qpos)
+            )
 
         dq_abs_max = np.abs(dq).max()
-            # import ipdb; ipdb.set_trace()
+        # import ipdb; ipdb.set_trace()
         if dq_abs_max > self.max_angvel:
             dq *= self.max_angvel / dq_abs_max
 
-        q = self.arm_data.qpos.copy()
+        q: npt.NDArray[np.float32] = self.arm_data.qpos.copy()
         mujoco.mj_integratePos(self.arm_model, q, dq, self.integration_dt)
-        np.clip(q, *self.arm_model.jnt_range.T, out=q)
-            # pos_achieved = np.linalg.norm(err[:3]) <= self.pos_threshold
-            # ori_achieved = np.linalg.norm(err[3:]) <= self.ori_threshold
-            # if pos_achieved and ori_achieved:
-            #     break
+        np.clip(q, *self.arm_model.jnt_range.T, out=q)  # type: ignore
+        # pos_achieved = np.linalg.norm(err[:3]) <= self.pos_threshold
+        # ori_achieved = np.linalg.norm(err[3:]) <= self.ori_threshold
+        # if pos_achieved and ori_achieved:
+        #     break
         return q
-

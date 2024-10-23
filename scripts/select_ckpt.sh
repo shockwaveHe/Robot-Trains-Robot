@@ -5,7 +5,7 @@
 # Assign positional arguments to variables
 # Default values
 TIME_STR=""
-ROBOT="toddlerbot"
+ROBOT="toddlerbot_OP3"
 ENV="walk"
 
 # Parse named arguments

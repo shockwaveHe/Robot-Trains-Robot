@@ -9,11 +9,13 @@ from toddlerbot.sim.arm import BaseArm
 
 arm_policy_registry: Dict[str, Type["BaseArmPolicy"]] = {}
 
+
 def get_arm_policy_class(arm_policy_name: str) -> Type["BaseArmPolicy"]:
     if arm_policy_name not in arm_policy_registry:
         raise ValueError(f"Unknown arm policy: {arm_policy_name}")
 
     return arm_policy_registry[arm_policy_name]
+
 
 def get_arm_policy_names() -> List[str]:
     policy_names: List[str] = []
@@ -45,5 +47,5 @@ class BaseArmPolicy(ABC):
         self.control_dt = control_dt
 
     @abstractmethod
-    def step(self, obs: Obs, robot_command:  npt.NDArray[np.float32], is_real: bool = False) -> npt.NDArray[np.float32]:
+    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         pass

@@ -6,7 +6,6 @@ import numpy.typing as npt
 
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
-from toddlerbot.sim.arm import BaseArm
 from toddlerbot.utils.math_utils import interpolate
 
 # Global registry to store policy names and their corresponding classes

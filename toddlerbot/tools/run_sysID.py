@@ -11,6 +11,7 @@ import numpy.typing as npt
 import optuna
 from optuna.logging import _get_library_root_logger
 
+from toddlerbot.actuation.mujoco.mujoco_control import MotorController
 from toddlerbot.sim import Obs
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.robot import Robot
@@ -243,6 +244,7 @@ def optimize_parameters(
         frictionloss=float(sim.model.joint(joint_name).frictionloss),
     )
     if "sysID" in robot.name:
+        assert isinstance(sim.controller, MotorController)
         initial_trial.update(
             dict(
                 tau_max=float(sim.controller.tau_max),
@@ -347,7 +349,7 @@ def evaluate(
         json.dump(opt_values_dict, f, indent=4)
 
     dyn_config_path = os.path.join(
-        "toddlerbot", "robot_descriptions", robot.name, "config_dynamics.json"
+        "toddlerbot", "descriptions", robot.name, "config_dynamics.json"
     )
     if os.path.exists(dyn_config_path):
         dyn_config = json.load(open(dyn_config_path, "r"))
@@ -502,7 +504,7 @@ def main():
         "--robot",
         type=str,
         default="toddlerbot",
-        help="The name of the robot. Need to match the name in robot_descriptions.",
+        help="The name of the robot. Need to match the name in descriptions.",
     )
     parser.add_argument(
         "--sim",

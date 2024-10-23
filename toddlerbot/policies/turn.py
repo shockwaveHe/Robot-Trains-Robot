@@ -3,9 +3,9 @@ from typing import Dict, Optional
 import numpy as np
 import numpy.typing as npt
 
-from toddlerbot.envs.turn_env import TurnCfg
+from toddlerbot.locomotion.turn_env import TurnCfg
+from toddlerbot.motion.walk_zmp_ref import WalkZMPReference
 from toddlerbot.policies.mjx_policy import MJXPolicy
-from toddlerbot.ref_motion.walk_zmp_ref import WalkZMPReference
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
 
@@ -23,8 +23,8 @@ class TurnPolicy(MJXPolicy, policy_name="turn"):
         env_cfg = TurnCfg()
         motion_ref = WalkZMPReference(
             robot,
-            env_cfg.action.cycle_time,
             env_cfg.sim.timestep * env_cfg.action.n_frames,
+            env_cfg.action.cycle_time,
         )
 
         self.command_range = env_cfg.commands.command_range
@@ -41,13 +41,14 @@ class TurnPolicy(MJXPolicy, policy_name="turn"):
         )
 
     def get_command(self, control_inputs: Dict[str, float]) -> npt.NDArray[np.float32]:
-        command = np.zeros_like(self.fixed_command)
+        command = np.zeros(self.num_commands, dtype=np.float32)
         for task, input in control_inputs.items():
             if task == "turn":
-                command[2] = np.interp(
+                axis = 7
+                command[axis] = np.interp(
                     input,
                     [-1, 0, 1],
-                    [self.command_range[0][1], 0.0, self.command_range[0][0]],
+                    [self.command_range[axis][1], 0.0, self.command_range[axis][0]],
                 )
 
         return command

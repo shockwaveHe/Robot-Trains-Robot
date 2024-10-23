@@ -71,9 +71,9 @@ class ReplayPolicy(BasePolicy, policy_name="replay"):
             motor_angles = {}
             obs = Obs(
                 time=data_dict["state_array"][i, 0],
-                motor_pos=np.zeros(14),
-                motor_vel=np.zeros(14),
-                motor_tor=np.zeros(14),
+                motor_pos=np.zeros(14, dtype=np.float32),
+                motor_vel=np.zeros(14, dtype=np.float32),
+                motor_tor=np.zeros(14, dtype=np.float32),
             )
             for j, jname in enumerate(self.robot.joint_ordering):
                 motor_angles[jname] = data_dict["state_array"][i, j + 1]
@@ -88,10 +88,12 @@ class ReplayPolicy(BasePolicy, policy_name="replay"):
         if self.replay_start_time < 1:
             self.replay_start_time = time.time()
 
-        curr_idx = np.argmin(np.abs(self.t_action - (time.time() - self.replay_start)))
+        curr_idx = np.argmin(
+            np.abs(self.t_action - (time.time() - self.replay_start_time))
+        )
         action = self.action_arr[curr_idx]
 
-        if (time.time() - self.replay_start) > len(self.t_action):
+        if (time.time() - self.replay_start_time) > len(self.t_action):
             print("Replay done")
             self.replay_done = True
 

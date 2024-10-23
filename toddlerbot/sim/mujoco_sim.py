@@ -43,7 +43,7 @@ class MuJoCoSim(BaseSim):
         self.n_frames = n_frames
         self.dt = dt
         self.control_dt = n_frames * dt
-        self.fixed_base = fixed_base # DISCUSS, do I still need this?
+        self.fixed_base = fixed_base  # DISCUSS, do I still need this?
         self.hang_force = hang_force
 
         if len(xml_str) > 0 and assets is not None:
@@ -55,7 +55,9 @@ class MuJoCoSim(BaseSim):
                         robot.name, suffix="_fixed_scene.xml"
                     )
                 elif hang_force > 0.0:
-                    xml_path = find_robot_file_path(robot.name, suffix="_hang_scene.xml")
+                    xml_path = find_robot_file_path(
+                        robot.name, suffix="_hang_scene.xml"
+                    )
                 else:
                     xml_path = find_robot_file_path(robot.name, suffix="_scene.xml")
 
@@ -91,6 +93,7 @@ class MuJoCoSim(BaseSim):
         self.q_start_idx = 0 if self.fixed_base else 7
         self.qd_start_idx = 0 if self.fixed_base else 6
 
+        self.controller: MotorController | PositionController
         # Check if the actuator is a motor or position actuator
         if (
             self.model.actuator(0).gainprm[0] == 1
@@ -106,7 +109,7 @@ class MuJoCoSim(BaseSim):
         if vis_type == "render":
             self.visualizer = MuJoCoRenderer(self.model)
         elif vis_type == "view":
-            self.visualizer = MuJoCoViewer(self.model, self.data)
+            self.visualizer = MuJoCoViewer(robot, self.model, self.data)
 
         self.hang_motors = 12 if self.hang_force > 0.0 else 0
         self.hang_dofs = 8 if self.hang_force > 0.0 else 0
@@ -119,8 +122,13 @@ class MuJoCoSim(BaseSim):
         mocap_id = self.model.body("target").mocapid[0]
         self.forward()
         if mocap_id != -1:
-            self.data.mocap_pos[mocap_id] = self.data.xpos[self.model.body("attachment").id]
-            mujoco.mju_mat2Quat(self.data.mocap_quat[mocap_id], self.data.xmat[self.model.body("attachment").id])
+            self.data.mocap_pos[mocap_id] = self.data.xpos[
+                self.model.body("attachment").id
+            ]
+            mujoco.mju_mat2Quat(
+                self.data.mocap_quat[mocap_id],
+                self.data.xmat[self.model.body("attachment").id],
+            )
 
     def get_motor_state(self) -> Dict[str, JointState]:
         motor_state_dict: Dict[str, JointState] = {}
@@ -229,6 +237,12 @@ class MuJoCoSim(BaseSim):
         subtree_mass = float(self.model.body(0).subtreemass)
         return subtree_mass
 
+    def set_torso_pos(self, torso_pos: npt.NDArray[np.float32]):
+        self.data.joint(0).qpos[:3] = torso_pos
+
+    def set_torso_quat(self, torso_quat: npt.NDArray[np.float32]):
+        self.data.joint(0).qpos[3:7] = torso_quat
+
     def set_motor_kps(self, motor_kps: Dict[str, float]):
         for name, kp in motor_kps.items():
             if isinstance(self.controller, MotorController):
@@ -251,6 +265,17 @@ class MuJoCoSim(BaseSim):
         for name in joint_angles:
             self.data.joint(name).qpos = joint_angles[name]
 
+        motor_angles = self.robot.joint_to_motor_angles(joint_angles)
+        for name in motor_angles:
+            self.data.joint(name).qpos = motor_angles[name]
+
+        passive_angles = self.robot.joint_to_passive_angles(joint_angles)
+        for name in passive_angles:
+            self.data.joint(name).qpos = passive_angles[name]
+
+    def set_qpos(self, qpos: npt.NDArray[np.float32]):
+        self.data.qpos = qpos
+
     def set_joint_dynamics(self, joint_dyn: Dict[str, Dict[str, float]]):
         for joint_name, dyn in joint_dyn.items():
             for key, value in dyn.items():
@@ -269,19 +294,32 @@ class MuJoCoSim(BaseSim):
 
     def step(self):
         for _ in range(self.n_frames):
-            self.data.ctrl[:self.data.ctrl.shape[0]-self.hang_motors] = self.controller.step(
-                self.data.qpos[self.q_start_idx + self.motor_indices],
-                self.data.qvel[self.qd_start_idx + self.motor_indices],
-                self.target_motor_angles,
+            self.data.ctrl[: self.data.ctrl.shape[0] - self.hang_motors] = (
+                self.controller.step(
+                    self.data.qpos[self.q_start_idx + self.motor_indices],
+                    self.data.qvel[self.qd_start_idx + self.motor_indices],
+                    self.target_motor_angles,
+                )
             )
             if self.hang_force > 0.0:
                 # import ipdb; ipdb.set_trace()
                 torso_position = self.data.xpos[self.model.body("torso").id][:2]
-                position_offset = [[0.022, 0.045], [-0.022, 0.045], [0.022, -0.045], [-0.022, -0.045]]
-                for i, hang_position in enumerate(["left_front", "right_front", "left_back", "right_back"]):
+                position_offset = [
+                    [0.022, 0.045],
+                    [-0.022, 0.045],
+                    [0.022, -0.045],
+                    [-0.022, -0.045],
+                ]
+                for i, hang_position in enumerate(
+                    ["left_front", "left_back", "right_front", "right_back"]
+                ):
                     self.data.actuator("hang_" + hang_position).ctrl = -self.hang_force
-                    self.data.actuator("hang_" + hang_position + "_x").ctrl = torso_position[0] + position_offset[i][0]
-                    self.data.actuator("hang_" + hang_position + "_y").ctrl = torso_position[1] + position_offset[i][1]
+                    self.data.actuator("hang_" + hang_position + "_x").ctrl = (
+                        torso_position[0] + position_offset[i][0]
+                    )
+                    self.data.actuator("hang_" + hang_position + "_y").ctrl = (
+                        torso_position[1] + position_offset[i][1]
+                    )
                     # site_id = self.data.site("torso_" + hang_position + "_site").id
                     # self.data.actuator("hang_" + hang_position + "_x").ctrl = self.data.xpos[site_id][0] + self.model.opt.timestep * self.data.cvel[site_id][3]
                     # self.data.actuator("hang_" + hang_position + "_y").ctrl = self.data.xpos[site_id][1] + self.model.opt.timestep * self.data.cvel[site_id][4]
@@ -311,7 +349,6 @@ class MuJoCoSim(BaseSim):
             dtype=np.float64,
         )
         for i, motor_ctrls in enumerate(motor_ctrls_list):
-            import ipdb; ipdb.set_trace()
             if isinstance(motor_ctrls, np.ndarray):
                 control[self.n_frames * i : self.n_frames * (i + 1)] = motor_ctrls
             else:
@@ -324,7 +361,7 @@ class MuJoCoSim(BaseSim):
         state_traj, _ = mujoco.rollout.rollout(
             self.model,
             self.data,
-            initial_state, 
+            initial_state,
             control,
         )
         state_traj = np.array(state_traj, dtype=np.float32).squeeze()[:: self.n_frames]

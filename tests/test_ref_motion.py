@@ -1,76 +1,137 @@
 import argparse
-import os
 import time
 from typing import List
 
 import numpy as np
-import numpy.typing as npt
 from tqdm import tqdm
 
-from toddlerbot.envs.balance_env import BalanceCfg
-from toddlerbot.envs.mjx_config import MJXConfig
-from toddlerbot.envs.rotate_torso_env import RotateTorsoCfg
-from toddlerbot.envs.squat_env import SquatCfg
-from toddlerbot.envs.walk_env import WalkCfg
-from toddlerbot.ref_motion import MotionReference
-from toddlerbot.ref_motion.balance_ref import BalanceReference
-from toddlerbot.ref_motion.rotate_torso_ref import RotateTorsoReference
-from toddlerbot.ref_motion.squat_ref import SquatReference
-from toddlerbot.ref_motion.walk_simple_ref import WalkSimpleReference
-from toddlerbot.ref_motion.walk_zmp_ref import WalkZMPReference
+from toddlerbot.locomotion.balance_env import BalanceCfg
+from toddlerbot.locomotion.squat_env import SquatCfg
+from toddlerbot.locomotion.turn_env import TurnCfg
+from toddlerbot.locomotion.walk_env import WalkCfg
+from toddlerbot.motion.balance_pd_ref import BalancePDReference
+from toddlerbot.motion.motion_ref import MotionReference
+from toddlerbot.motion.squat_ref import SquatReference
+from toddlerbot.motion.walk_simple_ref import WalkSimpleReference
+from toddlerbot.motion.walk_zmp_ref import WalkZMPReference
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.robot import Robot
-from toddlerbot.utils.misc_utils import dump_profiling_data
+from toddlerbot.tools.joystick import Joystick
 
 
 def test_motion_ref(
     robot: Robot,
     sim: MuJoCoSim,
     motion_ref: MotionReference,
-    command_list: List[npt.NDArray[np.float32]],
-    time_total: float = 5.0,
-    vis_type: str = "render",
+    command_range: List[List[float]],
+    vis_type: str,
 ):
-    exp_name: str = f"{robot.name}_{motion_ref.name}_{sim.name}_test"
-    time_str = time.strftime("%Y%m%d_%H%M%S")
-    exp_folder_path = f"results/{exp_name}_{time_str}"
-    os.makedirs(exp_folder_path, exist_ok=True)
+    joystick = Joystick()
 
-    path_pos = np.zeros(3, dtype=np.float32)
-    path_quat = np.array([1, 0, 0, 0], dtype=np.float32)
-    try:
-        for command in command_list:
-            for time_curr in tqdm(
-                np.arange(0, time_total, sim.control_dt),
-                desc="Running Ref Motion",
-            ):
-                state = motion_ref.get_state_ref(
-                    path_pos, path_quat, time_curr, command
-                )
-                joint_angles = np.asarray(state[13 : 13 + robot.nu])
-                # motor_angles = robot.joint_to_motor_angles(
-                #     dict(zip(robot.joint_ordering, joint_angles))
-                # )
-                # sim.set_motor_angles(motor_angles)
-                # sim.step()
-                sim.set_joint_angles(dict(zip(robot.joint_ordering, joint_angles)))
+    default_qpos = np.array(sim.model.keyframe("home").qpos)
+    default_joint_pos = np.array(
+        list(robot.default_joint_angles.values()), dtype=np.float32
+    )
+    state_ref = np.concatenate(
+        [
+            default_qpos[:7],
+            np.zeros(3, dtype=np.float32),  # Linear velocity
+            np.zeros(3, dtype=np.float32),  # Angular velocity
+            default_joint_pos,  # Joint positions
+            np.zeros_like(default_joint_pos),  # Joint velocities
+            np.ones(2, dtype=np.float32),  # Stance mask
+        ]
+    )
+    pose_command = np.random.uniform(-1, 1, 5)
+
+    p_bar = tqdm(desc="Running the test")
+    step_idx = 0
+    while True:
+        try:
+            control_inputs = joystick.get_controller_input()
+
+            command = np.zeros(len(command_range), dtype=np.float32)
+            if "walk" in motion_ref.name:
+                command[:3] = pose_command[:3]
+                for task, input in control_inputs.items():
+                    axis = None
+                    if task == "walk_vertical":
+                        axis = 5
+                    elif task == "walk_horizontal":
+                        axis = 6
+                    elif task == "turn":
+                        axis = 7
+
+                    if axis is not None:
+                        command[axis] = np.interp(
+                            input,
+                            [-1, 0, 1],
+                            [command_range[axis][1], 0.0, command_range[axis][0]],
+                        )
+
+            elif "balance" in motion_ref.name:
+                command[5] = pose_command[0]
+                for task, input in control_inputs.items():
+                    if task == "look_left" and input > 0:
+                        command[0] = input * command_range[0][1]
+                    elif task == "look_right" and input > 0:
+                        command[0] = input * command_range[0][0]
+                    elif task == "look_up" and input > 0:
+                        command[1] = input * command_range[1][1]
+                    elif task == "look_down" and input > 0:
+                        command[1] = input * command_range[1][0]
+                    elif task == "lean_left" and input > 0:
+                        command[3] = input * command_range[3][0]
+                    elif task == "lean_right" and input > 0:
+                        command[3] = input * command_range[3][1]
+                    elif task == "twist_left" and input > 0:
+                        command[4] = input * command_range[4][0]
+                    elif task == "twist_right" and input > 0:
+                        command[4] = input * command_range[4][1]
+
+            elif "squat" in motion_ref.name:
+                command[:3] = pose_command[:3]
+                for task, input in control_inputs.items():
+                    if task == "squat":
+                        command[5] = np.interp(
+                            control_inputs["squat"],
+                            [-1, 0, 1],
+                            [command_range[5][1], 0.0, command_range[5][0]],
+                        )
+
+            time_curr = step_idx * sim.control_dt
+            state_ref = motion_ref.get_state_ref(state_ref, time_curr, command)
+            joint_angles = dict(
+                zip(robot.joint_ordering, np.asarray(state_ref[13 : 13 + robot.nu]))
+            )
+
+            if step_idx == 0:
+                qpos = motion_ref.get_qpos_ref(state_ref)
+                sim.set_qpos(qpos)
                 sim.forward()
 
-                if vis_type == "view":
-                    time.sleep(sim.control_dt)
+            if "walk" in motion_ref.name:
+                sim.set_joint_angles(joint_angles)
+                sim.forward()
+            else:
+                motor_angles = robot.joint_to_motor_angles(joint_angles)
+                sim.set_motor_angles(motor_angles)
+                sim.step()
 
-    except KeyboardInterrupt:
-        print("KeyboardInterrupt: Stopping the simulation...")
+            step_idx += 1
 
-    finally:
-        if hasattr(sim, "save_recording"):
-            assert isinstance(sim, MuJoCoSim)
-            sim.save_recording(exp_folder_path, sim.control_dt, 2)
+            p_bar_steps = int(1 / sim.control_dt)
+            if step_idx % p_bar_steps == 0:
+                p_bar.update(p_bar_steps)
 
-        sim.close()
+            if vis_type == "view":
+                time.sleep(sim.control_dt)
 
-        prof_path = os.path.join(exp_folder_path, "profile_output.lprof")
-        dump_profiling_data(prof_path)
+        except KeyboardInterrupt:
+            print("KeyboardInterrupt: Stopping the simulation...")
+            break
+
+    sim.close()
 
 
 if __name__ == "__main__":
@@ -78,8 +139,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--robot",
         type=str,
-        default="toddlerbot",
-        help="The name of the robot. Need to match the name in robot_descriptions.",
+        default="toddlerbot_OP3",
+        help="The name of the robot. Need to match the name in descriptions.",
     )
     parser.add_argument(
         "--sim",
@@ -90,7 +151,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--vis",
         type=str,
-        default="render",
+        default="view",
         help="The visualization type.",
     )
     parser.add_argument(
@@ -103,69 +164,47 @@ if __name__ == "__main__":
 
     robot = Robot(args.robot)
     if args.sim == "mujoco":
-        from toddlerbot.sim.mujoco_sim import MuJoCoSim
-
-        sim = MuJoCoSim(robot, vis_type=args.vis, fixed_base=True)
+        sim = MuJoCoSim(robot, vis_type=args.vis, fixed_base="fixed" in args.robot)
         sim.load_keyframe()
     else:
         raise ValueError("Unknown simulator")
 
-    cfg: MJXConfig | None = None
     motion_ref: MotionReference | None = None
 
-    if args.ref == "walk_simple":
-        cfg = WalkCfg()
-        motion_ref = WalkSimpleReference(robot, cfg.action.cycle_time)
+    if "walk" in args.ref:
+        walk_cfg = WalkCfg()
+        turn_cfg = TurnCfg()
+        command_range = walk_cfg.commands.command_range
+        command_range[-1] = turn_cfg.commands.command_range[-1]
 
-    elif args.ref == "walk_zmp":
-        cfg = WalkCfg()
-        motion_ref = WalkZMPReference(
-            robot, cfg.action.cycle_time, cfg.sim.timestep * cfg.action.n_frames
+        if args.ref == "walk_simple":
+            motion_ref = WalkSimpleReference(
+                robot,
+                walk_cfg.sim.timestep * walk_cfg.action.n_frames,
+                walk_cfg.action.cycle_time,
+            )
+        else:
+            motion_ref = WalkZMPReference(
+                robot,
+                walk_cfg.sim.timestep * walk_cfg.action.n_frames,
+                walk_cfg.action.cycle_time,
+            )
+
+    elif "balance" in args.ref:
+        balance_cfg = BalanceCfg()
+        command_range = balance_cfg.commands.command_range
+        motion_ref = BalancePDReference(
+            robot, balance_cfg.sim.timestep * balance_cfg.action.n_frames
         )
 
-    elif args.ref == "squat":
-        cfg = SquatCfg()
-        motion_ref = SquatReference(robot)
-
-    elif args.ref == "rotate_torso":
-        cfg = RotateTorsoCfg()
-        motion_ref = RotateTorsoReference(robot)
-
-    elif args.ref == "balance":
-        cfg = BalanceCfg()
-        motion_ref = BalanceReference(robot)
+    elif "squat" in args.ref:
+        squat_cfg = SquatCfg()
+        command_range = squat_cfg.commands.command_range
+        motion_ref = SquatReference(
+            robot, squat_cfg.sim.timestep * squat_cfg.action.n_frames
+        )
 
     else:
         raise ValueError("Unknown ref motion")
 
-    if "walk" in args.ref:
-        command_list = [
-            np.array([0.2, 0, 0], dtype=np.float32),
-            np.array([-0.1, 0, 0], dtype=np.float32),
-            np.array([0, 0.1, 0], dtype=np.float32),
-            np.array([0.1, -0.1, 0], dtype=np.float32),
-            np.array([-0.05, 0.05, 0], dtype=np.float32),
-            np.array([0, 0.0, 0.5], dtype=np.float32),
-            np.array([0, 0, 0], dtype=np.float32),
-        ]
-
-    elif "squat" in args.ref:
-        command_list = [
-            np.array([0.05, 0, 0], dtype=np.float32),
-            np.array([-0.05, 0, 0], dtype=np.float32),
-        ]
-
-    elif "rotate_torso" in args.ref:
-        command_list = [
-            np.array([0.2, 0], dtype=np.float32),
-            np.array([0, 1.0], dtype=np.float32),
-        ]
-
-    else:
-        command_list = [
-            np.array([0.0], dtype=np.float32),
-            np.array([0.5], dtype=np.float32),
-            np.array([1.0], dtype=np.float32),
-        ]
-
-    test_motion_ref(robot, sim, motion_ref, command_list, vis_type=args.vis)
+    test_motion_ref(robot, sim, motion_ref, command_range, args.vis)

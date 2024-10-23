@@ -1,31 +1,13 @@
-from typing import Optional
+from typing import Dict, Optional
 
 import numpy as np
 import numpy.typing as npt
 
-from toddlerbot.envs.balance_env import BalanceCfg
+from toddlerbot.locomotion.balance_env import BalanceCfg
+from toddlerbot.motion.balance_pd_ref import BalancePDReference
 from toddlerbot.policies.mjx_policy import MJXPolicy
-from toddlerbot.ref_motion.balance_ref import BalanceReference
 from toddlerbot.sim.robot import Robot
-
-default_pose = np.array(
-    [
-        -0.6028545,
-        -0.90198064,
-        0.01840782,
-        1.2379225,
-        0.52615595,
-        0.4985056,
-        -1.1320779,
-        0.5031457,
-        -0.9372623,
-        -0.248505,
-        1.2179809,
-        -0.35434943,
-        -0.6473398,
-        -1.1581556,
-    ]
-)
+from toddlerbot.tools.joystick import Joystick
 
 
 class BalancePolicy(MJXPolicy, policy_name="balance"):
@@ -35,29 +17,52 @@ class BalancePolicy(MJXPolicy, policy_name="balance"):
         robot: Robot,
         init_motor_pos: npt.NDArray[np.float32],
         ckpt: str,
+        joystick: Optional[Joystick] = None,
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
     ):
+        env_cfg = BalanceCfg()
+        motion_ref = BalancePDReference(
+            robot,
+            env_cfg.sim.timestep * env_cfg.action.n_frames,
+        )
+
+        self.command_range = env_cfg.commands.command_range
+
         super().__init__(
             name,
             robot,
             init_motor_pos,
             ckpt,
+            joystick,
             fixed_command,
-            BalanceCfg(),
-            BalanceReference(robot),
+            env_cfg,
+            motion_ref,
         )
 
-        teleop_default_motor_pos = self.default_motor_pos.copy()
-        arm_motor_slice = slice(
-            robot.motor_ordering.index("left_sho_pitch"),
-            robot.motor_ordering.index("right_wrist_roll") + 1,
-        )
-        teleop_default_motor_pos[arm_motor_slice] = default_pose
-        self.prep_duration = 7.0
-        self.prep_time, self.prep_action = self.move(
-            -self.control_dt,
-            init_motor_pos,
-            teleop_default_motor_pos,
-            self.prep_duration,
-            end_time=5.0,
-        )
+    def get_command(self, control_inputs: Dict[str, float]) -> npt.NDArray[np.float32]:
+        command = np.zeros(self.num_commands, dtype=np.float32)
+        for task, input in control_inputs.items():
+            if task == "look_left" and input > 0:
+                command[0] = input * self.command_range[0][1]
+            elif task == "look_right" and input > 0:
+                command[0] = input * self.command_range[0][0]
+            elif task == "look_up" and input > 0:
+                command[1] = input * self.command_range[1][1]
+            elif task == "look_down" and input > 0:
+                command[1] = input * self.command_range[1][0]
+            elif task == "lean_left" and input > 0:
+                command[3] = input * self.command_range[3][0]
+            elif task == "lean_right" and input > 0:
+                command[3] = input * self.command_range[3][1]
+            elif task == "twist_left" and input > 0:
+                command[4] = input * self.command_range[4][0]
+            elif task == "twist_right" and input > 0:
+                command[4] = input * self.command_range[4][1]
+            elif task == "squat":
+                command[5] = np.interp(
+                    input,
+                    [-1, 0, 1],
+                    [self.command_range[5][1], 0.0, self.command_range[5][0]],
+                )
+
+        return command

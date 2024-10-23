@@ -2,7 +2,9 @@ import mink
 import mujoco
 import numpy as np
 import numpy.typing as npt
-from toddlerbot.arm_policies import Obs, BaseArm, BaseArmPolicy
+
+from toddlerbot.arm_policies import BaseArm, BaseArmPolicy, Obs
+
 
 class EEPDArmPolicy(BaseArmPolicy, arm_policy_name="ee_pd"):
     def __init__(
@@ -10,7 +12,7 @@ class EEPDArmPolicy(BaseArmPolicy, arm_policy_name="ee_pd"):
         name: str,
         arm: BaseArm,
         init_joint_pos: npt.NDArray[np.float32],
-        control_dt: float = 0.02, # TODO: should this be dt or integration_dt?
+        control_dt: float = 0.02,  # TODO: should this be dt or integration_dt?
     ):
         super().__init__(name, arm, init_joint_pos, control_dt)
         self.arm_model = mujoco.MjModel.from_xml_path(arm.xml_path.as_posix())
@@ -53,7 +55,7 @@ class EEPDArmPolicy(BaseArmPolicy, arm_policy_name="ee_pd"):
         self.site_id = self.arm_model.site("attachment_site").id
         self.q0 = init_joint_pos
 
-    def step(self, obs: Obs, command: npt.NDArray[np.float32] | None = None, is_real: bool = False) -> npt.NDArray[np.float32]:
+    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         self.arm_data.qpos[:] = obs.arm_joint_pos
         self.arm_data.qvel[:] = obs.arm_joint_vel
         mujoco.mj_step(self.arm_model, self.arm_data)
@@ -67,23 +69,32 @@ class EEPDArmPolicy(BaseArmPolicy, arm_policy_name="ee_pd"):
         self.twist[3:] *= self.Kori / self.integration_dt
         # print(obs.mocap_pos, error_pos, self.twist)
 
-        mujoco.mj_jacSite(self.arm_model, self.arm_data, self.ee_jac[:3], self.ee_jac[3:], self.site_id) # TODO: is this changing?
+        mujoco.mj_jacSite(
+            self.arm_model,
+            self.arm_data,
+            self.ee_jac[:3],
+            self.ee_jac[3:],
+            self.site_id,
+        )  # TODO: is this changing?
 
-        dq = self.ee_jac.T @ np.linalg.solve(self.ee_jac @ self.ee_jac.T + self.diag, self.twist)
+        dq = self.ee_jac.T @ np.linalg.solve(
+            self.ee_jac @ self.ee_jac.T + self.diag, self.twist
+        )
         if self.arm.arm_dofs > 6:
-            dq += (self.eye - np.linalg.pinv(self.ee_jac) @ self.ee_jac) @ (self.Kn * (self.q0 - self.arm_data.qpos))
+            dq += (self.eye - np.linalg.pinv(self.ee_jac) @ self.ee_jac) @ (
+                self.Kn * (self.q0 - self.arm_data.qpos)
+            )
 
         dq_abs_max = np.abs(dq).max()
-            # import ipdb; ipdb.set_trace()
+        # import ipdb; ipdb.set_trace()
         if dq_abs_max > self.max_angvel:
             dq *= self.max_angvel / dq_abs_max
 
         q = self.arm_data.qpos.copy()
         mujoco.mj_integratePos(self.arm_model, q, dq, self.integration_dt)
-        np.clip(q, *self.arm_model.jnt_range.T, out=q)
-            # pos_achieved = np.linalg.norm(err[:3]) <= self.pos_threshold
-            # ori_achieved = np.linalg.norm(err[3:]) <= self.ori_threshold
-            # if pos_achieved and ori_achieved:
-            #     break
+        q = np.clip(q, *self.arm_model.jnt_range.T)
+        # pos_achieved = np.linalg.norm(err[:3]) <= self.pos_threshold
+        # ori_achieved = np.linalg.norm(err[3:]) <= self.ori_threshold
+        # if pos_achieved and ori_achieved:
+        #     break
         return q
-

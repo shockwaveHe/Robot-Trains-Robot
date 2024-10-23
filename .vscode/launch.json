@@ -6,6 +6,21 @@
     "configurations": [
 
         {
+            "name": "Python: process_dataset",
+            "type": "python",
+            "request": "launch",
+            "program": "toddlerbot/manipulation/datasets/process_raw_data.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--time-str",
+                // "20241015_142438",
+                // "20241018_184113",
+                // "20241019_142654", // first dataset
+                "20241019_162716", // pick up only dataset
+            ]
+        },
+        {
             "cwd": "${workspaceRoot}",
             "executable": "toddlerbot/actuation/sunny_sky/knee_esc/motorcontrol.elf",
             "name": "Flush Knee ESC",
@@ -274,7 +289,7 @@
             ]
         },
         {
-            "name": "Python: teleop_ankle_toddlerbot_mujoco",
+            "name": "Python: teleop_toddlerbot_OP3_mujoco",
             "type": "python",
             "request": "launch",
             "program": "toddlerbot/policies/run_policy.py",
@@ -282,11 +297,15 @@
             "justMyCode": true,
             "args": [
                 "--robot",
-                "toddlerbot",
+                "toddlerbot_OP3",
                 "--sim",
                 "mujoco",
+                "--vis",
+                "view",
                 "--policy",
-                "teleop_ankle"
+                "teleop_follower_pd",
+                "--ip",
+                "192.168.0.102"
             ]
         },
         {

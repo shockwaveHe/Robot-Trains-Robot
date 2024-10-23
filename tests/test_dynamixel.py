@@ -65,9 +65,7 @@ def get_dynamixel_controller(
 # @profile()
 def main(robot: Robot):
     dynamixel_controller = get_dynamixel_controller(
-        robot,
-        id_list=[*range(0, 32)],
-        group="all"
+        robot, id_list=[*range(0, 32)], group="all"
     )
 
     step_idx = 0
@@ -106,7 +104,7 @@ if __name__ == "__main__":
         "--robot",
         type=str,
         default="toddlerbot",
-        help="The name of the robot. Need to match the name in robot_descriptions.",
+        help="The name of the robot. Need to match the name in descriptions.",
     )
     args = parser.parse_args()
 

@@ -3,6 +3,8 @@ results/
 scripts/run_*_remote.sh
 scripts/run_*_remote.py
 wandb/
+tests/images/
+toddlerbot/policies/checkpoints/*teleop*
 
 ### Python ###
 
@@ -171,10 +173,13 @@ cython_debug/
 *.png
 standard_bot
 
-**/.DS_Store
 .Zone.Identifier
 *.TXT
 *.gitkeep
+
+# Datasets
+**/.DS_Store
+datasets/*.lz4
 archived
 test_*
 run_toddler.py

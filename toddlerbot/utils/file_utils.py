@@ -115,14 +115,20 @@ def find_last_result_dir(result_dir: str, prefix: str = "") -> Optional[str]:
         print(f"No directories starting with '{prefix}' were found in {result_dir}.")
         return None
 
-def find_arm_toddler_file_path(arm_name: str, toddler_name: str, suffix: str = ".urdf") -> str:
-    robot_dir = os.path.join("toddlerbot", "robot_descriptions", arm_name)
+
+def find_arm_toddler_file_path(
+    arm_name: str, toddler_name: str, suffix: str = ".urdf"
+) -> str:
+    robot_dir = os.path.join("toddlerbot", "descriptions", arm_name)
     if os.path.exists(robot_dir):
-        file_path = os.path.join(robot_dir, '_'.join([arm_name, toddler_name]) + suffix)
+        file_path = os.path.join(robot_dir, "_".join([arm_name, toddler_name]) + suffix)
         if os.path.exists(file_path):
             return file_path
 
-    raise FileNotFoundError(f"No {suffix} file found for arm '{arm_name}' and robot '{toddler_name}'.")
+    raise FileNotFoundError(
+        f"No {suffix} file found for arm '{arm_name}' and robot '{toddler_name}'."
+    )
+
 
 def find_robot_file_path(robot_name: str, suffix: str = ".urdf") -> str:
     """
@@ -144,13 +150,13 @@ def find_robot_file_path(robot_name: str, suffix: str = ".urdf") -> str:
         robot_urdf_path = find_urdf_path("robotis_op3")
         print(robot_urdf_path)
     """
-    robot_dir = os.path.join("toddlerbot", "robot_descriptions", robot_name)
+    robot_dir = os.path.join("toddlerbot", "descriptions", robot_name)
     if os.path.exists(robot_dir):
         file_path = os.path.join(robot_dir, robot_name + suffix)
         if os.path.exists(file_path):
             return file_path
     else:
-        assembly_dir = os.path.join("toddlerbot", "robot_descriptions", "assemblies")
+        assembly_dir = os.path.join("toddlerbot", "descriptions", "assemblies")
         file_path = os.path.join(assembly_dir, robot_name + suffix)
         if os.path.exists(file_path):
             return file_path
