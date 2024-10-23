@@ -180,7 +180,7 @@ def dataclass2dict(obj):
     assert is_dataclass(obj)
     if len(asdict(obj)) == 0:
         return {
-            attr: getattr(obj, attr)
+            attr: asdict(getattr(obj, attr))
             for attr in dir(obj)
             if not attr.startswith("_") and not callable(getattr(obj, attr))
         }
