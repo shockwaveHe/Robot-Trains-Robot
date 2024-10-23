@@ -172,16 +172,17 @@ def parse_value(value: str):
         return value  # Return as string if not a number
 
 
-def recursive_asdict(obj):
+def dataclass2dict(obj):
     """
     Recursively convert a dataclass to a dictionary.
-    Handles nested dataclasses by recursively calling asdict on them.
+    Handles nested dataclasses by directly accessing their fields.
     """
-    if is_dataclass(obj):
-        return {key: recursive_asdict(value) for key, value in asdict(obj).items()}
-    elif isinstance(obj, (list, tuple)):
-        return [recursive_asdict(item) for item in obj]
-    elif isinstance(obj, dict):
-        return {key: recursive_asdict(value) for key, value in obj.items()}
+    assert is_dataclass(obj)
+    if len(asdict(obj)) == 0:
+        return {
+            attr: getattr(obj, attr)
+            for attr in dir(obj)
+            if not attr.startswith("_") and not callable(getattr(obj, attr))
+        }
     else:
-        return obj
+        return {key: value for key, value in asdict(obj).items()}

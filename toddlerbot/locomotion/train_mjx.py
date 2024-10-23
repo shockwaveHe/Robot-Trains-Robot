@@ -35,7 +35,7 @@ from toddlerbot.locomotion.mjx_env import MJXEnv, get_env_class
 from toddlerbot.locomotion.ppo_config import PPOConfig
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
-from toddlerbot.utils.misc_utils import parse_value, recursive_asdict
+from toddlerbot.utils.misc_utils import dataclass2dict, parse_value
 
 
 def dynamic_import_envs(env_package: str):
@@ -338,7 +338,7 @@ def train(
     )
 
     # Save train config to a file and print it
-    train_config_dict = recursive_asdict(train_cfg)  # Convert dataclass to dictionary
+    train_config_dict = dataclass2dict(train_cfg)  # Convert dataclass to dictionary
     with open(os.path.join(exp_folder_path, "train_config.json"), "w") as f:
         json.dump(train_config_dict, f, indent=4)
 
@@ -347,7 +347,7 @@ def train(
     print(json.dumps(train_config_dict, indent=4))  # Pretty-print the config
 
     # Save env config to a file and print it
-    env_config_dict = recursive_asdict(env.cfg)  # Convert dataclass to dictionary
+    env_config_dict = dataclass2dict(env.cfg)  # Convert dataclass to dictionary
     with open(os.path.join(exp_folder_path, "env_config.json"), "w") as f:
         json.dump(env_config_dict, f, indent=4)
 
@@ -365,7 +365,7 @@ def train(
         project="ToddlerBot",
         sync_tensorboard=True,
         name=run_name,
-        config=recursive_asdict(train_cfg),
+        config=dataclass2dict(train_cfg),
     )
 
     orbax_checkpointer = ocp.PyTreeCheckpointer()
@@ -557,24 +557,25 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--gin_files",
-        nargs="+",
-        default=[],
+        type=str,
+        default="",
         help="List of gin config files",
     )
     parser.add_argument(
         "--config_override",
-        nargs="+",
+        type=str,
+        default="",
         help="Override config parameters (e.g., SimConfig.timestep=0.01 ObsConfig.frame_stack=10)",
     )
     args = parser.parse_args()
 
     # Load gin config file
     if len(args.gin_files) > 0:
-        gin.parse_config_files_and_bindings(args.gin_files, [])
+        gin.parse_config_files_and_bindings(args.gin_files.split(" "), [])
 
     # Bind parameters from --config_override
-    if args.config_override:
-        for override in args.config_override:
+    if len(args.config_override) > 0:
+        for override in args.config_override.split(" "):
             key, value = override.split("=", 1)  # Split into key-value pair
             gin.bind_parameter(key, parse_value(value))
 
