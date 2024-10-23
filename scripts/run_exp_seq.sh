@@ -17,7 +17,7 @@ for robot in "${robots[@]}"; do
             echo "Running experiment with Robot: $robot, Env: $env, Config Override: $config_override"
             
             # Run the Python script with the current configuration
-            python toddlerbot/locomotion/train_mjx.py --robot "$robot" --env "$env" -config_override "$config_override"
+            python toddlerbot/locomotion/train_mjx.py --robot "$robot" --env "$env" --config_override "$config_override"
             
             # Optional: Add a small delay between experiments
             sleep 1
