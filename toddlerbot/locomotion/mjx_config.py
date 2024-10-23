@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from typing import Dict, List, Type
 
+import gin
+
 # Global registry to store env names and their corresponding classes
 env_cfg_registry: Dict[str, Type["MJXConfig"]] = {}
 
@@ -12,8 +14,10 @@ def get_env_cfg_class(env_name: str) -> Type["MJXConfig"]:
     return env_cfg_registry[env_name]
 
 
+@gin.configurable
 @dataclass
 class MJXConfig:
+    @gin.configurable
     @dataclass
     class SimConfig:
         timestep: float = 0.004
@@ -21,8 +25,10 @@ class MJXConfig:
         iterations: int = 1
         ls_iterations: int = 4
 
+    @gin.configurable
     @dataclass
     class ObsConfig:
+        @gin.configurable
         @dataclass
         class ObsScales:
             lin_vel: float = 2.0
@@ -38,6 +44,7 @@ class MJXConfig:
         num_single_privileged_obs: int = 141
         scales: ObsScales = ObsScales()
 
+    @gin.configurable
     @dataclass
     class ActionConfig:
         action_scale: float = 0.25
@@ -48,8 +55,10 @@ class MJXConfig:
         n_steps_delay: int = 1
         n_frames: int = 5
 
+    @gin.configurable
     @dataclass
     class RewardsConfig:
+        @gin.configurable
         @dataclass
         class RewardScales:
             torso_pos: float = 0.0  # 1.0
@@ -93,6 +102,7 @@ class MJXConfig:
         torso_pitch_range: List[float] = field(default_factory=lambda: [-0.2, 0.2])
         scales: RewardScales = RewardScales()
 
+    @gin.configurable
     @dataclass
     class CommandsConfig:
         resample_time: float = 5.0
@@ -102,6 +112,7 @@ class MJXConfig:
         deadzone: List[float] = field(default_factory=lambda: [])
         command_obs_indices: List[int] = field(default_factory=lambda: [])
 
+    @gin.configurable
     @dataclass
     class DomainRandConfig:
         friction_range: List[float] = field(default_factory=lambda: [0.5, 2.0])
@@ -118,6 +129,7 @@ class MJXConfig:
         push_vel: float = 0.2
         push_phi_max: float = 0.2
 
+    @gin.configurable
     @dataclass
     class NoiseConfig:
         reset_noise_joint_pos: float = 0.05

@@ -13,6 +13,7 @@ import time
 from dataclasses import asdict
 from typing import Any, Dict, List, Optional, Tuple
 
+import gin
 import jax
 import jax.numpy as jnp
 import mediapy as media
@@ -50,6 +51,21 @@ def dynamic_import_envs(env_package: str):
 
 # Call this to import all policies dynamically
 dynamic_import_envs("toddlerbot.locomotion")
+
+
+def parse_value(value: str):
+    """Helper function to parse value from string to int/float/bool if needed."""
+    if value.lower() == "true":
+        return True
+    elif value.lower() == "false":
+        return False
+    try:
+        if "." in value:
+            return float(value)
+        else:
+            return int(value)
+    except ValueError:
+        return value  # Return as string if not a number
 
 
 def render_video(
@@ -336,11 +352,23 @@ def train(
         os.path.abspath(restore_path) if len(restore_path) > 0 else None
     )
 
+    # Save train config to a file and print it
+    train_config_dict = asdict(train_cfg)  # Convert dataclass to dictionary
     with open(os.path.join(exp_folder_path, "train_config.json"), "w") as f:
-        json.dump(asdict(train_cfg), f, indent=4)
+        json.dump(train_config_dict, f, indent=4)
 
+    # Print the train config
+    print("Train Config:")
+    print(json.dumps(train_config_dict, indent=4))  # Pretty-print the config
+
+    # Save env config to a file and print it
+    env_config_dict = asdict(env.cfg)  # Convert dataclass to dictionary
     with open(os.path.join(exp_folder_path, "env_config.json"), "w") as f:
-        json.dump(asdict(env.cfg), f, indent=4)
+        json.dump(env_config_dict, f, indent=4)
+
+    # Print the env config
+    print("Env Config:")
+    print(json.dumps(env_config_dict, indent=4))  # Pretty-print the config
 
     # Copy the Python scripts
     shutil.copytree(
@@ -542,7 +570,28 @@ if __name__ == "__main__":
         default="",
         help="Path to the checkpoint folder.",
     )
+    parser.add_argument(
+        "--gin_files",
+        nargs="+",
+        default=[],
+        help="List of gin config files",
+    )
+    parser.add_argument(
+        "--config_override",
+        nargs="*",
+        help="Override config parameters (e.g., SimConfig.timestep=0.01 ObsConfig.frame_stack=10)",
+    )
     args = parser.parse_args()
+
+    # Load gin config file
+    if len(args.gin_files) > 0:
+        gin.parse_config_files_and_bindings(args.gin_files, [])
+
+    # Bind parameters from --config_override
+    if args.config_override:
+        for override in args.config_override:
+            key, value = override.split("=", 1)  # Split into key-value pair
+            gin.bind_parameter(key, parse_value(value))
 
     robot = Robot(args.robot)
 

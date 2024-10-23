@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Any, List, Optional
 
+import gin
 import jax
 import jax.numpy as jnp
 
@@ -10,6 +11,7 @@ from toddlerbot.motion.balance_pd_ref import BalancePDReference
 from toddlerbot.sim.robot import Robot
 
 
+@gin.configurable
 @dataclass
 class BalanceCfg(MJXConfig, env_name="balance"):
     @dataclass
@@ -17,6 +19,7 @@ class BalanceCfg(MJXConfig, env_name="balance"):
         num_single_obs: int = 101
         num_single_privileged_obs: int = 141
 
+    @gin.configurable
     @dataclass
     class CommandsConfig(MJXConfig.CommandsConfig):
         resample_time: float = 2.0
@@ -35,6 +38,7 @@ class BalanceCfg(MJXConfig, env_name="balance"):
         )
         command_obs_indices: List[int] = field(default_factory=lambda: [0, 1, 3, 4])
 
+    @gin.configurable
     @dataclass
     class RewardScales(MJXConfig.RewardsConfig.RewardScales):
         # Balance specific rewards

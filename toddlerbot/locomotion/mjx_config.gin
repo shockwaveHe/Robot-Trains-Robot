@@ -1,5 +1,0 @@
-SimConfig.timestep = 0.002
-ObsConfig.frame_stack = 10
-ActionConfig.action_scale = 0.5
-RewardScales.torso_quat = 0.5
-CommandsConfig.resample_time = 3.0
