@@ -1,11 +1,10 @@
-=========
 Getting Started
-=========
+=======================
 
 Welcome! This page summarized the process you should follow to build and extend the whole toddlerbot system. In each step, there are pointers to the detailed instructions. Are you ready to make yourself a humanoid? Let's get started! 
 
 Sourcing the Parts
--------------
+-----------------------
 The first step in building your Toddlerbot is to source the parts.
 You can find a list of the parts you will need in the :ref:`bom` section.
 
@@ -19,7 +18,7 @@ You can find a list of the parts you will need in the :ref:`bom` section.
     We also highly recommand getting an electric screw driver, both the big one and the small one, for your welfare.
 
 Start Printing
--------------
+----------------
 As you wait for the orders and PCBs to arrive, you can start printing the parts! Suggested plate order is:
 
 1. Torso
@@ -61,19 +60,19 @@ Jetson is the brain of the Toddlerbot. It's a powerful little computer that can 
     At this point you should have a working toddlerbot! Here are the optional parts that would make your life cooler (and easier).
 
 [Optional] Test Stand
--------------
+--------------------------
 For the safety of the toddy (and you), we designed a test stand that you can lift it up in the air and test without requiring it to be on the ground. The instructions are here: :ref:`test_stand`
 
 [Optional] Steam Deck
--------------
+--------------------------
 Simply put, steam deck is a handheld sized desktop computer. It runs Arch Linux and can run all the software stacks that you would run on a desktop. With steam deck, you are truly wireless. You can bring the toddlerbot anywhere and control it from the steam deck. The setup instructions are here: :ref:`steam_deck`
 
 [Optional] Teleoperation
--------------
+--------------------------
 You can for sure develop any teleoperation solution you want. We find a simple yet effective solution is to simply build another upper body (as leader) to teleoperate the full body toddlerbot. It's quite intuitive as you can just hold it's hand and instruct it like a baby. The instructions of building are here: :ref:`teleoperation_arms`. The toddlerbot API have everything already written to teleoperate the toddlerbot this way.
 
 [Optional] DIY battery pack for more battery life
--------------
+--------------------------------------------------
 You can get up to doubled battery life by switching from a LiPo pack to 4x 21700 cells.
 
 .. warning::
