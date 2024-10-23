@@ -10,7 +10,6 @@ import json
 import pkgutil
 import shutil
 import time
-from dataclasses import asdict
 from typing import Any, Dict, List, Optional, Tuple
 
 import gin
@@ -36,6 +35,7 @@ from toddlerbot.locomotion.mjx_env import MJXEnv, get_env_class
 from toddlerbot.locomotion.ppo_config import PPOConfig
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
+from toddlerbot.utils.misc_utils import parse_value, recursive_asdict
 
 
 def dynamic_import_envs(env_package: str):
@@ -51,21 +51,6 @@ def dynamic_import_envs(env_package: str):
 
 # Call this to import all policies dynamically
 dynamic_import_envs("toddlerbot.locomotion")
-
-
-def parse_value(value: str):
-    """Helper function to parse value from string to int/float/bool if needed."""
-    if value.lower() == "true":
-        return True
-    elif value.lower() == "false":
-        return False
-    try:
-        if "." in value:
-            return float(value)
-        else:
-            return int(value)
-    except ValueError:
-        return value  # Return as string if not a number
 
 
 def render_video(
@@ -353,7 +338,7 @@ def train(
     )
 
     # Save train config to a file and print it
-    train_config_dict = asdict(train_cfg)  # Convert dataclass to dictionary
+    train_config_dict = recursive_asdict(train_cfg)  # Convert dataclass to dictionary
     with open(os.path.join(exp_folder_path, "train_config.json"), "w") as f:
         json.dump(train_config_dict, f, indent=4)
 
@@ -362,7 +347,7 @@ def train(
     print(json.dumps(train_config_dict, indent=4))  # Pretty-print the config
 
     # Save env config to a file and print it
-    env_config_dict = asdict(env.cfg)  # Convert dataclass to dictionary
+    env_config_dict = recursive_asdict(env.cfg)  # Convert dataclass to dictionary
     with open(os.path.join(exp_folder_path, "env_config.json"), "w") as f:
         json.dump(env_config_dict, f, indent=4)
 
@@ -380,7 +365,7 @@ def train(
         project="ToddlerBot",
         sync_tensorboard=True,
         name=run_name,
-        config=asdict(train_cfg),
+        config=recursive_asdict(train_cfg),
     )
 
     orbax_checkpointer = ocp.PyTreeCheckpointer()
@@ -578,7 +563,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--config_override",
-        nargs="*",
+        nargs="+",
         help="Override config parameters (e.g., SimConfig.timestep=0.01 ObsConfig.frame_stack=10)",
     )
     args = parser.parse_args()
