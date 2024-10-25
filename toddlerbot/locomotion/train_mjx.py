@@ -58,21 +58,6 @@ dynamic_import_envs("toddlerbot.locomotion")
 # jax.config.update("jax_disable_jit", True)
 
 
-def dynamic_import_envs(env_package: str):
-    """Dynamically import all modules in the given package."""
-    package = importlib.import_module(env_package)
-    package_path = package.__path__
-
-    # Iterate over all modules in the given package directory
-    for _, module_name, _ in pkgutil.iter_modules(package_path):
-        full_module_name = f"{env_package}.{module_name}"
-        importlib.import_module(full_module_name)
-
-
-# Call this to import all policies dynamically
-dynamic_import_envs("toddlerbot.locomotion")
-
-
 def render_video(
     env: MJXEnv,
     rollout: List[Any],
@@ -464,8 +449,10 @@ def train(
         network_factory=make_networks_factory,
         randomization_fn=domain_randomize_fn,
         eval_randomization_fn=eval_domain_randomize_fn,
+        render_interval=train_cfg.render_interval,
         policy_params_fn=policy_params_fn,
         restore_checkpoint_path=restore_checkpoint_path,
+        run_name=run_name,
     )
 
     times = [time.time()]

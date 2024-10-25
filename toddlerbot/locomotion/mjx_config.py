@@ -142,6 +142,7 @@ class MJXConfig:
         backlash_scale: float = 0.02
         backlash_activation: float = 0.1
 
+    @gin.configurable
     @dataclass
     class HangConfig:
         init_hang_force: float = 1.0
