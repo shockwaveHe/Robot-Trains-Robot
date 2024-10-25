@@ -49,7 +49,7 @@ class ZMPWalk:
 
     def build_lookup_table(
         self,
-        command_range: List[List[float]] = [[-0.1, 0.2], [-0.1, 0.1], [-0.5, 0.5]],
+        command_range: List[List[float]] = [[-0.1, 0.4], [-0.1, 0.1], [-0.5, 0.5]],
         interval: float = 0.02,
     ):
         """
