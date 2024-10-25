@@ -22,7 +22,7 @@ from toddlerbot.utils.math_utils import (
     exponential_moving_average,
 )
 
-dtype = jnp.float64 if jax.config.jax_enable_x64 else jnp.float32
+dtype = jnp.float64 if jax.config.jax_enable_x64 else jnp.float32  # type: ignore
 # Global registry to store env names and their corresponding classes
 env_registry: Dict[str, Type["MJXEnv"]] = {}
 
@@ -135,11 +135,6 @@ class MJXEnv(PipelineEnv):
             np.char.find(self.sys.link_names, self.robot.foot_name) >= 0
         )
         self.feet_link_ids = jnp.arange(self.sys.num_links())[feet_link_mask]
-
-        waist_link_mask = jnp.array(
-            np.char.find(self.sys.link_names, "waist_link") >= 0
-        )
-        self.waist_link_id = jnp.arange(self.sys.num_links())[waist_link_mask].item()
 
         self.contact_force_threshold = self.cfg.action.contact_force_threshold
 
@@ -477,7 +472,6 @@ class MJXEnv(PipelineEnv):
             self.cfg.hang.init_hang_force - self.cfg.hang.final_hang_force
         )
         state.info["hang_force"] = hang_force
-
 
         def f(pipeline_state, _):
             ctrl = self.controller.step(
@@ -887,8 +881,8 @@ class MJXEnv(PipelineEnv):
     ):
         """Reward for track linear velocity in xy"""
         lin_vel_local = math.rotate(
-            pipeline_state.xd.vel[self.waist_link_id],
-            math.quat_inv(pipeline_state.x.rot[self.waist_link_id]),
+            pipeline_state.xd.vel[0],
+            math.quat_inv(pipeline_state.x.rot[0]),
         )
         lin_vel_xy = lin_vel_local[:2]
         lin_vel_xy_ref = info["state_ref"][7:9]
@@ -901,8 +895,8 @@ class MJXEnv(PipelineEnv):
     ):
         """Reward for track linear velocity in z"""
         lin_vel_local = math.rotate(
-            pipeline_state.xd.vel[self.waist_link_id],
-            math.quat_inv(pipeline_state.x.rot[self.waist_link_id]),
+            pipeline_state.xd.vel[0],
+            math.quat_inv(pipeline_state.x.rot[0]),
         )
         lin_vel_z = lin_vel_local[2]
         lin_vel_z_ref = info["state_ref"][9]
@@ -915,8 +909,8 @@ class MJXEnv(PipelineEnv):
     ):
         """Reward for track angular velocity in xy"""
         ang_vel_local = math.rotate(
-            pipeline_state.xd.ang[self.waist_link_id],
-            math.quat_inv(pipeline_state.x.rot[self.waist_link_id]),
+            pipeline_state.xd.ang[0],
+            math.quat_inv(pipeline_state.x.rot[0]),
         )
         ang_vel_xy = ang_vel_local[:2]
         ang_vel_xy_ref = info["state_ref"][10:12]
@@ -929,8 +923,8 @@ class MJXEnv(PipelineEnv):
     ):
         """Reward for track angular velocity in z"""
         ang_vel_local = math.rotate(
-            pipeline_state.xd.ang[self.waist_link_id],
-            math.quat_inv(pipeline_state.x.rot[self.waist_link_id]),
+            pipeline_state.xd.ang[0],
+            math.quat_inv(pipeline_state.x.rot[0]),
         )
         ang_vel_z = ang_vel_local[2]
         ang_vel_z_ref = info["state_ref"][12]
