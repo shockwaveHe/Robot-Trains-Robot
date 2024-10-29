@@ -119,6 +119,7 @@ class MJXConfig:
         damping_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
         armature_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
         frictionloss_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
+        gravity_range: List[float] = field(default_factory=lambda: [1.4, 1.6])
         added_mass_range: List[float] = field(default_factory=lambda: [-0.2, 0.2])
         kp_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
         kd_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
@@ -145,9 +146,9 @@ class MJXConfig:
     @gin.configurable
     @dataclass
     class HangConfig:
-        init_hang_force: float = 1.0
+        init_hang_force: float = 2.0
         final_hang_force: float = 0.0
-        hang_force_decay_episodes: float = 100.0
+        hang_force_decay_episodes: float = 200.0
 
     def __init__(self):
         self.sim = self.SimConfig()

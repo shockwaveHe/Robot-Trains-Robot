@@ -4,10 +4,9 @@
 robots=("toddlerbot_OP3")
 envs=("walk")
 config_overrides=(
-    "PPOConfig.batch_size=1024 PPOConfig.num_minibatches=1"
-    "PPOConfig.batch_size=512 PPOConfig.num_minibatches=2"
-    "PPOConfig.batch_size=256 PPOConfig.num_minibatches=4"
-    "PPOConfig.batch_size=128 PPOConfig.num_minibatches=8"
+    "HangConfig.init_hang_force=2.0 HangConfig.final_hang_force=0.0 HangConfig.hang_force_decay_episodes=150"
+    "HangConfig.init_hang_force=2.0 HangConfig.final_hang_force=0.0 HangConfig.hang_force_decay_episodes=100"
+    "HangConfig.init_hang_force=2.0 HangConfig.final_hang_force=0.0 HangConfig.hang_force_decay_episodes=200"
 )
 
 # Iterate over all configurations

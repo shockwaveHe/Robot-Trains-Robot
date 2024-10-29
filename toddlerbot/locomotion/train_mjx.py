@@ -3,6 +3,7 @@ from copy import deepcopy
 
 os.environ["XLA_FLAGS"] = "--xla_gpu_triton_gemm_any=true"
 os.environ["USE_JAX"] = "true"
+os.environ["SDL_VIDEODRIVER"] = "dummy"
 
 import argparse
 import functools
@@ -216,6 +217,7 @@ def domain_randomize(
     damping_range: List[float],
     armature_range: List[float],
     frictionloss_range: List[float],
+    gravity_range: List[float],
     body_mass_attr_range: Optional[Dict[str, jax.Array | npt.NDArray[np.float32]]],
 ) -> Tuple[base.System, base.System]:
     @jax.vmap
@@ -254,7 +256,15 @@ def domain_randomize(
             )
             * sys.dof_frictionloss
         )
-
+        gravity = (
+            jax.random.uniform(
+                key,
+                shape=(),
+                minval=gravity_range[0],
+                maxval=gravity_range[1],
+            )
+            * sys.opt.gravity
+        )
         if body_mass_attr_range is None:
             body_mass_attr = {
                 "body_mass": sys.body_mass,
@@ -293,9 +303,10 @@ def domain_randomize(
                 "tendon_invweight0"
             ][1:]
 
-        return friction, damping, armature, frictionloss, body_mass_attr
+        return friction, damping, armature, frictionloss, body_mass_attr, gravity
 
-    friction, damping, armature, frictionloss, body_mass_attr = rand(rng)
+    friction, damping, armature, frictionloss, body_mass_attr, gravity = rand(rng)
+    new_opt = sys.opt.replace(gravity=gravity)
 
     in_axes_dict = {
         "geom_friction": 0,
@@ -331,7 +342,8 @@ def domain_randomize(
     in_axes = jax.tree.map(lambda x: None, sys)
     in_axes = in_axes.tree_replace(in_axes_dict)
     sys = sys.tree_replace(sys_dict)
-
+    sys = sys.replace(opt=new_opt)
+    in_axes = in_axes.replace(opt=in_axes.opt.replace(gravity=0))
     return sys, in_axes
 
 
@@ -420,6 +432,7 @@ def train(
         damping_range=env.cfg.domain_rand.damping_range,
         armature_range=env.cfg.domain_rand.armature_range,
         frictionloss_range=env.cfg.domain_rand.frictionloss_range,
+        gravity_range=env.cfg.domain_rand.gravity_range,
         body_mass_attr_range=body_mass_attr_range,
     )
     eval_domain_randomize_fn = functools.partial(
@@ -428,6 +441,7 @@ def train(
         damping_range=eval_env.cfg.domain_rand.damping_range,
         armature_range=eval_env.cfg.domain_rand.armature_range,
         frictionloss_range=eval_env.cfg.domain_rand.frictionloss_range,
+        gravity_range=eval_env.cfg.domain_rand.gravity_range,
         body_mass_attr_range=eval_body_mass_attr_range,
     )
     train_fn = functools.partial(
