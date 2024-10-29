@@ -8,6 +8,7 @@ import pkgutil
 import time
 from typing import Any, Dict, List
 
+import mujoco
 import numpy as np
 import numpy.typing as npt
 from tqdm import tqdm
@@ -417,6 +418,26 @@ def main(
     #     exp_folder_path,
     # )
 
+def parse_domain_rand(model: mujoco.MjModel, domain_rand_str: str):
+    domain_rand_items = domain_rand_str.split(",")
+    domain_rand_options = ['geom_friction', 'dof_damping', 'dof_armature', 'dof_frictionloss', 'gravity']
+    for domain_rand_item in domain_rand_items:
+        domain_rand_key, domain_rand_val = domain_rand_item.split("=")
+        if domain_rand_key not in domain_rand_options:
+            raise ValueError(f"Invalid domain randomization option: {domain_rand_item}")
+        if domain_rand_key == 'geom_friction':
+            model.geom_friction[:, 0] = float(domain_rand_val)
+        elif domain_rand_key in ['dof_damping', 'dof_armature', 'dof_frictionloss']:
+            for joint_idx in range(model.nv):
+                if domain_rand_key == 'dof_damping':
+                    model.dof_damping[joint_idx] *= float(domain_rand_val)
+                elif domain_rand_key == 'dof_armature':
+                    model.dof_armature[joint_idx] *= float(domain_rand_val)
+                elif domain_rand_key == 'dof_frictionloss':
+                    model.dof_frictionloss[joint_idx] *= float(domain_rand_val)
+        elif domain_rand_key == 'gravity':
+            model.opt.gravity[2] = float(domain_rand_val)
+    return model
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the walking simulation.")
@@ -497,6 +518,12 @@ if __name__ == "__main__":
         default=0.0,
         help="The force to apply to the robot to simulate hanging.",
     )
+    parser.add_argument(
+        "--domain-rand",
+        type=str,
+        default="",
+        help="The domain randomization to apply. Allowed keys: ['geom_friction': 0.5, 2.0, 'dof_damping': 0.8, 1.2, 'dof_armature': 0.8, 1.2, 'dof_frictionloss': 0.8, 1.2, 'gravity']",
+    )
     args = parser.parse_args()
 
     robot = Robot(args.robot)
@@ -536,6 +563,8 @@ if __name__ == "__main__":
 
     else:
         raise ValueError("Unknown simulator")
+    if args.domain_rand:
+        sim.model = parse_domain_rand(sim.model, args.domain_rand)
 
     PolicyClass = get_policy_class(args.policy.replace("_fixed", ""))
     ArmPolicyClass = get_arm_policy_class(args.arm_policy)

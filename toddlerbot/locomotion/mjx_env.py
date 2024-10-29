@@ -466,9 +466,17 @@ class MJXEnv(PipelineEnv):
         """Takes a physics step using the physics pipeline."""
 
         progress = jnp.minimum(
-            state.info["episode_num"] / self.cfg.hang.hang_force_decay_episodes, 1.0
+            state.info.get("episode_num", 0) / self.cfg.hang.hang_force_decay_episodes,
+            1.0,
         )
-        hang_force = self.cfg.hang.init_hang_force - progress * (
+        # hang_force = self.cfg.hang.init_hang_force - progress * (
+        #     self.cfg.hang.init_hang_force - self.cfg.hang.final_hang_force
+        # )
+        phase = progress * jnp.pi
+        # Compute the cosine value, which transitions from 1 to 0
+        cosine_value = 0.5 * (1 + jnp.cos(phase))
+        # Calculate the hang force using the cosine schedule
+        hang_force = self.cfg.hang.final_hang_force + cosine_value * (
             self.cfg.hang.init_hang_force - self.cfg.hang.final_hang_force
         )
         state.info["hang_force"] = hang_force
@@ -485,7 +493,6 @@ class MJXEnv(PipelineEnv):
                 state.info["controller_q_dot_max"],
             )
 
-            # ipdb.set_trace()
             # concatenate hang_motors dim to ctrl
             if self.hang_motors > 0:
                 ctrl = jnp.concatenate([ctrl, jnp.zeros(self.hang_motors)])
@@ -656,7 +663,7 @@ class MJXEnv(PipelineEnv):
         state.metrics.update(reward_dict)
         state.metrics.update(
             {
-                "episode_num": state.info["episode_num"],
+                "episode_num": state.info.get("episode_num", 0.0),
                 "hang_force": state.info["hang_force"],
             }
         )
