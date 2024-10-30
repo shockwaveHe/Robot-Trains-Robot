@@ -166,6 +166,12 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         self.control_inputs = None
         self.is_prepared = False
 
+    def reset(self) -> None:
+        self.last_action = np.zeros_like(self.last_action)
+        self.action_buffer = np.zeros_like(self.action_buffer)
+        self.obs_history = np.zeros_like(self.obs_history)
+        self.step_curr = 0
+
     def is_double_support(self) -> bool:
         stance_mask = self.state_ref[-2:]
         return stance_mask[0].item() == 1.0 and stance_mask[1].item() == 1.0
@@ -177,7 +183,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
     def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
         if not self.is_prepared:
             self.is_prepared = True
-            self.prep_duration = 7.0 if is_real else 2.0
+            self.prep_duration = 7.0 if is_real else 0.0
             self.prep_time, self.prep_action = self.move(
                 -self.control_dt,
                 self.init_motor_pos,

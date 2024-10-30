@@ -114,14 +114,26 @@ class MuJoCoSim(BaseSim):
         self.hang_motors = 12 if self.hang_force > 0.0 else 0
         self.hang_dofs = 8 if self.hang_force > 0.0 else 0
 
+    def reset(self):
+        self.load_keyframe()
+        return self.get_observation()
+
+    def is_done(self, obs: Obs) -> bool:
+        torso_height = obs.torso_pos[2]
+        return torso_height < 0.2 or torso_height > 0.4
+
     def load_keyframe(self):
         default_qpos = np.array(self.model.keyframe("home").qpos, dtype=np.float32)
         self.data.qpos = default_qpos.copy()
         self.data.qvel = np.zeros(self.model.nv, dtype=np.float32)
         self.data.ctrl = self.model.keyframe("home").ctrl.copy()
-        mocap_id = self.model.body("target").mocapid[0]
+        target_body_id = mujoco.mj_name2id(
+            self.model, mujoco.mjtObj.mjOBJ_BODY, "target"
+        )
         self.forward()
-        if mocap_id != -1:
+        if target_body_id != -1:
+            mocap_id = self.model.body("target").mocapid[0]
+
             self.data.mocap_pos[mocap_id] = self.data.xpos[
                 self.model.body("attachment").id
             ]

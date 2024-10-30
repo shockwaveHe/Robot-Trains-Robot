@@ -248,12 +248,21 @@ def main(
     step_idx = 0
     time_until_next_step = 0.0
     last_ckpt_idx = -1
+    sim.reset()
     try:
         while step_idx < n_steps_total:
             step_start = time.time()
 
             # Get the latest state from the queue
             obs = sim.get_observation()
+            if sim.is_done(obs):
+                step_idx = 0
+                start_time = time.time()
+                obs = sim.reset()
+                policy.reset()
+                # if arm_policy is not None:
+                #     arm_policy.reset()
+
             obs.time -= start_time
 
             if "real" not in sim.name and vis_type != "view":
@@ -418,26 +427,34 @@ def main(
     #     exp_folder_path,
     # )
 
+
 def parse_domain_rand(model: mujoco.MjModel, domain_rand_str: str):
     domain_rand_items = domain_rand_str.split(",")
-    domain_rand_options = ['geom_friction', 'dof_damping', 'dof_armature', 'dof_frictionloss', 'gravity']
+    domain_rand_options = [
+        "geom_friction",
+        "dof_damping",
+        "dof_armature",
+        "dof_frictionloss",
+        "gravity",
+    ]
     for domain_rand_item in domain_rand_items:
         domain_rand_key, domain_rand_val = domain_rand_item.split("=")
         if domain_rand_key not in domain_rand_options:
             raise ValueError(f"Invalid domain randomization option: {domain_rand_item}")
-        if domain_rand_key == 'geom_friction':
+        if domain_rand_key == "geom_friction":
             model.geom_friction[:, 0] = float(domain_rand_val)
-        elif domain_rand_key in ['dof_damping', 'dof_armature', 'dof_frictionloss']:
+        elif domain_rand_key in ["dof_damping", "dof_armature", "dof_frictionloss"]:
             for joint_idx in range(model.nv):
-                if domain_rand_key == 'dof_damping':
+                if domain_rand_key == "dof_damping":
                     model.dof_damping[joint_idx] *= float(domain_rand_val)
-                elif domain_rand_key == 'dof_armature':
+                elif domain_rand_key == "dof_armature":
                     model.dof_armature[joint_idx] *= float(domain_rand_val)
-                elif domain_rand_key == 'dof_frictionloss':
+                elif domain_rand_key == "dof_frictionloss":
                     model.dof_frictionloss[joint_idx] *= float(domain_rand_val)
-        elif domain_rand_key == 'gravity':
+        elif domain_rand_key == "gravity":
             model.opt.gravity[2] = float(domain_rand_val)
     return model
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the walking simulation.")

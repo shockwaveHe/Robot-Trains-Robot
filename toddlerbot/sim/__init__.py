@@ -18,13 +18,14 @@ class Obs:
     torso_euler: npt.NDArray[np.float32] = np.zeros(3, dtype=np.float32)
     joint_pos: Optional[npt.NDArray[np.float32]] = None
     joint_vel: Optional[npt.NDArray[np.float32]] = None
-    ee_force_data: Optional[npt.NDArray[np.float32]] = None # note: should read ee_force_data[0] when rigid connected
+    ee_force_data: Optional[npt.NDArray[np.float32]] = (
+        None  # note: should read ee_force_data[0] when rigid connected
+    )
     ee_torque_data: Optional[npt.NDArray[np.float32]] = None
     arm_joint_pos: Optional[npt.NDArray[np.float32]] = None
     arm_joint_vel: Optional[npt.NDArray[np.float32]] = None
     mocap_pos: Optional[npt.NDArray[np.float32]] = None
     mocap_quat: Optional[npt.NDArray[np.float32]] = None
-    
 
 
 class BaseSim(ABC):
@@ -50,4 +51,12 @@ class BaseSim(ABC):
 
     @abstractmethod
     def close(self):
+        pass
+
+    @abstractmethod
+    def reset(self) -> Obs:
+        pass
+
+    @abstractmethod
+    def is_done(self, obs: Obs) -> bool:
         pass
