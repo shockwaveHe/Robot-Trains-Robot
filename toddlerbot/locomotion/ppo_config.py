@@ -22,6 +22,7 @@ class PPOConfig:
     clipping_epsilon: float = 0.2
     num_envs: int = 1024
     render_interval: int = 25
+    pretrain_value_percent: float = 0.0
     batch_size: int = 256
     num_minibatches: int = 4
     seed: int = 0

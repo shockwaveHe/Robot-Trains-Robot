@@ -4,6 +4,7 @@ from copy import deepcopy
 os.environ["XLA_FLAGS"] = "--xla_gpu_triton_gemm_any=true"
 os.environ["USE_JAX"] = "true"
 os.environ["SDL_VIDEODRIVER"] = "dummy"
+os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
 
 import argparse
 import functools
@@ -464,6 +465,7 @@ def train(
         randomization_fn=domain_randomize_fn,
         eval_randomization_fn=eval_domain_randomize_fn,
         render_interval=train_cfg.render_interval,
+        pretrain_value_percent=train_cfg.pretrain_value_percent,
         policy_params_fn=policy_params_fn,
         restore_checkpoint_path=restore_checkpoint_path,
         run_name=run_name,
