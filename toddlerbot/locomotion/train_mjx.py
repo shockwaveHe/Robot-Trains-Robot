@@ -400,7 +400,9 @@ def train(
     def policy_params_fn(current_step: int, make_policy: Any, params: Any):
         # save checkpoints
         save_args = orbax_utils.save_args_from_target(params)
-        path = os.path.abspath(os.path.join(exp_folder_path, f"{current_step}"))
+        path = os.path.abspath(
+            os.path.join(exp_folder_path, "ckpts", f"{current_step}")
+        )
         orbax_checkpointer.save(path, params, force=True, save_args=save_args)
         policy_path = os.path.join(path, "policy")
         model.save_params(policy_path, (params[0], params[1].policy))
@@ -485,7 +487,7 @@ def train(
 
         if last_ckpt_step > 0:
             shutil.copy2(
-                os.path.join(exp_folder_path, str(last_ckpt_step), "policy"),
+                os.path.join(exp_folder_path, "ckpts", str(last_ckpt_step), "policy"),
                 os.path.join(exp_folder_path, "policy"),
             )
 
@@ -511,7 +513,7 @@ def train(
         pass
 
     shutil.copy2(
-        os.path.join(exp_folder_path, str(best_ckpt_step), "policy"),
+        os.path.join(exp_folder_path, "ckpts", str(best_ckpt_step), "policy"),
         os.path.join(exp_folder_path, "best_policy"),
     )
 

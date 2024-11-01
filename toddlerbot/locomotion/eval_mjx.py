@@ -205,22 +205,16 @@ def evaluate(
     state = jit_reset(rng)
 
     times = [time.time()]
-    if os.path.exists("rollout.pkl"):
-        with open("rollout.pkl", "rb") as f:
-            rollout = pickle.load(f)
-        rollout = [jax.device_put(r, jax.devices("gpu")[0]) for r in rollout]
-    else:
-        rollout: List[Any] = [state.pipeline_state]
-        for i in tqdm(range(num_steps), desc="Evaluating"):
-            ctrl, _ = jit_inference_fn(state.obs, rng)
-            state = jit_step(state, ctrl)
-            times.append(time.time())
-            rollout.append(state.pipeline_state)
-            if i % log_every == 0:
-                log_metrics(state.metrics, times[-1] - times[0])
 
-        with open("rollout.pkl", "wb") as f:
-            pickle.dump([jax.device_get(r) for r in rollout], f)
+    rollout: List[Any] = [state.pipeline_state]
+    for i in tqdm(range(num_steps), desc="Evaluating"):
+        ctrl, _ = jit_inference_fn(state.obs, rng)
+        state = jit_step(state, ctrl)
+        times.append(time.time())
+        rollout.append(state.pipeline_state)
+        if i % log_every == 0:
+            log_metrics(state.metrics, times[-1] - times[0])
+
     return rollout
 
 

@@ -45,6 +45,7 @@ class MuJoCoSim(BaseSim):
         self.control_dt = n_frames * dt
         self.fixed_base = fixed_base  # DISCUSS, do I still need this?
         self.hang_force = hang_force
+        self.tendon_kp = 300
 
         if len(xml_str) > 0 and assets is not None:
             model = mujoco.MjModel.from_xml_string(xml_str, assets)
@@ -322,10 +323,26 @@ class MuJoCoSim(BaseSim):
                     [0.022, -0.045],
                     [-0.022, -0.045],
                 ]
+                tendon_lengths = [
+                    self.data.tendon(tendon_name).length
+                    for tendon_name in [
+                        "tendon_left_front",
+                        "tendon_left_back",
+                        "tendon_right_front",
+                        "tendon_right_back",
+                    ]
+                ]
+                actuator_forces = []
                 for i, hang_position in enumerate(
                     ["left_front", "left_back", "right_front", "right_back"]
                 ):
-                    self.data.actuator("hang_" + hang_position).ctrl = -self.hang_force
+                    self.data.actuator("hang_" + hang_position).ctrl = (
+                        -self.hang_force
+                        - self.tendon_kp * (tendon_lengths[i] - np.mean(tendon_lengths))
+                    )
+                    actuator_forces.append(
+                        self.data.actuator("hang_" + hang_position).ctrl
+                    )
                     self.data.actuator("hang_" + hang_position + "_x").ctrl = (
                         torso_position[0] + position_offset[i][0]
                     )
@@ -335,7 +352,7 @@ class MuJoCoSim(BaseSim):
                     # site_id = self.data.site("torso_" + hang_position + "_site").id
                     # self.data.actuator("hang_" + hang_position + "_x").ctrl = self.data.xpos[site_id][0] + self.model.opt.timestep * self.data.cvel[site_id][3]
                     # self.data.actuator("hang_" + hang_position + "_y").ctrl = self.data.xpos[site_id][1] + self.model.opt.timestep * self.data.cvel[site_id][4]
-
+                print(np.array(actuator_forces))
             mujoco.mj_step(self.model, self.data)
 
         if self.visualizer is not None:

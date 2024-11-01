@@ -333,6 +333,7 @@ class MJXEnv(PipelineEnv):
             "done": False,
             "step": 0,
             "hang_force": 0.0,
+            "tendon_length": jnp.zeros(4),
         }
 
         qpos = self.default_qpos.copy()
@@ -410,6 +411,7 @@ class MJXEnv(PipelineEnv):
         state_info["controller_tau_max"] = self.controller.tau_max.copy()
         state_info["controller_q_dot_tau_max"] = self.controller.q_dot_tau_max.copy()
         state_info["controller_q_dot_max"] = self.controller.q_dot_max.copy()
+        state_info["tendon_length"] = pipeline_state.ten_length[-4:]
 
         if self.add_domain_rand:
             state_info["controller_kp"] *= jax.random.uniform(
@@ -503,8 +505,14 @@ class MJXEnv(PipelineEnv):
                     [0.022, -0.045],
                     [-0.022, -0.045],
                 ]
+                tendon_length = pipeline_state.ten_length[-4:]
+
                 for i, pos in enumerate(position_offset):
-                    ctrl = ctrl.at[self.nu + 3 * i].set(-state.info["hang_force"])
+                    ctrl = ctrl.at[self.nu + 3 * i].set(
+                        -state.info["hang_force"]
+                        - self.cfg.hang.tendon_kp
+                        * (tendon_length[i] - jnp.mean(tendon_length))
+                    )
                     ctrl = ctrl.at[self.nu + 3 * i + 1].set(pos[0] + torso_xy[0])
                     ctrl = ctrl.at[self.nu + 3 * i + 2].set(pos[1] + torso_xy[1])
 
@@ -586,6 +594,7 @@ class MJXEnv(PipelineEnv):
 
         # jax.debug.breakpoint()
         pipeline_state = self.pipeline_step(state, motor_target)
+        state.info["tendon_length"] = pipeline_state.ten_length[-4:]
 
         # jax.debug.print(
         #     "qfrc: {}",
@@ -1163,3 +1172,12 @@ class MJXEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
         return -(info["done"] & (info["step"] < self.reset_steps)).astype(dtype)
+
+    def _reward_tendon_len_eq(
+        self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
+    ) -> jax.Array:
+        """Reward for tendon length equilibrium"""
+        tendon_length = info["tendon_length"]
+        error = tendon_length - jnp.mean(tendon_length)
+        reward = -jnp.mean(error**2)
+        return reward.astype(dtype)
