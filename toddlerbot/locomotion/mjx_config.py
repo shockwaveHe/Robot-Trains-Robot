@@ -89,7 +89,7 @@ class MJXConfig:
             feet_contact_number: float = 0.0
             collision: float = 0.0  # 1.0
             survival: float = 10.0
-            tendon_len_eq: float = 1e5
+            tendon_len_eq: float = 0
 
             def reset(self):
                 for key in vars(self):
@@ -150,7 +150,7 @@ class MJXConfig:
         init_hang_force: float = 2.0
         final_hang_force: float = 0.0
         hang_force_decay_episodes: float = 200.0
-        tendon_kp: float = 300.0
+        tendon_kp: float = 500.0
 
     def __init__(self):
         self.sim = self.SimConfig()

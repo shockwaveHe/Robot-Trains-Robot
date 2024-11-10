@@ -45,7 +45,7 @@ class MuJoCoSim(BaseSim):
         self.control_dt = n_frames * dt
         self.fixed_base = fixed_base  # DISCUSS, do I still need this?
         self.hang_force = hang_force
-        self.tendon_kp = 300
+        self.tendon_kp = 0
 
         if len(xml_str) > 0 and assets is not None:
             model = mujoco.MjModel.from_xml_string(xml_str, assets)
@@ -352,7 +352,7 @@ class MuJoCoSim(BaseSim):
                     # site_id = self.data.site("torso_" + hang_position + "_site").id
                     # self.data.actuator("hang_" + hang_position + "_x").ctrl = self.data.xpos[site_id][0] + self.model.opt.timestep * self.data.cvel[site_id][3]
                     # self.data.actuator("hang_" + hang_position + "_y").ctrl = self.data.xpos[site_id][1] + self.model.opt.timestep * self.data.cvel[site_id][4]
-                print(np.array(actuator_forces))
+                print(np.max(tendon_lengths) - np.min(tendon_lengths))
             mujoco.mj_step(self.model, self.data)
 
         if self.visualizer is not None:

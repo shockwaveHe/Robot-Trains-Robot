@@ -1,5 +1,5 @@
 ### Project ###
-results/
+results
 scripts/run_*_remote.sh
 scripts/run_*_remote.py
 wandb/
