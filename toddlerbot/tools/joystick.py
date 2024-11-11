@@ -32,10 +32,10 @@ class DeckButton(Enum):
     R1 = 8
     VIEW = 11
     MENU = 12
-    D_PAD_UP = 16
-    D_PAD_DOWN = 17
-    D_PAD_LEFT = 18
-    D_PAD_RIGHT = 19
+    DPAD_UP = 16
+    DPAD_DOWN = 17
+    DPAD_LEFT = 18
+    DPAD_RIGHT = 19
     L4 = 20
     R4 = 21
     L5 = 22
@@ -92,8 +92,8 @@ class StadiaButton(Enum):
 
 
 class JoystickAction(Enum):
-    VIEW = "stand"
-    MENU = "manipulate"
+    VIEW = "reset"
+    MENU = "teleop"
     LEFT_JOYSTICK_VERTICAL = "walk_vertical"
     LEFT_JOYSTICK_HORIZONTAL = "walk_horizontal"
     RIGHT_JOYSTICK_VERTICAL = "squat"
@@ -106,6 +106,16 @@ class JoystickAction(Enum):
     A = "look_down"
     X = "look_left"
     B = "look_right"
+    L1 = "hug"
+    R1 = "release"
+    L2 = "grab"
+    R2 = "wave"
+    L3 = "heart"
+    R3 = "pull_up"
+    L4 = "push_up"
+    R4 = "dance_1"
+    L5 = "dance_2"
+    R5 = "dance_3"
 
 
 class Joystick:

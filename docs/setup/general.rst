@@ -3,14 +3,14 @@
 General
 =======
 
-Set up Conda
-------------
+Set up Miniforge
+----------------
 
 We recommend installing `Miniforge <https://github.com/conda-forge/miniforge>`__.
 
 Run the following commands to determine your system architecture:
 
-::
+.. code:: bash
 
    uname -m
 
@@ -19,16 +19,23 @@ for a Linux machine with ``arm64`` architecture, download ``Linux aarch64 (arm64
 Do **NOT** run the install script with sudo. 
 Answer ``yes`` to all the options.
 
+Run ``source ~/.bashrc`` to activate the conda environment.
+
 Set up the repo
 ---------------
 
 Run the following commands to clone the repo:
 
-::
+.. code:: bash
 
+   mkdir ~/projects
+   cd ~/projects
    git clone git@github.com:hshi74/toddlerbot.git
    cd toddlerbot
    git submodule update --init --recursive
+
+
+Follow the steps on `this page <https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent>`__ to set up SSH keys for GitHub if needed.
 
 Set up the conda environment:
 
@@ -40,7 +47,8 @@ Set up the conda environment:
 
          conda create --name toddlerbot python=3.10
          conda activate toddlerbot
-         pip install -e .
+         pip install -e toddlerbot/brax
+         pip install -e .[linux]
 
    .. group-tab:: Mac OSX (arm64)
 
@@ -49,7 +57,8 @@ Set up the conda environment:
          CONDA_SUBDIR=osx-arm64 conda create -n toddlerbot python=3.10
          conda activate toddlerbot
          conda config --env --set subdir osx-arm64
-         pip install -e .
+         pip install -e toddlerbot/brax
+         pip install -e .[macos]
 
    .. group-tab:: Windows
 
@@ -57,17 +66,49 @@ Set up the conda environment:
 
          conda create --name toddlerbot python=3.10
          conda activate toddlerbot
-         pip install -e .
+         pip install -e toddlerbot/brax
+         pip install -e .[windows]
 
-Set up MuJoCo
--------------
+   .. group-tab:: Jetson
 
-.. tabs::
+      ::
 
-   .. group-tab:: Mac OSX (arm64)
+         conda create --name toddlerbot python=3.10
+         conda activate toddlerbot
+         pip install -e toddlerbot/brax
+         pip install -e .[jetson]
 
-      Run MuJoCo-related scripts with ``mjpython`` instead of ``python``.
-      If you want to use the VSCode debugger, add ``"python": "path/to/mjpython"`` in ``launch.json``.
+   .. group-tab:: Steam Deck
+
+      ::
+
+         conda create --name toddlerbot python=3.10
+         conda activate toddlerbot
+         pip install -e toddlerbot/brax
+         pip install -e .[steam_deck]
+
+For **Jetson**, you need to follow the information on `this page <https://forums.developer.nvidia.com/t/pytorch-for-jetson/72048>`__
+to install ``torch`` and ``torchvision``. For reference, we downloaded 
+`the wheel file for PyTorch v2.3.0 with JetPack 6.0 (L4T R36.2 / R36.3) + CUDA 12.2 <https://nvidia.box.com/shared/static/mp164asf3sceb570wvjsrezk1p4ftj8t.whl>`__.
+
+We find that the ``--content-disposition`` option is useful for downloading the file with the correct name:
+
+.. code:: bash
+
+   wget --content-disposition <link/to/the/wheel>
+
+Assuming the toddlerbot conda environment is activated, install the wheels with:
+
+.. code:: bash
+
+   pip install <path/to/the/wheel>
+
+
+Last but not least, run the following command to verify the installation of jax and torch:
+
+.. code:: bash
+   
+   python tests/test_jax_torch.py --platform <linux/macos/windows/jetson/steam_deck>
 
 Dynamixel
 ---------

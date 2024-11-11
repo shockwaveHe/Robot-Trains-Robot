@@ -53,6 +53,7 @@ class Camera:
             text=True,
             check=True,
             stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
         )
         print(result.stdout.strip())
 

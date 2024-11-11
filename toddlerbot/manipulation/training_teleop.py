@@ -68,7 +68,7 @@ def main(dataset_path: str, ckpt_path: str):
     dataloader: DataLoader = DataLoader(
         dataset,
         batch_size=32,  # was 64
-        num_workers=2,
+        num_workers=4,
         shuffle=True,
         # accelerate cpu-gpu transfer
         pin_memory=True,
@@ -78,12 +78,21 @@ def main(dataset_path: str, ckpt_path: str):
 
     # create network object
     noise_pred_net = ConditionalUnet1D(
-        input_dim=action_dim, global_cond_dim=obs_dim * obs_horizon
+        input_dim=action_dim, global_cond_dim=obs_dim * obs_horizon, down_dims=[128, 256, 384]
     )
 
     # the final arch has 2 parts
     nets = nn.ModuleDict(
         {"vision_encoder": vision_encoder, "noise_pred_net": noise_pred_net}
+    )
+
+    print(
+        "ve # weights: ",
+        np.sum([param.nelement() for param in vision_encoder.parameters()]),
+    )
+    print(
+        "unet # weights: ",
+        np.sum([param.nelement() for param in noise_pred_net.parameters()]),
     )
 
     # for this demo, we use DDPMScheduler with 100 diffusion iterations
@@ -104,7 +113,7 @@ def main(dataset_path: str, ckpt_path: str):
     _ = nets.to(device)
 
     # ### **Training**
-    num_epochs = 100
+    num_epochs = 1000
     ema = EMAModel(parameters=nets.parameters(), power=0.75)
     optimizer = torch.optim.AdamW(params=nets.parameters(), lr=1e-4, weight_decay=1e-6)
 

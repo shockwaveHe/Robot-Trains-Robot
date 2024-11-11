@@ -1,17 +1,17 @@
+import os
 from dataclasses import dataclass, field
-from typing import Dict, List, Type
+from typing import List
 
 import gin
 
-# Global registry to store env names and their corresponding classes
-env_cfg_registry: Dict[str, Type["MJXConfig"]] = {}
 
+def get_env_config(env: str):
+    gin_file_path = os.path.join(os.path.dirname(__file__), env + ".gin")
+    if not os.path.exists(gin_file_path):
+        raise FileNotFoundError(f"File {gin_file_path} not found.")
 
-def get_env_cfg_class(env_name: str) -> Type["MJXConfig"]:
-    if env_name not in env_cfg_registry:
-        raise ValueError(f"Unknown env: {env_name}")
-
-    return env_cfg_registry[env_name]
+    gin.parse_config_file(gin_file_path)
+    return MJXConfig()
 
 
 @gin.configurable
@@ -28,25 +28,25 @@ class MJXConfig:
     @gin.configurable
     @dataclass
     class ObsConfig:
-        @gin.configurable
-        @dataclass
-        class ObsScales:
-            lin_vel: float = 2.0
-            ang_vel: float = 1.0
-            dof_pos: float = 1.0
-            dof_vel: float = 0.05
-            euler: float = 1.0
-            # height_measurements: float = 5.0
-
         frame_stack: int = 15
         c_frame_stack: int = 15
-        num_single_obs: int = 101
-        num_single_privileged_obs: int = 141
-        scales: ObsScales = ObsScales()
+        num_single_obs: int = 83
+        num_single_privileged_obs: int = 126
+
+    @gin.configurable
+    @dataclass
+    class ObsScales:
+        lin_vel: float = 2.0
+        ang_vel: float = 1.0
+        dof_pos: float = 1.0
+        dof_vel: float = 0.05
+        euler: float = 1.0
+        # height_measurements: float = 5.0
 
     @gin.configurable
     @dataclass
     class ActionConfig:
+        action_parts: List[str] = field(default_factory=lambda: ["leg"])
         action_scale: float = 0.25
         filter_type: str = "none"
         filter_order: int = 4
@@ -54,54 +54,56 @@ class MJXConfig:
         contact_force_threshold: float = 1.0
         n_steps_delay: int = 1
         n_frames: int = 5
+        cycle_time: float = 0.72
+        waist_roll_max: float = 0.0
 
     @gin.configurable
     @dataclass
     class RewardsConfig:
-        @gin.configurable
-        @dataclass
-        class RewardScales:
-            torso_pos: float = 0.0  # 1.0
-            torso_quat: float = 1.0  # 1.0
-            lin_vel_xy: float = 1.0
-            lin_vel_z: float = 1.0
-            ang_vel_xy: float = 1.0
-            ang_vel_z: float = 1.0
-            neck_joint_pos: float = 0.0  # 0.1
-            neck_joint_vel: float = 0.0  # 1e-3
-            arm_joint_pos: float = 0.0  # 0.1
-            arm_joint_vel: float = 0.0  # 1e-3
-            waist_joint_pos: float = 0.0  # 50.0
-            waist_joint_vel: float = 0.0  # 1e-3
-            leg_joint_pos: float = 10.0
-            leg_joint_vel: float = 0.0  # 1e-4
-            motor_torque: float = 5e-3
-            joint_acc: float = 5e-7
-            neck_action_rate: float = 0.0  # 1e-2
-            neck_action_acc: float = 0.0  # 1e-2
-            arm_action_rate: float = 0.0  # 1e-2
-            arm_action_acc: float = 0.0  # 1e-2
-            waist_action_rate: float = 0.0  # 1e-2
-            waist_action_acc: float = 0.0  # 1e-2
-            leg_action_rate: float = 1e-2
-            leg_action_acc: float = 1e-2
-            feet_contact: float = 0.5
-            feet_contact_number: float = 0.0
-            collision: float = 0.0  # 1.0
-            survival: float = 10.0
-            tendon_len_eq: float = 0
-
-            def reset(self):
-                for key in vars(self):
-                    setattr(self, key, 0.0)
-
         healthy_z_range: List[float] = field(default_factory=lambda: [0.2, 0.4])
         tracking_sigma: float = 100.0
         min_feet_y_dist: float = 0.05
         max_feet_y_dist: float = 0.13
-        target_feet_z_delta: float = 0.05
         torso_pitch_range: List[float] = field(default_factory=lambda: [-0.2, 0.2])
-        scales: RewardScales = RewardScales()
+
+    @gin.configurable
+    @dataclass
+    class RewardScales:
+        torso_pos: float = 0.0  # 1.0
+        torso_quat: float = 1.0  # 1.0
+        torso_pitch: float = 0.0
+        lin_vel_xy: float = 1.0
+        lin_vel_z: float = 1.0
+        ang_vel_xy: float = 1.0
+        ang_vel_z: float = 1.0
+        neck_motor_pos: float = 0.0  # 0.1
+        arm_motor_pos: float = 0.0  # 0.1
+        waist_motor_pos: float = 0.0  # 50.0
+        leg_motor_pos: float = 10.0
+        motor_torque: float = 5e-3
+        motor_acc: float = 5e-7
+        neck_action_rate: float = 0.0  # 1e-2
+        neck_action_acc: float = 0.0  # 1e-2
+        arm_action_rate: float = 0.0  # 1e-2
+        arm_action_acc: float = 0.0  # 1e-2
+        waist_action_rate: float = 0.0  # 1e-2
+        waist_action_acc: float = 0.0  # 1e-2
+        leg_action_rate: float = 1e-2
+        leg_action_acc: float = 1e-2
+        feet_contact: float = 0.5
+        feet_contact_number: float = 0.0
+        collision: float = 0.0  # 1.0
+        survival: float = 10.0
+        feet_air_time: float = 0.0
+        feet_distance: float = 0.0
+        feet_slip: float = 0.0
+        feet_clearance: float = 0.0
+        stand_still: float = 0.0
+        tendon_len_eq: float = 0.0
+
+        def reset(self):
+            for key in vars(self):
+                setattr(self, key, 0.0)
 
     @gin.configurable
     @dataclass
@@ -120,22 +122,21 @@ class MJXConfig:
         damping_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
         armature_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
         frictionloss_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
-        gravity_range: List[float] = field(default_factory=lambda: [1.4, 1.6])
+        gravity_range: List[float] = field(default_factory=lambda: [1.0, 1.0])
         added_mass_range: List[float] = field(default_factory=lambda: [-0.2, 0.2])
-        kp_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
-        kd_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
+        kp_range: List[float] = field(default_factory=lambda: [0.9, 1.1])
+        kd_range: List[float] = field(default_factory=lambda: [0.9, 1.1])
         tau_max_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
         q_dot_tau_max_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
         q_dot_max_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
         push_interval_s: int = 4  # seconds
-        push_vel: float = 0.2
-        push_phi_max: float = 0.2
+        push_lin_vel: float = 0.2
+        push_ang_vel: float = 0.5
 
     @gin.configurable
     @dataclass
     class NoiseConfig:
-        reset_noise_joint_pos: float = 0.05
-        reset_noise_torso_pitch: float = 0.05
+        action_noise: float = 0.02
         obs_noise_scale: float = 0.05
         dof_pos: float = 1.0
         dof_vel: float = 2.0
@@ -150,23 +151,19 @@ class MJXConfig:
         init_hang_force: float = 2.0
         final_hang_force: float = 0.0
         hang_force_decay_episodes: float = 200.0
-        tendon_kp: float = 500.0
+        tendon_kp: float = 0.0
 
     def __init__(self):
         self.sim = self.SimConfig()
         self.obs = self.ObsConfig()
+        self.obs_scales = self.ObsScales()
         self.action = self.ActionConfig()
         self.rewards = self.RewardsConfig()
+        self.reward_scales = self.RewardScales()
         self.commands = self.CommandsConfig()
         self.domain_rand = self.DomainRandConfig()
         self.noise = self.NoiseConfig()
         self.hang = self.HangConfig()
-
-    # Automatic registration of subclasses
-    def __init_subclass__(cls, env_name: str = "", **kwargs):
-        super().__init_subclass__(**kwargs)
-        if len(env_name) > 0:
-            env_cfg_registry[env_name] = cls
 
 
 if __name__ == "__main__":

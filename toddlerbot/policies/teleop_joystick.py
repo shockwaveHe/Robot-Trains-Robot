@@ -1,4 +1,4 @@
-import platform
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -6,26 +6,28 @@ import numpy.typing as npt
 from toddlerbot.policies import BasePolicy
 from toddlerbot.policies.balance_pd import BalancePDPolicy
 from toddlerbot.policies.mjx_policy import MJXPolicy
+from toddlerbot.policies.reset_pd import ResetPDPolicy
+from toddlerbot.policies.teleop_follower_pd import TeleopFollowerPDPolicy
 from toddlerbot.policies.turn import TurnPolicy
 from toddlerbot.policies.walk import WalkPolicy
+from toddlerbot.sensing.camera import Camera
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
 from toddlerbot.utils.comm_utils import ZMQNode
 from toddlerbot.utils.math_utils import interpolate_action
 
-SYS_NAME = platform.system()
-
 
 class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
     def __init__(
-        self, name: str, robot: Robot, init_motor_pos: npt.NDArray[np.float32]
+        self,
+        name: str,
+        robot: Robot,
+        init_motor_pos: npt.NDArray[np.float32],
+        ip: str,
+        fixed_command: Optional[npt.NDArray[np.float32]] = None,
     ):
         super().__init__(name, robot, init_motor_pos)
-
-        self.default_motor_pos = np.array(
-            list(robot.default_motor_angles.values()), dtype=np.float32
-        )
 
         self.joystick = None
         try:
@@ -33,9 +35,14 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
         except Exception:
             pass
 
-        self.zmq_node = None
-        if SYS_NAME != "Darwin":
-            self.zmq_node = ZMQNode(type="receiver")
+        self.zmq_receiver = ZMQNode(type="receiver")
+        self.zmq_sender = ZMQNode(type="sender", ip=ip)
+
+        self.camera = None
+        try:
+            self.camera = Camera()
+        except Exception:
+            pass
 
         self.walk_policy = WalkPolicy(
             "walk", robot, init_motor_pos, joystick=self.joystick
@@ -43,49 +50,48 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
         self.turn_policy = TurnPolicy(
             "turn", robot, init_motor_pos, joystick=self.joystick
         )
-        self.balance_policy = BalancePDPolicy(
-            "teleop_follower_pd",
-            robot,
-            init_motor_pos,
+        balance_kwargs: Dict[str, Any] = dict(
             joystick=self.joystick,
-            zmq_receiver=self.zmq_node,
-            zmq_sender=None,
-            camera=None,
+            camera=self.camera,
+            zmq_receiver=self.zmq_receiver,
+            zmq_sender=self.zmq_sender,
+            ip=ip,
+            fixed_command=fixed_command,
         )
-        self.reset_policy = ResetPDPolicy("reset_pd", robot, init_motor_pos)
-
+        self.teleop_policy = TeleopFollowerPDPolicy(
+            "teleop_follower_pd", robot, init_motor_pos, **balance_kwargs
+        )
+        self.reset_policy = ResetPDPolicy(
+            "reset_pd", robot, init_motor_pos, **balance_kwargs
+        )
+        # self.hug_policy = DPPolicy("hug", robot, init_motor_pos, **balance_kwargs)
         self.policies = {
             "walk": self.walk_policy,
             "turn": self.turn_policy,
-            "balance": self.balance_policy,
+            "teleop": self.teleop_policy,
             "reset": self.reset_policy,
+            # "hug": self.hug_policy,
         }
 
-        self.prep_duration = 2.0
-        self.prep_time, self.prep_action = self.move(
-            -self.control_dt,
-            init_motor_pos,
-            self.default_motor_pos,
-            self.prep_duration,
-            end_time=0.0,
+        self.reset_motor_indices = np.concatenate(
+            [self.neck_motor_indices, self.waist_motor_indices]
         )
 
         self.need_reset = False
-        self.policy_prev = "balance"
-        self.last_control_inputs = None
+        self.policy_prev = "teleop"
+        self.last_control_inputs: Dict[str, float] | None = None
 
-    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
+    def step(
+        self, obs: Obs, is_real: bool = False
+    ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
         if obs.time < self.prep_duration:
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
             )
-            return action
+            return self.zero_command, action
 
-        msg = None
-        if self.zmq_node is not None:
-            msg = self.zmq_node.get_msg()
-            self.balance_policy.msg = msg
-            print(f"msg: {msg}")
+        assert self.zmq_receiver is not None
+        msg = self.zmq_receiver.get_msg()
 
         control_inputs = self.last_control_inputs
         if self.joystick is not None:
@@ -93,13 +99,19 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
         elif msg is not None:
             control_inputs = msg.control_inputs
 
-        self.walk_policy.control_inputs = control_inputs
-        self.turn_policy.control_inputs = control_inputs
+        for name, policy in self.policies.items():
+            if isinstance(policy, BalancePDPolicy):
+                policy.msg = msg
+            elif isinstance(policy, MJXPolicy):
+                assert control_inputs is not None
+                policy.control_inputs = control_inputs
+            else:
+                raise NotImplementedError
 
         self.last_control_inputs = control_inputs
 
         command_scale = {key: 0.0 for key in self.policies}
-        command_scale["balance"] = 1e-6
+        command_scale["teleop"] = 1e-6
 
         if control_inputs is not None:
             for task, input in control_inputs.items():
@@ -108,42 +120,41 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
                         command_scale[key] += abs(input)
                         break
 
-        policy_curr = max(command_scale, key=command_scale.get)
+        policy_curr = max(command_scale, key=command_scale.get)  # type: ignore
         if policy_curr != self.policy_prev:
-            if (
-                not self.need_reset
-                and self.policy_prev == "balance"
-                and isinstance(self.policies[policy_curr], MJXPolicy)
-                and not np.allclose(
-                    self.balance_policy.last_motor_target,
-                    self.default_motor_pos,
-                    atol=0.1,
-                )
-            ):
-                self.need_reset = True
-                self.reset_policy.last_motor_target = (
-                    self.balance_policy.last_motor_target.copy()
-                )
-                self.balance_policy.reset()
-
             last_policy = self.policies[self.policy_prev]
+            is_reset_mask = (
+                np.abs(
+                    (obs.motor_pos - self.default_motor_pos)[self.reset_motor_indices]
+                )
+                < 0.1
+            )
             if (
                 isinstance(last_policy, MJXPolicy)
                 and not last_policy.is_double_support()
             ):
                 policy_curr = self.policy_prev
 
+            elif (
+                not self.need_reset
+                and isinstance(last_policy, BalancePDPolicy)
+                and isinstance(self.policies[policy_curr], MJXPolicy)
+                and not np.all(is_reset_mask)
+            ):
+                self.need_reset = True
+                self.reset_policy.is_button_pressed = True
+                last_policy.reset()
+
         if self.need_reset:
             policy_curr = "reset"
 
         motor_target = self.policies[policy_curr].step(obs, is_real)
 
-        print(f"Policy: {policy_curr}")
+        print(f"policy: {policy_curr}")
         print(f"need_reset: {self.need_reset}")
 
         if self.reset_policy.reset_time is None:
             self.need_reset = False
-            self.reset_policy.reset()
 
         self.policy_prev = policy_curr
 

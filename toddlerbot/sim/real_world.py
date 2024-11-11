@@ -7,7 +7,6 @@ from toddlerbot.actuation import JointState
 from toddlerbot.sim import BaseSim, Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_ports
-from toddlerbot.utils.math_utils import euler2quat, quat_inv, rotate_vec
 
 # from toddlerbot.utils.misc_utils import profile
 
@@ -16,12 +15,6 @@ class RealWorld(BaseSim):
     def __init__(self, robot: Robot):
         super().__init__("real_world")
         self.robot = robot
-        # offsets = robot.config["general"]["offsets"]
-        # self.imu_pos = np.array(
-        #     [offsets["imu_x"], offsets["imu_y"], offsets["imu_z"]], dtype=np.float32
-        # )
-        imu_euler = np.array([np.pi, 0.0, 0.0], dtype=np.float32)
-        self.imu_quat = np.asarray(euler2quat(imu_euler))
 
         self.has_imu = self.robot.config["general"]["has_imu"]
         self.has_dynamixel = self.robot.config["general"]["has_dynamixel"]
@@ -29,10 +22,7 @@ class RealWorld(BaseSim):
 
         # TODO: Fix the mate directions in the URDF and remove the negated_motor_names
         self.negated_motor_names: List[str] = [
-            "left_hip_roll",
-            "right_hip_roll",
-            "left_knee_act",
-            "right_knee_act",
+            "neck_pitch_act",
             "left_sho_roll",
             "right_sho_roll",
             "left_elbow_roll",
@@ -41,8 +31,6 @@ class RealWorld(BaseSim):
             "right_wrist_pitch_drive",
             "left_gripper_rack",
             "right_gripper_rack",
-            "left_ank_roll",  # For toddlerbot_OP3
-            "right_ank_roll",  # For toddlerbot_OP3
         ]
 
         self.initialize()
@@ -196,13 +184,8 @@ class RealWorld(BaseSim):
         obs = self.process_motor_reading(results)
 
         if self.has_imu:
-            # imu_lin_vel = np.array(results["imu"]["lin_vel"], dtype=np.float32)
-            imu_ang_vel = np.array(results["imu"]["ang_vel"], dtype=np.float32)
-            imu_euler = np.array(results["imu"]["euler"], dtype=np.float32)
-
-            # obs.lin_vel = imu_lin_vel + np.cross(imu_ang_vel, -self.imu_pos)
-            obs.ang_vel = np.asarray(rotate_vec(imu_ang_vel, quat_inv(self.imu_quat)))
-            obs.torso_euler = np.asarray(rotate_vec(imu_euler, quat_inv(self.imu_quat)))
+            obs.ang_vel = np.array(results["imu"]["ang_vel"], dtype=np.float32)
+            obs.euler = np.array(results["imu"]["euler"], dtype=np.float32)
 
         return obs
 

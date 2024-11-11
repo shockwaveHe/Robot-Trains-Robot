@@ -14,21 +14,21 @@ while [[ $# -gt 0 ]]; do
         case "$ROBOT_NAME" in
             toddlerbot)
             BODY_NAME="toddlerbot"
-            ARM_NAME="arm_gripper"
-            LEG_NAME="leg"
+            ARM_NAME="arm_umi"
+            LEG_NAME="leg_reorder"
             DOC_ID_LIST="6f1a2a766fbbc097a49abb91 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
             ASSEMBLY_LIST="$BODY_NAME left_$LEG_NAME right_$LEG_NAME left_$ARM_NAME right_$ARM_NAME"
             # DOC_ID_LIST="cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
             # ASSEMBLY_LIST="left_$ARM_NAME right_$ARM_NAME"
             ;;
-            toddlerbot_OP3)
+            toddlerbot_gripper)
             BODY_NAME="toddlerbot"
-            ARM_NAME="arm_umi"
-            LEG_NAME="leg_OP3"
+            ARM_NAME="arm_gripper"
+            LEG_NAME="leg_reorder"
             DOC_ID_LIST="6f1a2a766fbbc097a49abb91 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
             ASSEMBLY_LIST="$BODY_NAME left_$LEG_NAME right_$LEG_NAME left_$ARM_NAME right_$ARM_NAME"
-            DOC_ID_LIST="6f1a2a766fbbc097a49abb91"
-            ASSEMBLY_LIST="$BODY_NAME"
+            DOC_ID_LIST="d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe"
+            ASSEMBLY_LIST="left_$LEG_NAME right_$LEG_NAME"
             ;;
             toddlerbot_legs)
             BODY_NAME="toddlerbot"

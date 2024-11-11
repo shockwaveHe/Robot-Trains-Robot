@@ -3,11 +3,10 @@ import os
 import pickle
 from typing import Any, Dict, List
 
+import mujoco
 import numpy as np
-import numpy.typing as npt
 from scipy.interpolate import LinearNDInterpolator
 from scipy.spatial import Delaunay
-from yourdfpy import URDF
 
 from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.misc_utils import log  # , profile
@@ -65,77 +64,78 @@ class Robot:
                 self.data_dict: Dict[str, Any] = pickle.load(f)
                 log("Loaded cached data.", header="Robot")
         else:
-            # TODO: Remove URDF and use mujoco to do the computation
-            urdf_path = find_robot_file_path(self.name)
-            urdf: URDF = URDF.load(urdf_path)
-            self.data_dict = self.compute_cache(urdf)
-
+            self.data_dict = self.compute_cache()  # TODO: Remove cache
             with open(self.cache_path, "wb") as f:
                 pickle.dump(self.data_dict, f)
                 log("Computed and cached new data.", header="Robot")
 
         if "ank_fk_lookup_table" in self.data_dict:
             points, values = self.data_dict["ank_fk_lookup_table"]
-            # TODO: Look up the speed
             self.ank_fk_lookup_table = LinearNDInterpolator(points, values)
             self.ank_act_pos_tri = Delaunay(points)
             self.ank_pos_tri = Delaunay(values)
 
-    def compute_cache(self, urdf: URDF) -> Dict[str, Any]:
+    def compute_cache(self) -> Dict[str, Any]:
+        xml_path = find_robot_file_path(self.name, suffix="_fixed_scene.xml")
+        model = mujoco.MjModel.from_xml_path(xml_path)
+        data = mujoco.MjData(model)
+        mujoco.mj_forward(model, data)
+
         data_dict: Dict[str, Any] = {"name": self.name}
         # if "foot_name" in self.config["general"]:
         #     data_dict["foot_size"] = self.compute_foot_size(urdf)
 
         offsets: Dict[str, Any] = {}
-        graph = urdf.scene.graph
 
         ##### Below are for the leg IK #####
         # from the hip roll joint to the hip pitch joint
-        offsets["hip_roll_to_pitch_z"] = (
-            graph.get("hip_roll_link")[0][2, 3]
-            - graph.get("left_hip_pitch_link_xm430")[0][2, 3]
+        offsets["hip_pitch_to_roll_z"] = (
+            data.body("2xc430").xpos[2] - data.body("hip_yaw_link").xpos[2]
         )
         # from the hip pitch joint to the knee joint
+        offsets["hip_roll_to_knee_z"] = (
+            data.body("hip_yaw_link").xpos[2] - data.body("left_calf_link").xpos[2]
+        )
         offsets["hip_pitch_to_knee_z"] = (
-            graph.get("left_hip_pitch_link_xm430")[0][2, 3]
-            - graph.get("left_calf_link")[0][2, 3]
+            offsets["hip_pitch_to_roll"] + offsets["hip_roll_to_knee"]
         )
         # from the knee joint to the ankle roll joint
         offsets["knee_to_ank_pitch_z"] = (
-            graph.get("left_calf_link")[0][2, 3] - graph.get("ank_pitch_link")[0][2, 3]
+            data.body("left_calf_link").xpos[2]
+            - data.body("left_ank_pitch_link").xpos[2]
         )
         # from the hip center to the foot
-        offsets["foot_to_com_x"] = graph.get("ank_pitch_link")[0][0, 3]
-        offsets["foot_to_com_y"] = graph.get("ank_roll_link")[0][1, 3]
+        offsets["foot_to_com_x"] = data.body("left_ank_pitch_link").xpos[0]
+        offsets["foot_to_com_y"] = data.body("ank_roll_link").xpos[1]
 
-        if self.config["general"]["is_ankle_closed_loop"]:
-            ##### Below are for the ankle IK #####
-            ank_origin: npt.NDArray[np.float32] = np.array(
-                graph.get("ank_pitch_link")[0][:3, 3]
-            )
+        # if self.config["general"]["is_ankle_closed_loop"]:
+        #     ##### Below are for the ankle IK #####
+        #     ank_origin: npt.NDArray[np.float32] = np.array(
+        #         graph.get("left_ank_pitch_link")[0][:3, 3]
+        #     )
 
-            offsets["fE"] = [
-                graph.get("ank_rr_link")[0][:3, 3] - ank_origin,
-                graph.get("ank_rr_link_2")[0][:3, 3] - ank_origin,
-            ]
-            offsets["m"] = [
-                graph.get("ank_motor_arm")[0][:3, 3] - ank_origin,
-                graph.get("ank_motor_arm_2")[0][:3, 3] - ank_origin,
-            ]
-            ank_act_arm_y = self.config["general"]["offsets"]["ank_act_arm_y"]
-            offsets["m"][0][1] += ank_act_arm_y
-            offsets["m"][1][1] -= ank_act_arm_y
-            offsets["nE"] = np.array([1, 0, 0])
-            offsets["rod_len"] = [
-                self.config["general"]["offsets"]["ank_long_rod_len"],
-                self.config["general"]["offsets"]["ank_short_rod_len"],
-            ]
-            offsets["a"] = self.config["general"]["offsets"]["ank_act_arm_r"]
-            offsets["r"] = self.config["general"]["offsets"]["ank_rev_r"]
+        #     offsets["fE"] = [
+        #         graph.get("ank_rr_link")[0][:3, 3] - ank_origin,
+        #         graph.get("ank_rr_link_2")[0][:3, 3] - ank_origin,
+        #     ]
+        #     offsets["m"] = [
+        #         graph.get("ank_motor_arm")[0][:3, 3] - ank_origin,
+        #         graph.get("ank_motor_arm_2")[0][:3, 3] - ank_origin,
+        #     ]
+        #     ank_act_arm_y = self.config["general"]["offsets"]["ank_act_arm_y"]
+        #     offsets["m"][0][1] += ank_act_arm_y
+        #     offsets["m"][1][1] -= ank_act_arm_y
+        #     offsets["nE"] = np.array([1, 0, 0])
+        #     offsets["rod_len"] = [
+        #         self.config["general"]["offsets"]["ank_long_rod_len"],
+        #         self.config["general"]["offsets"]["ank_short_rod_len"],
+        #     ]
+        #     offsets["a"] = self.config["general"]["offsets"]["ank_act_arm_r"]
+        #     offsets["r"] = self.config["general"]["offsets"]["ank_rev_r"]
 
-            data_dict["ank_act_zero"] = self.ankle_ik([0.0, 0.0])
-            points, values = self.compute_ankle_fk_lookup()
-            data_dict["ank_fk_lookup_table"] = (points, values)
+        #     data_dict["ank_act_zero"] = self.ankle_ik([0.0, 0.0])
+        #     points, values = self.compute_ankle_fk_lookup()
+        #     data_dict["ank_fk_lookup_table"] = (points, values)
 
         data_dict["offsets"] = offsets
 
@@ -214,6 +214,11 @@ class Robot:
 
         if "foot_name" in self.config["general"]:
             self.foot_name = self.config["general"]["foot_name"]
+
+        self.has_gripper = False
+        for motor_name in self.motor_ordering:
+            if "gripper" in motor_name:
+                self.has_gripper = True
 
         self.collider_names: List[str] = []
         for link_name, link_config in self.collision_config.items():

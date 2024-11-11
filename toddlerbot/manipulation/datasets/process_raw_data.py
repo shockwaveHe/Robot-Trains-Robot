@@ -222,9 +222,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--robot",
         type=str,
-        default="toddlerbot_OP3",
+        default="toddlerbot",
         help="The name of the robot. Need to match the name in descriptions.",
-        choices=["toddlerbot_OP3", "toddlerbot_arms"],
+        choices=["toddlerbot", "toddlerbot_arms"],
     )
     parser.add_argument(
         "--time-str",

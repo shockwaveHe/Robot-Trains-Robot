@@ -1,7 +1,7 @@
 import os
 import time
 from collections import deque
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -14,6 +14,7 @@ from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
 from toddlerbot.utils.comm_utils import ZMQNode
+from toddlerbot.utils.math_utils import interpolate_action
 
 
 class DPPolicy(BalancePDPolicy, policy_name="dp"):
@@ -43,7 +44,10 @@ class DPPolicy(BalancePDPolicy, policy_name="dp"):
         self.control_dt = 0.1
 
         policy_path = os.path.join(
-            "toddlerbot", "policies", "checkpoints", "teleop_model.pth"
+            "toddlerbot",
+            "policies",
+            "checkpoints",
+            f"{robot.name}_{name}_dp.pth",
         )
 
         pred_horizon, obs_horizon, action_horizon = 16, 5, 8
@@ -58,13 +62,18 @@ class DPPolicy(BalancePDPolicy, policy_name="dp"):
             lowdim_obs_dim,
             action_dim,
         )
-        self.model.num_diffusion_iters = 10
+        # self.model.num_diffusion_iters = 10
 
         # deque for observation
         self.obs_deque: deque = deque([], maxlen=self.model.obs_horizon)
         self.model_action_seq: List[npt.NDArray[np.float32]] = []
 
-    def get_arm_motor_pos(self) -> npt.NDArray[np.float32]:
+        self.reset_duration = 5.0
+        self.reset_end_time = 1.0
+        self.reset_time = None
+
+    def get_arm_motor_pos(self, obs: Obs) -> npt.NDArray[np.float32]:
+        arm_motor_pos = self.default_motor_pos[self.arm_motor_indices]
         if len(self.obs_deque) == self.model.obs_horizon:
             if len(self.model_action_seq) == 0:
                 t1 = time.time()
@@ -75,29 +84,53 @@ class DPPolicy(BalancePDPolicy, policy_name="dp"):
                 print(f"Model inference time: {t2-t1:.3f}s")
 
             arm_motor_pos = self.model_action_seq.pop(0)[:14]
-        else:
-            arm_motor_pos = self.default_motor_pos[self.arm_motor_indices]
 
-        print(f"Arm motor pos: {arm_motor_pos}")
+        elif not self.is_running:
+            if self.is_button_pressed and self.reset_time is None:
+                self.reset_time, self.reset_action = self.move(
+                    obs.time - self.control_dt,
+                    obs.motor_pos[self.arm_motor_indices],
+                    self.default_motor_pos[self.arm_motor_indices],
+                    self.reset_duration,
+                    end_time=self.reset_end_time,
+                )
+
+            if self.reset_time is not None and obs.time < self.reset_time[-1]:
+                arm_motor_pos = np.asarray(
+                    interpolate_action(obs.time, self.reset_time, self.reset_action)
+                )
+        else:
+            # If the user presses the button while resetting,
+            # the reset action with be overridden by the default action.
+            self.reset_time = None
+
         return arm_motor_pos
 
-    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
-        motor_target = super().step(obs, is_real)
+    def step(
+        self, obs: Obs, is_real: bool = False
+    ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
+        command, motor_target = super().step(obs, is_real)
 
-        if self.is_logging and self.camera_frame is not None:
-            self.camera_frame = (
-                cv2.resize(self.camera_frame, (171, 96))[:96, 38:134] / 255.0
-            ).transpose(2, 0, 1)
+        if self.is_running:
+            if self.camera_frame is not None:
+                self.camera_frame = (
+                    cv2.resize(self.camera_frame, (128, 96))[:96, 16:112] / 255.0
+                ).transpose(2, 0, 1)
 
-            obs_entry = {
-                "image": self.camera_frame,
-                "agent_pos": np.concatenate(
-                    [
-                        obs.motor_pos[self.arm_motor_indices],
-                        np.zeros(2, dtype=np.float32),
-                    ]
-                ),
-            }
-            self.obs_deque.append(obs_entry)
+                obs_entry = {
+                    "image": self.camera_frame,
+                    "agent_pos": np.concatenate(
+                        [
+                            obs.motor_pos[self.arm_motor_indices],
+                            np.zeros(2, dtype=np.float32),
+                        ]
+                    ),
+                }
+                self.obs_deque.append(obs_entry)
+            else:
+                raise ValueError("Camera frame is needed for DP policy.")
+        else:
+            self.obs_deque.clear()
+            self.model_action_seq = []
 
-        return motor_target
+        return command, motor_target

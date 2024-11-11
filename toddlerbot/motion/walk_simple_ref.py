@@ -70,6 +70,8 @@ class WalkSimpleReference(MotionReference):
         left_leg_pitch_pos = self.get_leg_pitch_pos(signal_left, True)
         right_leg_pitch_pos = self.get_leg_pitch_pos(signal_right, False)
 
+        # TODO: Fix this
+        motor_pos = self.default_motor_pos.copy()
         joint_pos = self.default_joint_pos.copy()
         joint_pos = inplace_update(
             joint_pos, self.left_pitch_joint_indices, left_leg_pitch_pos
@@ -80,14 +82,12 @@ class WalkSimpleReference(MotionReference):
         double_support_mask = np.abs(sin_phase_signal) < self.double_support_phase
         joint_pos = np.where(double_support_mask, self.default_joint_pos, joint_pos)
 
-        joint_vel = self.default_joint_vel.copy()
-
         stance_mask = np.zeros(2, dtype=np.float32)
         stance_mask = inplace_update(stance_mask, 0, np.any(sin_phase_signal >= 0))
         stance_mask = inplace_update(stance_mask, 1, np.any(sin_phase_signal < 0))
         stance_mask = np.where(double_support_mask, 1, stance_mask)
 
-        return np.concatenate((path_state, joint_pos, joint_vel, stance_mask))
+        return np.concatenate((path_state, motor_pos, joint_pos, stance_mask))
 
     def get_leg_pitch_pos(self, signal: ArrayType, is_left: bool):
         knee_angle = np.abs(
@@ -108,19 +108,3 @@ class WalkSimpleReference(MotionReference):
             return np.array(
                 [hip_pitch_angle, -knee_angle, -ank_pitch_angle], dtype=np.float32
             )
-
-    def override_motor_target(
-        self, motor_target: ArrayType, state_ref: ArrayType
-    ) -> ArrayType:
-        motor_target = inplace_update(
-            motor_target,
-            self.neck_motor_indices,
-            self.default_motor_pos[self.neck_motor_indices],
-        )
-        motor_target = inplace_update(
-            motor_target,
-            self.arm_motor_indices,
-            self.default_motor_pos[self.arm_motor_indices],
-        )
-
-        return motor_target

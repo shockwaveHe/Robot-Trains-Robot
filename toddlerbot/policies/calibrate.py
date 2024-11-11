@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import numpy as np
 import numpy.typing as npt
 
@@ -26,20 +28,21 @@ class CalibratePolicy(BasePolicy, policy_name="calibrate"):
             list(robot.default_joint_angles.values()), dtype=np.float32
         )
 
+        leg_pitch_joint_names = [
+            "left_hip_pitch",
+            "left_knee",
+            "left_ank_pitch",
+            "right_hip_pitch",
+            "right_knee",
+            "right_ank_pitch",
+        ]
         self.leg_pitch_joint_indicies = np.array(
             [
                 self.robot.joint_ordering.index(joint_name)
-                for joint_name in [
-                    "left_hip_pitch",
-                    "left_knee",
-                    "left_ank_pitch",
-                    "right_hip_pitch",
-                    "right_knee",
-                    "right_ank_pitch",
-                ]
+                for joint_name in leg_pitch_joint_names
             ]
         )
-        self.leg_pitch_joint_signs = np.array([1, 1, 1, -1, -1, 1], dtype=np.float32)
+        self.leg_pitch_joint_signs = np.array([-1, -1, 1, 1, 1, -1], dtype=np.float32)
 
         # PD controller parameters
         self.kp = kp
@@ -49,18 +52,15 @@ class CalibratePolicy(BasePolicy, policy_name="calibrate"):
         # Initialize integral error
         self.integral_error = 0.0
 
-        self.prep_duration = 2.0
-        self.prep_time, self.prep_action = self.move(
-            -self.control_dt, init_motor_pos, self.default_motor_pos, self.prep_duration
-        )
-
-    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
+    def step(
+        self, obs: Obs, is_real: bool = False
+    ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
         # Preparation phase
-        if obs.time < self.prep_time[-1]:
+        if obs.time < self.prep_duration:
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
             )
-            return action
+            return self.zero_command, action
 
         # PD+I controller to maintain torso pitch at 0
         error = obs.torso_euler[1]
@@ -85,4 +85,4 @@ class CalibratePolicy(BasePolicy, policy_name="calibrate"):
         )
         motor_target = np.array(list(motor_angles.values()), dtype=np.float32)
 
-        return motor_target
+        return self.zero_command, motor_target

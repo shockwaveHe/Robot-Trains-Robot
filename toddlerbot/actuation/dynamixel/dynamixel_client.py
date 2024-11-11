@@ -14,6 +14,7 @@ from toddlerbot.utils.misc_utils import log
 PROTOCOL_VERSION = 2.0
 
 # The following addresses assume XH motors.
+ADDR_MODEL_NUMBER = 0
 ADDR_TORQUE_ENABLE = 64
 ADDR_GOAL_POSITION = 116
 ADDR_PRESENT_POSITION = 132
@@ -21,19 +22,22 @@ ADDR_PRESENT_VELOCITY = 128
 ADDR_PRESENT_CURRENT = 126
 ADDR_PRESENT_POS_VEL = 128
 ADDR_PRESENT_POS_VEL_CUR = 126
+ADDR_PRESENT_V_IN = 144
 
 # Data Byte Length
+LEN_MODEL_NUMBER = 2
 LEN_PRESENT_POSITION = 4
 LEN_PRESENT_VELOCITY = 4
 LEN_PRESENT_CURRENT = 2
 LEN_PRESENT_POS_VEL = 8
 LEN_PRESENT_POS_VEL_CUR = 10
 LEN_GOAL_POSITION = 4
+LEN_PRESENT_V_IN = 2
 
 DEFAULT_POS_SCALE = 2.0 * np.pi / 4096  # 0.088 degrees
 # See http://emanual.robotis.com/docs/en/dxl/x/xh430-v210/#goal-velocity
 DEFAULT_VEL_SCALE = 0.229 * 2.0 * np.pi / 60.0  # 0.229 rpm
-DEFAULT_CUR_SCALE = 1.34
+DEFAULT_V_IN_SCALE = 0.1
 
 
 def dynamixel_cleanup_handler():
@@ -125,6 +129,7 @@ class DynamixelClient:
         self._sync_writers: Dict[Tuple[int, int], dynamixel_sdk.GroupSyncWrite] = {}
 
         self._data_dict: Dict[str, npt.NDArray[np.float32]] = {}
+        self._cur_scale_arr: Optional[npt.NDArray[np.float32]] = None
 
         self.OPEN_CLIENTS.add(self)
 
@@ -216,6 +221,11 @@ class DynamixelClient:
             time.sleep(retry_interval)
             retries -= 1
 
+    def read_model_number(
+        self, retries: int = 0
+    ) -> Tuple[float, npt.NDArray[np.float32]]:
+        return self.sync_read(ADDR_MODEL_NUMBER, LEN_MODEL_NUMBER, 1.0)
+
     def read_pos(self, retries: int = 0) -> Tuple[float, npt.NDArray[np.float32]]:
         """Returns the current positions and velocities."""
         return self.sync_read(
@@ -228,11 +238,32 @@ class DynamixelClient:
             ADDR_PRESENT_VELOCITY, LEN_PRESENT_VELOCITY, DEFAULT_VEL_SCALE
         )
 
+    def get_cur_scale(self, retries: int = 0) -> npt.NDArray[np.float32]:
+        _, model_number_arr = self.read_model_number(retries)
+        curr_scale_arr = np.zeros(len(model_number_arr), dtype=np.float32)
+        for i, model_number in enumerate(model_number_arr):
+            if model_number == 1220:
+                curr_scale_arr[i] = 1.0
+            elif model_number == 1030:
+                curr_scale_arr[i] = 2.69
+            else:
+                curr_scale_arr[i] = 1.4
+
+        return curr_scale_arr
+
     def read_cur(self, retries: int = 0) -> Tuple[float, npt.NDArray[np.float32]]:
         """Returns the current positions and velocities."""
-        return self.sync_read(
-            ADDR_PRESENT_CURRENT, LEN_PRESENT_CURRENT, DEFAULT_CUR_SCALE
+        if self._cur_scale_arr is None:
+            self._cur_scale_arr = self.get_cur_scale()
+
+        comm_time, cur_arr = self.sync_read(
+            ADDR_PRESENT_CURRENT, LEN_PRESENT_CURRENT, 1.0
         )
+        return comm_time, cur_arr * self._cur_scale_arr
+
+    def read_vin(self, retries: int = 0) -> Tuple[float, npt.NDArray[np.float32]]:
+        """Reads the input voltage to the motors."""
+        return self.sync_read(ADDR_PRESENT_V_IN, LEN_PRESENT_V_IN, DEFAULT_V_IN_SCALE)
 
     # @profile()
     def read_pos_vel(
@@ -385,7 +416,10 @@ class DynamixelClient:
                     data_unsigned,
                     size=LEN_PRESENT_CURRENT,
                 )
-                self._data_dict["cur"][i] = float(data_signed) * DEFAULT_CUR_SCALE
+                if self._cur_scale_arr is None:
+                    self._cur_scale_arr = self.get_cur_scale()
+
+                self._data_dict["cur"][i] = float(data_signed) * self._cur_scale_arr[i]
 
         if errored_ids:
             log(

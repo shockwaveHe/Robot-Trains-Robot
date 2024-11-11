@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define the different configurations for each experiment
-robots=("toddlerbot_OP3")
+robots=("toddlerbot")
 envs=("walk")
 config_overrides=(
     "HangConfig.init_hang_force=2.0 HangConfig.final_hang_force=0.0 HangConfig.hang_force_decay_episodes=200"

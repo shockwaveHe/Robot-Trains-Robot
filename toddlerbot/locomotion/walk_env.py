@@ -1,7 +1,5 @@
-from dataclasses import dataclass, field
-from typing import Any, List, Optional
+from typing import Any, Optional
 
-import gin
 import jax
 import jax.numpy as jnp
 from brax import base, math
@@ -13,59 +11,12 @@ from toddlerbot.motion.walk_zmp_ref import WalkZMPReference
 from toddlerbot.sim.robot import Robot
 
 
-@gin.configurable
-@dataclass
-class WalkCfg(MJXConfig, env_name="walk"):
-    @gin.configurable
-    @dataclass
-    class ActionConfig(MJXConfig.ActionConfig):
-        cycle_time: float = 0.72
-
-    @gin.configurable
-    @dataclass
-    class CommandsConfig(MJXConfig.CommandsConfig):
-        reset_time: float = 5.0
-        command_range: List[List[float]] = field(
-            default_factory=lambda: [
-                [-1.0, 1.0],
-                [-1.0, 1.0],
-                [-1.0, 1.0],
-                [-1.0, 1.0],
-                [-1.0, 1.0],
-                [-0.1, 0.4],
-                [-0.1, 0.1],
-                [0.0, 0.0],
-            ]
-        )
-        deadzone: List[float] = field(default_factory=lambda: [0.01])
-        command_obs_indices: List[int] = field(default_factory=lambda: [5, 6, 7])
-
-    @gin.configurable
-    @dataclass
-    class RewardScales(MJXConfig.RewardsConfig.RewardScales):
-        # Walk specific rewards
-        torso_pitch: float = 0.2
-        lin_vel_xy: float = 5.0
-        ang_vel_z: float = 1.0
-        feet_air_time: float = 100.0
-        feet_distance: float = 0.5
-        feet_slip: float = 0.1
-        feet_clearance: float = 10.0
-        stand_still: float = 1.0
-
-    def __init__(self):
-        super().__init__()
-        self.action = self.ActionConfig()
-        self.commands = self.CommandsConfig()
-        self.rewards.scales = self.RewardScales()
-
-
 class WalkEnv(MJXEnv, env_name="walk"):
     def __init__(
         self,
         name: str,
         robot: Robot,
-        cfg: WalkCfg,
+        cfg: MJXConfig,
         ref_motion_type: str = "zmp",
         fixed_base: bool = False,
         add_noise: bool = True,
@@ -81,7 +32,10 @@ class WalkEnv(MJXEnv, env_name="walk"):
 
         elif ref_motion_type == "zmp":
             motion_ref = WalkZMPReference(
-                robot, cfg.sim.timestep * cfg.action.n_frames, cfg.action.cycle_time
+                robot,
+                cfg.sim.timestep * cfg.action.n_frames,
+                cfg.action.cycle_time,
+                cfg.action.waist_roll_max,
             )
         else:
             raise ValueError(f"Unknown ref_motion_type: {ref_motion_type}")
@@ -90,7 +44,6 @@ class WalkEnv(MJXEnv, env_name="walk"):
         self.torso_pitch_range = cfg.rewards.torso_pitch_range
         self.min_feet_y_dist = cfg.rewards.min_feet_y_dist
         self.max_feet_y_dist = cfg.rewards.max_feet_y_dist
-        self.target_feet_z_delta = cfg.rewards.target_feet_z_delta
 
         super().__init__(
             name,
@@ -112,8 +65,8 @@ class WalkEnv(MJXEnv, env_name="walk"):
             pose_command = last_command[:5]
         else:
             pose_command = self._sample_command_uniform(rng_1, self.command_range[:5])
-            pose_command = pose_command.at[3].set(0.0)
-            pose_command = pose_command.at[4].set(0.0)
+            # TODO: Bring the random pose sampling back
+            pose_command = pose_command.at[:5].set(0.0)
 
         # Sample random angles uniformly between 0 and 2*pi
         theta = jax.random.uniform(rng_2, (1,), minval=0, maxval=2 * jnp.pi)
@@ -211,4 +164,15 @@ class WalkEnv(MJXEnv, env_name="walk"):
         )
         reward = -(qpos_diff**2)
         reward *= jnp.linalg.norm(info["command_obs"]) < self.deadzone
+        return reward
+
+    def _reward_hip_motor_torque(
+        self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
+    ) -> jax.Array:
+        """Reward for minimizing joint torques"""
+        torque = pipeline_state.qfrc_actuator[
+            self.qd_start_idx + self.hip_motor_indices
+        ]
+        error = jnp.square(torque)
+        reward = -jnp.mean(error)
         return reward

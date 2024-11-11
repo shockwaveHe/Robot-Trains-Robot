@@ -222,8 +222,8 @@ def add_keyframes(
             )
         else:
             qpos_str += (
-                "0 0 0 -0.267268 0.523599 -0.523599 -0.523599 -0.25637 0 0.523599 -0.523599 -0.523599 "
-                + "0 0 0 0.267268 -0.523599 0.523599 0.523599 -0.25637 0 -0.523599 0.523599 0.523599 "
+                "0.145689 0 0 0 -0.534732 -0.534757 -0.534707 -0.379457 0 -0.534732 -0.534757 -0.534707 "
+                + "-0.145689 0 0 0 0.534732 0.534757 0.534707 0.379457 0 0.534732 0.534757 0.534707 "
             )
 
     if has_upper_body:  # arms
@@ -255,14 +255,14 @@ def add_default_settings(
 
     default = ET.SubElement(root, "default")
 
-    ET.SubElement(
-        default,
-        "geom",
-        {
-            "type": "mesh",
-            "solref": f"{general_config['solref'][0]} {general_config['solref'][1]}",
-        },
-    )
+    # ET.SubElement(
+    #     default,
+    #     "geom",
+    #     {
+    #         "type": "mesh",
+    #         "solref": f"{general_config['solref'][0]} {general_config['solref'][1]}",
+    #     },
+    # )
     # Add <default class="visual"> settings
     visual_default = ET.SubElement(default, "default", {"class": "visual"})
     ET.SubElement(
@@ -351,6 +351,7 @@ def add_contacts(
 
     collision_body_names = list(collision_bodies.keys())
     for body_name in collision_body_names:
+        print(body_name)
         if (
             "floor" in collision_config[body_name]["contact_pairs"]
             and foot_name in body_name

@@ -3,7 +3,7 @@ from typing import Dict, Optional
 import numpy as np
 import numpy.typing as npt
 
-from toddlerbot.locomotion.balance_env import BalanceCfg
+from toddlerbot.locomotion.mjx_config import get_env_config
 from toddlerbot.motion.balance_pd_ref import BalancePDReference
 from toddlerbot.policies.mjx_policy import MJXPolicy
 from toddlerbot.sim.robot import Robot
@@ -20,7 +20,7 @@ class BalancePolicy(MJXPolicy, policy_name="balance"):
         joystick: Optional[Joystick] = None,
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
     ):
-        env_cfg = BalanceCfg()
+        env_cfg = get_env_config("balance")
         motion_ref = BalancePDReference(
             robot,
             env_cfg.sim.timestep * env_cfg.action.n_frames,

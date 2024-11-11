@@ -11,4 +11,4 @@ fi
 GPU_TYPE=$1
 
 # Run the srun command with the specified GPU type
-srun --account=move --partition=move-interactive --gres=gpu:${GPU_TYPE}:1 --time=3-00:00:00 --mem-per-cpu=4G --cpus-per-task=8 --pty bash
+srun --account=move --partition=move-interactive --gres=gpu:${GPU_TYPE}:1 --time=3-00:00:00 --mem-per-cpu=4G --cpus-per-task=16 --pty bash

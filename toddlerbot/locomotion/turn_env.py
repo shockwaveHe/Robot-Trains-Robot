@@ -1,52 +1,9 @@
-from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import Optional
 
-import gin
 import jax
 import jax.numpy as jnp
 
-from toddlerbot.locomotion.walk_env import WalkCfg, WalkEnv
-
-
-@gin.configurable
-@dataclass
-class TurnCfg(WalkCfg, env_name="turn"):
-    @gin.configurable
-    @dataclass
-    class CommandsConfig(WalkCfg.CommandsConfig):
-        reset_time: float = 5.0
-        command_range: List[List[float]] = field(
-            default_factory=lambda: [
-                [-1.0, 1.0],
-                [-1.0, 1.0],
-                [-1.0, 1.0],
-                [-1.0, 1.0],
-                [-1.0, 1.0],
-                [0.0, 0.0],
-                [0.0, 0.0],
-                [-0.5, 0.5],
-            ]
-        )
-        deadzone: List[float] = field(default_factory=lambda: [0.1])
-        command_obs_indices: List[int] = field(default_factory=lambda: [5, 6, 7])
-
-    @gin.configurable
-    @dataclass
-    class RewardScales(WalkCfg.RewardsConfig.RewardScales):
-        # Walk specific rewards
-        torso_pitch: float = 0.2
-        lin_vel_xy: float = 1.0
-        ang_vel_z: float = 5.0
-        feet_air_time: float = 100.0
-        feet_distance: float = 0.5
-        feet_slip: float = 0.1
-        feet_clearance: float = 10.0
-        stand_still: float = 1.0
-
-    def __init__(self):
-        super().__init__()
-        self.commands = self.CommandsConfig()
-        self.rewards.scales = self.RewardScales()
+from toddlerbot.locomotion.walk_env import WalkEnv
 
 
 class TurnEnv(WalkEnv, env_name="turn"):
@@ -58,8 +15,8 @@ class TurnEnv(WalkEnv, env_name="turn"):
             pose_command = last_command[:5]
         else:
             pose_command = self._sample_command_uniform(rng_1, self.command_range[:5])
-            pose_command = pose_command.at[3].set(0.0)
-            pose_command = pose_command.at[4].set(0.0)
+            # TODO: Bring the random pose sampling back
+            pose_command = pose_command.at[:5].set(0.0)
 
         # Parametric equation of ellipse
         x = jnp.zeros(1)

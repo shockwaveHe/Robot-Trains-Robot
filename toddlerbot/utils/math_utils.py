@@ -255,6 +255,62 @@ def quat2mat(quat: ArrayType, order: str = "wxyz") -> ArrayType:
     return mat
 
 
+def euler2mat(euler: ArrayType) -> ArrayType:
+    """
+    Convert Euler angles (roll, pitch, yaw) to a 3x3 rotation matrix.
+
+    Args:
+        euler: Euler angles as [roll, pitch, yaw].
+
+    Returns:
+        A 3x3 rotation matrix.
+    """
+    roll, pitch, yaw = euler
+
+    # Compute individual rotation matrices
+    cr, sr = np.cos(roll), np.sin(roll)
+    cp, sp = np.cos(pitch), np.sin(pitch)
+    cy, sy = np.cos(yaw), np.sin(yaw)
+
+    # Rotation matrix for each axis
+    R_roll = np.array([[1, 0, 0], [0, cr, -sr], [0, sr, cr]])
+
+    R_pitch = np.array([[cp, 0, sp], [0, 1, 0], [-sp, 0, cp]])
+
+    R_yaw = np.array([[cy, -sy, 0], [sy, cy, 0], [0, 0, 1]])
+
+    # Combined rotation matrix
+    R = R_yaw @ R_pitch @ R_roll
+    return R
+
+
+def mat2euler(mat: ArrayType) -> ArrayType:
+    """
+    Convert a 3x3 rotation matrix to Euler angles (roll, pitch, yaw).
+
+    Args:
+        mat: 3x3 rotation matrix.
+
+    Returns:
+        Euler angles as [roll, pitch, yaw].
+    """
+    # Check for gimbal lock
+    if np.isclose(mat[2, 0], -1.0):
+        pitch = np.pi / 2
+        roll = np.arctan2(mat[0, 1], mat[0, 2])
+        yaw = 0
+    elif np.isclose(mat[2, 0], 1.0):
+        pitch = -np.pi / 2
+        roll = np.arctan2(-mat[0, 1], -mat[0, 2])
+        yaw = 0
+    else:
+        pitch = np.arcsin(-mat[2, 0])
+        roll = np.arctan2(mat[2, 1] / np.cos(pitch), mat[2, 2] / np.cos(pitch))
+        yaw = np.arctan2(mat[1, 0] / np.cos(pitch), mat[0, 0] / np.cos(pitch))
+
+    return np.array([roll, pitch, yaw])
+
+
 def quat_inv(quat: ArrayType, order: str = "wxyz") -> ArrayType:
     """Compute the inverse of a quaternion."""
     if order == "xyzw":

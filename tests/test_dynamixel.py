@@ -65,7 +65,7 @@ def get_dynamixel_controller(
 # @profile()
 def main(robot: Robot):
     dynamixel_controller = get_dynamixel_controller(
-        robot, id_list=[*range(0, 32)], group="all"
+        robot, id_list=[*range(0, 30)], group="all"
     )
 
     step_idx = 0
@@ -74,8 +74,8 @@ def main(robot: Robot):
         while True:
             step_start = time.time()
 
-            _ = dynamixel_controller.get_motor_state()
-            # print(motor_state)
+            motor_state = dynamixel_controller.get_motor_state()
+            print(motor_state)
 
             step_idx += 1
 

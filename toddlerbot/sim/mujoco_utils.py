@@ -4,6 +4,8 @@ import time
 import warnings
 from typing import Any, Dict, List
 
+import cv2
+import matplotlib.pyplot as plt
 import mediapy as media
 import mujoco
 import mujoco.rollout
@@ -16,6 +18,20 @@ from toddlerbot.sim.robot import Robot
 
 # Suppress specific warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="moviepy")
+
+
+def mj_render(model, data, lib="plt"):
+    renderer = mujoco.Renderer(model)
+    renderer.update_scene(data)
+    pixels = renderer.render()
+
+    if lib == "plt":
+        plt.imshow(pixels)
+        plt.show()
+    else:
+        pixels_bgr = cv2.cvtColor(pixels, cv2.COLOR_RGB2BGR)
+        cv2.imshow("Simulation", pixels_bgr)
+        cv2.waitKey(1)  # This ensures the window updates without blocking
 
 
 class MuJoCoViewer:

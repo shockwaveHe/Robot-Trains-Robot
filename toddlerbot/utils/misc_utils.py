@@ -1,3 +1,4 @@
+import ast
 import asyncio
 import functools
 import inspect
@@ -158,18 +159,37 @@ def set_seed(seed: int):
 
 
 def parse_value(value: str):
-    """Helper function to parse value from string to int/float/bool if needed."""
+    """Helper function to parse value from string to int/float/bool/list if needed."""
+
+    # Trim any extra whitespace
+    value = value.strip()
+
+    # Check for boolean values
     if value.lower() == "true":
         return True
     elif value.lower() == "false":
         return False
+
+    # Check for list formatted as "[value1, value2, ...]"
+    if value.startswith("[") and value.endswith("]"):
+        try:
+            # Use ast.literal_eval to safely parse the string into a list
+            parsed_value = ast.literal_eval(value)
+            if isinstance(parsed_value, list):
+                return parsed_value
+        except (SyntaxError, ValueError):
+            raise ValueError(f"Invalid list format: {value}")
+
+    # Try to convert to int or float
     try:
+        # If there’s a decimal point, treat as float
         if "." in value:
             return float(value)
-        else:
-            return int(value)
+        # Otherwise, treat as int
+        return int(value)
     except ValueError:
-        return value  # Return as string if not a number
+        # If neither int nor float, return the original string
+        return value
 
 
 def dataclass2dict(obj):

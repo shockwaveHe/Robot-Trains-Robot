@@ -1,7 +1,5 @@
-from dataclasses import dataclass, field
-from typing import Any, List, Optional
+from typing import Any, Optional
 
-import gin
 import jax
 import jax.numpy as jnp
 
@@ -11,53 +9,12 @@ from toddlerbot.motion.balance_pd_ref import BalancePDReference
 from toddlerbot.sim.robot import Robot
 
 
-@gin.configurable
-@dataclass
-class BalanceCfg(MJXConfig, env_name="balance"):
-    @dataclass
-    class ObsConfig(MJXConfig.ObsConfig):
-        num_single_obs: int = 101
-        num_single_privileged_obs: int = 141
-
-    @gin.configurable
-    @dataclass
-    class CommandsConfig(MJXConfig.CommandsConfig):
-        resample_time: float = 2.0
-        command_range: List[List[float]] = field(
-            default_factory=lambda: [
-                [-1.5, 1.5],
-                [-1.5, 1.5],
-                [0.0, 0.5],
-                [-0.3, 0.3],
-                [-0.6, 0.6],
-                [-1.0, 0.0],
-            ]
-        )
-        deadzone: List[float] = field(
-            default_factory=lambda: [0.05, 0.05, 0.0, 0.05, 0.05, 0.0]
-        )
-        command_obs_indices: List[int] = field(default_factory=lambda: [0, 1, 3, 4])
-
-    @gin.configurable
-    @dataclass
-    class RewardScales(MJXConfig.RewardsConfig.RewardScales):
-        # Balance specific rewards
-        torso_quat: float = 0.0
-
-    def __init__(self):
-        super().__init__()
-        self.obs = self.ObsConfig()
-        self.action = self.ActionConfig()
-        self.commands = self.CommandsConfig()
-        self.rewards.scales = self.RewardScales()
-
-
 class BalanceEnv(MJXEnv, env_name="balance"):
     def __init__(
         self,
         name: str,
         robot: Robot,
-        cfg: BalanceCfg,
+        cfg: MJXConfig,
         fixed_base: bool = False,
         add_noise: bool = True,
         add_domain_rand: bool = True,

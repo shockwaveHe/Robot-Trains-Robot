@@ -55,6 +55,7 @@ Contents
    :maxdepth: 2
    :caption: Tutorial
 
+   tutorial/calibration
    tutorial/dynamixel
    tutorial/walkthrough
    tutorial/tips
@@ -65,4 +66,3 @@ Contents
    :caption: Miscellaneous
 
    misc/misc
-   misc/jetson_RT_kernel

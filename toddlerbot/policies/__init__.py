@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List, Type
+from typing import Dict, List, Tuple, Type
 
 import numpy as np
 import numpy.typing as npt
@@ -7,6 +7,7 @@ import numpy.typing as npt
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.math_utils import interpolate
+from toddlerbot.utils.misc_utils import snake2camel
 
 # Global registry to store policy names and their corresponding classes
 policy_registry: Dict[str, Type["BasePolicy"]] = {}
@@ -46,17 +47,50 @@ class BasePolicy(ABC):
         self.prep_duration = prep_duration
         self.n_steps_total = n_steps_total
 
+        self.header_name = snake2camel(name)
+
+        self.default_motor_pos = np.array(
+            list(robot.default_motor_angles.values()), dtype=np.float32
+        )
+        self.default_joint_pos = np.array(
+            list(robot.default_joint_angles.values()), dtype=np.float32
+        )
+        self.motor_limits = np.array(
+            [robot.joint_limits[name] for name in robot.motor_ordering]
+        )
+        indices = np.arange(robot.nu)
+        motor_groups = np.array(
+            [robot.joint_groups[name] for name in robot.motor_ordering]
+        )
+        joint_groups = np.array(
+            [robot.joint_groups[name] for name in robot.joint_ordering]
+        )
+        self.leg_motor_indices = indices[motor_groups == "leg"]
+        self.leg_joint_indices = indices[joint_groups == "leg"]
+        self.arm_motor_indices = indices[motor_groups == "arm"]
+        self.arm_joint_indices = indices[joint_groups == "arm"]
+        self.neck_motor_indices = indices[motor_groups == "neck"]
+        self.neck_joint_indices = indices[joint_groups == "neck"]
+        self.waist_motor_indices = indices[motor_groups == "waist"]
+        self.waist_joint_indices = indices[joint_groups == "waist"]
+
+        self.zero_command = np.zeros(1, dtype=np.float32)
+
+        self.prep_duration = 2.0
+        self.prep_time, self.prep_action = self.move(
+            -self.control_dt, init_motor_pos, self.default_motor_pos, self.prep_duration
+        )
+
     # Automatic registration of subclasses
     def __init_subclass__(cls, policy_name: str = "", **kwargs):
         super().__init_subclass__(**kwargs)
         if len(policy_name) > 0:
             policy_registry[policy_name] = cls
 
-    def reset(self):
-        pass
-
     @abstractmethod
-    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
+    def step(
+        self, obs: Obs, is_real: bool = False
+    ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
         pass
 
     # duration: total length of the motion

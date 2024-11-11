@@ -1,10 +1,10 @@
 import os
 from copy import deepcopy
 
-os.environ["XLA_FLAGS"] = "--xla_gpu_triton_gemm_any=true"
 os.environ["USE_JAX"] = "true"
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
+os.environ["XLA_FLAGS"] = "--xla_gpu_triton_gemm_any=true"
 
 import argparse
 import functools
@@ -33,12 +33,14 @@ from orbax import checkpoint as ocp
 from tqdm import tqdm
 
 import wandb
-from toddlerbot.locomotion.mjx_config import get_env_cfg_class
+from toddlerbot.locomotion.mjx_config import MJXConfig
 from toddlerbot.locomotion.mjx_env import MJXEnv, get_env_class
 from toddlerbot.locomotion.ppo_config import PPOConfig
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.misc_utils import dataclass2dict, parse_value
+
+jax.config.update("jax_default_matmul_precision", jax.lax.Precision.HIGH)
 
 
 def dynamic_import_envs(env_package: str):
@@ -77,7 +79,11 @@ def render_video(
         media.write_video(
             video_path,
             env.render(
-                rollout[::render_every], height=height, width=width, camera=camera
+                rollout[::render_every],
+                height=height,
+                width=width,
+                camera=camera,
+                eval=True,
             ),
             fps=1.0 / env.dt / render_every,
         )
@@ -223,34 +229,35 @@ def domain_randomize(
 ) -> Tuple[base.System, base.System]:
     @jax.vmap
     def rand(rng: jax.Array):
-        _, key = jax.random.split(rng, 2)
+        _, rng_friction, rng_damping, rng_armature, rng_frictionloss, rng_gravity = jax.random.split(
+            rng, 6
+        )
 
-        # Friction
         friction = jax.random.uniform(
-            key,
-            (1,),
-            minval=friction_range[0],
-            maxval=friction_range[1],
+            rng_friction, (1,), minval=friction_range[0], maxval=friction_range[1]
         )
         friction = sys.geom_friction.at[:, 0].set(friction)
 
         damping = (
             jax.random.uniform(
-                key, (sys.nv,), minval=damping_range[0], maxval=damping_range[1]
+                rng_damping, (sys.nv,), minval=damping_range[0], maxval=damping_range[1]
             )
             * sys.dof_damping
         )
 
         armature = (
             jax.random.uniform(
-                key, (sys.nv,), minval=armature_range[0], maxval=armature_range[1]
+                rng_armature,
+                (sys.nv,),
+                minval=armature_range[0],
+                maxval=armature_range[1],
             )
             * sys.dof_armature
         )
 
         frictionloss = (
             jax.random.uniform(
-                key,
+                rng_frictionloss,
                 (sys.nv,),
                 minval=frictionloss_range[0],
                 maxval=frictionloss_range[1],
@@ -259,7 +266,7 @@ def domain_randomize(
         )
         gravity = (
             jax.random.uniform(
-                key,
+                rng_gravity,
                 shape=(),
                 minval=gravity_range[0],
                 maxval=gravity_range[1],
@@ -311,8 +318,6 @@ def domain_randomize(
 
     in_axes_dict = {
         "geom_friction": 0,
-        # "actuator_gainprm": 0,
-        # "actuator_biasprm": 0,
         "dof_damping": 0,
         "dof_armature": 0,
         "dof_frictionloss": 0,
@@ -321,18 +326,11 @@ def domain_randomize(
 
     sys_dict = {
         "geom_friction": friction,
-        # "actuator_gainprm": gain,
-        # "actuator_biasprm": bias,
         "dof_damping": damping,
         "dof_armature": armature,
         "dof_frictionloss": frictionloss,
         **body_mass_attr,
     }
-
-    # jax.debug.breakpoint()
-    # for key, value in body_mass_attr.items():
-    #     in_axes_dict[key] = 0
-    #     sys_dict[key] = value
 
     if body_mass_attr_range is not None:
         sys = sys.replace(actuator_acc0=body_mass_attr_range["actuator_acc0"][0])
@@ -608,22 +606,32 @@ if __name__ == "__main__":
         help="Path to the checkpoint folder.",
     )
     parser.add_argument(
-        "--gin_files",
+        "--gin-files",
         type=str,
         default="",
         help="List of gin config files",
     )
     parser.add_argument(
-        "--config_override",
+        "--config-override",
         type=str,
         default="",
         help="Override config parameters (e.g., SimConfig.timestep=0.01 ObsConfig.frame_stack=10)",
     )
     args = parser.parse_args()
 
-    # Load gin config file
-    if len(args.gin_files) > 0:
-        gin.parse_config_files_and_bindings(args.gin_files.split(" "), [])
+    gin_file_list = [args.env] + args.gin_files.split(" ")
+    for gin_file in gin_file_list:
+        if len(gin_file) == 0:
+            continue
+
+        gin_file_path = os.path.join(
+            os.path.dirname(__file__),
+            gin_file + ".gin" if not gin_file.endswith(".gin") else gin_file,
+        )
+        if not os.path.exists(gin_file_path):
+            raise FileNotFoundError(f"File {gin_file_path} not found.")
+
+        gin.parse_config_file(gin_file_path)
 
     # Bind parameters from --config_override
     if len(args.config_override) > 0:
@@ -634,7 +642,7 @@ if __name__ == "__main__":
     robot = Robot(args.robot)
 
     EnvClass = get_env_class(args.env)
-    env_cfg = get_env_cfg_class(args.env)()
+    env_cfg = MJXConfig()
     train_cfg = PPOConfig()
 
     kwargs = {}
@@ -651,10 +659,10 @@ if __name__ == "__main__":
         if "walk" in args.env:
             env_cfg.rewards.scales.feet_distance = 0.5
 
-        env_cfg.rewards.scales.leg_joint_pos = 5.0
-        env_cfg.rewards.scales.waist_joint_pos = 5.0
+        env_cfg.rewards.scales.leg_motor_pos = 5.0
+        env_cfg.rewards.scales.waist_motor_pos = 5.0
         env_cfg.rewards.scales.motor_torque = 5e-2
-        env_cfg.rewards.scales.joint_acc = 5e-6
+        env_cfg.rewards.scales.motor_acc = 5e-6
         env_cfg.rewards.scales.leg_action_rate = 1e-2
         env_cfg.rewards.scales.leg_action_acc = 1e-2
         env_cfg.rewards.scales.waist_action_rate = 1e-2
@@ -700,7 +708,10 @@ if __name__ == "__main__":
     else:
         time_str = time.strftime("%Y%m%d_%H%M%S")
 
-    run_name = f"{robot.name}_{args.env}_ppo_{time_str}"
+    config_override_str: str = (
+        "" if len(args.config_override) == 0 else f"_{args.config_override}"
+    )
+    run_name = f"{robot.name}_{args.env}_ppo{config_override_str}_{time_str}"
 
     if len(args.eval) > 0:
         if os.path.exists(os.path.join("results", run_name)):

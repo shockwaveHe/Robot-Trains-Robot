@@ -1,5 +1,7 @@
+import os
 import platform
 import subprocess
+import sys
 import time
 from dataclasses import dataclass
 from threading import Lock
@@ -22,6 +24,63 @@ CONTROL_MODE_DICT: Dict[str, int] = {
     "current_based_position": 5,
     "pwm": 16,
 }
+
+
+def get_env_path():
+    """Get the path to the current Python environment"""
+    # Check if using a virtual environment
+    if hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix:
+        return sys.prefix
+    # If using conda, the CONDA_PREFIX environment variable is set
+    elif "CONDA_PREFIX" in os.environ:
+        return os.environ["CONDA_PREFIX"]
+    else:
+        # If not using virtualenv or conda, assume system environment
+        return sys.prefix
+
+
+def set_latency_timer(latency_value: int = 1):
+    """Set LATENCY_TIMER = 1 in port_handler.py"""
+    env_path = get_env_path()
+
+    # Construct the path to port_handler.py
+    port_handler_path = os.path.join(
+        env_path,
+        "lib",
+        f"python{sys.version_info.major}.{sys.version_info.minor}",
+        "site-packages",
+        "dynamixel_sdk",
+        "port_handler.py",
+    )
+
+    if not os.path.exists(port_handler_path):
+        print(f"Error: port_handler.py not found at {port_handler_path}")
+        return
+
+    try:
+        # Read the content of port_handler.py
+        with open(port_handler_path, "r") as file:
+            lines = file.readlines()
+
+        # Search for the LATENCY_TIMER line and modify it
+        modified = False
+        for i, line in enumerate(lines):
+            if "LATENCY_TIMER" in line:
+                lines[i] = f"LATENCY_TIMER = {latency_value}\n"
+                modified = True
+                break
+
+        if modified:
+            # Write the modified content back to port_handler.py
+            with open(port_handler_path, "w") as file:
+                file.writelines(lines)
+
+            print(f"LATENCY_TIMER set to 1 in {port_handler_path}")
+        else:
+            print("LATENCY_TIMER variable not found in port_handler.py")
+
+    except Exception as e:
+        print(f"Error while modifying the file: {e}")
 
 
 @dataclass
@@ -58,6 +117,8 @@ class DynamixelController(BaseController):
     def connect_to_client(self, latency_value: int = 1):
         os_type = platform.system()
         try:
+            set_latency_timer(latency_value)
+
             if os_type == "Linux":
                 # Construct the command to set the latency timer on Linux
                 command = f"echo {latency_value} | sudo tee /sys/bus/usb-serial/devices/{self.config.port.split('/')[-1]}/latency_timer"
@@ -88,6 +149,14 @@ class DynamixelController(BaseController):
 
     def initialize_motors(self):
         log("Initializing motors...", header="Dynamixel")
+
+        _, v_in = self.client.read_vin()
+        log(f"Voltage (V): {v_in}", header="Dynamixel")
+        if np.any(v_in < 10):
+            raise ValueError(
+                "Voltage too low. Please check the power supply or charge the batteries."
+            )
+
         # Set the return delay time to 1*2=2us
         self.client.sync_write(
             self.motor_ids, [self.config.return_delay_time] * len(self.motor_ids), 9, 1

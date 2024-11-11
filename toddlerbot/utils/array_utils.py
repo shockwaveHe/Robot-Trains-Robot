@@ -42,6 +42,31 @@ def inplace_add(
         return array_copy
 
 
+def conditional_update(
+    condition: bool | jax.Array | npt.NDArray[np.bool_],
+    true_func: Callable[[], ArrayType],
+    false_func: Callable[[], ArrayType],
+) -> ArrayType:
+    """
+    Performs a conditional update using `jax.lax.cond` if USE_JAX is True, or
+    a standard if-else statement for NumPy.
+
+    Args:
+        condition: The condition to check.
+        true_func: Function to execute if the condition is True.
+        false_func: Function to execute if the condition is False.
+
+    Returns:
+        The result of true_func if condition is True, otherwise the result of false_func.
+    """
+    if USE_JAX:
+        # Use jax.lax.cond to perform the conditional update
+        return jax.lax.cond(condition, true_func, false_func)
+    else:
+        # Use a standard if-else for NumPy
+        return true_func() if condition else false_func()
+
+
 def loop_update(
     update_step: Callable[
         [Tuple[ArrayType, ArrayType], int],

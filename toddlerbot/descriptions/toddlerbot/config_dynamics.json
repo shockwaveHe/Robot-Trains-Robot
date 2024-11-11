@@ -18,25 +18,5 @@
         "damping": 0.0,
         "armature": 0.0,
         "frictionloss": 0.685
-    },
-    "left_ank_roll": {
-        "damping": 0.139,
-        "armature": 0.0018,
-        "frictionloss": 0.058
-    },
-    "right_ank_roll": {
-        "damping": 0.139,
-        "armature": 0.0018,
-        "frictionloss": 0.058
-    },
-    "left_ank_pitch": {
-        "damping": 0.0,
-        "armature": 0.0006,
-        "frictionloss": 0.44
-    },
-    "right_ank_pitch": {
-        "damping": 0.0,
-        "armature": 0.0006,
-        "frictionloss": 0.44
     }
 }

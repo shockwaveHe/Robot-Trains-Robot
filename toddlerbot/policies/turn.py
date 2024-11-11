@@ -3,7 +3,7 @@ from typing import Dict, Optional
 import numpy as np
 import numpy.typing as npt
 
-from toddlerbot.locomotion.turn_env import TurnCfg
+from toddlerbot.locomotion.mjx_config import get_env_config
 from toddlerbot.motion.walk_zmp_ref import WalkZMPReference
 from toddlerbot.policies.mjx_policy import MJXPolicy
 from toddlerbot.sim.robot import Robot
@@ -20,11 +20,12 @@ class TurnPolicy(MJXPolicy, policy_name="turn"):
         joystick: Optional[Joystick] = None,
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
     ):
-        env_cfg = TurnCfg()
+        env_cfg = get_env_config("turn")
         motion_ref = WalkZMPReference(
             robot,
             env_cfg.sim.timestep * env_cfg.action.n_frames,
             env_cfg.action.cycle_time,
+            env_cfg.action.waist_roll_max,
         )
 
         self.command_range = env_cfg.commands.command_range

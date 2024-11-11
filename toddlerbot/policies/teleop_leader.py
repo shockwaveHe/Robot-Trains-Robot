@@ -1,5 +1,5 @@
 import time
-from typing import Optional
+from typing import Optional, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -24,10 +24,6 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
     ):
         super().__init__(name, robot, init_motor_pos)
 
-        self.default_motor_pos = np.array(
-            list(robot.default_motor_angles.values()), dtype=np.float32
-        )
-
         self.zmq = ZMQNode(type="sender", ip=ip)
 
         self.fsr = None
@@ -36,7 +32,7 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
         except Exception:
             pass
 
-        self.is_logging = False
+        self.is_running = False
         self.toggle_motor = True
         self.is_button_pressed = False
 
@@ -45,42 +41,34 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
         else:
             self.joystick = joystick
 
-        self.prep_duration = 2.0
-        self.prep_time, self.prep_action = self.move(
-            -self.control_dt,
-            init_motor_pos,
-            self.default_motor_pos,
-            self.prep_duration,
-            end_time=0.0,
-        )
         self.reset_duration = 5.0
         self.reset_end_time = 1.0
         self.reset_time = None
 
-        print('\nBy default, logging is disabled. Press "menu" to toggle logging.\n')
-
     # note: calibrate zero at: toddlerbot/tools/calibration/calibrate_zero.py --robot toddlerbot_arms
     # note: zero points can be accessed in config_motors.json
 
-    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
-        if obs.time < self.prep_time[-1]:
+    def step(
+        self, obs: Obs, is_real: bool = False
+    ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
+        if obs.time < self.prep_duration:
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
             )
-            return action
+            return self.zero_command, action
 
         control_inputs = self.joystick.get_controller_input()
         for task, input in control_inputs.items():
-            if task == "manipulate":
+            if task == "teleop":
                 if abs(input) > 0.5:
                     # Button is pressed
                     if not self.is_button_pressed:
                         self.is_button_pressed = True  # Mark the button as pressed
-                        self.is_logging = not self.is_logging  # Toggle logging
+                        self.is_running = not self.is_running  # Toggle logging
                         self.toggle_motor = True
 
                         print(
-                            f"\nLogging is now {'enabled' if self.is_logging else 'disabled'}.\n"
+                            f"\nLogging is now {'enabled' if self.is_running else 'disabled'}.\n"
                         )
                 else:
                     # Button is released
@@ -88,7 +76,7 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
 
         fsrL, fsrR = 0.0, 0.0
         action = self.default_motor_pos.copy()
-        if self.is_logging:
+        if self.is_running:
             action = obs.motor_pos
             if self.fsr is not None:
                 try:
@@ -127,4 +115,4 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
         # print(f"Loop time: {1000 * (time_curr - self.last_time):.2f} ms")
         # self.last_time = time.time()
 
-        return action
+        return self.zero_command, action

@@ -19,7 +19,7 @@ class PPOConfig:
     decay_steps: int = 50_000_000
     alpha: float = 0.1
     entropy_cost: float = 5e-4
-    clipping_epsilon: float = 0.2
+    clipping_epsilon: float = 0.1
     num_envs: int = 1024
     render_eval_interval: int = 0
     render_train_interval: int = 0

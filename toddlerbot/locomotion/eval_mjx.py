@@ -21,7 +21,7 @@ from moviepy.editor import VideoFileClip, clips_array
 from tqdm import tqdm
 
 import wandb
-from toddlerbot.locomotion.mjx_config import get_env_cfg_class
+from toddlerbot.locomotion.mjx_config import get_env_config
 from toddlerbot.locomotion.mjx_env import MJXEnv, get_env_class
 from toddlerbot.locomotion.ppo_config import PPOConfig
 from toddlerbot.sim.robot import Robot
@@ -303,7 +303,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     EnvClass = get_env_class(args.env)
-    eval_cfg = get_env_cfg_class(args.env)()
+    eval_cfg = get_env_config(args.env)
     eval_cfg.hang.init_hang_force = 0.0
 
     train_cfg = PPOConfig()

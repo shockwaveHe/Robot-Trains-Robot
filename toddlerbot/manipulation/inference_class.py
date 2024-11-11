@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
+from diffusers.schedulers.scheduling_ddim import DDIMScheduler
 from tqdm.auto import tqdm
 
 from toddlerbot.manipulation.models.diffusion_model import ConditionalUnet1D
@@ -23,6 +24,7 @@ class DPModel:
         action_horizon,
         lowdim_obs_dim,
         action_dim,
+        stats=None,
     ):
         # |o|o|                             observations: 2
         # | |a|a|a|a|a|a|a|a|               actions executed: 8
@@ -37,9 +39,12 @@ class DPModel:
         self.action_horizon = action_horizon
         self.obs_dim = self.vision_feature_dim + self.lowdim_obs_dim
 
+        self.down_dims = None
+        self.down_dims = [128, 256, 384]
+
         # initialize scheduler
-        self.num_diffusion_iters = 100
-        self.noise_scheduler = DDPMScheduler(
+        self.num_diffusion_iters = 100  # n steps trained on
+        self.noise_scheduler_ddpm = DDPMScheduler(
             num_train_timesteps=self.num_diffusion_iters,
             # the choise of beta schedule has big impact on performance
             # we found squared cosine works the best
@@ -50,17 +55,38 @@ class DPModel:
             prediction_type="epsilon",
         )
 
-        # initialize the network
-        self.load_model(ckpt_path)
+        self.noise_scheduler_ddim = DDIMScheduler(
+            num_train_timesteps=self.num_diffusion_iters,
+            # the choise of beta schedule has big impact on performance
+            # we found squared cosine works the best
+            beta_schedule="squaredcos_cap_v2",
+            # clip output to [-1,1] to improve stability
+            clip_sample=True,
+            # our network predicts noise (instead of denoised action)
+            prediction_type="epsilon",
+            # set_alpha_to_one=False,
+            timestep_spacing="linspace",
+        )
 
-    def load_model(self, ckpt_path):
+        # initialize the network
+        self.load_model(ckpt_path, stats=stats)
+
+    def load_model(self, ckpt_path, stats=None):
         # Construct the network
         vision_encoder = get_resnet("resnet18")
         vision_encoder = replace_bn_with_gn(vision_encoder)
 
-        noise_pred_net = ConditionalUnet1D(
-            input_dim=self.action_dim, global_cond_dim=self.obs_dim * self.obs_horizon
-        )
+        if self.down_dims is None:
+            noise_pred_net = ConditionalUnet1D(
+                input_dim=self.action_dim,
+                global_cond_dim=self.obs_dim * self.obs_horizon,
+            )
+        else:
+            noise_pred_net = ConditionalUnet1D(
+                input_dim=self.action_dim,
+                global_cond_dim=self.obs_dim * self.obs_horizon,
+                down_dims=self.down_dims,
+            )
 
         self.ema_nets = nn.ModuleDict(
             {"vision_encoder": vision_encoder, "noise_pred_net": noise_pred_net}
@@ -72,9 +98,15 @@ class DPModel:
             self.device = torch.device("mps")
         self.ema_nets = self.ema_nets.to(self.device)
 
-        state_dict = torch.load(ckpt_path, map_location=self.device)
-        self.ema_nets.load_state_dict(state_dict["state_dict"])
-        self.stats = state_dict["stats"]
+        if stats is None:
+            state_dict = torch.load(ckpt_path, map_location=self.device)
+            self.ema_nets.load_state_dict(state_dict["state_dict"])
+            self.stats = state_dict["stats"]
+        else:
+            self.stats = stats
+            self.ema_nets.load_state_dict(
+                torch.load(ckpt_path, map_location=self.device)
+            )
         print("Pretrained weights loaded.")
 
         self.ema_nets.eval()
@@ -111,6 +143,54 @@ class DPModel:
         action = action_pred[start:end, :]  # (action_horizon, action_dim)
         return action
 
+    def inference_ddim(self, obs_cond, nsteps=10, naction=None):
+        # initialize n(oisy) action from Guassian noise
+        B = 1
+        if naction is None:
+            naction = torch.randn(
+                (B, self.pred_horizon, self.action_dim), device=self.device
+            )
+
+        # init scheduler
+        self.noise_scheduler_ddim.set_timesteps(nsteps)
+
+        for k in self.noise_scheduler_ddim.timesteps:
+            # predict noise
+            noise_pred = self.ema_nets["noise_pred_net"](
+                sample=naction, timestep=k, global_cond=obs_cond
+            )
+
+            # inverse diffusion step (remove noise)
+            naction = self.noise_scheduler_ddim.step(
+                model_output=noise_pred, timestep=k, sample=naction
+            ).prev_sample
+
+        return naction
+
+    def inference_ddpm(self, obs_cond, nsteps, naction=None):
+        # initialize n(oisy) action from Guassian noise
+        B = 1
+        if naction is None:
+            naction = torch.randn(
+                (B, self.pred_horizon, self.action_dim), device=self.device
+            )
+
+        # init scheduler
+        self.noise_scheduler_ddpm.set_timesteps(nsteps)
+
+        for k in self.noise_scheduler_ddpm.timesteps:
+            # predict noise
+            noise_pred = self.ema_nets["noise_pred_net"](
+                sample=naction, timestep=k, global_cond=obs_cond
+            )
+
+            # inverse diffusion step (remove noise)
+            naction = self.noise_scheduler_ddpm.step(
+                model_output=noise_pred, timestep=k, sample=naction
+            ).prev_sample
+
+        return naction
+
     def get_action_from_obs(self, obs_deque):
         # prepare inputs
         nimages, nagent_poses = self.prepare_inputs(obs_deque)
@@ -126,25 +206,11 @@ class DPModel:
             # reshape observation to (B,obs_horizon*obs_dim)
             obs_cond = obs_features.unsqueeze(0).flatten(start_dim=1)
 
-            # initialize n(oisy) action from Guassian noise
-            B = 1
-            naction = torch.randn(
-                (B, self.pred_horizon, self.action_dim), device=self.device
-            )
+            # inference
+            # naction = self.inference_ddim(obs_cond, nsteps=2)
+            # naction = self.inference_ddpm(obs_cond, nsteps=2, naction=naction)
 
-            # init scheduler
-            self.noise_scheduler.set_timesteps(self.num_diffusion_iters)
-
-            for k in self.noise_scheduler.timesteps:
-                # predict noise
-                noise_pred = self.ema_nets["noise_pred_net"](
-                    sample=naction, timestep=k, global_cond=obs_cond
-                )
-
-                # inverse diffusion step (remove noise)
-                naction = self.noise_scheduler.step(
-                    model_output=noise_pred, timestep=k, sample=naction
-                ).prev_sample
+            naction = self.inference_ddpm(obs_cond, nsteps=3)
 
         # unpack to our format
         action = self.prediction_to_action(naction)
@@ -155,14 +221,14 @@ class DPModel:
 if __name__ == "__main__":
     from skvideo.io import vwrite
 
-    from datasets.pusht_dataset import PushTImageDataset
+    from toddlerbot.manipulation.datasets.pusht_dataset import PushTImageDataset
     from toddlerbot.manipulation.envs.pusht_env import PushTImageEnv
 
     pred_horizon, obs_horizon, action_horizon = 16, 2, 8
     lowdim_obs_dim, action_dim = 2, 2
 
     # create dataset from file
-    dataset_path = "pusht_cchi_v7_replay.zarr.zip"
+    dataset_path = "/home/weizhuo2/Documents/gits/diffusion_policy_minimal/pusht_cchi_v7_replay.zarr.zip"
     dataset = PushTImageDataset(
         dataset_path=dataset_path,
         pred_horizon=pred_horizon,
@@ -173,12 +239,13 @@ if __name__ == "__main__":
     stats = dataset.stats
 
     model = DPModel(
-        "pusht_vision_100ep.ckpt",
+        "/home/weizhuo2/Documents/gits/diffusion_policy_minimal/checkpoints/pusht_vision_100ep.ckpt",
         pred_horizon,
         obs_horizon,
         action_horizon,
         lowdim_obs_dim,
         action_dim,
+        stats=stats,
     )
 
     # ### **Inference**

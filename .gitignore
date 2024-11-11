@@ -1,10 +1,11 @@
 ### Project ###
 results
+.vscode/
 scripts/run_*_remote.sh
 scripts/run_*_remote.py
 wandb/
 tests/images/
-toddlerbot/policies/checkpoints/*teleop*
+toddlerbot/policies/checkpoints/*dp.pth
 
 ### Python ###
 
@@ -178,6 +179,7 @@ standard_bot
 *.gitkeep
 
 # Datasets
+<<<<<<< HEAD
 **/.DS_Store
 datasets/*.lz4
 archived
@@ -186,3 +188,7 @@ run_toddler.py
 mujoco_tutorial.ipynb
 key_frames
 ref_motion
+=======
+datasets/*.lz4
+toddlerbot/policies/checkpoints/teleop_model*
+>>>>>>> main

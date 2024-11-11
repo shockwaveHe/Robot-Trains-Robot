@@ -5,18 +5,15 @@ from typing import List
 import numpy as np
 from tqdm import tqdm
 
-from toddlerbot.locomotion.balance_env import BalanceCfg
-from toddlerbot.locomotion.squat_env import SquatCfg
-from toddlerbot.locomotion.turn_env import TurnCfg
-from toddlerbot.locomotion.walk_env import WalkCfg
+from toddlerbot.locomotion.mjx_config import get_env_config
 from toddlerbot.motion.balance_pd_ref import BalancePDReference
 from toddlerbot.motion.motion_ref import MotionReference
-from toddlerbot.motion.squat_ref import SquatReference
 from toddlerbot.motion.walk_simple_ref import WalkSimpleReference
 from toddlerbot.motion.walk_zmp_ref import WalkZMPReference
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
+from toddlerbot.utils.math_utils import euler2quat
 
 
 def test_motion_ref(
@@ -28,17 +25,16 @@ def test_motion_ref(
 ):
     joystick = Joystick()
 
-    default_joint_pos = np.array(
-        list(robot.default_joint_angles.values()), dtype=np.float32
-    )
     state_ref = np.concatenate(
         [
             np.zeros(3, dtype=np.float32),  # Position
-            np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),  # Orientation
+            euler2quat(
+                np.array([0, 0, np.random.uniform(0, np.pi * 2)])
+            ),  # Orientation
             np.zeros(3, dtype=np.float32),  # Linear velocity
             np.zeros(3, dtype=np.float32),  # Angular velocity
-            default_joint_pos,  # Joint positions
-            np.zeros_like(default_joint_pos),  # Joint velocities
+            motion_ref.default_motor_pos,
+            motion_ref.default_joint_pos,
             np.ones(2, dtype=np.float32),  # Stance mask
         ]
     )
@@ -70,7 +66,6 @@ def test_motion_ref(
                         )
 
             elif "balance" in motion_ref.name:
-                command[5] = pose_command[0]
                 for task, input in control_inputs.items():
                     if task == "look_left" and input > 0:
                         command[0] = input * command_range[0][1]
@@ -88,6 +83,12 @@ def test_motion_ref(
                         command[4] = input * command_range[4][0]
                     elif task == "twist_right" and input > 0:
                         command[4] = input * command_range[4][1]
+                    elif task == "squat":
+                        command[5] = np.interp(
+                            input,
+                            [-1, 0, 1],
+                            [command_range[5][1], 0.0, command_range[5][0]],
+                        )
 
             elif "squat" in motion_ref.name:
                 command[:3] = pose_command[:3]
@@ -101,20 +102,21 @@ def test_motion_ref(
 
             time_curr = step_idx * sim.control_dt
             state_ref = motion_ref.get_state_ref(state_ref, time_curr, command)
-            joint_angles = dict(
-                zip(robot.joint_ordering, np.asarray(state_ref[13 : 13 + robot.nu]))
-            )
 
-            if step_idx == 0:
-                qpos = motion_ref.get_qpos_ref(state_ref)
+            if step_idx == 0 or "walk" in motion_ref.name:
+                qpos = motion_ref.get_qpos_ref(state_ref, path_frame=False)
+                qpos[:3] = motion_ref.torso_pos_init + state_ref[:3]
+                # motor_angles = dict(
+                #     zip(robot.motor_ordering, state_ref[13 : 13 + robot.nu])
+                # )
+                # sim.set_motor_angles(motor_angles)
+                # sim.step()
                 sim.set_qpos(qpos)
                 sim.forward()
-
-            if "walk" in motion_ref.name:
-                sim.set_joint_angles(joint_angles)
-                sim.forward()
             else:
-                motor_angles = robot.joint_to_motor_angles(joint_angles)
+                motor_angles = dict(
+                    zip(robot.motor_ordering, state_ref[13 : 13 + robot.nu])
+                )
                 sim.set_motor_angles(motor_angles)
                 sim.step()
 
@@ -139,7 +141,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--robot",
         type=str,
-        default="toddlerbot_OP3",
+        default="toddlerbot",
         help="The name of the robot. Need to match the name in descriptions.",
     )
     parser.add_argument(
@@ -172,8 +174,8 @@ if __name__ == "__main__":
     motion_ref: MotionReference | None = None
 
     if "walk" in args.ref:
-        walk_cfg = WalkCfg()
-        turn_cfg = TurnCfg()
+        walk_cfg = get_env_config("walk")
+        turn_cfg = get_env_config("turn")
         command_range = walk_cfg.commands.command_range
         command_range[-1] = turn_cfg.commands.command_range[-1]
 
@@ -188,20 +190,14 @@ if __name__ == "__main__":
                 robot,
                 walk_cfg.sim.timestep * walk_cfg.action.n_frames,
                 walk_cfg.action.cycle_time,
+                walk_cfg.action.waist_roll_max,
             )
 
     elif "balance" in args.ref:
-        balance_cfg = BalanceCfg()
+        balance_cfg = get_env_config("balance")
         command_range = balance_cfg.commands.command_range
         motion_ref = BalancePDReference(
             robot, balance_cfg.sim.timestep * balance_cfg.action.n_frames
-        )
-
-    elif "squat" in args.ref:
-        squat_cfg = SquatCfg()
-        command_range = squat_cfg.commands.command_range
-        motion_ref = SquatReference(
-            robot, squat_cfg.sim.timestep * squat_cfg.action.n_frames
         )
 
     else:

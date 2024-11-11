@@ -19,7 +19,7 @@ class ZMPWalk:
         foot_step_height: float = 0.05,
         control_dt: float = 0.02,
         control_cost_Q: float = 1.0,
-        control_cost_R: float = 0.1,
+        control_cost_R: float = 1e-1,
     ):
         self.robot = robot
         self.cycle_time = cycle_time
@@ -49,7 +49,7 @@ class ZMPWalk:
 
     def build_lookup_table(
         self,
-        command_range: List[List[float]] = [[-0.1, 0.4], [-0.1, 0.1], [-0.5, 0.5]],
+        command_range: List[List[float]] = [[-0.2, 0.4], [-0.2, 0.2], [-0.8, 0.8]],
         interval: float = 0.02,
     ):
         """
@@ -83,7 +83,7 @@ class ZMPWalk:
             # if np.linalg.norm(command) < 1e-6:
             #     continue
 
-            com_ref, leg_joint_pos_ref, stance_mask_ref = self.plan(
+            _, com_ref, leg_joint_pos_ref, stance_mask_ref = self.plan(
                 path_pos, path_quat, command
             )
             first_cycle_idx = int(np.ceil(self.cycle_time / self.control_dt))
@@ -105,7 +105,7 @@ class ZMPWalk:
         command: ArrayType,
         total_time: float = 20.0,
         rotation_radius: float = 0.1,
-    ) -> Tuple[ArrayType, ArrayType, ArrayType]:
+    ) -> Tuple[ArrayType, ArrayType, ArrayType, ArrayType]:
         path_euler = quat2euler(path_quat)
         pose_curr = np.array(
             [path_pos[0], path_pos[1], path_euler[2]], dtype=np.float32
@@ -205,6 +205,8 @@ class ZMPWalk:
         )
         x0 = np.array([path_pos[0], path_pos[1], 0.0, 0.0], dtype=np.float32)
 
+        desired_zmps = [step[:2] for step in footsteps for _ in range(2)]
+
         if np.linalg.norm(command) < 1e-6:
             x_traj = np.tile(x0, (num_total_steps, 1))
             leg_joint_pos_ref = np.tile(
@@ -213,7 +215,6 @@ class ZMPWalk:
             stance_mask_ref = np.ones((num_total_steps, 2), dtype=np.float32)
 
         else:
-            desired_zmps = [step[:2] for step in footsteps for _ in range(2)]
             self.zmp_planner.plan(
                 time_steps,
                 desired_zmps,
@@ -273,7 +274,7 @@ class ZMPWalk:
                 com_pose_traj,
             )
 
-        return x_traj, leg_joint_pos_ref, stance_mask_ref
+        return np.array(desired_zmps), x_traj, leg_joint_pos_ref, stance_mask_ref
 
     def compute_foot_trajectories(
         self, time_steps: ArrayType, footsteps: List[ArrayType]
@@ -478,7 +479,7 @@ class ZMPWalk:
         offsets = self.robot.data_dict["offsets"]
 
         transformed_x = target_x * np.cos(hip_yaw) + target_y * np.sin(hip_yaw)
-        transformed_y = -target_x * np.sin(hip_yaw) + target_y * np.cos(hip_yaw)
+        transformed_y = target_x * np.sin(hip_yaw) - target_y * np.cos(hip_yaw)
         transformed_z = (
             offsets["hip_pitch_to_knee_z"]
             + offsets["knee_to_ank_pitch_z"]
@@ -504,17 +505,17 @@ class ZMPWalk:
             / offsets["knee_to_ank_pitch_z"]
             * np.sin(hip_disp)
         )
-        hip_pitch = -leg_pitch - hip_disp
+        hip_pitch = leg_pitch + hip_disp
         knee_pitch = hip_disp + ank_disp
-        ank_pitch += knee_pitch + hip_pitch
+        ank_pitch += knee_pitch - hip_pitch
 
         if side == "left":
             return np.vstack(
                 [
-                    -hip_yaw,
-                    hip_roll,
                     hip_pitch,
-                    knee_pitch,
+                    hip_roll,
+                    -hip_yaw,
+                    -knee_pitch,
                     hip_roll - ank_roll,
                     -ank_pitch,
                 ]
@@ -522,11 +523,11 @@ class ZMPWalk:
         else:
             return np.vstack(
                 [
-                    -hip_yaw,
-                    -hip_roll,
                     -hip_pitch,
-                    -knee_pitch,
+                    -hip_roll,
+                    -hip_yaw,
+                    knee_pitch,
                     hip_roll - ank_roll,
-                    -ank_pitch,
+                    ank_pitch,
                 ]
             ).T

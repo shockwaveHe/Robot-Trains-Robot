@@ -1,6 +1,6 @@
 import functools
 import os
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -54,19 +54,45 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
 
         self.motion_ref = motion_ref
 
-        self.obs_scales = cfg.obs.scales  # Assume all the envs have the same scales
+        self.obs_scales = cfg.obs_scales  # Assume all the envs have the same scales
         self.default_motor_pos = np.array(
             list(robot.default_motor_angles.values()), dtype=np.float32
         )
         self.default_joint_pos = np.array(
             list(robot.default_joint_angles.values()), dtype=np.float32
         )
-        self.action_scale = cfg.action.action_scale
-        self.n_steps_delay = cfg.action.n_steps_delay
 
+        self.action_parts = cfg.action.action_parts
         self.motor_limits = np.array(
             [robot.joint_limits[name] for name in robot.motor_ordering]
         )
+
+        motor_groups = np.array(
+            [self.robot.joint_groups[name] for name in self.robot.motor_ordering]
+        )
+        actuator_indices = np.arange(len(self.robot.motor_ordering))
+        action_mask: List[npt.NDArray[np.float32]] = []
+        default_action: List[npt.NDArray[np.float32]] = []
+        for part_name in self.action_parts:
+            if part_name == "leg":
+                action_mask.append(actuator_indices[motor_groups == "leg"])
+                default_action.append(self.default_motor_pos[motor_groups == "leg"])
+            elif part_name == "waist":
+                action_mask.append(actuator_indices[motor_groups == "waist"])
+                default_action.append(self.default_motor_pos[motor_groups == "waist"])
+            elif part_name == "arm":
+                action_mask.append(actuator_indices[motor_groups == "arm"])
+                default_action.append(self.default_motor_pos[motor_groups == "arm"])
+            elif part_name == "neck":
+                action_mask.append(actuator_indices[motor_groups == "neck"])
+                default_action.append(self.default_motor_pos[motor_groups == "neck"])
+
+        self.action_mask = np.concatenate(action_mask)
+        self.num_action = self.action_mask.shape[0]
+        self.default_action = np.concatenate(default_action)
+
+        self.action_scale = cfg.action.action_scale
+        self.n_steps_delay = cfg.action.n_steps_delay
 
         # Filter
         self.filter_type = cfg.action.filter_type
@@ -86,12 +112,12 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         self.butter_b_coef = np.array(b)[:, None]
         self.butter_a_coef = np.array(a)[:, None]
 
-        self.last_motor_target = self.default_motor_pos.copy()
+        self.last_action_target = self.default_action.copy()
         self.butter_past_inputs = np.tile(
-            self.last_motor_target, (self.filter_order, 1)
+            self.last_action_target, (self.filter_order, 1)
         )
         self.butter_past_outputs = np.tile(
-            self.last_motor_target, (self.filter_order, 1)
+            self.last_action_target, (self.filter_order, 1)
         )
 
         state_init = np.concatenate(
@@ -106,9 +132,9 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             ]
         )
         self.state_ref = state_init
-        self.last_action = np.zeros(robot.nu, dtype=np.float32)
+        self.last_action = np.zeros(self.num_action, dtype=np.float32)
         self.action_buffer = np.zeros(
-            ((self.n_steps_delay + 1) * robot.nu), dtype=np.float32
+            ((self.n_steps_delay + 1) * self.num_action), dtype=np.float32
         )
         self.obs_history = np.zeros(
             cfg.obs.frame_stack * cfg.obs.num_single_obs, dtype=np.float32
@@ -123,9 +149,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         )
 
         ppo_network = make_networks_factory(
-            cfg.obs.num_single_obs,
-            cfg.obs.num_single_privileged_obs,
-            robot.nu,
+            cfg.obs.num_single_obs, cfg.obs.num_single_privileged_obs, self.num_action
         )
         make_policy = ppo_networks.make_inference_fn(ppo_network)
 
@@ -163,7 +187,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             except Exception:
                 pass
 
-        self.control_inputs = None
+        self.control_inputs: Dict[str, float] | None = None
         self.is_prepared = False
 
     def reset(self) -> None:
@@ -180,7 +204,9 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         return self.fixed_command
 
     # @profile()
-    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
+    def step(
+        self, obs: Obs, is_real: bool = False
+    ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
         if not self.is_prepared:
             self.is_prepared = True
             self.prep_duration = 7.0 if is_real else 0.0
@@ -196,7 +222,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
             )
-            return action
+            return self.zero_command, action
 
         time_curr = self.step_curr * self.control_dt
 
@@ -237,43 +263,44 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
 
         action = np.asarray(jit_action, dtype=np.float32).copy()
         if is_real:
-            action_delay = action
+            delayed_action = action
         else:
             self.action_buffer = np.roll(self.action_buffer, action.size)
             self.action_buffer[: action.size] = action
-            action_delay = self.action_buffer[-self.robot.nu :]
+            delayed_action = self.action_buffer[-self.num_action :]
 
-        motor_target = self.default_motor_pos + self.action_scale * action_delay
-        motor_target = np.asarray(
-            self.motion_ref.override_motor_target(motor_target, self.state_ref)
-        )
+        action_target = self.default_action + self.action_scale * delayed_action
 
         if self.filter_type == "ema":
-            motor_target = exponential_moving_average(
-                self.ema_alpha, motor_target, self.last_motor_target
+            action_target = exponential_moving_average(
+                self.ema_alpha, action_target, self.last_action_target
             )
 
         elif self.filter_type == "butter":
             (
-                motor_target,
+                action_target,
                 butter_past_inputs,
                 butter_past_outputs,
             ) = butterworth(
                 self.butter_b_coef,
                 self.butter_a_coef,
-                motor_target,
+                action_target,
                 self.butter_past_inputs,
                 self.butter_past_outputs,
             )
             self.butter_past_inputs = np.asarray(butter_past_inputs)
             self.butter_past_outputs = np.asarray(butter_past_outputs)
 
+        self.last_action_target = action_target.copy()
+
+        motor_target = self.state_ref[13 : 13 + self.robot.nu].copy()
+        motor_target[self.action_mask] = action_target
+
         motor_target = np.clip(
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
         )
 
-        self.last_motor_target = motor_target.copy()
-        self.last_action = action_delay
+        self.last_action = delayed_action
         self.step_curr += 1
 
-        return motor_target
+        return command, motor_target

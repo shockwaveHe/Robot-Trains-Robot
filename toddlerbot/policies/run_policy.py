@@ -5,6 +5,7 @@ import json
 import os
 import pickle
 import pkgutil
+import subprocess
 import time
 from typing import Any, Dict, List
 
@@ -22,6 +23,7 @@ from toddlerbot.policies import BasePolicy, get_policy_class, get_policy_names
 from toddlerbot.policies.balance_pd import BalancePDPolicy
 from toddlerbot.policies.calibrate import CalibratePolicy
 from toddlerbot.policies.mjx_policy import MJXPolicy
+from toddlerbot.policies.record import RecordPolicy
 from toddlerbot.policies.sysID import SysIDFixedPolicy
 from toddlerbot.policies.teleop_follower_pd import TeleopFollowerPDPolicy
 from toddlerbot.policies.teleop_leader import TeleopLeaderPolicy
@@ -50,7 +52,10 @@ def dynamic_import_policies(policy_package: str):
     # Iterate over all modules in the given package directory
     for _, module_name, _ in pkgutil.iter_modules(package_path):
         full_module_name = f"{policy_package}.{module_name}"
-        importlib.import_module(full_module_name)
+        try:
+            importlib.import_module(full_module_name)
+        except ModuleNotFoundError:
+            log(f"Could not import {full_module_name}", header="Dynamic Import")
 
 
 # Call this to import all policies dynamically
@@ -119,7 +124,8 @@ def plot_results(
 
             # Assume the state fetching is instantaneous
             time_seq_dict[motor_name].append(float(obs.time))
-            time_seq_ref_dict[motor_name].append(i * policy.control_dt)
+            time_seq_ref_dict[motor_name].append(float(obs.time))
+            # time_seq_ref_dict[motor_name].append(i * policy.control_dt)
             motor_pos_dict[motor_name].append(obs.motor_pos[j])
             motor_vel_dict[motor_name].append(obs.motor_vel[j])
             motor_tor_dict[motor_name].append(obs.motor_tor[j])
@@ -236,6 +242,7 @@ def main(
 
     loop_time_list: List[List[float]] = []
     obs_list: List[Obs] = []
+    command_list: List[npt.NDArray[np.float32]] = []
     motor_angles_list: List[Dict[str, float]] = []
 
     n_steps_total = (
@@ -288,7 +295,7 @@ def main(
             # need to enable and disable motors according to logging state
             if isinstance(policy, TeleopLeaderPolicy) and policy.toggle_motor:
                 assert isinstance(sim, RealWorld)
-                if policy.is_logging:
+                if policy.is_running:
                     # disable all motors when logging
                     sim.dynamixel_controller.disable_motors()
                 else:
@@ -297,7 +304,12 @@ def main(
 
                 policy.toggle_motor = False
 
-            motor_target = policy.step(obs, "real" in sim.name)
+            elif isinstance(policy, RecordPolicy) and policy.toggle_motor:
+                assert isinstance(sim, RealWorld)
+                sim.dynamixel_controller.disable_motors(policy.disable_motor_indices)
+                policy.toggle_motor = False
+
+            command, motor_target = policy.step(obs, "real" in sim.name)
 
             inference_time = time.time()
 
@@ -319,6 +331,7 @@ def main(
             sim_step_time = time.time()
 
             obs_list.append(obs)
+            command_list.append(command)
             motor_angles_list.append(motor_angles)
 
             step_idx += 1
@@ -360,6 +373,7 @@ def main(
 
     log_data_dict: Dict[str, Any] = {
         "obs_list": obs_list,
+        "command_list": command_list,
         "motor_angles_list": motor_angles_list,
     }
     if "sysID" in policy.name:
@@ -420,13 +434,12 @@ def main(
     log("Visualizing...", header="Walking")
     # plot_results(
     #     robot,
-    #     toddler_policy,
+    #     policy,
     #     loop_time_list,
     #     obs_list,
-    #     motor_angles_list,
+    #     motor_angles_list,  # TODO: Plot the command_list
     #     exp_folder_path,
     # )
-
 
 def parse_domain_rand(model: mujoco.MjModel, domain_rand_str: str):
     domain_rand_items = domain_rand_str.split(",")
@@ -461,9 +474,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--robot",
         type=str,
-        default="toddlerbot_OP3",
+        default="toddlerbot",
         help="The name of the robot. Need to match the name in descriptions.",
-        choices=["toddlerbot_OP3", "toddlerbot_arms"],
+        choices=["toddlerbot", "toddlerbot_gripper", "toddlerbot_arms"],
     )
     parser.add_argument(
         "--sim",
@@ -587,17 +600,12 @@ if __name__ == "__main__":
     ArmPolicyClass = get_arm_policy_class(args.arm_policy)
 
     if "replay" in args.policy:
+        assert (
+            args.robot in args.run_name
+        ), "The robot name needs to be in the run name to ensure a successful replay"
         policy = PolicyClass(args.policy, robot, init_motor_pos, args.run_name)
 
-    elif issubclass(PolicyClass, MJXPolicy):
-        fixed_command = None
-        if len(args.command) > 0:
-            fixed_command = np.array(args.command.split(" "), dtype=np.float32)
-
-        policy = PolicyClass(
-            args.policy, robot, init_motor_pos, args.ckpt, fixed_command=fixed_command
-        )
-    elif issubclass(PolicyClass, TeleopLeaderPolicy):
+    elif "teleop_leader" in args.policy:
         assert (
             args.robot == "toddlerbot_arms"
         ), "The teleop leader policy is only for the arms"
@@ -608,15 +616,40 @@ if __name__ == "__main__":
             for gain_name in ["kp_real", "kd_real", "kff1_real", "kff2_real"]:
                 robot.config["joints"][motor_name][gain_name] = 0.0
 
-        policy = PolicyClass(args.policy, robot, init_motor_pos, ip=args.ip)
-    elif issubclass(PolicyClass, BalancePDPolicy):
+        policy = PolicyClass(args.policy, robot, init_motor_pos, ip=args.ip)  # type: ignore
+
+    elif issubclass(PolicyClass, BalancePDPolicy) or "teleop_joystick" in args.policy:
+        # Run the command
+        result = subprocess.run(
+            f"sudo ntpdate -u {args.ip}",
+            shell=True,
+            text=True,
+            check=True,
+            stdout=subprocess.PIPE,
+        )
+        print(result.stdout.strip())
+
+        fixed_command = None
+        if len(args.command) > 0:
+            fixed_command = np.array(args.command.split(" "), dtype=np.float32)
+
+        policy = PolicyClass(  # type: ignore
+            args.policy,
+            robot,
+            init_motor_pos,
+            ip=args.ip,
+            fixed_command=fixed_command,
+        )
+
+    elif issubclass(PolicyClass, MJXPolicy):
         fixed_command = None
         if len(args.command) > 0:
             fixed_command = np.array(args.command.split(" "), dtype=np.float32)
 
         policy = PolicyClass(
-            args.policy, robot, init_motor_pos, ip=args.ip, fixed_command=fixed_command
+            args.policy, robot, init_motor_pos, args.ckpt, fixed_command=fixed_command
         )
+
     else:
         policy = PolicyClass(args.policy, robot, init_motor_pos)
     arm_policy = None

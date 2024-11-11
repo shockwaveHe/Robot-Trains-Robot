@@ -1,5 +1,4 @@
-import platform
-from typing import Optional
+from typing import Optional, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -11,8 +10,6 @@ from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
 from toddlerbot.utils.comm_utils import ZMQNode
 from toddlerbot.utils.dataset_utils import Data, DatasetLogger
-
-SYS_NAME = platform.system()
 
 
 class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
@@ -42,21 +39,24 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
 
         self.dataset_logger = DatasetLogger()
 
-    def get_arm_motor_pos(self) -> npt.NDArray[np.float32]:
+    def get_arm_motor_pos(self, obs: Obs) -> npt.NDArray[np.float32]:
         if self.arm_motor_pos is None:
             return self.default_motor_pos[self.arm_motor_indices]
         else:
             return self.arm_motor_pos
 
-    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
-        motor_target = super().step(obs, is_real)
+    def step(
+        self, obs: Obs, is_real: bool = False
+    ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
+        command, motor_target = super().step(obs, is_real)
+
         # Log the data
-        if self.is_logging_ended:
-            self.is_logging_ended = False
+        if self.is_ended:
+            self.is_ended = False
             self.dataset_logger.save()
-        elif self.is_logging:
+        elif self.is_running:
             self.dataset_logger.log_entry(
                 Data(obs.time, obs.motor_pos, self.fsr, self.camera_frame)
             )
 
-        return motor_target
+        return command, motor_target

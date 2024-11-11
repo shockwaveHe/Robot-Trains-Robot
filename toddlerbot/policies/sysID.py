@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -278,8 +278,10 @@ class SysIDFixedPolicy(BasePolicy, policy_name="sysID"):
         self.action_arr = np.concatenate(action_list)
         self.n_steps_total = len(self.time_arr)
 
-    def step(self, obs: Obs, is_real: bool = False) -> npt.NDArray[np.float32]:
+    def step(
+        self, obs: Obs, is_real: bool = False
+    ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
         action = np.asarray(
             interpolate_action(obs.time, self.time_arr, self.action_arr)
         )
-        return action
+        return self.zero_command, action

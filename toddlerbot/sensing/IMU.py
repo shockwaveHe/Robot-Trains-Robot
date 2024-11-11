@@ -23,8 +23,16 @@ from toddlerbot.utils.math_utils import (
 
 
 class IMU:
-    def __init__(self, alpha: float = 0.6):
-        self.alpha = alpha
+    def __init__(self, euler_alpha: float = 0.6, ang_vel_alpha: float = 0.6):
+        self.euler_alpha = euler_alpha
+        self.ang_vel_alpha = ang_vel_alpha
+
+        # # Set up the reset pin
+        # reset_pin = DigitalInOut(board.D4)
+        # reset_pin.direction = Direction.OUTPUT
+        # reset_pin.value = True
+
+        # time.sleep(1)
 
         # Initialize the I2C bus and sensor
         self.i2c = busio.I2C(board.SCL, board.SDA)
@@ -37,15 +45,27 @@ class IMU:
 
         time.sleep(0.2)
 
-        zero_euler = np.array([0.0, -np.pi / 2, 0.0], dtype=np.float32)
+        quat_raw = np.array(
+            [self.sensor.quaternion[3], *self.sensor.quaternion[:3]],
+            dtype=np.float32,
+            copy=True,
+        )
+        euler_raw = np.asarray(quat2euler(quat_raw))
+        zero_euler = np.round(euler_raw / (np.pi / 2)) * (np.pi / 2)
         self.zero_quat = np.asarray(euler2quat(zero_euler))
         self.zero_quat_inv = np.asarray(quat_inv(self.zero_quat))
 
+        # print(f"euler_raw: {euler_raw}, quat_raw: {quat_raw}")
+        # print(f"zero_euler: {zero_euler}, zero_quat: {zero_quat}")
+
+        self.convert_matrix = np.array(
+            [[1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=np.float32
+        )
         # Initialize previous Euler angle for smoothing
         # self.time_last = time.time()
         # self.lin_vel_prev = np.zeros(3, dtype=np.float32)
-        self.ang_vel_prev = np.zeros(3, dtype=np.float32)
-        self.euler_prev = np.zeros(3, dtype=np.float32)
+        self.ang_vel_prev: npt.NDArray[np.float32] | None = None
+        self.euler_prev: npt.NDArray[np.float32] | None = None
 
     def get_state(self) -> Dict[str, npt.NDArray[np.float32]]:
         quat_raw = np.array(
@@ -55,31 +75,35 @@ class IMU:
         )
         # Compute relative rotation based on zero pose
         quat = quat_mult(quat_raw, self.zero_quat_inv)
-        quat[2:] *= -1
         euler = np.asarray(quat2euler(quat))
-        euler_delta = (euler - self.euler_prev + np.pi) % (2 * np.pi) - np.pi
-        euler = (self.euler_prev + euler_delta + np.pi) % (2 * np.pi) - np.pi
+        if self.euler_prev is not None:
+            euler_delta = (euler - self.euler_prev + np.pi) % (2 * np.pi) - np.pi
+            euler = self.euler_prev + euler_delta
 
         filtered_euler = np.asarray(
-            exponential_moving_average(self.alpha, euler, self.euler_prev),
+            exponential_moving_average(self.euler_alpha, euler, self.euler_prev),
             dtype=np.float32,
         )
         self.euler_prev = filtered_euler
 
         ang_vel_raw = np.array(self.sensor.gyro, dtype=np.float32, copy=True)
-        ang_vel = np.asarray(rotate_vec(ang_vel_raw, quat_raw))
-        ang_vel[1:] *= -1
+        ang_vel_torso = np.asarray(rotate_vec(ang_vel_raw, self.zero_quat))
+        ang_vel = np.asarray(rotate_vec(ang_vel_torso, quat_inv(quat)))
+
+        # print(
+        #     f"ang_vel_raw: {ang_vel_raw}, ang_vel_torso: {ang_vel_torso}, ang_vel: {ang_vel}, euler: {euler}"
+        # )
+
         filtered_ang_vel = np.asarray(
-            exponential_moving_average(self.alpha, ang_vel, self.ang_vel_prev),
+            exponential_moving_average(self.ang_vel_alpha, ang_vel, self.ang_vel_prev),
             dtype=np.float32,
         )
         self.ang_vel_prev = filtered_ang_vel
 
-        state = {
-            # "lin_vel": lin_acc,
-            "ang_vel": filtered_ang_vel,
-            "euler": filtered_euler,
-        }
+        obs_euler = self.convert_matrix @ filtered_euler
+        obs_ang_vel = self.convert_matrix @ filtered_ang_vel
+
+        state = {"euler": obs_euler, "ang_vel": obs_ang_vel}
 
         return state
 

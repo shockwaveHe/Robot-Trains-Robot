@@ -28,12 +28,7 @@ from loop_rate_limiters import RateLimiter
 
 _HERE = Path(__file__).parent
 _XML = (
-    _HERE
-    / ".."
-    / "toddlerbot"
-    / "descriptions"
-    / "toddlerbot_OP3"
-    / "toddlerbot_OP3_scene.xml"
+    _HERE / ".." / "toddlerbot" / "descriptions" / "toddlerbot" / "toddlerbot_scene.xml"
 )
 
 if __name__ == "__main__":
