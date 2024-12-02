@@ -1,6 +1,9 @@
 from typing import Callable, Dict
 
-from pynput import keyboard
+try:
+    from pynput import keyboard
+except ImportError as e:
+    print('keyboard is not supported through ssh connection')
 
 keyboard_actions = {
     "save": "s",

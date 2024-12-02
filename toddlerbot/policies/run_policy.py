@@ -624,7 +624,6 @@ if __name__ == "__main__":
     elif args.sim == "real":
         sim = RealWorld(robot)
         init_motor_pos = sim.get_observation(retries=-1).motor_pos
-        raise NotImplementedError("Real world ArmTodder policy not implemented yet")
 
     else:
         raise ValueError("Unknown simulator")

@@ -53,10 +53,8 @@ class BaseSim(ABC):
     def close(self):
         pass
 
-    @abstractmethod
     def reset(self) -> Obs:
         pass
 
-    @abstractmethod
     def is_done(self, obs: Obs) -> bool:
         pass
