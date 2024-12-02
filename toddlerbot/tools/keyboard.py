@@ -34,11 +34,34 @@ class Keyboard:
     def on_press(self, key):
         """Handles key press events."""
         try:
+            self.key_inputs["speed_delta"] = 0.0
+            self.key_inputs["force_delta"] = 0.0
+            self.key_inputs["walk_x_delta"] = 0.0
+            self.key_inputs["walk_y_delta"] = 0.0
+            self.key_inputs["stop"] = False
             if key.char == "s":  # Check if the 's' key is pressed
                 self.key_inputs["save"] = 1.0
+                self.key_inputs["walk_x_delta"] = 0.01
             elif key.char == "n":
                 self.key_inputs["next"] = 1.0
-
+            elif key == keyboard.Key.right:
+                self.key_inputs["speed_delta"] = 1.0
+            elif key == keyboard.Key.left:
+                self.key_inputs["speed_delta"] = -1.0
+            elif key == keyboard.Key.up:
+                self.key_inputs["force_delta"] = 1.0
+            elif key == keyboard.Key.down:
+                self.key_inputs["force_delta"] = -1.0
+            elif key.char == "w":
+                self.key_inputs["walk_x_delta"] = -0.01
+            elif key.char == "a":
+                self.key_inputs["walk_y_delta"] = 0.01
+            elif key.char == "d":
+                self.key_inputs["walk_y_delta"] = -0.01
+            elif key == keyboard.Key.esc:
+                # Signal the threads to stop
+                self.key_inputs["stop"] = True
+                return False  # Stop the keyboard listener
         except AttributeError:
             # Handle special keys (if necessary)
             pass
@@ -53,6 +76,10 @@ class Keyboard:
         except AttributeError:
             pass
 
+    def close(self):
+        """Stop the keyboard listener."""
+        self.listener.stop()
+        
     def get_keyboard_input(self) -> Dict[str, float]:
         """Return the current keyboard input state."""
         return self.key_inputs
