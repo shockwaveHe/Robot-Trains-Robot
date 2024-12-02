@@ -75,7 +75,7 @@ def calibrate_sunny_sky(port: str):
     controller.close_motors()
 
 
-def main(robot: Robot):
+def main(robot: Robot, parts: List[str]):
     while True:
         response = input("Have you installed the calibration parts? (y/n) > ")
         response = response.strip().lower()
@@ -110,20 +110,45 @@ def main(robot: Robot):
 
     executor.shutdown(wait=True)
 
-    motor_names = robot.get_joint_attrs("is_passive", False)
-    motor_pos_init = robot.get_joint_attrs("is_passive", False, "init_pos")
-    motor_angles = {
-        name: round(pos, 4) for name, pos in zip(motor_names, motor_pos_init)
+    # Generate the motor mask based on the specified parts
+    all_parts = {
+        "left_arm": [16, 17, 18, 19, 20, 21, 22],
+        "right_arm": [23, 24, 25, 26, 27, 28, 29],
+        "left_gripper": [30],
+        "right_gripper": [31],
+        "hip": [2, 3, 4, 5, 6, 10, 11, 12],
+        "knee": [7, 13],
+        "left_ankle": [8, 9],
+        "right_ankle": [14, 15],
+        "neck": [0, 1],
     }
-    log(f"Motor angles: {motor_angles}", header="Calibration")
+    if "all" in parts:
+        motor_mask = list(range(robot.nu))
+    else:
+        motor_mask = []
+        for part in parts:
+            if part not in all_parts:
+                raise ValueError(f"Invalid part: {part}")
+
+            motor_mask.extend(all_parts[part])
+
+    motor_names = robot.get_joint_attrs("is_passive", False)
+    motor_pos_init = np.array(robot.get_joint_attrs("is_passive", False, "init_pos"))
+    motor_angles = {}
+    for i, (name, pos) in enumerate(zip(motor_names, motor_pos_init)):
+        if i in motor_mask:
+            motor_angles[name] = round(pos, 4)
+
+    log(f"Motor angles for selected parts: {motor_angles}", header="Calibration")
 
     motor_config_path = os.path.join(robot.root_path, "config_motors.json")
     if os.path.exists(motor_config_path):
         with open(motor_config_path, "r") as f:
             motor_config = json.load(f)
 
-        for motor_name, init_pos in zip(motor_names, motor_pos_init):
-            motor_config[motor_name]["init_pos"] = float(init_pos)
+        for i, (name, pos) in enumerate(zip(motor_names, motor_pos_init)):
+            if i in motor_mask:
+                motor_config[name]["init_pos"] = float(pos)
 
         with open(motor_config_path, "w") as f:
             json.dump(motor_config, f, indent=4)
@@ -139,8 +164,17 @@ if __name__ == "__main__":
         default="toddlerbot",
         help="The name of the robot. Need to match the name in descriptions.",
     )
+    parser.add_argument(
+        "--parts",
+        type=str,
+        default="all",
+        help="Specify parts to calibrate. Use 'all' or a subset of [left_arm, right_arm, left_gripper, right_gripper, hip, knee, left_ankle, right_ankle, neck], split by space.",
+    )
     args = parser.parse_args()
+
+    # Parse parts into a list
+    parts = args.parts.split(" ") if args.parts != "all" else ["all"]
 
     robot = Robot(args.robot)
 
-    main(robot)
+    main(robot, parts)
