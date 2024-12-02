@@ -1001,8 +1001,7 @@ class MJXEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ):
         """Reward for contact"""
-        reward = jnp.sum(info["stance_mask"] == info["state_ref"][-2:]).astype(dtype)
-        return reward.astype(dtype)
+        reward = jnp.sum(info["stance_mask"] == info["state_ref"][-2:])
 
     def _reward_leg_motor_pos(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array

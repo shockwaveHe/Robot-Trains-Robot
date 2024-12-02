@@ -299,11 +299,6 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         motor_target = self.default_motor_pos.copy()
         motor_target[self.action_mask] = action_target
 
-        self.last_action_target = action_target.copy()
-
-        motor_target = self.state_ref[13 : 13 + self.robot.nu].copy()
-        motor_target[self.action_mask] = action_target
-
         motor_target = np.clip(
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
         )

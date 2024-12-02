@@ -633,6 +633,8 @@ if __name__ == "__main__":
 
     # t2 = time.time()
 
+    # t2 = time.time()
+
     PolicyClass = get_policy_class(args.policy.replace("_fixed", ""))
     ArmPolicyClass = get_arm_policy_class(args.arm_policy)
 

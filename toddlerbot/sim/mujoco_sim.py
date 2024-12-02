@@ -157,6 +157,17 @@ class MuJoCoSim(BaseSim):
         transformation[:3, 3] = body_pos
         return transformation
 
+        self.left_foot_transform = self.get_body_transofrm(self.left_foot_name)
+        self.right_foot_transform = self.get_body_transofrm(self.right_foot_name)
+
+    def get_body_transofrm(self, body_name: str):
+        transformation = np.eye(4)
+        body_pos = self.data.body(body_name).xpos.copy()
+        body_mat = self.data.body(body_name).xmat.reshape(3, 3).copy()
+        transformation[:3, :3] = body_mat
+        transformation[:3, 3] = body_pos
+        return transformation
+
     def get_motor_state(self) -> Dict[str, JointState]:
         motor_state_dict: Dict[str, JointState] = {}
         for name in self.robot.motor_ordering:

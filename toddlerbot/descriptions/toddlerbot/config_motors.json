@@ -174,7 +174,7 @@
     },
     "left_sho_roll": {
         "motor": "2XL430",
-        "init_pos": 3.141592653589793,
+        "init_pos": 1.5707963267948966,
         "default_pos": -0.261799,
         "kp": 700.0,
         "ki": 0.0,
@@ -294,7 +294,7 @@
     },
     "right_wrist_roll": {
         "motor": "2XL430",
-        "init_pos": 3.141592653589793,
+        "init_pos": 1.5707963267948966,
         "default_pos": 0.0,
         "kp": 700.0,
         "ki": 0.0,

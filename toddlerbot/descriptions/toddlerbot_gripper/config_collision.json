@@ -413,50 +413,5 @@
     },
     "spur_gear_(18_teeth)_2": {
         "has_collision": false
-    },
-    "left_ank_pitch_link": {
-        "has_collision": false
-    },
-    "right_ank_pitch_link": {
-        "has_collision": false
-    },
-    "spur_gear_(18_teeth)": {
-        "has_collision": false
-    },
-    "spur_gear_(18_teeth)_2": {
-        "has_collision": false
-    },
-    "2xc430": {
-        "has_collision": false
-    },
-    "spur_gear_21_teeth_3": {
-        "has_collision": false
-    },
-    "left_hip_pitch_link": {
-        "has_collision": false
-    },
-    "spur_gear_18_teeth": {
-        "has_collision": false
-    },
-    "2xc430_2": {
-        "has_collision": false
-    },
-    "spur_gear_21_teeth_4": {
-        "has_collision": false
-    },
-    "left_hip_pitch_link_2": {
-        "has_collision": false
-    },
-    "spur_gear_18_teeth_2": {
-        "has_collision": false
-    },
-    "left_calf_link_2": {
-        "has_collision": false
-    },
-    "left_ank_pitch_link_2": {
-        "has_collision": false
-    },
-    "right_hip_pitch_link": {
-        "has_collision": false
     }
 }
