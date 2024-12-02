@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Dict, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -54,13 +54,13 @@ class CalibratePolicy(BasePolicy, policy_name="calibrate"):
 
     def step(
         self, obs: Obs, is_real: bool = False
-    ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
+    ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
         # Preparation phase
         if obs.time < self.prep_duration:
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
             )
-            return self.zero_command, action
+            return {}, action
 
         # PD+I controller to maintain torso pitch at 0
         error = obs.torso_euler[1]
@@ -85,4 +85,4 @@ class CalibratePolicy(BasePolicy, policy_name="calibrate"):
         )
         motor_target = np.array(list(motor_angles.values()), dtype=np.float32)
 
-        return self.zero_command, motor_target
+        return {}, motor_target

@@ -1,12 +1,12 @@
 import functools
 import os
-from typing import Dict, List, Optional, Tuple
+import threading
+from typing import Any, Dict, List, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
 import numpy as np
 import numpy.typing as npt
-import scipy
 from brax.io import model
 from brax.training.agents.ppo import networks as ppo_networks
 
@@ -17,11 +17,7 @@ from toddlerbot.policies import BasePolicy
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
-from toddlerbot.utils.math_utils import (
-    butterworth,
-    exponential_moving_average,
-    interpolate_action,
-)
+from toddlerbot.utils.math_utils import interpolate_action
 
 # from toddlerbot.utils.misc_utils import profile
 
@@ -41,7 +37,10 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         super().__init__(name, robot, init_motor_pos)
 
         assert cfg is not None, "cfg is required in the subclass!"
-        assert motion_ref is not None, "motion_ref is required in the subclass!"
+
+        self.ckpt = ckpt
+        self.cfg = cfg
+        self.motion_ref = motion_ref
 
         self.command_obs_indices = cfg.commands.command_obs_indices
         self.commmand_range = np.array(cfg.commands.command_range, dtype=np.float32)
@@ -52,7 +51,8 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         else:
             self.fixed_command = fixed_command
 
-        self.motion_ref = motion_ref
+        self.obs_history_size = cfg.obs.frame_stack * cfg.obs.num_single_obs
+        self.obs_history = np.zeros(self.obs_history_size, dtype=np.float32)
 
         self.obs_scales = cfg.obs_scales  # Assume all the envs have the same scales
         self.default_motor_pos = np.array(
@@ -91,94 +91,24 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         self.num_action = self.action_mask.shape[0]
         self.default_action = np.concatenate(default_action)
 
+        self.jit_inference_fn = None
+        self.rng = None
+
+        self.warmup_result: Dict[str, Any] = {}
+        self.warmup_event = threading.Event()
+
+        self.warmup_thread = threading.Thread(
+            target=self.warmup,
+            args=(self.warmup_result, self.warmup_event),
+            daemon=True,
+        )
+        self.warmup_thread.start()
+
+        self.phase_signal = np.zeros(2, dtype=np.float32)
         self.action_scale = cfg.action.action_scale
         self.n_steps_delay = cfg.action.n_steps_delay
-
-        # Filter
-        self.filter_type = cfg.action.filter_type
-        self.filter_order = cfg.action.filter_order
-        # EMA
-        self.ema_alpha = float(
-            cfg.action.filter_cutoff
-            / (cfg.action.filter_cutoff + 1 / (self.control_dt * 2 * jnp.pi))
-        )
-        # Butterworth
-        b, a = scipy.signal.butter(
-            self.filter_order,
-            cfg.action.filter_cutoff / (0.5 / self.control_dt),
-            btype="low",
-            analog=False,
-        )
-        self.butter_b_coef = np.array(b)[:, None]
-        self.butter_a_coef = np.array(a)[:, None]
-
-        self.last_action_target = self.default_action.copy()
-        self.butter_past_inputs = np.tile(
-            self.last_action_target, (self.filter_order, 1)
-        )
-        self.butter_past_outputs = np.tile(
-            self.last_action_target, (self.filter_order, 1)
-        )
-
-        state_init = np.concatenate(
-            [
-                np.zeros(3, dtype=np.float32),  # Position
-                np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),  # Quaternion
-                np.zeros(3, dtype=np.float32),  # Linear velocity
-                np.zeros(3, dtype=np.float32),  # Angular velocity
-                self.default_joint_pos,  # Joint positions
-                np.zeros_like(self.default_joint_pos),  # Joint velocities
-                np.ones(2, dtype=np.float32),  # Stance mask
-            ]
-        )
-        self.state_ref = state_init
-        self.last_action = np.zeros(self.num_action, dtype=np.float32)
-        self.action_buffer = np.zeros(
-            ((self.n_steps_delay + 1) * self.num_action), dtype=np.float32
-        )
-        self.obs_history = np.zeros(
-            cfg.obs.frame_stack * cfg.obs.num_single_obs, dtype=np.float32
-        )
-        self.step_curr = 0
-
-        train_cfg = PPOConfig()
-        make_networks_factory = functools.partial(
-            ppo_networks.make_ppo_networks,
-            policy_hidden_layer_sizes=train_cfg.policy_hidden_layer_sizes,
-            value_hidden_layer_sizes=train_cfg.value_hidden_layer_sizes,
-        )
-
-        ppo_network = make_networks_factory(
-            cfg.obs.num_single_obs, cfg.obs.num_single_privileged_obs, self.num_action
-        )
-        make_policy = ppo_networks.make_inference_fn(ppo_network)
-
-        if "walk" in self.name:
-            policy_name = "walk"
-        else:
-            policy_name = self.name
-
-        if len(ckpt) > 0:
-            run_name = f"{robot.name}_{policy_name}_ppo_{ckpt}"
-            policy_path = os.path.join("results", run_name, "best_policy")
-            if not os.path.exists(policy_path):
-                policy_path = os.path.join("results", run_name, "policy")
-        else:
-            policy_path = os.path.join(
-                "toddlerbot",
-                "policies",
-                "checkpoints",
-                f"{robot.name}_{policy_name}_policy",
-            )
-
-        print(f"Loading policy from {policy_path}")
-
-        params = model.load_params(policy_path)
-        inference_fn = make_policy(params, deterministic=True)
-        # jit_inference_fn = inference_fn
-        self.jit_inference_fn = jax.jit(inference_fn)
-        self.rng = jax.random.PRNGKey(0)
-        self.jit_inference_fn(self.obs_history, self.rng)[0].block_until_ready()
+        self.is_standing = True
+        self.command_list: List[npt.NDArray[np.float32]] = []
 
         self.joystick = joystick
         if joystick is None:
@@ -187,18 +117,92 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             except Exception:
                 pass
 
-        self.control_inputs: Dict[str, float] | None = None
+        self.control_inputs: Dict[str, float] = {}
         self.is_prepared = False
 
-    def reset(self) -> None:
-        self.last_action = np.zeros_like(self.last_action)
-        self.action_buffer = np.zeros_like(self.action_buffer)
-        self.obs_history = np.zeros_like(self.obs_history)
+        self.reset()
+
+    def warmup(self, result_container, event):
+        try:
+            if "walk" in self.name:
+                policy_name = "walk"
+            else:
+                policy_name = self.name
+
+            train_cfg = PPOConfig()
+            make_networks_factory = functools.partial(
+                ppo_networks.make_ppo_networks,
+                policy_hidden_layer_sizes=train_cfg.policy_hidden_layer_sizes,
+                value_hidden_layer_sizes=train_cfg.value_hidden_layer_sizes,
+            )
+
+            ppo_network = make_networks_factory(
+                self.cfg.obs.num_single_obs,
+                self.cfg.obs.num_single_privileged_obs,
+                self.num_action,
+            )
+            make_policy = ppo_networks.make_inference_fn(ppo_network)
+
+            if len(self.ckpt) > 0:
+                run_name = f"{self.robot.name}_{policy_name}_ppo_{self.ckpt}"
+                policy_path = os.path.join("results", run_name, "best_policy")
+                if not os.path.exists(policy_path):
+                    policy_path = os.path.join("results", run_name, "policy")
+            else:
+                policy_path = os.path.join(
+                    "toddlerbot",
+                    "policies",
+                    "checkpoints",
+                    f"{self.robot.name}_{policy_name}_policy",
+                )
+
+            print(f"Loading policy from {policy_path}")
+
+            params = model.load_params(policy_path)
+            inference_fn = make_policy(params, deterministic=True)
+            jit_inference_fn = jax.jit(inference_fn)
+            rng = jax.random.PRNGKey(0)
+            jit_inference_fn(self.obs_history, rng)[0].block_until_ready()
+
+            # Store results in the shared container
+            result_container["jit_inference_fn"] = jit_inference_fn
+            result_container["rng"] = rng
+        finally:
+            # Signal that the thread is done
+            event.set()
+
+    def reset(self):
+        print(f"Resetting the {self.name} policy...")
+        # if path_state is None:
+        #     path_state = np.concatenate(
+        #         [
+        #             np.zeros(3, dtype=np.float32),  # Position
+        #             np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),  # Quaternion
+        #         ]
+        #     )
+
+        # self.state_ref = np.concatenate(
+        #     [
+        #         path_state,  # Path state
+        #         np.zeros(3, dtype=np.float32),  # Linear velocity
+        #         np.zeros(3, dtype=np.float32),  # Angular velocity
+        #         self.default_motor_pos,  # Motor positions
+        #         self.default_joint_pos,  # Joint positions
+        #         np.ones(2, dtype=np.float32),  # Stance mask
+        #     ]
+        # )
+        self.obs_history = np.zeros(self.obs_history_size, dtype=np.float32)
+
+        self.is_standing = True
+        self.command_list = []
+        self.last_action = np.zeros(self.num_action, dtype=np.float32)
+        self.action_buffer = np.zeros(
+            ((self.n_steps_delay + 1) * self.num_action), dtype=np.float32
+        )
         self.step_curr = 0
 
-    def is_double_support(self) -> bool:
-        stance_mask = self.state_ref[-2:]
-        return stance_mask[0].item() == 1.0 and stance_mask[1].item() == 1.0
+    def get_phase_signal(self, time_curr: float) -> npt.NDArray[np.float32]:
+        return np.zeros(1, dtype=np.float32)
 
     def get_command(self, control_inputs: Dict[str, float]) -> npt.NDArray[np.float32]:
         return self.fixed_command
@@ -206,7 +210,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
     # @profile()
     def step(
         self, obs: Obs, is_real: bool = False
-    ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
+    ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
         if not self.is_prepared:
             self.is_prepared = True
             self.prep_duration = 7.0 if is_real else 0.0
@@ -222,34 +226,45 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
             )
-            return self.zero_command, action
+            return {}, action
+
+        if self.jit_inference_fn is None or self.rng is None:
+            self.warmup_event.wait()  # Block until the event is set
+            self.jit_inference_fn = self.warmup_result["jit_inference_fn"]
+            self.rng = self.warmup_result["rng"]
+
+        assert self.jit_inference_fn is not None, "jit_inference_fn is not set!"
+        assert self.rng is not None, "rng is not set!"
 
         time_curr = self.step_curr * self.control_dt
 
-        control_inputs = None
-        if self.control_inputs is not None:
+        control_inputs: Dict[str, float] = {}
+        if len(self.control_inputs) > 0:
             control_inputs = self.control_inputs
         elif self.joystick is not None:
             control_inputs = self.joystick.get_controller_input()
 
-        if control_inputs is None:
+        if len(control_inputs) == 0:
             command = self.fixed_command
         else:
             command = self.get_command(control_inputs)
 
-        phase_signal = self.motion_ref.get_phase_signal(time_curr)
-        self.state_ref = np.asarray(
-            self.motion_ref.get_state_ref(self.state_ref, time_curr, command)
-        )
+        self.phase_signal = self.get_phase_signal(time_curr)
+        # self.state_ref = np.asarray(
+        #     self.motion_ref.get_state_ref(self.state_ref, time_curr, command)
+        # )
         motor_pos_delta = obs.motor_pos - self.default_motor_pos
+        # motor_pos_error = obs.motor_pos - self.state_ref[13 : 13 + self.robot.nu]
+        # obs.ang_vel[0] *= 0.5
 
         obs_arr = np.concatenate(
             [
-                phase_signal,
+                self.phase_signal,
                 command[self.command_obs_indices],
                 motor_pos_delta * self.obs_scales.dof_pos,
                 obs.motor_vel * self.obs_scales.dof_vel,
                 self.last_action,
+                # motor_pos_error,
                 # obs.lin_vel * self.obs_scales.lin_vel,
                 obs.ang_vel * self.obs_scales.ang_vel,
                 obs.torso_euler * self.obs_scales.euler,
@@ -259,7 +274,15 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         self.obs_history = np.roll(self.obs_history, obs_arr.size)
         self.obs_history[: obs_arr.size] = obs_arr
 
-        jit_action, _ = self.jit_inference_fn(jnp.asarray(self.obs_history), self.rng)
+        if np.any(np.abs(obs.euler) > np.pi):
+            euler_delta = obs.euler - ((obs.euler + np.pi) % (2 * np.pi) - np.pi)
+            obs_history_reshape = self.obs_history.reshape(-1, obs_arr.size).copy()
+            obs_history_reshape[:, -3:] -= euler_delta
+            obs_history = obs_history_reshape.flatten()
+        else:
+            obs_history = self.obs_history
+
+        jit_action, _ = self.jit_inference_fn(jnp.asarray(obs_history), self.rng)
 
         action = np.asarray(jit_action, dtype=np.float32).copy()
         if is_real:
@@ -270,26 +293,11 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             delayed_action = self.action_buffer[-self.num_action :]
 
         action_target = self.default_action + self.action_scale * delayed_action
+        self.last_action_target = action_target.copy()
 
-        if self.filter_type == "ema":
-            action_target = exponential_moving_average(
-                self.ema_alpha, action_target, self.last_action_target
-            )
-
-        elif self.filter_type == "butter":
-            (
-                action_target,
-                butter_past_inputs,
-                butter_past_outputs,
-            ) = butterworth(
-                self.butter_b_coef,
-                self.butter_a_coef,
-                action_target,
-                self.butter_past_inputs,
-                self.butter_past_outputs,
-            )
-            self.butter_past_inputs = np.asarray(butter_past_inputs)
-            self.butter_past_outputs = np.asarray(butter_past_outputs)
+        # motor_target = self.state_ref[13 : 13 + self.robot.nu].copy()
+        motor_target = self.default_motor_pos.copy()
+        motor_target[self.action_mask] = action_target
 
         self.last_action_target = action_target.copy()
 
@@ -300,7 +308,8 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
         )
 
+        self.command_list.append(command)
         self.last_action = delayed_action
         self.step_curr += 1
 
-        return command, motor_target
+        return control_inputs, motor_target

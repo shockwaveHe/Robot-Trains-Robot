@@ -19,10 +19,8 @@ class BalancePDReference(MotionReference):
         if self.arm_playback_speed > 0.0:
             self.arm_time_ref /= arm_playback_speed
 
-        self.last_com_z_target = 0.0
-
     def get_vel(self, command: ArrayType) -> Tuple[ArrayType, ArrayType]:
-        lin_vel = np.array([0.0, 0.0, 0.0], dtype=np.float32)
+        lin_vel = np.array([0.0, 0.0, command[5]], dtype=np.float32)
         ang_vel = np.array([0.0, 0.0, 0.0], dtype=np.float32)
         return lin_vel, ang_vel
 
@@ -77,14 +75,11 @@ class BalancePDReference(MotionReference):
         motor_pos = inplace_update(
             motor_pos, self.waist_motor_indices, self.waist_ik(waist_joint_pos)
         )
-
-        # com_curr = self.com_fk(np.abs(joint_pos_curr[self.left_knee_idx]))
         com_z_target = np.clip(
-            self.last_com_z_target + self.dt * command[5],
+            state_curr[2] + self.dt * command[5],
             self.com_z_limits[0],
             self.com_z_limits[1],
         )
-        self.last_com_z_target = com_z_target
         leg_joint_pos = self.com_ik(com_z_target)
         joint_pos = inplace_update(joint_pos, self.leg_joint_indices, leg_joint_pos)
         motor_pos = inplace_update(

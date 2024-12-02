@@ -176,6 +176,20 @@ class MotionReference(ABC):
         )
         self.passive_joint_signs = np.array([-1, 1, 1], dtype=np.float32)
 
+        if "gripper" in self.robot.name:
+            self.passive_joint_indices = np.concatenate(
+                [
+                    self.passive_joint_indices,
+                    [
+                        self.robot.joint_ordering.index("left_gripper_pinion"),
+                        self.robot.joint_ordering.index("right_gripper_pinion"),
+                    ],
+                ]
+            )
+            self.passive_joint_signs = np.concatenate(
+                [self.passive_joint_signs, [1, 1]], dtype=np.float32
+            )
+
         hip_pitch_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "2xc430")
         hip_roll_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "hip_yaw_link")
         knee_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "left_calf_link")
@@ -206,15 +220,10 @@ class MotionReference(ABC):
         self.forward = forward
 
         data = self.forward(self.default_qpos)
-        self.feet_center_init = (
-            np.asarray(
-                data.site_xpos[self.left_foot_site_id]
-                + data.site_xpos[self.right_foot_site_id]
-            )
-            / 2.0
-        )
+        self.left_foot_center = np.asarray(data.site_xpos[self.left_foot_site_id])
+        self.right_foot_center = np.asarray(data.site_xpos[self.right_foot_site_id])
         self.torso_pos_init = np.asarray(data.qpos[:3])
-        self.desired_com = self.feet_center_init
+        self.desired_com = (self.left_foot_center + self.right_foot_center) / 2.0
         # self.desired_com = np.array(data.subtree_com[0], dtype=np.float32)
 
         self.knee_default = self.default_joint_pos[self.left_knee_idx]
@@ -298,6 +307,10 @@ class MotionReference(ABC):
     ) -> ArrayType:
         pass
 
+    def neck_fk(self, neck_motor_pos: ArrayType) -> ArrayType:
+        neck_joint_pos = neck_motor_pos * self.neck_gear_ratio
+        return neck_joint_pos
+
     def neck_ik(self, neck_joint_pos: ArrayType) -> ArrayType:
         neck_motor_pos = neck_joint_pos / self.neck_gear_ratio
         return neck_motor_pos
@@ -310,11 +323,20 @@ class MotionReference(ABC):
         arm_motor_pos = arm_joint_pos / self.arm_gear_ratio
         return arm_motor_pos
 
+    def waist_fk(self, waist_motor_pos: ArrayType) -> ArrayType:
+        waist_roll = self.waist_coef[0] * (-waist_motor_pos[0] + waist_motor_pos[1])
+        waist_yaw = self.waist_coef[1] * (waist_motor_pos[0] + waist_motor_pos[1])
+        return np.array([waist_roll, waist_yaw], dtype=np.float32)
+
     def waist_ik(self, waist_joint_pos: ArrayType) -> ArrayType:
         waist_roll, waist_yaw = waist_joint_pos / self.waist_coef
         waist_act_1 = (-waist_roll + waist_yaw) / 2
         waist_act_2 = (waist_roll + waist_yaw) / 2
         return np.array([waist_act_1, waist_act_2], dtype=np.float32)
+
+    def leg_fk(self, leg_motor_pos: ArrayType) -> ArrayType:
+        leg_joint_pos = leg_motor_pos * self.leg_gear_ratio
+        return leg_joint_pos
 
     def leg_ik(self, leg_joint_pos: ArrayType) -> ArrayType:
         leg_motor_pos = leg_joint_pos / self.leg_gear_ratio
@@ -396,6 +418,7 @@ class MotionReference(ABC):
         hip_roll_cos = np.dot(hip_to_ank_roll_vec, np.array([0, 0, 1])) / (
             np.linalg.norm(hip_to_ank_roll_vec)
         )
+        hip_roll_cos = np.clip(hip_roll_cos, -1.0, 1.0)
         hip_roll = np.arccos(hip_roll_cos) * np.sign(hip_to_ank_roll_vec[1])
 
         leg_joint_pos = np.array(
@@ -426,10 +449,16 @@ class MotionReference(ABC):
         qpos = inplace_update(qpos, 7 + self.mj_motor_indices, motor_pos_ref)
         qpos = inplace_update(qpos, 7 + self.mj_joint_indices, joint_pos_ref)
 
-        passive_pos_ref = np.repeat(
-            state_ref[13 + self.robot.nu + self.passive_joint_indices]
-            * self.passive_joint_signs,
-            4,
+        passive_pos_ref = np.concatenate(
+            [
+                np.repeat(
+                    state_ref[13 + self.robot.nu + self.passive_joint_indices[:-2]]
+                    * self.passive_joint_signs[:-2],
+                    4,
+                ),
+                state_ref[13 + self.robot.nu + self.passive_joint_indices[-2:]]
+                * self.passive_joint_signs[-2:],
+            ]
         )
         qpos = inplace_update(qpos, 7 + self.mj_passive_indices, passive_pos_ref)
 
@@ -445,11 +474,17 @@ class MotionReference(ABC):
 
         data = self.forward(qpos)
 
-        feet_center = (
-            data.site_xpos[self.left_foot_site_id]
-            + data.site_xpos[self.right_foot_site_id]
-        ) / 2.0
-        torso_pos = self.torso_pos_init + self.feet_center_init - feet_center
+        left_foot_pos = data.site_xpos[self.left_foot_site_id]
+        right_foot_pos = data.site_xpos[self.right_foot_site_id]
+
+        # Select the foot with the smaller z-coordinate
+        foot_delta = np.where(
+            left_foot_pos[2] < right_foot_pos[2],
+            self.left_foot_center - left_foot_pos,
+            self.right_foot_center - right_foot_pos,
+        )
+        # Compute the torso position adjustment
+        torso_pos = self.torso_pos_init + foot_delta
 
         if path_frame:
             qpos = inplace_update(qpos, slice(0, 3), torso_pos)

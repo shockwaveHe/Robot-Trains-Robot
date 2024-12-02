@@ -67,7 +67,9 @@ class BalanceEnv(MJXEnv, env_name="balance"):
             waist_yaw_command = self._sample_command_normal_reversion(
                 rng_5, self.command_range[4:5], last_command[4:5]
             )
-            squat_command = last_command[5:6]
+            squat_command = self._sample_command_normal_reversion(
+                rng_6, self.command_range[5:6], last_command[5:6]
+            )
 
         command = jnp.concatenate(
             [

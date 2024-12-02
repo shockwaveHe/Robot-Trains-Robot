@@ -188,7 +188,7 @@ def optimize_parameters(
 
             for a in action:
                 obs = sim.get_observation()
-                sim.set_motor_angles(a)
+                sim.set_motor_target(a)
                 sim.step()
 
                 assert obs.joint_pos is not None
@@ -409,7 +409,7 @@ def evaluate(
             sim.set_motor_kps(dict(zip(motor_names, [kp] * len(motor_names))))
             for a in action:
                 obs = sim.get_observation()
-                sim.set_motor_angles(a)
+                sim.set_motor_target(a)
                 sim.step()
 
                 assert obs.joint_pos is not None

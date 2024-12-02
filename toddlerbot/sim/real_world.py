@@ -7,7 +7,6 @@ from toddlerbot.actuation import JointState
 from toddlerbot.sim import BaseSim, Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_ports
-
 # from toddlerbot.utils.misc_utils import profile
 
 
@@ -104,7 +103,11 @@ class RealWorld(BaseSim):
         if future_dynamixel is not None:
             self.dynamixel_controller = future_dynamixel.result()
         if future_imu is not None:
-            self.imu = future_imu.result()
+            try:
+                self.imu = future_imu.result()
+            except Exception as e:
+                print(e)
+                self.has_imu = False
 
         for _ in range(100):
             self.get_observation()
@@ -190,7 +193,7 @@ class RealWorld(BaseSim):
         return obs
 
     # @profile()
-    def set_motor_angles(self, motor_angles: Dict[str, float]):
+    def set_motor_target(self, motor_angles: Dict[str, float]):
         # Directions are tuned to match the assembly of the robot.
         # joints_config = self.robot.config["joints"]
 

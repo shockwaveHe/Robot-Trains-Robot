@@ -23,9 +23,15 @@ from toddlerbot.utils.math_utils import (
 
 
 class IMU:
-    def __init__(self, euler_alpha: float = 0.6, ang_vel_alpha: float = 0.6):
+    def __init__(
+        self,
+        euler_alpha: float = 0.5,
+        ang_vel_alpha: float = 0.5,
+        ang_vel_max: float = np.pi / 2,
+    ):
         self.euler_alpha = euler_alpha
         self.ang_vel_alpha = ang_vel_alpha
+        self.ang_vel_max = ang_vel_max
 
         # # Set up the reset pin
         # reset_pin = DigitalInOut(board.D4)
@@ -45,13 +51,14 @@ class IMU:
 
         time.sleep(0.2)
 
-        quat_raw = np.array(
-            [self.sensor.quaternion[3], *self.sensor.quaternion[:3]],
-            dtype=np.float32,
-            copy=True,
-        )
-        euler_raw = np.asarray(quat2euler(quat_raw))
-        zero_euler = np.round(euler_raw / (np.pi / 2)) * (np.pi / 2)
+        # quat_raw = np.array(
+        #     [self.sensor.quaternion[3], *self.sensor.quaternion[:3]],
+        #     dtype=np.float32,
+        #     copy=True,
+        # )
+        # euler_raw = np.asarray(quat2euler(quat_raw))
+        # zero_euler = np.round(euler_raw / (np.pi / 2)) * (np.pi / 2)
+        zero_euler = np.array([0, -np.pi / 2, 0], dtype=np.float32)
         self.zero_quat = np.asarray(euler2quat(zero_euler))
         self.zero_quat_inv = np.asarray(quat_inv(self.zero_quat))
 
@@ -87,9 +94,7 @@ class IMU:
         self.euler_prev = filtered_euler
 
         ang_vel_raw = np.array(self.sensor.gyro, dtype=np.float32, copy=True)
-        ang_vel_torso = np.asarray(rotate_vec(ang_vel_raw, self.zero_quat))
-        ang_vel = np.asarray(rotate_vec(ang_vel_torso, quat_inv(quat)))
-
+        ang_vel = np.asarray(rotate_vec(ang_vel_raw, self.zero_quat))
         # print(
         #     f"ang_vel_raw: {ang_vel_raw}, ang_vel_torso: {ang_vel_torso}, ang_vel: {ang_vel}, euler: {euler}"
         # )
@@ -98,10 +103,13 @@ class IMU:
             exponential_moving_average(self.ang_vel_alpha, ang_vel, self.ang_vel_prev),
             dtype=np.float32,
         )
+        # filtered_ang_vel = np.clip(
+        #     filtered_ang_vel, -self.ang_vel_max, self.ang_vel_max
+        # )
         self.ang_vel_prev = filtered_ang_vel
 
         obs_euler = self.convert_matrix @ filtered_euler
-        obs_ang_vel = self.convert_matrix @ filtered_ang_vel
+        obs_ang_vel = filtered_ang_vel
 
         state = {"euler": obs_euler, "ang_vel": obs_ang_vel}
 

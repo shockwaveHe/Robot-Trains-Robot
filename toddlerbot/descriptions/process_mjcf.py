@@ -3,11 +3,28 @@ import os
 import shutil
 import xml.etree.ElementTree as ET
 from typing import Any, Dict, List, Tuple
+from xml.dom.minidom import parseString
 
 from transforms3d.euler import euler2quat
 
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.math_utils import round_to_sig_digits
+
+
+def pretty_write_xml(root: ET.Element, file_path: str):
+    # Convert the Element or ElementTree to a string
+    xml_str = ET.tostring(root, encoding="utf-8").decode("utf-8")
+
+    # Parse and pretty-print the XML string
+    dom = parseString(xml_str)
+    pretty_xml = dom.toprettyxml(indent="  ")
+
+    # Remove blank lines
+    pretty_xml = "\n".join([line for line in pretty_xml.splitlines() if line.strip()])
+
+    # Write the pretty XML to the file
+    with open(file_path, "w") as file:
+        file.write(pretty_xml)
 
 
 def find_root_link_name(root: ET.Element):
@@ -157,28 +174,17 @@ def update_joint_params(root: ET.Element, joints_config: Dict[str, Any]):
 
 
 def update_geom_classes(root: ET.Element, geom_keys: List[str]):
-    for geom in root.findall(".//geom[@mesh]"):
-        mesh_name = geom.get("mesh")
-        if mesh_name is None:
-            continue
-
-        # Determine the class based on the mesh name
-        if "visual" in mesh_name:
-            geom.set("class", "visual")
-        else:
-            raise ValueError(f"Not visual class for mesh: {mesh_name}")
-
-        for attr in geom_keys:
-            if attr in geom.attrib:
-                del geom.attrib[attr]
-
-    for geom in root.findall(".//geom[@name]"):
-        name = geom.get("name")
+    for geom in root.findall(".//geom"):
+        name: str | None = geom.get("name")
         if name is None:
-            continue
+            name = geom.get("mesh")
+            if name is None:
+                continue
 
         # Determine the class based on the mesh name
-        if "collision" in name:
+        if "visual" in name:
+            geom.set("class", "visual")
+        elif "collision" in name:
             geom.set("class", "collision")
         else:
             raise ValueError(f"Not collision class for name: {name}")
@@ -188,14 +194,7 @@ def update_geom_classes(root: ET.Element, geom_keys: List[str]):
                 del geom.attrib[attr]
 
 
-def add_keyframes(
-    root: ET.Element,
-    general_config: Dict[str, Any],
-    is_fixed: bool,
-    has_lower_body: bool,
-    has_upper_body: bool,
-    has_gripper: bool,
-):
+def add_keyframes(root: ET.Element, robot: Robot, is_fixed: bool):
     # Create or find the <default> element
     keyframe = root.find("keyframe")
     if keyframe is not None:
@@ -203,22 +202,38 @@ def add_keyframes(
 
     keyframe = ET.SubElement(root, "keyframe")
 
+    general_config = robot.config["general"]
+
+    has_lower_body = "arms" not in robot.name
+    has_upper_body = "legs" not in robot.name
+    has_gripper = False
+    for motor_name in robot.motor_ordering:
+        if "gripper" in motor_name:
+            has_gripper = True
+
     if is_fixed:
         qpos_str = ""
     else:
         qpos_str = f"0 0 {general_config['offsets']['default_torso_z']} 1 0 0 0 "
 
     if has_upper_body and has_lower_body:  # neck
-        qpos_str += "0 0 0 0 "
-        if general_config["is_neck_closed_loop"]:
+        if "active" in robot.name:
+            qpos_str += "0 0 "
+        elif general_config["is_neck_closed_loop"]:
+            qpos_str += "0 0 0 0 0 0 0 0 "
+        else:
             qpos_str += "0 0 0 0 "
 
     if has_lower_body:  # waist and legs
-        qpos_str += "0 0 0 0 "
-        if general_config["is_ankle_closed_loop"]:
+        if general_config["is_waist_closed_loop"]:
+            qpos_str += "0 0 0 0 "
+        else:
+            qpos_str += "0 0 "
+
+        if "active" in robot.name:
             qpos_str += (
-                "0 0 0 -0.267268 0.523599 -0.523599 -0.523599 -0.25637 0 0 0.248043 0 -0.246445 -0.253132 0.256023 0.523599 -0.523599 -0.523599 "
-                + "0 0 0 0.267268 -0.523599 0.523599 0.523599 -0.25637 0 0 -0.248043 0 0.246445 0.253132 -0.256023 -0.523599 0.523599 0.523599 "
+                "0.145689 0 0 -0.534732 -0.379457 0 "
+                + "-0.145689 0 0 0.534732 0.379457 0 "
             )
         else:
             qpos_str += (
@@ -227,15 +242,19 @@ def add_keyframes(
             )
 
     if has_upper_body:  # arms
-        qpos_str += (
-            "0.174533 -0.261799 1.0472 -1.0472 0.523599 -1.0472 1.0472 1.309 -1.309 0 "
-        )
+        if "active" in robot.name:
+            qpos_str += "0.174533 -0.261799 -1.0472 0.523599 1.0472 1.309 0 "
+        else:
+            qpos_str += "0.174533 -0.261799 1.0472 -1.0472 0.523599 -1.0472 1.0472 1.309 -1.309 0 "
+
         if has_gripper:
             qpos_str += "0 0 0 "
 
-        qpos_str += (
-            "-0.174533 -0.261799 -1.0472 1.0472 0.523599 1.0472 -1.0472 -1.309 1.309 0"
-        )
+        if "active" in robot.name:
+            qpos_str += "-0.174533 -0.261799 1.0472 0.523599 -1.0472 -1.309 0 "
+        else:
+            qpos_str += "-0.174533 -0.261799 -1.0472 1.0472 0.523599 1.0472 -1.0472 -1.309 1.309 0"
+
         if has_gripper:
             qpos_str += " 0 0 0"
 
@@ -323,15 +342,14 @@ def exclude_all_contacts(root: ET.Element):
         if body_name and body.find("./geom[@class='collision']") is not None:
             collision_bodies.append(body_name)
 
-    for body1_name in collision_bodies:
-        for body2_name in collision_bodies:
-            if body1_name != body2_name:
-                ET.SubElement(contact, "exclude", body1=body1_name, body2=body2_name)
+    for i in range(len(collision_bodies) - 1):
+        for j in range(i + 1, len(collision_bodies)):
+            ET.SubElement(
+                contact, "exclude", body1=collision_bodies[i], body2=collision_bodies[j]
+            )
 
 
-def add_contacts(
-    root: ET.Element, collision_config: Dict[str, Dict[str, Any]], foot_name: str
-):
+def add_contacts(root: ET.Element, collision_config: Dict[str, Dict[str, Any]]):
     # Ensure there is a <contact> element
     contact = root.find("contact")
     if contact is not None:
@@ -351,11 +369,7 @@ def add_contacts(
 
     collision_body_names = list(collision_bodies.keys())
     for body_name in collision_body_names:
-        print(body_name)
-        if (
-            "floor" in collision_config[body_name]["contact_pairs"]
-            and foot_name in body_name
-        ):
+        if "floor" in collision_config[body_name]["contact_pairs"]:
             pairs.append((body_name, "floor"))
 
     for i in range(len(collision_bodies) - 1):
@@ -365,9 +379,7 @@ def add_contacts(
 
             paired_1 = body2_name in collision_config[body1_name]["contact_pairs"]
             paired_2 = body1_name in collision_config[body2_name]["contact_pairs"]
-            if (paired_1 and paired_2) and (
-                foot_name in body1_name or foot_name in body2_name
-            ):
+            if paired_1 and paired_2:
                 pairs.append((body1_name, body2_name))
             else:
                 excludes.append((body1_name, body2_name))
@@ -678,16 +690,63 @@ def add_body_link(root: ET.Element, urdf_path: str, offsets: Dict[str, float]):
         body_link.append(element)
 
 
+def add_ee_sites(root: ET.Element, general_config: Dict[str, Any]):
+    # Foot names should be specified in your general configuration
+    ee_name = general_config["ee_name"]
+
+    def is_ee_collision(geom_name: str) -> bool:
+        if "gripper" in ee_name:
+            return "rail_guide" in geom_name
+        else:
+            return ee_name in geom_name and "collision" in geom_name
+
+    # Site specifications
+    site_specifications = {"type": "sphere", "size": "0.005", "rgba": "0.9 0.1 0.1 0.8"}
+
+    target_geoms: Dict[str, Tuple[ET.Element, ET.Element]] = {}
+    for parent in root.iter():
+        for geom in parent.findall("geom"):
+            name = geom.attrib.get("name", "")
+            if is_ee_collision(name):
+                # Store both the parent and the geom in the dictionary
+                target_geoms[name] = (parent, geom)
+
+    for i, (name, (parent, target_geom)) in enumerate(target_geoms.items()):
+        geom_pos = list(map(float, target_geom.attrib["pos"].split()))
+        geom_size = list(map(float, target_geom.attrib["size"].split()))
+
+        if "gripper" in ee_name:
+            bottom_center_pos = [
+                geom_pos[0],
+                geom_pos[1] - 2 * geom_size[2]
+                if i == 0
+                else geom_pos[1] + 2 * geom_size[2],
+                geom_pos[2],
+            ]
+        else:
+            bottom_center_pos = [
+                geom_pos[0],
+                geom_pos[1] + geom_size[1] if i == 0 else geom_pos[1] - geom_size[1],
+                geom_pos[2],
+            ]
+
+        ET.SubElement(
+            parent,
+            "site",
+            {
+                "name": "left_ee_center" if i == 0 else "right_ee_center",
+                "pos": " ".join([str(x) for x in bottom_center_pos]),
+                **site_specifications,
+            },
+        )
+
+
 def add_foot_sites(root: ET.Element, general_config: Dict[str, Any]):
     # Foot names should be specified in your general configuration
     foot_name = general_config["foot_name"]
 
     # Site specifications
-    site_specifications = {
-        "type": "sphere",
-        "size": "0.005",  # Radius of 1 cm, adjust as necessary
-        "rgba": "0.9 0.1 0.1 0.8",  # Semi-transparent red color
-    }
+    site_specifications = {"type": "sphere", "size": "0.005", "rgba": "0.9 0.1 0.1 0.8"}
 
     target_geoms: Dict[str, Tuple[ET.Element, ET.Element]] = {}
     for parent in root.iter():
@@ -1053,11 +1112,19 @@ def create_scene_xml(mjcf_path: str, is_fixed: bool):
                 "reflectance": "0.0",
             },
         )
+        # Define the path frame body and attributes
+        # ET.SubElement(
+        #     worldbody,
+        #     "body",
+        #     {"name": "path_frame", "mocap": "true"},
+        # )
 
     # Create a tree from the root element and write it to a file
     tree = ET.ElementTree(mujoco)
-
-    tree.write(os.path.join(os.path.dirname(mjcf_path), f"{robot_name}_scene.xml"))
+    pretty_write_xml(
+        tree.getroot(),
+        os.path.join(os.path.dirname(mjcf_path), f"{robot_name}_scene.xml"),
+    )
 
 
 def process_mjcf_file(root: ET.Element, robot: Robot):
@@ -1083,22 +1150,11 @@ def process_mjcf_file(root: ET.Element, robot: Robot):
     if robot.config["general"]["is_ankle_closed_loop"]:
         add_ankle_constraints(root, robot.config["general"])
 
+    add_ee_sites(root, robot.config["general"])
     add_foot_sites(root, robot.config["general"])
 
     if "sysID" not in robot.name:
-        has_gripper = False
-        for motor_name in robot.motor_ordering:
-            if "gripper" in motor_name:
-                has_gripper = True
-
-        add_keyframes(
-            root,
-            robot.config["general"],
-            True,
-            "arms" not in robot.name,
-            "legs" not in robot.name,
-            has_gripper,
-        )
+        add_keyframes(root, robot, True)
 
     exclude_all_contacts(root)
 
@@ -1114,6 +1170,10 @@ def get_mjcf_files(robot_name: str, generate_hanging: bool = False):
 
     robot_dir = os.path.join("toddlerbot", "descriptions", robot_name)
     urdf_path = os.path.join(robot_dir, robot_name + ".urdf")
+    urdf_tree = ET.parse(urdf_path)
+    urdf_root = urdf_tree.getroot()
+    pretty_write_xml(urdf_root, urdf_path)
+
     source_mjcf_path = os.path.join("mjmodel.xml")
     mjcf_vis_path = os.path.join(robot_dir, robot_name + "_vis.xml")
     print(f"Processing {source_mjcf_path}...")
@@ -1132,8 +1192,7 @@ def get_mjcf_files(robot_name: str, generate_hanging: bool = False):
     add_default_settings(
         xml_root, robot.config["general"], robot.config["joints"], "position"
     )
-
-    xml_tree.write(mjcf_vis_path)
+    pretty_write_xml(xml_root, mjcf_vis_path)
     create_scene_xml(mjcf_vis_path, is_fixed=True)
 
     mjcf_fixed_path = os.path.join(robot_dir, robot_name + "_fixed.xml")
@@ -1141,39 +1200,23 @@ def get_mjcf_files(robot_name: str, generate_hanging: bool = False):
     add_default_settings(
         xml_root, robot.config["general"], robot.config["joints"], "motor"
     )
-
-    xml_tree.write(mjcf_fixed_path)
+    pretty_write_xml(xml_root, mjcf_fixed_path)
     create_scene_xml(mjcf_fixed_path, is_fixed=True)
 
     if not robot.config["general"]["is_fixed"]:
         mjcf_path = os.path.join(robot_dir, robot_name + ".xml")
         add_body_link(xml_root, urdf_path, robot.config["general"]["offsets"])
 
-        has_gripper = False
-        for motor_name in robot.motor_ordering:
-            if "gripper" in motor_name:
-                has_gripper = True
+        add_keyframes(xml_root, robot, False)
 
-        add_keyframes(
-            xml_root,
-            robot.config["general"],
-            False,
-            "arms" not in robot.name,
-            "legs" not in robot.name,
-            has_gripper,
-        )
-
-        add_contacts(
-            xml_root, robot.collision_config, robot.config["general"]["foot_name"]
-        )
+        add_contacts(xml_root, robot.collision_config)
         # replace_box_collision(xml_root, robot.config["general"])
 
         add_motor_actuators_to_mjcf(xml_root, robot.config["joints"])
         add_default_settings(
             xml_root, robot.config["general"], robot.config["joints"], "motor"
         )
-
-        xml_tree.write(mjcf_path)
+        pretty_write_xml(xml_root, mjcf_path)
         create_scene_xml(mjcf_path, is_fixed=False)
         print(f"created xml at {mjcf_path}")
 

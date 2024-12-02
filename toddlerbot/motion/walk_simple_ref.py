@@ -24,8 +24,8 @@ class WalkSimpleReference(MotionReference):
 
         self.num_joints = len(self.robot.joint_ordering)
         self.shin_thigh_ratio = (
-            self.robot.data_dict["offsets"]["knee_to_ank_pitch_z"]
-            / self.robot.data_dict["offsets"]["hip_pitch_to_knee_z"]
+            self.robot.config["general"]["offsets"]["knee_to_ank_pitch_z"]
+            / self.robot.config["general"]["offsets"]["hip_pitch_to_knee_z"]
         )
 
         self.left_pitch_joint_indices = np.array(

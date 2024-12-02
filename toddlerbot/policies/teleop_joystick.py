@@ -8,7 +8,6 @@ from toddlerbot.policies.balance_pd import BalancePDPolicy
 from toddlerbot.policies.mjx_policy import MJXPolicy
 from toddlerbot.policies.reset_pd import ResetPDPolicy
 from toddlerbot.policies.teleop_follower_pd import TeleopFollowerPDPolicy
-from toddlerbot.policies.turn import TurnPolicy
 from toddlerbot.policies.walk import WalkPolicy
 from toddlerbot.sensing.camera import Camera
 from toddlerbot.sim import Obs
@@ -47,9 +46,6 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
         self.walk_policy = WalkPolicy(
             "walk", robot, init_motor_pos, joystick=self.joystick
         )
-        self.turn_policy = TurnPolicy(
-            "turn", robot, init_motor_pos, joystick=self.joystick
-        )
         balance_kwargs: Dict[str, Any] = dict(
             joystick=self.joystick,
             camera=self.camera,
@@ -67,28 +63,23 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
         # self.hug_policy = DPPolicy("hug", robot, init_motor_pos, **balance_kwargs)
         self.policies = {
             "walk": self.walk_policy,
-            "turn": self.turn_policy,
             "teleop": self.teleop_policy,
             "reset": self.reset_policy,
             # "hug": self.hug_policy,
         }
 
-        self.reset_motor_indices = np.concatenate(
-            [self.neck_motor_indices, self.waist_motor_indices]
-        )
-
         self.need_reset = False
         self.policy_prev = "teleop"
-        self.last_control_inputs: Dict[str, float] | None = None
+        self.last_control_inputs: Dict[str, float] = {}
 
     def step(
         self, obs: Obs, is_real: bool = False
-    ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
+    ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
         if obs.time < self.prep_duration:
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
             )
-            return self.zero_command, action
+            return {}, action
 
         assert self.zmq_receiver is not None
         msg = self.zmq_receiver.get_msg()
@@ -99,21 +90,12 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
         elif msg is not None:
             control_inputs = msg.control_inputs
 
-        for name, policy in self.policies.items():
-            if isinstance(policy, BalancePDPolicy):
-                policy.msg = msg
-            elif isinstance(policy, MJXPolicy):
-                assert control_inputs is not None
-                policy.control_inputs = control_inputs
-            else:
-                raise NotImplementedError
-
         self.last_control_inputs = control_inputs
 
         command_scale = {key: 0.0 for key in self.policies}
         command_scale["teleop"] = 1e-6
 
-        if control_inputs is not None:
+        if len(control_inputs) > 0:
             for task, input in control_inputs.items():
                 for key in self.policies:
                     if key in task:
@@ -123,32 +105,40 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
         policy_curr = max(command_scale, key=command_scale.get)  # type: ignore
         if policy_curr != self.policy_prev:
             last_policy = self.policies[self.policy_prev]
-            is_reset_mask = (
-                np.abs(
-                    (obs.motor_pos - self.default_motor_pos)[self.reset_motor_indices]
-                )
-                < 0.1
-            )
-            if (
-                isinstance(last_policy, MJXPolicy)
-                and not last_policy.is_double_support()
-            ):
-                policy_curr = self.policy_prev
+            is_reset_mask = np.abs((obs.motor_pos - self.default_motor_pos)) < 0.1
 
-            elif (
-                not self.need_reset
-                and isinstance(last_policy, BalancePDPolicy)
-                and isinstance(self.policies[policy_curr], MJXPolicy)
+            policy_type_differs = isinstance(last_policy, MJXPolicy) != isinstance(
+                self.policies[policy_curr], MJXPolicy
+            )
+
+            if (
+                policy_type_differs
+                and not self.need_reset
                 and not np.all(is_reset_mask)
             ):
-                self.need_reset = True
-                self.reset_policy.is_button_pressed = True
-                last_policy.reset()
+                if isinstance(last_policy, MJXPolicy) and not last_policy.is_standing:
+                    # Not ready for switching policy
+                    policy_curr = self.policy_prev
+                    for k, v in control_inputs.items():
+                        control_inputs[k] = 0.0
+                else:
+                    self.need_reset = True
+                    self.reset_policy.is_button_pressed = True
+
+                    last_policy.reset()
 
         if self.need_reset:
             policy_curr = "reset"
 
-        motor_target = self.policies[policy_curr].step(obs, is_real)
+        current_policy = self.policies[policy_curr]
+        if isinstance(current_policy, BalancePDPolicy):
+            current_policy.msg = msg
+        elif isinstance(current_policy, MJXPolicy):
+            current_policy.control_inputs = control_inputs
+        else:
+            raise NotImplementedError
+
+        control_inputs, motor_target = current_policy.step(obs, is_real)
 
         print(f"policy: {policy_curr}")
         print(f"need_reset: {self.need_reset}")
@@ -158,4 +148,4 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
 
         self.policy_prev = policy_curr
 
-        return motor_target
+        return control_inputs, motor_target

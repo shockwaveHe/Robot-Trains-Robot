@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Dict, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -17,11 +17,11 @@ class StandPolicy(BasePolicy, policy_name="stand"):
 
     def step(
         self, obs: Obs, is_real: bool = False
-    ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
+    ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
         if obs.time < self.prep_duration:
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
             )
-            return self.zero_command, action
+            return {}, action
 
-        return self.zero_command, self.default_motor_pos
+        return {}, self.default_motor_pos

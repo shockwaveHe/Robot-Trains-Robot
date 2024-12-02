@@ -18,7 +18,7 @@ def main(robot: Robot):
             step_start = time.time()
 
             _ = sim.get_observation()
-            sim.set_motor_angles(robot.init_motor_angles)
+            sim.set_motor_target(robot.init_motor_angles)
 
             step_idx += 1
 

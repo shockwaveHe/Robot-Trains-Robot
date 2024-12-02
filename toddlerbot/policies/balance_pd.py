@@ -45,38 +45,19 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
             self.zero_command if fixed_command is None else fixed_command
         )
 
-        state_ref_init = np.concatenate(
+        state_ref = np.concatenate(
             [
                 np.zeros(3, dtype=np.float32),  # Position
                 np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),  # Quaternion
                 np.zeros(3, dtype=np.float32),  # Linear velocity
                 np.zeros(3, dtype=np.float32),  # Angular velocity
+                self.default_motor_pos,  # Motor positions
                 self.default_joint_pos,  # Joint positions
-                np.zeros_like(self.default_joint_pos),  # Joint velocities
                 np.ones(2, dtype=np.float32),  # Stance mask
             ]
         )
         self.state_ref = self.balance_ref.get_state_ref(
-            state_ref_init, 0.0, self.fixed_command
-        )
-        neck_motor_pos = self.balance_ref.neck_ik(
-            self.state_ref[13 + self.neck_joint_indices]
-        )
-        waist_motor_pos = self.balance_ref.waist_ik(
-            self.state_ref[13 + self.waist_joint_indices]
-        )
-        leg_motor_pos = self.balance_ref.leg_ik(
-            self.state_ref[13 + self.leg_joint_indices]
-        )
-        arm_motor_pos = self.balance_ref.arm_ik(
-            self.state_ref[13 + self.arm_joint_indices]
-        )
-        motor_pos_ref = np.concatenate(
-            [neck_motor_pos, waist_motor_pos, leg_motor_pos, arm_motor_pos]
-        )
-
-        self.reset_motor_indices = np.concatenate(
-            [self.neck_motor_indices, self.waist_motor_indices]
+            state_ref, 0.0, self.fixed_command
         )
 
         self.joystick = joystick
@@ -111,7 +92,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         self.is_running = False
         self.is_button_pressed = False
         self.is_ended = False
-        self.last_control_inputs: Dict[str, float] | None = None
+        self.last_control_inputs: Dict[str, float] = {}
         self.step_curr = 0
 
         self.arm_motor_pos = None
@@ -123,15 +104,15 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         self.last_gripper_pos = np.zeros(2, dtype=np.float32)
         self.gripper_delta_max = 0.5
 
-        self.prep_duration = 2.0
-        self.prep_time, self.prep_action = self.move(
-            -self.control_dt, init_motor_pos, motor_pos_ref, self.prep_duration
-        )
+        self.is_prepared = False
 
     def reset(self):
-        self.state_ref[13 + self.reset_motor_indices] = self.default_motor_pos[
-            self.reset_motor_indices
-        ].copy()
+        self.state_ref[:3] = np.zeros(3, dtype=np.float32)
+        self.state_ref[3:7] = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)
+        self.state_ref[13 : 13 + self.robot.nu] = self.default_motor_pos.copy()
+        self.state_ref[13 + self.robot.nu : 13 + 2 * self.robot.nu] = (
+            self.default_joint_pos.copy()
+        )
 
     def get_command(self, control_inputs: Dict[str, float]) -> npt.NDArray[np.float32]:
         command = np.zeros(len(self.command_range), dtype=np.float32)
@@ -183,13 +164,23 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
 
     def step(
         self, obs: Obs, is_real: bool = False
-    ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
-        # Preparation phase
+    ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
+        if not self.is_prepared:
+            self.is_prepared = True
+            self.prep_duration = 7.0 if is_real else 2.0
+            self.prep_time, self.prep_action = self.move(
+                -self.control_dt,
+                self.init_motor_pos,
+                self.default_motor_pos,
+                self.prep_duration,
+                end_time=5.0 if is_real else 0.0,
+            )
+
         if obs.time < self.prep_duration:
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
             )
-            return self.zero_command, action
+            return {}, action
 
         msg = None
         if self.msg is not None:
@@ -260,20 +251,15 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
             command = self.get_command(control_inputs)
 
         time_curr = self.step_curr * self.control_dt
-        arm_joint_pos = self.get_arm_motor_pos(obs) * self.balance_ref.arm_gear_ratio
-        self.state_ref[13 + self.arm_joint_indices] = arm_joint_pos
+        arm_motor_pos = self.get_arm_motor_pos(obs)
+        arm_joint_pos = self.balance_ref.arm_fk(arm_motor_pos)
+        self.state_ref[13 + self.arm_motor_indices] = arm_motor_pos
+        self.state_ref[13 + self.robot.nu + self.arm_joint_indices] = arm_joint_pos
         self.state_ref = self.balance_ref.get_state_ref(
             self.state_ref, time_curr, command
         )
 
-        joint_angles = dict(
-            zip(self.robot.joint_ordering, self.state_ref[13 : 13 + self.robot.nu])
-        )
-        # Convert joint positions to motor angles
-        motor_target = np.array(
-            list(self.robot.joint_to_motor_angles(joint_angles).values()),
-            dtype=np.float32,
-        )
+        motor_target = self.state_ref[13 : 13 + self.robot.nu]
         # Override motor target with reference motion or teleop motion
         motor_target = np.clip(
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
@@ -281,4 +267,4 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
 
         self.step_curr += 1
 
-        return command, motor_target
+        return control_inputs, motor_target

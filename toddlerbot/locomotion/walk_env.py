@@ -41,7 +41,10 @@ class WalkEnv(MJXEnv, env_name="walk"):
             raise ValueError(f"Unknown ref_motion_type: {ref_motion_type}")
 
         self.cycle_time = jnp.array(cfg.action.cycle_time)
+        self.torso_roll_range = cfg.rewards.torso_roll_range
         self.torso_pitch_range = cfg.rewards.torso_pitch_range
+
+        self.max_feet_air_time = self.cycle_time / 2.0
         self.min_feet_y_dist = cfg.rewards.min_feet_y_dist
         self.max_feet_y_dist = cfg.rewards.max_feet_y_dist
 
@@ -60,7 +63,7 @@ class WalkEnv(MJXEnv, env_name="walk"):
         self, rng: jax.Array, last_command: Optional[jax.Array] = None
     ) -> jax.Array:
         # Randomly sample an index from the command list
-        rng, rng_1, rng_2, rng_3 = jax.random.split(rng, 4)
+        rng, rng_1, rng_2, rng_3, rng_4, rng_5, rng_6 = jax.random.split(rng, 7)
         if last_command is not None:
             pose_command = last_command[:5]
         else:
@@ -68,29 +71,74 @@ class WalkEnv(MJXEnv, env_name="walk"):
             # TODO: Bring the random pose sampling back
             pose_command = pose_command.at[:5].set(0.0)
 
-        # Sample random angles uniformly between 0 and 2*pi
-        theta = jax.random.uniform(rng_2, (1,), minval=0, maxval=2 * jnp.pi)
-        r = jax.random.uniform(rng_3, (1,), minval=0, maxval=1)
+        def sample_walk_command():
+            # Sample random angles uniformly between 0 and 2*pi
+            theta = jax.random.uniform(rng_3, (1,), minval=0, maxval=2 * jnp.pi)
+            # Parametric equation of ellipse
+            x_max = jnp.where(
+                jnp.sin(theta) > 0, self.command_range[5][1], -self.command_range[5][0]
+            )
+            x = jax.random.uniform(
+                rng_4, (1,), minval=self.deadzone, maxval=x_max
+            ) * jnp.sin(theta)
+            y_max = jnp.where(
+                jnp.cos(theta) > 0, self.command_range[6][1], -self.command_range[6][0]
+            )
+            y = jax.random.uniform(
+                rng_4, (1,), minval=self.deadzone, maxval=y_max
+            ) * jnp.cos(theta)
+            z = jnp.zeros(1)
+            return jnp.concatenate([x, y, z])
 
-        # Parametric equation of ellipse
-        x = jnp.where(
-            jnp.sin(theta) > 0,
-            self.command_range[5][1] * r * jnp.sin(theta),
-            -self.command_range[5][0] * r * jnp.sin(theta),
-        )
-        y = jnp.where(
-            jnp.cos(theta) > 0,
-            self.command_range[6][1] * r * jnp.cos(theta),
-            -self.command_range[6][0] * r * jnp.cos(theta),
-        )
-        z = jnp.zeros(1)
-        command = jnp.concatenate([pose_command, x, y, z])
+        def sample_turn_command():
+            x = jnp.zeros(1)
+            y = jnp.zeros(1)
+            z = jnp.where(
+                jax.random.uniform(rng_5, (1,)) < 0.5,
+                jax.random.uniform(
+                    rng_6,
+                    (1,),
+                    minval=self.deadzone,
+                    maxval=self.command_range[7][1],
+                ),
+                -jax.random.uniform(
+                    rng_6,
+                    (1,),
+                    minval=self.deadzone,
+                    maxval=-self.command_range[7][0],
+                ),
+            )
+            return jnp.concatenate([x, y, z])
 
-        # Set small commands to zero based on norm condition
-        mask = (jnp.linalg.norm(command[5:]) > self.deadzone).astype(jnp.float32)
-        command = command.at[5:].set(command[5:] * mask)
+        random_number = jax.random.uniform(rng_2, (1,))
+        walk_command = jnp.where(
+            random_number < self.zero_chance,
+            jnp.zeros(3),
+            jnp.where(
+                random_number < self.zero_chance + self.turn_chance,
+                sample_turn_command(),
+                sample_walk_command(),
+            ),
+        )
+        command = jnp.concatenate([pose_command, walk_command])
+
+        # jax.debug.print("command: {}", command)
 
         return command
+
+    def _reward_torso_roll(
+        self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
+    ):
+        """Reward for torso pitch"""
+        torso_quat = pipeline_state.x.rot[0]
+        torso_roll = math.quat_to_euler(torso_quat)[0]
+
+        roll_min = jnp.clip(torso_roll - self.torso_roll_range[0], max=0.0)
+        roll_max = jnp.clip(torso_roll - self.torso_roll_range[1], min=0.0)
+        reward = (
+            jnp.exp(-jnp.abs(roll_min) * 100) + jnp.exp(-jnp.abs(roll_max) * 100)
+        ) / 2
+        return reward
 
     def _reward_torso_pitch(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
@@ -166,13 +214,18 @@ class WalkEnv(MJXEnv, env_name="walk"):
         reward *= jnp.linalg.norm(info["command_obs"]) < self.deadzone
         return reward
 
-    def _reward_hip_motor_torque(
+    def _reward_align_ground(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
-        """Reward for minimizing joint torques"""
-        torque = pipeline_state.qfrc_actuator[
-            self.qd_start_idx + self.hip_motor_indices
-        ]
-        error = jnp.square(torque)
-        reward = -jnp.mean(error)
+        hip_pitch_joint_pos = jnp.abs(
+            pipeline_state.q[self.q_start_idx + self.hip_pitch_joint_indices]
+        )
+        knee_joint_pos = jnp.abs(
+            pipeline_state.q[self.q_start_idx + self.knee_joint_indices]
+        )
+        ank_pitch_joint_pos = jnp.abs(
+            pipeline_state.q[self.q_start_idx + self.ank_pitch_joint_indices]
+        )
+        error = hip_pitch_joint_pos + ank_pitch_joint_pos - knee_joint_pos
+        reward = -jnp.mean(error**2)
         return reward

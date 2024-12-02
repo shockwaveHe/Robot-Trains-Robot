@@ -1,0 +1,305 @@
+{
+    "neck_yaw": {
+        "motor": "XC330",
+        "init_pos": 2.0417284965515137,
+        "default_pos": 0,
+        "gear_ratio": 0.7222222222222222,
+        "kp": 1500.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
+    "neck_pitch": {
+        "motor": "XC330",
+        "init_pos": 5.749360084533691,
+        "default_pos": 0,
+        "kp": 1500.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
+    "waist_roll": {
+        "motor": "XC430",
+        "init_pos": 2.3884081840515137,
+        "default_pos": 0,
+        "kp": 2100.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
+    "waist_yaw": {
+        "motor": "XC430",
+        "init_pos": 0.5506991147994995,
+        "default_pos": 0,
+        "kp": 2100.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
+    "left_hip_pitch": {
+        "motor": "2XC430",
+        "init_pos": 3.1692042350769043,
+        "default_pos": 0.145689,
+        "kp": 2100.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
+    "left_hip_roll": {
+        "motor": "2XC430",
+        "init_pos": 1.5508545637130737,
+        "default_pos": 0,
+        "kp": 2100.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
+    "left_hip_yaw": {
+        "motor": "XC330",
+        "init_pos": 4.856583118438721,
+        "default_pos": 0,
+        "gear_ratio": 0.9047619047619047,
+        "kp": 1500.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
+    "left_knee": {
+        "motor": "XM430",
+        "init_pos": 2.8194565773010254,
+        "default_pos": -0.534732,
+        "kp": 2700.0,
+        "ki": 0.0,
+        "kd": 160.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
+    "left_ank_roll": {
+        "motor": "XC430",
+        "init_pos": 0.006135923322290182,
+        "default_pos": 0.0,
+        "kp": 2100.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
+    "left_ank_pitch": {
+        "motor": "XM430",
+        "init_pos": 5.328713744878769,
+        "default_pos": -0.379457,
+        "kp": 2700.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
+    "right_hip_pitch": {
+        "motor": "2XC430",
+        "init_pos": 4.675573348999023,
+        "default_pos": -0.145689,
+        "kp": 2100.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
+    "right_hip_roll": {
+        "motor": "2XC430",
+        "init_pos": 4.6893792152404785,
+        "default_pos": 0,
+        "kp": 2100.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
+    "right_hip_yaw": {
+        "motor": "XC330",
+        "init_pos": 1.4940972328186035,
+        "default_pos": 0,
+        "gear_ratio": 0.9047619047619047,
+        "kp": 1500.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
+    "right_knee": {
+        "motor": "XM430",
+        "init_pos": 5.505456924438477,
+        "default_pos": 0.534732,
+        "kp": 2700.0,
+        "ki": 0.0,
+        "kd": 160.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
+    "right_ank_roll": {
+        "motor": "XC430",
+        "init_pos": 0.02454369328916073,
+        "default_pos": 0.0,
+        "kp": 2100.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
+    "right_ank_pitch": {
+        "motor": "XM430",
+        "init_pos": 1.5849376022815704,
+        "default_pos": 0.379457,
+        "kp": 2700.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
+    "left_sho_pitch": {
+        "motor": "XC430",
+        "init_pos": 4.71238898038469,
+        "default_pos": 0.174533,
+        "kp": 700.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
+    "left_sho_roll": {
+        "motor": "2XL430",
+        "init_pos": 1.5707963267948966,
+        "default_pos": -0.261799,
+        "kp": 700.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
+    "left_sho_yaw": {
+        "motor": "2XL430",
+        "init_pos": 1.6797089576721191,
+        "default_pos": -1.0472,
+        "kp": 700.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
+    "left_elbow_roll": {
+        "motor": "2XL430",
+        "init_pos": 3.141592653589793,
+        "default_pos": 0.523599,
+        "kp": 700.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
+    "left_elbow_yaw": {
+        "motor": "2XL430",
+        "init_pos": 1.150485634803772,
+        "default_pos": 1.0472,
+        "kp": 700.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
+    "left_wrist_pitch": {
+        "motor": "2XL430",
+        "init_pos": 0.9433981776237488,
+        "default_pos": 1.309,
+        "kp": 700.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
+    "left_wrist_roll": {
+        "motor": "2XL430",
+        "init_pos": 6.283185307179586,
+        "default_pos": 0,
+        "kp": 700.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
+    "right_sho_pitch": {
+        "motor": "XC430",
+        "init_pos": 0.0,
+        "default_pos": -0.174533,
+        "kp": 700.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
+    "right_sho_roll": {
+        "motor": "2XL430",
+        "init_pos": 1.5707963267948966,
+        "default_pos": -0.261799,
+        "kp": 700.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
+    "right_sho_yaw": {
+        "motor": "2XL430",
+        "init_pos": 5.375068664550781,
+        "default_pos": 1.0472,
+        "kp": 700.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
+    "right_elbow_roll": {
+        "motor": "2XL430",
+        "init_pos": 1.5707963267948966,
+        "default_pos": 0.523599,
+        "kp": 700.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
+    "right_elbow_yaw": {
+        "motor": "2XL430",
+        "init_pos": 5.583690166473389,
+        "default_pos": -1.0472,
+        "kp": 700.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
+    "right_wrist_pitch": {
+        "motor": "2XL430",
+        "init_pos": 3.259709119796753,
+        "default_pos": -1.309,
+        "kp": 700.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
+    "right_wrist_roll": {
+        "motor": "2XL430",
+        "init_pos": 1.5707963267948966,
+        "default_pos": 0.0,
+        "kp": 700.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    }
+}

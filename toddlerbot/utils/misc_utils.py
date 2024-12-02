@@ -3,9 +3,12 @@ import asyncio
 import functools
 import inspect
 import logging
+import os
+import re
 import subprocess
 import time
 from dataclasses import asdict, is_dataclass
+from datetime import datetime
 from typing import Any, Callable, TypeVar
 
 from colorama import Fore, init
@@ -206,3 +209,36 @@ def dataclass2dict(obj):
         }
     else:
         return {key: value for key, value in asdict(obj).items()}
+
+
+def find_latest_file_with_time_str(directory: str, file_prefix: str = "") -> str | None:
+    """
+    Finds the file with the latest timestamp (YYYYMMDD_HHMMSS) in the given directory,
+    for files ending with the specified suffix.
+
+    Args:
+        directory (str): Directory to search for files.
+        file_suffix (str): The suffix to match (e.g., '.pkl', '_updated.pkl').
+
+    Returns:
+        str | None: Full path of the latest file or None if no matching file is found.
+    """
+    pattern = re.compile(r".*" + re.escape(file_prefix) + r".*(\d{8}_\d{6}).*")
+
+    latest_file = None
+    latest_time = None
+
+    # Iterate through files in the directory
+    for file in os.listdir(directory):
+        match = pattern.search(file)  # Check if the file matches the pattern
+        if match:
+            # Extract the timestamp and parse it into a datetime object
+            timestamp_str = match.group(1)
+            file_time = datetime.strptime(timestamp_str, "%Y%m%d_%H%M%S")
+
+            # Update the latest file if this timestamp is more recent
+            if latest_time is None or file_time > latest_time:
+                latest_time = file_time
+                latest_file = file
+
+    return os.path.join(directory, latest_file) if latest_file else None

@@ -64,13 +64,15 @@ class MJXConfig:
         tracking_sigma: float = 100.0
         min_feet_y_dist: float = 0.05
         max_feet_y_dist: float = 0.13
+        torso_roll_range: List[float] = field(default_factory=lambda: [-0.1, 0.1])
         torso_pitch_range: List[float] = field(default_factory=lambda: [-0.2, 0.2])
 
     @gin.configurable
     @dataclass
     class RewardScales:
         torso_pos: float = 0.0  # 1.0
-        torso_quat: float = 1.0  # 1.0
+        torso_quat: float = 0.0  # 1.0
+        torso_roll: float = 0.0
         torso_pitch: float = 0.0
         lin_vel_xy: float = 1.0
         lin_vel_z: float = 1.0
@@ -79,27 +81,26 @@ class MJXConfig:
         neck_motor_pos: float = 0.0  # 0.1
         arm_motor_pos: float = 0.0  # 0.1
         waist_motor_pos: float = 0.0  # 50.0
-        leg_motor_pos: float = 10.0
-        motor_torque: float = 5e-3
-        motor_acc: float = 5e-7
+        leg_motor_pos: float = 5.0
+        motor_torque: float = 1e-2
+        energy: float = 1e-2
         neck_action_rate: float = 0.0  # 1e-2
         neck_action_acc: float = 0.0  # 1e-2
         arm_action_rate: float = 0.0  # 1e-2
         arm_action_acc: float = 0.0  # 1e-2
         waist_action_rate: float = 0.0  # 1e-2
         waist_action_acc: float = 0.0  # 1e-2
-        leg_action_rate: float = 1e-2
-        leg_action_acc: float = 1e-2
-        feet_contact: float = 0.5
-        feet_contact_number: float = 0.0
+        leg_action_rate: float = 0.05
+        leg_action_acc: float = 0.05
+        feet_contact: float = 1.0
         collision: float = 0.0  # 1.0
         survival: float = 10.0
         feet_air_time: float = 0.0
         feet_distance: float = 0.0
         feet_slip: float = 0.0
         feet_clearance: float = 0.0
-        stand_still: float = 0.0
-        tendon_len_eq: float = 0.0
+        stand_still: float = 0.0  # 1.0
+        align_ground: float = 0.0  # 1.0
 
         def reset(self):
             for key in vars(self):
@@ -108,40 +109,46 @@ class MJXConfig:
     @gin.configurable
     @dataclass
     class CommandsConfig:
-        resample_time: float = 5.0
+        resample_time: float = 3.0
         reset_time: float = 100.0  # No resetting by default
         mean_reversion: float = 0.5
+        zero_chance: float = 0.2
+        turn_chance: float = 0.3
+        command_obs_indices: List[int] = field(default_factory=lambda: [])
         command_range: List[List[float]] = field(default_factory=lambda: [[]])
         deadzone: List[float] = field(default_factory=lambda: [])
-        command_obs_indices: List[int] = field(default_factory=lambda: [])
 
     @gin.configurable
     @dataclass
     class DomainRandConfig:
+        add_domain_rand: bool = True
         friction_range: List[float] = field(default_factory=lambda: [0.5, 2.0])
         damping_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
         armature_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
         frictionloss_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
         gravity_range: List[float] = field(default_factory=lambda: [1.0, 1.0])
-        added_mass_range: List[float] = field(default_factory=lambda: [-0.2, 0.2])
+        body_mass_range: List[float] = field(default_factory=lambda: [-0.2, 0.2])
+        ee_mass_range: List[float] = field(default_factory=lambda: [0.0, 0.1])
+        other_mass_range: List[float] = field(default_factory=lambda: [0.0, 0.0])
         kp_range: List[float] = field(default_factory=lambda: [0.9, 1.1])
         kd_range: List[float] = field(default_factory=lambda: [0.9, 1.1])
         tau_max_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
         q_dot_tau_max_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
         q_dot_max_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
-        push_interval_s: int = 4  # seconds
-        push_lin_vel: float = 0.2
-        push_ang_vel: float = 0.5
+        push_interval_s: int = 2  # seconds
+        push_lin_vel: float = 0.5
+        push_ang_vel: float = 1.0
 
     @gin.configurable
     @dataclass
     class NoiseConfig:
+        add_noise: bool = True
         action_noise: float = 0.02
         obs_noise_scale: float = 0.05
         dof_pos: float = 1.0
         dof_vel: float = 2.0
-        ang_vel: float = 2.0
-        euler: float = 1.0
+        ang_vel: float = 5.0
+        euler: float = 2.0
         backlash_scale: float = 0.02
         backlash_activation: float = 0.1
 

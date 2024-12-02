@@ -24,16 +24,17 @@ def get_default_config(
     is_ankle_closed_loop = False
     for joint in root.findall("joint"):
         joint_name = joint.get("name")
-        if joint_name is None:
+        joint_type = joint.get("type")
+        if joint_name is None or joint_type is None:
             continue
 
-        if "neck" in joint_name and "act" in joint_name:
+        if "neck" in joint_name and "act" in joint_name and "fixed" not in joint_type:
             is_neck_closed_loop = True
-        if "waist" in joint_name and "act" in joint_name:
+        if "waist" in joint_name and "act" in joint_name and "fixed" not in joint_type:
             is_waist_closed_loop = True
-        if "knee" in joint_name and "act" in joint_name:
+        if "knee" in joint_name and "act" in joint_name and "fixed" not in joint_type:
             is_knee_closed_loop = True
-        if "ank" in joint_name and "act" in joint_name:
+        if "ank" in joint_name and "act" in joint_name and "fixed" not in joint_type:
             is_ankle_closed_loop = True
 
     config_dict["general"]["is_neck_closed_loop"] = is_neck_closed_loop
@@ -233,10 +234,19 @@ def main() -> None:
     if "sysID" not in args.robot and "arms" not in args.robot:
         general_config["is_fixed"] = False
         general_config["has_imu"] = True
+        if "gripper" in args.robot:
+            general_config["ee_name"] = "gripper_connector"
+        else:
+            general_config["ee_name"] = "hand"
         general_config["foot_name"] = "ank_roll_link"
         general_config["offsets"] = {
             "torso_z": 0.33605,
             "default_torso_z": 0.3267,
+            "foot_to_com_x": 0.0027,
+            "foot_to_com_y": 0.0364,
+            "hip_roll_to_pitch_z": 0.024,
+            "hip_pitch_to_knee_z": 0.096,
+            "knee_to_ank_pitch_z": 0.1,
             # "imu_x": 0.0282,
             # "imu_y": 0.0,
             # "imu_z": 0.105483,
@@ -308,14 +318,22 @@ def main() -> None:
         with open(collision_config_file_path, "r") as f:
             collision_config = json.load(f)
 
+    link_names = []
     for link in root.findall("link"):
         link_name = link.get("name")
+        link_names.append(link_name)
 
         if link_name is not None and link_name not in collision_config:
             collision_config[link_name] = {"has_collision": False}
 
+    collision_config_updated = {
+        link_name: value
+        for link_name, value in collision_config.items()
+        if link_name in link_names
+    }
+
     with open(collision_config_file_path, "w") as f:
-        f.write(json.dumps(collision_config, indent=4))
+        f.write(json.dumps(collision_config_updated, indent=4))
         print(f"Collision config file saved to {collision_config_file_path}")
 
 

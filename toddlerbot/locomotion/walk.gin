@@ -1,23 +1,27 @@
-CommandsConfig.reset_time = 5.0
 CommandsConfig.command_range = [
     [-1.0, 1.0],
     [-1.0, 1.0],
     [0.0, 1.0],
     [-1.0, 1.0],
     [-1.0, 1.0],
-    [-0.1, 0.3],
+    [-0.1, 0.2],
     [-0.1, 0.1],
-    [0.0, 0.0]
+    [-0.5, 0.5]
 ]
-CommandsConfig.deadzone = [0.01]
+CommandsConfig.deadzone = [0.05]
 CommandsConfig.command_obs_indices = [5, 6, 7]
 
-RewardScales.torso_pitch = 0.2
+RewardScales.torso_quat = 1.0
+RewardScales.torso_roll = 0.5
+RewardScales.torso_pitch = 0.5
 RewardScales.lin_vel_xy = 5.0
-RewardScales.ang_vel_xy = 2.0
-RewardScales.ang_vel_z = 1.0
-RewardScales.feet_air_time = 100.0
+RewardScales.ang_vel_xy = 1.0
+RewardScales.ang_vel_z = 5.0
+RewardScales.feet_air_time = 500.0
 RewardScales.feet_distance = 1.0
-RewardScales.feet_slip = 0.1
-RewardScales.feet_clearance = 2.0
-RewardScales.collision = 1.0
+RewardScales.feet_slip = 0.05
+RewardScales.feet_clearance = 1.0
+RewardScales.collision = 0.1
+RewardScales.stand_still = 1.0
+RewardScales.align_ground = 1.0
+RewardScales.energy = 0.05

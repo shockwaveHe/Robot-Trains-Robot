@@ -1,8 +1,6 @@
-[tool.ruff]
-exclude = ["brax"]
 [build-system]
-requires = ["setuptools>=42", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "toddlerbot"
@@ -33,7 +31,7 @@ dependencies = [
     "lz4==4.3.3",
     "matplotlib==3.7.4",
     "mediapy==1.2.0",
-    "mink==0.0.3",
+    "mink==0.0.5",
     "moviepy==1.0.3",
     "mujoco-mjx==3.2.4",
     "mypy==1.11.2",
@@ -44,7 +42,6 @@ dependencies = [
     "pillow==10.2.0",
     "pygame==2.6.0",
     "pymunk==6.9.0",
-    "pynput==1.7.6",
     "pyserial==3.5",
     "PyYAML==6.0.1",
     "scikit-image==0.24.0",
@@ -52,7 +49,7 @@ dependencies = [
     "scikit-video==1.1.11",
     "scipy==1.10.1",
     "seaborn==0.11.2",
-    "setuptools==69.1.1",
+    "setuptools==75.6.0",
     "sphinx==8.0.2",
     "sphinx-tabs==3.4.5",
     "tensorboard==2.17.0",
@@ -77,7 +74,7 @@ linux = ["jax[cuda12]==0.4.28", "torch==2.3.1", "torchvision==0.18.1"]
 macos = []
 windows = []
 jetson = [
-    "speech_recognition==3.11.0",
+    "SpeechRecognition==3.11.0",
     "sounddevice==0.5.1",
     "soundfile==0.12.1",
     "librosa==0.10.2.post1",

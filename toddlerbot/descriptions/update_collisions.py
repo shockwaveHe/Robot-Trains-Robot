@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 
 import numpy as np
 import trimesh
+from scipy.spatial import ConvexHull
 
 
 def compute_bounding_box(mesh: trimesh.Trimesh):
@@ -79,6 +80,61 @@ def compute_bounding_cylinder(mesh: trimesh.Trimesh):
     return best_cylinder[0], best_cylinder[1], best_cylinder[2], best_cylinder[3]
 
 
+def compute_bounding_capsule(mesh: trimesh.Trimesh):
+    hull = ConvexHull(mesh.vertices)
+    hull_vertices = mesh.vertices[hull.vertices]
+
+    def bounding_capsule_along_axis(axis: int):
+        # Project the hull vertices onto the plane perpendicular to the axis
+        axes = [0, 1, 2]
+        axes.remove(axis)
+        projection = hull_vertices[:, axes]
+
+        # Compute the centroid in the plane of projection
+        centroid_in_plane = np.mean(projection, axis=0)
+
+        # Compute the radius as the maximum distance from the centroid to any vertex in this plane
+        distances = projection - centroid_in_plane
+        radius = np.max(np.linalg.norm(distances, axis=1))
+
+        # Compute the height of the cylindrical part (subtract the hemispheres)
+        total_height = hull_vertices[:, axis].ptp()  # ptp() computes range (max - min)
+        height = max(0, total_height - 2 * radius)  # Ensure non-negative height
+
+        # Compute the full centroid of the capsule in 3D space
+        centroid = np.zeros(3)
+        centroid[axes] = centroid_in_plane
+        centroid[axis] = (mesh.bounds[0, axis] + mesh.bounds[1, axis]) / 2
+
+        # Determine the RPY angles based on the axis
+        if axis == 0:  # X-axis
+            rpy = (0.0, np.pi / 2, 0.0)  # 90 degrees rotation around Y-axis
+        elif axis == 1:  # Y-axis
+            rpy = (np.pi / 2, 0.0, 0.0)  # 90 degrees rotation around X-axis
+        else:  # Z-axis (default)
+            rpy = (0.0, 0.0, 0.0)  # No rotation needed
+
+        # Volume of the capsule = volume of cylinder + 2 * volume of hemispheres
+        cylinder_volume = np.pi * radius**2 * height
+        hemisphere_volume = 2 / 3 * np.pi * radius**3
+        total_volume = cylinder_volume + 2 * hemisphere_volume
+
+        return radius, height, centroid, rpy, total_volume
+
+    # Calculate bounding capsules for each principal axis
+    capsules = [
+        bounding_capsule_along_axis(0),  # X-axis
+        bounding_capsule_along_axis(1),  # Y-axis
+        bounding_capsule_along_axis(2),  # Z-axis
+    ]
+
+    # Select the capsule with the smallest volume
+    best_capsule = min(capsules, key=lambda c: c[-1])
+
+    # Return the radius, height, centroid, and orientation of the smallest capsule
+    return best_capsule[0], best_capsule[1], best_capsule[2], best_capsule[3]
+
+
 def update_collisons(robot_name: str):
     robot_dir = os.path.join("toddlerbot", "descriptions", robot_name)
     collision_config_file_path = os.path.join(robot_dir, "config_collision.json")
@@ -146,7 +202,7 @@ def update_collisons(robot_name: str):
                     radius *= collision_config[link_name]["scale"][0]
                     rpy = [0, 0, 0]
                     ET.SubElement(geometry, "sphere", {"radius": str(radius)})
-                else:
+                elif collision_config[link_name]["type"] == "cylinder":
                     radius, height, center, rpy = compute_bounding_cylinder(mesh)
                     radius *= collision_config[link_name]["scale"][0]
                     height *= collision_config[link_name]["scale"][1]
@@ -155,6 +211,18 @@ def update_collisons(robot_name: str):
                         "cylinder",
                         {"radius": str(radius), "length": str(height)},
                     )
+                elif collision_config[link_name]["type"] == "capsule":
+                    radius, height, center, rpy = compute_bounding_capsule(mesh)
+                    radius *= collision_config[link_name]["scale"][0]
+                    height *= collision_config[link_name]["scale"][1]
+                    ET.SubElement(
+                        geometry,
+                        "capsule",
+                        {"radius": str(radius), "length": str(height)},
+                    )
+                else:
+                    ET.SubElement(geometry, "mesh", {"filename": mesh_filename})
+                    continue
 
                 xyz_str = f"{center[0]} {center[1]} {center[2]}"
                 rpy_str = f"{rpy[0]} {rpy[1]} {rpy[2]}"

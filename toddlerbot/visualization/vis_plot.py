@@ -289,6 +289,142 @@ def plot_loop_time(
     )()
 
 
+def plot_control_inputs(
+    time_obs_list: List[float],
+    control_inputs_dict: Dict[str, List[float]],
+    save_path: str,
+    file_name: str = "control_inputs",
+):
+    n_plots = 6
+    n_cols = 3
+    n_rows = int(np.ceil(n_plots / n_cols))
+
+    fig, axs = plt.subplots(n_rows, n_cols, figsize=(n_cols * 5, n_rows * 3))
+    plt.subplots_adjust(hspace=0.4, wspace=0.4)
+
+    y_labels_list: List[List[str]] = [[] for _ in range(n_plots)]
+    for control_name, control_inputs in control_inputs_dict.items():
+        if "reset" in control_name or "teleop" in control_name:
+            y_labels_list[0].append(control_name)
+        elif "walk" in control_name or "squat" in control_name:
+            y_labels_list[1].append(control_name)
+        elif "lean" in control_name or "twist" in control_name:
+            y_labels_list[2].append(control_name)
+        elif "look" in control_name:
+            y_labels_list[3].append(control_name)
+        elif "dance" in control_name:
+            y_labels_list[4].append(control_name)
+        else:
+            y_labels_list[5].append(control_name)
+
+    # for control_name, control_inputs in control_inputs_dict.items():
+    #     print(f"{control_name}: {len(control_inputs)}")
+
+    control_length = len(control_inputs_dict[list(control_inputs_dict.keys())[0]])
+
+    for i, ax in enumerate(axs.flat):
+        if i >= n_plots:
+            ax.set_visible(False)
+            continue
+
+        if len(y_labels_list[i]) > 0:
+            plot_line_graph(
+                [control_inputs_dict[x] for x in y_labels_list[i]],
+                time_obs_list[-control_length:],
+                legend_labels=y_labels_list[i],
+                title=" ".join(y_labels_list[i]),
+                x_label="Time (s)",
+                y_label="Control Inputs",
+                save_config=True if i == n_plots - 1 else False,
+                save_path=save_path if i == n_plots - 1 else "",
+                file_name=file_name if i == n_plots - 1 else "",
+                ax=ax,
+            )()
+
+
+def plot_path_tracking(
+    time_obs_list: List[float],
+    pos_obs_list: List[npt.NDArray[np.float32]],
+    euler_obs_list: List[npt.NDArray[np.float32]],
+    control_inputs_dict: Dict[str, List[float]],
+    save_path: str,
+    file_name: str = "path_tracking",
+):
+    """
+    Plots the observed path (pos_obs_list) and the integrated path of walk commands.
+    """
+    # Extract observed positions (torso)
+    obs_pos = np.array(pos_obs_list)
+
+    # Extract walk commands
+    walk_command_list = [
+        control_inputs_dict["walk_x"],
+        control_inputs_dict["walk_y"],
+    ]
+    turn_command_list = control_inputs_dict["walk_turn"]  # Extract turn commands
+
+    if len(walk_command_list) == 0 or len(turn_command_list) == 0:
+        raise ValueError("No walk or turn commands found in control_inputs_dict.")
+
+    # Assume walk commands are in the format [[vx1, vy1], [vx2, vy2], ...]
+    walk_commands = np.array(walk_command_list).T
+    turn_commands = np.array(turn_command_list)  # Angular velocity (yaw rate)
+
+    dt = np.diff(time_obs_list)  # Compute time intervals
+    dt = np.append(dt, dt[-1])
+
+    # Integrate velocities to compute positions
+    target_pos = np.tile(obs_pos[0], (len(walk_commands), 1))  # [x, y]
+    target_orientation = 0.0  # Start with 0 yaw (global frame)
+
+    for i in range(1, len(walk_commands)):
+        if walk_commands[i, 0] < -0.9:
+            walk_commands[i, 0] = 0.1
+        elif walk_commands[i, 0] > 0.9:
+            walk_commands[i, 0] = -0.05
+        else:
+            walk_commands[i, 0] = 0
+
+        if walk_commands[i, 1] < -0.9:
+            walk_commands[i, 1] = 0.05
+        elif walk_commands[i, 1] > 0.9:
+            walk_commands[i, 1] = -0.05
+        else:
+            walk_commands[i, 1] = 0
+
+        if turn_commands[i] < -0.9:
+            turn_commands[i] = 0.25
+        elif turn_commands[i] > 0.9:
+            turn_commands[i] = -0.25
+
+        target_orientation += turn_commands[i] * dt[i]
+        # Compute the rotation matrix from the current orientation
+        rotation_matrix = np.array(
+            [
+                [np.cos(target_orientation), -np.sin(target_orientation)],
+                [np.sin(target_orientation), np.cos(target_orientation)],
+            ]
+        )
+
+        # Transform the walking command to the global frame
+        global_walk_command = rotation_matrix @ walk_commands[i]
+
+        target_pos[i, 0] = target_pos[i - 1, 0] + global_walk_command[0] * dt[i]
+        target_pos[i, 1] = target_pos[i - 1, 1] + global_walk_command[1] * dt[i]
+
+    plot_line_graph(
+        [obs_pos[:, 1], target_pos[:, 1]],
+        [obs_pos[:, 0], target_pos[:, 0]],
+        legend_labels=["Observed", "Target"],
+        title="Path Tracking",
+        x_label="X (m)",
+        y_label="Y (m)",
+        save_config=True,
+        save_path=save_path,
+        file_name=file_name,
+    )()
+
+
 def plot_joint_tracking(
     time_seq_dict: Dict[str, List[float]],
     time_seq_ref_dict: Dict[str, List[float]],
@@ -680,7 +816,12 @@ def plot_line_graph(
 
         if isinstance(y[0], list) or isinstance(y[0], np.ndarray):  # Multiple lines
             for i, sub_y in enumerate(y):
-                xi = x_local[i] if isinstance(x_local[0], list) else x_local
+                xi = (
+                    x_local[i]
+                    if isinstance(x_local[0], list)
+                    or isinstance(x_local[0], np.ndarray)
+                    else x_local
+                )
                 style = line_styles_local[i % len(line_styles_local)]
                 color = line_colors_local[i % len(line_colors_local)]
                 ax.plot(
@@ -690,7 +831,7 @@ def plot_line_graph(
                     color=color,
                     alpha=0.7,
                     label=legend_labels[i] if legend_labels else None,
-                    linewidth=0.3,
+                    linewidth=0.5,
                 )
 
                 if checkpoint_period and checkpoint_period[i]:
@@ -705,7 +846,7 @@ def plot_line_graph(
                 color=line_colors_local[0],
                 alpha=0.7,
                 label=legend_labels[0] if legend_labels else None,
-                linewidth=0.3,
+                linewidth=0.5,
             )
 
             if checkpoint_period and checkpoint_period[0]:

@@ -55,17 +55,21 @@ class MuJoCoViewer:
             ]
         )
 
+        # self.path_frame_mid = model.body("path_frame").mocapid[0]
+
     def visualize(
         self,
         data: Any,
-        vis_flags: Dict[str, bool] = {"com": True, "support_poly": True},
+        vis_flags: List[str] = ["com", "support_poly"],
     ):
         with self.viewer.lock():
             self.viewer.user_scn.ngeom = 0
-            if vis_flags["com"]:
+            if "com" in vis_flags:
                 self.visualize_com(data)
-            if vis_flags["support_poly"]:
+            if "support_poly" in vis_flags:
                 self.visualize_support_poly(data)
+            # if "path_frame" in vis_flags:
+            #     self.visualize_path_frame(data)
 
         self.viewer.sync()
 
@@ -119,6 +123,45 @@ class MuJoCoViewer:
                 i += 1
 
         self.viewer.user_scn.ngeom = i
+
+    # def visualize_path_frame(self, data: Any):
+    #     i = self.viewer.user_scn.ngeom
+
+    #     path_pos = data.mocap_pos[self.path_frame_mid]
+    #     path_mat = quat2mat(data.mocap_quat[self.path_frame_mid]).reshape(3, 3)
+
+    #     # Define axes in local coordinates
+    #     axes = np.eye(3)  # X, Y, Z axes
+
+    #     # Transform axes to world coordinates
+    #     world_axes = path_mat @ axes + path_pos[:, None]
+
+    #     # Define colors for axes: X (red), Y (green), Z (blue)
+    #     colors = [[1, 0, 0, 1], [0, 1, 0, 1], [0, 0, 1, 1]]
+
+    #     for j in range(3):
+    #         p1 = path_pos
+    #         p2 = world_axes[:, j]
+
+    #         # Create a line for each axis
+    #         mujoco.mjv_initGeom(
+    #             self.viewer.user_scn.geoms[i],
+    #             type=mujoco.mjtGeom.mjGEOM_LINE,
+    #             size=np.zeros(3),
+    #             pos=np.zeros(3),
+    #             mat=np.eye(3).flatten(),
+    #             rgba=colors[j],
+    #         )
+    #         mujoco.mjv_connector(
+    #             self.viewer.user_scn.geoms[i],
+    #             mujoco.mjtGeom.mjGEOM_LINE,
+    #             2,
+    #             p1,
+    #             p2,
+    #         )
+    #         i += 1
+
+    #     self.viewer.user_scn.ngeom = i
 
     def close(self):
         self.viewer.close()

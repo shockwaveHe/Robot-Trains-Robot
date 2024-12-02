@@ -41,7 +41,7 @@ def test_kinematics(robot: Robot) -> None:
 
     sim = MuJoCoSim(robot, fixed_base=True)
 
-    sim.set_motor_angles(robot.init_motor_angles)
+    sim.set_motor_target(robot.init_motor_angles)
     sim.step()
 
     mujoco_q = sim.get_observation().motor_pos
@@ -65,7 +65,7 @@ def test_kinematics(robot: Robot) -> None:
         robot_act_copy = np.array(list(random_motor_angles_copy.values()))
         assert arrays_are_close(robot_act, robot_act_copy, tol=1e-3)
 
-        sim.set_motor_angles(random_motor_angles)
+        sim.set_motor_target(random_motor_angles)
         time.sleep(3.0)
         mujoco_q = sim.get_observation().motor_pos
 
@@ -78,7 +78,7 @@ def test_kinematics(robot: Robot) -> None:
             joint_diff = list(np.abs(mujoco_q - robot_q)[mask])
             print({name: round(diff, 4) for name, diff in zip(joint_names, joint_diff)})
 
-        sim.set_motor_angles(robot.init_motor_angles)
+        sim.set_motor_target(robot.init_motor_angles)
         time.sleep(3.0)
 
     print(f"Failure count: {failure_count}")

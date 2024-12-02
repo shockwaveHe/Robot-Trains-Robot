@@ -157,6 +157,10 @@ class DynamixelController(BaseController):
                 "Voltage too low. Please check the power supply or charge the batteries."
             )
 
+        self.reboot_motors()
+
+        time.sleep(0.2)
+
         # Set the return delay time to 1*2=2us
         self.client.sync_write(
             self.motor_ids, [self.config.return_delay_time] * len(self.motor_ids), 9, 1
@@ -280,6 +284,10 @@ class DynamixelController(BaseController):
         # else:
 
         set_pos_helper(pos_arr)
+
+    def set_cur(self, cur: List[float]):
+        with self.lock:
+            self.client.write_desired_cur(self.motor_ids, np.array(cur))
 
     # @profile()
     def get_motor_state(self, retries: int = 0) -> Dict[int, JointState]:

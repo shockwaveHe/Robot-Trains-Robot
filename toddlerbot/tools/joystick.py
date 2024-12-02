@@ -3,6 +3,10 @@ import os
 from enum import Enum
 from typing import Dict
 
+import numpy as np
+
+from toddlerbot.locomotion.mjx_config import get_env_config
+
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 
 with contextlib.redirect_stdout(None):
@@ -94,10 +98,10 @@ class StadiaButton(Enum):
 class JoystickAction(Enum):
     VIEW = "reset"
     MENU = "teleop"
-    LEFT_JOYSTICK_VERTICAL = "walk_vertical"
-    LEFT_JOYSTICK_HORIZONTAL = "walk_horizontal"
+    LEFT_JOYSTICK_VERTICAL = "walk_x"
+    LEFT_JOYSTICK_HORIZONTAL = "walk_y"
     RIGHT_JOYSTICK_VERTICAL = "squat"
-    RIGHT_JOYSTICK_HORIZONTAL = "turn"
+    RIGHT_JOYSTICK_HORIZONTAL = "walk_turn"
     DPAD_UP = "lean_left"
     DPAD_DOWN = "lean_right"
     DPAD_LEFT = "twist_left"
@@ -110,8 +114,8 @@ class JoystickAction(Enum):
     R1 = "release"
     L2 = "grab"
     R2 = "wave"
-    L3 = "heart"
-    R3 = "pull_up"
+    # L3 = "heart"
+    # R3 = "pull_up"
     L4 = "push_up"
     R4 = "dance_1"
     L5 = "dance_2"
@@ -123,6 +127,17 @@ class Joystick:
         self.dead_zone = dead_zone
         self.joystick = None
 
+        walk_cfg = get_env_config("walk")
+        walk_command_range = walk_cfg.commands.command_range
+        self.walk_x_range = np.array(
+            [walk_command_range[5][1], 0.0, walk_command_range[5][0]]
+        )
+        self.walk_y_range = np.array(
+            [walk_command_range[6][1], 0.0, walk_command_range[6][0]]
+        )
+        self.walk_turn_range = np.array(
+            [walk_command_range[7][1], 0.0, walk_command_range[7][0]]
+        )
         # List all input devices
         joystick_count = pygame.joystick.get_count()
         if joystick_count == 0:
@@ -181,7 +196,24 @@ class Joystick:
                     value = self.joystick.get_axis(axis_id)
                     control_inputs[task] = 0.0 if abs(value) < self.dead_zone else value
 
+        self.update_walk_command(control_inputs)
+
         return control_inputs
+
+    def update_walk_command(self, control_inputs: Dict[str, float]):
+        for task, input in control_inputs.items():
+            if task == "walk_x":
+                control_inputs[task] = np.interp(
+                    control_inputs[task], [-1, 0, 1], self.walk_x_range
+                ).item()
+            elif task == "walk_y":
+                control_inputs[task] = np.interp(
+                    control_inputs[task], [-1, 0, 1], self.walk_y_range
+                ).item()
+            elif task == "walk_turn":
+                control_inputs[task] = np.interp(
+                    control_inputs[task], [-1, 0, 1], self.walk_turn_range
+                ).item()
 
 
 if __name__ == "__main__":

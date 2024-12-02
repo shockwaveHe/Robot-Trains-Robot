@@ -7,7 +7,7 @@
         "type": "box",
         "scale": [
             1.0,
-            0.8,
+            1.0,
             1.0
         ]
     },
@@ -19,7 +19,7 @@
         "type": "box",
         "scale": [
             1.0,
-            0.5,
+            1.0,
             1.0
         ]
     },
@@ -28,9 +28,8 @@
         "contact_pairs": [
             "floor"
         ],
-        "type": "box",
+        "type": "capsule",
         "scale": [
-            1.0,
             1.0,
             1.0
         ]
@@ -53,9 +52,8 @@
         "contact_pairs": [
             "floor"
         ],
-        "type": "box",
+        "type": "capsule",
         "scale": [
-            1.0,
             1.0,
             1.0
         ]
@@ -65,6 +63,68 @@
         "contact_pairs": [
             "floor",
             "ank_roll_link"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "left_calf_link": {
+        "has_collision": false,
+        "contact_pairs": [
+            "floor"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "right_calf_link": {
+        "has_collision": false,
+        "contact_pairs": [
+            "floor"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "left_ank_pitch_link": {
+        "has_collision": true,
+        "contact_pairs": [
+            "floor",
+            "right_ank_pitch_link"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.1
+        ]
+    },
+    "right_ank_pitch_link": {
+        "has_collision": true,
+        "contact_pairs": [
+            "floor",
+            "left_ank_pitch_link"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.1
+        ]
+    },
+    "head": {
+        "has_collision": false,
+        "contact_pairs": [
+            "floor"
         ],
         "type": "box",
         "scale": [
@@ -160,15 +220,6 @@
     "spur_1m_20t": {
         "has_collision": false
     },
-    "neck_yaw_link": {
-        "has_collision": false
-    },
-    "spur_gear_13_teeth": {
-        "has_collision": false
-    },
-    "neck_pitch_link": {
-        "has_collision": false
-    },
     "waist_gears": {
         "has_collision": false
     },
@@ -178,13 +229,7 @@
     "spiral_bevel_1m_14t_30deg_2": {
         "has_collision": false
     },
-    "spur_gear_19_teeth": {
-        "has_collision": false
-    },
     "spur_gear_21_teeth": {
-        "has_collision": false
-    },
-    "spur_gear_19_teeth_2": {
         "has_collision": false
     },
     "spur_gear_21_teeth_2": {
@@ -199,27 +244,6 @@
     "bearing_683_2": {
         "has_collision": false
     },
-    "ank_pitch_link": {
-        "has_collision": false
-    },
-    "ank_rr_link": {
-        "has_collision": false
-    },
-    "ank_motor_rod_long": {
-        "has_collision": false
-    },
-    "ank_rr_link_2": {
-        "has_collision": false
-    },
-    "ank_motor_rod_short": {
-        "has_collision": false
-    },
-    "ank_motor_arm": {
-        "has_collision": false
-    },
-    "ank_motor_arm_2": {
-        "has_collision": false
-    },
     "xm430_plate": {
         "has_collision": false
     },
@@ -227,9 +251,6 @@
         "has_collision": false
     },
     "knee_rod_2": {
-        "has_collision": false
-    },
-    "left_calf_link": {
         "has_collision": false
     },
     "hip_yaw_link_2": {
@@ -241,27 +262,6 @@
     "bearing_683_4": {
         "has_collision": false
     },
-    "ank_pitch_link_2": {
-        "has_collision": false
-    },
-    "ank_rr_link_3": {
-        "has_collision": false
-    },
-    "ank_motor_rod_long_2": {
-        "has_collision": false
-    },
-    "ank_rr_link_4": {
-        "has_collision": false
-    },
-    "ank_motor_rod_short_2": {
-        "has_collision": false
-    },
-    "ank_motor_arm_3": {
-        "has_collision": false
-    },
-    "ank_motor_arm_4": {
-        "has_collision": false
-    },
     "xm430_plate_2": {
         "has_collision": false
     },
@@ -269,12 +269,6 @@
         "has_collision": false
     },
     "knee_rod_4": {
-        "has_collision": false
-    },
-    "right_calf_link": {
-        "has_collision": false
-    },
-    "xc430": {
         "has_collision": false
     },
     "sho_pitch_link": {
@@ -307,9 +301,6 @@
     "wrist_bearing_plate": {
         "has_collision": false
     },
-    "xc430_2": {
-        "has_collision": false
-    },
     "sho_pitch_link_2": {
         "has_collision": false
     },
@@ -340,46 +331,7 @@
     "wrist_bearing_plate_2": {
         "has_collision": false
     },
-    "gripper_connector": {
-        "has_collision": false
-    },
-    "left_rail_guide": {
-        "has_collision": false
-    },
-    "rail": {
-        "has_collision": false
-    },
-    "rail_2": {
-        "has_collision": false
-    },
-    "xc330": {
-        "has_collision": false
-    },
-    "spur_gear_14_teeth": {
-        "has_collision": false
-    },
-    "gripper_connector_2": {
-        "has_collision": false
-    },
-    "right_rail_guide": {
-        "has_collision": false
-    },
-    "rail_3": {
-        "has_collision": false
-    },
-    "rail_4": {
-        "has_collision": false
-    },
-    "xc330_2": {
-        "has_collision": false
-    },
-    "spur_gear_(14_teeth)_2": {
-        "has_collision": false
-    },
     "neck_yaw_link_v2": {
-        "has_collision": false
-    },
-    "head": {
         "has_collision": false
     },
     "motor_plate": {
@@ -397,22 +349,16 @@
     "bearing_683_6": {
         "has_collision": false
     },
-    "left_ank_pitch_link": {
+    "spur_gear_18_teeth": {
         "has_collision": false
     },
-    "right_ank_pitch_link": {
+    "spur_gear_18_teeth_2": {
         "has_collision": false
     },
     "2xc430": {
         "has_collision": false
     },
-    "spur_gear_18_teeth": {
-        "has_collision": false
-    },
     "2xc430_2": {
-        "has_collision": false
-    },
-    "spur_gear_18_teeth_2": {
         "has_collision": false
     }
 }

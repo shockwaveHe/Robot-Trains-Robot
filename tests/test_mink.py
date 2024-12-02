@@ -1,9 +1,9 @@
+import time
 from pathlib import Path
 
 import mink
 import mujoco
 import mujoco.viewer
-from loop_rate_limiters import RateLimiter
 
 # <body name="com_target" pos="0.0 0 .3442" mocap="true">
 #     <geom type="box" size=".05 .05 .05" contype="0" conaffinity="0" rgba=".6 .3 .3 .2"/>
@@ -41,7 +41,7 @@ if __name__ == "__main__":
 
     tasks = [
         pelvis_orientation_task := mink.FrameTask(
-            frame_name="torso",
+            frame_name="waist_link",
             frame_type="body",
             position_cost=0.0,
             orientation_cost=10.0,
@@ -82,6 +82,8 @@ if __name__ == "__main__":
     data = configuration.data
     solver = "quadprog"
 
+    dt = 0.02
+
     with mujoco.viewer.launch_passive(model=model, data=data) as viewer:
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
 
@@ -96,19 +98,22 @@ if __name__ == "__main__":
             mink.move_mocap_to_frame(model, data, f"{hand}_target", hand, "body")
         data.mocap_pos[com_mid] = data.subtree_com[1]
 
-        rate = RateLimiter(frequency=200.0, warn=False)
         while viewer.is_running():
+            t1 = time.time()
             # Update task targets.
             com_task.set_target(data.mocap_pos[com_mid])
             for i, (hand_task, foot_task) in enumerate(zip(hand_tasks, feet_tasks)):
                 foot_task.set_target(mink.SE3.from_mocap_id(data, feet_mid[i]))
                 hand_task.set_target(mink.SE3.from_mocap_id(data, hands_mid[i]))
 
-            vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-1)
-            configuration.integrate_inplace(vel, rate.dt)
+            vel = mink.solve_ik(configuration, tasks, dt, solver, 1e-1)
+            configuration.integrate_inplace(vel, dt)
             mujoco.mj_camlight(model, data)
             mujoco.mj_step(model, data)
 
             # Visualize at fixed FPS.
             viewer.sync()
-            rate.sleep()
+
+            t2 = time.time()
+            if t2 - t1 < dt:
+                time.sleep(dt - (t2 - t1))

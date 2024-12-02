@@ -88,7 +88,7 @@ Set up the conda environment:
          pip install -e .[steam_deck]
 
 For **Jetson**, you need to follow the information on `this page <https://forums.developer.nvidia.com/t/pytorch-for-jetson/72048>`__
-to install ``torch`` and ``torchvision``. For reference, we downloaded 
+to install ``torch`` and ``torchvision``. Please do **NOT** install ``numpy`` when installing ``torch`` as it will install ``numpy 2.x`` and cause conflicts. For reference, we downloaded 
 `the wheel file for PyTorch v2.3.0 with JetPack 6.0 (L4T R36.2 / R36.3) + CUDA 12.2 <https://nvidia.box.com/shared/static/mp164asf3sceb570wvjsrezk1p4ftj8t.whl>`__.
 
 We find that the ``--content-disposition`` option is useful for downloading the file with the correct name:
@@ -113,10 +113,7 @@ Last but not least, run the following command to verify the installation of jax 
 Dynamixel
 ---------
 
-Dynamixel motors require a low latency timer. We automated most of the process in `toddlerbot/actuation/dynamixel/dynamixel_control.py`, but you may need to manually set the latency timer.
-
-According to the doc `here <https://emanual.robotis.com/docs/en/software/dynamixel/dynamixel_sdk/faq/#how-to-change-an-usb-latency-in-dynamixel-sdk>`__, 
-set ``LATENCY_TIMER = 1`` in ``/[path_to_env]/toddlerbot/lib/python3.10/site-packages/dynamixel_sdk/port_handler.py``.
+Dynamixel motors require a low latency timer. We automated the process in `toddlerbot/actuation/dynamixel/dynamixel_control.py`.
 
 .. tabs::
 

@@ -65,4 +65,5 @@ class BalancePolicy(MJXPolicy, policy_name="balance"):
                     [self.command_range[5][1], 0.0, self.command_range[5][0]],
                 )
 
+        # print(f"balance command: {command}")
         return command

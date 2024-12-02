@@ -16,6 +16,7 @@ PROTOCOL_VERSION = 2.0
 # The following addresses assume XH motors.
 ADDR_MODEL_NUMBER = 0
 ADDR_TORQUE_ENABLE = 64
+ADDR_GOAL_CURRENT = 102
 ADDR_GOAL_POSITION = 116
 ADDR_PRESENT_POSITION = 132
 ADDR_PRESENT_VELOCITY = 128
@@ -32,6 +33,7 @@ LEN_PRESENT_CURRENT = 2
 LEN_PRESENT_POS_VEL = 8
 LEN_PRESENT_POS_VEL_CUR = 10
 LEN_GOAL_POSITION = 4
+LEN_GOAL_CURRENT = 2
 LEN_PRESENT_V_IN = 2
 
 DEFAULT_POS_SCALE = 2.0 * np.pi / 4096  # 0.088 degrees
@@ -303,6 +305,26 @@ class DynamixelClient:
         positions /= DEFAULT_POS_SCALE
         self.sync_write(
             motor_ids, list(positions), ADDR_GOAL_POSITION, LEN_GOAL_POSITION
+        )
+
+    def write_desired_cur(
+        self, motor_ids: Sequence[int], currents: npt.NDArray[np.float32]
+    ):
+        """Writes the given desired currents.
+
+        Args:
+            motor_ids: The motor IDs to write to.
+            currents: The currents to write.
+        """
+        assert len(motor_ids) == len(currents)
+
+        if self._cur_scale_arr is None:
+            self._cur_scale_arr = self.get_cur_scale()
+
+        # Convert to Dynamixel current space.
+        currents /= self._cur_scale_arr
+        self.sync_write(
+            motor_ids, list(currents), ADDR_GOAL_CURRENT, LEN_GOAL_CURRENT
         )
 
     def write_byte(

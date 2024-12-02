@@ -89,9 +89,6 @@
             1.0
         ]
     },
-    "xc430": {
-        "has_collision": false
-    },
     "sho_pitch_link": {
         "has_collision": false
     },
@@ -123,9 +120,6 @@
         "has_collision": false
     },
     "wrist_bearing_plate": {
-        "has_collision": false
-    },
-    "xc430_2": {
         "has_collision": false
     },
     "sho_pitch_link_2": {

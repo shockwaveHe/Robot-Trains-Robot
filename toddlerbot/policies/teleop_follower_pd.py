@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -47,8 +47,8 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
 
     def step(
         self, obs: Obs, is_real: bool = False
-    ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
-        command, motor_target = super().step(obs, is_real)
+    ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
+        control_inputs, motor_target = super().step(obs, is_real)
 
         # Log the data
         if self.is_ended:
@@ -59,4 +59,4 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
                 Data(obs.time, obs.motor_pos, self.fsr, self.camera_frame)
             )
 
-        return command, motor_target
+        return control_inputs, motor_target

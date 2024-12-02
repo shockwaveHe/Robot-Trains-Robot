@@ -94,6 +94,9 @@ class MuJoCoSim(BaseSim):
         self.q_start_idx = 0 if self.fixed_base else 7
         self.qd_start_idx = 0 if self.fixed_base else 6
 
+        self.left_foot_name = "ank_roll_link"
+        self.right_foot_name = "ank_roll_link_2"
+
         self.controller: MotorController | PositionController
         # Check if the actuator is a motor or position actuator
         if (
@@ -124,8 +127,8 @@ class MuJoCoSim(BaseSim):
         return torso_height < 0.2 or torso_height > 0.4
 
     def load_keyframe(self):
-        default_qpos = np.array(self.model.keyframe("home").qpos, dtype=np.float32)
-        self.data.qpos = default_qpos.copy()
+        self.default_qpos = np.array(self.model.keyframe("home").qpos, dtype=np.float32)
+        self.data.qpos = self.default_qpos.copy()
         self.data.qvel = np.zeros(self.model.nv, dtype=np.float32)
         self.data.ctrl = self.model.keyframe("home").ctrl.copy()
         target_body_id = mujoco.mj_name2id(
@@ -143,6 +146,17 @@ class MuJoCoSim(BaseSim):
                 self.data.xmat[self.model.body("attachment").id],
             )
 
+        self.left_foot_transform = self.get_body_transofrm(self.left_foot_name)
+        self.right_foot_transform = self.get_body_transofrm(self.right_foot_name)
+
+    def get_body_transofrm(self, body_name: str):
+        transformation = np.eye(4)
+        body_pos = self.data.body(body_name).xpos.copy()
+        body_mat = self.data.body(body_name).xmat.reshape(3, 3).copy()
+        transformation[:3, :3] = body_mat
+        transformation[:3, 3] = body_pos
+        return transformation
+
     def get_motor_state(self) -> Dict[str, JointState]:
         motor_state_dict: Dict[str, JointState] = {}
         for name in self.robot.motor_ordering:
@@ -155,6 +169,19 @@ class MuJoCoSim(BaseSim):
 
         return motor_state_dict
 
+    def get_motor_angles(
+        self, type: str = "dict"
+    ) -> Dict[str, float] | npt.NDArray[np.float32]:
+        motor_angles: Dict[str, float] = {}
+        for name in self.robot.motor_ordering:
+            motor_angles[name] = self.data.joint(name).qpos.item()
+
+        if type == "array":
+            motor_pos_arr = np.array(list(motor_angles.values()), dtype=np.float32)
+            return motor_pos_arr
+        else:
+            return motor_angles
+
     def get_joint_state(self) -> Dict[str, JointState]:
         joint_state_dict: Dict[str, JointState] = {}
         for name in self.robot.joint_ordering:
@@ -165,6 +192,19 @@ class MuJoCoSim(BaseSim):
             )
 
         return joint_state_dict
+
+    def get_joint_angles(
+        self, type: str = "dict"
+    ) -> Dict[str, float] | npt.NDArray[np.float32]:
+        joint_angles: Dict[str, float] = {}
+        for name in self.robot.joint_ordering:
+            joint_angles[name] = self.data.joint(name).qpos.item()
+
+        if type == "array":
+            joint_pos_arr = np.array(list(joint_angles.values()), dtype=np.float32)
+            return joint_pos_arr
+        else:
+            return joint_angles
 
     def get_observation(self) -> Obs:
         motor_state_dict = self.get_motor_state()
@@ -264,7 +304,7 @@ class MuJoCoSim(BaseSim):
                 self.model.actuator(name).gainprm[0] = kp / 128
                 self.model.actuator(name).biasprm[1] = -kp / 128
 
-    def set_motor_angles(
+    def set_motor_target(
         self, motor_angles: Dict[str, float] | npt.NDArray[np.float32]
     ):
         if isinstance(motor_angles, dict):
@@ -274,7 +314,29 @@ class MuJoCoSim(BaseSim):
         else:
             self.target_motor_angles = motor_angles
 
-    def set_joint_angles(self, joint_angles: Dict[str, float]):
+    def set_motor_angles(
+        self, motor_angles: Dict[str, float] | npt.NDArray[np.float32]
+    ):
+        if not isinstance(motor_angles, dict):
+            motor_angles = dict(zip(self.robot.motor_ordering, motor_angles))
+
+        for name in motor_angles:
+            self.data.joint(name).qpos = motor_angles[name]
+
+        joint_angles = self.robot.motor_to_joint_angles(motor_angles)
+        for name in joint_angles:
+            self.data.joint(name).qpos = joint_angles[name]
+
+        passive_angles = self.robot.joint_to_passive_angles(joint_angles)
+        for name in passive_angles:
+            self.data.joint(name).qpos = passive_angles[name]
+
+    def set_joint_angles(
+        self, joint_angles: Dict[str, float] | npt.NDArray[np.float32]
+    ):
+        if not isinstance(joint_angles, dict):
+            joint_angles = dict(zip(self.robot.joint_ordering, joint_angles))
+
         for name in joint_angles:
             self.data.joint(name).qpos = joint_angles[name]
 

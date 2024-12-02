@@ -39,8 +39,8 @@ class ZMPWalk:
         self.default_leg_joint_pos = default_joint_pos[joint_groups == "leg"]
 
         self.com_z = robot.config["general"]["offsets"]["default_torso_z"]
-        self.foot_to_com_x = float(robot.data_dict["offsets"]["foot_to_com_x"])
-        self.foot_to_com_y = float(robot.data_dict["offsets"]["foot_to_com_y"])
+        self.foot_to_com_x = float(robot.config["general"]["offsets"]["foot_to_com_x"])
+        self.foot_to_com_y = float(robot.config["general"]["offsets"]["foot_to_com_y"])
 
         self.default_target_z = (
             float(robot.config["general"]["offsets"]["torso_z"]) - self.com_z
@@ -476,7 +476,7 @@ class ZMPWalk:
         ank_pitch = target_foot_ori[:, 1]
         hip_yaw = target_foot_ori[:, 2]
 
-        offsets = self.robot.data_dict["offsets"]
+        offsets = self.robot.config["general"]["offsets"]
 
         transformed_x = target_x * np.cos(hip_yaw) + target_y * np.sin(hip_yaw)
         transformed_y = target_x * np.sin(hip_yaw) - target_y * np.cos(hip_yaw)

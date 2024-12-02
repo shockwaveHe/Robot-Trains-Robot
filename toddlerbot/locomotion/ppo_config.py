@@ -7,8 +7,8 @@ import gin
 @gin.configurable
 @dataclass
 class PPOConfig:
-    policy_hidden_layer_sizes: Tuple[int, ...] = (256,) * 3
-    value_hidden_layer_sizes: Tuple[int, ...] = (256,) * 3
+    policy_hidden_layer_sizes: Tuple[int, ...] = (512, 256, 128)
+    value_hidden_layer_sizes: Tuple[int, ...] = (512, 256, 128)
     num_timesteps: int = 100_000_000
     num_evals: int = 1000
     episode_length: int = 1000
@@ -21,7 +21,7 @@ class PPOConfig:
     entropy_cost: float = 5e-4
     clipping_epsilon: float = 0.1
     num_envs: int = 1024
-    render_eval_interval: int = 0
+    render_eval_interval: int = 50
     render_train_interval: int = 0
     pretrain_value_percent: float = 0.0
     batch_size: int = 256

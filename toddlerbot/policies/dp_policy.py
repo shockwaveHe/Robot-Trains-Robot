@@ -1,7 +1,7 @@
 import os
 import time
 from collections import deque
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -108,8 +108,8 @@ class DPPolicy(BalancePDPolicy, policy_name="dp"):
 
     def step(
         self, obs: Obs, is_real: bool = False
-    ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
-        command, motor_target = super().step(obs, is_real)
+    ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
+        control_inputs, motor_target = super().step(obs, is_real)
 
         if self.is_running:
             if self.camera_frame is not None:
@@ -133,4 +133,4 @@ class DPPolicy(BalancePDPolicy, policy_name="dp"):
             self.obs_deque.clear()
             self.model_action_seq = []
 
-        return command, motor_target
+        return control_inputs, motor_target

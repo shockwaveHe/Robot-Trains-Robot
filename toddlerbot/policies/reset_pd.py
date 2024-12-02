@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -36,9 +36,8 @@ class ResetPDPolicy(BalancePDPolicy, policy_name="reset_pd"):
             ip,
             fixed_command,
         )
-
-        self.reset_duration = 5.0
-        self.reset_end_time = 1.0
+        self.reset_motor_indices = np.arange(robot.nu)
+        self.reset_vel = 0.3
         self.reset_time = None
 
     def get_arm_motor_pos(self, obs: Obs) -> npt.NDArray[np.float32]:
@@ -46,18 +45,20 @@ class ResetPDPolicy(BalancePDPolicy, policy_name="reset_pd"):
 
     def step(
         self, obs: Obs, is_real: bool = False
-    ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
-        command, motor_target = super().step(obs, is_real)
-
+    ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
         # Log the data
         if self.is_button_pressed and self.reset_time is None:
+            pos_curr = obs.motor_pos[self.reset_motor_indices]
+            pos_target = self.default_motor_pos[self.reset_motor_indices]
             self.reset_time, self.reset_action = self.move(
                 obs.time - self.control_dt,
-                obs.motor_pos[self.reset_motor_indices],
-                self.default_motor_pos[self.reset_motor_indices],
-                self.reset_duration,
-                end_time=self.reset_end_time,
+                pos_curr,
+                pos_target,
+                np.max(np.abs((pos_target - pos_curr) / self.reset_vel)),
+                end_time=0.5,
             )
+
+        control_inputs, motor_target = super().step(obs, is_real)
 
         if self.reset_time is not None:
             if obs.time < self.reset_time[-1]:
@@ -71,4 +72,4 @@ class ResetPDPolicy(BalancePDPolicy, policy_name="reset_pd"):
                 ]
                 self.reset_time = None
 
-        return command, motor_target
+        return control_inputs, motor_target

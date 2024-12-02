@@ -1,5 +1,5 @@
 import time
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -50,12 +50,12 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
 
     def step(
         self, obs: Obs, is_real: bool = False
-    ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
+    ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
         if obs.time < self.prep_duration:
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
             )
-            return self.zero_command, action
+            return {}, action
 
         control_inputs = self.joystick.get_controller_input()
         for task, input in control_inputs.items():
@@ -115,4 +115,4 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
         # print(f"Loop time: {1000 * (time_curr - self.last_time):.2f} ms")
         # self.last_time = time.time()
 
-        return self.zero_command, action
+        return control_inputs, action

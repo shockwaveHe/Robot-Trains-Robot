@@ -1,5 +1,5 @@
-ObsConfig.num_single_obs = 83
-ObsConfig.num_single_privileged_obs = 126
+ObsConfig.num_single_obs = 84
+ObsConfig.num_single_privileged_obs = 127
 
 CommandsConfig.resample_time = 2.0
 CommandsConfig.command_range = [
@@ -10,8 +10,8 @@ CommandsConfig.command_range = [
     [-0.6, 0.6],
     [-0.1, 0.1]
 ]
-CommandsConfig.deadzone = [0.05, 0.05, 0.0, 0.05, 0.05, 0.0]
-CommandsConfig.command_obs_indices = [0, 1, 3, 4]
+CommandsConfig.deadzone = [0.05, 0.05, 0.0, 0.05, 0.05, 0.01]
+CommandsConfig.command_obs_indices = [0, 1, 3, 4, 5]
 
 RewardScales.lin_vel_xy = 0.0
 RewardScales.lin_vel_z = 0.0

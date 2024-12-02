@@ -24,6 +24,7 @@ from toddlerbot.policies.balance_pd import BalancePDPolicy
 from toddlerbot.policies.calibrate import CalibratePolicy
 from toddlerbot.policies.mjx_policy import MJXPolicy
 from toddlerbot.policies.record import RecordPolicy
+from toddlerbot.policies.replay import ReplayPolicy
 from toddlerbot.policies.sysID import SysIDFixedPolicy
 from toddlerbot.policies.teleop_follower_pd import TeleopFollowerPDPolicy
 from toddlerbot.policies.teleop_leader import TeleopLeaderPolicy
@@ -35,13 +36,17 @@ from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.misc_utils import dump_profiling_data, log, snake2camel
 from toddlerbot.visualization.vis_plot import (
+    plot_control_inputs,
     plot_joint_tracking,
     plot_joint_tracking_frequency,
     plot_joint_tracking_single,
     plot_line_graph,
     plot_loop_time,
     plot_motor_vel_tor_mapping,
+    plot_path_tracking,
 )
+
+# from toddlerbot.utils.misc_utils import profile
 
 
 def dynamic_import_policies(policy_package: str):
@@ -65,9 +70,9 @@ dynamic_import_policies("toddlerbot.arm_policies")
 
 def plot_results(
     robot: Robot,
-    policy: BasePolicy,
     loop_time_list: List[List[float]],
     obs_list: List[Obs],
+    control_inputs_list: List[Dict[str, float]],
     motor_angles_list: List[Dict[str, float]],
     exp_folder_path: str,
 ):
@@ -100,6 +105,7 @@ def plot_results(
     time_obs_list: List[float] = []
     # lin_vel_obs_list: List[npt.NDArray[np.float32]] = []
     ang_vel_obs_list: List[npt.NDArray[np.float32]] = []
+    pos_obs_list: List[npt.NDArray[np.float32]] = []
     euler_obs_list: List[npt.NDArray[np.float32]] = []
     tor_obs_total_list: List[float] = []
     time_seq_dict: Dict[str, List[float]] = {}
@@ -111,7 +117,8 @@ def plot_results(
         time_obs_list.append(obs.time)
         # lin_vel_obs_list.append(obs.lin_vel)
         ang_vel_obs_list.append(obs.ang_vel)
-        euler_obs_list.append(obs.torso_euler)
+        pos_obs_list.append(obs.pos)
+        euler_obs_list.append(obs.euler)
         tor_obs_total_list.append(sum(obs.motor_tor))
 
         for j, motor_name in enumerate(robot.motor_ordering):
@@ -143,6 +150,13 @@ def plot_results(
             if joint_name not in joint_pos_ref_dict:
                 joint_pos_ref_dict[joint_name] = []
             joint_pos_ref_dict[joint_name].append(joint_angle)
+
+    control_inputs_dict: Dict[str, List[float]] = {}
+    for control_inputs in control_inputs_list:
+        for control_name, control_input in control_inputs.items():
+            if control_name not in control_inputs_dict:
+                control_inputs_dict[control_name] = []
+            control_inputs_dict[control_name].append(control_input)
 
     plot_loop_time(loop_time_dict, exp_folder_path)
 
@@ -200,6 +214,19 @@ def plot_results(
         save_path=exp_folder_path,
         file_name="euler_tracking",
     )()
+    if len(control_inputs_dict) > 0:
+        plot_control_inputs(
+            time_obs_list,
+            control_inputs_dict,
+            save_path=exp_folder_path,
+        )
+        plot_path_tracking(
+            time_obs_list,
+            pos_obs_list,
+            euler_obs_list,
+            control_inputs_dict,
+            save_path=exp_folder_path,
+        )
     plot_joint_tracking(
         time_seq_dict,
         time_seq_ref_dict,
@@ -208,24 +235,24 @@ def plot_results(
         robot.joint_limits,
         save_path=exp_folder_path,
     )
-    plot_joint_tracking_frequency(
-        time_seq_dict,
-        time_seq_ref_dict,
-        motor_pos_dict,
-        action_dict,
-        save_path=exp_folder_path,
-    )
-    plot_joint_tracking_single(
-        time_seq_dict,
-        motor_vel_dict,
-        save_path=exp_folder_path,
-    )
     plot_joint_tracking_single(
         time_seq_dict,
         motor_tor_dict,
         save_path=exp_folder_path,
         y_label="Torque (Nm) or Current (mA)",
         file_name="motor_tor_tracking",
+    )
+    plot_joint_tracking_single(
+        time_seq_dict,
+        motor_vel_dict,
+        save_path=exp_folder_path,
+    )
+    plot_joint_tracking_frequency(
+        time_seq_dict,
+        time_seq_ref_dict,
+        motor_pos_dict,
+        action_dict,
+        save_path=exp_folder_path,
     )
 
 
@@ -242,7 +269,7 @@ def main(
 
     loop_time_list: List[List[float]] = []
     obs_list: List[Obs] = []
-    command_list: List[npt.NDArray[np.float32]] = []
+    control_inputs_list: List[Dict[str, float]] = []
     motor_angles_list: List[Dict[str, float]] = []
 
     n_steps_total = (
@@ -309,7 +336,7 @@ def main(
                 sim.dynamixel_controller.disable_motors(policy.disable_motor_indices)
                 policy.toggle_motor = False
 
-            command, motor_target = policy.step(obs, "real" in sim.name)
+            control_inputs, motor_target = policy.step(obs, "real" in sim.name)
 
             inference_time = time.time()
 
@@ -317,7 +344,7 @@ def main(
             for motor_name, motor_angle in zip(robot.motor_ordering, motor_target):
                 motor_angles[motor_name] = motor_angle
 
-            sim.set_motor_angles(motor_angles)
+            sim.set_motor_target(motor_angles)
             set_action_time = time.time()
 
             if isinstance(sim, ArmToddlerSim):
@@ -331,7 +358,7 @@ def main(
             sim_step_time = time.time()
 
             obs_list.append(obs)
-            command_list.append(command)
+            control_inputs_list.append(control_inputs)
             motor_angles_list.append(motor_angles)
 
             step_idx += 1
@@ -373,7 +400,7 @@ def main(
 
     log_data_dict: Dict[str, Any] = {
         "obs_list": obs_list,
-        "command_list": command_list,
+        "control_inputs_list": control_inputs_list,
         "motor_angles_list": motor_angles_list,
     }
     if "sysID" in policy.name:
@@ -402,6 +429,10 @@ def main(
 
     if isinstance(policy, TeleopFollowerPDPolicy):
         policy.dataset_logger.move_files_to_exp_folder(exp_folder_path)
+
+    if isinstance(policy, ReplayPolicy):
+        with open(os.path.join(exp_folder_path, "keyframes.pkl"), "wb") as f:
+            pickle.dump(policy.keyframes, f)
 
     if isinstance(policy, CalibratePolicy):
         motor_config_path = os.path.join(robot.root_path, "config_motors.json")
@@ -476,7 +507,12 @@ if __name__ == "__main__":
         type=str,
         default="toddlerbot",
         help="The name of the robot. Need to match the name in descriptions.",
-        choices=["toddlerbot", "toddlerbot_gripper", "toddlerbot_arms"],
+        choices=[
+            "toddlerbot",
+            "toddlerbot_gripper",
+            "toddlerbot_arms",
+            "toddlerbot_active",
+        ],
     )
     parser.add_argument(
         "--sim",
@@ -587,7 +623,6 @@ if __name__ == "__main__":
 
     elif args.sim == "real":
         sim = RealWorld(robot)
-        sim.has_imu = args.robot != "toddlerbot_arms"
         init_motor_pos = sim.get_observation(retries=-1).motor_pos
         raise NotImplementedError("Real world ArmTodder policy not implemented yet")
 
@@ -595,6 +630,8 @@ if __name__ == "__main__":
         raise ValueError("Unknown simulator")
     if args.domain_rand:
         sim.model = parse_domain_rand(sim.model, args.domain_rand)
+
+    # t2 = time.time()
 
     PolicyClass = get_policy_class(args.policy.replace("_fixed", ""))
     ArmPolicyClass = get_arm_policy_class(args.arm_policy)
@@ -620,14 +657,17 @@ if __name__ == "__main__":
 
     elif issubclass(PolicyClass, BalancePDPolicy) or "teleop_joystick" in args.policy:
         # Run the command
-        result = subprocess.run(
-            f"sudo ntpdate -u {args.ip}",
-            shell=True,
-            text=True,
-            check=True,
-            stdout=subprocess.PIPE,
-        )
-        print(result.stdout.strip())
+        try:
+            result = subprocess.run(
+                f"sudo ntpdate -u {args.ip}",
+                shell=True,
+                text=True,
+                check=True,
+                stdout=subprocess.PIPE,
+            )
+            print(result.stdout.strip())
+        except Exception:
+            print("Failed to sync time with the follower!")
 
         fixed_command = None
         if len(args.command) > 0:

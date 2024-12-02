@@ -40,6 +40,8 @@ def test_motion_ref(
     )
     pose_command = np.random.uniform(-1, 1, 5)
 
+    # path_frame_mid = sim.model.body("path_frame").mocapid[0]
+
     p_bar = tqdm(desc="Running the test")
     step_idx = 0
     while True:
@@ -51,11 +53,11 @@ def test_motion_ref(
                 command[:3] = pose_command[:3]
                 for task, input in control_inputs.items():
                     axis = None
-                    if task == "walk_vertical":
+                    if task == "walk_x":
                         axis = 5
-                    elif task == "walk_horizontal":
+                    elif task == "walk_y":
                         axis = 6
-                    elif task == "turn":
+                    elif task == "walk_turn":
                         axis = 7
 
                     if axis is not None:
@@ -103,6 +105,9 @@ def test_motion_ref(
             time_curr = step_idx * sim.control_dt
             state_ref = motion_ref.get_state_ref(state_ref, time_curr, command)
 
+            # sim.data.mocap_pos[path_frame_mid] = state_ref[:3]
+            # sim.data.mocap_quat[path_frame_mid] = state_ref[3:7]
+
             if step_idx == 0 or "walk" in motion_ref.name:
                 qpos = motion_ref.get_qpos_ref(state_ref, path_frame=False)
                 qpos[:3] = motion_ref.torso_pos_init + state_ref[:3]
@@ -117,7 +122,7 @@ def test_motion_ref(
                 motor_angles = dict(
                     zip(robot.motor_ordering, state_ref[13 : 13 + robot.nu])
                 )
-                sim.set_motor_angles(motor_angles)
+                sim.set_motor_target(motor_angles)
                 sim.step()
 
             step_idx += 1
@@ -167,7 +172,6 @@ if __name__ == "__main__":
     robot = Robot(args.robot)
     if args.sim == "mujoco":
         sim = MuJoCoSim(robot, vis_type=args.vis, fixed_base="fixed" in args.robot)
-        sim.load_keyframe()
     else:
         raise ValueError("Unknown simulator")
 
@@ -175,9 +179,7 @@ if __name__ == "__main__":
 
     if "walk" in args.ref:
         walk_cfg = get_env_config("walk")
-        turn_cfg = get_env_config("turn")
         command_range = walk_cfg.commands.command_range
-        command_range[-1] = turn_cfg.commands.command_range[-1]
 
         if args.ref == "walk_simple":
             motion_ref = WalkSimpleReference(

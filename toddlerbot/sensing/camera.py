@@ -47,7 +47,7 @@ import numpy as np
 class Camera:
     def __init__(self, camera_id=0):
         # Run the command
-        result = subprocess.run(
+        subprocess.run(
             f"v4l2-ctl --device=/dev/video{camera_id} --set-ctrl=auto_exposure=1,exposure_time_absolute=30",
             shell=True,
             text=True,
@@ -55,7 +55,7 @@ class Camera:
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
         )
-        print(result.stdout.strip())
+        # print(result.stdout.strip())
 
         self.camera_id = camera_id
         self.cap = cv2.VideoCapture(self.camera_id)

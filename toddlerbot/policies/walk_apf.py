@@ -43,5 +43,5 @@ class WalkAPFPolicy(WalkPolicy, policy_name="walk_apf"):
         self.apf.plan_path(x_start, y_start, x_goal, y_goal)
 
     def get_command(self, control_inputs: Dict[str, float]) -> npt.NDArray[np.float32]:
-        command = self.apf.velocities[self.step_curr]
+        command = np.array(self.apf.velocities[self.step_curr], dtype=np.float32)
         return command

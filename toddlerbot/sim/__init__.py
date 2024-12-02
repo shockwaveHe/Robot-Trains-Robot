@@ -34,7 +34,7 @@ class BaseSim(ABC):
         self.name = name
 
     @abstractmethod
-    def set_motor_angles(self, motor_angles: Dict[str, float]):
+    def set_motor_target(self, motor_angles: Dict[str, float]):
         pass
 
     @abstractmethod

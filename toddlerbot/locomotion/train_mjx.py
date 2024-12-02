@@ -2,9 +2,9 @@ import os
 from copy import deepcopy
 
 os.environ["USE_JAX"] = "true"
-os.environ["SDL_VIDEODRIVER"] = "dummy"
 os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
 os.environ["XLA_FLAGS"] = "--xla_gpu_triton_gemm_any=true"
+os.environ["SDL_AUDIODRIVER"] = "dummy"
 
 import argparse
 import functools
@@ -159,21 +159,30 @@ def log_metrics(
 
 
 def get_body_mass_attr_range(
-    robot: Robot, body_mass_range: List[float], init_hang_force: float, num_envs: int
+    robot: Robot, body_mass_range: List[float], ee_mass_range: List[float],
+    other_mass_range: List[float], init_hang_force: float, num_envs: int
 ):
     suffix = "_hang_scene.xml" if init_hang_force > 0 else "_scene.xml"
     xml_path: str = find_robot_file_path(robot.name, suffix=suffix)
 
+    torso_name = "torso"
+    ee_name = robot.config["general"]["ee_name"]
+
     model = mujoco.MjModel.from_xml_path(xml_path)
     data = mujoco.MjData(model)
 
-    body_mass = np.array(model.body("torso").mass).copy()
-    body_inertia = np.array(model.body("torso").inertia).copy()
-    body_mass_delta_range = np.linspace(
-        body_mass_range[0], body_mass_range[1], num_envs
+    body_mass = model.body_mass.copy()
+    body_inertia = model.body_inertia.copy()
+
+    body_mass_delta_list = np.linspace(body_mass_range[0], body_mass_range[1], num_envs)
+    ee_mass_delta_list = np.linspace(ee_mass_range[0], ee_mass_range[1], num_envs)
+    other_mass_delta_list = np.linspace(
+        other_mass_range[0], other_mass_range[1], num_envs
     )
     # Randomize the order of the body mass deltas
-    body_mass_delta_range = np.random.permutation(body_mass_delta_range)
+    body_mass_delta_list = np.random.permutation(body_mass_delta_list)
+    ee_mass_delta_list = np.random.permutation(ee_mass_delta_list)
+    other_mass_delta_list = np.random.permutation(other_mass_delta_list)
 
     # Create lists to store attributes for all environments
     body_mass_list = []
@@ -184,12 +193,28 @@ def get_body_mass_attr_range(
     dof_M0_list = []
     dof_invweight0_list = []
     tendon_invweight0_list = []
-    for body_mass_delta in body_mass_delta_range:
+    for body_mass_delta, ee_mass_delta, other_mass_delta in zip(
+        body_mass_delta_list, ee_mass_delta_list, other_mass_delta_list
+    ):
         # Update body mass and inertia in the model
-        model.body("torso").mass = body_mass + body_mass_delta
-        model.body("torso").inertia = (
-            (body_mass + body_mass_delta) / body_mass * body_inertia
-        )
+        for i in range(model.nbody):
+            body_name = model.body(i).name
+
+            if body_mass[i] < 1e-6 or body_mass[i] < other_mass_range[1]:
+                continue
+
+            if torso_name in body_name:
+                mass_delta = body_mass_delta
+            elif ee_name in body_name:
+                mass_delta = ee_mass_delta
+            else:
+                mass_delta = other_mass_delta
+
+            model.body(body_name).mass = body_mass[i] + mass_delta
+            model.body(body_name).inertia = (
+                (body_mass[i] + mass_delta) / body_mass[i] * body_inertia[i]
+            )
+
         mujoco.mj_setConst(model, data)
 
         # Append the values to corresponding lists
@@ -405,46 +430,52 @@ def train(
         policy_path = os.path.join(path, "policy")
         model.save_params(policy_path, (params[0], params[1].policy))
 
-    # TODO: Implement adaptive learning rate
     learning_rate_schedule_fn = optax.cosine_decay_schedule(
         train_cfg.learning_rate,
         train_cfg.decay_steps,
         train_cfg.alpha,
     )
 
-    body_mass_attr_range = None
-    if env.cfg.domain_rand.added_mass_range is not None and not env.fixed_base:
-        body_mass_attr_range = get_body_mass_attr_range(
-            env.robot,
-            env.cfg.domain_rand.added_mass_range,
-            env.cfg.hang.init_hang_force,
-            train_cfg.num_envs,
-        )
-        eval_body_mass_attr_range = get_body_mass_attr_range(
-            eval_env.robot,
-            env.cfg.domain_rand.added_mass_range,
-            eval_env.cfg.hang.init_hang_force,
-            train_cfg.num_envs,
-        )
+    domain_randomize_fn = None
+    eval_domain_randomize_fn = None
+    if env.add_domain_rand:
+        body_mass_attr_range = None
+        if not env.fixed_base:
+            body_mass_attr_range = get_body_mass_attr_range(
+                env.robot,
+                env.cfg.domain_rand.body_mass_range,
+                env_cfg.domain_rand.ee_mass_range,
+                env_cfg.domain_rand.other_mass_range,
+                env.cfg.hang.init_hang_force,
+                train_cfg.num_envs,
+            )
+            eval_body_mass_attr_range = get_body_mass_attr_range(
+                eval_env.robot,
+                env.cfg.domain_rand.body_mass_range,
+                env_cfg.domain_rand.ee_mass_range,
+                env_cfg.domain_rand.other_mass_range,
+                env.cfg.hang.init_hang_force,
+                train_cfg.num_envs,
+            )
 
-    domain_randomize_fn = functools.partial(
-        domain_randomize,
-        friction_range=env.cfg.domain_rand.friction_range,
-        damping_range=env.cfg.domain_rand.damping_range,
-        armature_range=env.cfg.domain_rand.armature_range,
-        frictionloss_range=env.cfg.domain_rand.frictionloss_range,
-        gravity_range=env.cfg.domain_rand.gravity_range,
-        body_mass_attr_range=body_mass_attr_range,
-    )
-    eval_domain_randomize_fn = functools.partial(
-        domain_randomize,
-        friction_range=eval_env.cfg.domain_rand.friction_range,
-        damping_range=eval_env.cfg.domain_rand.damping_range,
-        armature_range=eval_env.cfg.domain_rand.armature_range,
-        frictionloss_range=eval_env.cfg.domain_rand.frictionloss_range,
-        gravity_range=eval_env.cfg.domain_rand.gravity_range,
-        body_mass_attr_range=eval_body_mass_attr_range,
-    )
+        domain_randomize_fn = functools.partial(
+            domain_randomize,
+            friction_range=env.cfg.domain_rand.friction_range,
+            damping_range=env.cfg.domain_rand.damping_range,
+            armature_range=env.cfg.domain_rand.armature_range,
+            frictionloss_range=env.cfg.domain_rand.frictionloss_range,
+            gravity_range=env.cfg.domain_rand.gravity_range,
+            body_mass_attr_range=body_mass_attr_range,
+        )
+        eval_domain_randomize_fn = functools.partial(
+            domain_randomize,
+            friction_range=eval_env.cfg.domain_rand.friction_range,
+            damping_range=eval_env.cfg.domain_rand.damping_range,
+            armature_range=eval_env.cfg.domain_rand.armature_range,
+            frictionloss_range=eval_env.cfg.domain_rand.frictionloss_range,
+            gravity_range=eval_env.cfg.domain_rand.gravity_range,
+            body_mass_attr_range=eval_body_mass_attr_range,
+        )
     train_fn = functools.partial(
         ppo.train,
         num_timesteps=train_cfg.num_timesteps,
@@ -635,7 +666,7 @@ if __name__ == "__main__":
 
     # Bind parameters from --config_override
     if len(args.config_override) > 0:
-        for override in args.config_override.split(" "):
+        for override in args.config_override.split(","):
             key, value = override.split("=", 1)  # Split into key-value pair
             gin.bind_parameter(key, parse_value(value))
 
@@ -662,7 +693,6 @@ if __name__ == "__main__":
         env_cfg.rewards.scales.leg_motor_pos = 5.0
         env_cfg.rewards.scales.waist_motor_pos = 5.0
         env_cfg.rewards.scales.motor_torque = 5e-2
-        env_cfg.rewards.scales.motor_acc = 5e-6
         env_cfg.rewards.scales.leg_action_rate = 1e-2
         env_cfg.rewards.scales.leg_action_acc = 1e-2
         env_cfg.rewards.scales.waist_action_rate = 1e-2
@@ -673,6 +703,8 @@ if __name__ == "__main__":
         robot,
         env_cfg,  # type: ignore
         fixed_base="fixed" in args.env,
+        add_noise=env_cfg.noise.add_noise,
+        add_domain_rand=env_cfg.domain_rand.add_domain_rand,
         **kwargs,  # type: ignore
     )
 
@@ -683,6 +715,8 @@ if __name__ == "__main__":
         robot,
         eval_env_cfg,  # type: ignore
         fixed_base="fixed" in args.env,
+        add_noise=env_cfg.noise.add_noise,
+        add_domain_rand=env_cfg.domain_rand.add_domain_rand,
         **kwargs,  # type: ignore
     )
     test_env = EnvClass(

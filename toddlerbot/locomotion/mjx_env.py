@@ -162,6 +162,14 @@ class MJXEnv(PipelineEnv):
         self.neck_joint_indices = self.joint_indices[joint_groups == "neck"]
         self.waist_joint_indices = self.joint_indices[joint_groups == "waist"]
 
+        hip_pitch_joint_mask = np.char.find(self.robot.joint_ordering, "hip_pitch") >= 0
+        knee_joint_mask = np.char.find(self.robot.joint_ordering, "knee") >= 0
+        ank_pitch_joint_mask = np.char.find(self.robot.joint_ordering, "ank_pitch") >= 0
+
+        self.hip_pitch_joint_indices = self.joint_indices[hip_pitch_joint_mask]
+        self.knee_joint_indices = self.joint_indices[knee_joint_mask]
+        self.ank_pitch_joint_indices = self.joint_indices[ank_pitch_joint_mask]
+
         self.motor_indices = jnp.array(
             [
                 support.name2id(self.sys, mujoco.mjtObj.mjOBJ_JOINT, name)
@@ -268,14 +276,15 @@ class MJXEnv(PipelineEnv):
         self.reset_time = self.cfg.commands.reset_time
         self.reset_steps = int(self.reset_time / self.dt)
         self.mean_reversion = self.cfg.commands.mean_reversion
+        self.zero_chance = self.cfg.commands.zero_chance
+        self.turn_chance = self.cfg.commands.turn_chance
+        self.command_obs_indices = jnp.array(self.cfg.commands.command_obs_indices)
         self.command_range = jnp.array(self.cfg.commands.command_range)
         self.deadzone = (
             jnp.array(self.cfg.commands.deadzone)
             if len(self.cfg.commands.deadzone) > 1
             else self.cfg.commands.deadzone[0]
         )
-        self.command_obs_indices = jnp.array(self.cfg.commands.command_obs_indices)
-
         # observation
         self.ref_start_idx = 7 + 6
         self.num_obs_history = self.cfg.obs.frame_stack
@@ -833,6 +842,7 @@ class MJXEnv(PipelineEnv):
                 motor_pos_delta * self.obs_scales.dof_pos + motor_backlash,
                 motor_vel * self.obs_scales.dof_vel,
                 info["last_act"],
+                # motor_pos_error,
                 # torso_lin_vel * self.obs_scales.lin_vel,
                 torso_ang_vel * self.obs_scales.ang_vel,
                 torso_euler * self.obs_scales.euler,
@@ -845,10 +855,10 @@ class MJXEnv(PipelineEnv):
                 motor_pos_delta * self.obs_scales.dof_pos,
                 motor_vel * self.obs_scales.dof_vel,
                 info["last_act"],
+                motor_pos_error,
                 torso_lin_vel * self.obs_scales.lin_vel,
                 torso_ang_vel * self.obs_scales.ang_vel,
                 torso_euler * self.obs_scales.euler,
-                motor_pos_error,
                 info["stance_mask"],
                 info["state_ref"][-2:],
                 info["push_lin"],
@@ -994,16 +1004,6 @@ class MJXEnv(PipelineEnv):
         reward = jnp.sum(info["stance_mask"] == info["state_ref"][-2:]).astype(dtype)
         return reward.astype(dtype)
 
-    def _reward_feet_contact_number(
-        self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
-    ):
-        """Reward for contact"""
-        left_contact_numbers = jnp.sum(info["left_foot_contact_mask"])
-        right_contact_numbers = jnp.sum(info["right_foot_contact_mask"])
-        contact_numbers = jnp.array([left_contact_numbers, right_contact_numbers])
-        reward = jnp.sum(contact_numbers * info["state_ref"][-2:]).astype(dtype)
-        return reward.astype(dtype)
-
     def _reward_leg_motor_pos(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
@@ -1064,12 +1064,13 @@ class MJXEnv(PipelineEnv):
         reward = -jnp.mean(error)
         return reward.astype(dtype)
 
-    def _reward_motor_acc(
+    def _reward_energy(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
-        """Reward for minimizing joint accelerations"""
-        motor_acc = pipeline_state.qacc[self.qd_start_idx + self.motor_indices]
-        error = jnp.square(motor_acc)
+        torque = pipeline_state.qfrc_actuator[self.qd_start_idx + self.motor_indices]
+        motor_vel = pipeline_state.qvel[self.qd_start_idx + self.motor_indices]
+        energy = torque * motor_vel
+        error = jnp.square(energy)
         reward = -jnp.mean(error)
         return reward.astype(dtype)
 

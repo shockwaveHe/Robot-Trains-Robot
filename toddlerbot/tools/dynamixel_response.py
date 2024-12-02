@@ -36,7 +36,7 @@ class MuJoCoFakeDyn:
         pass
 
     def set_pos(self, pos):
-        self.sim.set_motor_angles(pos)
+        self.sim.set_motor_target(pos)
 
     def set_parameters(self, kp, ki, kd, kff1, kff2, ids):
         self.sim.set_motor_kps({"joint_0": kp})

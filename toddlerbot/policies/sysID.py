@@ -280,8 +280,8 @@ class SysIDFixedPolicy(BasePolicy, policy_name="sysID"):
 
     def step(
         self, obs: Obs, is_real: bool = False
-    ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
+    ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
         action = np.asarray(
             interpolate_action(obs.time, self.time_arr, self.action_arr)
         )
-        return self.zero_command, action
+        return {}, action

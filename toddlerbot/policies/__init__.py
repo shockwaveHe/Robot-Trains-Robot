@@ -74,8 +74,6 @@ class BasePolicy(ABC):
         self.waist_motor_indices = indices[motor_groups == "waist"]
         self.waist_joint_indices = indices[joint_groups == "waist"]
 
-        self.zero_command = np.zeros(1, dtype=np.float32)
-
         self.prep_duration = 2.0
         self.prep_time, self.prep_action = self.move(
             -self.control_dt, init_motor_pos, self.default_motor_pos, self.prep_duration
@@ -90,7 +88,7 @@ class BasePolicy(ABC):
     @abstractmethod
     def step(
         self, obs: Obs, is_real: bool = False
-    ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
+    ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
         pass
 
     # duration: total length of the motion
