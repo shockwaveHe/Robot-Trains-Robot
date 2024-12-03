@@ -74,7 +74,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         keyboard_inputs = self.keyboard.get_keyboard_input()
         self.walk_x += keyboard_inputs["walk_x_delta"]
         self.walk_y += keyboard_inputs["walk_y_delta"]
-        control_inputs = {"walk_x": self.walk_x, "walk_y": self.walk_y}
+        control_inputs = {"walk_x": self.walk_x, "walk_y": self.walk_y, "walk_turn": 0.0}
         self.stopped = keyboard_inputs["stop"]
         self.speed += keyboard_inputs["speed_delta"]
         self.force += keyboard_inputs["force_delta"]
@@ -84,7 +84,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
             self.force = 0.0
             self.force_shm.buf[:8] = struct.pack('d', self.force)
             self.keyboard.close()
-            control_inputs = {"walk_x": 0.0, "walk_y": 0.0}
+            control_inputs = {"walk_x": 0.0, "walk_y": 0.0, "walk_turn": 0.0}
             print("Stopping the system")
 
         # compile data to send to follower

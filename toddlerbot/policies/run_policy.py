@@ -640,8 +640,6 @@ if __name__ == "__main__":
     PolicyClass = get_policy_class(args.policy.replace("_fixed", ""))
     ArmPolicyClass = get_arm_policy_class(args.arm_policy)
 
-    signature = inspect.signature(PolicyClass.__init__)
-    args.ip = args.ip or signature.parameters["ip"].default  # hacky way to get the default value
     if "replay" in args.policy:
         assert (
             args.robot in args.run_name

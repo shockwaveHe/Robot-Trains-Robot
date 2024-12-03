@@ -256,7 +256,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         motor_pos_delta = obs.motor_pos - self.default_motor_pos
         # motor_pos_error = obs.motor_pos - self.state_ref[13 : 13 + self.robot.nu]
         # obs.ang_vel[0] *= 0.5
-
+        print(command)
         obs_arr = np.concatenate(
             [
                 self.phase_signal,

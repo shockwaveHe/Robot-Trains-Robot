@@ -7,6 +7,7 @@ from toddlerbot.policies import BasePolicy
 from toddlerbot.policies.stand import StandPolicy
 from toddlerbot.policies.mjx_policy import MJXPolicy
 from toddlerbot.policies.reset_pd import ResetPDPolicy
+from toddlerbot.policies.balance_pd import BalancePDPolicy
 from toddlerbot.policies.walk import WalkPolicy
 from toddlerbot.sensing.camera import Camera
 from toddlerbot.sim import Obs
@@ -57,6 +58,7 @@ class ArmTreadmillFollowerPolicy(BasePolicy, policy_name="at_follower"):
         self.policy_prev = "stand"
         self.last_control_inputs: Dict[str, float] = {}
 
+
     def step(
         self, obs: Obs, is_real: bool = False
     ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
@@ -70,8 +72,9 @@ class ArmTreadmillFollowerPolicy(BasePolicy, policy_name="at_follower"):
         msg = self.zmq_receiver.get_msg()
 
         control_inputs = self.last_control_inputs
-        if msg is not None:
+        if msg is not None and msg.control_inputs is not None:
             control_inputs = msg.control_inputs
+
         self.last_control_inputs = control_inputs
 
         command_scale = {key: 0.0 for key in self.policies}
@@ -97,6 +100,7 @@ class ArmTreadmillFollowerPolicy(BasePolicy, policy_name="at_follower"):
                 policy_type_differs
                 and not self.need_reset
                 and not np.all(is_reset_mask)
+                and not isinstance(last_policy, StandPolicy)
             ):
                 if isinstance(last_policy, MJXPolicy) and not last_policy.is_standing:
                     # Not ready for switching policy
@@ -115,10 +119,13 @@ class ArmTreadmillFollowerPolicy(BasePolicy, policy_name="at_follower"):
         current_policy = self.policies[policy_curr]
         if isinstance(current_policy, StandPolicy):
             print(f"Stand policy: {control_inputs}")
+        elif isinstance(current_policy, BalancePDPolicy):
+            current_policy.msg = msg
         elif isinstance(current_policy, MJXPolicy):
             print(f"MJX policy: {control_inputs}")
             current_policy.control_inputs = control_inputs
         else:
+            print(f"Policy: {policy_curr}, {current_policy}")
             raise NotImplementedError
 
         control_inputs, motor_target = current_policy.step(obs, is_real)
