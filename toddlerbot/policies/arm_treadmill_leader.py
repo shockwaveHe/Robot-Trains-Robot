@@ -17,14 +17,14 @@ from toddlerbot.utils.comm_utils import ZMQMessage, ZMQNode
 from toddlerbot.utils.math_utils import interpolate_action
 
 
-class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="arm_treadmill_leader"):
+class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
     def __init__(
         self,
         name: str,
         robot: Robot,
         init_motor_pos: npt.NDArray[np.float32],
         keyboard: Optional[Keyboard] = None,
-        ip: str = "127.0.0.1",
+        ip: str = "192.168.0.70",
     ):
         super().__init__(name, robot, init_motor_pos)
 

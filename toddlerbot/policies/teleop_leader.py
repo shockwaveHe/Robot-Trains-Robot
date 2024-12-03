@@ -20,7 +20,7 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
         robot: Robot,
         init_motor_pos: npt.NDArray[np.float32],
         joystick: Optional[Joystick] = None,
-        ip: str = "127.0.0.1",
+        ip: str = "192.168.0.70",
     ):
         super().__init__(name, robot, init_motor_pos)
 

@@ -15,13 +15,13 @@ from toddlerbot.utils.comm_utils import ZMQNode
 from toddlerbot.utils.math_utils import interpolate_action
 
 
-class ArmTreadmillFollowerPolicy(BasePolicy, policy_name="arm_treadmill_follower"):
+class ArmTreadmillFollowerPolicy(BasePolicy, policy_name="at_follower"):
     def __init__(
         self,
         name: str,
         robot: Robot,
         init_motor_pos: npt.NDArray[np.float32],
-        ip: str,
+        ip: str = "192.168.0.137",
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
     ):
         super().__init__(name, robot, init_motor_pos)

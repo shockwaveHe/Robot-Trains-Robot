@@ -56,6 +56,7 @@ class ZMQNode:
             self.socket.setsockopt(zmq.RCVHWM, 1)  # Limit receiver's queue to 1 message
             self.socket.setsockopt(zmq.CONFLATE, 1)  # Only keep the latest message
             self.socket.setsockopt(zmq.RCVBUF, 1024)
+        print(f"ZMQ {self.type} started at {self.ip}")
 
     def send_msg(self, msg: ZMQMessage):
         if self.type != "sender":

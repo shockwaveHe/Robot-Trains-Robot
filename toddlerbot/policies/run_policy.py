@@ -13,6 +13,7 @@ import mujoco
 import numpy as np
 import numpy.typing as npt
 from tqdm import tqdm
+import inspect
 
 from toddlerbot.arm_policies import (
     BaseArmPolicy,
@@ -575,7 +576,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--ip",
         type=str,
-        default="127.0.0.1",
+        default=None,
         help="The ip address of the follower.",
     )
     parser.add_argument(
@@ -637,6 +638,8 @@ if __name__ == "__main__":
     PolicyClass = get_policy_class(args.policy.replace("_fixed", ""))
     ArmPolicyClass = get_arm_policy_class(args.arm_policy)
 
+    signature = inspect.signature(PolicyClass.__init__)
+    args.ip = args.ip or signature.parameters["ip"].default  # hacky way to get the default value
     if "replay" in args.policy:
         assert (
             args.robot in args.run_name
@@ -656,7 +659,7 @@ if __name__ == "__main__":
 
         policy = PolicyClass(args.policy, robot, init_motor_pos, ip=args.ip)  # type: ignore
 
-    elif issubclass(PolicyClass, BalancePDPolicy) or "teleop_joystick" in args.policy:
+    elif issubclass(PolicyClass, BalancePDPolicy) or "follower" in args.policy or "teleop_joystick" in args.policy:
         # Run the command
         try:
             result = subprocess.run(
@@ -668,7 +671,7 @@ if __name__ == "__main__":
             )
             print(result.stdout.strip())
         except Exception:
-            print("Failed to sync time with the follower!")
+            print("Failed to sync time with the leader!")
 
         fixed_command = None
         if len(args.command) > 0:
