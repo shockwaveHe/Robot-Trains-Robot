@@ -45,14 +45,16 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         self.reset_time = None
 
         self.speed = 5.0
-        self.serial_thread = threading.Thread(target=self.serial_thread_func)
-        self.serial_thread.start()
 
         self.walk_x = 0.0
         self.walk_y = 0.0
 
         self.stopped = False
         self.force = 10.0
+
+        self.serial_thread = threading.Thread(target=self.serial_thread_func)
+        self.serial_thread.start()
+
         shm_name = 'force_shm'
         try:
             self.force_shm = shared_memory.SharedMemory(name=shm_name, create=True, size=8)
@@ -71,14 +73,22 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
             )
             return {}, action
+
         keyboard_inputs = self.keyboard.get_keyboard_input()
         self.walk_x += keyboard_inputs["walk_x_delta"]
         self.walk_y += keyboard_inputs["walk_y_delta"]
         control_inputs = {"walk_x": self.walk_x, "walk_y": self.walk_y, "walk_turn": 0.0}
+
         self.stopped = keyboard_inputs["stop"]
         self.speed += keyboard_inputs["speed_delta"]
         self.force += keyboard_inputs["force_delta"]
+        self.keyboard.reset()
+        print(keyboard_inputs, control_inputs)
         self.force_shm.buf[:8] = struct.pack('d', self.force)
+
+        action = self.default_motor_pos.copy()
+        if self.is_running:
+            action = obs.motor_pos
 
         if self.stopped:
             self.force = 0.0
@@ -88,6 +98,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
             print("Stopping the system")
 
         # compile data to send to follower
+        assert control_inputs is not None
         msg = ZMQMessage(
             time=time.time(),
             control_inputs=control_inputs,
@@ -128,8 +139,8 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
 
                 # Optionally read a response (if the device sends back data)
                 response = ser.readline()  # Read a line from the device
-                if response:
-                    print(f"Send: {data_to_send}, Received: {response}")
+                # if response:
+                #     print(f"Send: {data_to_send}, Received: {response}")
 
                 # Sleep to prevent excessive CPU usage
                 time.sleep(0.01)

@@ -8,6 +8,11 @@ except ImportError as e:
 keyboard_actions = {
     "save": "s",
     "next": "n",
+    "walk_x_delta": None,
+    "walk_y_delta": None,
+    "stop": None,
+    "speed_delta": None,
+    "force_delta": None
 }
 
 
@@ -34,37 +39,43 @@ class Keyboard:
         elif self.key_inputs[name] == 0.0 and self.key_flags[name]:
             self.key_flags[name] = False
 
+    def reset(self):
+        self.key_inputs["speed_delta"] = 0.0
+        self.key_inputs["force_delta"] = 0.0
+        self.key_inputs["walk_x_delta"] = 0.0
+        self.key_inputs["walk_y_delta"] = 0.0
+        self.key_inputs["stop"] = False
+
     def on_press(self, key):
         """Handles key press events."""
+        print(f"{key} pressed!")
+
         try:
-            self.key_inputs["speed_delta"] = 0.0
-            self.key_inputs["force_delta"] = 0.0
-            self.key_inputs["walk_x_delta"] = 0.0
-            self.key_inputs["walk_y_delta"] = 0.0
-            self.key_inputs["stop"] = False
-            if key.char == "s":  # Check if the 's' key is pressed
-                self.key_inputs["save"] = 1.0
-                self.key_inputs["walk_x_delta"] = 0.01
-            elif key.char == "n":
-                self.key_inputs["next"] = 1.0
-            elif key == keyboard.Key.right:
+            if key == keyboard.Key.right:
+                print('change speed delta to 1.0')
                 self.key_inputs["speed_delta"] = 1.0
             elif key == keyboard.Key.left:
+                print('change speed delta to -1.0')
                 self.key_inputs["speed_delta"] = -1.0
             elif key == keyboard.Key.up:
                 self.key_inputs["force_delta"] = 1.0
             elif key == keyboard.Key.down:
                 self.key_inputs["force_delta"] = -1.0
-            elif key.char == "w":
-                self.key_inputs["walk_x_delta"] = -0.01
-            elif key.char == "a":
-                self.key_inputs["walk_y_delta"] = 0.01
-            elif key.char == "d":
-                self.key_inputs["walk_y_delta"] = -0.01
             elif key == keyboard.Key.esc:
                 # Signal the threads to stop
                 self.key_inputs["stop"] = True
                 return False  # Stop the keyboard listener
+            elif key.char == "n":
+                self.key_inputs["next"] = 1.0
+            elif key.char == "s":  # Check if the 's' key is pressed
+                self.key_inputs["save"] = 1.0
+                self.key_inputs["walk_x_delta"] = -0.01
+            elif key.char == "w":
+                self.key_inputs["walk_x_delta"] = 0.01
+            elif key.char == "a":
+                self.key_inputs["walk_y_delta"] = -0.01
+            elif key.char == "d":
+                self.key_inputs["walk_y_delta"] = 0.01
         except AttributeError:
             # Handle special keys (if necessary)
             pass
@@ -85,7 +96,9 @@ class Keyboard:
         
     def get_keyboard_input(self) -> Dict[str, float]:
         """Return the current keyboard input state."""
-        return self.key_inputs
+        # print(self.key_inputs)
+        key_inputs = self.key_inputs
+        return key_inputs
 
 
 if __name__ == "__main__":

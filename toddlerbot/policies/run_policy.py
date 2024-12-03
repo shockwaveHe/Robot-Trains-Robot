@@ -285,7 +285,7 @@ def main(
     last_ckpt_idx = -1
     sim.reset()
     try:
-        while step_idx < n_steps_total:
+        while step_idx < n_steps_total and not getattr(policy, 'stopped', False):
             step_start = time.time()
 
             # Get the latest state from the queue
@@ -525,7 +525,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--vis",
         type=str,
-        default="view",
+        default="none",
         choices=["render", "view", "none"],
         help="The visualization type.",
     )
@@ -640,6 +640,8 @@ if __name__ == "__main__":
     PolicyClass = get_policy_class(args.policy.replace("_fixed", ""))
     ArmPolicyClass = get_arm_policy_class(args.arm_policy)
 
+    signature = inspect.signature(PolicyClass.__init__)
+    args.ip = args.ip or signature.parameters["ip"].default  # hacky way to get the default value
     if "replay" in args.policy:
         assert (
             args.robot in args.run_name
