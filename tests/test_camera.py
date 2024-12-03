@@ -3,8 +3,8 @@ import numpy as np
 from toddlerbot.sensing.camera import Camera
 
 # Initialize two Camera instances with different camera IDs
-camera1 = Camera(camera_id=0)
-camera2 = Camera(camera_id=4)
+camera1 = Camera("left")
+camera2 = Camera("right")
 
 # Define video writer properties
 output1_path = "camera1_output.avi"

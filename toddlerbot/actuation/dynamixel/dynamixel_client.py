@@ -323,9 +323,7 @@ class DynamixelClient:
 
         # Convert to Dynamixel current space.
         currents /= self._cur_scale_arr
-        self.sync_write(
-            motor_ids, list(currents), ADDR_GOAL_CURRENT, LEN_GOAL_CURRENT
-        )
+        self.sync_write(motor_ids, list(currents), ADDR_GOAL_CURRENT, LEN_GOAL_CURRENT)
 
     def write_byte(
         self,

@@ -37,9 +37,11 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
         self.zmq_receiver = ZMQNode(type="receiver")
         self.zmq_sender = ZMQNode(type="sender", ip=ip)
 
-        self.camera = None
+        self.left_eye = None
+        self.right_eye = None
         try:
-            self.camera = Camera()
+            self.left_eye = Camera("left")
+            self.right_eye = Camera("right")
         except Exception:
             pass
 
@@ -48,7 +50,7 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
         )
         balance_kwargs: Dict[str, Any] = dict(
             joystick=self.joystick,
-            camera=self.camera,
+            cameras=[self.left_eye, self.right_eye],
             zmq_receiver=self.zmq_receiver,
             zmq_sender=self.zmq_sender,
             ip=ip,

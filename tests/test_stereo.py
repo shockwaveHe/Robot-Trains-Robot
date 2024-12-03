@@ -16,12 +16,12 @@ from toddlerbot.sensing.camera import Camera
 # --------------------------
 
 
-def collect_images(camera_left_id, camera_right_id, save_path, num_images):
+def collect_images(save_path, num_images):
     """
     Collect calibration images from stereo cameras.
     """
-    cam_left = Camera(camera_left_id)
-    cam_right = Camera(camera_right_id)
+    cam_left = Camera("left")
+    cam_right = Camera("right")
 
     print("Press SPACE to capture an image pair. Press ESC to exit.")
     count = 0
@@ -46,12 +46,12 @@ def collect_images(camera_left_id, camera_right_id, save_path, num_images):
     cam_right.close()
 
 
-def collect_test_images(camera_left_id, camera_right_id, save_path):
+def collect_test_images(save_path):
     """
     Collect calibration images from stereo cameras.
     """
-    cam_left = Camera(camera_left_id)
-    cam_right = Camera(camera_right_id)
+    cam_left = Camera("left")
+    cam_right = Camera("right")
 
     print("Press SPACE to capture an image pair. Press ESC to exit.")
     count = 0

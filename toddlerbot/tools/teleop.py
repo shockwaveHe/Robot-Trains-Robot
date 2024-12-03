@@ -69,7 +69,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--ip",
         type=str,
-        default="127.0.0.1",
+        default="",
         help="The ip address of toddy.",
     )
     args = parser.parse_args()

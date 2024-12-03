@@ -171,8 +171,35 @@ class MotionReference(ABC):
         self.right_foot_site_id = mujoco.mj_name2id(
             model, mujoco.mjtObj.mjOBJ_SITE, "right_foot_center"
         )
-        self.passive_joint_indices = np.array(
-            [self.neck_pitch_idx, self.left_knee_idx, self.right_knee_idx]
+        self.passive_joint_indices = np.repeat(
+            np.array([self.neck_pitch_idx, self.left_knee_idx, self.right_knee_idx]), 4
+        )
+        self.passive_joint_signs = np.repeat(np.array([-1, 1, 1], dtype=np.float32), 4)
+
+        if "gripper" in self.robot.name:
+            self.passive_joint_indices = np.concatenate(
+                [
+                    self.passive_joint_indices,
+                    np.array(
+                        [
+                            self.robot.joint_ordering.index("left_gripper_pinion"),
+                            self.robot.joint_ordering.index("right_gripper_pinion"),
+                        ]
+                    ),
+                ]
+            )
+            self.passive_joint_signs = np.concatenate(
+                [self.passive_joint_signs, np.array([1, 1], dtype=np.float32)]
+            )
+
+        hip_pitch_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "2xc430")
+        hip_roll_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "hip_yaw_link")
+        knee_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "left_calf_link")
+        ank_pitch_id = mujoco.mj_name2id(
+            model, mujoco.mjtObj.mjOBJ_BODY, "left_ank_pitch_link"
+        )
+        ank_roll_id = mujoco.mj_name2id(
+            model, mujoco.mjtObj.mjOBJ_BODY, "ank_roll_link"
         )
         self.passive_joint_signs = np.array([-1, 1, 1], dtype=np.float32)
 
@@ -449,16 +476,9 @@ class MotionReference(ABC):
         qpos = inplace_update(qpos, 7 + self.mj_motor_indices, motor_pos_ref)
         qpos = inplace_update(qpos, 7 + self.mj_joint_indices, joint_pos_ref)
 
-        passive_pos_ref = np.concatenate(
-            [
-                np.repeat(
-                    state_ref[13 + self.robot.nu + self.passive_joint_indices[:-2]]
-                    * self.passive_joint_signs[:-2],
-                    4,
-                ),
-                state_ref[13 + self.robot.nu + self.passive_joint_indices[-2:]]
-                * self.passive_joint_signs[-2:],
-            ]
+        passive_pos_ref = (
+            state_ref[13 + self.robot.nu + self.passive_joint_indices]
+            * self.passive_joint_signs
         )
         qpos = inplace_update(qpos, 7 + self.mj_passive_indices, passive_pos_ref)
 

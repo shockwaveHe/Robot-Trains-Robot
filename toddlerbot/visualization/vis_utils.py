@@ -9,9 +9,6 @@ import seaborn as sns
 
 from toddlerbot.utils.misc_utils import log
 
-backend_curr = "Agg"
-non_interactive_backends = ["Agg", "SVG", "PDF", "PS"]
-plt.switch_backend(backend_curr)
 sns.set_theme(style="darkgrid")
 
 
@@ -37,6 +34,9 @@ def make_vis_function(
     Returns:
     - A new function that incorporates the specified visualization and saving logic.
     """
+    backend_curr = "Agg"
+    non_interactive_backends = ["Agg", "SVG", "PDF", "PS"]
+    plt.switch_backend(backend_curr)
 
     @functools.wraps(func)
     def wrapped_function(*args, **kwargs) -> Any | None:

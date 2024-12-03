@@ -31,7 +31,7 @@ class ZMQNode:
             raise ValueError("ZMQ type must be either 'sender' or 'receiver'")
 
         self.queue_len = queue_len
-        self.ip = ip
+        self.ip = ip if len(ip) > 0 else "127.0.0.1"
         self.start_zmq()
 
     def start_zmq(self):

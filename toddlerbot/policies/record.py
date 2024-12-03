@@ -21,7 +21,7 @@ class RecordPolicy(BalancePDPolicy, policy_name="record"):
         camera: Optional[Camera] = None,
         zmq_receiver: Optional[ZMQNode] = None,
         zmq_sender: Optional[ZMQNode] = None,
-        ip: str = "127.0.0.1",
+        ip: str = "",
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
     ):
         super().__init__(

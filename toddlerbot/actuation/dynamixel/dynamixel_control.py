@@ -149,16 +149,7 @@ class DynamixelController(BaseController):
 
     def initialize_motors(self):
         log("Initializing motors...", header="Dynamixel")
-
-        _, v_in = self.client.read_vin()
-        log(f"Voltage (V): {v_in}", header="Dynamixel")
-        if np.any(v_in < 10):
-            raise ValueError(
-                "Voltage too low. Please check the power supply or charge the batteries."
-            )
-
-        self.reboot_motors()
-
+        self.client.reboot(self.motor_ids)
         time.sleep(0.2)
 
         # Set the return delay time to 1*2=2us
@@ -177,6 +168,13 @@ class DynamixelController(BaseController):
         self.client.sync_write(self.motor_ids, self.config.kFF2, 88, 2)
         self.client.sync_write(self.motor_ids, self.config.kFF1, 90, 2)
         # self.client.sync_write(self.motor_ids, self.config.current_limit, 102, 2)
+
+        _, v_in = self.client.read_vin()
+        log(f"Voltage (V): {v_in}", header="Dynamixel")
+        if np.any(v_in < 10):
+            raise ValueError(
+                "Voltage too low. Please check the power supply or charge the batteries."
+            )
 
         time.sleep(0.2)
 
@@ -197,9 +195,6 @@ class DynamixelController(BaseController):
                 log("Forcing client to close.", header="Dynamixel")
             open_client.port_handler.is_using = False
             open_client.disconnect()
-
-    def reboot_motors(self):
-        self.client.reboot(self.motor_ids)
 
     # Only disable the torque, but stay connected through comm. If no id is provided, disable all motors
     def disable_motors(self, ids=None):

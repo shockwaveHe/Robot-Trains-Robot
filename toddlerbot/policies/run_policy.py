@@ -576,7 +576,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--ip",
         type=str,
-        default=None,
+        default="",
         help="The ip address of the follower.",
     )
     parser.add_argument(
@@ -630,6 +630,8 @@ if __name__ == "__main__":
         raise ValueError("Unknown simulator")
     if args.domain_rand:
         sim.model = parse_domain_rand(sim.model, args.domain_rand)
+
+    # t2 = time.time()
 
     # t2 = time.time()
 

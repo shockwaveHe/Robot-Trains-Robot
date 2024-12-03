@@ -420,8 +420,8 @@ class MuJoCoApp:
             if isinstance(data, dict):
                 keyframes = [Keyframe(**k) for k in data.get("keyframes", [])]
                 self.sequence_list = data.get("sequence", [])
-                self.trajectory_times = data.get("time", [])
-                self.trajectory = data.get("trajectory", [])
+                self.traj_times = data.get("time", [])
+                self.action_traj = data.get("action_traj", [])
                 self.update_sequence_listbox()
             else:
                 keyframes = data
@@ -454,8 +454,9 @@ class MuJoCoApp:
 
         result_dict["keyframes"] = saved_keyframes
         result_dict["sequence"] = self.sequence_list
-        result_dict["time"] = self.trajectory_times
-        result_dict["trajectory"] = self.trajectory
+        result_dict["time"] = self.traj_times
+        result_dict["action_traj"] = self.action_traj
+        result_dict["ee_traj"] = self.ee_traj
 
         with open(self.result_path, "wb") as f:
             print(f"Saving the results to {self.result_path}")
@@ -683,21 +684,37 @@ class MuJoCoApp:
 
         dt = float(self.dt_entry.get())
         enabled = self.physics_enabled.get()
-        self.trajectory_times = np.array([t for t in np.arange(0, times[-1], dt)])
-        self.trajectory = []
-        for t in self.trajectory_times:
+        self.traj_times = np.array([t for t in np.arange(0, times[-1], dt)])
+        self.action_traj = []
+        self.ee_traj = []
+        for t in self.traj_times:
             if t < times[-1]:
-                self.trajectory.append(interpolate_action(t, times, action_arr))
+                motor_pos = interpolate_action(t, times, action_arr)
             else:
-                self.trajectory.append(action_arr[-1])
+                motor_pos = action_arr[-1]
+
+            self.sim.set_motor_angles(motor_pos)
+            self.sim.forward()
+
+            ee_pose_combined = []
+            for side in ["left", "right"]:
+                ee_pos = self.sim.data.site(f"{side}_ee_center").xpos.copy()
+                ee_quat = mat2quat(
+                    self.sim.data.site(f"{side}_ee_center").xmat.reshape(3, 3).copy()
+                )
+                ee_pose_combined.extend(ee_pos)
+                ee_pose_combined.extend(ee_quat)
+
+            self.action_traj.append(motor_pos)
+            self.ee_traj.append(np.array(ee_pose_combined, dtype=np.float32))
 
         self.sim.set_qpos(qpos_list[start_idx])
         self.sim.forward()
 
-        traj_start = int(np.searchsorted(self.trajectory_times, times[start_idx]))
+        traj_start = int(np.searchsorted(self.traj_times, times[start_idx]))
 
         for i, motor_target in enumerate(
-            tqdm(self.trajectory[traj_start:], desc="Displaying Trajectory")
+            tqdm(self.action_traj[traj_start:], desc="Displaying Trajectory")
         ):
             if not enabled:
                 self.sim.set_motor_angles(motor_target)

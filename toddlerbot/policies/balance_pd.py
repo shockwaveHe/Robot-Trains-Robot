@@ -1,6 +1,6 @@
 import platform
 import time
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, List
 
 import numpy as np
 import numpy.typing as npt
@@ -15,6 +15,8 @@ from toddlerbot.tools.joystick import Joystick
 from toddlerbot.utils.comm_utils import ZMQMessage, ZMQNode
 from toddlerbot.utils.math_utils import interpolate_action
 
+# from toddlerbot.utils.misc_utils import profile
+
 SYS_NAME = platform.system()
 
 
@@ -25,10 +27,10 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         robot: Robot,
         init_motor_pos: npt.NDArray[np.float32],
         joystick: Optional[Joystick] = None,
-        camera: Optional[Camera] = None,
+        cameras: Optional[List[Camera]] = None,
         zmq_receiver: Optional[ZMQNode] = None,
         zmq_sender: Optional[ZMQNode] = None,
-        ip: str = "127.0.0.1",
+        ip: str = "",
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
     ):
         super().__init__(name, robot, init_motor_pos)
@@ -79,12 +81,15 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         elif SYS_NAME != "Darwin":
             self.zmq_sender = ZMQNode(type="sender", ip=ip)
 
-        self.camera = None
-        if camera is not None:
-            self.camera = camera
+        self.left_eye = None
+        self.right_eye = None
+        if cameras is not None:
+            self.left_eye = cameras[0]
+            self.right_eye = cameras[1]
         elif SYS_NAME != "Darwin":
             try:
-                self.camera = Camera()
+                self.left_eye = Camera("left")
+                self.right_eye = Camera("right")
             except Exception:
                 pass
 
@@ -162,6 +167,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
     def get_arm_motor_pos(self, obs: Obs) -> npt.NDArray[np.float32]:
         return self.default_motor_pos[self.arm_motor_indices]
 
+    # @profile()
     def step(
         self, obs: Obs, is_real: bool = False
     ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
@@ -228,8 +234,8 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
             else:
                 print("\nstale message received, discarding")
 
-        if self.camera is not None:
-            jpeg_frame, self.camera_frame = self.camera.get_jpeg()
+        if self.left_eye is not None:
+            jpeg_frame, self.camera_frame = self.left_eye.get_jpeg()
         else:
             jpeg_frame = None
 
