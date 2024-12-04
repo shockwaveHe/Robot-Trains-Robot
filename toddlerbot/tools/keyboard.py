@@ -12,7 +12,8 @@ keyboard_actions = {
     "walk_y_delta": None,
     "stop": None,
     "speed_delta": None,
-    "force_delta": None
+    "force_delta": None,
+    "z_pos_delta": None,
 }
 
 
@@ -44,6 +45,7 @@ class Keyboard:
         self.key_inputs["force_delta"] = 0.0
         self.key_inputs["walk_x_delta"] = 0.0
         self.key_inputs["walk_y_delta"] = 0.0
+        self.key_inputs["z_pos_delta"] = 0.0
         self.key_inputs["stop"] = False
 
     def on_press(self, key):
@@ -51,15 +53,15 @@ class Keyboard:
         print(f"{key} pressed!")
 
         try:
-            if key == keyboard.Key.right:
+            if key == keyboard.KeyCode.from_char("6"):
                 print('change speed delta to 1.0')
                 self.key_inputs["speed_delta"] = 1.0
-            elif key == keyboard.Key.left:
+            elif key == keyboard.KeyCode.from_char("4"):
                 print('change speed delta to -1.0')
                 self.key_inputs["speed_delta"] = -1.0
-            elif key == keyboard.Key.up:
+            elif key == keyboard.KeyCode.from_char("8"):
                 self.key_inputs["force_delta"] = 1.0
-            elif key == keyboard.Key.down:
+            elif key == keyboard.KeyCode.from_char("2"):
                 self.key_inputs["force_delta"] = -1.0
             elif key == keyboard.Key.esc:
                 # Signal the threads to stop
@@ -76,6 +78,10 @@ class Keyboard:
                 self.key_inputs["walk_y_delta"] = -0.01
             elif key.char == "d":
                 self.key_inputs["walk_y_delta"] = 0.01
+            elif key.char == "7":
+                self.key_inputs["z_pos_delta"] = -0.01
+            elif key.char == "9":
+                self.key_inputs["z_pos_delta"] = 0.01
         except AttributeError:
             # Handle special keys (if necessary)
             pass
