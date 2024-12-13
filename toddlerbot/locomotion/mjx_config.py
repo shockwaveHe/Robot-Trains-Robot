@@ -40,6 +40,8 @@ class MJXConfig:
         ang_vel: float = 1.0
         dof_pos: float = 1.0
         dof_vel: float = 0.05
+        ee_force: float = 1.0
+        ee_torque: float = 1.0
         euler: float = 1.0
         # height_measurements: float = 5.0
 
@@ -160,6 +162,11 @@ class MJXConfig:
         hang_force_decay_episodes: float = 200.0
         tendon_kp: float = 0.0
 
+    @gin.configurable
+    @dataclass
+    class FinetuneConfig:
+        buffer_size: int = 10_000_000
+
     def __init__(self):
         self.sim = self.SimConfig()
         self.obs = self.ObsConfig()
@@ -171,6 +178,7 @@ class MJXConfig:
         self.domain_rand = self.DomainRandConfig()
         self.noise = self.NoiseConfig()
         self.hang = self.HangConfig()
+        self.finetune = self.FinetuneConfig()
 
 
 if __name__ == "__main__":

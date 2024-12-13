@@ -156,7 +156,7 @@ class RealWorld(BaseSim):
         pass
 
     # @profile()
-    def get_observation(self, retries: int = 0):
+    def get_observation(self, retries: int = 0) -> Obs:
         results: Dict[str, Any] = {}
         futures: Dict[str, Any] = {}
         if self.has_dynamixel:
@@ -233,6 +233,9 @@ class RealWorld(BaseSim):
 
             self.executor.submit(self.dynamixel_controller.set_kp, dynamixel_kps)
 
+    def is_done(self, obs):
+        return super().is_done(obs)
+    
     def close(self):
         if self.has_dynamixel:
             self.executor.submit(self.dynamixel_controller.close_motors)

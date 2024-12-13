@@ -187,6 +187,7 @@ def evaluate(
     )
     make_policy = ppo_networks.make_inference_fn(ppo_network)
     policy_path = os.path.join("results", run_name, "best_policy")
+    # policy_path = os.path.join("toddlerbot", "policies", "checkpoints", "toddlerbot_walk_policy")
     if not os.path.exists(policy_path):
         policy_path = os.path.join("results", run_name, "policy")
 
@@ -227,7 +228,9 @@ def evaluate_batch(
     batch_size: int = 32,  # New parameter for batch size
 ):
     ppo_network = make_networks_factory(
-        env.obs_size, env.privileged_obs_size, env.action_size
+        env.obs_size, #  * env.num_obs_history? 
+        env.privileged_obs_size, #  * env.num_privileged_obs_history 
+        env.action_size
     )
     make_policy = ppo_networks.make_inference_fn(ppo_network)
     policy_path = os.path.join("results", run_name, "best_policy")
@@ -275,7 +278,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--robot",
         type=str,
-        default="toddlerbot_OP3",
+        default="toddlerbot",
         help="The name of the robot. Need to match the name in descriptions.",
     )
     parser.add_argument(

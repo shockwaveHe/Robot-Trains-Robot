@@ -58,7 +58,7 @@ class MJXEnv(PipelineEnv):
         self.add_noise = add_noise
         self.add_domain_rand = add_domain_rand
 
-        # TODO: eval in original environment
+        # eval in original environment
         if fixed_base:
             xml_path = find_robot_file_path(robot.name, suffix="_fixed_scene.xml")
         elif cfg.hang.init_hang_force > 0.0:
@@ -701,7 +701,7 @@ class MJXEnv(PipelineEnv):
         # jax.debug.print("step: {}", state.info["step"])
 
         state.info["command"] = jax.lax.cond(
-            state.info["step"] % self.resample_steps == 0,
+            state.info["step"] % self.resample_steps == 0, # TODO: set resample_steps to a large value, no last_command
             lambda: self._sample_command(cmd_rng, state.info["command"]),
             lambda: state.info["command"],
         )
@@ -1001,7 +1001,10 @@ class MJXEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ):
         """Reward for contact"""
-        reward = jnp.sum(info["stance_mask"] == info["state_ref"][-2:])
+        reward = jnp.sum(info["stance_mask"] == info["state_ref"][-2:]).astype(
+            jnp.float32
+        )
+        return reward
 
     def _reward_leg_motor_pos(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array

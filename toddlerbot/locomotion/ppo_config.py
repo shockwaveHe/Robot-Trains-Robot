@@ -7,8 +7,8 @@ import gin
 @gin.configurable
 @dataclass
 class PPOConfig:
-    policy_hidden_layer_sizes: Tuple[int, ...] = (512, 256, 128)
-    value_hidden_layer_sizes: Tuple[int, ...] = (512, 256, 128)
+    policy_hidden_layer_sizes: Tuple[int, ...] = (256, 256, 256)
+    value_hidden_layer_sizes: Tuple[int, ...] = (256, 256, 256)
     num_timesteps: int = 100_000_000
     num_evals: int = 1000
     episode_length: int = 1000

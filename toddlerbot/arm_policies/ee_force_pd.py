@@ -59,7 +59,7 @@ class EEForcePDArmPolicy(BaseArmPolicy, arm_policy_name="ee_force_pd"):
         # import ipdb; ipdb.set_trace()
         # the force the end-effector is applying to the toddlerbot in the world frame
         force_world_frame = (
-            self.arm_data.site(self.site_id).xmat.reshape(3, 3) @ obs.ee_force_data
+            self.arm_data.site(self.site_id).xmat.reshape(3, 3) @ obs.ee_force
         )
         error_force = self.target_force - force_world_frame
         # error_force[:2] = 0.0

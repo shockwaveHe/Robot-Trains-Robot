@@ -98,7 +98,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
             self.force = 0.0
             self.z_pos_delta = 0.0
             self.arm_shm.buf[:8] = struct.pack('d', self.force)
-            self.arm_shm.buf[8:] = struct.pack('d', self.z_pos_delta)
+            self.arm_shm.buf[8:16] = struct.pack('d', self.z_pos_delta)
             self.keyboard.close()
             control_inputs = {"walk_x": 0.0, "walk_y": 0.0, "walk_turn": 0.0}
             print("Stopping the system")
