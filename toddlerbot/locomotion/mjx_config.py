@@ -41,6 +41,8 @@ class MJXConfig:
         dof_pos: float = 1.0
         dof_vel: float = 0.05
         euler: float = 1.0
+        ee_force: float = 1.0
+        ee_torque: float = 1.0
         # height_measurements: float = 5.0
 
     @gin.configurable

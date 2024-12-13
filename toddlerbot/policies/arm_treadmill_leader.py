@@ -63,7 +63,20 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
             self.arm_shm = shared_memory.SharedMemory(name=shm_name, create=False, size=88)
         self.arm_shm.buf[:8] = struct.pack('d', self.force)
         self.arm_shm.buf[8:16] = struct.pack('d', self.z_pos_delta)
+        # TODO: put this logic and reset to realworld finetuning sim?
+        self.x_force_threshold = 0.5
+        self.treadmill_speed_kp = 1
+        self.arm_healty_ee_pos = np.array([0.0, 0.0])
+        self.arm_healty_ee_force_z = np.array([1.0, 20.0])
+        self.arm_healty_ee_force_xy = np.array([0.0, 5.0])
 
+    def update_speed(self, obs: Obs):
+        if obs.ee_force[0] > self.x_force_threshold:
+            print(f"about to add speed {self.treadmill_speed_kp * (obs.ee_force[0] - self.x_force_threshold)}")
+            # self.speed += self.treadmill_speed_kp * (obs.ee_force[0] - self.x_force_threshold)
+        elif obs.ee_force[0] < -self.x_force_threshold:
+            print(f"about to add speed {self.treadmill_speed_kp * (obs.ee_force[0] + self.x_force_threshold)}")
+            # self.speed += self.treadmill_speed_kp * (obs.ee_force[0] + self.x_force_threshold)
     # note: calibrate zero at: toddlerbot/tools/calibration/calibrate_zero.py --robot toddlerbot_arms
     # note: zero points can be accessed in config_motors.json
 
@@ -82,6 +95,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         control_inputs = {"walk_x": self.walk_x, "walk_y": self.walk_y, "walk_turn": 0.0}
 
         self.stopped = keyboard_inputs["stop"]
+        self.update_speed(obs)
         self.speed += keyboard_inputs["speed_delta"]
         self.force += keyboard_inputs["force_delta"]
         self.arm_shm.buf[:8] = struct.pack('d', self.force)
@@ -108,6 +122,9 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         msg = ZMQMessage(
             time=time.time(),
             control_inputs=control_inputs,
+            arm_force=obs.ee_force,
+            arm_torque=obs.ee_torque,
+            lin_vel=self.speed / 1000 # TODO: check if this is correct
         )
         # print(f"Sending: {msg}")
         print(f"Speed: {self.speed}, Force: {self.force}, Walk: ({self.walk_x}, {self.walk_y})")

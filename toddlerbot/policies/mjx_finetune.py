@@ -1,4 +1,5 @@
 import math
+import os
 import numpy as np
 from dataclasses import asdict
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -19,7 +20,7 @@ from numba import njit
 from toddlerbot.utils.comm_utils import ZMQNode
 
 class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
-    def __init__(self, robot: Robot, pretrained_path: Path, *args, **kwargs):
+    def __init__(self, robot: Robot, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.robot = robot
         self.ppo_networks = None
@@ -43,7 +44,6 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.zero_chance = self.cfg.commands.zero_chance
         self.turn_chance = self.cfg.commands.turn_chance
         self.train_cfg = PPOConfig()
-        self.pretrained_path = pretrained_path
         self.last_action = np.zeros(self.num_action)
         self.last_last_action = np.zeros(self.num_action)
         self.last_obs = None
@@ -70,8 +70,21 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             policy_hidden_layer_sizes=self.train_cfg.policy_hidden_layer_sizes,
             device="cuda" if torch.cuda.is_available() else "cpu",
         )
-        print(f"Loading pretrained model from {self.pretrained_path}")
-        jax_params = load_jax_params(self.pretrained_path)
+
+        if len(self.ckpt) > 0:
+            run_name = f"{self.robot.name}_{self.name}_ppo_{self.ckpt}"
+            policy_path = os.path.join("results", run_name, "best_policy")
+            if not os.path.exists(policy_path):
+                policy_path = os.path.join("results", run_name, "policy")
+        else:
+            policy_path = os.path.join(
+                "toddlerbot",
+                "policies",
+                "checkpoints",
+                f"{self.robot.name}_walk_policy",
+            )
+        print(f"Loading pretrained model from {policy_path}")
+        jax_params = load_jax_params(policy_path)
         load_jax_params_into_pytorch(self.ppo_networks.policy_network, jax_params[1]["params"])
 
         self.obs_history = np.zeros(self.num_obs_history * self.obs_size)
@@ -209,7 +222,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         # TODO: more things to reset?
         path_pos = np.zeros(3)
         # path_yaw = self.rng.uniform(low=0, high=2 * np.pi, size=(1,))
-        path_yaw = obs.torso_euler[2] # TODO: only change in a small range
+        path_yaw = obs.euler[2] # TODO: only change in a small range
         path_euler = np.array([0.0, 0.0, np.degrees(path_yaw)[0]])
         path_quat = euler2quat(path_euler) # TODO: verify usage, wxyz or xyzw?
         lin_vel = np.zeros(3)
@@ -227,7 +240,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.state_ref = np.asarray(self.motion_ref.get_state_ref(state_ref, 0.0, self.fixed_command))
 
     def is_done(self, obs: Obs) -> bool:
-        return obs.pos[2] < self.healthy_z_range[0] or obs.pos[2] > self.healthy_z_range[1]
+        pass # is done is handled in sim
     
     def step(self, obs:Obs, is_real:bool = False):
 
@@ -256,6 +269,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             control_inputs = self.control_inputs
         elif msg is not None and msg.control_inputs is not None:
             control_inputs = msg.control_inputs
+            obs.ee_force = msg.arm_force
+            obs.ee_torque = msg.arm_torque
+            obs.lin_vel = msg.lin_vel
 
         if len(control_inputs) == 0:
             command = self.fixed_command

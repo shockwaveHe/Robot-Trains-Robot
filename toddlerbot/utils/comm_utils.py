@@ -15,6 +15,9 @@ class ZMQMessage:
     action: Optional[npt.NDArray[np.float32]] = None
     fsr: Optional[npt.NDArray[np.float32]] = None
     camera_frame: Optional[npt.NDArray[np.uint8]] = None
+    arm_force: Optional[npt.NDArray[np.float32]] = None
+    arm_torque: Optional[npt.NDArray[np.float32]] = None
+    lin_vel: Optional[float] = None
 
 
 def sync_time(ip: str):

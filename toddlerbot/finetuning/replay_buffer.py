@@ -1,8 +1,9 @@
 import os
+import time
 import torch
 import numpy as np
 from tqdm import tqdm 
-from utils import CONST_EPS, RewardScaling, normalize
+from toddlerbot.finetuning.utils import CONST_EPS, RewardScaling, normalize
 from copy import deepcopy
 
 class OnlineReplayBuffer:
@@ -27,6 +28,7 @@ class OnlineReplayBuffer:
         self.rng = np.random.default_rng(seed=seed)
 
         self._size = 0
+        self.start_collection = False
 
 
     def store(
@@ -41,6 +43,9 @@ class OnlineReplayBuffer:
         done: bool
     ) -> None:
 
+        if not self.start_collection:
+            self.start_collection = True
+            self.init_time = time.time()
         self._obs[self._size] = s
         self._action[self._size] = a
         self._reward[self._size] = r
@@ -48,8 +53,9 @@ class OnlineReplayBuffer:
         self._next_action[self._size] = a_n
         self._privileged_obs[self._size] = s_p
         self._next_privileged_obs[self._size] = s_n_p
-        self._not_done[self._size] = done
+        self._not_done[self._size] = not done
         self._size += 1
+        print(f"Data size: {self._size}, Data fps: {self._size/(time.time() - self.init_time)}")
 
 
     def compute_return(
@@ -127,7 +133,7 @@ class OnlineReplayBuffer:
         self, batch_size: int
     ) -> tuple:
 
-        ind = self.rng.integers(0, int(self._size * self._percentage), size=batch_size)
+        ind = self.rng.integers(0, int(self._size), size=batch_size)
 
         return (
             torch.FloatTensor(self._obs[ind]).to(self._device),
