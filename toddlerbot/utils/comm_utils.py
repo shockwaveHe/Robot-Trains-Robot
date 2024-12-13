@@ -1,4 +1,5 @@
 import pickle
+import subprocess
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
@@ -14,6 +15,21 @@ class ZMQMessage:
     action: Optional[npt.NDArray[np.float32]] = None
     fsr: Optional[npt.NDArray[np.float32]] = None
     camera_frame: Optional[npt.NDArray[np.uint8]] = None
+
+
+def sync_time(ip: str):
+    assert len(ip) > 0, "IP address must be provided!"
+    try:
+        result = subprocess.run(
+            f"sudo ntpdate -u {ip}",
+            shell=True,
+            text=True,
+            check=True,
+            stdout=subprocess.PIPE,
+        )
+        print(result.stdout.strip())
+    except Exception:
+        print("Failed to sync time with the follower!")
 
 
 """

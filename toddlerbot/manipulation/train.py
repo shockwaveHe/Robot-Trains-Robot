@@ -1,6 +1,6 @@
 import argparse
 import os
-from datetime import datetime
+import time
 
 import numpy as np
 import torch
@@ -78,7 +78,9 @@ def main(dataset_path: str, ckpt_path: str):
 
     # create network object
     noise_pred_net = ConditionalUnet1D(
-        input_dim=action_dim, global_cond_dim=obs_dim * obs_horizon, down_dims=[128, 256, 384]
+        input_dim=action_dim,
+        global_cond_dim=obs_dim * obs_horizon,
+        down_dims=[128, 256, 384],
     )
 
     # the final arch has 2 parts
@@ -200,6 +202,19 @@ def main(dataset_path: str, ckpt_path: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process raw data to create dataset.")
     parser.add_argument(
+        "--robot",
+        type=str,
+        default="toddlerbot",
+        help="The name of the robot. Need to match the name in descriptions.",
+        choices=["toddlerbot", "toddlerbot_gripper"],
+    )
+    parser.add_argument(
+        "--task",
+        type=str,
+        default="hug",
+        help="The manipulation task.",
+    )
+    parser.add_argument(
         "--time-str",
         type=str,
         default="",
@@ -208,9 +223,14 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     dataset_path = os.path.join("datasets", f"teleop_dataset_{args.time_str}.lz4")
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+
+    time_str = time.strftime("%Y%m%d_%H%M%S")
     ckpt_path = os.path.join(
-        "toddlerbot", "policies", "checkpoints", f"teleop_model_{timestamp}.pth"
+        "toddlerbot",
+        "policies",
+        "checkpoints",
+        f"{args.robot}_{args.task}_{time_str}_dp.pth",
     )
     print(ckpt_path)
+
     main(dataset_path, ckpt_path)

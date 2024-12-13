@@ -457,6 +457,7 @@ class MuJoCoApp:
         result_dict["time"] = self.traj_times
         result_dict["action_traj"] = self.action_traj
         result_dict["ee_traj"] = self.ee_traj
+        result_dict["root_traj"] = self.root_traj
 
         with open(self.result_path, "wb") as f:
             print(f"Saving the results to {self.result_path}")
@@ -515,7 +516,17 @@ class MuJoCoApp:
         if "default" in new_keyframe.name:
             new_keyframe.name = motion_name
 
-        new_keyframe.index = self.keyframes[-1].index + 1
+        unique_index = 1
+        keyframe_indices = []
+        for keyframe in self.keyframes:
+            if keyframe.name == new_keyframe.name:
+                keyframe_indices.append(keyframe.index)
+
+        # Find the minimum unique index
+        while unique_index in keyframe_indices:
+            unique_index += 1
+
+        new_keyframe.index = unique_index
         self.keyframes.append(new_keyframe)
         self.keyframe_listbox.insert(
             tk.END, f"{new_keyframe.name} {new_keyframe.index}"
@@ -686,15 +697,31 @@ class MuJoCoApp:
         enabled = self.physics_enabled.get()
         self.traj_times = np.array([t for t in np.arange(0, times[-1], dt)])
         self.action_traj = []
-        self.ee_traj = []
         for t in self.traj_times:
             if t < times[-1]:
                 motor_pos = interpolate_action(t, times, action_arr)
             else:
                 motor_pos = action_arr[-1]
 
-            self.sim.set_motor_angles(motor_pos)
-            self.sim.forward()
+            self.action_traj.append(motor_pos)
+
+        self.sim.set_qpos(qpos_list[start_idx])
+        self.sim.forward()
+
+        traj_start = int(np.searchsorted(self.traj_times, times[start_idx]))
+
+        self.ee_traj = []
+        self.root_traj = []
+        for i, motor_target in enumerate(
+            tqdm(self.action_traj[traj_start:], desc="Displaying Trajectory")
+        ):
+            t1 = time.time()
+            if not enabled:
+                self.sim.set_motor_angles(motor_target)
+                self.sim.forward()
+            else:
+                self.sim.set_motor_target(motor_target)
+                self.sim.step()
 
             ee_pose_combined = []
             for side in ["left", "right"]:
@@ -705,25 +732,13 @@ class MuJoCoApp:
                 ee_pose_combined.extend(ee_pos)
                 ee_pose_combined.extend(ee_quat)
 
-            self.action_traj.append(motor_pos)
             self.ee_traj.append(np.array(ee_pose_combined, dtype=np.float32))
+            self.root_traj.append(self.sim.data.qpos[:7])
 
-        self.sim.set_qpos(qpos_list[start_idx])
-        self.sim.forward()
+            t2 = time.time()
 
-        traj_start = int(np.searchsorted(self.traj_times, times[start_idx]))
-
-        for i, motor_target in enumerate(
-            tqdm(self.action_traj[traj_start:], desc="Displaying Trajectory")
-        ):
-            if not enabled:
-                self.sim.set_motor_angles(motor_target)
-                self.sim.forward()
-            else:
-                self.sim.set_motor_target(motor_target)
-                self.sim.step()
-
-            self.root.after(int(dt * 1000))
+            if dt - (t2 - t1) > 0:
+                self.root.after(int((dt - (t2 - t1)) * 1000))
 
 
 if __name__ == "__main__":

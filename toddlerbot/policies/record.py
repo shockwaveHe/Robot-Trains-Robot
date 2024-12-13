@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -18,7 +18,7 @@ class RecordPolicy(BalancePDPolicy, policy_name="record"):
         robot: Robot,
         init_motor_pos: npt.NDArray[np.float32],
         joystick: Optional[Joystick] = None,
-        camera: Optional[Camera] = None,
+        cameras: Optional[List[Camera]] = None,
         zmq_receiver: Optional[ZMQNode] = None,
         zmq_sender: Optional[ZMQNode] = None,
         ip: str = "",
@@ -29,7 +29,7 @@ class RecordPolicy(BalancePDPolicy, policy_name="record"):
             robot,
             init_motor_pos,
             joystick,
-            camera,
+            cameras,
             zmq_receiver,
             zmq_sender,
             ip,

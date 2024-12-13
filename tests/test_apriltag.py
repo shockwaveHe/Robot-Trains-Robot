@@ -4,8 +4,6 @@ import numpy as np
 
 from toddlerbot.sensing.camera import Camera, AprilTagDetector
 
-from toddlerbot.sensing.camera import Camera
-
 
 def visualize(ax, averaged_poses, T_left, T_right, frame_id):
     """

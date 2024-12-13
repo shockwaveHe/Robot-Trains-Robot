@@ -1,6 +1,8 @@
+import os
 import time
 from typing import Dict, Optional, Tuple
 
+import joblib
 import numpy as np
 import numpy.typing as npt
 
@@ -21,6 +23,7 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
         init_motor_pos: npt.NDArray[np.float32],
         joystick: Optional[Joystick] = None,
         ip: str = "",
+        prep: str = "",
     ):
         super().__init__(name, robot, init_motor_pos)
 
@@ -45,12 +48,37 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
         self.reset_end_time = 1.0
         self.reset_time = None
 
+        self.is_prepared = False
+
+        if len(prep) > 0:
+            motion_file_path = os.path.join("toddlerbot", "motion", f"{prep}.pkl")
+            if os.path.exists(motion_file_path):
+                data_dict = joblib.load(motion_file_path)
+            else:
+                raise ValueError(f"No data files found in {motion_file_path}")
+
+            self.prep_motor_pos = np.array(data_dict["action_traj"], dtype=np.float32)[
+                -1
+            ][16:30]  # hard coded for toddlerbot_arms
+        else:
+            self.prep_motor_pos = self.default_motor_pos.copy()
+
     # note: calibrate zero at: toddlerbot/tools/calibration/calibrate_zero.py --robot toddlerbot_arms
     # note: zero points can be accessed in config_motors.json
 
     def step(
         self, obs: Obs, is_real: bool = False
     ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
+        if not self.is_prepared:
+            self.is_prepared = True
+            self.prep_duration = 2.0
+            self.prep_time, self.prep_action = self.move(
+                -self.control_dt,
+                self.init_motor_pos,
+                self.prep_motor_pos,
+                self.prep_duration,
+            )
+
         if obs.time < self.prep_duration:
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
@@ -75,7 +103,7 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
                     self.is_button_pressed = False  # Reset button pressed state
 
         fsrL, fsrR = 0.0, 0.0
-        action = self.default_motor_pos.copy()
+        action = self.prep_motor_pos.copy()
         if self.is_running:
             action = obs.motor_pos
             if self.fsr is not None:
@@ -88,7 +116,7 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
                 self.reset_time, self.reset_action = self.move(
                     obs.time - self.control_dt,
                     obs.motor_pos,
-                    self.default_motor_pos,
+                    self.prep_motor_pos,
                     self.reset_duration,
                     end_time=self.reset_end_time,
                 )

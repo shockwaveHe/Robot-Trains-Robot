@@ -23,6 +23,7 @@ from toddlerbot.arm_policies import (
 from toddlerbot.policies import BasePolicy, get_policy_class, get_policy_names
 from toddlerbot.policies.balance_pd import BalancePDPolicy
 from toddlerbot.policies.calibrate import CalibratePolicy
+from toddlerbot.policies.dp_policy import DPPolicy
 from toddlerbot.policies.mjx_policy import MJXPolicy
 from toddlerbot.policies.record import RecordPolicy
 from toddlerbot.policies.replay import ReplayPolicy
@@ -35,6 +36,7 @@ from toddlerbot.sim.arm_toddler_sim import ArmToddlerSim
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.real_world import RealWorld
 from toddlerbot.sim.robot import Robot
+from toddlerbot.utils.comm_utils import sync_time
 from toddlerbot.utils.misc_utils import dump_profiling_data, log, snake2camel
 from toddlerbot.visualization.vis_plot import (
     plot_control_inputs,
@@ -580,6 +582,13 @@ if __name__ == "__main__":
         help="The ip address of the follower.",
     )
     parser.add_argument(
+        "--prep",
+        type=str,
+        default="manipulate",
+        choices=["manipulate", "kneel"],
+        help="The ip address of the follower.",
+    )
+    parser.add_argument(
         "--hang-force",
         type=float,
         default=0.0,
@@ -637,6 +646,8 @@ if __name__ == "__main__":
 
     # t2 = time.time()
 
+    # t2 = time.time()
+
     PolicyClass = get_policy_class(args.policy.replace("_fixed", ""))
     ArmPolicyClass = get_arm_policy_class(args.arm_policy)
 
@@ -658,35 +669,45 @@ if __name__ == "__main__":
             for gain_name in ["kp_real", "kd_real", "kff1_real", "kff2_real"]:
                 robot.config["joints"][motor_name][gain_name] = 0.0
 
-        policy = PolicyClass(args.policy, robot, init_motor_pos, ip=args.ip)  # type: ignore
+        policy = PolicyClass(
+            args.policy, robot, init_motor_pos, ip=args.ip, prep=args.prep
+        )  # type: ignore
 
-    elif issubclass(PolicyClass, BalancePDPolicy) or "follower" in args.policy or "teleop_joystick" in args.policy:
+    elif "follower" in args.policy:
         # Run the command
-        try:
-            result = subprocess.run(
-                f"sudo ntpdate -u {args.ip}",
-                shell=True,
-                text=True,
-                check=True,
-                stdout=subprocess.PIPE,
-            )
-            print(result.stdout.strip())
-        except Exception:
-            print("Failed to sync time with the leader!")
+        if len(args.ip) > 0:
+            sync_time(args.ip)
 
+        policy = PolicyClass(
+            args.policy, robot, init_motor_pos, ip=args.ip, prep=args.prep
+        )  # type: ignore
+
+    elif "joystick" in args.policy:
+        if len(args.ip) > 0:
+            sync_time(args.ip)
+
+        policy = PolicyClass(  # type: ignore
+            args.policy, robot, init_motor_pos, ckpt=args.ckpt, ip=args.ip
+        )
+
+    elif issubclass(PolicyClass, MJXPolicy):
         fixed_command = None
         if len(args.command) > 0:
             fixed_command = np.array(args.command.split(" "), dtype=np.float32)
 
-        policy = PolicyClass(  # type: ignore
-            args.policy,
-            robot,
-            init_motor_pos,
-            ip=args.ip,
-            fixed_command=fixed_command,
+        # TODO: no args.ip?
+        policy = PolicyClass(
+            args.policy, robot, init_motor_pos, args.ckpt, fixed_command=fixed_command
         )
 
-    elif issubclass(PolicyClass, MJXPolicy):
+    elif issubclass(PolicyClass, DPPolicy):
+        policy = PolicyClass(args.policy, robot, init_motor_pos, args.ckpt, prep=args.prep)
+
+    elif issubclass(PolicyClass, BalancePDPolicy):
+        # Run the command
+        if len(args.ip) > 0:
+            sync_time(args.ip)
+
         fixed_command = None
         if len(args.command) > 0:
             fixed_command = np.array(args.command.split(" "), dtype=np.float32)

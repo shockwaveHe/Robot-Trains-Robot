@@ -62,6 +62,8 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             list(robot.default_joint_angles.values()), dtype=np.float32
         )
 
+        self.action_scale = cfg.action.action_scale
+        self.n_steps_delay = cfg.action.n_steps_delay
         self.action_parts = cfg.action.action_parts
         self.motor_limits = np.array(
             [robot.joint_limits[name] for name in robot.motor_ordering]
@@ -103,12 +105,6 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             daemon=True,
         )
         self.warmup_thread.start()
-
-        self.phase_signal = np.zeros(2, dtype=np.float32)
-        self.action_scale = cfg.action.action_scale
-        self.n_steps_delay = cfg.action.n_steps_delay
-        self.is_standing = True
-        self.command_list: List[npt.NDArray[np.float32]] = []
 
         self.joystick = joystick
         if joystick is None:
@@ -192,7 +188,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         #     ]
         # )
         self.obs_history = np.zeros(self.obs_history_size, dtype=np.float32)
-
+        self.phase_signal = np.zeros(2, dtype=np.float32)
         self.is_standing = True
         self.command_list = []
         self.last_action = np.zeros(self.num_action, dtype=np.float32)
@@ -256,7 +252,8 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         motor_pos_delta = obs.motor_pos - self.default_motor_pos
         # motor_pos_error = obs.motor_pos - self.state_ref[13 : 13 + self.robot.nu]
         # obs.ang_vel[0] *= 0.5
-        print(command)
+        # obs.ang_vel += np.random.normal(0.0, 0.5, 3)
+
         obs_arr = np.concatenate(
             [
                 self.phase_signal,
@@ -274,15 +271,15 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         self.obs_history = np.roll(self.obs_history, obs_arr.size)
         self.obs_history[: obs_arr.size] = obs_arr
 
-        if np.any(np.abs(obs.euler) > np.pi):
-            euler_delta = obs.euler - ((obs.euler + np.pi) % (2 * np.pi) - np.pi)
-            obs_history_reshape = self.obs_history.reshape(-1, obs_arr.size).copy()
-            obs_history_reshape[:, -3:] -= euler_delta
-            obs_history = obs_history_reshape.flatten()
-        else:
-            obs_history = self.obs_history
+        # if np.any(np.abs(obs.euler) > np.pi):
+        #     euler_delta = obs.euler - ((obs.euler + np.pi) % (2 * np.pi) - np.pi)
+        #     obs_history_reshape = self.obs_history.reshape(-1, obs_arr.size).copy()
+        #     obs_history_reshape[:, -3:] -= euler_delta
+        #     obs_history = obs_history_reshape.flatten()
+        # else:
+        # obs_history = self.obs_history
 
-        jit_action, _ = self.jit_inference_fn(jnp.asarray(obs_history), self.rng)
+        jit_action, _ = self.jit_inference_fn(jnp.asarray(self.obs_history), self.rng)
 
         action = np.asarray(jit_action, dtype=np.float32).copy()
         if is_real:
@@ -293,7 +290,6 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             delayed_action = self.action_buffer[-self.num_action :]
 
         action_target = self.default_action + self.action_scale * delayed_action
-        self.last_action_target = action_target.copy()
 
         # motor_target = self.state_ref[13 : 13 + self.robot.nu].copy()
         motor_target = self.default_motor_pos.copy()

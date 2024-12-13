@@ -12,10 +12,10 @@ action: (N, na)
 
 import argparse
 import os
+from typing import List
 
 import cv2
 import joblib
-import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
@@ -43,7 +43,7 @@ def load_single_seq(dataset_path: str):
     )
     raw_data_converted["images"] = raw_data["image"]
     # raw_data_converted["episode_ends"] = raw_data["episode_ends"]
-    raw_data_converted["episode_ends"] = [raw_data_converted["state_array"].shape[0]]
+    raw_data_converted["episode_ends"] = [raw_data_converted["state_array"].shape[0]]  # type: ignore
     raw_data_converted["start_time"] = raw_data["start_time"]
 
     print(raw_data.keys())
@@ -85,16 +85,16 @@ def load_raw_dataset(dataset_path: str, debug=True):
         blank_frames = np.zeros((20, height, width, 3), dtype=np.uint8)
         frames = np.concatenate([frames, blank_frames], axis=0)
 
-        frames = [
+        frame_list = [
             Image.fromarray(frame.astype("uint8")).resize(
                 new_size, Image.Resampling.LANCZOS
             )
             for frame in frames
         ]
-        frames[0].save(
-            "/home/weizhuo2/test.gif",
+        frame_list[0].save(
+            "test.gif",
             save_all=True,
-            append_images=frames[1:],
+            append_images=frame_list[1:],
             fps=30,
             loop=0,
             optimize=True,
@@ -179,12 +179,15 @@ def main(dataset_path: str, output_path: str):
         last_idx = idx
 
     output_dataset["episode_ends"] = raw_data["episode_ends"]
-    output_dataset["action"] = action_list
-    output_dataset["action"] = np.vstack(output_dataset["action"]).astype(np.float32)
+    # output_dataset["action"] = action_list
+    output_dataset["action"] = np.vstack(action_list).astype(np.float32)
 
     # remove the idle time in each sequence
     last_idx = 0
-    temp_dict = {"agent_pos": [], "action": [], "images": [], "episode_ends": []}
+    agent_pos_list = []
+    action_list = []
+    image_list = []
+    episode_ends_list: List[int] = []
     for idx in output_dataset["episode_ends"]:
         seq_agent_pos = output_dataset["agent_pos"][last_idx:idx]
         seq_action = output_dataset["action"][last_idx:idx]
@@ -196,23 +199,21 @@ def main(dataset_path: str, output_path: str):
         seq_action = seq_action[idle_idx:]
         seq_image = seq_image[idle_idx:]
 
-        temp_dict["agent_pos"].append(seq_agent_pos)
-        temp_dict["action"].append(seq_action)
-        temp_dict["images"].append(seq_image)
-        if len(temp_dict["episode_ends"]) == 0:
-            temp_dict["episode_ends"].append(seq_agent_pos.shape[0])
+        agent_pos_list.append(seq_agent_pos)
+        action_list.append(seq_action)
+        image_list.append(seq_image)
+        if len(episode_ends_list) == 0:
+            episode_ends_list.append(seq_agent_pos.shape[0])
         else:
-            temp_dict["episode_ends"].append(
-                temp_dict["episode_ends"][-1] + seq_agent_pos.shape[0]
-            )
+            episode_ends_list.append(episode_ends_list[-1] + seq_agent_pos.shape[0])
 
         last_idx = idx
 
-    temp_dict["images"] = np.vstack(temp_dict["images"])
-    temp_dict["agent_pos"] = np.vstack(temp_dict["agent_pos"])
-    temp_dict["action"] = np.vstack(temp_dict["action"])
-
-    output_dataset = temp_dict
+    output_dataset = {}
+    output_dataset["images"] = np.vstack(image_list)
+    output_dataset["agent_pos"] = np.vstack(agent_pos_list)
+    output_dataset["action"] = np.vstack(action_list)
+    output_dataset["episode_ends"] = np.array(episode_ends_list)
 
     joblib.dump(output_dataset, output_path)
 
@@ -229,7 +230,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--time-str",
         type=str,
-        default="",
+        default="20241210_231952",
         help="The time str of the dataset.",
     )
     args = parser.parse_args()

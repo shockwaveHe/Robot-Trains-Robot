@@ -1,3 +1,5 @@
+import platform
+
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List
 
@@ -37,6 +39,8 @@ class RealWorld(BaseSim):
     def initialize(self) -> None:
         self.executor = ThreadPoolExecutor()
 
+        os_type = platform.system()
+
         future_imu = None
         if self.has_imu:
             from toddlerbot.sensing.IMU import IMU
@@ -50,7 +54,13 @@ class RealWorld(BaseSim):
                 DynamixelController,
             )
 
-            dynamixel_ports: List[str] = find_ports("USB <-> Serial Converter")
+            description = (
+                "USB Serial Port"
+                if os_type == "Windows"
+                else "USB <-> Serial Converter"
+            )
+
+            dynamixel_ports: List[str] = find_ports(description)
 
             dynamixel_ids = self.robot.get_joint_attrs("type", "dynamixel", "id")
             dynamixel_config = DynamixelConfig(

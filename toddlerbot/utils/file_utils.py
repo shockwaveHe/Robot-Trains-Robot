@@ -1,4 +1,5 @@
 import os
+import platform
 import xml.dom.minidom
 import xml.etree.ElementTree as ET
 from typing import List, Optional
@@ -63,10 +64,15 @@ def combine_images(image1_path: str, image2_path: str, output_path: str):
 def find_ports(target: str) -> List[str]:
     ports = list(list_ports.comports())
     target_ports: List[str] = []
+
+    os_type = platform.system()
+
     for port, desc, hwid in ports:
         # Adjust the condition below according to your board's unique identifier or pattern
         if target in desc:
-            port = port.replace("cu", "tty")
+            if os_type != "Windows":
+                port = port.replace("cu", "tty")
+
             log(
                 f"Found {target} board: {port} - {desc} - {hwid}",
                 header="FileUtils",

@@ -350,16 +350,16 @@ def compute_disparity_and_point_cloud(
 
     # cv2.destroyAllWindows()
 
-    numDisparities = 16 * 4  # Adjust for your scene
+    numDisparities = 208  # Adjust for your scene
     stereo = cv2.StereoSGBM_create(
-        minDisparity=0,
+        minDisparity=16,
         numDisparities=numDisparities,
-        blockSize=7,
+        blockSize=15,
         P1=8 * 3 * 7**2,
         P2=32 * 3 * 7**2,
         disp12MaxDiff=1,
         uniquenessRatio=10,  # Increase for more unique matches
-        speckleWindowSize=100,
+        speckleWindowSize=10,
         speckleRange=2,
     )
     # stereo = cv2.StereoBM_create(numDisparities=numDisparities, blockSize=13)
@@ -497,59 +497,59 @@ if __name__ == "__main__":
         with open(calib_params_path, "wb") as f:
             pickle.dump(calib_params, f)
 
-    # if args.rectify:
-    #     with open(calib_params_path, "rb") as f:
-    #         calib_params = pickle.load(f)
+    if args.rectify:
+        with open(calib_params_path, "rb") as f:
+            calib_params = pickle.load(f)
 
-    #     left_image = cv2.imread(os.path.join(exp_folder_path, "left_00.png"))
-    #     right_image = cv2.imread(os.path.join(exp_folder_path, "right_00.png"))
-    #     K1, D1, K2, D2, R, T = (
-    #         calib_params["K1"],
-    #         calib_params["D1"],
-    #         calib_params["K2"],
-    #         calib_params["D2"],
-    #         calib_params["R"],
-    #         calib_params["T"],
-    #     )
-    #     R1, R2, P1, P2, Q = rectify_stereo(
-    #         K1, D1, K2, D2, R, T, image_size, left_image, right_image
-    #     )
+        left_image = cv2.imread(os.path.join(exp_folder_path, "left_00.png"))
+        right_image = cv2.imread(os.path.join(exp_folder_path, "right_00.png"))
+        K1, D1, K2, D2, R, T = (
+            calib_params["K1"],
+            calib_params["D1"],
+            calib_params["K2"],
+            calib_params["D2"],
+            calib_params["R"],
+            calib_params["T"],
+        )
+        R1, R2, P1, P2, Q = rectify_stereo(
+            K1, D1, K2, D2, R, T, image_size, left_image, right_image
+        )
 
-    #     rec_params = {
-    #         "R1": R1,
-    #         "R2": R2,
-    #         "P1": P1,
-    #         "P2": P2,
-    #         "Q": Q,
-    #     }
+        rec_params = {
+            "R1": R1,
+            "R2": R2,
+            "P1": P1,
+            "P2": P2,
+            "Q": Q,
+        }
 
-    #     with open(rec_params_path, "wb") as f:
-    #         pickle.dump(rec_params, f)
+        with open(rec_params_path, "wb") as f:
+            pickle.dump(rec_params, f)
 
-    # if args.pointcloud:
-    #     with open(calib_params_path, "rb") as f:
-    #         calib_params = pickle.load(f)
+    if args.pointcloud:
+        with open(calib_params_path, "rb") as f:
+            calib_params = pickle.load(f)
 
-    #     with open(rec_params_path, "rb") as f:
-    #         rec_params = pickle.load(f)
+        with open(rec_params_path, "rb") as f:
+            rec_params = pickle.load(f)
 
-    #     K1, D1, K2, D2, R, T = (
-    #         calib_params["K1"],
-    #         calib_params["D1"],
-    #         calib_params["K2"],
-    #         calib_params["D2"],
-    #         calib_params["R"],
-    #         calib_params["T"],
-    #     )
+        K1, D1, K2, D2, R, T = (
+            calib_params["K1"],
+            calib_params["D1"],
+            calib_params["K2"],
+            calib_params["D2"],
+            calib_params["R"],
+            calib_params["T"],
+        )
 
-    #     R1 = rec_params["R1"]
-    #     R2 = rec_params["R2"]
-    #     P1 = rec_params["P1"]
-    #     P2 = rec_params["P2"]
-    #     Q = rec_params["Q"]
+        R1 = rec_params["R1"]
+        R2 = rec_params["R2"]
+        P1 = rec_params["P1"]
+        P2 = rec_params["P2"]
+        Q = rec_params["Q"]
 
-    #     left_image = cv2.imread(os.path.join(exp_folder_path, "left_test_00.png"))
-    #     right_image = cv2.imread(os.path.join(exp_folder_path, "right_test_00.png"))
-    #     compute_disparity_and_point_cloud(
-    #         K1, D1, K2, D2, R1, R2, P1, P2, Q, image_size, left_image, right_image
-    #     )
+        left_image = cv2.imread(os.path.join(exp_folder_path, "left_test_00.png"))
+        right_image = cv2.imread(os.path.join(exp_folder_path, "right_test_00.png"))
+        compute_disparity_and_point_cloud(
+            K1, D1, K2, D2, R1, R2, P1, P2, Q, image_size, left_image, right_image
+        )

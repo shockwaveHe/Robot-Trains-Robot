@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -24,7 +24,7 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
         robot: Robot,
         init_motor_pos: npt.NDArray[np.float32],
         ip: str,
-        fixed_command: Optional[npt.NDArray[np.float32]] = None,
+        ckpt: str = "",
     ):
         super().__init__(name, robot, init_motor_pos)
 
@@ -46,7 +46,7 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
             pass
 
         self.walk_policy = WalkPolicy(
-            "walk", robot, init_motor_pos, joystick=self.joystick
+            "walk", robot, init_motor_pos, ckpt=ckpt, joystick=self.joystick
         )
         balance_kwargs: Dict[str, Any] = dict(
             joystick=self.joystick,
@@ -54,7 +54,6 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
             zmq_receiver=self.zmq_receiver,
             zmq_sender=self.zmq_sender,
             ip=ip,
-            fixed_command=fixed_command,
         )
         self.teleop_policy = TeleopFollowerPDPolicy(
             "teleop_follower_pd", robot, init_motor_pos, **balance_kwargs
@@ -107,10 +106,11 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
         policy_curr = max(command_scale, key=command_scale.get)  # type: ignore
         if policy_curr != self.policy_prev:
             last_policy = self.policies[self.policy_prev]
+            curr_policy = self.policies[policy_curr]
             is_reset_mask = np.abs((obs.motor_pos - self.default_motor_pos)) < 0.1
 
             policy_type_differs = isinstance(last_policy, MJXPolicy) != isinstance(
-                self.policies[policy_curr], MJXPolicy
+                curr_policy, MJXPolicy
             )
 
             if (
@@ -128,6 +128,7 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
                     self.reset_policy.is_button_pressed = True
 
                     last_policy.reset()
+                    curr_policy.reset()
 
         if self.need_reset:
             policy_curr = "reset"

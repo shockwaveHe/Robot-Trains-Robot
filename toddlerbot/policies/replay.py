@@ -30,10 +30,10 @@ class ReplayPolicy(BasePolicy, policy_name="replay"):
                 raise ValueError(f"No data files found in {motion_file_path}")
 
             self.time_arr = np.array(data_dict["time"])
-            self.action_arr = np.array(data_dict["trajectory"], dtype=np.float32)
+            self.action_arr = np.array(data_dict["action_traj"], dtype=np.float32)
         else:
             # Use glob to find all pickle files matching the pattern
-            dataset_file_path = os.path.join("results", run_name, "dataset.lz4")
+            dataset_file_path = os.path.join("results", run_name, "toddlerbot_0.lz4")
             pickle_file_path = os.path.join("results", run_name, "log_data.pkl")
 
             if os.path.exists(dataset_file_path):
@@ -86,18 +86,15 @@ class ReplayPolicy(BasePolicy, policy_name="replay"):
     def convert_dataset(self, data_dict: Dict):
         # convert the dataset to the correct format
         # dataset is assumed to be logged on toddlerbot_arms
-
         converted_dict: Dict[str, List] = {"obs_list": [], "motor_angles_list": []}
-        for i in range(data_dict["state_array"].shape[0]):
-            motor_angles = {}
+        for i in range(data_dict["time"].shape[0]):
             obs = Obs(
-                time=data_dict["state_array"][i, 0],
+                time=data_dict["time"][i],
                 motor_pos=np.zeros(14, dtype=np.float32),
                 motor_vel=np.zeros(14, dtype=np.float32),
                 motor_tor=np.zeros(14, dtype=np.float32),
             )
-            for j, jname in enumerate(self.robot.joint_ordering):
-                motor_angles[jname] = data_dict["state_array"][i, j + 1]
+            motor_angles = dict(zip(self.robot.motor_ordering, data_dict["motor_pos"][i]))
 
             converted_dict["obs_list"].append(obs)
             converted_dict["motor_angles_list"].append(motor_angles)

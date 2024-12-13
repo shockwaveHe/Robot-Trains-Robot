@@ -437,9 +437,9 @@
     <flag eulerdamp="disable"/>
   </option>
   <equality>
-    <joint joint1="neck_yaw_driven" joint2="neck_yaw_drive" polycoef="0 -0.722222 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1"/>
-    <joint joint1="left_hip_yaw_driven" joint2="left_hip_yaw_drive" polycoef="0 -0.904762 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1"/>
-    <joint joint1="right_hip_yaw_driven" joint2="right_hip_yaw_drive" polycoef="0 -0.904762 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1"/>
+    <joint joint1="neck_yaw_driven" joint2="neck_yaw_drive" polycoef="0 -0.909091 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1"/>
+    <joint joint1="left_hip_yaw_driven" joint2="left_hip_yaw_drive" polycoef="0 -0.857143 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1"/>
+    <joint joint1="right_hip_yaw_driven" joint2="right_hip_yaw_drive" polycoef="0 -0.857143 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1"/>
     <joint joint1="left_sho_yaw_driven" joint2="left_sho_yaw_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1"/>
     <joint joint1="left_elbow_yaw_driven" joint2="left_elbow_yaw_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1"/>
     <joint joint1="left_wrist_pitch_driven" joint2="left_wrist_pitch_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1"/>

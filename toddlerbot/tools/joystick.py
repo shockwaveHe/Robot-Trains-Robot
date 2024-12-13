@@ -1,5 +1,6 @@
 import contextlib
 import os
+import platform
 from enum import Enum
 from typing import Dict
 
@@ -7,7 +8,9 @@ import numpy as np
 
 from toddlerbot.locomotion.mjx_config import get_env_config
 
-os.environ["SDL_VIDEODRIVER"] = "dummy"
+os_type = platform.system()
+if os_type != "Windows":
+    os.environ["SDL_VIDEODRIVER"] = "dummy"
 
 with contextlib.redirect_stdout(None):
     import pygame
@@ -44,6 +47,30 @@ class DeckButton(Enum):
     R4 = 21
     L5 = 22
     R5 = 23
+
+
+class AsusAxis(Enum):
+    LEFT_JOYSTICK_VERTICAL = 1
+    LEFT_JOYSTICK_HORIZONTAL = 0
+    RIGHT_JOYSTICK_VERTICAL = 3
+    RIGHT_JOYSTICK_HORIZONTAL = 2
+    L2 = 4
+    R2 = 5
+
+
+class AsusButton(Enum):
+    A = 0
+    B = 1
+    X = 2
+    Y = 3
+    L1 = 4
+    R1 = 5
+    VIEW = 6
+    MENU = 7
+    DPAD_UP = (0, 1)
+    DPAD_DOWN = (0, -1)
+    DPAD_LEFT = (-1, 0)
+    DPAD_RIGHT = (1, 0)
 
 
 class XboxAxis(Enum):
@@ -165,6 +192,12 @@ class Joystick:
                 print("Detected: Steam Deck Controller")
                 self.axis_mapping = DeckAxis
                 self.button_mapping = DeckButton
+                self.joystick = joystick
+                break
+            elif "asus" in device_name:
+                print("Detected: Asus Controller")
+                self.axis_mapping = AsusAxis
+                self.button_mapping = AsusButton
                 self.joystick = joystick
                 break
             else:

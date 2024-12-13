@@ -22,6 +22,7 @@ class WalkPolicy(MJXPolicy, policy_name="walk"):
     ):
         env_cfg = get_env_config("walk")
         self.cycle_time = env_cfg.action.cycle_time
+        self.command_discount_factor = np.array([0.5, 1.0, 0.75], dtype=np.float32)
 
         super().__init__(
             name, robot, init_motor_pos, ckpt, joystick, fixed_command, env_cfg
@@ -39,7 +40,7 @@ class WalkPolicy(MJXPolicy, policy_name="walk"):
 
     def get_command(self, control_inputs: Dict[str, float]) -> npt.NDArray[np.float32]:
         command = np.zeros(self.num_commands, dtype=np.float32)
-        command[5:] = np.array(
+        command[5:] = self.command_discount_factor * np.array(
             [
                 control_inputs["walk_x"],
                 control_inputs["walk_y"],

@@ -437,9 +437,9 @@
     <flag eulerdamp="disable"/>
   </option>
   <equality>
-    <joint joint1="neck_yaw_driven" joint2="neck_yaw_drive" polycoef="0 -0.722222 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1"/>
-    <joint joint1="left_hip_yaw_driven" joint2="left_hip_yaw_drive" polycoef="0 -0.904762 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1"/>
-    <joint joint1="right_hip_yaw_driven" joint2="right_hip_yaw_drive" polycoef="0 -0.904762 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1"/>
+    <joint joint1="neck_yaw_driven" joint2="neck_yaw_drive" polycoef="0 -0.909091 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1"/>
+    <joint joint1="left_hip_yaw_driven" joint2="left_hip_yaw_drive" polycoef="0 -0.857143 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1"/>
+    <joint joint1="right_hip_yaw_driven" joint2="right_hip_yaw_drive" polycoef="0 -0.857143 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1"/>
     <joint joint1="left_sho_yaw_driven" joint2="left_sho_yaw_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1"/>
     <joint joint1="left_elbow_yaw_driven" joint2="left_elbow_yaw_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1"/>
     <joint joint1="left_wrist_pitch_driven" joint2="left_wrist_pitch_drive" polycoef="0 -1.0 0 0 0" solimp="0.9999 0.9999 0.001 0.5 2" solref="0.004 1"/>
@@ -650,13 +650,13 @@
     <position name="neck_pitch_act" joint="neck_pitch_act" kp="11.71875" ctrlrange="-1.39626 0.610865" class="XC330"/>
     <position name="waist_act_1" joint="waist_act_1" kp="11.71875" ctrlrange="-4.67748 4.67748" class="XC330"/>
     <position name="waist_act_2" joint="waist_act_2" kp="11.71875" ctrlrange="-4.67748 4.67748" class="XC330"/>
-    <position name="left_hip_pitch" joint="left_hip_pitch" kp="16.40625" ctrlrange="-1.5708 2.35619" class="2XC430"/>
+    <position name="left_hip_pitch" joint="left_hip_pitch" kp="21.09375" ctrlrange="-1.5708 2.35619" class="2XC430"/>
     <position name="left_hip_roll" joint="left_hip_roll" kp="16.40625" ctrlrange="-0.785398 0.785398" class="2XC430"/>
     <position name="left_hip_yaw_drive" joint="left_hip_yaw_drive" kp="11.71875" ctrlrange="-1.8326 1.8326" class="XC330"/>
     <position name="left_knee_act" joint="left_knee_act" kp="21.09375" ctrlrange="-2.0944 0" class="XM430"/>
     <position name="left_ank_roll" joint="left_ank_roll" kp="16.40625" ctrlrange="-1.5708 1.5708" class="XC430"/>
     <position name="left_ank_pitch" joint="left_ank_pitch" kp="21.09375" ctrlrange="-1.74533 0.785398" class="XM430"/>
-    <position name="right_hip_pitch" joint="right_hip_pitch" kp="16.40625" ctrlrange="-2.35619 1.5708" class="2XC430"/>
+    <position name="right_hip_pitch" joint="right_hip_pitch" kp="21.09375" ctrlrange="-2.35619 1.5708" class="2XC430"/>
     <position name="right_hip_roll" joint="right_hip_roll" kp="16.40625" ctrlrange="-0.785398 0.785398" class="2XC430"/>
     <position name="right_hip_yaw_drive" joint="right_hip_yaw_drive" kp="11.71875" ctrlrange="-1.8326 1.8326" class="XC330"/>
     <position name="right_knee_act" joint="right_knee_act" kp="21.09375" ctrlrange="0 2.0944" class="XM430"/>

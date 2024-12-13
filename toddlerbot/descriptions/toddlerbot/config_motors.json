@@ -20,6 +20,16 @@
         "kff1": 0.0,
         "kff2": 0.0
     },
+    "neck_pitch_act": {
+        "motor": "XC330",
+        "init_pos": 5.749360084533691,
+        "default_pos": 0,
+        "kp": 1500.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kff1": 0.0,
+        "kff2": 0.0
+    },
     "waist_act_1": {
         "motor": "XC330",
         "init_pos": 3.474466562271118,

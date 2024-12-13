@@ -20,8 +20,8 @@ done
 echo "TIME_STR: $TIME_STR"
 echo "ROBOT: $ROBOT"
 
-REMOTE_USER="toddlerbot"
-REMOTE_HOST="toddlerbot.local"
+REMOTE_USER="toddy"
+REMOTE_HOST="toddy-desktop.local"
 REMOTE_REPO_PATH="/home/${REMOTE_USER}/projects/toddlerbot"
 LOCAL_REPO_PATH="/home/haochen/projects/toddlerbot"
 RELATIVE_PATH="results/${ROBOT}_teleop_follower_pd_real_world_${TIME_STR}"

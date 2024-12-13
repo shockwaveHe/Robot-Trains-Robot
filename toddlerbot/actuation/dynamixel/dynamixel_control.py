@@ -126,14 +126,27 @@ class DynamixelController(BaseController):
                 # Construct the command to set the latency timer on macOS
                 command = f"./toddlerbot/actuation/dynamixel/latency_timer_setter_macOS/set_latency_timer -l {latency_value}"
             else:
-                raise Exception(f"Unsupported OS: {os_type}")
+                raise Exception()
+
             # Run the command
             result = subprocess.run(
                 command, shell=True, text=True, check=True, stdout=subprocess.PIPE
             )
             log(f"Latency Timer set: {result.stdout.strip()}", header="Dynamixel")
-        except subprocess.CalledProcessError as e:
-            log(f"Failed to set latency timer: {e}", header="Dynamixel", level="error")
+
+        except Exception as e:
+            if os_type == "Windows":
+                log(
+                    "Make sure you're set the latency in the device manager!",
+                    header="Dynamixel",
+                    level="warning",
+                )
+            else:
+                log(
+                    f"Failed to set latency timer: {e}",
+                    header="Dynamixel",
+                    level="error",
+                )
 
         time.sleep(0.1)
 
@@ -152,6 +165,16 @@ class DynamixelController(BaseController):
         self.client.reboot(self.motor_ids)
         time.sleep(0.2)
 
+        _, v_in = self.client.read_vin()
+        log(f"Voltage (V): {v_in}", header="Dynamixel")
+        if np.any(v_in < 10):
+            raise ValueError(
+                "Voltage too low. Please check the power supply or charge the batteries."
+            )
+
+        time.sleep(0.2)
+
+        # This sync writing section has to go after the voltage reading to make sure the motors are powered up
         # Set the return delay time to 1*2=2us
         self.client.sync_write(
             self.motor_ids, [self.config.return_delay_time] * len(self.motor_ids), 9, 1
@@ -168,15 +191,6 @@ class DynamixelController(BaseController):
         self.client.sync_write(self.motor_ids, self.config.kFF2, 88, 2)
         self.client.sync_write(self.motor_ids, self.config.kFF1, 90, 2)
         # self.client.sync_write(self.motor_ids, self.config.current_limit, 102, 2)
-
-        _, v_in = self.client.read_vin()
-        log(f"Voltage (V): {v_in}", header="Dynamixel")
-        if np.any(v_in < 10):
-            raise ValueError(
-                "Voltage too low. Please check the power supply or charge the batteries."
-            )
-
-        time.sleep(0.2)
 
         self.client.set_torque_enabled(self.motor_ids, True)
 

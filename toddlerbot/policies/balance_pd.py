@@ -1,6 +1,6 @@
 import platform
 import time
-from typing import Dict, Optional, Tuple, List
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -47,20 +47,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
             self.zero_command if fixed_command is None else fixed_command
         )
 
-        state_ref = np.concatenate(
-            [
-                np.zeros(3, dtype=np.float32),  # Position
-                np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),  # Quaternion
-                np.zeros(3, dtype=np.float32),  # Linear velocity
-                np.zeros(3, dtype=np.float32),  # Angular velocity
-                self.default_motor_pos,  # Motor positions
-                self.default_joint_pos,  # Joint positions
-                np.ones(2, dtype=np.float32),  # Stance mask
-            ]
-        )
-        self.state_ref = self.balance_ref.get_state_ref(
-            state_ref, 0.0, self.fixed_command
-        )
+        self.state_ref: Optional[npt.NDArray[np.float32]] = None
 
         self.joystick = joystick
         if joystick is None:
@@ -93,6 +80,8 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
             except Exception:
                 pass
 
+        self.capture_frame = False
+
         self.msg = None
         self.is_running = False
         self.is_button_pressed = False
@@ -109,12 +98,25 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         self.last_gripper_pos = np.zeros(2, dtype=np.float32)
         self.gripper_delta_max = 0.5
 
+        self.desired_torso_pitch = 0.0
+        self.last_torso_pitch = 0.0
+        self.torso_pitch_kp = 0.5
+        self.torso_pitch_kd = 0.01
+        self.hip_pitch_indices = np.array(
+            [
+                robot.motor_ordering.index("left_hip_pitch"),
+                robot.motor_ordering.index("right_hip_pitch"),
+            ]
+        )
+        self.hip_pitch_signs = np.array([1.0, -1.0], dtype=np.float32)
+
         self.is_prepared = False
+        self.prep_motor_pos = self.default_motor_pos.copy()
 
     def reset(self):
         self.state_ref[:3] = np.zeros(3, dtype=np.float32)
         self.state_ref[3:7] = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)
-        self.state_ref[13 : 13 + self.robot.nu] = self.default_motor_pos.copy()
+        self.state_ref[13 : 13 + self.robot.nu] = self.prep_motor_pos.copy()
         self.state_ref[13 + self.robot.nu : 13 + 2 * self.robot.nu] = (
             self.default_joint_pos.copy()
         )
@@ -165,9 +167,8 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         return command
 
     def get_arm_motor_pos(self, obs: Obs) -> npt.NDArray[np.float32]:
-        return self.default_motor_pos[self.arm_motor_indices]
+        return self.prep_motor_pos[self.arm_motor_indices]
 
-    # @profile()
     def step(
         self, obs: Obs, is_real: bool = False
     ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
@@ -177,7 +178,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
             self.prep_time, self.prep_action = self.move(
                 -self.control_dt,
                 self.init_motor_pos,
-                self.default_motor_pos,
+                self.prep_motor_pos,
                 self.prep_duration,
                 end_time=5.0 if is_real else 0.0,
             )
@@ -234,7 +235,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
             else:
                 print("\nstale message received, discarding")
 
-        if self.left_eye is not None:
+        if self.left_eye is not None and self.capture_frame:
             jpeg_frame, self.camera_frame = self.left_eye.get_jpeg()
         else:
             jpeg_frame = None
@@ -246,7 +247,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         control_inputs = self.last_control_inputs
         if self.joystick is not None:
             control_inputs = self.joystick.get_controller_input()
-        elif msg is not None:
+        elif msg is not None and msg.control_inputs is not None:
             control_inputs = msg.control_inputs
 
         self.last_control_inputs = control_inputs
@@ -259,18 +260,55 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         time_curr = self.step_curr * self.control_dt
         arm_motor_pos = self.get_arm_motor_pos(obs)
         arm_joint_pos = self.balance_ref.arm_fk(arm_motor_pos)
+
+        if self.state_ref is None:
+            prep_joint_pos = np.array(
+                list(
+                    self.robot.motor_to_joint_angles(
+                        dict(zip(self.robot.motor_ordering, self.prep_motor_pos))
+                    ).values()
+                ),
+                dtype=np.float32,
+            )
+            state_ref = np.concatenate(
+                [
+                    np.zeros(3, dtype=np.float32),  # Position
+                    np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),  # Quaternion
+                    np.zeros(3, dtype=np.float32),  # Linear velocity
+                    np.zeros(3, dtype=np.float32),  # Angular velocity
+                    self.prep_motor_pos,  # Motor positions
+                    prep_joint_pos,
+                    np.ones(2, dtype=np.float32),  # Stance mask
+                ]
+            )
+            self.state_ref = np.asarray(
+                self.balance_ref.get_state_ref(state_ref, 0.0, command)
+            )
+
         self.state_ref[13 + self.arm_motor_indices] = arm_motor_pos
         self.state_ref[13 + self.robot.nu + self.arm_joint_indices] = arm_joint_pos
-        self.state_ref = self.balance_ref.get_state_ref(
-            self.state_ref, time_curr, command
+        self.state_ref = np.asarray(
+            self.balance_ref.get_state_ref(self.state_ref, time_curr, command)
         )
 
         motor_target = self.state_ref[13 : 13 + self.robot.nu]
+
+        # Apply PD control based on torso pitch angle
+        current_pitch = obs.euler[1]
+        pitch_error = self.desired_torso_pitch - current_pitch
+        pitch_vel = (current_pitch - self.last_torso_pitch) / self.control_dt
+        pd_output = self.torso_pitch_kp * pitch_error - self.torso_pitch_kd * pitch_vel
+        # Adjust hip pitch motor target
+        # print(f"current_pitch: {current_pitch:.2f}, pitch_vel: {pitch_vel:.2f}, pd_output: {pd_output:.2f}")
+        # pd_output = np.clip(pd_output, -0.05, 0.05)
+        motor_target[self.hip_pitch_indices] += pd_output * self.hip_pitch_signs
+
         # Override motor target with reference motion or teleop motion
         motor_target = np.clip(
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
         )
 
         self.step_curr += 1
+        self.last_torso_pitch = current_pitch
 
         return control_inputs, motor_target

@@ -1,5 +1,7 @@
-from typing import Dict, Optional, Tuple
+import os
+from typing import Dict, List, Optional, Tuple
 
+import joblib
 import numpy as np
 import numpy.typing as npt
 
@@ -19,29 +21,47 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
         robot: Robot,
         init_motor_pos: npt.NDArray[np.float32],
         joystick: Optional[Joystick] = None,
-        camera: Optional[Camera] = None,
+        cameras: Optional[List[Camera]] = None,
         zmq_receiver: Optional[ZMQNode] = None,
         zmq_sender: Optional[ZMQNode] = None,
         ip: str = "",
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
+        prep: str = "",
     ):
         super().__init__(
             name,
             robot,
             init_motor_pos,
             joystick,
-            camera,
+            cameras,
             zmq_receiver,
             zmq_sender,
             ip,
             fixed_command,
         )
 
+        self.neck_pitch_idx = robot.motor_ordering.index("neck_pitch_act")
+        self.neck_pitch_ratio = 0.25 # Stitch
+
+        if len(prep) > 0:
+            motion_file_path = os.path.join("toddlerbot", "motion", f"{prep}.pkl")
+            if os.path.exists(motion_file_path):
+                data_dict = joblib.load(motion_file_path)
+            else:
+                raise ValueError(f"No data files found in {motion_file_path}")
+
+            self.prep_motor_pos = np.array(data_dict["action_traj"], dtype=np.float32)[
+                -1
+            ]
+            self.prep_motor_pos[self.neck_pitch_idx] *= self.neck_pitch_ratio
+
+        self.capture_frame = True
+
         self.dataset_logger = DatasetLogger()
 
     def get_arm_motor_pos(self, obs: Obs) -> npt.NDArray[np.float32]:
         if self.arm_motor_pos is None:
-            return self.default_motor_pos[self.arm_motor_indices]
+            return self.prep_motor_pos[self.arm_motor_indices]
         else:
             return self.arm_motor_pos
 

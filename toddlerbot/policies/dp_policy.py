@@ -4,6 +4,7 @@ from collections import deque
 from typing import Dict, List, Optional, Tuple
 
 import cv2
+import joblib
 import numpy as np
 import numpy.typing as npt
 
@@ -23,19 +24,21 @@ class DPPolicy(BalancePDPolicy, policy_name="dp"):
         name: str,
         robot: Robot,
         init_motor_pos: npt.NDArray[np.float32],
+        ckpt: str,
         joystick: Optional[Joystick] = None,
-        camera: Optional[Camera] = None,
+        cameras: Optional[List[Camera]] = None,
         zmq_receiver: Optional[ZMQNode] = None,
         zmq_sender: Optional[ZMQNode] = None,
         ip: str = "",
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
+        prep: str = "",
     ):
         super().__init__(
             name,
             robot,
             init_motor_pos,
             joystick,
-            camera,
+            cameras,
             zmq_receiver,
             zmq_sender,
             ip,
@@ -44,10 +47,7 @@ class DPPolicy(BalancePDPolicy, policy_name="dp"):
         self.control_dt = 0.1
 
         policy_path = os.path.join(
-            "toddlerbot",
-            "policies",
-            "checkpoints",
-            f"{robot.name}_{name}_dp.pth",
+            "toddlerbot", "policies", "checkpoints", f"{robot.name}_{ckpt}_dp.pth"
         )
 
         pred_horizon, obs_horizon, action_horizon = 16, 5, 8
@@ -68,12 +68,29 @@ class DPPolicy(BalancePDPolicy, policy_name="dp"):
         self.obs_deque: deque = deque([], maxlen=self.model.obs_horizon)
         self.model_action_seq: List[npt.NDArray[np.float32]] = []
 
+        self.neck_pitch_idx = robot.motor_ordering.index("neck_pitch_act")
+        self.neck_pitch_ratio = 0.25 # Stitch
+
+        if len(prep) > 0:
+            motion_file_path = os.path.join("toddlerbot", "motion", f"{prep}.pkl")
+            if os.path.exists(motion_file_path):
+                data_dict = joblib.load(motion_file_path)
+            else:
+                raise ValueError(f"No data files found in {motion_file_path}")
+
+            self.prep_motor_pos = np.array(data_dict["action_traj"], dtype=np.float32)[
+                -1
+            ]
+            self.prep_motor_pos[self.neck_pitch_idx] *= self.neck_pitch_ratio
+
+        self.capture_frame = True
+
         self.reset_duration = 5.0
         self.reset_end_time = 1.0
         self.reset_time = None
 
     def get_arm_motor_pos(self, obs: Obs) -> npt.NDArray[np.float32]:
-        arm_motor_pos = self.default_motor_pos[self.arm_motor_indices]
+        arm_motor_pos = self.prep_motor_pos[self.arm_motor_indices]
         if len(self.obs_deque) == self.model.obs_horizon:
             if len(self.model_action_seq) == 0:
                 t1 = time.time()
@@ -90,7 +107,7 @@ class DPPolicy(BalancePDPolicy, policy_name="dp"):
                 self.reset_time, self.reset_action = self.move(
                     obs.time - self.control_dt,
                     obs.motor_pos[self.arm_motor_indices],
-                    self.default_motor_pos[self.arm_motor_indices],
+                    self.prep_motor_pos[self.arm_motor_indices],
                     self.reset_duration,
                     end_time=self.reset_end_time,
                 )
@@ -110,6 +127,9 @@ class DPPolicy(BalancePDPolicy, policy_name="dp"):
         self, obs: Obs, is_real: bool = False
     ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
         control_inputs, motor_target = super().step(obs, is_real)
+
+        if obs.time >= self.prep_duration:
+            self.is_running = True
 
         if self.is_running:
             if self.camera_frame is not None:
