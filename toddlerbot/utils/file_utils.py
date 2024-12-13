@@ -132,7 +132,8 @@ def find_arm_toddler_file_path(
             return file_path
 
     raise FileNotFoundError(
-        f"No {suffix} file found for arm '{arm_name}' and robot '{toddler_name}'."
+        f"No {suffix}policy_hidden_layer_sizes: Tuple[int, ...] = (256, 256, 256)
+    value_hidden_layer_sizes: Tuple[int, ...] = (256, 256, 256) file found for arm '{arm_name}' and robot '{toddler_name}'."
     )
 
 

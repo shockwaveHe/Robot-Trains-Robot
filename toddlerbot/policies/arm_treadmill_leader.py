@@ -58,11 +58,11 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
 
         shm_name = 'force_shm'
         try:
-            self.arm_shm = shared_memory.SharedMemory(name=shm_name, create=True, size=16)
+            self.arm_shm = shared_memory.SharedMemory(name=shm_name, create=True, size=88)
         except FileExistsError:
-            self.arm_shm = shared_memory.SharedMemory(name=shm_name, create=False, size=16)
+            self.arm_shm = shared_memory.SharedMemory(name=shm_name, create=False, size=88)
         self.arm_shm.buf[:8] = struct.pack('d', self.force)
-        self.arm_shm.buf[8:] = struct.pack('d', self.z_pos_delta)
+        self.arm_shm.buf[8:16] = struct.pack('d', self.z_pos_delta)
 
     # note: calibrate zero at: toddlerbot/tools/calibration/calibrate_zero.py --robot toddlerbot_arms
     # note: zero points can be accessed in config_motors.json
@@ -85,10 +85,10 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         self.speed += keyboard_inputs["speed_delta"]
         self.force += keyboard_inputs["force_delta"]
         self.arm_shm.buf[:8] = struct.pack('d', self.force)
-        self.z_pos_delta = keyboard_inputs["z_pos_delta"] # not add equal
-        self.arm_shm.buf[8:] = struct.pack('d', self.z_pos_delta)
+        self.z_pos_delta += keyboard_inputs["z_pos_delta"]
+        self.arm_shm.buf[8:16] = struct.pack('d', keyboard_inputs["z_pos_delta"]) # not add equal
         self.keyboard.reset()
-        print(keyboard_inputs, control_inputs)
+        print(f"force {self.force}, speed {self.speed}, z_pos_delta {self.z_pos_delta}", control_inputs)
 
         action = self.default_motor_pos.copy()
         if self.is_running:

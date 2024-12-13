@@ -16,8 +16,9 @@ from toddlerbot.locomotion.ppo_config import PPOConfig
 from toddlerbot.utils.math_utils import euler2quat
 from pathlib import Path
 from numba import njit
+from toddlerbot.utils.comm_utils import ZMQNode
 
-class MJXFinetunePolicy(MJXPolicy):
+class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
     def __init__(self, robot: Robot, pretrained_path: Path, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.robot = robot
@@ -77,6 +78,7 @@ class MJXFinetunePolicy(MJXPolicy):
         self.privileged_obs_history = np.zeros(
             self.num_privileged_obs_history * self.privileged_obs_size
         )
+        self.zmq_receiver = ZMQNode(type="receiver")
 
     def _sample_command(
         self, last_command: Optional[np.ndarray] = None
@@ -248,11 +250,12 @@ class MJXFinetunePolicy(MJXPolicy):
 
         time_curr = self.step_curr * self.control_dt
 
+        msg = self.zmq_receiver.get_msg()
         control_inputs: Dict[str, float] = {}
         if len(self.control_inputs) > 0:
             control_inputs = self.control_inputs
-        elif self.joystick is not None:
-            control_inputs = self.joystick.get_controller_input()
+        elif msg is not None and msg.control_inputs is not None:
+            control_inputs = msg.control_inputs
 
         if len(control_inputs) == 0:
             command = self.fixed_command

@@ -35,6 +35,7 @@ from toddlerbot.sim.arm import BaseArm, get_arm_class
 from toddlerbot.sim.arm_toddler_sim import ArmToddlerSim
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.real_world import RealWorld
+from toddlerbot.sim.real_world_finetuning import RealWorldFinetuning
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.comm_utils import sync_time
 from toddlerbot.utils.misc_utils import dump_profiling_data, log, snake2camel
@@ -634,7 +635,9 @@ if __name__ == "__main__":
     elif args.sim == "real":
         sim = RealWorld(robot)
         init_motor_pos = sim.get_observation(retries=-1).motor_pos
-
+    elif args.sim == "finetune":
+        sim = RealWorldFinetuning(robot)
+        init_motor_pos = sim.get_observation(retries=-1).motor_pos
     else:
         raise ValueError("Unknown simulator")
     if args.domain_rand:
@@ -691,6 +694,9 @@ if __name__ == "__main__":
         )
 
     elif issubclass(PolicyClass, MJXPolicy):
+        if len(args.ip) > 0:
+            sync_time(args.ip)
+            
         fixed_command = None
         if len(args.command) > 0:
             fixed_command = np.array(args.command.split(" "), dtype=np.float32)

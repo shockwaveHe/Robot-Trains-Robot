@@ -50,7 +50,7 @@ class Keyboard:
 
     def on_press(self, key):
         """Handles key press events."""
-        print(f"{key} pressed!")
+        # print(f"{key} pressed!")
 
         try:
             if key == keyboard.KeyCode.from_char("6"):
@@ -71,12 +71,12 @@ class Keyboard:
                 self.key_inputs["next"] = 1.0
             elif key.char == "s":  # Check if the 's' key is pressed
                 self.key_inputs["save"] = 1.0
+                self.key_inputs["walk_y_delta"] = -0.01
+            elif key.char == "a":
+                self.key_inputs["walk_x_delta"] = 0.01
+            elif key.char == "d":
                 self.key_inputs["walk_x_delta"] = -0.01
             elif key.char == "w":
-                self.key_inputs["walk_x_delta"] = 0.01
-            elif key.char == "a":
-                self.key_inputs["walk_y_delta"] = -0.01
-            elif key.char == "d":
                 self.key_inputs["walk_y_delta"] = 0.01
             elif key.char == "7":
                 self.key_inputs["z_pos_delta"] = -0.01

@@ -123,7 +123,7 @@ class MuJoCoSim(BaseSim):
         return self.get_observation()
 
     def is_done(self, obs: Obs) -> bool:
-        torso_height = obs.torso_pos[2]
+        torso_height = obs.pos[2]
         return torso_height < 0.2 or torso_height > 0.4
 
     def load_keyframe(self):
