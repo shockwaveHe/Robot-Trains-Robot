@@ -24,6 +24,7 @@ class ArmTreadmillFollowerPolicy(BasePolicy, policy_name="at_follower"):
         init_motor_pos: npt.NDArray[np.float32],
         ip: str = "192.168.0.137",
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
+        **kwargs: Any,
     ):
         super().__init__(name, robot, init_motor_pos)
 
@@ -36,7 +37,7 @@ class ArmTreadmillFollowerPolicy(BasePolicy, policy_name="at_follower"):
         )
         balance_kwargs: Dict[str, Any] = dict(
             joystick=None,
-            camera=self.camera, 
+            cameras=self.camera, 
             zmq_receiver=self.zmq_receiver,
             zmq_sender=self.zmq_sender,
             ip=ip,
