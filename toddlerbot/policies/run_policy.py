@@ -293,11 +293,12 @@ def main(
 
             # Get the latest state from the queue
             obs = sim.get_observation()
-            if sim.is_done(obs):
+            if policy.is_done(obs):
+                # TODO: add is_done to more policies
                 step_idx = 0
                 start_time = time.time()
-                obs = sim.reset()
                 policy.reset()
+                obs = sim.reset()
                 # if arm_policy is not None:
                 #     arm_policy.reset()
 
@@ -523,7 +524,7 @@ if __name__ == "__main__":
         type=str,
         default="arm_toddler",
         help="The name of the simulator to use.",
-        choices=["arm_toddler", "mujoco", "real"],
+        choices=["arm_toddler", "mujoco", "real", "finetune"],
     )
     parser.add_argument(
         "--vis",
@@ -637,7 +638,7 @@ if __name__ == "__main__":
         init_motor_pos = sim.get_observation(retries=-1).motor_pos
     elif args.sim == "finetune":
         sim = RealWorldFinetuning(robot)
-        init_motor_pos = sim.get_observation(retries=-1).motor_pos
+        init_motor_pos = sim.get_observation().motor_pos
     else:
         raise ValueError("Unknown simulator")
     if args.domain_rand:

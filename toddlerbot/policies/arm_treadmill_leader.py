@@ -58,17 +58,22 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
 
         shm_name = 'force_shm'
         try:
+            print("Creating shared memory")
             self.arm_shm = shared_memory.SharedMemory(name=shm_name, create=True, size=88)
         except FileExistsError:
+            print("Using existing shared memory")
             self.arm_shm = shared_memory.SharedMemory(name=shm_name, create=False, size=88)
         self.arm_shm.buf[:8] = struct.pack('d', self.force)
         self.arm_shm.buf[8:16] = struct.pack('d', self.z_pos_delta)
+        self.arm_force = np.ndarray(shape=(3,), dtype=np.float64, buffer=self.arm_shm.buf[16:40])
+        self.arm_torque = np.ndarray(shape=(3,), dtype=np.float64, buffer=self.arm_shm.buf[40:64])
+        self.arm_ee_pos = np.ndarray(shape=(3,), dtype=np.float64, buffer=self.arm_shm.buf[64:88])
         # TODO: put this logic and reset to realworld finetuning sim?
         self.x_force_threshold = 0.5
         self.treadmill_speed_kp = 1
-        self.arm_healty_ee_pos = np.array([0.0, 0.0])
-        self.arm_healty_ee_force_z = np.array([1.0, 20.0])
-        self.arm_healty_ee_force_xy = np.array([0.0, 5.0])
+        self.arm_healty_ee_pos = np.array([0.0, 3.0])
+        self.arm_healty_ee_force_z = np.array([-1.0, 20.0])
+        self.arm_healty_ee_force_xy = np.array([-3.0, 3.0])
 
     def update_speed(self, obs: Obs):
         if obs.ee_force[0] > self.x_force_threshold:
@@ -79,16 +84,26 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
             # self.speed += self.treadmill_speed_kp * (obs.ee_force[0] + self.x_force_threshold)
     # note: calibrate zero at: toddlerbot/tools/calibration/calibrate_zero.py --robot toddlerbot_arms
     # note: zero points can be accessed in config_motors.json
-
+    
+    def is_done(self, obs: Obs):
+        if obs.ee_force[2] < self.arm_healty_ee_force_z[0] or obs.ee_force[2] > self.arm_healty_ee_force_z[1]:
+            print(f"Force Z of {obs.ee_force[2]} is out of range")
+            return True
+        if obs.arm_ee_pos[2] < self.arm_healty_ee_pos[0] or obs.arm_ee_pos[2] > self.arm_healty_ee_pos[1]:
+            print(f"Position Z of {obs.arm_ee_pos[2]} is out of range")
+            return True
+        if obs.ee_force[0] > self.arm_healty_ee_force_xy[1] or obs.ee_force[1] > self.arm_healty_ee_force_xy[1]:
+            print(f"Force XY of {obs.ee_force[:2]} is out of range")
+            return True
+        if obs.ee_force[0] < self.arm_healty_ee_force_xy[0] or obs.ee_force[1] < self.arm_healty_ee_force_xy[0]:
+            print(f"Force XY of {obs.ee_force[:2]} is out of range")
+            return True
+        return False
+    
     def step(
         self, obs: Obs, is_real: bool = False
     ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
-        if obs.time < self.prep_duration:
-            action = np.asarray(
-                interpolate_action(obs.time, self.prep_time, self.prep_action)
-            )
-            return {}, action
-
+        # import ipdb; ipdb.set_trace()
         keyboard_inputs = self.keyboard.get_keyboard_input()
         self.walk_x += keyboard_inputs["walk_x_delta"]
         self.walk_y += keyboard_inputs["walk_y_delta"]
@@ -105,8 +120,6 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         print(f"force {self.force}, speed {self.speed}, z_pos_delta {self.z_pos_delta}", control_inputs)
 
         action = self.default_motor_pos.copy()
-        if self.is_running:
-            action = obs.motor_pos
 
         if self.stopped:
             self.force = 0.0
@@ -126,7 +139,8 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
             arm_torque=obs.ee_torque,
             lin_vel=self.speed / 1000 # TODO: check if this is correct
         )
-        # print(f"Sending: {msg}")
+        # import ipdb; ipdb.set_trace()
+        print(f"Sending: {msg}")
         print(f"Speed: {self.speed}, Force: {self.force}, Walk: ({self.walk_x}, {self.walk_y})")
         self.zmq.send_msg(msg)
 
@@ -174,3 +188,31 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
             ser.write(b"0\n")
             ser.close()
             print("Serial connection closed.")
+
+    def reset(self):
+        control_inputs = {"walk_x": 0.0, "walk_y": 0.0, "walk_turn": 0.0}
+        msg = ZMQMessage(
+            time=time.time(),
+            control_inputs=control_inputs,
+            arm_force=np.zeros(3),
+            arm_torque=np.zeros(3),
+            lin_vel=self.speed / 1000 # TODO: check if this is correct
+        )
+        self.zmq.send_msg(msg)
+        self.speed = 0.0
+        input("Press Enter to reset...")
+        # TODO: more safe reset
+        force_prev = self.force
+        self.force = 10.0
+        self.arm_shm.buf[:8] = struct.pack('d', self.force)
+        self.z_pos_delta = 0.1
+        self.arm_shm.buf[8:16] = struct.pack('d', self.z_pos_delta)
+        input("Press Enter to finish...")
+        self.z_pos_delta = -0.1
+        self.arm_shm.buf[8:16] = struct.pack('d', self.z_pos_delta)
+        self.force = force_prev
+        self.arm_shm.buf[:8] = struct.pack('d', self.force)
+        # TODO: how to restart datacollection?
+
+    def reset_after(self, duration: float):
+        self.reset_time = time.time() + duration

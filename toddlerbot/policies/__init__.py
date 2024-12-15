@@ -91,6 +91,9 @@ class BasePolicy(ABC):
     ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
         pass
 
+    def is_done(self, obs: Obs) -> bool:
+        return False
+    
     # duration: total length of the motion
     # end_time: when motion should end, end time < time < duration will be static
     def move(
