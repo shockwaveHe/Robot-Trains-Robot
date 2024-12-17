@@ -165,7 +165,7 @@ class MJXConfig:
     @gin.configurable
     @dataclass
     class FinetuneConfig:
-        buffer_size: int = 10_000_000
+        buffer_size: int = 100_000
 
     def __init__(self):
         self.sim = self.SimConfig()

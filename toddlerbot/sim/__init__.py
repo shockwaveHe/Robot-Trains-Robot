@@ -18,14 +18,15 @@ class Obs:
     euler: npt.NDArray[np.float32] = np.zeros(3, dtype=np.float32)
     joint_pos: Optional[npt.NDArray[np.float32]] = None
     joint_vel: Optional[npt.NDArray[np.float32]] = None
-    ee_force: Optional[npt.NDArray[np.float32]] = None
-    ee_torque: Optional[npt.NDArray[np.float32]] = None
+    ee_force: Optional[npt.NDArray[np.float32]] = np.zeros(3, dtype=np.float64)
+    ee_torque: Optional[npt.NDArray[np.float32]] = np.zeros(3, dtype=np.float64)
     arm_joint_pos: Optional[npt.NDArray[np.float32]] = None
     arm_joint_vel: Optional[npt.NDArray[np.float32]] = None
     mocap_pos: Optional[npt.NDArray[np.float32]] = None
     mocap_quat: Optional[npt.NDArray[np.float32]] = None
     arm_ee_pos: Optional[npt.NDArray[np.float32]] = None
     arm_ee_quat: Optional[npt.NDArray[np.float32]] = None
+    arm_ee_vel: Optional[npt.NDArray[np.float32]] = np.zeros(3, dtype=np.float64)
 
 
 class BaseSim(ABC):

@@ -16,14 +16,15 @@ class RealWorldFinetuning(BaseSim):
 
         try:
             print("Creating shared memory")
-            self.arm_shm = shared_memory.SharedMemory(name=shm_name, create=True, size=88)
+            self.arm_shm = shared_memory.SharedMemory(name=shm_name, create=True, size=112)
         except FileExistsError:
             print("Using existing shared memory")
-            self.arm_shm = shared_memory.SharedMemory(name=shm_name, create=False, size=88)
+            self.arm_shm = shared_memory.SharedMemory(name=shm_name, create=False, size=112)
 
         self.arm_force = np.ndarray(shape=(3,), dtype=np.float64, buffer=self.arm_shm.buf[16:40])
         self.arm_torque = np.ndarray(shape=(3,), dtype=np.float64, buffer=self.arm_shm.buf[40:64])
         self.arm_ee_pos = np.ndarray(shape=(3,), dtype=np.float64, buffer=self.arm_shm.buf[64:88])
+        self.arm_ee_vel = np.ndarray(shape=(3,), dtype=np.float64, buffer=self.arm_shm.buf[88:112])
 
     
     def force_schedule(self):
@@ -41,7 +42,8 @@ class RealWorldFinetuning(BaseSim):
             motor_tor=motor_tor,
             ee_force = self.arm_force,
             ee_torque = self.arm_torque,
-            arm_ee_pos=self.arm_ee_pos
+            arm_ee_pos=self.arm_ee_pos,
+            arm_ee_vel=self.arm_ee_vel
         )
         # import ipdb; ipdb.set_trace()
         return obs

@@ -59,29 +59,27 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         shm_name = 'force_shm'
         try:
             print("Creating shared memory")
-            self.arm_shm = shared_memory.SharedMemory(name=shm_name, create=True, size=88)
+            self.arm_shm = shared_memory.SharedMemory(name=shm_name, create=True, size=112)
         except FileExistsError:
             print("Using existing shared memory")
-            self.arm_shm = shared_memory.SharedMemory(name=shm_name, create=False, size=88)
+            self.arm_shm = shared_memory.SharedMemory(name=shm_name, create=False, size=112)
         self.arm_shm.buf[:8] = struct.pack('d', self.force)
         self.arm_shm.buf[8:16] = struct.pack('d', self.z_pos_delta)
-        self.arm_force = np.ndarray(shape=(3,), dtype=np.float64, buffer=self.arm_shm.buf[16:40])
-        self.arm_torque = np.ndarray(shape=(3,), dtype=np.float64, buffer=self.arm_shm.buf[40:64])
-        self.arm_ee_pos = np.ndarray(shape=(3,), dtype=np.float64, buffer=self.arm_shm.buf[64:88])
+
         # TODO: put this logic and reset to realworld finetuning sim?
-        self.x_force_threshold = 0.5
+        self.y_force_threshold = 0.5
         self.treadmill_speed_kp = 1
         self.arm_healty_ee_pos = np.array([0.0, 3.0])
-        self.arm_healty_ee_force_z = np.array([-1.0, 20.0])
+        self.arm_healty_ee_force_z = np.array([-10.0, 20.0])
         self.arm_healty_ee_force_xy = np.array([-3.0, 3.0])
 
     def update_speed(self, obs: Obs):
-        if obs.ee_force[0] > self.x_force_threshold:
-            print(f"about to add speed {self.treadmill_speed_kp * (obs.ee_force[0] - self.x_force_threshold)}")
-            # self.speed += self.treadmill_speed_kp * (obs.ee_force[0] - self.x_force_threshold)
-        elif obs.ee_force[0] < -self.x_force_threshold:
-            print(f"about to add speed {self.treadmill_speed_kp * (obs.ee_force[0] + self.x_force_threshold)}")
-            # self.speed += self.treadmill_speed_kp * (obs.ee_force[0] + self.x_force_threshold)
+        if obs.ee_force[1] > self.y_force_threshold:
+            print(f"about to add speed {self.treadmill_speed_kp * (obs.ee_force[1] - self.y_force_threshold)}")
+            self.speed += self.treadmill_speed_kp * (obs.ee_force[0] - self.y_force_threshold)
+        elif obs.ee_force[1] < -self.y_force_threshold:
+            print(f"about to add speed {self.treadmill_speed_kp * (obs.ee_force[1] + self.y_force_threshold)}")
+            self.speed += self.treadmill_speed_kp * (obs.ee_force[0] + self.y_force_threshold)
     # note: calibrate zero at: toddlerbot/tools/calibration/calibrate_zero.py --robot toddlerbot_arms
     # note: zero points can be accessed in config_motors.json
     
@@ -132,12 +130,15 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
 
         # compile data to send to follower
         assert control_inputs is not None
+        lin_vel = obs.arm_ee_vel
+        lin_vel[0] = self.speed / 1000 - lin_vel[0]
+        lin_vel[1] = -lin_vel[1]
         msg = ZMQMessage(
             time=time.time(),
             control_inputs=control_inputs,
             arm_force=obs.ee_force,
             arm_torque=obs.ee_torque,
-            lin_vel=self.speed / 1000 # TODO: check if this is correct
+            lin_vel=lin_vel # TODO: check if this is correct
         )
         # import ipdb; ipdb.set_trace()
         print(f"Sending: {msg}")
@@ -191,12 +192,14 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
 
     def reset(self):
         control_inputs = {"walk_x": 0.0, "walk_y": 0.0, "walk_turn": 0.0}
+        lin_vel = np.zeros(3)
+        lin_vel[0] = self.speed / 1000
         msg = ZMQMessage(
             time=time.time(),
             control_inputs=control_inputs,
             arm_force=np.zeros(3),
             arm_torque=np.zeros(3),
-            lin_vel=self.speed / 1000 # TODO: check if this is correct
+            lin_vel=lin_vel
         )
         self.zmq.send_msg(msg)
         self.speed = 0.0
@@ -205,11 +208,15 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         force_prev = self.force
         self.force = 10.0
         self.arm_shm.buf[:8] = struct.pack('d', self.force)
-        self.z_pos_delta = 0.1
-        self.arm_shm.buf[8:16] = struct.pack('d', self.z_pos_delta)
+        for _ in range(20):
+            self.z_pos_delta = 0.01
+            self.arm_shm.buf[8:16] = struct.pack('d', self.z_pos_delta)
+            time.sleep(0.2)
         input("Press Enter to finish...")
-        self.z_pos_delta = -0.1
-        self.arm_shm.buf[8:16] = struct.pack('d', self.z_pos_delta)
+        for _ in range(20):
+            self.z_pos_delta = -0.01
+            self.arm_shm.buf[8:16] = struct.pack('d', self.z_pos_delta)
+            time.sleep(0.2)
         self.force = force_prev
         self.arm_shm.buf[:8] = struct.pack('d', self.force)
         # TODO: how to restart datacollection?

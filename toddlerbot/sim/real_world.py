@@ -165,6 +165,9 @@ class RealWorld(BaseSim):
     def step(self):
         pass
 
+    def reset(self) -> Obs:
+        return self.get_observation()
+
     # @profile()
     def get_observation(self, retries: int = 0) -> Obs:
         results: Dict[str, Any] = {}

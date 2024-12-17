@@ -20,11 +20,12 @@ from numba import njit
 from toddlerbot.utils.comm_utils import ZMQNode
 
 class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
-    def __init__(self, robot: Robot, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, name, robot: Robot, *args, **kwargs):
+        super().__init__(name, robot, *args, **kwargs)
         self.robot = robot
         self.ppo_networks = None
         self.replay_buffer = None
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         if "seed" in kwargs:
             self.rng = np.random.default_rng(kwargs["seed"])
         else:
@@ -92,6 +93,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             self.num_privileged_obs_history * self.privileged_obs_size
         )
         self.zmq_receiver = ZMQNode(type="receiver")
+        self._init_reward()
 
     def _sample_command(
         self, last_command: Optional[np.ndarray] = None
@@ -109,7 +111,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         def sample_walk_command():
             # Sample random angles uniformly between 0 and 2*pi
-            theta = self.rng.uniform((1,), minval=0, maxval=2 * np.pi)
+            theta = self.rng.uniform(low=0, high=2 * np.pi, size=(1,))
             # Parametric equation of ellipse
             x_max = np.where(
                 np.sin(theta) > 0, self.command_range[5][1], -self.command_range[5][0]
@@ -192,8 +194,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 # TODO: push lin and ang vel
             ]
         )
-
-        obs = np.roll(self.obs_history, obs.size)
+        # TODO: verify correct
+        obs = np.roll(self.obs_history, obs_arr.size)
         obs[:obs_arr.size] = obs_arr
         privileged_obs = np.roll(self.privileged_obs_history, privileged_obs_arr.size)
         privileged_obs[:privileged_obs_arr.size] = privileged_obs_arr
@@ -201,12 +203,12 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         return obs, privileged_obs
     
     def get_action(self, obs_arr: np.ndarray, deterministic: bool = True, is_real: bool = False) -> Tuple[np.ndarray, Dict[str, Any]]:
-        obs_tensor = torch.tensor(obs_arr, dtype=torch.float32).unsqueeze(0).to(self.ppo_networks.device)
+        obs_tensor = torch.tensor(obs_arr, dtype=torch.float32).unsqueeze(0).to(self.device)
         with torch.no_grad():
             logits = self.ppo_networks.policy_network(obs_tensor)
             if deterministic:
                 # Deterministic: use mode
-                actions = self.ppo_networks.parametric_action_distribution.mode(logits)
+                actions = self.ppo_networks.parametric_action_distribution.mode(logits).cpu().numpy().flatten()
                 return actions, {}
             else:
                 # Stochastic: sample raw pre-tanh actions
@@ -218,26 +220,37 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                     'raw_action': raw_actions
                 }
 
-    def reset(self, obs:Obs):
-        # TODO: more things to reset?
-        path_pos = np.zeros(3)
-        # path_yaw = self.rng.uniform(low=0, high=2 * np.pi, size=(1,))
-        path_yaw = obs.euler[2] # TODO: only change in a small range
-        path_euler = np.array([0.0, 0.0, np.degrees(path_yaw)[0]])
-        path_quat = euler2quat(path_euler) # TODO: verify usage, wxyz or xyzw?
-        lin_vel = np.zeros(3)
-        ang_vel = np.zeros(3)
-        # motor_pos = obs.joint_pos[self.q_start_idx + self.motor_indices]
-        # joint_pos = obs.joint_pos[self.q_start_idx + self.joint_indices]
-        motor_pos = np.zeros_like(self.default_motor_pos)
-        joint_pos = np.zeros_like(self.default_joint_pos)
-        stance_mask = np.ones(2)
-
-        state_ref = np.concatenate(
-            [path_pos, path_quat, lin_vel, ang_vel, motor_pos, joint_pos, stance_mask]
+    def reset(self, obs:Obs = None):
+        # mjx policy reset
+        self.obs_history = np.zeros(self.obs_history_size, dtype=np.float32)
+        self.phase_signal = np.zeros(2, dtype=np.float32)
+        self.is_standing = True
+        self.command_list = []
+        self.last_action = np.zeros(self.num_action, dtype=np.float32)
+        self.action_buffer = np.zeros(
+            ((self.n_steps_delay + 1) * self.num_action), dtype=np.float32
         )
-        self.fixed_command = self._sample_command()
-        self.state_ref = np.asarray(self.motion_ref.get_state_ref(state_ref, 0.0, self.fixed_command))
+        self.step_curr = 0
+        if obs is not None:
+            # TODO: more things to reset?
+            path_pos = np.zeros(3)
+            # path_yaw = self.rng.uniform(low=0, high=2 * np.pi, size=(1,))
+            path_yaw = obs.euler[2] # TODO: only change in a small range
+            path_euler = np.array([0.0, 0.0, np.degrees(path_yaw)])
+            path_quat = euler2quat(path_euler) # TODO: verify usage, wxyz or xyzw?
+            lin_vel = np.zeros(3)
+            ang_vel = np.zeros(3)
+            # motor_pos = obs.joint_pos[self.q_start_idx + self.motor_indices]
+            # joint_pos = obs.joint_pos[self.q_start_idx + self.joint_indices]
+            motor_pos = np.zeros_like(self.default_motor_pos)
+            joint_pos = np.zeros_like(self.default_joint_pos)
+            stance_mask = np.ones(2)
+
+            state_ref = np.concatenate(
+                [path_pos, path_quat, lin_vel, ang_vel, motor_pos, joint_pos, stance_mask]
+            )
+            self.fixed_command = self._sample_command()
+            self.state_ref = np.asarray(self.motion_ref.get_state_ref(state_ref, 0.0, self.fixed_command))
 
     def is_done(self, obs: Obs) -> bool:
         pass # is done is handled in sim
@@ -268,6 +281,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         if len(self.control_inputs) > 0:
             control_inputs = self.control_inputs
         elif msg is not None and msg.control_inputs is not None:
+            print(f'obs ee force: {obs.ee_force}')
             control_inputs = msg.control_inputs
             obs.ee_force = msg.arm_force
             obs.ee_torque = msg.arm_torque
@@ -331,6 +345,10 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.reward_functions: List[Callable[..., np.ndarray]] = []
         self.reward_scales = np.zeros(len(reward_scale_dict))
         for i, (name, scale) in enumerate(reward_scale_dict.items()):
+            if getattr(self, "_reward_" + name, None) is None:
+                self.reward_names.remove(name)
+                print(f"Warning: reward function _reward_{name} not found")
+                continue
             self.reward_functions.append(getattr(self, "_reward_" + name))
             self.reward_scales[i] = scale
 
@@ -411,7 +429,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         return reward
     
     def _reward_leg_motor_pos(self, obs: Obs, action: np.ndarray) -> np.ndarray:
-        motor_pos = obs.joint_pos[self.leg_motor_indices]
+        motor_pos = obs.motor_pos[self.leg_motor_indices]
         motor_pos_ref = self.state_ref[self.ref_start_idx + self.leg_motor_indices]
         error = motor_pos - motor_pos_ref
         reward = -np.mean(error**2) # TODO: why not exp?
@@ -421,7 +439,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
     # def _reward_energy(self, obs: Obs, action: np.ndarray) -> np.ndarray: # TODO: how to get energy?
 
     def _reward_leg_action_rate(self, obs: Obs, action: np.ndarray) -> np.ndarray:
-        error = np.square(action[self.leg_motor_indices] - self.last_action[self.leg_motor_indices])
+        error = np.square(action - self.last_action)
         reward = -np.mean(error)
         return reward
     

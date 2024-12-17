@@ -94,6 +94,9 @@ class BasePolicy(ABC):
     def is_done(self, obs: Obs) -> bool:
         return False
     
+    def reset(self) -> Obs:
+        pass
+    
     # duration: total length of the motion
     # end_time: when motion should end, end time < time < duration will be static
     def move(

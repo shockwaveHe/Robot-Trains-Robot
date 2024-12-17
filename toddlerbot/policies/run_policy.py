@@ -5,7 +5,6 @@ import json
 import os
 import pickle
 import pkgutil
-import subprocess
 import time
 from typing import Any, Dict, List
 
@@ -13,7 +12,6 @@ import mujoco
 import numpy as np
 import numpy.typing as npt
 from tqdm import tqdm
-import inspect
 
 from toddlerbot.arm_policies import (
     BaseArmPolicy,
@@ -286,7 +284,10 @@ def main(
     step_idx = 0
     time_until_next_step = 0.0
     last_ckpt_idx = -1
-    sim.reset()
+    # import ipdb; ipdb.set_trace()
+    obs = sim.reset()
+    if isinstance(policy, MJXPolicy):
+        policy.reset(obs)
     try:
         while step_idx < n_steps_total and not getattr(policy, 'stopped', False):
             step_start = time.time()
@@ -655,7 +656,6 @@ if __name__ == "__main__":
     PolicyClass = get_policy_class(args.policy.replace("_fixed", ""))
     ArmPolicyClass = get_arm_policy_class(args.arm_policy)
 
-    signature = inspect.signature(PolicyClass.__init__)
     if "replay" in args.policy:
         assert (
             args.robot in args.run_name
@@ -701,10 +701,9 @@ if __name__ == "__main__":
         fixed_command = None
         if len(args.command) > 0:
             fixed_command = np.array(args.command.split(" "), dtype=np.float32)
-
-        # TODO: no args.ip?
+      
         policy = PolicyClass(
-            args.policy, robot, init_motor_pos, args.ckpt, fixed_command=fixed_command
+            args.policy, robot=robot, init_motor_pos=init_motor_pos, ckpt=args.ckpt, fixed_command=fixed_command
         )
 
     elif issubclass(PolicyClass, DPPolicy):
