@@ -2,7 +2,7 @@ import math
 import os
 import numpy as np
 from dataclasses import asdict
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import torch
 from toddlerbot.sim import Obs
@@ -11,7 +11,9 @@ from toddlerbot.motion.walk_zmp_ref import WalkZMPReference
 from toddlerbot.finetuning.replay_buffer import OnlineReplayBuffer
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.math_utils import interpolate_action
-from toddlerbot.finetuning.networks import make_ppo_networks, load_jax_params, load_jax_params_into_pytorch
+from toddlerbot.finetuning.networks import load_jax_params, load_jax_params_into_pytorch
+import toddlerbot.finetuning.networks as networks
+import toddlerbot.finetuning.learners as learners
 from scipy.spatial.transform import Rotation
 from toddlerbot.locomotion.ppo_config import PPOConfig
 from toddlerbot.utils.math_utils import euler2quat
@@ -63,7 +65,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.replay_buffer = OnlineReplayBuffer(self.device, self.obs_size * self.num_obs_history, self.privileged_obs_size * self.num_privileged_obs_history, self.num_action, self.cfg.finetune.buffer_size) # TODO: add priviledged obs to buffer
 
         print(f"Buffer size: {self.cfg.finetune.buffer_size}")
-        self.ppo_networks = make_ppo_networks(
+        self._make_ppo_networks(
             observation_size=self.cfg.obs.frame_stack * self.obs_size,
             privileged_observation_size=self.cfg.obs.frame_stack * self.privileged_obs_size,
             action_size=self.num_action,
@@ -94,6 +96,66 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         )
         self.zmq_receiver = ZMQNode(type="receiver")
         self._init_reward()
+
+    def _make_ppo_networks(
+        self,
+        observation_size: int,
+        privileged_observation_size: int,
+        action_size: int,
+        preprocess_observations_fn: Callable = lambda x, y: x,
+        policy_hidden_layer_sizes: Sequence[int] = (32,) * 4,
+        value_hidden_layer_sizes: Sequence[int] = (256,) * 5,
+        activation: Callable = torch.nn.SiLU,  # PyTorch equivalent of linen.swish is SiLU
+        device: str = 'cpu'
+    ):
+        """Make PPO networks with a PyTorch implementation."""
+
+        # Create parametric action distribution (assumes you've already implemented this)
+        self.action_dist = networks.NormalTanhDistribution(
+            event_size=action_size
+        )
+
+        # Create policy network
+        # Note: Ensure that your policy MLP ends with parametric_action_distribution.param_size units
+        self.policy_net = networks.PolicyNetwork(
+            observation_size=observation_size,
+            preprocess_observations_fn=preprocess_observations_fn,
+            hidden_layers=policy_hidden_layer_sizes,
+            output_size=self.action_dist.param_size,
+            activation=activation()
+        ).to(device)
+
+        # Create value network
+        self.value_net = networks.ValueNetwork(
+            observation_size=privileged_observation_size,
+            preprocess_observations_fn=preprocess_observations_fn,
+            hidden_layers=value_hidden_layer_sizes,
+            activation=activation()
+        ).to(device)
+
+        Q_net_cls = networks.DoubleQNetwork if self.cfg.finetune.use_double_q else networks.QNetwork
+        self.Q_net = Q_net_cls(
+            observation_size=observation_size,
+            action_size=action_size,
+            preprocess_observations_fn=preprocess_observations_fn,
+            hidden_layers=value_hidden_layer_sizes,
+            activation=activation()
+        ).to(device)
+        
+    def _make_learners(
+        self,
+        policy_lr: float,
+        value_lr: float,
+        Q_lr: float,
+        gamma: float,
+        tau: float,
+        omega: float,
+        batch_size: int,
+        target_update_freq: int,
+        use_double_q: bool,
+    ):
+        """Make PPO learners with a PyTorch implementation."""
+        self.value
 
     def _sample_command(
         self, last_command: Optional[np.ndarray] = None

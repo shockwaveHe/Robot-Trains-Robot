@@ -185,82 +185,26 @@ class ValueNetwork(nn.Module):
         obs = self.preprocess_observations_fn(obs, processer_params)
         return self.mlp(obs).squeeze(-1)
 
-@dataclass 
-class PPONetworks:
-    def __init__(self, policy_network: PolicyNetwork, value_network: ValueNetwork, parametric_action_distribution: NormalTanhDistribution):
-        self.policy_network = policy_network
-        self.value_network = value_network
-        self.parametric_action_distribution = parametric_action_distribution
+class QNetwork(nn.Module):
+    def __init__(self, observation_size, action_size, preprocess_observations_fn, hidden_layers, activation='swish'):
+        super().__init__()
+        self.preprocess_observations_fn = preprocess_observations_fn
+        self.mlp = MLP([observation_size + action_size] + list(hidden_layers) + [1],
+                              activation=activation,
+                              layer_norm=False,
+                              activate_final=False)
 
+    def forward(self, obs, action, processer_params=None):
+        obs = self.preprocess_observations_fn(obs, processer_params)
+        x = torch.cat([obs, action], dim=-1)
+        return self.mlp(x).squeeze(-1)
+    
+class DoubleQNetwork(nn.Module):
+    def __init__(self, observation_size, action_size, preprocess_observations_fn, hidden_layers, activation='swish'):
+        super().__init__()
+        self.q1 = QNetwork(observation_size, action_size, preprocess_observations_fn, hidden_layers, activation)
+        self.q2 = QNetwork(observation_size, action_size, preprocess_observations_fn, hidden_layers, activation)
 
-def make_ppo_networks(
-    observation_size: int,
-    privileged_observation_size: int,
-    action_size: int,
-    preprocess_observations_fn: Callable = lambda x, y: x,
-    policy_hidden_layer_sizes: Sequence[int] = (32,) * 4,
-    value_hidden_layer_sizes: Sequence[int] = (256,) * 5,
-    activation: Callable = torch.nn.SiLU,  # PyTorch equivalent of linen.swish is SiLU
-    device: str = 'cpu'
-) -> PPONetworks:
-    """Make PPO networks with a PyTorch implementation."""
+    def forward(self, obs, action, processer_params=None):
+        return self.q1(obs, action, processer_params), self.q2(obs, action, processer_params)
 
-    # Create parametric action distribution (assumes you've already implemented this)
-    parametric_action_distribution = NormalTanhDistribution(
-        event_size=action_size
-    )
-
-    # Create policy network
-    # Note: Ensure that your policy MLP ends with parametric_action_distribution.param_size units
-    policy_network = PolicyNetwork(
-        observation_size=observation_size,
-        preprocess_observations_fn=preprocess_observations_fn,
-        hidden_layers=policy_hidden_layer_sizes,
-        output_size=parametric_action_distribution.param_size,
-        activation=activation()
-    ).to(device)
-
-    # Create value network
-    value_network = ValueNetwork(
-        observation_size=privileged_observation_size,
-        preprocess_observations_fn=preprocess_observations_fn,
-        hidden_layers=value_hidden_layer_sizes,
-        activation=activation()
-    ).to(device)
-
-    return PPONetworks(
-        policy_network=policy_network,
-        value_network=value_network,
-        parametric_action_distribution=parametric_action_distribution
-    )
-
-def make_inference_fn(ppo_networks: PPONetworks, deterministic: bool = False) -> Callable:
-    """Creates a function that returns a policy callable for inference."""
-    policy_network = ppo_networks.policy_network
-    parametric_action_distribution = ppo_networks.parametric_action_distribution
-
-    def policy(observations: torch.Tensor) -> Tuple[torch.Tensor, dict]:
-        """
-        Args:
-            observations: torch.Tensor [batch, observation_dim]
-        Returns:
-            A tuple of (actions, extra_info_dict)
-        """
-        with torch.no_grad():
-            logits = policy_network(observations)  # [batch, param_size]
-            print(logits, observations)
-            if deterministic:
-                # Deterministic: use mode
-                actions = parametric_action_distribution.mode(logits)
-                return actions, {}
-            else:
-                # Stochastic: sample raw pre-tanh actions
-                raw_actions = parametric_action_distribution.sample_no_postprocessing(logits)
-                log_prob = parametric_action_distribution.log_prob(logits, raw_actions)
-                postprocessed_actions = parametric_action_distribution.postprocess(raw_actions)
-                return postprocessed_actions, {
-                    'log_prob': log_prob,
-                    'raw_action': raw_actions
-                }
-
-    return policy

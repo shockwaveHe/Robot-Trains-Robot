@@ -166,6 +166,7 @@ class MJXConfig:
     @dataclass
     class FinetuneConfig:
         buffer_size: int = 100_000
+        use_double_q: bool = True
 
     def __init__(self):
         self.sim = self.SimConfig()
