@@ -15,7 +15,7 @@ from toddlerbot.finetuning.networks import load_jax_params, load_jax_params_into
 import toddlerbot.finetuning.networks as networks
 import toddlerbot.finetuning.learners as learners
 from scipy.spatial.transform import Rotation
-from toddlerbot.locomotion.ppo_config import PPOConfig
+from toddlerbot.locomotion.finetune_config import FinetuneConfig
 from toddlerbot.utils.math_utils import euler2quat
 from pathlib import Path
 from numba import njit
@@ -25,8 +25,6 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
     def __init__(self, name, robot: Robot, *args, **kwargs):
         super().__init__(name, robot, *args, **kwargs)
         self.robot = robot
-        self.ppo_networks = None
-        self.replay_buffer = None
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         if "seed" in kwargs:
             self.rng = np.random.default_rng(kwargs["seed"])
@@ -46,7 +44,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         )
         self.zero_chance = self.cfg.commands.zero_chance
         self.turn_chance = self.cfg.commands.turn_chance
-        self.train_cfg = PPOConfig()
+        self.finetune_cfg = FinetuneConfig()
         self.last_action = np.zeros(self.num_action)
         self.last_last_action = np.zeros(self.num_action)
         self.last_obs = None
@@ -69,8 +67,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             observation_size=self.cfg.obs.frame_stack * self.obs_size,
             privileged_observation_size=self.cfg.obs.frame_stack * self.privileged_obs_size,
             action_size=self.num_action,
-            value_hidden_layer_sizes=self.train_cfg.value_hidden_layer_sizes,
-            policy_hidden_layer_sizes=self.train_cfg.policy_hidden_layer_sizes,
+            value_hidden_layer_sizes=self.finetune_cfg.value_hidden_layer_sizes,
+            policy_hidden_layer_sizes=self.finetune_cfg.policy_hidden_layer_sizes,
             device="cuda" if torch.cuda.is_available() else "cpu",
         )
 
@@ -88,7 +86,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             )
         print(f"Loading pretrained model from {policy_path}")
         jax_params = load_jax_params(policy_path)
-        load_jax_params_into_pytorch(self.ppo_networks.policy_network, jax_params[1]["params"])
+        load_jax_params_into_pytorch(self.policy_net, jax_params[1]["params"])
 
         self.obs_history = np.zeros(self.num_obs_history * self.obs_size)
         self.privileged_obs_history = np.zeros(
@@ -96,6 +94,19 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         )
         self.zmq_receiver = ZMQNode(type="receiver")
         self._init_reward()
+        self._make_learners(
+            policy_lr=self.finetune_cfg.policy_lr, 
+            value_lr=self.finetune_cfg.value_lr, 
+            Q_lr=self.finetune_cfg.Q_lr, 
+            gamma=self.finetune_cfg.discounting, 
+            tau=self.finetune_cfg.tau, 
+            omega=self.finetune_cfg.omega, 
+            batch_size=self.finetune_cfg.batch_size, 
+            target_update_freq=self.finetune_cfg.num_updates_per_batch,
+            use_double_q=self.finetune_cfg.use_double_q,
+            warmup_steps=self.finetune_cfg.warmup_steps,
+            decay_steps=self.finetune_cfg.decay_steps,
+        )
 
     def _make_ppo_networks(
         self,
@@ -153,9 +164,12 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         batch_size: int,
         target_update_freq: int,
         use_double_q: bool,
+        init_steps: int,
+        warmup_steps: int,
+        decay_steps: int,
     ):
         """Make PPO learners with a PyTorch implementation."""
-        self.value
+        self.value_learner = learners.ValueLearner(device=self.device, value_net=self.value_net, value_lr=value_lr, warmup_steps=warmup_steps, decay_steps=decay_steps, batch_size=batch_size)
 
     def _sample_command(
         self, last_command: Optional[np.ndarray] = None
@@ -188,6 +202,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             ) * np.cos(theta)
             z = np.zeros(1)
             return np.concatenate([x, y, z])
+        
         def sample_turn_command():
             x = np.zeros(1)
             y = np.zeros(1)
@@ -267,16 +282,16 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
     def get_action(self, obs_arr: np.ndarray, deterministic: bool = True, is_real: bool = False) -> Tuple[np.ndarray, Dict[str, Any]]:
         obs_tensor = torch.tensor(obs_arr, dtype=torch.float32).unsqueeze(0).to(self.device)
         with torch.no_grad():
-            logits = self.ppo_networks.policy_network(obs_tensor)
+            logits = self.policy_net(obs_tensor)
             if deterministic:
                 # Deterministic: use mode
-                actions = self.ppo_networks.parametric_action_distribution.mode(logits).cpu().numpy().flatten()
+                actions = self.action_dist.mode(logits).cpu().numpy().flatten()
                 return actions, {}
             else:
                 # Stochastic: sample raw pre-tanh actions
-                raw_actions = self.ppo_networks.parametric_action_distribution.sample_no_postprocessing(logits)
-                log_prob = self.ppo_networks.parametric_action_distribution.log_prob(logits, raw_actions)
-                postprocessed_actions = self.ppo_networks.parametric_action_distribution.postprocess(raw_actions)
+                raw_actions = self.action_dist.sample_no_postprocessing(logits)
+                log_prob = self.action_dist.log_prob(logits, raw_actions)
+                postprocessed_actions = self.action_dist.postprocess(raw_actions)
                 return postprocessed_actions, {
                     'log_prob': log_prob,
                     'raw_action': raw_actions
@@ -367,6 +382,11 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.last_privileged_obs = privileged_obs_arr.copy()
         self.last_last_action = self.last_action.copy()
         self.last_action = action.copy()
+
+        if len(self.replay_buffer) > self.finetune_cfg.start_steps:
+            import ipdb; ipdb.set_trace()
+            value_loss = self.value_learner.update(self.replay_buffer)
+            print(f"Value loss: {value_loss}")
 
         if is_real:
             delayed_action = action

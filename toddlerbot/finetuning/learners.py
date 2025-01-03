@@ -7,18 +7,51 @@ from replay_buffer import OnlineReplayBuffer
 
 import torch.nn as nn
 
+import math
+from torch.optim import Optimizer
+from torch.optim.lr_scheduler import _LRScheduler
+
+
+class LinearCosineScheduler(_LRScheduler):
+    def __init__(self, optimizer: Optimizer, warmup_steps: int, decay_steps: int, last_epoch: int = -1):
+        """
+        A scheduler that linearly increases the learning rate for a specified number of steps 
+        and then decreases it following a cosine schedule.
+
+        Args:
+            optimizer (Optimizer): Wrapped optimizer.
+            total_steps (int): Total number of training steps.
+            warmup_steps (int): Number of steps for the linear warmup phase.
+            last_epoch (int): The index of the last epoch. Default: -1.
+        """
+        self.total_steps = decay_steps + warmup_steps
+        self.warmup_steps = warmup_steps
+        super().__init__(optimizer, last_epoch)
+
+    def get_lr(self):
+        if self.last_epoch < self.warmup_steps:
+            # Linear warmup phase
+            return [base_lr * (self.last_epoch + 1) / self.warmup_steps for base_lr in self.base_lrs]
+        else:
+            # Cosine annealing phase
+            progress = (self.last_epoch - self.warmup_steps) / max(1, self.total_steps - self.warmup_steps)
+            return [base_lr * 0.5 * (1 + math.cos(math.pi * progress)) for base_lr in self.base_lrs]
+
 
 class ValueLearner:
     _device: torch.device
     _value: ValueNetwork
     _optimizer: torch.optim
     _batch_size: int
+    _scheduler: torch.optim.lr_scheduler
 
     def __init__(
         self, 
         device: torch.device, 
         value_net: ValueNetwork,
         value_lr: float, 
+        warmup_steps: int,
+        decay_steps: int,
         batch_size: int
     ) -> None:
         super().__init__()
@@ -28,6 +61,7 @@ class ValueLearner:
             self._value.parameters(), 
             lr=value_lr,
             )
+        self._scheduler = LinearCosineScheduler(self._optimizer, warmup_steps, decay_steps)
         self._batch_size = batch_size
 
 
@@ -46,6 +80,7 @@ class ValueLearner:
         self._optimizer.zero_grad()
         value_loss.backward()
         self._optimizer.step()
+        self._scheduler.step()
 
         return value_loss.item()
 

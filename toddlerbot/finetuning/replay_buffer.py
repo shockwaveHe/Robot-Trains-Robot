@@ -30,7 +30,9 @@ class OnlineReplayBuffer:
         self._size = 0
         self.start_collection = False
 
-
+    def __len__(self):
+        return self._size
+    
     def store(
         self,
         s: np.ndarray,
