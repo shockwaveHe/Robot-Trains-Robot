@@ -59,7 +59,7 @@ class WalkPolicy(MJXPolicy, policy_name="walk"):
         if len(self.command_list) >= int(1 / self.control_dt):
             last_commands = self.command_list[-int(1 / self.control_dt) :]
             all_zeros = all(np.all(command == 0) for command in last_commands)
-            self.is_standing = all_zeros and abs(self.phase_signal[0]) > 1 - 1e-6
+            self.is_standing = all_zeros and abs(self.phase_signal[1]) > 1 - 1e-6
         else:
             self.is_standing = False
 

@@ -4,9 +4,10 @@
 robots=("toddlerbot")
 envs=("walk")
 config_overrides=(
-    "HangConfig.init_hang_force=2.0 HangConfig.final_hang_force=0.0 HangConfig.hang_force_decay_episodes=200"
-    "HangConfig.init_hang_force=0.0 HangConfig.final_hang_force=0.0 HangConfig.hang_force_decay_episodes=200"
-    "HangConfig.init_hang_force=2.0 HangConfig.final_hang_force=0.0 HangConfig.hang_force_decay_episodes=100"
+    "PPOConfig.num_timesteps=300000000,PPOConfig.num_evals=3000,PPOConfig.seed=0"
+    "PPOConfig.num_timesteps=300000000,PPOConfig.num_evals=3000,PPOConfig.seed=1"
+    "PPOConfig.num_timesteps=300000000,PPOConfig.num_evals=3000,PPOConfig.seed=2"
+    "PPOConfig.num_timesteps=300000000,PPOConfig.num_evals=3000,PPOConfig.seed=3"
 )
 
 # Iterate over all configurations
@@ -16,7 +17,6 @@ for robot in "${robots[@]}"; do
             echo "Running experiment with Robot: $robot, Env: $env, Config Override: $config_override"
             
             # Run the Python script with the current configuration
-            # python toddlerbot/locomotion/train_mjx.py --robot "$robot" --env "$env" --restore "results/toddlerbot_OP3_walk_ppo_20241024_184704/87040000" --config_override "$config_override"
             python toddlerbot/locomotion/train_mjx.py --robot "$robot" --env "$env" --config-override "$config_override"
             
             # Optional: Add a small delay between experiments

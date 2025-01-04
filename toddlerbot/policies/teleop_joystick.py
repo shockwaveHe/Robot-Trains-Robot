@@ -14,7 +14,6 @@ from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
 from toddlerbot.utils.comm_utils import ZMQNode
-from toddlerbot.utils.math_utils import interpolate_action
 
 
 class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
@@ -54,6 +53,7 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
             zmq_receiver=self.zmq_receiver,
             zmq_sender=self.zmq_sender,
             ip=ip,
+            use_torso_pd=False,
         )
         self.teleop_policy = TeleopFollowerPDPolicy(
             "teleop_follower_pd", robot, init_motor_pos, **balance_kwargs
@@ -76,20 +76,14 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
     def step(
         self, obs: Obs, is_real: bool = False
     ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
-        if obs.time < self.prep_duration:
-            action = np.asarray(
-                interpolate_action(obs.time, self.prep_time, self.prep_action)
-            )
-            return {}, action
-
         assert self.zmq_receiver is not None
         msg = self.zmq_receiver.get_msg()
 
         control_inputs = self.last_control_inputs
-        if self.joystick is not None:
-            control_inputs = self.joystick.get_controller_input()
-        elif msg is not None:
+        if msg is not None:
             control_inputs = msg.control_inputs
+        elif self.joystick is not None:
+            control_inputs = self.joystick.get_controller_input()
 
         self.last_control_inputs = control_inputs
 
@@ -144,7 +138,8 @@ class TeleopJoystickPolicy(BasePolicy, policy_name="teleop_joystick"):
         control_inputs, motor_target = current_policy.step(obs, is_real)
 
         print(f"policy: {policy_curr}")
-        print(f"need_reset: {self.need_reset}")
+        # print(f"control_inputs: {control_inputs}")
+        # print(f"need_reset: {self.need_reset}")
 
         if self.reset_policy.reset_time is None:
             self.need_reset = False

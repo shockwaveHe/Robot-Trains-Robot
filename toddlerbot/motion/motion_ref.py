@@ -201,6 +201,33 @@ class MotionReference(ABC):
         ank_roll_id = mujoco.mj_name2id(
             model, mujoco.mjtObj.mjOBJ_BODY, "ank_roll_link"
         )
+        self.passive_joint_signs = np.repeat(np.array([-1, 1, 1], dtype=np.float32), 4)
+
+        if "gripper" in self.robot.name:
+            self.passive_joint_indices = np.concatenate(
+                [
+                    self.passive_joint_indices,
+                    np.array(
+                        [
+                            self.robot.joint_ordering.index("left_gripper_pinion"),
+                            self.robot.joint_ordering.index("right_gripper_pinion"),
+                        ]
+                    ),
+                ]
+            )
+            self.passive_joint_signs = np.concatenate(
+                [self.passive_joint_signs, np.array([1, 1], dtype=np.float32)]
+            )
+
+        hip_pitch_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "2xc430")
+        hip_roll_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "hip_yaw_link")
+        knee_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "left_calf_link")
+        ank_pitch_id = mujoco.mj_name2id(
+            model, mujoco.mjtObj.mjOBJ_BODY, "left_ank_pitch_link"
+        )
+        ank_roll_id = mujoco.mj_name2id(
+            model, mujoco.mjtObj.mjOBJ_BODY, "ank_roll_link"
+        )
         
         if self.use_jax:
             self.model = mjx.put_model(model)

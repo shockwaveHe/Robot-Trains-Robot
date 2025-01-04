@@ -9,6 +9,7 @@ from toddlerbot.locomotion.mjx_env import MJXEnv
 from toddlerbot.motion.walk_simple_ref import WalkSimpleReference
 from toddlerbot.motion.walk_zmp_ref import WalkZMPReference
 from toddlerbot.sim.robot import Robot
+from toddlerbot.utils.math_utils import quat2euler, quat_inv, rotate_vec
 
 
 class WalkEnv(MJXEnv, env_name="walk"):
@@ -131,7 +132,7 @@ class WalkEnv(MJXEnv, env_name="walk"):
     ):
         """Reward for torso pitch"""
         torso_quat = pipeline_state.x.rot[0]
-        torso_roll = math.quat_to_euler(torso_quat)[0]
+        torso_roll = quat2euler(torso_quat)[0]
 
         roll_min = jnp.clip(torso_roll - self.torso_roll_range[0], max=0.0)
         roll_max = jnp.clip(torso_roll - self.torso_roll_range[1], min=0.0)
@@ -145,7 +146,7 @@ class WalkEnv(MJXEnv, env_name="walk"):
     ):
         """Reward for torso pitch"""
         torso_quat = pipeline_state.x.rot[0]
-        torso_pitch = math.quat_to_euler(torso_quat)[1]
+        torso_pitch = quat2euler(torso_quat)[1]
 
         pitch_min = jnp.clip(torso_pitch - self.torso_pitch_range[0], max=0.0)
         pitch_max = jnp.clip(torso_pitch - self.torso_pitch_range[1], min=0.0)
@@ -180,10 +181,10 @@ class WalkEnv(MJXEnv, env_name="walk"):
     ):
         # Calculates the reward based on the distance between the feet.
         # Penalize feet get close to each other or too far away on the y axis
-        feet_vec = math.rotate(
+        feet_vec = rotate_vec(
             pipeline_state.x.pos[self.feet_link_ids[0]]
             - pipeline_state.x.pos[self.feet_link_ids[1]],
-            math.quat_inv(pipeline_state.x.rot[0]),
+            quat_inv(pipeline_state.x.rot[0]),
         )
         feet_dist = jnp.abs(feet_vec[1])
         d_min = jnp.clip(feet_dist - self.min_feet_y_dist, max=0.0)

@@ -73,8 +73,8 @@ dependencies = [
 
 [project.optional-dependencies]
 linux = ["jax[cuda12]==0.4.28", "torch==2.3.1", "torchvision==0.18.1"]
-macos = []
-windows = []
+macos = ["torch==2.3.1", "torchvision==0.18.1"]
+windows = ["torch==2.3.1", "torchvision==0.18.1"]
 jetson = [
     "SpeechRecognition==3.11.0",
     "sounddevice==0.5.1",
@@ -82,7 +82,7 @@ jetson = [
     "librosa==0.10.2.post1",
     "openai==1.54.3"
 ]
-steam_deck = []
+steam_deck = ["torch==2.3.1", "torchvision==0.18.1"]
 
 [tool.setuptools.packages.find]
 where = ["."]
