@@ -18,20 +18,7 @@ from toddlerbot.manipulation.utils.model_utils import get_resnet, replace_bn_wit
 
 
 class DPModel:
-<<<<<<< HEAD
-    def __init__(
-        self,
-        ckpt_path,
-        pred_horizon,
-        obs_horizon,
-        action_horizon,
-        lowdim_obs_dim,
-        action_dim,
-        stats=None,
-    ):
-=======
     def __init__(self, ckpt_path, stats=None):
->>>>>>> main
         # |o|o|                             observations: 2
         # | |a|a|a|a|a|a|a|a|               actions executed: 8
         # |p|p|p|p|p|p|p|p|p|p|p|p|p|p|p|p| actions predicted: 16
@@ -120,10 +107,6 @@ class DPModel:
             self.ema_nets.load_state_dict(
                 torch.load(ckpt_path, map_location=self.device)
             )
-<<<<<<< HEAD
-=======
-
->>>>>>> main
         print("Pretrained weights loaded.")
 
         self.ema_nets.eval()
@@ -245,11 +228,7 @@ if __name__ == "__main__":
     lowdim_obs_dim, action_dim = 2, 2
 
     # create dataset from file
-<<<<<<< HEAD
-    dataset_path = "/home/weizhuo2/Documents/gits/diffusion_policy_minimal/pusht_cchi_v7_replay.zarr.zip"
-=======
     dataset_path = "diffusion_policy_minimal/pusht_cchi_v7_replay.zarr.zip"
->>>>>>> main
     dataset = PushTImageDataset(
         dataset_path=dataset_path,
         pred_horizon=pred_horizon,
@@ -260,16 +239,7 @@ if __name__ == "__main__":
     stats = dataset.stats
 
     model = DPModel(
-<<<<<<< HEAD
-        "/home/weizhuo2/Documents/gits/diffusion_policy_minimal/checkpoints/pusht_vision_100ep.ckpt",
-        pred_horizon,
-        obs_horizon,
-        action_horizon,
-        lowdim_obs_dim,
-        action_dim,
-=======
         "diffusion_policy_minimal/checkpoints/pusht_vision_100ep.ckpt",
->>>>>>> main
         stats=stats,
     )
 

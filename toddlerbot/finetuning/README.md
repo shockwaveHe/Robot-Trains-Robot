@@ -12,4 +12,10 @@ python .\read_data_plot.py
 * [on the NUC] ssh to arya
 * [on the NUC] start ft_application
 * [on the NUC] run policy at_leader with finetuning sim
+```
+python -m toddlerbot.policies.run_policy --ip 192.168.0.70 --policy at_leader --sim finetune
+```
 * [on arya] run policy walk_finetune with real world sim
+```
+python toddlerbot/policies/run_policy.py --sim real --ip 192.168.0.137 --policy walk_finetune
+```
