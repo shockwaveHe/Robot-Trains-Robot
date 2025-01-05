@@ -75,8 +75,8 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
         """Reward for torso pitch"""
         torso_roll = obs.euler[0]
 
-        roll_min = np.clip(torso_roll - self.torso_roll_range[0], a_max=0.0)
-        roll_max = np.clip(torso_roll - self.torso_roll_range[1], a_min=0.0)
+        roll_min = np.clip(torso_roll - self.torso_roll_range[0], a_min=-np.inf, a_max=0.0)
+        roll_max = np.clip(torso_roll - self.torso_roll_range[1], a_min=0.0, a_max=np.inf)
         reward = (
             np.exp(-np.abs(roll_min) * 100) + np.exp(-np.abs(roll_max) * 100)
         ) / 2
@@ -87,8 +87,8 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
         """Reward for torso pitch"""
         torso_pitch = obs.euler[1]
 
-        pitch_min = np.clip(torso_pitch - self.torso_pitch_range[0], a_max=0.0)
-        pitch_max = np.clip(torso_pitch - self.torso_pitch_range[1], a_min=0.0)
+        pitch_min = np.clip(torso_pitch - self.torso_pitch_range[0], a_min=-np.inf, a_max=0.0)
+        pitch_max = np.clip(torso_pitch - self.torso_pitch_range[1], a_min=0.0, a_max=np.inf)
         reward = (
             np.exp(-np.abs(pitch_min) * 100) + np.exp(-np.abs(pitch_max) * 100)
         ) / 2

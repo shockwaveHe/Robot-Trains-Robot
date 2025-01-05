@@ -2,8 +2,8 @@ from copy import deepcopy
 import torch
 import torch.nn.functional as F
 
-from networks import ValueNetwork, QNetwork, DoubleQNetwork
-from replay_buffer import OnlineReplayBuffer
+from toddlerbot.finetuning.networks import ValueNetwork, QNetwork, DoubleQNetwork
+from toddlerbot.finetuning.replay_buffer import OnlineReplayBuffer
 
 import torch.nn as nn
 

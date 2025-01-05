@@ -106,6 +106,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             use_double_q=self.finetune_cfg.use_double_q,
             warmup_steps=self.finetune_cfg.warmup_steps,
             decay_steps=self.finetune_cfg.decay_steps,
+            init_steps=self.finetune_cfg.init_steps
         )
 
     def _make_ppo_networks(
@@ -383,7 +384,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.last_last_action = self.last_action.copy()
         self.last_action = action.copy()
 
-        if len(self.replay_buffer) > self.finetune_cfg.start_steps:
+        if len(self.replay_buffer) > self.finetune_cfg.init_steps:
             import ipdb; ipdb.set_trace()
             value_loss = self.value_learner.update(self.replay_buffer)
             print(f"Value loss: {value_loss}")
