@@ -35,6 +35,21 @@ def sync_time(ip: str):
         print("Failed to sync time with the follower!")
 
 
+def sync_time(ip: str):
+    assert len(ip) > 0, "IP address must be provided!"
+    try:
+        result = subprocess.run(
+            f"sudo ntpdate -u {ip}",
+            shell=True,
+            text=True,
+            check=True,
+            stdout=subprocess.PIPE,
+        )
+        print(result.stdout.strip())
+    except Exception:
+        print("Failed to sync time with the follower!")
+
+
 """
 Usage:
 

@@ -603,6 +603,13 @@ if __name__ == "__main__":
         default="",
         help="The domain randomization to apply. Allowed keys: ['geom_friction': 0.5, 2.0, 'dof_damping': 0.8, 1.2, 'dof_armature': 0.8, 1.2, 'dof_frictionloss': 0.8, 1.2, 'gravity']",
     )
+    parser.add_argument(
+        "--task",
+        type=str,
+        default="hug",
+        choices=["hug", "pick"],
+        help="The name of the task.",
+    )
     args = parser.parse_args()
 
     robot = Robot(args.robot)
@@ -653,6 +660,8 @@ if __name__ == "__main__":
 
     # t2 = time.time()
 
+    # t2 = time.time()
+
     PolicyClass = get_policy_class(args.policy.replace("_fixed", ""))
     ArmPolicyClass = get_arm_policy_class(args.arm_policy)
 
@@ -683,10 +692,10 @@ if __name__ == "__main__":
             sync_time(args.ip)
 
         policy = PolicyClass(
-            args.policy, robot, init_motor_pos, ip=args.ip, prep=args.prep
+            args.policy, robot, init_motor_pos, ip=args.ip, task=args.task
         )  # type: ignore
 
-    elif "joystick" in args.policy:
+    elif "teleop_joystick" in args.policy:
         if len(args.ip) > 0:
             sync_time(args.ip)
 
@@ -707,7 +716,7 @@ if __name__ == "__main__":
         )
 
     elif issubclass(PolicyClass, DPPolicy):
-        policy = PolicyClass(args.policy, robot, init_motor_pos, args.ckpt, prep=args.prep)
+        policy = PolicyClass(args.policy, robot, init_motor_pos, args.ckpt, task=args.task)
 
     elif issubclass(PolicyClass, BalancePDPolicy):
         # Run the command

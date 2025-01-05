@@ -3,6 +3,8 @@ import collections
 import numpy as np
 import torch
 import torch.nn as nn
+import torchvision.models as models
+from diffusers.schedulers.scheduling_ddim import DDIMScheduler
 from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
 from diffusers.schedulers.scheduling_ddim import DDIMScheduler
 from tqdm.auto import tqdm
@@ -16,6 +18,7 @@ from toddlerbot.manipulation.utils.model_utils import get_resnet, replace_bn_wit
 
 
 class DPModel:
+<<<<<<< HEAD
     def __init__(
         self,
         ckpt_path,
@@ -26,17 +29,27 @@ class DPModel:
         action_dim,
         stats=None,
     ):
+=======
+    def __init__(self, ckpt_path, stats=None):
+>>>>>>> main
         # |o|o|                             observations: 2
         # | |a|a|a|a|a|a|a|a|               actions executed: 8
         # |p|p|p|p|p|p|p|p|p|p|p|p|p|p|p|p| actions predicted: 16
 
+        params = torch.load(ckpt_path)["params"]
+
         # net definitions
-        self.vision_feature_dim = 512
-        self.lowdim_obs_dim = lowdim_obs_dim
-        self.action_dim = action_dim
-        self.pred_horizon = pred_horizon
-        self.obs_horizon = obs_horizon
-        self.action_horizon = action_horizon
+        self.weights = (
+            None
+            if len(params["weights"]) == 0
+            else models.ResNet18_Weights.IMAGENET1K_V1
+        )
+        self.vision_feature_dim = params["vision_feature_dim"]
+        self.lowdim_obs_dim = params["lowdim_obs_dim"]
+        self.action_dim = params["action_dim"]
+        self.pred_horizon = params["pred_horizon"]
+        self.obs_horizon = params["obs_horizon"]
+        self.action_horizon = params["action_horizon"]
         self.obs_dim = self.vision_feature_dim + self.lowdim_obs_dim
 
         self.down_dims = None
@@ -73,7 +86,7 @@ class DPModel:
 
     def load_model(self, ckpt_path, stats=None):
         # Construct the network
-        vision_encoder = get_resnet("resnet18")
+        vision_encoder = get_resnet("resnet18", weights=self.weights)
         vision_encoder = replace_bn_with_gn(vision_encoder)
 
         if self.down_dims is None:
@@ -107,6 +120,10 @@ class DPModel:
             self.ema_nets.load_state_dict(
                 torch.load(ckpt_path, map_location=self.device)
             )
+<<<<<<< HEAD
+=======
+
+>>>>>>> main
         print("Pretrained weights loaded.")
 
         self.ema_nets.eval()
@@ -228,7 +245,11 @@ if __name__ == "__main__":
     lowdim_obs_dim, action_dim = 2, 2
 
     # create dataset from file
+<<<<<<< HEAD
     dataset_path = "/home/weizhuo2/Documents/gits/diffusion_policy_minimal/pusht_cchi_v7_replay.zarr.zip"
+=======
+    dataset_path = "diffusion_policy_minimal/pusht_cchi_v7_replay.zarr.zip"
+>>>>>>> main
     dataset = PushTImageDataset(
         dataset_path=dataset_path,
         pred_horizon=pred_horizon,
@@ -239,12 +260,16 @@ if __name__ == "__main__":
     stats = dataset.stats
 
     model = DPModel(
+<<<<<<< HEAD
         "/home/weizhuo2/Documents/gits/diffusion_policy_minimal/checkpoints/pusht_vision_100ep.ckpt",
         pred_horizon,
         obs_horizon,
         action_horizon,
         lowdim_obs_dim,
         action_dim,
+=======
+        "diffusion_policy_minimal/checkpoints/pusht_vision_100ep.ckpt",
+>>>>>>> main
         stats=stats,
     )
 

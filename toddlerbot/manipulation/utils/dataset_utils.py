@@ -1,4 +1,68 @@
+import os
+
+import cv2
 import numpy as np
+
+
+def create_video_grid(
+    image_data: np.ndarray,
+    episode_ends: np.ndarray,
+    save_path: str,
+    file_name: str,
+    num_cols: int = 10,
+    fps: int = 10,
+):
+    video_path = os.path.join(save_path, file_name)
+
+    episode_starts = np.concatenate(([0], episode_ends[:-1]))
+    episode_list = []
+    for e_idx in range(len(episode_ends)):
+        start_idx = episode_starts[e_idx]
+        end_idx = episode_ends[e_idx]
+        # Extract the joint trajectory for this episode
+        episode_list.append(image_data[start_idx:end_idx])
+
+    episode_lengths = [epi.shape[0] for epi in episode_list]
+    max_length = max(episode_lengths)
+
+    E = len(episode_list)
+    num_rows = (E + num_cols - 1) // num_cols  # ceil division
+
+    C, H, W = image_data.shape[1:]
+    # Define the video writer
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore
+    out = cv2.VideoWriter(video_path, fourcc, fps, (W * num_cols, H * num_rows))
+
+    for t in range(max_length):
+        # Create a canvas for this frame (in RGB)
+        big_frame = np.zeros((H * num_rows, W * num_cols, C), dtype=np.uint8)
+
+        for e_idx in range(E):
+            row = e_idx // num_cols
+            col = e_idx % num_cols
+
+            # If t is beyond the episode length, use the last frame
+            if t < episode_list[e_idx].shape[0]:
+                frame_rgb = episode_list[e_idx][t].copy()  # shape (3, H, W)
+            else:
+                # Use the last frame of the episode
+                frame_rgb = episode_list[e_idx][-1].copy()
+
+            # Transpose to (H, W, C)
+            frame = np.transpose(frame_rgb, (1, 2, 0))
+
+            # Compute where to place this frame
+            start_y = row * H
+            start_x = col * W
+
+            big_frame[start_y : start_y + H, start_x : start_x + W] = frame
+
+        # Convert RGB to BGR for OpenCV
+        big_frame_bgr = cv2.cvtColor(big_frame, cv2.COLOR_RGB2BGR)
+        out.write(big_frame_bgr)
+
+    out.release()
+    print(f"Saved grid video to {video_path}")
 
 
 def create_sample_indices(

@@ -69,6 +69,7 @@ def find_ports(target: str) -> List[str]:
 
     for port, desc, hwid in ports:
         # Adjust the condition below according to your board's unique identifier or pattern
+        print(port, desc, hwid)
         if target in desc:
             if os_type != "Windows":
                 port = port.replace("cu", "tty")

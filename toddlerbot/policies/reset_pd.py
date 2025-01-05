@@ -24,6 +24,7 @@ class ResetPDPolicy(BalancePDPolicy, policy_name="reset_pd"):
         zmq_sender: Optional[ZMQNode] = None,
         ip: str = "",
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
+        use_torso_pd: bool = True,
     ):
         super().__init__(
             name,
@@ -35,6 +36,7 @@ class ResetPDPolicy(BalancePDPolicy, policy_name="reset_pd"):
             zmq_sender,
             ip,
             fixed_command,
+            use_torso_pd,
         )
         self.reset_motor_indices = np.arange(robot.nu)
         self.reset_vel = 0.3

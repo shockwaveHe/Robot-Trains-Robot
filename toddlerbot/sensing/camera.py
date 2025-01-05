@@ -80,7 +80,11 @@ class AprilTagDetector:
 class Camera:
     def __init__(self, side, width=640, height=480):
         self.side = side
-        self.camera_id = 4 if side == "left" else 0
+
+        video_devices = [int(dev[5:]) for dev in os.listdir("/dev") if dev.startswith("video")]
+        video_devices = sorted(video_devices)  # Sort numerically
+        self.camera_id = video_devices[4] if side == "left" else video_devices[0]
+
         self.width = width
         self.height = height
 

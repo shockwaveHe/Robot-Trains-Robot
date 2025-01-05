@@ -13,7 +13,9 @@ from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
 from toddlerbot.utils.comm_utils import ZMQMessage, ZMQNode
-from toddlerbot.utils.math_utils import interpolate_action
+from toddlerbot.utils.math_utils import interpolate_action, mat2euler, euler2mat
+
+# from toddlerbot.utils.misc_utils import profile
 
 # from toddlerbot.utils.misc_utils import profile
 
@@ -32,6 +34,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         zmq_sender: Optional[ZMQNode] = None,
         ip: str = "",
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
+        use_torso_pd: bool = True,
     ):
         super().__init__(name, robot, init_motor_pos)
 
@@ -46,6 +49,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         self.fixed_command = (
             self.zero_command if fixed_command is None else fixed_command
         )
+        self.use_torso_pd = use_torso_pd
 
         self.state_ref: Optional[npt.NDArray[np.float32]] = None
 
@@ -99,9 +103,11 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         self.gripper_delta_max = 0.5
 
         self.desired_torso_pitch = 0.0
+        self.desired_torso_roll = 0.0
         self.last_torso_pitch = 0.0
-        self.torso_pitch_kp = 0.5
-        self.torso_pitch_kd = 0.01
+        self.last_torso_roll = 0.0
+        self.torso_kp = 0.5
+        self.torso_kd = 0.01
         self.hip_pitch_indices = np.array(
             [
                 robot.motor_ordering.index("left_hip_pitch"),
@@ -109,17 +115,29 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
             ]
         )
         self.hip_pitch_signs = np.array([1.0, -1.0], dtype=np.float32)
+        self.hip_roll_indices = np.array(
+            [
+                robot.motor_ordering.index("left_hip_roll"),
+                robot.motor_ordering.index("right_hip_roll"),
+            ]
+        )
+        self.hip_roll_signs = np.array([1.0, -1.0], dtype=np.float32)
 
         self.is_prepared = False
-        self.prep_motor_pos = self.default_motor_pos.copy()
+        self.prep_duration = 7.0
+
+        self.is_ready = False
+        self.manip_duration = 0.0
+        self.manip_motor_pos = self.default_motor_pos.copy()
 
     def reset(self):
-        self.state_ref[:3] = np.zeros(3, dtype=np.float32)
-        self.state_ref[3:7] = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)
-        self.state_ref[13 : 13 + self.robot.nu] = self.prep_motor_pos.copy()
-        self.state_ref[13 + self.robot.nu : 13 + 2 * self.robot.nu] = (
-            self.default_joint_pos.copy()
-        )
+        if self.state_ref is not None:
+            self.state_ref[:3] = np.zeros(3, dtype=np.float32)
+            self.state_ref[3:7] = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)
+            self.state_ref[13 : 13 + self.robot.nu] = self.manip_motor_pos.copy()
+            self.state_ref[13 + self.robot.nu : 13 + 2 * self.robot.nu] = (
+                self.default_joint_pos.copy()
+            )
 
     def get_command(self, control_inputs: Dict[str, float]) -> npt.NDArray[np.float32]:
         command = np.zeros(len(self.command_range), dtype=np.float32)
@@ -167,18 +185,20 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         return command
 
     def get_arm_motor_pos(self, obs: Obs) -> npt.NDArray[np.float32]:
-        return self.prep_motor_pos[self.arm_motor_indices]
+        return self.manip_motor_pos[self.arm_motor_indices]
 
     def step(
         self, obs: Obs, is_real: bool = False
     ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
         if not self.is_prepared:
             self.is_prepared = True
-            self.prep_duration = 7.0 if is_real else 2.0
+            if not is_real:
+                self.prep_duration -= 5.0
+
             self.prep_time, self.prep_action = self.move(
                 -self.control_dt,
                 self.init_motor_pos,
-                self.prep_motor_pos,
+                self.default_motor_pos,
                 self.prep_duration,
                 end_time=5.0 if is_real else 0.0,
             )
@@ -186,6 +206,24 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         if obs.time < self.prep_duration:
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
+            )
+            return {}, action
+
+        if not self.is_ready:
+            self.is_ready = True
+
+            self.manip_time, self.manip_action = self.move(
+                -self.control_dt,
+                self.default_motor_pos,
+                self.manip_motor_pos,
+                self.manip_duration,
+            )
+
+        if obs.time - self.prep_duration < self.manip_duration:
+            action = np.asarray(
+                interpolate_action(
+                    obs.time - self.prep_duration, self.manip_time, self.manip_action
+                )
             )
             return {}, action
 
@@ -262,10 +300,10 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         arm_joint_pos = self.balance_ref.arm_fk(arm_motor_pos)
 
         if self.state_ref is None:
-            prep_joint_pos = np.array(
+            manip_joint_pos = np.array(
                 list(
                     self.robot.motor_to_joint_angles(
-                        dict(zip(self.robot.motor_ordering, self.prep_motor_pos))
+                        dict(zip(self.robot.motor_ordering, self.manip_motor_pos))
                     ).values()
                 ),
                 dtype=np.float32,
@@ -276,8 +314,8 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
                     np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),  # Quaternion
                     np.zeros(3, dtype=np.float32),  # Linear velocity
                     np.zeros(3, dtype=np.float32),  # Angular velocity
-                    self.prep_motor_pos,  # Motor positions
-                    prep_joint_pos,
+                    self.manip_motor_pos,  # Motor positions
+                    manip_joint_pos,
                     np.ones(2, dtype=np.float32),  # Stance mask
                 ]
             )
@@ -293,15 +331,37 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
 
         motor_target = self.state_ref[13 : 13 + self.robot.nu]
 
-        # Apply PD control based on torso pitch angle
-        current_pitch = obs.euler[1]
-        pitch_error = self.desired_torso_pitch - current_pitch
-        pitch_vel = (current_pitch - self.last_torso_pitch) / self.control_dt
-        pd_output = self.torso_pitch_kp * pitch_error - self.torso_pitch_kd * pitch_vel
-        # Adjust hip pitch motor target
-        # print(f"current_pitch: {current_pitch:.2f}, pitch_vel: {pitch_vel:.2f}, pd_output: {pd_output:.2f}")
-        # pd_output = np.clip(pd_output, -0.05, 0.05)
-        motor_target[self.hip_pitch_indices] += pd_output * self.hip_pitch_signs
+        if self.use_torso_pd:
+            # Apply PD control based on torso pitch angle
+            waist_roll, waist_yaw = self.robot.waist_fk(obs.motor_pos[self.waist_motor_indices])
+            waist_mat = euler2mat([-waist_roll, 0.0, -waist_yaw])
+            torso_mat = euler2mat(obs.euler) @ waist_mat.T
+            torso_euler = mat2euler(torso_mat)
+
+            # print(f"waist_roll: {waist_roll:.2f}, waist_yaw: {waist_yaw:.2f}")
+            # print(f"torso_euler: {torso_euler}")
+            
+            current_roll = torso_euler[0]
+            current_pitch = torso_euler[1]
+            roll_error = self.desired_torso_roll - current_roll
+            roll_vel = (current_roll - self.last_torso_roll) / self.control_dt
+            pitch_error = self.desired_torso_pitch - current_pitch
+            pitch_vel = (current_pitch - self.last_torso_pitch) / self.control_dt
+            roll_pd_output = (
+                self.torso_kp * roll_error - self.torso_kd * roll_vel
+            )
+            pitch_pd_output = (
+                self.torso_kp * pitch_error - self.torso_kd * pitch_vel
+            )
+            # Adjust hip pitch motor target
+            # print(f"current_roll: {current_roll:.2f}, roll_vel: {roll_vel:.2f}, roll_pd_output: {roll_pd_output:.2f}")
+            # print(f"current_pitch: {current_pitch:.2f}, pitch_vel: {pitch_vel:.2f}, pitch_pd_output: {pitch_pd_output:.2f}")
+
+            motor_target[self.hip_roll_indices] += roll_pd_output * self.hip_roll_signs
+            motor_target[self.hip_pitch_indices] += pitch_pd_output * self.hip_pitch_signs
+
+            self.last_torso_roll = current_roll
+            self.last_torso_pitch = current_pitch
 
         # Override motor target with reference motion or teleop motion
         motor_target = np.clip(

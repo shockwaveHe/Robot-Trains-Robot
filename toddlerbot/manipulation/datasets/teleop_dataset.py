@@ -1,13 +1,18 @@
+from typing import List
+
 import joblib
 import numpy as np
+import numpy.typing as npt
 import torch
 
 from toddlerbot.manipulation.utils.dataset_utils import (
     create_sample_indices,
+    create_video_grid,
     get_data_stats,
     normalize_data,
     sample_sequence,
 )
+from toddlerbot.visualization.vis_plot import plot_teleop_dataset
 
 
 # episode_ends idx is the index of the next start. In other words, you can use
@@ -15,29 +20,50 @@ from toddlerbot.manipulation.utils.dataset_utils import (
 class TeleopImageDataset(torch.utils.data.Dataset):
     def __init__(
         self,
-        dataset_path: str,
+        dataset_path_list: List[str],
+        exp_folder_path: str,
         pred_horizon: int,
         obs_horizon: int,
         action_horizon: int,
     ):
         # read from zarr dataset
-        dataset_root = joblib.load(dataset_path)
-        # dataset_root['state_array'] = dataset_root['state_array'].astype(np.float32)
-        # dataset_root['images'] = dataset_root['images'].astype(np.float32)
+        train_image_list = []
+        train_agent_pos_list = []
+        train_action_list = []
+        episode_ends_list: List[npt.NDArray[np.float32]] = []
+        for dataset_path in dataset_path_list:
+            dataset_root = joblib.load(dataset_path)
+            train_image_list.append(np.moveaxis(dataset_root["images"], -1, 1))
+            train_agent_pos_list.append(dataset_root["agent_pos"])
+            train_action_list.append(dataset_root["action"])
+            if len(episode_ends_list) > 0:
+                episode_ends_list.append(
+                    episode_ends_list[-1][-1] + dataset_root["episode_ends"]
+                )
+            else:
+                episode_ends_list.append(dataset_root["episode_ends"])
 
-        # float32, [0,1], (N,96,96,3)
-        train_image_data = dataset_root["images"]
-        train_image_data = np.moveaxis(train_image_data, -1, 1)
-        # (N,3,96,96)
+        # concatenate all the data
+        train_image_data = np.concatenate(train_image_list, axis=0)
+        train_agent_pos = np.concatenate(train_agent_pos_list, axis=0)
+        train_action = np.concatenate(train_action_list, axis=0)
+        episode_ends = np.concatenate(episode_ends_list, axis=0)
 
-        # (N, D)
-        train_data = {
-            # first two dims of state vector are agent (i.e. gripper) locations
-            "agent_pos": dataset_root["agent_pos"],
-            "action": dataset_root["action"],
-        }
-        episode_ends = dataset_root["episode_ends"]
-        # episode_ends = np.array([len(dataset_root["state_array"])])
+        create_video_grid(
+            train_image_data, episode_ends, exp_folder_path, "image_data.mp4"
+        )
+        plot_teleop_dataset(
+            train_agent_pos,
+            episode_ends,
+            save_path=exp_folder_path,
+            file_name="motor_pos_data",
+        )
+        plot_teleop_dataset(
+            train_action,
+            episode_ends,
+            save_path=exp_folder_path,
+            file_name="action_data",
+        )
 
         # compute start and end of each state-action sequence
         # also handles padding
@@ -51,7 +77,7 @@ class TeleopImageDataset(torch.utils.data.Dataset):
         # compute statistics and normalized data to [-1,1]
         stats = dict()
         normalized_train_data = dict()
-        for key, data in train_data.items():
+        for key, data in zip(["agent_pos", "action"], [train_agent_pos, train_action]):
             stats[key] = get_data_stats(data)
             normalized_train_data[key] = normalize_data(data, stats[key])
 

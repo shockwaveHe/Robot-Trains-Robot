@@ -1,26 +1,23 @@
-import glob
 import platform
 
 import numpy as np
 import serial
+from toddlerbot.utils.file_utils import find_ports
 
 
 class FSR:
-    def __init__(self, port_pattern="/dev/tty.usbmodem*", baud_rate=115200):
+    def __init__(self, baud_rate=115200):
         # If on ubuntu
         os_type = platform.system()
         if os_type == "Linux":
-            port_pattern = "/dev/ttyACM*"
-        # Automatically detect the correct serial port
-        matching_ports = glob.glob(port_pattern)
-        if not matching_ports:
-            raise Exception(f"No ports found matching pattern {port_pattern}")
-        else:
-            print(f"Found FSR interface ports: {matching_ports}")
-            print(f"Using FSR interface port: {matching_ports[0]}")
+            description = "/dev/ttyACM*"
+        elif os_type == "Windows":
+            description = "USB Serial Device"
+
+        fsr_ports = find_ports(description)
 
         # Configure the serial connection
-        self.serial_port = matching_ports[0]
+        self.serial_port = fsr_ports[0]
         self.baud_rate = baud_rate
 
         # Open the serial port

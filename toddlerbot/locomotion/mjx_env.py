@@ -5,7 +5,7 @@ import jax
 import mujoco
 import numpy as np
 import scipy
-from brax import base, math
+from brax import base
 from brax.envs.base import PipelineEnv, State
 from brax.io import mjcf
 from jax import numpy as jnp
@@ -19,7 +19,12 @@ from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.math_utils import (
     butterworth,
+    euler2quat,
     exponential_moving_average,
+    quat2euler,
+    quat_inv,
+    quat_mult,
+    rotate_vec,
 )
 
 dtype = jnp.float64 if jax.config.jax_enable_x64 else jnp.float32  # type: ignore
@@ -392,7 +397,7 @@ class MJXEnv(PipelineEnv):
         path_pos = jnp.zeros(3)
         path_yaw = jax.random.uniform(rng_torso_yaw, (1,), minval=0, maxval=2 * jnp.pi)
         path_euler = jnp.array([0.0, 0.0, jnp.degrees(path_yaw)[0]])
-        path_quat = math.euler_to_quat(path_euler)
+        path_quat = euler2quat(path_euler)
         lin_vel = jnp.zeros(3)
         ang_vel = jnp.zeros(3)
         motor_pos = qpos[self.q_start_idx + self.motor_indices]
@@ -670,7 +675,7 @@ class MJXEnv(PipelineEnv):
             pipeline_state, state.info, state.obs, state.privileged_obs
         )
 
-        torso_euler = math.quat_to_euler(pipeline_state.x.rot[0])
+        torso_euler = quat2euler(pipeline_state.x.rot[0])
         torso_euler_delta = torso_euler - state.info["last_torso_euler"]
         torso_euler_delta = (torso_euler_delta + jnp.pi) % (2 * jnp.pi) - jnp.pi
         torso_euler = state.info["last_torso_euler"] + torso_euler_delta
@@ -827,10 +832,10 @@ class MJXEnv(PipelineEnv):
         )
 
         torso_quat = pipeline_state.x.rot[0]
-        torso_lin_vel = math.rotate(pipeline_state.xd.vel[0], math.quat_inv(torso_quat))
-        torso_ang_vel = math.rotate(pipeline_state.xd.ang[0], math.quat_inv(torso_quat))
+        torso_lin_vel = rotate_vec(pipeline_state.xd.vel[0], quat_inv(torso_quat))
+        torso_ang_vel = rotate_vec(pipeline_state.xd.ang[0], quat_inv(torso_quat))
 
-        torso_euler = math.quat_to_euler(torso_quat)
+        torso_euler = quat2euler(torso_quat)
         torso_euler_delta = torso_euler - info["last_torso_euler"]
         torso_euler_delta = (torso_euler_delta + jnp.pi) % (2 * jnp.pi) - jnp.pi
         torso_euler = info["last_torso_euler"] + torso_euler_delta
@@ -928,8 +933,8 @@ class MJXEnv(PipelineEnv):
             self.ref_start_idx + self.nu + self.waist_ref_indices
         ]
         waist_euler = jnp.array([waist_joint_pos[0], 0.0, waist_joint_pos[1]])
-        torso_quat_ref = math.quat_mul(
-            path_quat_ref, math.quat_inv(math.euler_to_quat(jnp.degrees(waist_euler)))
+        torso_quat_ref = quat_mult(
+            path_quat_ref, quat_inv(euler2quat(jnp.degrees(waist_euler)))
         )
 
         # Quaternion dot product (cosine of the half-angle)
@@ -945,9 +950,8 @@ class MJXEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ):
         """Reward for track linear velocity in xy"""
-        lin_vel_local = math.rotate(
-            pipeline_state.xd.vel[0],
-            math.quat_inv(pipeline_state.x.rot[0]),
+        lin_vel_local = rotate_vec(
+            pipeline_state.xd.vel[0], quat_inv(pipeline_state.x.rot[0])
         )
         lin_vel_xy = lin_vel_local[:2]
         lin_vel_xy_ref = info["state_ref"][7:9]
@@ -959,9 +963,8 @@ class MJXEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ):
         """Reward for track linear velocity in z"""
-        lin_vel_local = math.rotate(
-            pipeline_state.xd.vel[0],
-            math.quat_inv(pipeline_state.x.rot[0]),
+        lin_vel_local = rotate_vec(
+            pipeline_state.xd.vel[0], quat_inv(pipeline_state.x.rot[0])
         )
         lin_vel_z = lin_vel_local[2]
         lin_vel_z_ref = info["state_ref"][9]
@@ -973,9 +976,8 @@ class MJXEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ):
         """Reward for track angular velocity in xy"""
-        ang_vel_local = math.rotate(
-            pipeline_state.xd.ang[0],
-            math.quat_inv(pipeline_state.x.rot[0]),
+        ang_vel_local = rotate_vec(
+            pipeline_state.xd.ang[0], quat_inv(pipeline_state.x.rot[0])
         )
         ang_vel_xy = ang_vel_local[:2]
         ang_vel_xy_ref = info["state_ref"][10:12]
@@ -987,9 +989,8 @@ class MJXEnv(PipelineEnv):
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ):
         """Reward for track angular velocity in z"""
-        ang_vel_local = math.rotate(
-            pipeline_state.xd.ang[0],
-            math.quat_inv(pipeline_state.x.rot[0]),
+        ang_vel_local = rotate_vec(
+            pipeline_state.xd.ang[0], quat_inv(pipeline_state.x.rot[0])
         )
         ang_vel_z = ang_vel_local[2]
         ang_vel_z_ref = info["state_ref"][12]

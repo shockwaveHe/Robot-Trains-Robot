@@ -16,6 +16,51 @@ MARKERS = ["o", "s", "D", "v", "^", "<"]
 COLORS = ["b", "g", "r", "c", "y", "k"]
 
 
+def plot_teleop_dataset(
+    action_data: npt.NDArray[np.float32],
+    episode_ends: np.ndarray,
+    save_path: str,
+    file_name: str,
+    file_suffix: str = "",
+):
+    episode_starts = np.concatenate(([0], episode_ends[:-1]))
+
+    motor_traj_list = []
+    for e_idx in range(len(episode_ends)):
+        start_idx = episode_starts[e_idx]
+        end_idx = episode_ends[e_idx]
+        # Extract the joint trajectory for this episode
+        motor_traj_list.append(action_data[start_idx:end_idx])
+
+    # Compute the 75th percentile of episode lengths
+    episode_lengths = [traj.shape[0] for traj in motor_traj_list]
+    max_length = int(np.percentile(episode_lengths, 75))
+
+    # Create a figure and 4x4 subplots for the 16 joints
+    fig, axs = plt.subplots(4, 4, figsize=(15, 10))
+    axs = axs.flatten()  # Flatten so we can iterate through them easily
+    num_joints = action_data.shape[-1]
+    # For each joint, we will plot all episodes
+    for joint_idx in range(num_joints):
+        ax = axs[joint_idx]
+
+        # Plot each episode as a separate line
+        plot_line_graph(
+            [
+                motor_traj_list[i][:max_length, joint_idx]
+                for i in range(len(motor_traj_list))
+            ],
+            title=f"Joint {joint_idx}",
+            x_label="Time Step",
+            y_label="Position",
+            save_config=True if joint_idx == num_joints - 1 else False,
+            save_path=save_path if joint_idx == num_joints - 1 else "",
+            file_name=file_name if joint_idx == num_joints - 1 else "",
+            file_suffix=file_suffix,
+            ax=ax,
+        )()
+
+
 def plot_waist_mapping(
     joint_limits: Dict[str, List[float]],
     waist_ik: Callable[..., List[float]],
@@ -807,9 +852,9 @@ def plot_line_graph(
         # Determine if x is None and set it to the index of y if so
         if x is None:
             x_local = (
-                list(range(len(y)))
-                if not isinstance(y[0], list)
-                else [list(range(len(sub_y))) for sub_y in y]
+                [list(range(len(sub_y))) for sub_y in y]
+                if isinstance(y[0], list) or isinstance(y[0], np.ndarray)
+                else list(range(len(y)))
             )
         else:
             x_local = x
