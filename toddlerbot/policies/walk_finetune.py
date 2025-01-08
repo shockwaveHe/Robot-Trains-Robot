@@ -74,7 +74,7 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
     def _reward_torso_roll(self, obs: Obs, action: np.ndarray) -> float:
         """Reward for torso pitch"""
         torso_roll = obs.euler[0]
-
+        # DISCUSS: torso_roll = -0.03, min and max are all 0.
         roll_min = np.clip(torso_roll - self.torso_roll_range[0], a_min=-np.inf, a_max=0.0)
         roll_max = np.clip(torso_roll - self.torso_roll_range[1], a_min=0.0, a_max=np.inf)
         reward = (
@@ -86,7 +86,7 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
 
         """Reward for torso pitch"""
         torso_pitch = obs.euler[1]
-
+        # DISCUSS: torso_pitch = 0.05, min and max are all 0.
         pitch_min = np.clip(torso_pitch - self.torso_pitch_range[0], a_min=-np.inf, a_max=0.0)
         pitch_max = np.clip(torso_pitch - self.torso_pitch_range[1], a_min=0.0, a_max=np.inf)
         reward = (
@@ -145,6 +145,7 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
             np.abs(obs.motor_pos - self.default_motor_pos)
         )
         reward = -(qpos_diff**2)
+        # DISCUSS: reward: -0.06,-> 0
         reward *= np.linalg.norm(self.fixed_command) < self.deadzone
         return reward
 

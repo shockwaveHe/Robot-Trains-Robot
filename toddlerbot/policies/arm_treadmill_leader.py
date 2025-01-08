@@ -133,12 +133,14 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         lin_vel = obs.arm_ee_vel
         lin_vel[0] = self.speed / 1000 - lin_vel[0]
         lin_vel[1] = -lin_vel[1]
+        is_done = self.is_done(obs)
         msg = ZMQMessage(
             time=time.time(),
             control_inputs=control_inputs,
             arm_force=obs.ee_force,
             arm_torque=obs.ee_torque,
-            lin_vel=lin_vel # TODO: check if this is correct
+            lin_vel=lin_vel, # TODO: check if this is correct
+            is_done=is_done
         )
         # import ipdb; ipdb.set_trace()
         print(f"Sending: {msg}")

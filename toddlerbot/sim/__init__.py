@@ -27,6 +27,7 @@ class Obs:
     arm_ee_pos: Optional[npt.NDArray[np.float32]] = None
     arm_ee_quat: Optional[npt.NDArray[np.float32]] = None
     arm_ee_vel: Optional[npt.NDArray[np.float32]] = np.zeros(3, dtype=np.float64)
+    is_done: Optional[bool] = None
 
 
 class BaseSim(ABC):

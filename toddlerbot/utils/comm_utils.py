@@ -18,6 +18,7 @@ class ZMQMessage:
     arm_force: Optional[npt.NDArray[np.float32]] = None
     arm_torque: Optional[npt.NDArray[np.float32]] = None
     lin_vel: Optional[npt.NDArray[np.float32]] = None
+    is_done: Optional[bool] = None
 
 
 def sync_time(ip: str):

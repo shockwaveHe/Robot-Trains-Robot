@@ -45,11 +45,6 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.zero_chance = self.cfg.commands.zero_chance
         self.turn_chance = self.cfg.commands.turn_chance
         self.finetune_cfg = FinetuneConfig()
-        self.last_action = np.zeros(self.num_action)
-        self.last_last_action = np.zeros(self.num_action)
-        self.last_obs = None
-        self.last_privileged_obs = None
-        self.last_reward = 0.0
 
         self.ref_start_idx = 13
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -58,6 +53,11 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.num_privileged_obs_history = self.cfg.obs.c_frame_stack
         self.obs_size = self.cfg.obs.num_single_obs
         self.privileged_obs_size = self.cfg.obs.num_single_privileged_obs
+        self.last_action = np.zeros(self.num_action)
+        self.last_last_action = np.zeros(self.num_action)
+        self.last_reward = 0.0
+        self.last_obs = np.zeros(self.obs_size * self.cfg.obs.frame_stack)
+        self.last_privileged_obs = np.zeros(self.privileged_obs_size * self.cfg.obs.frame_stack)
 
         print(f"Observation size: {self.obs_size}, Privileged observation size: {self.privileged_obs_size}")
         self.replay_buffer = OnlineReplayBuffer(self.device, self.obs_size * self.num_obs_history, self.privileged_obs_size * self.num_privileged_obs_history, self.num_action, self.cfg.finetune.buffer_size) # TODO: add priviledged obs to buffer
@@ -331,7 +331,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             self.state_ref = np.asarray(self.motion_ref.get_state_ref(state_ref, 0.0, self.fixed_command))
 
     def is_done(self, obs: Obs) -> bool:
-        pass # is done is handled in sim
+        # TODO: any more metric for done?
+        return obs.is_done
     
     def step(self, obs:Obs, is_real:bool = False):
 
@@ -345,7 +346,6 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 self.prep_duration,
                 end_time=5.0 if is_real else 0.0,
             )
-
         if obs.time < self.prep_duration:
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
@@ -364,6 +364,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             obs.ee_force = msg.arm_force
             obs.ee_torque = msg.arm_torque
             obs.lin_vel = msg.lin_vel
+            obs.is_done = msg.is_done
+        else:
+            obs.is_done = False
 
         if len(control_inputs) == 0:
             command = self.fixed_command
@@ -372,11 +375,13 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
 
         self.phase_signal = self.get_phase_signal(time_curr)
+
         obs_arr, privileged_obs_arr = self.get_obs(obs)
         reward_dict = self._compute_reward(obs, self.last_action)
         reward = sum(reward_dict.values()) * self.control_dt # TODO: verify
         action, _ = self.get_action(obs_arr, deterministic=True, is_real=is_real)
         
+        # TODO: last_obs initial value is all None
         self.replay_buffer.store(self.last_obs, self.last_privileged_obs, self.last_action, self.last_reward, obs_arr, privileged_obs_arr, action, self.is_done(obs))
         self.last_reward = reward
         self.last_obs = obs_arr.copy()
@@ -444,6 +449,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         reward_dict: Dict[str, np.ndarray] = {}
         for i, name in enumerate(self.reward_names):
+            # import ipdb; ipdb.set_trace()
             reward_dict[name] = self.reward_functions[i](obs, action)
 
         return reward_dict
@@ -456,10 +462,10 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         reward = np.exp(-200.0 * error**2) # TODO: scale
         return reward
     
+    # TODO: change all rotation apis
     def _reward_torso_quat(self, obs: Obs, action: np.ndarray) -> np.ndarray:
         torso_euler = obs.euler
-        torso_rot = Rotation.from_euler("zxy", torso_euler)
-        torso_quat = torso_rot.as_quat()
+        torso_quat = euler2quat(torso_euler)
         path_quat_ref = self.state_ref[3:7]
         path_rot = Rotation.from_quat(path_quat_ref)
         
@@ -478,11 +484,13 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         dot_product = np.clip(dot_product, -1.0, 1.0)
         # Quaternion angle difference
         angle_diff = 2.0 * np.arccos(np.abs(dot_product))
-        reward = np.exp(-20.0 * (angle_diff**2))
+        reward = np.exp(-20.0 * (angle_diff**2)) # DISCUSS: angle_diff = 3, dot_product = -0.03, result super small
         return reward
 
     def _reward_lin_vel_xy(self, obs: Obs, action: np.ndarray) -> np.ndarray:
         lin_vel = obs.lin_vel[:2] # TODO: rotate to local? or get it from treadmill
+        # array([-0.00291435, -0.00068869, -0.00109268])
+        # TODO: verify where we get lin vel from
         # TODO: change treadmill speed according to force x, or estimate from IMU + joint_position
         # TODO: compare which is better
         lin_vel_ref = self.state_ref[7:9]
@@ -498,6 +506,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         return reward
     
     def _reward_ang_vel_xy(self, obs: Obs, action: np.ndarray) -> np.ndarray:
+        # DISCUSS: array([-2.9682509e-28,  3.4297700e-28,  4.7041364e-28], dtype=float32), very small, reward near 1
         ang_vel = obs.ang_vel[:2]
         ang_vel_ref = self.state_ref[10:12]
         error = np.linalg.norm(ang_vel - ang_vel_ref, axis=-1)
@@ -512,6 +521,15 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         return reward
     
     def _reward_leg_motor_pos(self, obs: Obs, action: np.ndarray) -> np.ndarray:
+        """DISCUSS: 
+        motor_pos: aray([ 0.1503303 ,  0.        ,  0.        , -0.5338259 ,  0.        ,
+       -0.38042712, -0.15033007, -0.00153399,  0.        ,  0.53535914,
+        0.        ,  0.37735915], dtype=float32)
+        motor_pos_ref: array([ 0.12043477,  0.00283779, -0.        , -0.52191615,  0.00283779,
+       -0.40148139, -0.12043477, -0.00283779, -0.        ,  0.52191615,
+        0.00283779,  0.40148139])
+        reward: -2e-4
+        """
         motor_pos = obs.motor_pos[self.leg_motor_indices]
         motor_pos_ref = self.state_ref[self.ref_start_idx + self.leg_motor_indices]
         error = motor_pos - motor_pos_ref
