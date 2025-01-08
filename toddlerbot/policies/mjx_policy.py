@@ -167,7 +167,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             # Signal that the thread is done
             event.set()
 
-    def reset(self):
+    def reset(self, obs:Obs = None):
         print(f"Resetting the {self.name} policy...")
         # if path_state is None:
         #     path_state = np.concatenate(

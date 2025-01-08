@@ -16,6 +16,7 @@ class FinetuneConfig:
     discounting: float = 0.99
     value_lr: float = 1e-4
     value_batch_size: int = 256
+    value_update_steps: int = 128
     policy_lr: float = 1e-4
     Q_lr: float = 1e-4
     tau: float = 0.005

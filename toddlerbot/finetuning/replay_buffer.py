@@ -13,14 +13,14 @@ class OnlineReplayBuffer:
         obs_dim: int, privileged_obs_dim: int, action_dim: int, max_size: int, seed: int = 0
     ) -> None:
         self._device = device
+        self._dtype = np.float32
 
-
-        self._obs = np.zeros((max_size, obs_dim))
-        self._privileged_obs = np.zeros((max_size, privileged_obs_dim))
+        self._obs = np.zeros((max_size, obs_dim), dtype=self._dtype)
+        self._privileged_obs = np.zeros((max_size, privileged_obs_dim), dtype=self._dtype)
         self._action = np.zeros((max_size, action_dim))
         self._reward = np.zeros((max_size, 1))
-        self._next_obs = np.zeros((max_size, obs_dim))
-        self._next_privileged_obs = np.zeros((max_size, privileged_obs_dim))
+        self._next_obs = np.zeros((max_size, obs_dim), dtype=self._dtype)
+        self._next_privileged_obs = np.zeros((max_size, privileged_obs_dim), dtype=self._dtype)
         self._next_action = np.zeros((max_size, action_dim))
         self._not_done = np.zeros((max_size, 1))
         self._return = np.zeros((max_size, 1))

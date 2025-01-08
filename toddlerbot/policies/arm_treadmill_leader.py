@@ -76,10 +76,10 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
     def update_speed(self, obs: Obs):
         if obs.ee_force[1] > self.y_force_threshold:
             print(f"about to add speed {self.treadmill_speed_kp * (obs.ee_force[1] - self.y_force_threshold)}")
-            self.speed += self.treadmill_speed_kp * (obs.ee_force[0] - self.y_force_threshold)
+            self.speed += self.treadmill_speed_kp * (obs.ee_force[1] - self.y_force_threshold)
         elif obs.ee_force[1] < -self.y_force_threshold:
             print(f"about to add speed {self.treadmill_speed_kp * (obs.ee_force[1] + self.y_force_threshold)}")
-            self.speed += self.treadmill_speed_kp * (obs.ee_force[0] + self.y_force_threshold)
+            self.speed += self.treadmill_speed_kp * (obs.ee_force[1] + self.y_force_threshold)
     # note: calibrate zero at: toddlerbot/tools/calibration/calibrate_zero.py --robot toddlerbot_arms
     # note: zero points can be accessed in config_motors.json
     

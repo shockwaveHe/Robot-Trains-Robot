@@ -389,10 +389,12 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.last_last_action = self.last_action.copy()
         self.last_action = action.copy()
 
-        if len(self.replay_buffer) > self.finetune_cfg.init_steps:
+        if len(self.replay_buffer + 1) % self.finetune_cfg.init_steps == 0:
             import ipdb; ipdb.set_trace()
-            value_loss = self.value_learner.update(self.replay_buffer)
-            print(f"Value loss: {value_loss}")
+            self.replay_buffer.compute_return()
+            for _ in range(self.finetune_cfg.value_update_steps):
+                value_loss = self.value_learner.update(self.replay_buffer)
+                print(f"Value loss: {value_loss}")
 
         if is_real:
             delayed_action = action
@@ -506,7 +508,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         return reward
     
     def _reward_ang_vel_xy(self, obs: Obs, action: np.ndarray) -> np.ndarray:
-        # DISCUSS: array([-2.9682509e-28,  3.4297700e-28,  4.7041364e-28], dtype=float32), very small, reward near 1
+        # DISCUSS: array([-2.9682509e-28,  3.4297700e-28,  4.7041364e-28], dtype=float32), very small, reward near 1 ~0.1~1.0
         ang_vel = obs.ang_vel[:2]
         ang_vel_ref = self.state_ref[10:12]
         error = np.linalg.norm(ang_vel - ang_vel_ref, axis=-1)
