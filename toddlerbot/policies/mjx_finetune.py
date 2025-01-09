@@ -235,9 +235,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         command = np.concatenate([pose_command, walk_command])
         return command
     
-    def get_obs(self, obs: Obs) -> Tuple[np.ndarray, np.ndarray]:
-
-        command = self.fixed_command
+    def get_obs(self, obs: Obs, command: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         motor_pos_delta = obs.motor_pos - self.default_motor_pos
         self.state_ref = np.asarray(self.motion_ref.get_state_ref(self.state_ref, 0.0, command))
         motor_pos_error = obs.motor_pos - self.state_ref[self.ref_start_idx : self.ref_start_idx + self.robot.nu]
@@ -281,6 +279,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         return obs, privileged_obs
     
     def get_action(self, obs_arr: np.ndarray, deterministic: bool = True, is_real: bool = False) -> Tuple[np.ndarray, Dict[str, Any]]:
+        # import ipdb; ipdb.set_trace()
         obs_tensor = torch.tensor(obs_arr, dtype=torch.float32).unsqueeze(0).to(self.device)
         with torch.no_grad():
             logits = self.policy_net(obs_tensor)
@@ -334,7 +333,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         # TODO: any more metric for done?
         return obs.is_done
     
-    def step(self, obs:Obs, is_real:bool = False):
+    def step(self, obs:Obs, is_real:bool = True):
 
         if not self.is_prepared:
             self.is_prepared = True
@@ -359,15 +358,16 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         if len(self.control_inputs) > 0:
             control_inputs = self.control_inputs
         elif msg is not None and msg.control_inputs is not None:
-            print(f'obs ee force: {obs.ee_force}')
             control_inputs = msg.control_inputs
             obs.ee_force = msg.arm_force
             obs.ee_torque = msg.arm_torque
             obs.lin_vel = msg.lin_vel
             obs.is_done = msg.is_done
+            if msg.is_stopped:
+                import ipdb; ipdb.set_trace()
         else:
             obs.is_done = False
-
+        # import ipdb; ipdb.set_trace()
         if len(control_inputs) == 0:
             command = self.fixed_command
         else:
@@ -376,20 +376,23 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         self.phase_signal = self.get_phase_signal(time_curr)
 
-        obs_arr, privileged_obs_arr = self.get_obs(obs)
+        obs_arr, privileged_obs_arr = self.get_obs(obs, command)
+        
         reward_dict = self._compute_reward(obs, self.last_action)
         reward = sum(reward_dict.values()) * self.control_dt # TODO: verify
         action, _ = self.get_action(obs_arr, deterministic=True, is_real=is_real)
         
         # TODO: last_obs initial value is all None
-        self.replay_buffer.store(self.last_obs, self.last_privileged_obs, self.last_action, self.last_reward, obs_arr, privileged_obs_arr, action, self.is_done(obs))
+        if len(control_inputs) > 0 and (control_inputs['walk_x'] != 0 or control_inputs['walk_y'] != 0):
+            self.replay_buffer.store(self.last_obs, self.last_privileged_obs, self.last_action, self.last_reward, obs_arr, privileged_obs_arr, action, self.is_done(obs))
         self.last_reward = reward
         self.last_obs = obs_arr.copy()
         self.last_privileged_obs = privileged_obs_arr.copy()
         self.last_last_action = self.last_action.copy()
         self.last_action = action.copy()
 
-        if len(self.replay_buffer + 1) % self.finetune_cfg.init_steps == 0:
+        if (len(self.replay_buffer) + 1) % self.finetune_cfg.init_steps == 0:
+            # TODO: let the leader stop while updating
             import ipdb; ipdb.set_trace()
             self.replay_buffer.compute_return()
             for _ in range(self.finetune_cfg.value_update_steps):
@@ -417,7 +420,10 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.command_list.append(command)
         self.last_action = delayed_action
         self.step_curr += 1
-
+        # self.control_inputs = control_inputs
+        # control_inputs_jax, motor_target_jax = super().step(obs, is_real)
+        # if not np.allclose(motor_target_jax, motor_target, atol=0.1):
+        #     import ipdb; ipdb.set_trace()
         return control_inputs, motor_target
     
     def _init_reward(self) -> None:

@@ -730,7 +730,8 @@ if __name__ == "__main__":
         policy = PolicyClass(
             args.policy, robot, init_motor_pos, args.ckpt, fixed_command=fixed_command
         )
-
+    elif len(args.ip) > 0:
+        policy = PolicyClass(args.policy, robot, init_motor_pos, ip=args.ip)
     else:
         policy = PolicyClass(args.policy, robot, init_motor_pos)
     arm_policy = None

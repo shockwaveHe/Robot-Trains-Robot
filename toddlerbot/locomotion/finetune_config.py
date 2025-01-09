@@ -7,8 +7,8 @@ import gin
 @gin.configurable
 @dataclass
 class FinetuneConfig:
-    policy_hidden_layer_sizes: Tuple[int, ...] = (256, 256, 256)
-    value_hidden_layer_sizes: Tuple[int, ...] = (256, 256, 256)
+    policy_hidden_layer_sizes: Tuple[int, ...] = (512, 256, 128)
+    value_hidden_layer_sizes: Tuple[int, ...] = (512, 256, 128)
     num_evals: int = 1000
     episode_length: int = 1000
     unroll_length: int = 20

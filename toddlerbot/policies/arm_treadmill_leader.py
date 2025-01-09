@@ -29,7 +29,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         super().__init__(name, robot, init_motor_pos)
 
         self.zmq = ZMQNode(type="sender", ip=ip)
-
+        print(f"ZMQ Connected to {ip}")
 
         self.is_running = False
         self.toggle_motor = True
@@ -44,13 +44,13 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         self.reset_end_time = 1.0
         self.reset_time = None
 
-        self.speed = 5.0
+        self.speed = 0.0
 
         self.walk_x = 0.0
         self.walk_y = 0.0
 
         self.stopped = False
-        self.force = 1.0
+        self.force = 20.0
         self.z_pos_delta = 0.0
 
         self.serial_thread = threading.Thread(target=self.serial_thread_func)
@@ -70,7 +70,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         self.y_force_threshold = 0.5
         self.treadmill_speed_kp = 0.5
         self.arm_healty_ee_pos = np.array([0.0, 3.0])
-        self.arm_healty_ee_force_z = np.array([-10.0, 20.0])
+        self.arm_healty_ee_force_z = np.array([-10.0, 40.0])
         self.arm_healty_ee_force_xy = np.array([-3.0, 3.0])
 
     def update_speed(self, obs: Obs):
@@ -141,7 +141,8 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
             arm_force=obs.ee_force,
             arm_torque=obs.ee_torque,
             lin_vel=lin_vel, # TODO: check if this is correct
-            is_done=is_done
+            is_done=is_done,
+            is_stopped=self.stopped
         )
         # import ipdb; ipdb.set_trace()
         print(f"Speed: {self.speed}, Force: {self.force}, Walk: ({self.walk_x}, {self.walk_y})")
@@ -209,7 +210,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         input("Press Enter to reset...")
         # TODO: more safe reset
         force_prev = self.force
-        self.force = 10.0
+        self.force = 30.0
         self.arm_shm.buf[:8] = struct.pack('d', self.force)
         for _ in range(10):
             self.z_pos_delta = 0.01

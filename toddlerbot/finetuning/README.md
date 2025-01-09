@@ -19,3 +19,7 @@ python -m toddlerbot.policies.run_policy --ip 192.168.0.70 --policy at_leader --
 ```
 python toddlerbot/policies/run_policy.py --sim real --ip 192.168.0.137 --policy walk_finetune
 ```
+Test toddler:
+```
+python toddlerbot/policies/run_policy.py --sim real --policy walk --command "0 0 0 0 0 0.1 0 0"
+```
