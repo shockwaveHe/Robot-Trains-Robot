@@ -74,8 +74,8 @@ class ValueLearner:
     def update(
         self, replay_buffer: OnlineReplayBuffer
     ) -> float:
-        s, _, _, _, _, _, Return, _ = replay_buffer.sample(self._batch_size)
-        value_loss = F.mse_loss(self._value(s), Return)
+        _, s, _, _, _, _, _, _, Return, _ = replay_buffer.sample(self._batch_size)
+        value_loss = F.mse_loss(self._value(s), Return.squeeze())
 
         self._optimizer.zero_grad()
         value_loss.backward()

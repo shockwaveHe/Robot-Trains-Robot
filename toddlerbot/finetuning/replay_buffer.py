@@ -19,10 +19,7 @@ class OnlineReplayBuffer:
         self._privileged_obs = np.zeros((max_size, privileged_obs_dim), dtype=self._dtype)
         self._action = np.zeros((max_size, action_dim))
         self._reward = np.zeros((max_size, 1))
-        self._next_obs = np.zeros((max_size, obs_dim), dtype=self._dtype)
-        self._next_privileged_obs = np.zeros((max_size, privileged_obs_dim), dtype=self._dtype)
-        self._next_action = np.zeros((max_size, action_dim))
-        self._not_done = np.zeros((max_size, 1))
+        self._done = np.zeros((max_size, 1))
         self._return = np.zeros((max_size, 1))
         self._advantage = np.zeros((max_size, 1))
         self.rng = np.random.default_rng(seed=seed)
@@ -39,9 +36,6 @@ class OnlineReplayBuffer:
         s_p: np.ndarray,
         a: np.ndarray,
         r: np.ndarray,
-        s_n: np.ndarray,
-        s_n_p: np.ndarray,
-        a_n: np.ndarray,
         done: bool
     ) -> None:
 
@@ -51,11 +45,8 @@ class OnlineReplayBuffer:
         self._obs[self._size] = s
         self._action[self._size] = a
         self._reward[self._size] = r
-        self._next_obs[self._size] = s_n
-        self._next_action[self._size] = a_n
         self._privileged_obs[self._size] = s_p
-        self._next_privileged_obs[self._size] = s_n_p
-        self._not_done[self._size] = not done
+        self._done[self._size] = done
         self._size += 1
         print(f"Data size: {self._size}, Data fps: {self._size/(time.time() - self.init_time)}")
 
@@ -66,7 +57,7 @@ class OnlineReplayBuffer:
 
         pre_return = 0
         for i in tqdm(reversed(range(self._size)), desc='Computing the returns'):
-            self._return[i] = self._reward[i] + gamma * pre_return * self._not_done[i]
+            self._return[i] = self._reward[i] + gamma * pre_return * (1 - self._done[i])
             pre_return = self._return[i]
 
 
@@ -83,8 +74,8 @@ class OnlineReplayBuffer:
             current_state = torch.FloatTensor(self._obs[i]).to(self._device)
             current_value = value(current_state).cpu().data.numpy().flatten()
 
-            delta[i] = self._reward[i] + gamma * pre_value * self._not_done[i] - current_value
-            self._advantage[i] = delta[i] + gamma * lamda * pre_advantage * self._not_done[i]
+            delta[i] = self._reward[i] + gamma * pre_value * (1 - self._done[i]) - current_value
+            self._advantage[i] = delta[i] + gamma * lamda * pre_advantage * (1 - self._done[i])
 
             pre_value = current_value
             pre_advantage = self._advantage[i]
@@ -98,36 +89,32 @@ class OnlineReplayBuffer:
         self._obs = self._obs[indices]
         self._action = self._action[indices]
         self._reward = self._reward[indices]
-        self._next_obs = self._next_obs[indices]
-        self._next_action = self._next_action[indices]
-        self._not_done = self._not_done[indices]
+        self._done = self._done[indices]
         self._privileged_obs = self._privileged_obs[indices]
-        self._next_privileged_obs = self._next_privileged_obs[indices]
         self._return = self._return[indices]
         self._advantage = self._advantage[indices]
 
     def sample_all(self,):
         return {
-            "observations": self._obs[:self._size].copy(),
-            "actions": self._action[:self._size].copy(),
-            "next_observations": self._next_obs[:self._size].copy(),
-            "terminals": 1. - self._not_done[:self._size].copy(),
-            "rewards": self._reward[:self._size].copy()
+            "observations": self._obs[:self._size - 1].copy(),
+            "actions": self._action[:self._size - 1].copy(),
+            "next_observations": self._obs[1:self._size].copy(),
+            "terminals": self._done[:self._size - 1].copy(),
+            "rewards": self._reward[:self._size - 1].copy()
         }
     
     def sample_aug_all(self,):
         self._obs = np.concatenate((self._obs, self._aug_state), axis=0)
         self._action = np.concatenate((self._action, self._action), axis = 0)
-        self._next_obs = np.concatenate((self._next_obs, self._aug_next_state), axis = 0)
-        self._not_done = np.concatenate((self._not_done, self._not_done), axis = 0)
+        self._done = np.concatenate((self._done, self._done), axis = 0)
         self._reward = np.concatenate((self._reward, self._reward), axis = 0)
         indices = np.arange(self._obs.shape[0])
         self.rng.shuffle(indices)
         return {
             "observations": self._obs[indices].copy(),
             "actions": self._action[indices].copy(),
-            "next_observations": self._next_obs[indices].copy(),
-            "terminals": 1. - self._not_done[indices].copy(),
+            "next_observations": self._obs[indices + 1].copy(),
+            "terminals": self._done[indices].copy(),
             "rewards": self._reward[indices].copy()
         }
     
@@ -139,11 +126,13 @@ class OnlineReplayBuffer:
 
         return (
             torch.FloatTensor(self._obs[ind]).to(self._device),
+            torch.FloatTensor(self._privileged_obs[ind]).to(self._device),
             torch.FloatTensor(self._action[ind]).to(self._device),
             torch.FloatTensor(self._reward[ind]).to(self._device),
-            torch.FloatTensor(self._next_obs[ind]).to(self._device),
-            torch.FloatTensor(self._next_action[ind]).to(self._device),
-            torch.FloatTensor(self._not_done[ind]).to(self._device),
+            torch.FloatTensor(self._obs[ind + 1]).to(self._device),
+            torch.FloatTensor(self._privileged_obs[ind + 1]).to(self._device),
+            torch.FloatTensor(self._action[ind + 1]).to(self._device),
+            torch.FloatTensor(self._done[ind]).to(self._device),
             torch.FloatTensor(self._return[ind]).to(self._device),
             torch.FloatTensor(self._advantage[ind]).to(self._device)
         )

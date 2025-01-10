@@ -55,9 +55,6 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.privileged_obs_size = self.cfg.obs.num_single_privileged_obs
         self.last_action = np.zeros(self.num_action)
         self.last_last_action = np.zeros(self.num_action)
-        self.last_reward = 0.0
-        self.last_obs = np.zeros(self.obs_size * self.cfg.obs.frame_stack)
-        self.last_privileged_obs = np.zeros(self.privileged_obs_size * self.cfg.obs.frame_stack)
 
         print(f"Observation size: {self.obs_size}, Privileged observation size: {self.privileged_obs_size}")
         self.replay_buffer = OnlineReplayBuffer(self.device, self.obs_size * self.num_obs_history, self.privileged_obs_size * self.num_privileged_obs_history, self.num_action, self.cfg.finetune.buffer_size) # TODO: add priviledged obs to buffer
@@ -355,14 +352,17 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         msg = self.zmq_receiver.get_msg()
         control_inputs: Dict[str, float] = {}
+        self.control_inputs = {}
         if len(self.control_inputs) > 0:
             control_inputs = self.control_inputs
+        # TODO: figure out why there's no is done
         elif msg is not None and msg.control_inputs is not None:
             control_inputs = msg.control_inputs
             obs.ee_force = msg.arm_force
             obs.ee_torque = msg.arm_torque
             obs.lin_vel = msg.lin_vel
             obs.is_done = msg.is_done
+            print(control_inputs)
             if msg.is_stopped:
                 import ipdb; ipdb.set_trace()
         else:
@@ -384,17 +384,14 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         
         # TODO: last_obs initial value is all None
         if len(control_inputs) > 0 and (control_inputs['walk_x'] != 0 or control_inputs['walk_y'] != 0):
-            self.replay_buffer.store(self.last_obs, self.last_privileged_obs, self.last_action, self.last_reward, obs_arr, privileged_obs_arr, action, self.is_done(obs))
-        self.last_reward = reward
-        self.last_obs = obs_arr.copy()
-        self.last_privileged_obs = privileged_obs_arr.copy()
+            self.replay_buffer.store(obs_arr, privileged_obs_arr, action, reward, self.is_done(obs))
         self.last_last_action = self.last_action.copy()
         self.last_action = action.copy()
 
         if (len(self.replay_buffer) + 1) % self.finetune_cfg.init_steps == 0:
             # TODO: let the leader stop while updating
             import ipdb; ipdb.set_trace()
-            self.replay_buffer.compute_return()
+            self.replay_buffer.compute_return(self.finetune_cfg.discounting)
             for _ in range(self.finetune_cfg.value_update_steps):
                 value_loss = self.value_learner.update(self.replay_buffer)
                 print(f"Value loss: {value_loss}")
@@ -420,10 +417,10 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.command_list.append(command)
         self.last_action = delayed_action
         self.step_curr += 1
-        # self.control_inputs = control_inputs
-        # control_inputs_jax, motor_target_jax = super().step(obs, is_real)
-        # if not np.allclose(motor_target_jax, motor_target, atol=0.1):
-        #     import ipdb; ipdb.set_trace()
+        self.control_inputs = control_inputs
+        control_inputs_jax, motor_target_jax = super().step(obs, is_real)
+        if not np.allclose(motor_target_jax, motor_target, atol=0.1):
+            import ipdb; ipdb.set_trace()
         return control_inputs, motor_target
     
     def _init_reward(self) -> None:
