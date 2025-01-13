@@ -3,7 +3,7 @@ import os
 import numpy as np
 from dataclasses import asdict
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
-
+from copy import deepcopy
 import torch
 from toddlerbot.sim import Obs
 from toddlerbot.policies.mjx_policy import MJXPolicy
@@ -119,18 +119,13 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
     ):
         """Make PPO networks with a PyTorch implementation."""
 
-        # Create parametric action distribution (assumes you've already implemented this)
-        self.action_dist = networks.NormalTanhDistribution(
-            event_size=action_size
-        )
-
         # Create policy network
         # Note: Ensure that your policy MLP ends with parametric_action_distribution.param_size units
-        self.policy_net = networks.PolicyNetwork(
+        self.policy_net = networks.GaussianPolicyNetwork(
             observation_size=observation_size,
             preprocess_observations_fn=preprocess_observations_fn,
             hidden_layers=policy_hidden_layer_sizes,
-            output_size=self.action_dist.param_size,
+            action_size=action_size,
             activation=activation()
         ).to(device)
 
@@ -279,16 +274,22 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         # import ipdb; ipdb.set_trace()
         obs_tensor = torch.tensor(obs_arr, dtype=torch.float32).unsqueeze(0).to(self.device)
         with torch.no_grad():
-            logits = self.policy_net(obs_tensor)
+            action_dist = self.policy_net(obs_tensor)
             if deterministic:
                 # Deterministic: use mode
-                actions = self.action_dist.mode(logits).cpu().numpy().flatten()
+                actions = action_dist.base_dist.mode
+                for transform in action_dist.transforms:
+                    actions = transform(actions)
+                actions = actions.cpu().numpy().flatten()
+
                 return actions, {}
             else:
                 # Stochastic: sample raw pre-tanh actions
-                raw_actions = self.action_dist.sample_no_postprocessing(logits)
-                log_prob = self.action_dist.log_prob(logits, raw_actions)
-                postprocessed_actions = self.action_dist.postprocess(raw_actions)
+                postprocessed_actions = action_dist.sample()
+                log_prob = action_dist.log_prob(actions)
+                raw_actions = deepcopy(postprocessed_actions)
+                for transform in reversed(action_dist.transforms):
+                    raw_actions = transform.inv(raw_actions)
                 return postprocessed_actions, {
                     'log_prob': log_prob,
                     'raw_action': raw_actions

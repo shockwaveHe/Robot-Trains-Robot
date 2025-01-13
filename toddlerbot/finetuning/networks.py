@@ -6,7 +6,8 @@ import torch.nn.functional as F
 import numpy as np
 import pickle
 from pathlib import Path
-from torch.distributions import Normal
+from torch.distributions import Normal, TanhTransform
+from torch.distributions.transformed_distribution import TransformedDistribution
 
 def load_jax_params(path: str) -> Any:
     with Path(path).open('rb') as fin:
@@ -75,137 +76,27 @@ class MLP(nn.Module):
                     x = self.layer_norms[i](x)
         return x
     
-    
-class TanhBijector:
-    def forward(self, x):
-        return torch.tanh(x)
 
-    def inverse(self, y):
-        # atanh: 0.5 * log((1+y)/(1-y))
-        # For numerical stability, use torch.atanh if available (PyTorch 2.0+), else implement manually:
-        return 0.5 * torch.log((1+y)/(1-y))
-
-    def forward_log_det_jacobian(self, x):
-        # Matches JAX implementation
-        # 2 * (log(2) - x - softplus(-2x))
-        return 2.0 * (torch.log(torch.tensor(2.0)) - x - F.softplus(-2.0 * x))
-
-
-class NormalDistribution:
-    def __init__(self, loc, scale):
-        self.loc = loc
-        self.scale = scale
-
-    def sample(self):
-        eps = torch.randn_like(self.loc)
-        return eps * self.scale + self.loc
-
-    def mode(self):
-        return self.loc
-
-    def log_prob(self, x):
-        # same formula as JAX
-        log_unnormalized = -0.5 * ((x - self.loc) / self.scale)**2
-        log_normalization = 0.5 * np.log(2.0 * np.pi) + torch.log(self.scale)
-        return log_unnormalized - log_normalization
-
-    def entropy(self):
-        log_normalization = 0.5 * np.log(2.0 * np.pi) + torch.log(self.scale)
-        return (0.5 + log_normalization) * torch.ones_like(self.loc)
-
-
-class NormalTanhDistribution:
-    def __init__(self, event_size: np.ndarray, min_std=0.001, var_scale=1.0):
-        self.min_std = min_std
-        self.var_scale = var_scale
-        self.bijector = TanhBijector()
-        self.event_size = event_size
-        self.param_size = 2 * event_size
-        self._event_ndims = event_size.ndim
-
-    def create_dist(self, parameters):
-        loc, scale = torch.chunk(parameters, 2, dim=-1)
-        scale = (F.softplus(scale) + self.min_std) * self.var_scale
-        return NormalDistribution(loc=loc, scale=scale)
-
-    def sample(self, parameters):
-        dist = self.create_dist(parameters)
-        pre_tanh = dist.sample()
-        return self.bijector.forward(pre_tanh)
-
-    def sample_no_postprocessing(self, parameters):
-        dist = self.create_dist(parameters)
-        return dist.sample()
-    
-    def mode(self, parameters):
-        dist = self.create_dist(parameters)
-        pre_tanh_mode = dist.mode()
-        return self.bijector.forward(pre_tanh_mode)
-
-    def log_prob(self, parameters, raw_actions):
-        dist = self.create_dist(parameters)
-        # pre_tanh_actions = self.bijector.inverse(actions)
-        log_prob_x = dist.log_prob(raw_actions)
-        log_prob_x -= self.bijector.forward_log_det_jacobian(raw_actions)
-        # sum over the last dimension
-        if self._event_ndims == 1:
-            log_prob_x = torch.sum(log_prob_x, dim=-1)
-        return log_prob_x
-
-    def postprocess(self, raw_actions):
-        return self.bijector.forward(raw_actions)
-
-    def entropy(self, parameters):
-        # to mimic JAX entropy calculation, we sample once and estimate
-        # for deterministic comparison, let's sample with a fixed seed:
-        dist = self.create_dist(parameters)
-        base_entropy = dist.entropy()
-        pre_tanh_sample = dist.sample()
-        base_entropy += self.bijector.forward_log_det_jacobian(pre_tanh_sample)
-        if self._event_ndims == 1:
-            base_entropy = torch.sum(base_entropy, axis=-1)
-        return base_entropy
-    
-
-class PolicyNetwork(nn.Module):
-    def __init__(self, observation_size, hidden_layers, output_size, preprocess_observations_fn, activation, layer_norm=False):
-        super().__init__()
-        self.preprocess_observations_fn = preprocess_observations_fn
-        # Construct the MLP with hidden_layers + [output_size]
-        self.mlp = MLP([observation_size] + list(hidden_layers) + [output_size],
-                              activation=activation,
-                              layer_norm=layer_norm,
-                              activate_final=False)
-
-    def forward(self, obs, processer_params=None):
-        obs = self.preprocess_observations_fn(obs, processer_params)
-        return self.mlp(obs)
-
-class GaussianPolicyMLP(nn.Module):
+class GaussianPolicyNetwork(nn.Module):
     def __init__(
-        self, observation_size: int, hidden_layers: Tuple[int], output_size: int, activation: str = 'elu', para_std = True
+        self, observation_size: int, hidden_layers: Tuple[int], action_size: int, preprocess_observations_fn, activation: str = 'elu', para_std = True
     ) -> None:
         super().__init__()
         self.para_std = para_std
-        if para_std:
-            self.mlp = MLP([observation_size] + list(hidden_layers) + [output_size], activation=activation, layer_norm=False, activate_final=False)
-        else:
-            self.mlp = MLP([observation_size] + list(hidden_layers) + [output_size * 2], activation=activation, layer_norm=False, activate_final=False)
+        self.preprocess_observations_fn = preprocess_observations_fn
+        self.mlp = MLP([observation_size] + list(hidden_layers) + [action_size * 2], activation=activation, layer_norm=False, activate_final=False)
         self._log_std_bound = (-10., 2.)
-        if para_std:
-            self.std = nn.Parameter(torch.ones(output_size))
+
         
     def forward(
-        self, s: torch.Tensor
-    ) -> torch.distributions:
-        if self.para_std:
-            mu = self.mlp(s)
-            log_std = self.std
-        else:
-            mu, log_std = self.mlp(s).chunk(2, dim=-1)
+        self, obs: torch.Tensor, processer_params=None
+    ) -> torch.distributions.transformed_distribution.TransformedDistribution:
+        obs = self.preprocess_observations_fn(obs, processer_params)
+        mu, log_std = self.mlp(obs).chunk(2, dim=-1)
         log_std = soft_clamp(log_std, self._log_std_bound)
         std = log_std.exp()
         dist = Normal(mu, std)
+        dist = TransformedDistribution(dist, [TanhTransform(cache_size=1)])
         return dist
     
 class ValueNetwork(nn.Module):

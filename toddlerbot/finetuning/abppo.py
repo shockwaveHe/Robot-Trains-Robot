@@ -1,9 +1,7 @@
-import os
-import gym
 import torch
 import numpy as np
 from copy import deepcopy
-from toddlerbot.finetuning.networks import GaussianPolicyMLP
+from toddlerbot.finetuning.networks import GaussianPolicyNetwork
 from toddlerbot.finetuning.replay_buffer import OnlineReplayBuffer
 from toddlerbot.finetuning.learners import ValueLearner, QLearner, IQL_Q_V
 from torch.distributions.categorical import Distribution, Categorical
@@ -22,10 +20,10 @@ def log_prob_func(
 
 class ProximalPolicyOptimization:
     _device: torch.device
-    _policy: GaussianPolicyMLP
+    _policy: GaussianPolicyNetwork
     _optimizer: torch.optim
     _policy_lr: float
-    _old_policy: GaussianPolicyMLP
+    _old_policy: GaussianPolicyNetwork
     _scheduler: torch.optim
     _clip_ratio: float
     _entropy_weight: float
@@ -37,10 +35,7 @@ class ProximalPolicyOptimization:
     def __init__(
         self,
         device: torch.device,
-        state_dim: int,
-        hidden_dim: int, 
-        depth: int,
-        action_dim: int,
+        policy_net: GaussianPolicyNetwork,
         policy_lr: float,
         clip_ratio: float,
         entropy_weight: float,
@@ -52,7 +47,7 @@ class ProximalPolicyOptimization:
         super().__init__()
         self._is_iql = is_iql
         self._device = device
-        self._policy = GaussianPolicyMLP(state_dim, hidden_dim, depth, action_dim).to(device)
+        self._policy = policy_net
         #orthogonal_initWeights(self._policy)
         self._optimizer = torch.optim.Adam(
             self._policy.parameters(),
@@ -159,76 +154,13 @@ class ProximalPolicyOptimization:
         if is_sample:
             action = dist.sample()
         else:    
-            action = dist.mean
+            action = dist.base_dist.mode
+            for transform in dist.transforms:
+                action = transform(action)
         # clip 
         action = action.clamp(-1., 1.)
         return action
 
-
-    def evaluate(
-        self,
-        env_name: str,
-        seed: int,
-        mean: np.ndarray,
-        std: np.ndarray,
-        eval_episodes: int=10
-        ) -> float:
-        env = gym.make(env_name)
-        env.seed(seed)
-
-        total_reward = 0
-        for _ in range(eval_episodes):
-            s, done = env.reset(), False
-            while not done:
-                s = torch.FloatTensor((np.array(s).reshape(1, -1) - mean) / std).to(self._device)
-                a = self.select_action(s, is_sample=False).cpu().data.numpy().flatten()
-                s, r, done, _ = env.step(a)
-                total_reward += r
-        
-        avg_reward = total_reward / eval_episodes
-        return avg_reward
-    def evaluate_without_reward(
-        self,
-        env_name: str,
-        seed: int,
-        mean: np.ndarray,
-        std: np.ndarray,
-        Q,
-        fist_q = False,
-        eval_episodes: int=10
-        ) -> float:
-        env = gym.make(env_name)
-        env.seed(seed)
-
-        total_reward = 0
-        total_q = []
-        first_q = []
-        for _ in range(eval_episodes):
-            s, done = env.reset(), False
-            episode_q = []
-            i_q = 0
-            while not done:
-                s = torch.FloatTensor((np.array(s).reshape(1, -1) - mean) / std).to(self._device)
-                a = self.select_action(s, is_sample=False).cpu().data.numpy().flatten()
-                Q_value = Q(s, torch.FloatTensor(a.reshape(1, -1)).to(self._device))
-
-                if i_q == 0:
-                    first_q.append(Q_value)
-                    i_q += 1
-                episode_q.append(Q_value)
-                s, r, done, _ = env.step(a)
-                total_reward += r
-            total_q.append(torch.cat(episode_q, dim=0).flatten())
-        first_q = torch.cat(first_q, dim=0).mean()
-        total_q = torch.cat(total_q, dim=0).mean()
-        avg_reward = total_reward / eval_episodes
-        d4rl_score = env.get_normalized_score(avg_reward) * 100
-
-        if fist_q:
-            print('using first q evaluation')
-            return d4rl_score, first_q
-        else:
-            return d4rl_score, total_q
 
     def save(
         self, path: str
@@ -255,10 +187,7 @@ class BehaviorProximalPolicyOptimization(ProximalPolicyOptimization):
     def __init__(
         self,
         device: torch.device,
-        state_dim: int,
-        hidden_dim: int, 
-        depth: int,
-        action_dim: int,
+        policy_net: GaussianPolicyNetwork,
         policy_lr: float,
         clip_ratio: float,
         entropy_weight: float,
@@ -270,10 +199,7 @@ class BehaviorProximalPolicyOptimization(ProximalPolicyOptimization):
     ) -> None:
         super().__init__(
             device = device,
-            state_dim = state_dim,
-            hidden_dim = hidden_dim,
-            depth = depth,
-            action_dim = action_dim,
+            policy_net = policy_net,
             policy_lr = policy_lr,
             clip_ratio = clip_ratio,
             entropy_weight = entropy_weight,
@@ -353,37 +279,13 @@ class BehaviorProximalPolicyOptimization(ProximalPolicyOptimization):
             for p in self._optimizer.param_groups:
                 p['lr'] = bppo_lr_now    
         return policy_loss.item()
-    
-    def offline_evaluate(
-        self,
-        env_name: str,
-        seed: int,
-        mean: np.ndarray,
-        std: np.ndarray,
-        eval_episodes: int=10
-        ) -> float:
-        env = gym.make(env_name)
-        avg_reward = self.evaluate(env_name, seed, mean, std, eval_episodes)
-        d4rl_score = env.get_normalized_score(avg_reward) * 100
-        return d4rl_score
-    def save(
-        self, path: str,
-        save_id: int
-    ) -> None:
-        path = os.path.join(path, 'pi_{}.pt'.format(save_id))
-        torch.save(self._policy.state_dict(), path)
-        print('Behavior policy parameters saved in {}'.format(path))
-
 
 
 class AdaptiveBehaviorProximalPolicyOptimization():
     def __init__(
         self,
         device: torch.device,
-        state_dim: int,
-        hidden_dim: int, 
-        depth: int,
-        action_dim: int,
+        policy_net: GaussianPolicyNetwork,
         policy_lr: float,
         clip_ratio: float,
         entropy_weight: float,
@@ -400,10 +302,6 @@ class AdaptiveBehaviorProximalPolicyOptimization():
         temperature: float = None
     ) -> None:
         self._device = device
-        self._state_dim = state_dim
-        self._hidden_dim = hidden_dim
-        self._depth = depth
-        self._action_dim = action_dim
         self._policy_lr = policy_lr
         self._clip_ratio= clip_ratio
         self._entropy_weight = entropy_weight
@@ -420,12 +318,12 @@ class AdaptiveBehaviorProximalPolicyOptimization():
         self._temperature = temperature
         self.bppo_ensemble = []
         for _ in range(belief_dim):
-            bppo = BehaviorProximalPolicyOptimization(device, state_dim, hidden_dim, depth, action_dim, policy_lr, clip_ratio, entropy_weight, decay, omega, batch_size, is_iql)
+            bppo = BehaviorProximalPolicyOptimization(device, deepcopy(policy_net), policy_lr, clip_ratio, entropy_weight, decay, omega, batch_size, is_iql)
             self.bppo_ensemble.append(bppo)
     
 
     def joint_train(self, 
-        replay_buffer, 
+        replay_buffer: OnlineReplayBuffer,
         value: ValueLearner,
         is_clip_decay: bool, 
         is_lr_decay: bool,
@@ -435,7 +333,7 @@ class AdaptiveBehaviorProximalPolicyOptimization():
         Q: QLearner = None,
         iql: IQL_Q_V = None
         ) -> None:
-        s, _, _, _, _, _, _, _ = replay_buffer.sample(self._batch_size)
+        _, s, _, _, _, _, _, _, _, _ = replay_buffer.sample(self._batch_size)
         
         actions, advantages, dists, kl_logprob_a = self.kl_update(Q, value, iql, s, self._kl_update, self._kl_strategy)
         losses = []
@@ -535,18 +433,12 @@ class AdaptiveBehaviorProximalPolicyOptimization():
         for i in save_id:
             bc = self.bppo_ensemble[i]
             bc.save(path,i)
+
     def ensemble_save_body(self, path: str, save_id: list) -> None:
         for i in save_id:
             bc = self.bppo_ensemble[i]
             bc.save_body(path,i)
-    def off_evaluate(self, env_name: str, seed: int, mean: np.ndarray, std: np.ndarray, eval_episodes: int = 10) -> float:
-        scores = []
-        
-        for i in range(self._num_policy):
-            each_score = self.bppo_ensemble[i].offline_evaluate(env_name, seed, mean, std,eval_episodes=eval_episodes)
-            scores.append(each_score)
-        return np.array(scores)
-    
+
     def ope_dynamics_eval(self, args, dynamics_eval, q_eval, dynamics, eval_buffer,  mean, std):
         best_mean_qs =  []
         for bppo in self.bppo_ensemble:
@@ -567,45 +459,3 @@ class AdaptiveBehaviorProximalPolicyOptimization():
             weight[torch.where(weight == 0)[0]] = 1 - self._omega
             weight.to(self._device)
             return weight * advantage
-        
-    def mixed_offline_evaluate(
-        self,
-        env_name: str,
-        seed: int,
-        mean: np.ndarray,
-        std: np.ndarray,
-        eval_episodes: int=10,
-        greedy = True
-        ) -> float:
-        env = gym.make(env_name)
-        env.seed(seed)
-
-        total_reward = 0
-        for _ in range(eval_episodes):
-            s, done = env.reset(), False
-            while not done:
-                s = torch.FloatTensor((np.array(s).reshape(1, -1) - mean) / std).to(self._device)
-                a_s, prob_as = [], []
-                for i in range(self._num_policy):
-                    dist = self.bppo_ensemble[i]._policy(s)
-                    a = dist.mean
-                    a = a.clamp(-1., 1.)
-                    a_s.append(a.cpu().data.numpy().flatten())
-                    logprob_a = log_prob_func(dist, a)
-                    prob_a = torch.exp(logprob_a)
-                    prob_as.append(prob_a)
-                prob_as = torch.cat(prob_as, dim=0).flatten()
-                prob_as = prob_as / prob_as.sum()
-                dist_as = Categorical(prob_as)
-                if greedy:
-                    max_prob, max_index = torch.max(prob_as, dim=0)
-                    a = a_s[max_index]
-                else:
-                    a_index = dist_as.sample()
-                    a = a_s[a_index]
-                s, r, done, _ = env.step(a)
-                total_reward += r
-        
-        avg_reward = total_reward / eval_episodes
-        d4rl_score = env.get_normalized_score(avg_reward) * 100
-        return d4rl_score
