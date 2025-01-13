@@ -1,11 +1,12 @@
 from dataclasses import dataclass
-from typing import Callable, Sequence, Tuple, Any
+from typing import Tuple, Any
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import pickle
 from pathlib import Path
+from torch.distributions import Normal
 
 def load_jax_params(path: str) -> Any:
     with Path(path).open('rb') as fin:
@@ -37,6 +38,14 @@ def load_jax_params_into_pytorch(pt_model: torch.nn.Module, jax_params: dict):
             
             layer.weight.copy_(w)
             layer.bias.copy_(b)
+
+def soft_clamp(
+    x: torch.Tensor, bound: tuple
+    ) -> torch.Tensor:
+    low, high = bound
+    #x = torch.tanh(x)
+    x = low + 0.5 * (high - low) * (x + 1)
+    return x
 
 
 class MLP(nn.Module):
@@ -106,12 +115,13 @@ class NormalDistribution:
 
 
 class NormalTanhDistribution:
-    def __init__(self, event_size, min_std=0.001, var_scale=1.0):
+    def __init__(self, event_size: np.ndarray, min_std=0.001, var_scale=1.0):
         self.min_std = min_std
         self.var_scale = var_scale
         self.bijector = TanhBijector()
         self.event_size = event_size
         self.param_size = 2 * event_size
+        self._event_ndims = event_size.ndim
 
     def create_dist(self, parameters):
         loc, scale = torch.chunk(parameters, 2, dim=-1)
@@ -171,7 +181,33 @@ class PolicyNetwork(nn.Module):
         obs = self.preprocess_observations_fn(obs, processer_params)
         return self.mlp(obs)
 
-
+class GaussianPolicyMLP(nn.Module):
+    def __init__(
+        self, observation_size: int, hidden_layers: Tuple[int], output_size: int, activation: str = 'elu', para_std = True
+    ) -> None:
+        super().__init__()
+        self.para_std = para_std
+        if para_std:
+            self.mlp = MLP([observation_size] + list(hidden_layers) + [output_size], activation=activation, layer_norm=False, activate_final=False)
+        else:
+            self.mlp = MLP([observation_size] + list(hidden_layers) + [output_size * 2], activation=activation, layer_norm=False, activate_final=False)
+        self._log_std_bound = (-10., 2.)
+        if para_std:
+            self.std = nn.Parameter(torch.ones(output_size))
+        
+    def forward(
+        self, s: torch.Tensor
+    ) -> torch.distributions:
+        if self.para_std:
+            mu = self.mlp(s)
+            log_std = self.std
+        else:
+            mu, log_std = self.mlp(s).chunk(2, dim=-1)
+        log_std = soft_clamp(log_std, self._log_std_bound)
+        std = log_std.exp()
+        dist = Normal(mu, std)
+        return dist
+    
 class ValueNetwork(nn.Module):
     def __init__(self, observation_size, preprocess_observations_fn, hidden_layers, activation='swish'):
         super().__init__()
@@ -208,3 +244,16 @@ class DoubleQNetwork(nn.Module):
     def forward(self, obs, action, processer_params=None):
         return self.q1(obs, action, processer_params), self.q2(obs, action, processer_params)
 
+class DynamicsNetwork(nn.Module):
+    def __init__(self, observation_size, action_size, preprocess_observations_fn, hidden_layers, activation='swish'):
+        super().__init__()
+        self.preprocess_observations_fn = preprocess_observations_fn
+        self.mlp = MLP([observation_size + action_size] + list(hidden_layers) + [observation_size],
+                              activation=activation,
+                              layer_norm=False,
+                              activate_final=False)
+
+    def forward(self, obs, action, processer_params=None):
+        obs = self.preprocess_observations_fn(obs, processer_params)
+        x = torch.cat([obs, action], dim=-1)
+        return self.mlp(x)

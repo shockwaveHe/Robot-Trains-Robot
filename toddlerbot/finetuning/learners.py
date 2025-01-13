@@ -2,7 +2,7 @@ from copy import deepcopy
 import torch
 import torch.nn.functional as F
 
-from toddlerbot.finetuning.networks import ValueNetwork, QNetwork, DoubleQNetwork
+from toddlerbot.finetuning.networks import ValueNetwork, QNetwork, DoubleQNetwork, DynamicsNetwork
 from toddlerbot.finetuning.replay_buffer import OnlineReplayBuffer
 
 import torch.nn as nn
@@ -76,7 +76,7 @@ class ValueLearner:
     ) -> float:
         _, s, _, _, _, _, _, _, Return, _ = replay_buffer.sample(self._batch_size)
         value_loss = F.mse_loss(self._value(s), Return.squeeze())
-
+        # import ipdb; ipdb.set_trace()
         self._optimizer.zero_grad()
         value_loss.backward()
         self._optimizer.step()
@@ -235,8 +235,9 @@ class IQL_Q_V(nn.Module):
     def expectile_loss(self, loss: torch.Tensor)->torch.Tensor:
         weight = torch.where(loss > 0, self._omega, (1 - self._omega))
         return weight * (loss**2)
+    
     def update(self, replay_buffer: OnlineReplayBuffer) -> float:
-        s, a, r, s_p, _, not_done, _, _ = replay_buffer.sample(self._batch_size)
+        _, s, a, r, _, s_n, _, done, _, _ = replay_buffer.sample(self._batch_size)
         # Compute value loss
         with torch.no_grad():
             self._target_Q.eval()
@@ -255,9 +256,9 @@ class IQL_Q_V(nn.Module):
         # Compute critic loss
         with torch.no_grad():
             self._value.eval()
-            next_v = self._value(s_p)
+            next_v = self._value(s_n)
             
-        target_q = r + not_done * self._gamma * next_v
+        target_q = r + (1 - done) * self._gamma * next_v
         if self._is_double_q: 
             current_q1, current_q2 = self._Q(s, a)
             q_loss = ((current_q1 - target_q)**2 + (current_q2 - target_q)**2).mean()
@@ -276,7 +277,7 @@ class IQL_Q_V(nn.Module):
                 target_param.data.copy_(self._tau * param.data + (1 - self._tau) * target_param.data)
 
 
-        return q_loss, value_loss
+        return q_loss.item(), value_loss.item()
         
     def get_advantage(self, s, a)->torch.Tensor:
         if self._is_double_q:
@@ -300,3 +301,76 @@ class IQL_Q_V(nn.Module):
         print('Q function parameters loaded')
         self._value.load_state_dict(torch.load(v_path, map_location=self._device))
         print('Value parameters loaded')
+
+class DynamicsLearner:
+    _device: torch.device
+    _dynamics: DynamicsNetwork
+    _optimizer: torch.optim
+    _batch_size: int
+
+    def __init__(
+        self, 
+        device: torch.device, 
+        dynamics_net: DynamicsNetwork,
+        dynamics_lr: float,
+        batch_size: int
+    ) -> None:
+        super().__init__()
+        self._device = device
+        self._dynamics = dynamics_net.to(device)
+        self._optimizer = torch.optim.Adam(
+            self._dynamics.parameters(), 
+            lr=dynamics_lr,
+            )
+        self._batch_size = batch_size
+
+
+    def __call__(
+        self, s: torch.Tensor, a: torch.Tensor
+    ) -> torch.Tensor:
+        return self._dynamics(s, a)
+
+
+    def update(
+        self, replay_buffer: OnlineReplayBuffer
+    ) -> float:
+        s, _, a, _, s_n, _, _, _, Return, _ = replay_buffer.sample(self._batch_size)
+        dynamics_loss = F.mse_loss(self._dynamics(s, a), s_n)
+        self._optimizer.zero_grad()
+        dynamics_loss.backward()
+        self._optimizer.step()
+
+        return dynamics_loss.item()
+
+
+    def save(
+        self, path: str
+    ) -> None:
+        torch.save(self._dynamics.state_dict(), path)
+        print('Dynamics parameters saved in {}'.format(path))
+
+
+    def load(
+        self, path: str
+    ) -> None:
+        self._dynamics.load_state_dict(torch.load(path, map_location=self._device))
+        print('Dynamics parameters loaded')
+
+
+if __name__ == '__main__':
+    import pickle
+    with open('buffer.pkl', 'rb') as f:
+        buffer = pickle.load(f)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    buffer._device = device
+    buffer.compute_return(0.99)
+    value_net = ValueNetwork(buffer._privileged_obs.shape[1], lambda x, y: x, (512, 256, 128), activation=torch.nn.SiLU())
+    q_net = DoubleQNetwork(buffer._privileged_obs.shape[1], buffer._action.shape[1], lambda x, y: x, (512, 256, 128), activation=torch.nn.SiLU())
+    iql_learner = IQL_Q_V(device, q_net, 1e-4, 2, 0.005, 0.99, 256, value_net, 1e-4, 0.9, True)
+
+    dynamics = DynamicsNetwork(buffer._obs.shape[1], buffer._action.shape[1], lambda x, y: x, (512, 256, 128), activation=torch.nn.SiLU())
+    dynamics_learner = DynamicsLearner(device, dynamics, 1e-4, 256)
+    
+    for i in range(11000):
+        q_loss, value_loss = iql_learner.update(buffer)
+        print(i, value_loss, q_loss)
