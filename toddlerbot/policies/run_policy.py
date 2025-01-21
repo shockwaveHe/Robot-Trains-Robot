@@ -33,6 +33,7 @@ from toddlerbot.sim.arm import BaseArm, get_arm_class
 from toddlerbot.sim.arm_toddler_sim import ArmToddlerSim
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.real_world import RealWorld
+from toddlerbot.sim.realworld_mock import RealWorldMock
 from toddlerbot.sim.real_world_finetuning import RealWorldFinetuning
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.comm_utils import sync_time
@@ -525,7 +526,7 @@ if __name__ == "__main__":
         type=str,
         default="arm_toddler",
         help="The name of the simulator to use.",
-        choices=["arm_toddler", "mujoco", "real", "finetune"],
+        choices=["arm_toddler", "mujoco", "real", "finetune", "real_mock"],
     )
     parser.add_argument(
         "--vis",
@@ -644,6 +645,9 @@ if __name__ == "__main__":
     elif args.sim == "real":
         sim = RealWorld(robot)
         init_motor_pos = sim.get_observation(retries=-1).motor_pos
+    elif args.sim == "real_mock":
+        sim = RealWorldMock(robot)
+        init_motor_pos = sim.get_observation().motor_pos
     elif args.sim == "finetune":
         sim = RealWorldFinetuning(robot)
         init_motor_pos = sim.get_observation().motor_pos

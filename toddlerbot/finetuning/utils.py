@@ -68,7 +68,7 @@ class RewardScaling:
         x = x / (self.running_ms.std + 1e-8)  # Only divided std
         return x
 
-    def reset(self):  # When an episode is done,we should reset 'self.R'
+    def reset(self):  # When an episode is done, we should reset 'self.R'
         self.R = np.zeros(self.shape)
 
 def split_into_trajectories(observations, actions, rewards, masks, dones_float,
@@ -82,6 +82,7 @@ def split_into_trajectories(observations, actions, rewards, masks, dones_float,
             trajs.append([])
 
     return trajs
+
 def normalize(observations, actions, rewards, masks, dones_float, next_observations):
 
     trajs = split_into_trajectories(observations, actions, rewards, masks, dones_float, next_observations)

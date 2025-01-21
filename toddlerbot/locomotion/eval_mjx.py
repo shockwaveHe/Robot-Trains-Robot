@@ -186,10 +186,11 @@ def evaluate(
         env.obs_size, env.privileged_obs_size, env.action_size
     )
     make_policy = ppo_networks.make_inference_fn(ppo_network)
-    policy_path = os.path.join("results", run_name, "best_policy")
-    # policy_path = os.path.join("toddlerbot", "policies", "checkpoints", "toddlerbot_walk_policy")
-    if not os.path.exists(policy_path):
-        policy_path = os.path.join("results", run_name, "policy")
+    policy_path = os.path.join("toddlerbot", "policies", "checkpoints", "toddlerbot_walk_policy")
+    # policy_path = os.path.join("results", run_name, "best_policy")
+    # # policy_path = os.path.join("toddlerbot", "policies", "checkpoints", "toddlerbot_walk_policy")
+    # if not os.path.exists(policy_path):
+    #     policy_path = os.path.join("results", run_name, "policy")
 
     params = model.load_params(policy_path)
     inference_fn = make_policy(params, deterministic=True)
@@ -233,9 +234,10 @@ def evaluate_batch(
         env.action_size
     )
     make_policy = ppo_networks.make_inference_fn(ppo_network)
-    policy_path = os.path.join("results", run_name, "best_policy")
-    if not os.path.exists(policy_path):
-        policy_path = os.path.join("results", run_name, "policy")
+    policy_path = os.path.join("toddlerbot", "policies", "checkpoints", "toddlerbot_walk_policy")
+    # policy_path = os.path.join("results", run_name, "best_policy")
+    # if not os.path.exists(policy_path):
+        # policy_path = os.path.join("results", run_name, "policy")
 
     params = model.load_params(policy_path)
     inference_fn = make_policy(params, deterministic=True)

@@ -1,6 +1,7 @@
 from copy import deepcopy
 import torch
 import torch.nn.functional as F
+from tqdm import tqdm
 
 from toddlerbot.finetuning.networks import ValueNetwork, QNetwork, DoubleQNetwork, DynamicsNetwork
 from toddlerbot.finetuning.replay_buffer import OnlineReplayBuffer
@@ -10,7 +11,7 @@ import torch.nn as nn
 import math
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
-
+from toddlerbot.finetuning.finetune_config import FinetuneConfig
 
 class LinearCosineScheduler(_LRScheduler):
     def __init__(self, optimizer: Optimizer, warmup_steps: int, decay_steps: int, last_epoch: int = -1):
@@ -39,30 +40,21 @@ class LinearCosineScheduler(_LRScheduler):
 
 
 class ValueLearner:
-    _device: torch.device
-    _value: ValueNetwork
-    _optimizer: torch.optim
-    _batch_size: int
-    _scheduler: torch.optim.lr_scheduler
-
     def __init__(
         self, 
         device: torch.device, 
         value_net: ValueNetwork,
-        value_lr: float, 
-        warmup_steps: int,
-        decay_steps: int,
-        batch_size: int
+        config: FinetuneConfig
     ) -> None:
         super().__init__()
         self._device = device
         self._value = value_net.to(device)
         self._optimizer = torch.optim.Adam(
             self._value.parameters(), 
-            lr=value_lr,
+            lr=config.value_lr,
             )
-        self._scheduler = LinearCosineScheduler(self._optimizer, warmup_steps, decay_steps)
-        self._batch_size = batch_size
+        self._scheduler = LinearCosineScheduler(self._optimizer, config.warmup_steps, config.decay_steps)
+        self._batch_size = config.value_batch_size
 
 
     def __call__(
@@ -101,42 +93,28 @@ class ValueLearner:
 
 
 class QLearner:
-    _device: torch.device
-    _Q: QNetwork
-    _optimizer: torch.optim
-    _target_Q: QNetwork
-    _total_update_step: int
-    _target_update_freq: int
-    _tau: float
-    _gamma: float
-    _batch_size: int
-
     def __init__(
         self,
         device: torch.device,
-        q_det: QNetwork,
-        Q_lr: float,
-        target_update_freq: int,
-        tau: float,
-        gamma: float,
-        batch_size: int
+        Q_net: QNetwork,
+        config: FinetuneConfig
     ) -> None:
         super().__init__()
         self._device = device
-        self._Q = q_det.to(device)
+        self._Q = Q_net.to(device)
         self._optimizer = torch.optim.Adam(
             self._Q.parameters(),
-            lr=Q_lr,
+            lr=config.Q_lr,
             )
 
         self._target_Q = deepcopy(self._Q)
         self._target_Q.load_state_dict(self._Q.state_dict())
         self._total_update_step = 0
-        self._target_update_freq = target_update_freq
-        self._tau = tau
+        self._target_update_freq = config.target_update_freq
+        self._tau = config.tau
 
-        self._gamma = gamma
-        self._batch_size = batch_size
+        self._gamma = config.gamma
+        self._batch_size = config.value_batch_size
 
 
     def __call__(
@@ -183,55 +161,39 @@ class QLearner:
 
 
     
-class IQL_Q_V(nn.Module):
+class IQL_QV_Learner:
     def __init__(
         self,
         device: torch.device,
         Q_net: QNetwork | DoubleQNetwork,
-        Q_lr: float,
-        target_update_freq: int,
-        tau: float,
-        gamma: float,
-        batch_size: int,
-        v_net: ValueNetwork,
-        v_lr: float,
-        omega: float,
-        is_double_q: bool
+        value_net: ValueNetwork,
+        config: FinetuneConfig
     ) -> None:
         
-        super().__init__()
         self._device = device
-        self._omega = omega
-        self._is_double_q = is_double_q
+        self._omega = config.omega
+        self._is_double_q = config.use_double_q
         #for q
-        self._Q = Q_net.to(device)
-        self._target_Q = deepcopy(self._Q).to(device)
+        self._Q_net = Q_net.to(device)
+        self._Q_target = deepcopy(self._Q_net).to(device)
         self._q_optimizer = torch.optim.Adam(
-            self._Q.parameters(),
-            lr=Q_lr,
+            self._Q_net.parameters(),
+            lr=config.Q_lr,
             )
         
-        self._target_Q.load_state_dict(self._Q.state_dict())
+        self._Q_target.load_state_dict(self._Q_net.state_dict())
         self._total_update_step = 0
-        self._target_update_freq = target_update_freq
-        self._tau = tau
-        self._gamma = gamma
-        self._batch_size = batch_size
+        self._target_update_freq = config.target_update_freq
+        self._tau = config.tau
+        self._gamma = config.gamma
+        self._batch_size = config.value_batch_size
         #for v
-        self._value = v_net.to(device)
+        self._value_net = value_net.to(device)
         self._v_optimizer = torch.optim.Adam(
-            self._value.parameters(), 
-            lr=v_lr,
+            self._value_net.parameters(), 
+            lr=config.value_lr,
             )
 
-    def minQ(self, s: torch.Tensor, a: torch.Tensor):
-        Q1, Q2 = self._Q(s, a)
-        return torch.min(Q1, Q2)
-
-    def target_minQ(self, s: torch.Tensor, a: torch.Tensor):
-        Q1, Q2 = self._target_Q(s, a)
-        return torch.min(Q1, Q2)
-    
     def expectile_loss(self, loss: torch.Tensor)->torch.Tensor:
         weight = torch.where(loss > 0, self._omega, (1 - self._omega))
         return weight * (loss**2)
@@ -240,12 +202,9 @@ class IQL_Q_V(nn.Module):
         _, s, a, r, _, s_n, _, done, _, _ = replay_buffer.sample(self._batch_size)
         # Compute value loss
         with torch.no_grad():
-            self._target_Q.eval()
-            if self._is_double_q:
-                target_q = self.target_minQ(s, a)
-            else:
-                target_q = self._target_Q(s, a)
-        value = self._value(s)
+            self._Q_target.eval()
+            target_q = self._Q_target(s, a)
+        value = self._value_net(s)
         value_loss = self.expectile_loss(target_q - value).mean()
 
         #update v
@@ -255,15 +214,15 @@ class IQL_Q_V(nn.Module):
 
         # Compute critic loss
         with torch.no_grad():
-            self._value.eval()
-            next_v = self._value(s_n)
+            self._value_net.eval()
+            next_v = self._value_net(s_n)
             
         target_q = r + (1 - done) * self._gamma * next_v
         if self._is_double_q: 
-            current_q1, current_q2 = self._Q(s, a)
+            current_q1, current_q2 = self._Q_net(s, a, return_min=False)
             q_loss = ((current_q1 - target_q)**2 + (current_q2 - target_q)**2).mean()
         else:
-            Q = self._Q(s, a)
+            Q = self._Q_net(s, a)
             q_loss = F.mse_loss(Q, target_q)
 
         #update q and target q
@@ -273,88 +232,31 @@ class IQL_Q_V(nn.Module):
 
         self._total_update_step += 1
         if self._total_update_step % self._target_update_freq == 0:
-            for param, target_param in zip(self._Q.parameters(), self._target_Q.parameters()):
+            for param, target_param in zip(self._Q_net.parameters(), self._Q_target.parameters()):
                 target_param.data.copy_(self._tau * param.data + (1 - self._tau) * target_param.data)
 
 
         return q_loss.item(), value_loss.item()
         
     def get_advantage(self, s, a)->torch.Tensor:
-        if self._is_double_q:
-            return self.minQ(s, a) - self._value(s)
-        else:
-            return self._Q(s, a) - self._value(s)
+        return self._Q_net(s, a) - self._value_net(s)
     
     def save(
         self, q_path: str, v_path: str
     ) -> None:
-        torch.save(self._Q.state_dict(), q_path)
+        torch.save(self._Q_net.state_dict(), q_path)
         print('Q function parameters saved in {}'.format(q_path))
-        torch.save(self._value.state_dict(), v_path)
+        torch.save(self._value_net.state_dict(), v_path)
         print('Value parameters saved in {}'.format(v_path))
 
     def load(
         self, q_path: str, v_path: str
     ) -> None:
-        self._Q.load_state_dict(torch.load(q_path, map_location=self._device))
-        self._target_Q.load_state_dict(self._Q.state_dict())
+        self._Q_net.load_state_dict(torch.load(q_path, map_location=self._device))
+        self._Q_target.load_state_dict(self._Q_net.state_dict())
         print('Q function parameters loaded')
-        self._value.load_state_dict(torch.load(v_path, map_location=self._device))
+        self._value_net.load_state_dict(torch.load(v_path, map_location=self._device))
         print('Value parameters loaded')
-
-class DynamicsLearner:
-    _device: torch.device
-    _dynamics: DynamicsNetwork
-    _optimizer: torch.optim
-    _batch_size: int
-
-    def __init__(
-        self, 
-        device: torch.device, 
-        dynamics_net: DynamicsNetwork,
-        dynamics_lr: float,
-        batch_size: int
-    ) -> None:
-        super().__init__()
-        self._device = device
-        self._dynamics = dynamics_net.to(device)
-        self._optimizer = torch.optim.Adam(
-            self._dynamics.parameters(), 
-            lr=dynamics_lr,
-            )
-        self._batch_size = batch_size
-
-
-    def __call__(
-        self, s: torch.Tensor, a: torch.Tensor
-    ) -> torch.Tensor:
-        return self._dynamics(s, a)
-
-
-    def update(
-        self, replay_buffer: OnlineReplayBuffer
-    ) -> float:
-        s, _, a, _, s_n, _, _, _, Return, _ = replay_buffer.sample(self._batch_size)
-        dynamics_loss = F.mse_loss(self._dynamics(s, a), s_n)
-        self._optimizer.zero_grad()
-        dynamics_loss.backward()
-        self._optimizer.step()
-
-        return dynamics_loss.item()
-
-
-    def save(
-        self, path: str
-    ) -> None:
-        torch.save(self._dynamics.state_dict(), path)
-        print('Dynamics parameters saved in {}'.format(path))
-
-
-    def load(
-        self, path: str
-    ) -> None:
-        self._dynamics.load_state_dict(torch.load(path, map_location=self._device))
-        print('Dynamics parameters loaded')
 
 
 if __name__ == '__main__':
@@ -364,13 +266,14 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     buffer._device = device
     buffer.compute_return(0.99)
-    value_net = ValueNetwork(buffer._privileged_obs.shape[1], lambda x, y: x, (512, 256, 128), activation=torch.nn.SiLU())
-    q_net = DoubleQNetwork(buffer._privileged_obs.shape[1], buffer._action.shape[1], lambda x, y: x, (512, 256, 128), activation=torch.nn.SiLU())
-    iql_learner = IQL_Q_V(device, q_net, 1e-4, 2, 0.005, 0.99, 256, value_net, 1e-4, 0.9, True)
+    config = FinetuneConfig()
+    value_net = ValueNetwork(buffer._privileged_obs.shape[1], lambda x, y: x, (512, 256, 128))
+    q_net = DoubleQNetwork(buffer._privileged_obs.shape[1], buffer._action.shape[1], lambda x, y: x, (512, 256, 128))
+    iql_learner = IQL_QV_Learner(device, q_net, value_net, config)
 
-    dynamics = DynamicsNetwork(buffer._obs.shape[1], buffer._action.shape[1], lambda x, y: x, (512, 256, 128), activation=torch.nn.SiLU())
-    dynamics_learner = DynamicsLearner(device, dynamics, 1e-4, 256)
     
     for i in range(11000):
-        q_loss, value_loss = iql_learner.update(buffer)
-        print(i, value_loss, q_loss)
+        # q_loss, value_loss = iql_learner.update(buffer)
+        # print(i, value_loss, q_loss)
+        dynamics_loss = dynamics_learner.update(buffer)
+        print(i, dynamics_loss)

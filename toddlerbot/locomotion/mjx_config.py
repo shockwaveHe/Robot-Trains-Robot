@@ -165,7 +165,7 @@ class MJXConfig:
     @gin.configurable
     @dataclass
     class FinetuneConfig:
-        buffer_size: int = 100_000
+        buffer_size: int = 300_00   
         use_double_q: bool = True
 
     def __init__(self):
