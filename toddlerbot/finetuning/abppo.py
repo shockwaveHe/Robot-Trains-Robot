@@ -52,7 +52,8 @@ class BehaviorProximalPolicyOptimization(ProximalPolicyOptimization):
 
         loss2 = torch.clamp(ratio, 1 - self._clip_ratio, 1 + self._clip_ratio) * advantage 
         
-        import ipdb; ipdb.set_trace()
+        # import ipdb; ipdb.set_trace()
+        # entropy_loss = torch.sum(new_dist.base_dist.entropy(), dim=-1) * self._entropy_weight
         entropy_loss = self.get_entropy_loss(new_dist)
         loss = -(torch.min(loss1, loss2) + entropy_loss)
 
@@ -109,6 +110,7 @@ class AdaptiveBehaviorProximalPolicyOptimization:
         self._kl_strategy = config.kl_strategy
         self._alpha = config.kl_alpha
         self._is_clip_action = config.is_clip_action
+        self._policy_net = policy_net
         self._temperature = config.temperature
         self.bppo_ensemble: List[BehaviorProximalPolicyOptimization] = []
         for _ in range(self._num_policy):
@@ -123,11 +125,10 @@ class AdaptiveBehaviorProximalPolicyOptimization:
         clip_ratio_now: float = None
         ) -> None:
         s, s_p, _, _, _, _, _, _, _, _ = replay_buffer.sample(self._batch_size)
-        import ipdb; ipdb.set_trace()
+        # import ipdb; ipdb.set_trace()
         actions, advantages, dists, kl_logprob_a = self.kl_update(iql, s, s_p, self._kl_update, self._kl_strategy)
         losses = []
         for i, bppo in enumerate(self.bppo_ensemble):
-
             loss = bppo.update(s, advantages[i], actions[i], dists[i], bppo_lr_now, clip_ratio_now, kl_logprob_a[i])
             losses.append(loss)
 
@@ -283,7 +284,7 @@ class ABPPO_Offline_Learner:
     
     def fit_dynamics(self, replay_buffer: OnlineReplayBuffer):
         print('fitting dynamics ......')
-        for step in tqdm(range(int(self._config.dynamics_update_steps)), desc='dynamics upladating ......'): 
+        for step in tqdm(range(int(self._config.dynamics_update_steps)), desc='dynamics updating ......'): 
             dynamics_loss = self._dynamics.update(replay_buffer=replay_buffer)
             if step % int(self._config.log_freq) == 0:
                 print(f"Step: {step}, dynamics Loss: {dynamics_loss:.4f}")
@@ -302,16 +303,13 @@ class ABPPO_Offline_Learner:
             else:
                 bppo_lr_now = None
                 clip_ratio_now = None
-            if step > 200: # TODO
-                self._config.is_clip_decay = False
-                self._config.is_bppo_lr_decay = False
+            # if step > 200: # TODO
+            #     self._config.is_clip_decay = False
+            #     self._config.is_bppo_lr_decay = False
         
             losses = self._abppo.joint_train(replay_buffer, self._iql_learner, bppo_lr_now, clip_ratio_now)
             joint_losses.append(losses)
-            # if (step+1) % 500 == 0:
-            #     current_bppo_scores =  go1_eval.play_go1(abppo.bppo_ensemble, torch.FloatTensor(mean).to(device), torch.FloatTensor(std).to(device), 2)
 
-            #     scores.append(current_bppo_scores)
             if (step+1) % self._config.eval_step == 0:
                 
                 current_mean_qs = self._abppo.ope_dynamics_eval(self._q_net, self._dynamics, replay_buffer)
@@ -324,5 +322,8 @@ class ABPPO_Offline_Learner:
                     if self._config.is_update_old_policy: # TODO: what does is do?
                         for i_d in index:
                             self._abppo.replace(index=index)
-                            print('------------------------------update behavior policy {}----------------------------------------'.format(i_d))     
+                            print('------------------------------update behavior policy {}----------------------------------------'.format(i_d))
+                        best_mean_qs = current_mean_qs
+                        best_policy_idx = np.argmax(best_mean_qs)
+                        self._abppo._policy_net.load_state_dict(self._abppo.bppo_ensemble[best_policy_idx]._policy.state_dict()) 
         return np.mean(joint_losses)

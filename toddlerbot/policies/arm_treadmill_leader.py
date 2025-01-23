@@ -69,9 +69,11 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         # TODO: put this logic and reset to realworld finetuning sim?
         self.y_force_threshold = 0.5
         self.treadmill_speed_kp = 0.5
-        self.arm_healty_ee_pos = np.array([0.0, 3.0])
-        self.arm_healty_ee_force_z = np.array([-10.0, 40.0])
-        self.arm_healty_ee_force_xy = np.array([-3.0, 3.0])
+        self.arm_healthy_ee_pos = np.array([0.0, 3.0])
+        self.arm_healthy_ee_force_z = np.array([-10.0, 40.0])
+        self.arm_healthy_ee_force_xy = np.array([-3.0, 3.0])
+        self.healthy_torso_roll = np.array([-0.5, 0.5])
+        self.healthy_torso_pitch = np.array([-0.5, 0.5])
 
     def update_speed(self, obs: Obs):
         if obs.ee_force[1] > self.y_force_threshold:
@@ -85,17 +87,23 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
     # note: zero points can be accessed in config_motors.json
     
     def is_done(self, obs: Obs):
-        if obs.ee_force[2] < self.arm_healty_ee_force_z[0] or obs.ee_force[2] > self.arm_healty_ee_force_z[1]:
+        if obs.ee_force[2] < self.arm_healthy_ee_force_z[0] or obs.ee_force[2] > self.arm_healthy_ee_force_z[1]:
             print(f"Force Z of {obs.ee_force[2]} is out of range")
             return True
-        if obs.arm_ee_pos[2] < self.arm_healty_ee_pos[0] or obs.arm_ee_pos[2] > self.arm_healty_ee_pos[1]:
+        if obs.arm_ee_pos[2] < self.arm_healthy_ee_pos[0] or obs.arm_ee_pos[2] > self.arm_healthy_ee_pos[1]:
             print(f"Position Z of {obs.arm_ee_pos[2]} is out of range")
             return True
-        if obs.ee_force[0] > self.arm_healty_ee_force_xy[1] or obs.ee_force[1] > self.arm_healty_ee_force_xy[1]:
+        if obs.ee_force[0] > self.arm_healthy_ee_force_xy[1] or obs.ee_force[1] > self.arm_healthy_ee_force_xy[1]:
             print(f"Force XY of {obs.ee_force[:2]} is out of range")
             return True
-        if obs.ee_force[0] < self.arm_healty_ee_force_xy[0] or obs.ee_force[1] < self.arm_healty_ee_force_xy[0]:
+        if obs.ee_force[0] < self.arm_healthy_ee_force_xy[0] or obs.ee_force[1] < self.arm_healthy_ee_force_xy[0]:
             print(f"Force XY of {obs.ee_force[:2]} is out of range")
+            return True
+        if obs.euler[0] < self.healthy_torso_roll[0] or obs.euler[0] > self.healthy_torso_roll[1]:
+            print(f"Torso Roll of {obs.euler[0]} is out of range")
+            return True
+        if obs.euler[1] < self.healthy_torso_pitch[0] or obs.euler[1] > self.healthy_torso_pitch[1]:
+            print(f"Torso Pitch of {obs.euler[1]} is out of range")
             return True
         return False
     

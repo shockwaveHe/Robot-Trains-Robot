@@ -41,11 +41,15 @@ def load_jax_params_into_pytorch(pt_model: torch.nn.Module, jax_params: dict):
             layer.bias.copy_(b)
 
 def soft_clamp(
-    x: torch.Tensor, bound: tuple
-    ) -> torch.Tensor:
-    low, high = bound
-    #x = torch.tanh(x)
-    x = low + 0.5 * (high - low) * (x + 1)
+    x : torch.Tensor,
+    _min: Optional[torch.Tensor] = None,
+    _max: Optional[torch.Tensor] = None
+) -> torch.Tensor:
+    # clamp tensor values while mataining the gradient
+    if _max is not None:
+        x = _max - F.softplus(_max - x)
+    if _min is not None:
+        x = _min + F.softplus(x - _min)
     return x
 
 
@@ -227,7 +231,8 @@ class GaussianPolicyNetwork(nn.Module):
     ) -> torch.distributions.transformed_distribution.TransformedDistribution:
         obs = self.preprocess_observations_fn(obs, processer_params)
         mu, log_std = self.mlp(obs).chunk(2, dim=-1)
-        log_std = soft_clamp(log_std, self._log_std_bound)
+        # import ipdb; ipdb.set_trace()
+        log_std = soft_clamp(log_std, self._log_std_bound[0], self._log_std_bound[1])
         std = log_std.exp()
         dist = Normal(mu, std)
         dist = TransformedDistribution(dist, [TanhTransform(cache_size=1)])

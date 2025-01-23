@@ -344,6 +344,7 @@ class MuJoCoSim(BaseSim):
             joint_pos=joint_pos_arr,
             joint_vel=joint_vel_arr,
         )
+        obs.is_done = self.is_done(obs)
         return obs
 
     def get_mass(self) -> float:

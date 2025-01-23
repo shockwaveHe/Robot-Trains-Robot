@@ -17,7 +17,8 @@ class FinetuneConfig:
     
     # Evaluation and episode configuration
     num_evals: int = 1000
-    rollout_length: int = 1000
+    ope_rollout_length: int = 20
+    eval_rollout_length: int = 1000
     rollout_batch_size: int = 128
     
     # Update configuration
@@ -54,13 +55,13 @@ class FinetuneConfig:
     decay_steps: int = 50_000_000
     
     # Exploration and initialization
-    init_steps: int = 5_000
+    update_interval: int = 2_000
     warmup_steps: int = 100_000
     is_linear_decay: bool = True  # Added from argparse
 
     # Behavior Cloning and BPPO
     bppo_steps: int = int(4e2)  # Added from argparse
-    abppo_update_steps: int = 4  # Added from argparse
+    abppo_update_steps: int = 1  # Added from argparse
     num_policy: int = 4  # Added from argparse
     is_update_old_policy: bool = True  # Added from argparse
 
@@ -85,4 +86,6 @@ class FinetuneConfig:
     # Healthy range
     healty_ee_force_z: np.ndarray = np.array([-10.0, 40.0])
     healty_ee_force_xy: np.ndarray = np.array([-3.0, 3.0])
+    healty_torso_roll: np.ndarray = np.array([-0.5, 0.5])
+    healty_torso_pitch: np.ndarray = np.array([-0.5, 0.5])
     pos_error_threshold: float = 0.05

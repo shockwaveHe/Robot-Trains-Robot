@@ -528,8 +528,8 @@
   <actuator>
     <position name="neck_yaw_drive" joint="neck_yaw_drive" kp="11.71875" ctrlrange="-2.87979 2.87979" class="XC330"/>
     <position name="neck_pitch_act" joint="neck_pitch_act" kp="11.71875" ctrlrange="-1.39626 0.610865" class="XC330"/>
-    <position name="waist_act_1" joint="waist_act_1" kp="11.71875" ctrlrange="-4.67748 4.67748" class="XC330"/>
-    <position name="waist_act_2" joint="waist_act_2" kp="11.71875" ctrlrange="-4.67748 4.67748" class="XC330"/>
+    <position name="waist_act_1" joint="waist_act_1" kp="5.46875" ctrlrange="-4.67748 4.67748" class="XC330"/>
+    <position name="waist_act_2" joint="waist_act_2" kp="5.46875" ctrlrange="-4.67748 4.67748" class="XC330"/>
     <position name="left_hip_pitch" joint="left_hip_pitch" kp="16.40625" ctrlrange="-1.5708 2.35619" class="2XC430"/>
     <position name="left_hip_roll" joint="left_hip_roll" kp="16.40625" ctrlrange="-0.785398 0.785398" class="2XC430"/>
     <position name="left_hip_yaw_drive" joint="left_hip_yaw_drive" kp="11.71875" ctrlrange="-1.8326 1.8326" class="XC330"/>

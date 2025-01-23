@@ -299,7 +299,7 @@ def main(
                 # TODO: add is_done to more policies
                 step_idx = 0
                 start_time = time.time()
-                policy.reset()
+                policy.reset(obs)
                 obs = sim.reset()
                 # if arm_policy is not None:
                 #     arm_policy.reset()

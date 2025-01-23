@@ -19,20 +19,26 @@ def terminate_fn(privileged_obs: np.ndarray, config: FinetuneConfig) -> np.ndarr
         privileged_obs = privileged_obs[None, :]
     last_privileged_obs = np.split(privileged_obs, config.frame_stack, axis=1)[0]
     ee_force = last_privileged_obs[:, -6:-3]
+    torso_euler = last_privileged_obs[:, -9:-6]
     motor_pos_error = last_privileged_obs[:, -45:-15] # TODO: verify this
 
-    def terminate_fn_single(ee_force, motor_pos_error):
+    def terminate_fn_single(ee_force, torso_euler, motor_pos_error):
         if ee_force[2] < config.healty_ee_force_z[0] or ee_force[2] > config.healty_ee_force_z[1]:
             return True
         if ee_force[0] > config.healty_ee_force_xy[1] or ee_force[1] > config.healty_ee_force_xy[1]:
             return True
         if ee_force[0] < config.healty_ee_force_xy[0] or ee_force[1] < config.healty_ee_force_xy[0]:
             return True
-        if np.linalg.norm(motor_pos_error) > config.pos_error_threshold:
+        if torso_euler[0] < config.healty_torso_roll[0] or torso_euler[0] > config.healty_torso_roll[1]:
             return True
+        if torso_euler[1] < config.healty_torso_pitch[0] or torso_euler[1] > config.healty_torso_pitch[1]:
+            return True
+        # if np.linalg.norm(motor_pos_error) > config.pos_error_threshold:
+        #     return True
         return False
 
-    return np.apply_along_axis(terminate_fn_single, 1, ee_force, motor_pos_error)
+    # import ipdb; ipdb.set_trace()
+    return np.array([terminate_fn_single(ee_force, torso_euler, motor_pos_error) for ee_force, torso_euler, motor_pos_error in zip(ee_force, torso_euler, motor_pos_error)])
 
 def get_obs_from_priviledged_obs(privileged_obs: torch.Tensor | np.ndarray, stack_frame: int = 15) -> np.ndarray:
     concat_func = torch.concat if isinstance(privileged_obs, torch.Tensor) else np.concatenate
@@ -146,6 +152,7 @@ def rollout(
         policy: ProximalPolicyOptimization,
         dynamics: BaseDynamics,
         init_obs: np.ndarray,
+        init_privileged_obs: np.ndarray,
         rollout_length: int,
     ) -> Tuple[Dict[str, np.ndarray], Dict]:
 
@@ -154,7 +161,9 @@ def rollout(
         total_q = np.array([])
         rollout_transitions = defaultdict(list)
         # rollout
-        priviledged_obs = torch.FloatTensor(init_obs).to(dynamics._device)
+        obs = torch.FloatTensor(init_obs).to(dynamics._device)
+        priviledged_obs = torch.FloatTensor(init_privileged_obs).to(dynamics._device)
+        assert torch.allclose(get_obs_from_priviledged_obs(priviledged_obs), obs)
         length = 0
         with torch.no_grad():
             for _ in range(rollout_length):
@@ -186,8 +195,8 @@ def rollout(
     
 
 def dynamics_eval(config: FinetuneConfig, policy: ProximalPolicyOptimization, Q: QNetwork, dynamics: BaseDynamics, replay_buffer: OfflineReplayBuffer):
-    _, s_p, _, _, _, _, _, _, _, _ = replay_buffer.sample(config.rollout_batch_size)
-    Q_mean, reward_mean = rollout(Q, policy, dynamics, s_p, config.rollout_length)
+    s, s_p, _, _, _, _, _, _, _, _ = replay_buffer.sample(config.rollout_batch_size)
+    Q_mean, reward_mean = rollout(Q, policy, dynamics, s, s_p, config.ope_rollout_length)
     return Q_mean, reward_mean
 
 if __name__ == "__main__":

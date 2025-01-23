@@ -1,11 +1,13 @@
 import math
 import os
+import time
 import numpy as np
 from dataclasses import asdict
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 from copy import deepcopy
 import torch
 from toddlerbot.sim import Obs
+from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.policies.mjx_policy import MJXPolicy
 from toddlerbot.finetuning.replay_buffer import OnlineReplayBuffer
 from toddlerbot.finetuning.dynamics import DynamicsNetwork, BaseDynamics
@@ -59,10 +61,10 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.last_last_action = np.zeros(self.num_action)
 
         print(f"Observation size: {self.obs_size}, Privileged observation size: {self.privileged_obs_size}")
-        # self.replay_buffer = OnlineReplayBuffer(self.device, self.obs_size * self.num_obs_history, self.privileged_obs_size * self.num_privileged_obs_history, self.num_action, self.cfg.finetune.buffer_size) # TODO: add priviledged obs to buffer
-        import pickle
-        with open('buffer_mock.pkl', 'rb') as f:
-            self.replay_buffer: OnlineReplayBuffer = pickle.load(f)
+        self.replay_buffer = OnlineReplayBuffer(self.device, self.obs_size * self.num_obs_history, self.privileged_obs_size * self.num_privileged_obs_history, self.num_action, self.cfg.finetune.buffer_size) # TODO: add priviledged obs to buffer
+        # import pickle
+        # with open('buffer_mock.pkl', 'rb') as f:
+        #     self.replay_buffer: OnlineReplayBuffer = pickle.load(f)
         print(f"Buffer size: {self.cfg.finetune.buffer_size}")
         self._make_networks(
             observation_size=self.finetune_cfg.frame_stack * self.obs_size,
@@ -97,6 +99,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self._init_reward()
         self._make_learners()
 
+        self.sim = MuJoCoSim(robot, vis_type='view', hang_force=0.0)
 
 
     def _make_networks(
@@ -218,18 +221,18 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         command = np.concatenate([pose_command, walk_command])
         return command
     
-    def get_obs(self, obs: Obs, command: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    def get_obs(self, obs: Obs, command: np.ndarray, phase_signal = None, last_action = None) -> Tuple[np.ndarray, np.ndarray]:
         motor_pos_delta = obs.motor_pos - self.default_motor_pos
         self.state_ref = np.asarray(self.motion_ref.get_state_ref(self.state_ref, 0.0, command))
         motor_pos_error = obs.motor_pos - self.state_ref[self.ref_start_idx : self.ref_start_idx + self.robot.nu]
         
         obs_arr = np.concatenate(
             [
-                self.phase_signal, # (2, )
+                self.phase_signal if phase_signal is None else phase_signal, # (2, )
                 command[self.command_obs_indices], # (3, )
                 motor_pos_delta * self.obs_scales.dof_pos, # (30, )
                 obs.motor_vel * self.obs_scales.dof_vel, # (30, )
-                self.last_action, # (12, )
+                self.last_action if last_action is None else last_action, # (12, )
                 # motor_pos_error,
                 # obs.lin_vel * self.obs_scales.lin_vel,
                 obs.ang_vel * self.obs_scales.ang_vel, # (3, )
@@ -238,11 +241,11 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         )
         privileged_obs_arr = np.concatenate(
             [
-                self.phase_signal, # (2, )
+                self.phase_signal if phase_signal is None else phase_signal, # (2, )
                 command[self.command_obs_indices], # (3, )
                 motor_pos_delta * self.obs_scales.dof_pos, # (30, )
                 obs.motor_vel * self.obs_scales.dof_vel, # (30, )
-                self.last_action, # (12, ) TODO: set last action
+                self.last_action if last_action is None else last_action, # (12, )
                 motor_pos_error, # (30, )
                 obs.lin_vel * self.obs_scales.lin_vel, # (3, )
                 obs.ang_vel * self.obs_scales.ang_vel, # (3, )
@@ -319,10 +322,43 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             )
             self.fixed_command = self._sample_command()
             self.state_ref = np.asarray(self.motion_ref.get_state_ref(state_ref, 0.0, self.fixed_command))
+            print('new command: ', self.fixed_command)
 
     def is_done(self, obs: Obs) -> bool:
         # TODO: any more metric for done?
         return obs.is_done
+    
+    def rollout_sim(self):
+        obs = self.sim.reset()
+        start_time = time.time()
+        step_curr = 0
+        last_action = np.zeros(self.num_action)
+        command = self.fixed_command
+        print('Rollout sim with command: ', command)
+        while not self.is_done(obs) and step_curr < self.finetune_cfg.eval_rollout_length:
+            obs.time -= start_time
+            time_curr = step_curr * self.control_dt
+            phase_signal = self.get_phase_signal(time_curr)
+            obs_arr, privileged_obs_arr = self.get_obs(obs, command, phase_signal, last_action)
+            action, _ = self.get_action(obs_arr, deterministic=True, is_real=False)
+            action_target = self.default_action + self.action_scale * action
+
+            motor_target = self.default_motor_pos.copy()
+            motor_target[self.action_mask] = action_target
+
+            motor_target = np.clip(
+                motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
+            )
+            motor_angles: Dict[str, float] = {}
+            for motor_name, motor_angle in zip(self.robot.motor_ordering, motor_target):
+                motor_angles[motor_name] = motor_angle
+
+            self.sim.set_motor_target(motor_angles)
+            self.sim.step()
+            obs = self.sim.get_observation()
+            step_curr += 1
+            last_action = action
+
     
     def step(self, obs:Obs, is_real:bool = True):
 
@@ -383,13 +419,14 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         
         self.last_last_action = self.last_action.copy()
         self.last_action = action.copy()
-        if len(self.replay_buffer) % self.finetune_cfg.init_steps == 0:
+        if len(self.replay_buffer) % self.finetune_cfg.update_interval == 0:
             # TODO: let the leader stop while updating
             self.replay_buffer.compute_return(self.finetune_cfg.gamma)
+            import ipdb; ipdb.set_trace()
             for _ in range(self.finetune_cfg.abppo_update_steps):
-                self.abppo_offline_learner.update(self.replay_buffer)
-                # value_loss = self.value_learner.update(self.replay_buffer)
-                # print(f"Value loss: {value_loss}")
+                abppo_loss = self.abppo_offline_learner.update(self.replay_buffer)
+            self.rollout_sim()
+            # self.reset(obs)
 
         if is_real:
             delayed_action = action
@@ -443,6 +480,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         self.healthy_z_range = self.cfg.rewards.healthy_z_range
         self.tracking_sigma = self.cfg.rewards.tracking_sigma
+        self.arm_force_z_sigma = self.cfg.rewards.arm_force_z_sigma
 
     def _compute_reward(
         self, obs: Obs, action: np.ndarray
@@ -552,4 +590,10 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
     def _reward_survival(self, obs: Obs, action: np.ndarray) -> np.ndarray:
         is_done = self.is_done(obs)
         reward = -np.where(is_done, 1.0, 0.0)
+        return reward
+    
+    def _reward_arm_force_z(self, obs: Obs, action: np.ndarray) -> np.ndarray:
+        # import ipdb; ipdb.set_trace()
+        ee_force_z = obs.ee_force[2]
+        reward = np.exp(-self.arm_force_z_sigma * np.abs(ee_force_z))
         return reward
