@@ -541,6 +541,10 @@ class MuJoCoSim(BaseSim):
         if isinstance(self.visualizer, MuJoCoRenderer):
             self.visualizer.save_recording(exp_folder_path, dt, render_every, name, cameras)
 
+    def init_recording(self):
+        if isinstance(self.visualizer, MuJoCoRenderer):
+            self.visualizer.init_recording()
+
     def close(self):
         if self.visualizer is not None:
             self.visualizer.close()

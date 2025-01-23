@@ -82,6 +82,7 @@ class FinetuneConfig:
     kl_bc: str = "data"  # Added from argparse with description
     scale_strategy: Optional[str] = None  # Added from argparse with description
     is_clip_action: bool = False  # Added from argparse
+    sim_vis_type: str = "none"  # Added from argparse
 
     # Healthy range
     healty_ee_force_z: np.ndarray = np.array([-10.0, 40.0])

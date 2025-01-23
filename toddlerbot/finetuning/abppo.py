@@ -303,9 +303,6 @@ class ABPPO_Offline_Learner:
             else:
                 bppo_lr_now = None
                 clip_ratio_now = None
-            # if step > 200: # TODO
-            #     self._config.is_clip_decay = False
-            #     self._config.is_bppo_lr_decay = False
         
             losses = self._abppo.joint_train(replay_buffer, self._iql_learner, bppo_lr_now, clip_ratio_now)
             joint_losses.append(losses)

@@ -180,6 +180,11 @@ class MuJoCoRenderer:
         self.qpos_data.append(data.qpos.copy())
         self.qvel_data.append(data.qvel.copy())
 
+    def init_recording(self):
+        self.anim_data: Dict[str, Any] = {}
+        self.qpos_data: List[Any] = []
+        self.qvel_data: List[Any] = []
+        
     def save_recording(
         self,
         exp_folder_path: str,

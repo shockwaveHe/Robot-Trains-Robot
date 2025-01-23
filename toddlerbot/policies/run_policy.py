@@ -314,7 +314,6 @@ def main(
                 #     arm_policy.reset()
 
             obs.time -= start_time
-
             if "real" not in sim.name and vis_type != "view":
                 obs.time += time_until_next_step
 
@@ -397,6 +396,7 @@ def main(
                 ]
             )
 
+            # TODO: debug this part, -200
             time_until_next_step = start_time + policy.control_dt * step_idx - step_end
             # print(f"time_until_next_step: {time_until_next_step * 1000:.2f} ms")
             if ("real" in sim.name or vis_type == "view") and time_until_next_step > 0:

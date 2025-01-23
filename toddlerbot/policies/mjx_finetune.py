@@ -99,7 +99,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self._init_reward()
         self._make_learners()
 
-        self.sim = MuJoCoSim(robot, vis_type='render', hang_force=0.0)
+        self.sim = MuJoCoSim(robot, vis_type=self.finetune_cfg.sim_vis_type, hang_force=0.0)
 
 
     def _make_networks(
@@ -335,6 +335,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         last_action = np.zeros(self.num_action)
         command = self.fixed_command
         print('Rollout sim with command: ', command)
+
+        self.sim.init_recording()
         while not self.is_done(obs) and step_curr < self.finetune_cfg.eval_rollout_length:
             obs.time -= start_time
             time_curr = step_curr * self.control_dt
@@ -358,7 +360,10 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             obs = self.sim.get_observation()
             step_curr += 1
             last_action = action
+
         self.sim.save_recording(self.exp_folder, self.sim.dt, cameras=["perspective"])
+        print(f'Rollout sim for {step_curr} steps')
+        return self.is_done(obs)
 
     
     def step(self, obs:Obs, is_real:bool = True):
@@ -454,7 +459,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         # control_inputs_jax, motor_target_jax = super().step(obs, is_real)
         # if not np.allclose(motor_target_jax, motor_target, atol=0.1):
         #     import ipdb; ipdb.set_trace()
-        # TODO: any side effect? maybe to chnge the control signal?
+        # TODO: any side effect? maybe to change the control signal?
         return control_inputs, motor_target
     
     def _init_reward(self) -> None:

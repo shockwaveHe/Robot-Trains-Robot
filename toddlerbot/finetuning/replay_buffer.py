@@ -48,7 +48,8 @@ class OnlineReplayBuffer:
         self._privileged_obs[self._size] = s_p
         self._done[self._size] = done
         self._size += 1
-        print(f"Data size: {self._size}, Data fps: {self._size/(time.time() - self.init_time)}")
+        if self._size % 1000 == 0:
+            print(f"Data size: {self._size}, Data fps: {self._size/(time.time() - self.init_time)}")
 
 
     def compute_return(
