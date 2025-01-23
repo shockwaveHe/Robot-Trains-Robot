@@ -33,8 +33,9 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
         cfg: Optional[MJXConfig] = None,
         motion_ref: Optional[MotionReference] = None,
+        exp_folder: Optional[str] = "",
     ):
-        super().__init__(name, robot, init_motor_pos)
+        super().__init__(name, robot, init_motor_pos, exp_folder=exp_folder)
 
         assert cfg is not None, "cfg is required in the subclass!"
 

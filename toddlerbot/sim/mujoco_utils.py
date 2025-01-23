@@ -184,9 +184,10 @@ class MuJoCoRenderer:
         self,
         exp_folder_path: str,
         dt: float,
-        render_every: int,
+        render_every: int = 1,
         name: str = "mujoco.mp4",
         dump_data: bool = False,
+        cameras: List[str] = ["perspective", "side", "top", "front"],
     ):
         if dump_data:
             anim_data_path = os.path.join(exp_folder_path, "anim_data.pkl")
@@ -196,7 +197,7 @@ class MuJoCoRenderer:
         # Define paths for each camera's video
         video_paths: List[str] = []
         # Render and save videos for each camera
-        for camera in ["perspective", "side", "top", "front"]:
+        for camera in cameras:
             video_path = os.path.join(exp_folder_path, f"{camera}.mp4")
             video_frames: List[npt.NDArray[np.float32]] = []
             for qpos, qvel in zip(
@@ -214,12 +215,13 @@ class MuJoCoRenderer:
         # Delay to ensure the video files are fully written
         time.sleep(1)
 
-        # Load the video clips using moviepy
-        clips = [VideoFileClip(path) for path in video_paths]
-        # Arrange the clips in a 2x2 grid
-        final_video = clips_array([[clips[0], clips[1]], [clips[2], clips[3]]])
-        # Save the final concatenated video
-        final_video.write_videofile(os.path.join(exp_folder_path, name))
+        if len(cameras) == 4:
+            # Load the video clips using moviepy
+            clips = [VideoFileClip(path) for path in video_paths]
+            # Arrange the clips in a 2x2 grid
+            final_video = clips_array([[clips[0], clips[1]], [clips[2], clips[3]]])
+            # Save the final concatenated video
+            final_video.write_videofile(os.path.join(exp_folder_path, name))
 
     def anim_pose_callback(self, data: Any):
         for i in range(self.model.nbody):

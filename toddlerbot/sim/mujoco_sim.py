@@ -534,11 +534,12 @@ class MuJoCoSim(BaseSim):
         self,
         exp_folder_path: str,
         dt: float,
-        render_every: int,
+        render_every: int = 1,
         name: str = "mujoco.mp4",
+        cameras: List[str] = ["perspective", "side", "top", "front"],
     ):
         if isinstance(self.visualizer, MuJoCoRenderer):
-            self.visualizer.save_recording(exp_folder_path, dt, render_every, name)
+            self.visualizer.save_recording(exp_folder_path, dt, render_every, name, cameras)
 
     def close(self):
         if self.visualizer is not None:

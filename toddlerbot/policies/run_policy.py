@@ -287,6 +287,15 @@ def main(
     last_ckpt_idx = -1
     # import ipdb; ipdb.set_trace()
     obs = sim.reset()
+
+    exp_name = f"{robot.name}_{policy.name}_{sim.name}"
+    time_str = time.strftime("%Y%m%d_%H%M%S")
+    exp_folder_path = f"results/{exp_name}_{time_str}"
+
+    os.makedirs(exp_folder_path, exist_ok=True)
+    # import ipdb; ipdb.set_trace()
+    policy.set_exp_name(exp_folder_path)
+    
     if isinstance(policy, MJXPolicy):
         policy.reset(obs)
     try:
@@ -399,11 +408,6 @@ def main(
     finally:
         p_bar.close()
 
-    exp_name = f"{robot.name}_{policy.name}_{sim.name}"
-    time_str = time.strftime("%Y%m%d_%H%M%S")
-    exp_folder_path = f"results/{exp_name}_{time_str}"
-
-    os.makedirs(exp_folder_path, exist_ok=True)
 
     log_data_dict: Dict[str, Any] = {
         "obs_list": obs_list,

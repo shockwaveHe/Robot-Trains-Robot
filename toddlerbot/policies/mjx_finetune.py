@@ -99,7 +99,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self._init_reward()
         self._make_learners()
 
-        self.sim = MuJoCoSim(robot, vis_type='view', hang_force=0.0)
+        self.sim = MuJoCoSim(robot, vis_type='render', hang_force=0.0)
 
 
     def _make_networks(
@@ -358,6 +358,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             obs = self.sim.get_observation()
             step_curr += 1
             last_action = action
+        self.sim.save_recording(self.exp_folder, self.sim.dt, cameras=["perspective"])
 
     
     def step(self, obs:Obs, is_real:bool = True):
@@ -420,9 +421,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.last_last_action = self.last_action.copy()
         self.last_action = action.copy()
         if len(self.replay_buffer) % self.finetune_cfg.update_interval == 0:
+            # import ipdb; ipdb.set_trace()
             # TODO: let the leader stop while updating
             self.replay_buffer.compute_return(self.finetune_cfg.gamma)
-            import ipdb; ipdb.set_trace()
             for _ in range(self.finetune_cfg.abppo_update_steps):
                 abppo_loss = self.abppo_offline_learner.update(self.replay_buffer)
             self.rollout_sim()

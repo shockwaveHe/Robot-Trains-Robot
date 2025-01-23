@@ -39,9 +39,11 @@ class BasePolicy(ABC):
         control_dt: float = 0.02,
         prep_duration: float = 2.0,
         n_steps_total: float = float("inf"),
+        exp_folder: str = "",
     ):
         self.name = name
         self.robot = robot
+        self.exp_folder = exp_folder
         self.init_motor_pos = init_motor_pos
         self.control_dt = control_dt
         self.prep_duration = prep_duration
@@ -84,6 +86,9 @@ class BasePolicy(ABC):
         super().__init_subclass__(**kwargs)
         if len(policy_name) > 0:
             policy_registry[policy_name] = cls
+
+    def set_exp_name(self, exp_name: str):
+        self.exp_folder = exp_name
 
     @abstractmethod
     def step(
