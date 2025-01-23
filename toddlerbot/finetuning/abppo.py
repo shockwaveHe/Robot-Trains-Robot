@@ -10,6 +10,7 @@ from toddlerbot.finetuning.learners import ValueLearner, QLearner, IQL_QV_Learne
 from toddlerbot.finetuning.finetune_config import FinetuneConfig
 from toddlerbot.finetuning.dynamics import DynamicsNetwork, BaseDynamics, dynamics_eval
 from toddlerbot.finetuning.ppo import ProximalPolicyOptimization, log_prob_func
+from toddlerbot.finetuning.logger import FinetuneLogger
 
 CONST_EPS = 1e-8
 
@@ -123,7 +124,7 @@ class AdaptiveBehaviorProximalPolicyOptimization:
         iql: IQL_QV_Learner = None,
         bppo_lr_now: float = None,
         clip_ratio_now: float = None
-        ) -> None:
+        ) -> np.ndarray:
         s, s_p, _, _, _, _, _, _, _, _ = replay_buffer.sample(self._batch_size)
         # import ipdb; ipdb.set_trace()
         actions, advantages, dists, kl_logprob_a = self.kl_update(iql, s, s_p, self._kl_update, self._kl_strategy)
@@ -163,57 +164,57 @@ class AdaptiveBehaviorProximalPolicyOptimization:
 
         return actions, advantages, dists
 
+    @torch.no_grad()
     def kl_update(self, iql: IQL_QV_Learner, obs: torch.Tensor, privileged_obs: torch.Tensor, kl_update, kl_strategy: str = 'sample')-> None:
-        with torch.no_grad():
-            advantages, actions, dists, kl_logprob_a = [], [], [], []
-            if not self._is_iql:
-                s_value = iql._value_net(privileged_obs)
-            policy_ids = [i_d for i_d in range(self._num_policy)]
-            for i in range(self._num_policy):
-                dist = self.bppo_ensemble[i]._old_policy(obs)
-                dists.append(dist)
-                action = dist.rsample()
-                if self._is_clip_action:
-                    action = action.clamp(-(1.-1e-5), 1.+1e-5)
-                if kl_update:
-                    other_ids = deepcopy(policy_ids)
-                    del other_ids[i]
-                    if kl_strategy == 'sample':
-                        sample_id = np.random.randint(low=0, high=len(other_ids))
-                        other_dist = self.bppo_ensemble[other_ids[sample_id]]._old_policy(obs)
-                        logprob_a = log_prob_func(other_dist, action)                 
-                        kl_logprob_a.append(logprob_a)
-                    elif kl_strategy == 'max':
-                        all_logprob_a = []
-                        for i_d in other_ids:
-                            others_dist = self.bppo_ensemble[i_d]._old_policy(obs)
-                            logprob_a = log_prob_func(others_dist, action) 
-                            all_logprob_a.append(logprob_a)
-                        all_logprob_a_t = torch.cat(all_logprob_a, dim=1) #tensor: (batch size, num_policies - 1)
-                        max_prob_a, _ = all_logprob_a_t.max(-1) # tensor: (batch_size)
-                        kl_logprob_a.append(max_prob_a)
-                else:
-                    kl_logprob_a = [0 for i_d in range(self._num_policy)]
+        advantages, actions, dists, kl_logprob_a = [], [], [], []
+        if not self._is_iql:
+            s_value = iql._value_net(privileged_obs)
+        policy_ids = [i_d for i_d in range(self._num_policy)]
+        for i in range(self._num_policy):
+            dist = self.bppo_ensemble[i]._old_policy(obs)
+            dists.append(dist)
+            action = dist.sample()
+            if self._is_clip_action:
+                action = action.clamp(-(1.-1e-5), 1.+1e-5)
+            if kl_update:
+                other_ids = deepcopy(policy_ids)
+                del other_ids[i]
+                if kl_strategy == 'sample':
+                    sample_id = np.random.randint(low=0, high=len(other_ids))
+                    other_dist = self.bppo_ensemble[other_ids[sample_id]]._old_policy(obs)
+                    logprob_a = log_prob_func(other_dist, action)                 
+                    kl_logprob_a.append(logprob_a)
+                elif kl_strategy == 'max':
+                    all_logprob_a = []
+                    for i_d in other_ids:
+                        others_dist = self.bppo_ensemble[i_d]._old_policy(obs)
+                        logprob_a = log_prob_func(others_dist, action) 
+                        all_logprob_a.append(logprob_a)
+                    all_logprob_a_t = torch.cat(all_logprob_a, dim=1) #tensor: (batch size, num_policies - 1)
+                    max_prob_a, _ = all_logprob_a_t.max(-1) # tensor: (batch_size)
+                    kl_logprob_a.append(max_prob_a)
+            else:
+                kl_logprob_a = [0 for i_d in range(self._num_policy)]
 
-                #action = action.clamp(-1., 1.)
-                actions.append(action)
-                if self._is_iql:
-                    advantage = iql.get_advantage(privileged_obs, action)
-                    if self._temperature:
-                        print('using advantage with exp temperature')
-                        advantage = torch.minimum(torch.exp(advantage * self._temperature), torch.ones_like(advantage).to(self._device)*100.0)
-                    #advantage = self.weighted_advantage(advantage)
-                    advantage = (advantage - advantage.mean()) / (advantage.std() + CONST_EPS)
-                else:
-                    advantage = iql._Q_net(privileged_obs, action) - s_value
-                    advantage = (advantage - advantage.mean()) / (advantage.std() + CONST_EPS)
-                    advantage = self.weighted_advantage(advantage)
+            #action = action.clamp(-1., 1.)
+            actions.append(action)
+            if self._is_iql:
+                advantage = iql.get_advantage(privileged_obs, action)
+                if self._temperature:
+                    print('using advantage with exp temperature')
+                    advantage = torch.minimum(torch.exp(advantage * self._temperature), torch.ones_like(advantage).to(self._device)*100.0)
+                #advantage = self.weighted_advantage(advantage)
+                advantage = (advantage - advantage.mean()) / (advantage.std() + CONST_EPS)
+            else:
+                advantage = iql._Q_net(privileged_obs, action) - s_value
+                advantage = (advantage - advantage.mean()) / (advantage.std() + CONST_EPS)
+                advantage = self.weighted_advantage(advantage)
 
-                advantages.append(advantage)
+            advantages.append(advantage)
 
 
         return actions, advantages, dists, kl_logprob_a
-    
+
 
     def replace(self, index: list) -> None:
         for i in index:
@@ -231,10 +232,12 @@ class AdaptiveBehaviorProximalPolicyOptimization:
 
     def ope_dynamics_eval(self, q_eval, dynamics, eval_buffer):
         best_mean_qs =  []
+        rollout_lengths = []
         for bppo in self.bppo_ensemble:
-            best_mean_q, _ = dynamics_eval(self._config, bppo, q_eval, dynamics, eval_buffer)
+            best_mean_q, _, rollout_length = dynamics_eval(self._config, bppo, q_eval, dynamics, eval_buffer)
             best_mean_qs.append(best_mean_q)
-        return np.array(best_mean_qs)
+            rollout_lengths.append(rollout_length)
+        return np.array(best_mean_qs), np.array(rollout_lengths)
     
     def weighted_advantage(
         self,
@@ -252,18 +255,22 @@ class AdaptiveBehaviorProximalPolicyOptimization:
         
 # ABPPO offline learner
 class ABPPO_Offline_Learner:
-    def __init__(self, 
-                 device: torch.device, 
-                 config: FinetuneConfig, 
-                 abppo: AdaptiveBehaviorProximalPolicyOptimization,
-                 q_net: QNetwork,
-                 value_net: ValueNetwork,
-                 dynamics: BaseDynamics):
+    def __init__(
+            self, 
+            device: torch.device, 
+            config: FinetuneConfig, 
+            abppo: AdaptiveBehaviorProximalPolicyOptimization,
+            q_net: QNetwork,
+            value_net: ValueNetwork,
+            dynamics: BaseDynamics,
+            logger: FinetuneLogger
+        ):
         self._device = device
         self._config = config
         self._abppo = abppo
         self._q_net = q_net
         self._value_net = value_net
+        self._logger = logger
         if self._config.is_iql:
             self._iql_learner = IQL_QV_Learner(device, q_net, value_net, config)
         else:
@@ -273,30 +280,36 @@ class ABPPO_Offline_Learner:
 
     def fit_q_v(self, replay_buffer: OnlineReplayBuffer):
         print("fitting q_v ......")
-        for step in tqdm(range(int(self._config.value_update_steps)), desc='value and q upladating ......'): 
+        value_loss, Q_loss = 0.0, 0.0
+        for step in tqdm(range(int(self._config.value_update_steps)), desc=f'value loss {value_loss:.3f}, Q loss {Q_loss:.3f}'): 
             if self._config.is_iql:
                 Q_loss, value_loss = self._iql_learner.update(replay_buffer=replay_buffer)
             else:
                 Q_loss = self._q_learner.update(replay_buffer=replay_buffer)
                 value_loss = self._value_learner.update(replay_buffer=replay_buffer)
-            if step % int(self._config.log_freq) == 0:
-                print(f"Step: {step}, Q Loss: {Q_loss:.4f}, value Loss: {value_loss:.4f}")
+            self._logger.log_update(q_loss=Q_loss, value_loss=value_loss)
+
     
     def fit_dynamics(self, replay_buffer: OnlineReplayBuffer):
         print('fitting dynamics ......')
-        for step in tqdm(range(int(self._config.dynamics_update_steps)), desc='dynamics updating ......'): 
+        dynamics_loss = 0.0
+        for step in tqdm(range(int(self._config.dynamics_update_steps)), desc=f'dynamics loss {dynamics_loss:.3f}'): 
             dynamics_loss = self._dynamics.update(replay_buffer=replay_buffer)
+            self._logger.log_update(dynamics_loss=dynamics_loss)
             if step % int(self._config.log_freq) == 0:
                 print(f"Step: {step}, dynamics Loss: {dynamics_loss:.4f}")
     
     def update(self, replay_buffer: OnlineReplayBuffer):
         self.fit_q_v(replay_buffer)
         self.fit_dynamics(replay_buffer)
-        best_mean_qs = self._abppo.ope_dynamics_eval(self._q_net, self._dynamics, replay_buffer)
+        best_mean_qs, rollout_lengths = self._abppo.ope_dynamics_eval(self._q_net, self._dynamics, replay_buffer)
+        self._logger.log_update(ope_length_mean=rollout_lengths.mean(), ope_Q_mean=best_mean_qs.mean(), ope_Q_std=best_mean_qs.std())
         
+        print('fitting bppo ......')
         current_bppo_scores = [0 for i in range(self._config.num_policy)]
+        losses = np.zeros(self._config.num_policy)
         joint_losses = []
-        for step in tqdm(range(self._config.bppo_steps), desc='bppo updating ......'):
+        for step in tqdm(range(self._config.bppo_steps), desc=f'bppo loss {losses.mean():.3f}'):
             if self._config.is_linear_decay:
                 bppo_lr_now = self._config.bppo_lr * (1 - step / self._config.bppo_steps)
                 clip_ratio_now = self._config.clip_ratio * (1 - step / self._config.bppo_steps)
@@ -305,11 +318,13 @@ class ABPPO_Offline_Learner:
                 clip_ratio_now = None
         
             losses = self._abppo.joint_train(replay_buffer, self._iql_learner, bppo_lr_now, clip_ratio_now)
+            self._logger.log_update(policy_loss_mean=losses.mean(), policy_loss_std=losses.std(), bppo_lr=bppo_lr_now, clip_ratio=clip_ratio_now)
             joint_losses.append(losses)
 
             if (step+1) % self._config.eval_step == 0:
                 
-                current_mean_qs = self._abppo.ope_dynamics_eval(self._q_net, self._dynamics, replay_buffer)
+                current_mean_qs, rollout_lengths = self._abppo.ope_dynamics_eval(self._q_net, self._dynamics, replay_buffer)
+                self._logger.log_update(ope_length_mean=rollout_lengths.mean(), ope_Q_mean=best_mean_qs.mean(), ope_Q_std=best_mean_qs.std())
                 print('rollout trajectory q mean:{}'.format(current_mean_qs))
                 print(f"Step: {step}, Score: ", current_bppo_scores)
                 

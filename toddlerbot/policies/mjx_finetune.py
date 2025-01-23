@@ -21,6 +21,7 @@ from scipy.spatial.transform import Rotation
 from toddlerbot.finetuning.finetune_config import FinetuneConfig
 from toddlerbot.utils.math_utils import euler2quat
 from toddlerbot.utils.comm_utils import ZMQNode
+from toddlerbot.finetuning.logger import FinetuneLogger
 
 class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
     def __init__(self, name, robot: Robot, *args, **kwargs):
@@ -96,6 +97,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             self.num_privileged_obs_history * self.privileged_obs_size
         )
         self.zmq_receiver = ZMQNode(type="receiver")
+        self.logger = FinetuneLogger(self.exp_folder)
         self._init_reward()
         self._make_learners()
 
@@ -156,7 +158,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
     def _make_learners(self):
         """Make PPO learners with a PyTorch implementation."""
         self.abppo = AdaptiveBehaviorProximalPolicyOptimization(self.device, self.policy_net, self.finetune_cfg)
-        self.abppo_offline_learner = ABPPO_Offline_Learner(self.device, self.finetune_cfg, self.abppo, self.Q_net, self.value_net, self.dynamics)
+        self.abppo_offline_learner = ABPPO_Offline_Learner(self.device, self.finetune_cfg, self.abppo, self.Q_net, self.value_net, self.dynamics, self.logger)
 
     def _sample_command(
         self, last_command: Optional[np.ndarray] = None
@@ -322,7 +324,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             )
             self.fixed_command = self._sample_command()
             self.state_ref = np.asarray(self.motion_ref.get_state_ref(state_ref, 0.0, self.fixed_command))
-            print('new command: ', self.fixed_command)
+            print('new command: ', self.fixed_command[5:6])
 
     def is_done(self, obs: Obs) -> bool:
         # TODO: any more metric for done?
@@ -365,7 +367,6 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         print(f'Rollout sim for {step_curr} steps')
         return self.is_done(obs)
 
-    
     def step(self, obs:Obs, is_real:bool = True):
 
         if not self.is_prepared:
@@ -417,7 +418,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         reward_dict = self._compute_reward(obs, self.last_action)
         reward = sum(reward_dict.values()) * self.control_dt # TODO: verify
         action, _ = self.get_action(obs_arr, deterministic=True, is_real=is_real)
-        
+        self.logger.log_step(reward_dict)
+
         # TODO: last_obs initial value is all None
         # if len(control_inputs) > 0 and (control_inputs['walk_x'] != 0 or control_inputs['walk_y'] != 0):
             # self.replay_buffer.store(obs_arr, privileged_obs_arr, action, reward, self.is_done(obs))
@@ -430,7 +432,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             # TODO: let the leader stop while updating
             self.replay_buffer.compute_return(self.finetune_cfg.gamma)
             for _ in range(self.finetune_cfg.abppo_update_steps):
-                abppo_loss = self.abppo_offline_learner.update(self.replay_buffer)
+                abppo_loss_dict = self.abppo_offline_learner.update(self.replay_buffer)
+
             self.rollout_sim()
             # self.reset(obs)
 

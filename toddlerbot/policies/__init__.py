@@ -87,8 +87,6 @@ class BasePolicy(ABC):
         if len(policy_name) > 0:
             policy_registry[policy_name] = cls
 
-    def set_exp_name(self, exp_name: str):
-        self.exp_folder = exp_name
 
     @abstractmethod
     def step(

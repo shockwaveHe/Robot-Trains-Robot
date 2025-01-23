@@ -164,9 +164,8 @@ def rollout(
         obs = torch.FloatTensor(init_obs).to(dynamics._device)
         priviledged_obs = torch.FloatTensor(init_privileged_obs).to(dynamics._device)
         assert torch.allclose(get_obs_from_priviledged_obs(priviledged_obs), obs)
-        length = 0
         with torch.no_grad():
-            for _ in range(rollout_length):
+            for length in range(rollout_length):
                 # import ipdb; ipdb.set_trace()
                 obs = get_obs_from_priviledged_obs(priviledged_obs)
                 actions = policy.select_action(obs, is_sample=False)
@@ -184,20 +183,19 @@ def rollout(
                 rewards_arr = np.append(rewards_arr, rewards.flatten())
                 total_q = np.append(total_q, Q_value.cpu().data.numpy().flatten())
                 nonterm_mask = (~terminals).flatten()
-                length += 1
                 if nonterm_mask.sum() == 0:
                     print('terminal length: {}'.format(length))
                     break
 
                 priviledged_obs = torch.FloatTensor(next_priviledged_obs[nonterm_mask]).to(dynamics._device)
 
-        return total_q.mean(), rewards_arr.mean()
+        return total_q.mean(), rewards_arr.mean(), length
     
 
 def dynamics_eval(config: FinetuneConfig, policy: ProximalPolicyOptimization, Q: QNetwork, dynamics: BaseDynamics, replay_buffer: OfflineReplayBuffer):
     s, s_p, _, _, _, _, _, _, _, _ = replay_buffer.sample(config.rollout_batch_size)
-    Q_mean, reward_mean = rollout(Q, policy, dynamics, s, s_p, config.ope_rollout_length)
-    return Q_mean, reward_mean
+    Q_mean, reward_mean, rollout_length = rollout(Q, policy, dynamics, s, s_p, config.ope_rollout_length)
+    return Q_mean, reward_mean, rollout_length
 
 if __name__ == "__main__":
     from toddlerbot.finetuning.replay_buffer import OfflineReplayBuffer

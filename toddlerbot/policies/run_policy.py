@@ -267,6 +267,7 @@ def main(
     policy: BasePolicy,
     arm_policy: BaseArmPolicy | None,
     vis_type: str,
+    exp_folder_path: str,
 ):
     header_name = snake2camel(sim.name)
 
@@ -288,13 +289,6 @@ def main(
     # import ipdb; ipdb.set_trace()
     obs = sim.reset()
 
-    exp_name = f"{robot.name}_{policy.name}_{sim.name}"
-    time_str = time.strftime("%Y%m%d_%H%M%S")
-    exp_folder_path = f"results/{exp_name}_{time_str}"
-
-    os.makedirs(exp_folder_path, exist_ok=True)
-    # import ipdb; ipdb.set_trace()
-    policy.set_exp_name(exp_folder_path)
     
     if isinstance(policy, MJXPolicy):
         policy.reset(obs)
@@ -407,7 +401,7 @@ def main(
 
     finally:
         p_bar.close()
-
+        sim.close()
 
     log_data_dict: Dict[str, Any] = {
         "obs_list": obs_list,
@@ -673,6 +667,13 @@ if __name__ == "__main__":
     PolicyClass = get_policy_class(args.policy.replace("_fixed", ""))
     ArmPolicyClass = get_arm_policy_class(args.arm_policy)
 
+    exp_name = f"{robot.name}_{args.policy}_{sim.name}"
+    time_str = time.strftime("%Y%m%d_%H%M%S")
+    exp_folder_path = f"results/{exp_name}_{time_str}"
+
+    os.makedirs(exp_folder_path, exist_ok=True)
+    print(f"Saving results to {exp_folder_path}")
+
     if "replay" in args.policy:
         assert (
             args.robot in args.run_name
@@ -718,9 +719,9 @@ if __name__ == "__main__":
         fixed_command = None
         if len(args.command) > 0:
             fixed_command = np.array(args.command.split(" "), dtype=np.float32)
-      
+
         policy = PolicyClass(
-            args.policy, robot=robot, init_motor_pos=init_motor_pos, ckpt=args.ckpt, fixed_command=fixed_command
+            args.policy, robot=robot, init_motor_pos=init_motor_pos, ckpt=args.ckpt, fixed_command=fixed_command, exp_folder=exp_folder_path
         )
 
     elif issubclass(PolicyClass, DPPolicy):
@@ -750,4 +751,4 @@ if __name__ == "__main__":
             raise ValueError(f"Unknown arm policy {args.arm_policy}")
 
     # input("Press Enter to start the simulation...")
-    main(robot, arm, sim, policy, arm_policy, args.vis)
+    main(robot, arm, sim, policy, arm_policy, args.vis, exp_folder_path)
