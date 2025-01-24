@@ -1,4 +1,3 @@
-import math
 import os
 import time
 import numpy as np
@@ -6,6 +5,8 @@ from dataclasses import asdict
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 from copy import deepcopy
 import torch
+import pickle
+import numpy.typing as npt
 from toddlerbot.sim import Obs
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.policies.mjx_policy import MJXPolicy
@@ -24,14 +25,14 @@ from toddlerbot.utils.comm_utils import ZMQNode
 from toddlerbot.finetuning.logger import FinetuneLogger
 
 class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
-    def __init__(self, name, robot: Robot, *args, **kwargs):
+    def __init__(self, name, robot: Robot, init_motor_pos: npt.NDArray[np.float32], ckpt: str = "", *args, **kwargs):
         # set these before super init
         self.finetune_cfg = FinetuneConfig()
         self.num_privileged_obs_history = self.finetune_cfg.frame_stack
         self.privileged_obs_size = self.finetune_cfg.num_single_privileged_obs
         self.privileged_obs_history_size = self.privileged_obs_size * self.num_privileged_obs_history
         
-        super().__init__(name, robot, *args, **kwargs)
+        super().__init__(name, robot, init_motor_pos, "", *args, **kwargs)
         self.robot = robot
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         if "seed" in kwargs:
@@ -99,6 +100,10 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.zmq_receiver = ZMQNode(type="receiver")
         self.logger = FinetuneLogger(self.exp_folder)
         self._init_reward()
+
+        if len(ckpt) > 0:
+            self.load_networks(ckpt)
+
         self._make_learners()
 
         self.sim = MuJoCoSim(robot, vis_type=self.finetune_cfg.sim_vis_type, hang_force=0.0)
@@ -107,6 +112,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.sim.close()
         self.logger.close()
         self.zmq_receiver.close()
+        save_networks= input("Save replay buffer? y/n:")
+        if save_networks == 'y':
+            self.save_networks()
 
     def _make_networks(
         self,
@@ -158,7 +166,33 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         self.dynamics = BaseDynamics(device, self.dynamics_net, self.finetune_cfg)
 
-        
+    def save_networks(self):
+        policy_path = os.path.join(self.exp_folder, "policy")
+        if not os.path.exists(policy_path):
+            os.makedirs(policy_path)
+        torch.save(self.policy_net.state_dict(), os.path.join(policy_path, "policy_net.pth"))
+        torch.save(self.value_net.state_dict(), os.path.join(policy_path, "value_net.pth"))
+        torch.save(self.Q_net.state_dict(), os.path.join(policy_path, "Q_net.pth"))
+        torch.save(self.dynamics_net.state_dict(), os.path.join(policy_path, "dynamics_net.pth"))
+        with open(os.path.join(policy_path, "logger.pkl"), 'wb') as f:
+            pickle.dump(self.logger, f)
+        save_buffer = input("Save replay buffer? y/n:")
+        if save_buffer == 'y':
+            with open(os.path.join(policy_path, "buffer.pkl"), 'wb') as f:
+                pickle.dump(self.replay_buffer, f)
+    
+    def load_networks(self, policy_path):
+        assert os.path.exists(policy_path), f"Path {policy_path} does not exist"
+        self.policy_net.load_state_dict(torch.load(os.path.join(policy_path, "policy_net.pth")))
+        self.value_net.load_state_dict(torch.load(os.path.join(policy_path, "value_net.pth")))
+        self.Q_net.load_state_dict(torch.load(os.path.join(policy_path, "Q_net.pth")))
+        self.dynamics_net.load_state_dict(torch.load(os.path.join(policy_path, "dynamics_net.pth")))
+        with open(os.path.join(policy_path, "logger.pkl"), 'rb') as f:
+            self.logger = pickle.load(f)
+        if os.path.exists(os.path.join(policy_path, "buffer.pkl")):
+            with open(os.path.join(policy_path, "buffer.pkl"), 'rb') as f:
+                self.replay_buffer = pickle.load(f)
+
     def _make_learners(self):
         """Make PPO learners with a PyTorch implementation."""
         self.abppo = AdaptiveBehaviorProximalPolicyOptimization(self.device, self.policy_net, self.finetune_cfg)
@@ -405,7 +439,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             obs.is_done = msg.is_done
             print(control_inputs)
             if msg.is_stopped:
-                import ipdb; ipdb.set_trace()
+                self.stopped = True
+                return {}, np.zeros(self.num_action)
         else:
             obs.is_done = False
         # import ipdb; ipdb.set_trace()
@@ -436,7 +471,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             # TODO: let the leader stop while updating
             self.replay_buffer.compute_return(self.finetune_cfg.gamma)
             for _ in range(self.finetune_cfg.abppo_update_steps):
-                abppo_loss_dict = self.abppo_offline_learner.update(self.replay_buffer)
+                self.abppo_offline_learner.update(self.replay_buffer)
             self.logger.print_profiling_data()
             self.rollout_sim()
             # self.reset(obs)

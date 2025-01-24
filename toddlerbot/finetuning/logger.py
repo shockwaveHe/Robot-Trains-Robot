@@ -350,5 +350,9 @@ class FinetuneLogger:
 
     def close(self):
         """Shut down the plotting thread."""
+        self.plot_rewards()
+        self.plot_updates()
+        self._flush_update_csv()
+        self._write_reward_csv_line()
         self.plot_queue.put(None)  # Sentinel to shut down the thread
         self.plot_thread.join()

@@ -19,6 +19,7 @@ class BalancePolicy(MJXPolicy, policy_name="balance"):
         ckpt: str,
         joystick: Optional[Joystick] = None,
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
+        exp_folder: Optional[str] = "",
     ):
         env_cfg = get_env_config("balance")
         motion_ref = BalancePDReference(
@@ -37,6 +38,7 @@ class BalancePolicy(MJXPolicy, policy_name="balance"):
             fixed_command,
             env_cfg,
             motion_ref,
+            exp_folder
         )
 
     def get_command(self, control_inputs: Dict[str, float]) -> npt.NDArray[np.float32]:
