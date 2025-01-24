@@ -100,6 +100,8 @@ class BasePolicy(ABC):
     def reset(self) -> Obs:
         pass
     
+    def close(self) -> None:
+        pass
     # duration: total length of the motion
     # end_time: when motion should end, end time < time < duration will be static
     def move(

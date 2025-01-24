@@ -132,3 +132,8 @@ class ZMQNode:
             return messages[-1] if messages else None
         else:
             return messages if messages else None
+
+    def close(self):
+        self.socket.close()
+        self.zmq_context.term()
+        print(f"ZMQ {self.type} closed")

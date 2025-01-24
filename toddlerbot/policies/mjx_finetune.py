@@ -103,6 +103,10 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         self.sim = MuJoCoSim(robot, vis_type=self.finetune_cfg.sim_vis_type, hang_force=0.0)
 
+    def close(self):
+        self.sim.close()
+        self.logger.close()
+        self.zmq_receiver.close()
 
     def _make_networks(
         self,
@@ -324,7 +328,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             )
             self.fixed_command = self._sample_command()
             self.state_ref = np.asarray(self.motion_ref.get_state_ref(state_ref, 0.0, self.fixed_command))
-            print('new command: ', self.fixed_command[5:6])
+            print('\nnew command: ', self.fixed_command[5:7])
 
     def is_done(self, obs: Obs) -> bool:
         # TODO: any more metric for done?
@@ -433,7 +437,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             self.replay_buffer.compute_return(self.finetune_cfg.gamma)
             for _ in range(self.finetune_cfg.abppo_update_steps):
                 abppo_loss_dict = self.abppo_offline_learner.update(self.replay_buffer)
-
+            self.logger.print_profiling_data()
             self.rollout_sim()
             # self.reset(obs)
 

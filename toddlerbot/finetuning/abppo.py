@@ -281,7 +281,7 @@ class ABPPO_Offline_Learner:
     def fit_q_v(self, replay_buffer: OnlineReplayBuffer):
         print("fitting q_v ......")
         value_loss, Q_loss = 0.0, 0.0
-        for step in tqdm(range(int(self._config.value_update_steps)), desc=f'value loss {value_loss:.3f}, Q loss {Q_loss:.3f}'): 
+        for step in tqdm(range(int(self._config.value_update_steps)), desc=f'value loss {value_loss:.3g}, Q loss {Q_loss:.3g}'): 
             if self._config.is_iql:
                 Q_loss, value_loss = self._iql_learner.update(replay_buffer=replay_buffer)
             else:
@@ -293,11 +293,9 @@ class ABPPO_Offline_Learner:
     def fit_dynamics(self, replay_buffer: OnlineReplayBuffer):
         print('fitting dynamics ......')
         dynamics_loss = 0.0
-        for step in tqdm(range(int(self._config.dynamics_update_steps)), desc=f'dynamics loss {dynamics_loss:.3f}'): 
+        for step in tqdm(range(int(self._config.dynamics_update_steps)), desc=f'dynamics loss {dynamics_loss:.3g}'): 
             dynamics_loss = self._dynamics.update(replay_buffer=replay_buffer)
             self._logger.log_update(dynamics_loss=dynamics_loss)
-            if step % int(self._config.log_freq) == 0:
-                print(f"Step: {step}, dynamics Loss: {dynamics_loss:.4f}")
     
     def update(self, replay_buffer: OnlineReplayBuffer):
         self.fit_q_v(replay_buffer)
@@ -309,7 +307,7 @@ class ABPPO_Offline_Learner:
         current_bppo_scores = [0 for i in range(self._config.num_policy)]
         losses = np.zeros(self._config.num_policy)
         joint_losses = []
-        for step in tqdm(range(self._config.bppo_steps), desc=f'bppo loss {losses.mean():.3f}'):
+        for step in tqdm(range(self._config.bppo_steps), desc=f'bppo loss {losses.mean():.3g}'):
             if self._config.is_linear_decay:
                 bppo_lr_now = self._config.bppo_lr * (1 - step / self._config.bppo_steps)
                 clip_ratio_now = self._config.clip_ratio * (1 - step / self._config.bppo_steps)

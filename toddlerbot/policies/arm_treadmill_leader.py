@@ -67,7 +67,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         self.arm_shm.buf[8:16] = struct.pack('d', self.z_pos_delta)
 
         # TODO: put this logic and reset to realworld finetuning sim?
-        self.y_force_threshold = 0.5
+        self.x_force_threshold = 0.5
         self.treadmill_speed_kp = 0.5
         self.arm_healthy_ee_pos = np.array([0.0, 3.0])
         self.arm_healthy_ee_force_z = np.array([-10.0, 40.0])
@@ -75,14 +75,21 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         self.healthy_torso_roll = np.array([-0.5, 0.5])
         self.healthy_torso_pitch = np.array([-0.5, 0.5])
 
+    def close(self):
+        self.zmq.close()
+        self.serial_thread.join()
+        self.arm_shm.close()
+        self.arm_shm.unlink()
+        
     def update_speed(self, obs: Obs):
-        if obs.ee_force[1] > self.y_force_threshold:
-            print(f"about to increase speed {self.treadmill_speed_kp * (obs.ee_force[1] - self.y_force_threshold)}")
-            self.speed += self.treadmill_speed_kp * (obs.ee_force[1] - self.y_force_threshold)
-        elif obs.ee_force[1] < -self.y_force_threshold:
-            print(f"about to decrease speed {-self.treadmill_speed_kp * (obs.ee_force[1] + self.y_force_threshold)}")
-            self.speed += self.treadmill_speed_kp * (obs.ee_force[1] + self.y_force_threshold)
+        if obs.ee_force[0] > self.x_force_threshold:
+            print(f"about to increase speed {self.treadmill_speed_kp * (obs.ee_force[0] - self.x_force_threshold)}")
+            self.speed += self.treadmill_speed_kp * (obs.ee_force[0] - self.x_force_threshold)
+        elif obs.ee_force[0] < -self.x_force_threshold:
+            print(f"about to decrease speed {self.treadmill_speed_kp * (obs.ee_force[0] - self.x_force_threshold)}")
+            self.speed -= self.treadmill_speed_kp * (-obs.ee_force[0] - self.x_force_threshold)
             self.speed = max(0.0, self.speed)
+    # speed not enough is x negative
     # note: calibrate zero at: toddlerbot/tools/calibration/calibrate_zero.py --robot toddlerbot_arms
     # note: zero points can be accessed in config_motors.json
     
@@ -201,7 +208,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
             ser.close()
             print("Serial connection closed.")
 
-    def reset(self):
+    def reset(self, obs: Obs = None) -> Obs:
         control_inputs = {"walk_x": 0.0, "walk_y": 0.0, "walk_turn": 0.0}
         lin_vel = np.zeros(3)
         lin_vel[0] = self.speed / 1000
@@ -218,20 +225,23 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         input("Press Enter to reset...")
         # TODO: more safe reset
         force_prev = self.force
-        self.force = 30.0
+        self.force = -1.0
         self.arm_shm.buf[:8] = struct.pack('d', self.force)
-        for _ in range(10):
-            self.z_pos_delta = 0.01
-            self.arm_shm.buf[8:16] = struct.pack('d', self.z_pos_delta)
-            time.sleep(0.5)
+        # self.force = 30.0
+        # self.arm_shm.buf[:8] = struct.pack('d', self.force)
+        # for _ in range(10):
+        #     self.z_pos_delta = 0.01
+        #     self.arm_shm.buf[8:16] = struct.pack('d', self.z_pos_delta)
+        #     time.sleep(0.5)
+        # for _ in range(10):
+        #     self.z_pos_delta = -0.01
+        #     self.arm_shm.buf[8:16] = struct.pack('d', self.z_pos_delta)
+        #     time.sleep(0.5)
         input("Press Enter to finish...")
-        for _ in range(10):
-            self.z_pos_delta = -0.01
-            self.arm_shm.buf[8:16] = struct.pack('d', self.z_pos_delta)
-            time.sleep(0.5)
         self.force = force_prev
         self.arm_shm.buf[:8] = struct.pack('d', self.force)
         # TODO: how to restart datacollection?
+        return obs
 
     def reset_after(self, duration: float):
         self.reset_time = time.time() + duration
