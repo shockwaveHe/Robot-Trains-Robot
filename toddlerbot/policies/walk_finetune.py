@@ -17,6 +17,7 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
         robot: Robot,
         init_motor_pos: npt.NDArray[np.float32],
         ckpt: str = "",
+        ip: str = "",
         joystick: Optional[Joystick] = None,
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
         exp_folder: Optional[str] = "",
@@ -26,7 +27,7 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
         self.command_discount_factor = np.array([0.5, 1.0, 0.75], dtype=np.float32)
 
         super().__init__(
-            name, robot, init_motor_pos, ckpt, joystick, fixed_command, env_cfg, exp_folder=exp_folder
+            name, robot, init_motor_pos, ckpt, ip, joystick, fixed_command, env_cfg, exp_folder=exp_folder,
         )
         self.torso_roll_range = env_cfg.rewards.torso_roll_range
         self.torso_pitch_range = env_cfg.rewards.torso_pitch_range

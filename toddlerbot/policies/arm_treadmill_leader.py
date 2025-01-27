@@ -28,7 +28,8 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
     ):
         super().__init__(name, robot, init_motor_pos)
 
-        self.zmq = ZMQNode(type="sender", ip=ip)
+        self.zmq_sender = ZMQNode(type="sender", ip=ip)
+        self.zmq_receiver = ZMQNode(type="receiver")
         print(f"ZMQ Connected to {ip}")
 
         self.is_running = False
@@ -76,18 +77,20 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         self.healthy_torso_pitch = np.array([-0.5, 0.5])
 
     def close(self):
-        self.zmq.close()
+        self.zmq_sender.close()
         self.serial_thread.join()
         self.arm_shm.close()
         self.arm_shm.unlink()
         
     def update_speed(self, obs: Obs):
+        delta_speed = self.treadmill_speed_kp * (np.abs(obs.ee_force[0]) - self.x_force_threshold)
+        delta_speed = np.clip(delta_speed, 0.0, 0.5)
         if obs.ee_force[0] > self.x_force_threshold:
             print(f"about to increase speed {self.treadmill_speed_kp * (obs.ee_force[0] - self.x_force_threshold)}")
-            self.speed += self.treadmill_speed_kp * (obs.ee_force[0] - self.x_force_threshold)
+            self.speed += delta_speed
         elif obs.ee_force[0] < -self.x_force_threshold:
             print(f"about to decrease speed {self.treadmill_speed_kp * (obs.ee_force[0] - self.x_force_threshold)}")
-            self.speed -= self.treadmill_speed_kp * (-obs.ee_force[0] - self.x_force_threshold)
+            self.speed -= delta_speed
             self.speed = max(0.0, self.speed)
     # speed not enough is x negative
     # note: calibrate zero at: toddlerbot/tools/calibration/calibrate_zero.py --robot toddlerbot_arms
@@ -161,8 +164,15 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         )
         # import ipdb; ipdb.set_trace()
         print(f"Speed: {self.speed}, Force: {self.force}, Walk: ({self.walk_x}, {self.walk_y})")
-        self.zmq.send_msg(msg)
-
+        self.zmq_sender.send_msg(msg)
+        msg = self.zmq_receiver.get_msg()
+        if msg is not None and msg.is_stopped:
+            while True:
+                msg = self.zmq_receiver.get_msg()
+                if msg is not None and not msg.is_stopped:
+                    break
+                time.sleep(1)
+                print("Waiting for the follower to start...")
         if self.stopped:
             self.serial_thread.join()
             self.arm_shm.close()
@@ -194,7 +204,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
                 ser.write(data_to_send)  # Send the data
 
                 # Optionally read a response (if the device sends back data)
-                response = ser.readline()  # Read a line from the device
+                _ = ser.readline()  # Read a line from the device
                 # if response:
                 #     print(f"Send: {data_to_send}, Received: {response}")
 
@@ -220,7 +230,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
             lin_vel=lin_vel,
             is_done=True
         )
-        self.zmq.send_msg(msg)
+        self.zmq_sender.send_msg(msg)
         self.speed = 0.0
         input("Press Enter to reset...")
         # TODO: more safe reset

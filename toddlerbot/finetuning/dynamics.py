@@ -161,8 +161,8 @@ def rollout(
         total_q = np.array([])
         rollout_transitions = defaultdict(list)
         # rollout
-        obs = torch.FloatTensor(init_obs).to(dynamics._device)
-        priviledged_obs = torch.FloatTensor(init_privileged_obs).to(dynamics._device)
+        obs = init_obs.to(dynamics._device)
+        priviledged_obs = init_privileged_obs.to(dynamics._device)
         assert torch.allclose(get_obs_from_priviledged_obs(priviledged_obs), obs)
         with torch.no_grad():
             for length in range(rollout_length):

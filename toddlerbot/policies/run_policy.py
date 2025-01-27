@@ -24,6 +24,7 @@ from toddlerbot.policies.calibrate import CalibratePolicy
 from toddlerbot.policies.dp_policy import DPPolicy
 from toddlerbot.policies.mjx_policy import MJXPolicy
 from toddlerbot.policies.record import RecordPolicy
+from toddlerbot.policies.mjx_finetune import MJXFinetunePolicy
 from toddlerbot.policies.replay import ReplayPolicy
 from toddlerbot.policies.sysID import SysIDFixedPolicy
 from toddlerbot.policies.teleop_follower_pd import TeleopFollowerPDPolicy
@@ -289,9 +290,12 @@ def main(
     # import ipdb; ipdb.set_trace()
     obs = sim.reset()
 
-    
     if isinstance(policy, MJXPolicy):
         policy.reset(obs)
+    # command = policy._sample_command()
+    # import timeit
+    # print(timeit.timeit(lambda: policy.motion_ref.get_state_ref(policy.state_ref, 0.0, command), number=100000))
+    # print(timeit.timeit(lambda: policy.motion_ref.get_state_ref_ds(policy.state_ref, 0.0, command), number=100000))
     try:
         while step_idx < n_steps_total and not getattr(policy, 'stopped', False):
             step_start = time.time()
@@ -352,8 +356,13 @@ def main(
             motor_angles: Dict[str, float] = {}
             for motor_name, motor_angle in zip(robot.motor_ordering, motor_target):
                 motor_angles[motor_name] = motor_angle
-
-            sim.set_motor_target(motor_angles)
+            try:
+                sim.set_motor_target(motor_angles)
+            except KeyError:
+                print(f"motor_angles: {motor_angles}")
+                print(f"robot.motor_ordering: {robot.motor_ordering}")
+                print(f"motor_target: {motor_target}")
+                import ipdb; ipdb.set_trace()
             set_action_time = time.time()
 
             if isinstance(sim, ArmToddlerSim):
@@ -421,7 +430,6 @@ def main(
         assert isinstance(sim, MuJoCoSim)
         sim.save_recording(exp_folder_path, policy.control_dt, 2)
 
-    sim.close()
 
     if isinstance(policy, SysIDFixedPolicy):
         log_data_dict["ckpt_dict"] = policy.ckpt_dict
@@ -469,14 +477,15 @@ def main(
             raise FileNotFoundError(f"Could not find {motor_config_path}")
 
     log("Visualizing...", header="Walking")
-    # plot_results(
-    #     robot,
-    #     policy,
-    #     loop_time_list,
-    #     obs_list,
-    #     motor_angles_list,  # TODO: Plot the command_list
-    #     exp_folder_path,
-    # )
+
+    plot_results(
+        robot,
+        loop_time_list,
+        obs_list,
+        control_inputs_list,
+        motor_angles_list,  # TODO: Plot the command_list
+        exp_folder_path,
+    )
 
 def parse_domain_rand(model: mujoco.MjModel, domain_rand_str: str):
     domain_rand_items = domain_rand_str.split(",")
@@ -720,10 +729,14 @@ if __name__ == "__main__":
         fixed_command = None
         if len(args.command) > 0:
             fixed_command = np.array(args.command.split(" "), dtype=np.float32)
-
-        policy = PolicyClass(
-            args.policy, robot=robot, init_motor_pos=init_motor_pos, ckpt=args.ckpt, fixed_command=fixed_command, exp_folder=exp_folder_path
-        )
+        if issubclass(PolicyClass, MJXFinetunePolicy):
+            policy = PolicyClass(
+                args.policy, robot=robot, init_motor_pos=init_motor_pos, ckpt=args.ckpt, fixed_command=fixed_command, exp_folder=exp_folder_path, ip=args.ip
+            )
+        else:
+            policy = PolicyClass(
+                args.policy, robot=robot, init_motor_pos=init_motor_pos, ckpt=args.ckpt, fixed_command=fixed_command
+            )
 
     elif issubclass(PolicyClass, DPPolicy):
         policy = PolicyClass(args.policy, robot, init_motor_pos, args.ckpt, task=args.task)

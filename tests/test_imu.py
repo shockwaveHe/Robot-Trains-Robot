@@ -40,7 +40,7 @@ def update_plot():
     # Get current state from IMU
     state = imu.get_state()
     current_time = time.time() - start_time
-
+    print(f"Time: {current_time:.2f} s, Euler Angles: {state['euler']}, Angular Velocities: {state['ang_vel']}")
     # Store data
     euler_data["time"].append(current_time)
     euler_data["roll"].append(state["euler"][0])

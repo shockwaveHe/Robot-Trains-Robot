@@ -14,8 +14,8 @@ class FinetuneLogger:
     def __init__(
         self,
         exp_folder: str,
-        log_interval_steps: int = 5,
-        plot_interval_steps: int = 300,
+        log_interval_steps: int = 20,
+        plot_interval_steps: int = 5000,
         update_csv: str = "training_updates.csv",
         reward_csv: str = "training_rewards.csv",
         enable_logging: bool = True,
@@ -144,8 +144,8 @@ class FinetuneLogger:
             self._write_reward_csv_line()
 
         # optionally update reward plots
-        if self.env_step_counter % self.plot_interval_steps == 0:
-            self.plot_queue.put((self.plot_rewards, []))
+        # if self.env_step_counter % self.plot_interval_steps == 0:
+        #     self.plot_queue.put((self.plot_rewards, []))
 
         self._end_profile("log_step", start_t)
 
@@ -197,6 +197,7 @@ class FinetuneLogger:
 
         ncols = 3
         nrows = math.ceil(len(reward_term_names) / ncols)
+        # import ipdb; ipdb.set_trace()
         fig, axes = plt.subplots(nrows, ncols, figsize=(5*ncols, 4*nrows), sharex=True)
         axes = axes.flatten()
 
@@ -250,8 +251,8 @@ class FinetuneLogger:
         if self.update_step_counter % self.log_interval_steps == 0:
             self._flush_update_csv()
         
-        if self.update_step_counter % self.plot_interval_steps == 0:
-            self.plot_queue.put((self.plot_updates, []))
+        # if self.update_step_counter % self.plot_interval_steps == 0:
+        #     self.plot_queue.put((self.plot_updates, []))
 
         self._end_profile("log_update", start_t)
 

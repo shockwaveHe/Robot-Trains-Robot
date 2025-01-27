@@ -21,11 +21,12 @@ from toddlerbot.finetuning.abppo import AdaptiveBehaviorProximalPolicyOptimizati
 from scipy.spatial.transform import Rotation
 from toddlerbot.finetuning.finetune_config import FinetuneConfig
 from toddlerbot.utils.math_utils import euler2quat
-from toddlerbot.utils.comm_utils import ZMQNode
+from toddlerbot.utils.comm_utils import ZMQNode, ZMQMessage
 from toddlerbot.finetuning.logger import FinetuneLogger
+from toddlerbot.utils.misc_utils import profile
 
 class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
-    def __init__(self, name, robot: Robot, init_motor_pos: npt.NDArray[np.float32], ckpt: str = "", *args, **kwargs):
+    def __init__(self, name, robot: Robot, init_motor_pos: npt.NDArray[np.float32], ckpt: str = "", ip: str = "", *args, **kwargs):
         # set these before super init
         self.finetune_cfg = FinetuneConfig()
         self.num_privileged_obs_history = self.finetune_cfg.frame_stack
@@ -34,7 +35,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         
         super().__init__(name, robot, init_motor_pos, "", *args, **kwargs)
         self.robot = robot
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        # self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = "cpu"
         if "seed" in kwargs:
             self.rng = np.random.default_rng(kwargs["seed"])
         else:
@@ -55,7 +57,6 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.turn_chance = self.cfg.commands.turn_chance
 
         self.ref_start_idx = 13
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
         self.num_obs_history = self.cfg.obs.frame_stack
         self.obs_size = self.finetune_cfg.num_single_obs
@@ -98,6 +99,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             self.num_privileged_obs_history * self.privileged_obs_size
         )
         self.zmq_receiver = ZMQNode(type="receiver")
+        assert len(ip) > 0, "Please provide the IP address of the sender"
+        self.zmq_sender = ZMQNode(type="sender", ip=ip)
         self.logger = FinetuneLogger(self.exp_folder)
         self._init_reward()
 
@@ -137,15 +140,15 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             hidden_layers=policy_hidden_layer_sizes,
             action_size=action_size,
             activation_fn=activation_fn
-        ).to(device)
-
+        ).to(self.device)
+        self.policy_net_opt = torch.compile(self.policy_net)
         # Create value network
         self.value_net = networks.ValueNetwork(
             observation_size=privileged_observation_size,
             preprocess_observations_fn=preprocess_observations_fn,
             hidden_layers=value_hidden_layer_sizes,
             activation_fn=activation_fn
-        ).to(device)
+        ).to(self.device)
 
         Q_net_cls = networks.DoubleQNetwork if self.cfg.finetune.use_double_q else networks.QNetwork
         self.Q_net = Q_net_cls(
@@ -154,7 +157,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             preprocess_observations_fn=preprocess_observations_fn,
             hidden_layers=value_hidden_layer_sizes,
             activation_fn=activation_fn
-        ).to(device)
+        ).to(self.device)
 
         self.dynamics_net = DynamicsNetwork(
             observation_size=privileged_observation_size,
@@ -162,7 +165,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             preprocess_observations_fn=preprocess_observations_fn,
             hidden_layers=value_hidden_layer_sizes,
             activation_fn=activation_fn
-        ).to(device)
+        ).to(self.device)
 
         self.dynamics = BaseDynamics(device, self.dynamics_net, self.finetune_cfg)
 
@@ -182,16 +185,21 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 pickle.dump(self.replay_buffer, f)
     
     def load_networks(self, policy_path):
+        org_policy_net = deepcopy(self.policy_net)
+        policy_path = os.path.join(policy_path, "policy")
         assert os.path.exists(policy_path), f"Path {policy_path} does not exist"
         self.policy_net.load_state_dict(torch.load(os.path.join(policy_path, "policy_net.pth")))
         self.value_net.load_state_dict(torch.load(os.path.join(policy_path, "value_net.pth")))
         self.Q_net.load_state_dict(torch.load(os.path.join(policy_path, "Q_net.pth")))
         self.dynamics_net.load_state_dict(torch.load(os.path.join(policy_path, "dynamics_net.pth")))
-        with open(os.path.join(policy_path, "logger.pkl"), 'rb') as f:
-            self.logger = pickle.load(f)
+        assert not torch.allclose(org_policy_net.mlp.layers[0].weight, self.policy_net.mlp.layers[0].weight), "Policy network not loaded correctly"
+        # with open(os.path.join(policy_path, "logger.pkl"), 'rb') as f:
+        #     self.logger = pickle.load(f)
+        print(f"Loaded pretrained model from {policy_path}")
         if os.path.exists(os.path.join(policy_path, "buffer.pkl")):
             with open(os.path.join(policy_path, "buffer.pkl"), 'rb') as f:
                 self.replay_buffer = pickle.load(f)
+            print(f"Loaded replay buffer from {policy_path}")
 
     def _make_learners(self):
         """Make PPO learners with a PyTorch implementation."""
@@ -263,7 +271,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
     
     def get_obs(self, obs: Obs, command: np.ndarray, phase_signal = None, last_action = None) -> Tuple[np.ndarray, np.ndarray]:
         motor_pos_delta = obs.motor_pos - self.default_motor_pos
+        # state_ref_ds = np.asarray(self.motion_ref.get_state_ref_ds(self.state_ref, 0.0, command))
         self.state_ref = np.asarray(self.motion_ref.get_state_ref(self.state_ref, 0.0, command))
+
         motor_pos_error = obs.motor_pos - self.state_ref[self.ref_start_idx : self.ref_start_idx + self.robot.nu]
         
         obs_arr = np.concatenate(
@@ -292,12 +302,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 obs.euler * self.obs_scales.euler, # (3, )
                 obs.ee_force * self.obs_scales.ee_force, # (3, )
                 obs.ee_torque * self.obs_scales.ee_torque, # (3, )
-                # self.state_ref[-2:], # TODO: add stance back?
-                # TODO: push lin and ang vel
             ]
         )
-        # TODO: verify correct
-        # import ipdb; ipdb.set_trace()
+
         self.obs_history = np.roll(self.obs_history, obs_arr.size)
         self.obs_history[:obs_arr.size] = obs_arr
         self.privileged_obs_history = np.roll(self.privileged_obs_history, privileged_obs_arr.size)
@@ -307,9 +314,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
     
     def get_action(self, obs_arr: np.ndarray, deterministic: bool = True, is_real: bool = False) -> Tuple[np.ndarray, Dict[str, Any]]:
         # import ipdb; ipdb.set_trace()
-        obs_tensor = torch.tensor(obs_arr, dtype=torch.float32).unsqueeze(0).to(self.device)
+        obs_tensor = torch.as_tensor(obs_arr, dtype=torch.float32).to(self.device).squeeze(0)
         with torch.no_grad():
-            action_dist = self.policy_net(obs_tensor)
+            action_dist = self.policy_net_opt(obs_tensor) # use the compiled model for faster inference, the parameters are shared with the original model, see test_compile.py
             if deterministic:
                 # Deterministic: use mode
                 actions = action_dist.base_dist.mode
@@ -437,7 +444,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             obs.ee_torque = msg.arm_torque
             obs.lin_vel = msg.lin_vel
             obs.is_done = msg.is_done
-            print(control_inputs)
+            # print("control inputs:", control_inputs)
             if msg.is_stopped:
                 self.stopped = True
                 return {}, np.zeros(self.num_action)
@@ -467,13 +474,16 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.last_last_action = self.last_action.copy()
         self.last_action = action.copy()
         if len(self.replay_buffer) % self.finetune_cfg.update_interval == 0:
-            # import ipdb; ipdb.set_trace()
-            # TODO: let the leader stop while updating
+            self.zmq_sender.send_msg(ZMQMessage(time=time.time(), is_stopped=True))
+            self.logger.plot_rewards()
+            import ipdb; ipdb.set_trace()
             self.replay_buffer.compute_return(self.finetune_cfg.gamma)
             for _ in range(self.finetune_cfg.abppo_update_steps):
                 self.abppo_offline_learner.update(self.replay_buffer)
+            self.logger.plot_updates()
             self.logger.print_profiling_data()
             self.rollout_sim()
+            self.zmq_sender.send_msg(ZMQMessage(time=time.time(), is_stopped=False))
             # self.reset(obs)
 
         if is_real:
@@ -498,8 +508,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.last_action = delayed_action
         self.step_curr += 1
         self.control_inputs = control_inputs
-        # control_inputs_jax, motor_target_jax = super().step(obs, is_real)
-        # if not np.allclose(motor_target_jax, motor_target, atol=0.1):
+        # super_obs_arr, delayed_action_jax = super().step(obs, is_real)
+        # if not np.allclose(self.last_action, delayed_action, atol=0.1):
         #     import ipdb; ipdb.set_trace()
         # TODO: any side effect? maybe to change the control signal?
         return control_inputs, motor_target

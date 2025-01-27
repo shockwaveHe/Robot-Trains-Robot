@@ -25,9 +25,8 @@ def inplace_update(
         return array.at[idx].set(value)  # type: ignore
     else:
         # Numpy allows direct in-place updates
-        array_copy = array.copy()
-        array_copy[idx] = value
-        return array_copy
+        array[idx] = value
+        return array
 
 
 def inplace_add(
@@ -37,9 +36,8 @@ def inplace_add(
     if USE_JAX:
         return array.at[idx].add(value)  # type: ignore
     else:
-        array_copy = array.copy()
-        array_copy[idx] += value
-        return array_copy
+        array[idx] += value
+        return array
 
 
 def conditional_update(

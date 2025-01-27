@@ -9,11 +9,11 @@ from toddlerbot.motion.motion_ref import MotionReference
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.array_utils import (
     ArrayType,
-    conditional_update,
     inplace_add,
     inplace_update,
 )
 from toddlerbot.utils.array_utils import array_lib as np
+from toddlerbot.utils.misc_utils import profile
 
 
 class WalkZMPReference(MotionReference):
@@ -24,10 +24,44 @@ class WalkZMPReference(MotionReference):
 
         self.cycle_time = cycle_time
         self.waist_roll_max = waist_roll_max
-
+        self.dt = dt
         self._setup_zmp()
+        # self._precompute_interpolation_params()
+
+
+    def _precompute_interpolation_params(self):
+        # Precompute all constant arrays and parameters
+        self._neck_yaw_xp = np.array([-1, 0, 1])
+        self._neck_yaw_fp = np.array([
+            self.neck_joint_limits[0, 0], 
+            0.0, 
+            self.neck_joint_limits[1, 0]
+        ])
+        self._neck_pitch_xp = np.array([-1, 0, 1])
+        self._neck_pitch_fp = np.array([
+            self.neck_joint_limits[0, 1], 
+            0.0, 
+            self.neck_joint_limits[1, 1]
+        ])
+
+        self._waist_roll_xp = np.array([-1, 0, 1])
+        self._waist_roll_fp = np.array([
+            self.waist_joint_limits[0, 0], 
+            0.0, 
+            self.waist_joint_limits[1, 0]
+        ])
+        self._waist_yaw_xp = np.array([-1, 0, 1])
+        self._waist_yaw_fp = np.array([
+            self.waist_joint_limits[0, 1], 
+            0.0, 
+            self.waist_joint_limits[1, 1]
+        ])
+
+        self._arm_ref_size_minus_2 = self.arm_ref_size - 2
+        self._inv_dt = 1.0 / self.dt
 
     def _setup_zmp(self):
+        self.INTERP_X = np.array([-1, 0, 1], dtype=np.float32)
         left_hip_yaw_idx = self.robot.joint_ordering.index("left_hip_yaw_driven")
         self.left_hip_roll_rel_idx = (
             self.robot.joint_ordering.index("left_hip_roll") - left_hip_yaw_idx
@@ -72,7 +106,7 @@ class WalkZMPReference(MotionReference):
         self.lookup_keys = np.array(lookup_keys, dtype=np.float32)
         self.lookup_length = np.array(
             [len(stance_mask_ref) for stance_mask_ref in stance_mask_ref_list],
-            dtype=np.float32,
+            dtype=np.int32  # Must use integer type for indexing
         )
 
         num_total_steps_max = max(
@@ -160,32 +194,6 @@ class WalkZMPReference(MotionReference):
         )
         step_idx = np.round(time_curr / self.dt).astype(int)
 
-        # # Normalize the current time within the cycle
-        # cycle_phase = (time_curr / self.cycle_time) % 1.0
-        # # Determine if the current phase is in single support or double support
-        # in_single_support = np.logical_or(
-        #     np.logical_and(
-        #         self.double_support_ratio / 2 <= cycle_phase, cycle_phase < 0.5
-        #     ),
-        #     0.5 + self.double_support_ratio / 2 <= cycle_phase,
-        # )
-        # in_single_support = np.logical_and(in_single_support, ~is_static_pose)
-        # # Set waist_roll_pos based on the current support phase
-        # waist_roll_pos = np.where(
-        #     ~in_single_support,
-        #     0.0,
-        #     np.sin(
-        #         2
-        #         * np.pi
-        #         * np.where(
-        #             cycle_phase < 0.5,
-        #             -np.clip(cycle_phase - self.double_support_ratio / 2, 0, None),
-        #             np.clip(cycle_phase - 0.5 - self.double_support_ratio / 2, 0, None),
-        #         )
-        #         / self.single_support_ratio
-        #     )
-        #     * self.waist_roll_max,
-        # )
         waist_roll_pos = np.interp(
             command[3],
             np.array([-1, 0, 1]),
@@ -206,18 +214,6 @@ class WalkZMPReference(MotionReference):
             motor_pos, self.waist_motor_indices, self.waist_ik(waist_joint_pos)
         )
 
-        def get_leg_joint_pos_init() -> ArrayType:
-            state_ref = np.concatenate((path_state, motor_pos, joint_pos))
-            qpos = self.get_qpos_ref(state_ref)
-            data = self.forward(qpos)
-
-            com_pos = np.array(data.subtree_com[0], dtype=np.float32)
-            # PD controller on CoM position
-            com_pos_error = self.desired_com[:2] - com_pos[:2]
-            com_ctrl = self.com_kp * com_pos_error
-            leg_joint_pos = self.com_ik(0, com_ctrl[0], com_ctrl[1])
-            return leg_joint_pos
-
         def get_leg_joint_pos() -> ArrayType:
             leg_joint_pos = self.leg_joint_pos_lookup[nearest_command_idx][
                 (step_idx % self.lookup_length[nearest_command_idx]).astype(int)
@@ -230,9 +226,7 @@ class WalkZMPReference(MotionReference):
             )
             return leg_joint_pos
 
-        leg_joint_pos = conditional_update(
-            is_static_pose, get_leg_joint_pos_init, get_leg_joint_pos
-        )
+        leg_joint_pos = get_leg_joint_pos()
         joint_pos = inplace_update(joint_pos, self.leg_joint_indices, leg_joint_pos)
         motor_pos = inplace_update(
             motor_pos, self.leg_motor_indices, self.leg_ik(leg_joint_pos)
@@ -245,5 +239,66 @@ class WalkZMPReference(MotionReference):
                 (step_idx % self.lookup_length[nearest_command_idx]).astype(int)
             ],
         )
+        return np.concatenate((path_state, motor_pos, joint_pos, stance_mask))
 
+
+    def get_state_ref_ds(
+    self, state_curr: ArrayType, time_curr: float | ArrayType, command: ArrayType
+) -> ArrayType:
+        # Precompute reused values
+        command_5_slice = command[5:]
+        command_5_norm = np.linalg.norm(command_5_slice)
+        
+        path_state = self.integrate_path_state(state_curr, command)
+        
+        # Initialize positions
+        joint_pos = np.copy(self.default_joint_pos)
+        motor_pos = np.copy(self.default_motor_pos)
+        
+        # Neck interpolation
+        neck_yaw_pos = np.interp(command[0], self._neck_yaw_xp, self._neck_yaw_fp)
+        neck_pitch_pos = np.interp(command[1], self._neck_pitch_xp, self._neck_pitch_fp)
+        neck_joint_pos = np.array([neck_yaw_pos, neck_pitch_pos])
+        joint_pos[self.neck_joint_indices] = neck_joint_pos
+        motor_pos[self.neck_motor_indices] = self.neck_ik(neck_joint_pos)
+        
+        # Arm position
+        ref_idx = int(command[2] * self._arm_ref_size_minus_2)
+        arm_joint_pos = self.arm_joint_pos_ref[ref_idx]
+        joint_pos[self.arm_joint_indices] = arm_joint_pos
+        motor_pos[self.arm_motor_indices] = self.arm_ik(arm_joint_pos)
+        
+        # Static pose check
+        is_static_pose = np.logical_or(command_5_norm < 1e-6, time_curr < 1e-6)
+        
+        # Nearest command index
+        diff = self.lookup_keys - command_5_slice
+        nearest_command_idx = int(np.argmin(np.linalg.norm(diff, axis=1)))
+        
+        # Step index
+        step_idx = int(np.round(time_curr * self._inv_dt))
+        
+        # Waist interpolation
+        waist_roll_pos = np.interp(command[3], self._waist_roll_xp, self._waist_roll_fp)
+        waist_yaw_pos = np.interp(command[4], self._waist_yaw_xp, self._waist_yaw_fp)
+        waist_joint_pos = np.array([waist_roll_pos, waist_yaw_pos])
+        joint_pos[self.waist_joint_indices] = waist_joint_pos
+        motor_pos[self.waist_motor_indices] = self.waist_ik(waist_joint_pos)
+        
+        # Leg positions (corrected indexing)
+        lookup_len = int(self.lookup_length[nearest_command_idx])
+        cycle_idx = step_idx % lookup_len
+        leg_joint_pos = np.copy(self.leg_joint_pos_lookup[nearest_command_idx, cycle_idx])
+        leg_joint_pos[self.left_hip_roll_rel_idx] -= waist_roll_pos
+        leg_joint_pos[self.right_hip_roll_rel_idx] += waist_roll_pos
+        joint_pos[self.leg_joint_indices] = leg_joint_pos
+        motor_pos[self.leg_motor_indices] = self.leg_ik(leg_joint_pos)
+        
+        # Stance mask
+        stance_mask = np.where(
+            is_static_pose,
+            np.ones(2, dtype=np.float32),
+            self.stance_mask_lookup[nearest_command_idx, cycle_idx]
+        )
+        
         return np.concatenate((path_state, motor_pos, joint_pos, stance_mask))
