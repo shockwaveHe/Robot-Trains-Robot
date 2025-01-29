@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from collections import defaultdict
 from threading import Thread
 from queue import Queue
+from toddlerbot.sim import Obs
 
 class FinetuneLogger:
     def __init__(
@@ -116,7 +117,7 @@ class FinetuneLogger:
     # ------------------------------------------------------------------
     # 1) PER-STEP REWARD LOGGING
     # ------------------------------------------------------------------
-    def log_step(self, reward_dict: dict):
+    def log_step(self, reward_dict: dict, obs: Obs):
         """
         Called every environment step to record each reward term.
         reward_dict: { 'torso_pos': float, 'torso_quat': float, ... }
@@ -127,16 +128,25 @@ class FinetuneLogger:
         start_t = self._start_profile("log_step")
 
         self.env_step_counter += 1
-
+        log_dict = {f"rew_{key}": value for key, value in reward_dict.items()}
+        log_dict["time"] = obs.time
+        log_dict["lin_vel_x"] = obs.lin_vel[0]
+        log_dict["lin_vel_y"] = obs.lin_vel[1]
+        log_dict["ang_vel_x"] = obs.ang_vel[0]
+        log_dict["ang_vel_y"] = obs.ang_vel[1]
+        log_dict["ang_vel_z"] = obs.ang_vel[2]
+        log_dict["ee_force_x"] = obs.ee_force[0]
+        log_dict["ee_force_y"] = obs.ee_force[1]
+        log_dict["ee_force_z"] = obs.ee_force[2]
         # store each reward term in reward_term_histories
-        for rname, rval in reward_dict.items():
+        for rname, rval in log_dict.items():
             if rname not in self.reward_term_histories:
                 self.reward_term_histories[rname] = []
             self.reward_term_histories[rname].append(rval)
 
         # if a reward term was previously recorded but not present now, we can append 0 or None
         for existing_rname in self.reward_term_histories.keys():
-            if existing_rname not in reward_dict:
+            if existing_rname not in log_dict:
                 self.reward_term_histories[existing_rname].append(0.0)
 
         # optionally write CSV line

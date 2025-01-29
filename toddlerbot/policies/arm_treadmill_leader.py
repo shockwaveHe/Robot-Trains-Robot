@@ -9,12 +9,10 @@ import numpy.typing as npt
 import serial
 
 from toddlerbot.policies import BasePolicy
-from toddlerbot.sensing.FSR import FSR
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.keyboard import Keyboard
 from toddlerbot.utils.comm_utils import ZMQMessage, ZMQNode
-from toddlerbot.utils.math_utils import interpolate_action
 
 
 class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
@@ -72,7 +70,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         self.treadmill_speed_kp = 0.5
         self.arm_healthy_ee_pos = np.array([0.0, 3.0])
         self.arm_healthy_ee_force_z = np.array([-10.0, 40.0])
-        self.arm_healthy_ee_force_xy = np.array([-3.0, 3.0])
+        self.arm_healthy_ee_force_xy = np.array([-5.0, 5.0])
         self.healthy_torso_roll = np.array([-0.5, 0.5])
         self.healthy_torso_pitch = np.array([-0.5, 0.5])
 
@@ -86,10 +84,10 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         delta_speed = self.treadmill_speed_kp * (np.abs(obs.ee_force[0]) - self.x_force_threshold)
         delta_speed = np.clip(delta_speed, 0.0, 0.5)
         if obs.ee_force[0] > self.x_force_threshold:
-            print(f"about to increase speed {self.treadmill_speed_kp * (obs.ee_force[0] - self.x_force_threshold)}")
+            print(f"about to increase speed {delta_speed}")
             self.speed += delta_speed
         elif obs.ee_force[0] < -self.x_force_threshold:
-            print(f"about to decrease speed {self.treadmill_speed_kp * (obs.ee_force[0] - self.x_force_threshold)}")
+            print(f"about to decrease speed {delta_speed}")
             self.speed -= delta_speed
             self.speed = max(0.0, self.speed)
     # speed not enough is x negative
@@ -120,7 +118,6 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
     def step(
         self, obs: Obs, is_real: bool = False
     ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
-        # import ipdb; ipdb.set_trace()
         keyboard_inputs = self.keyboard.get_keyboard_input()
         self.walk_x += keyboard_inputs["walk_x_delta"]
         self.walk_y += keyboard_inputs["walk_y_delta"]
@@ -165,11 +162,23 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         # import ipdb; ipdb.set_trace()
         print(f"Speed: {self.speed}, Force: {self.force}, Walk: ({self.walk_x}, {self.walk_y})")
         self.zmq_sender.send_msg(msg)
-        msg = self.zmq_receiver.get_msg()
-        if msg is not None and msg.is_stopped:
+        msg_recv = self.zmq_receiver.get_msg()
+        if msg_recv is not None and msg_recv.is_stopped:
+            msg = ZMQMessage(
+                time=time.time(),
+                control_inputs=control_inputs,
+                arm_force=np.zeros(3),
+                arm_torque=np.zeros(3),
+                lin_vel=lin_vel,
+                is_done=True
+            )
+            self.zmq_sender.send_msg(msg)
+            self.speed = 0.0
+            self.walk_x = 0.0
+            self.walk_y = 0.0
             while True:
-                msg = self.zmq_receiver.get_msg()
-                if msg is not None and not msg.is_stopped:
+                msg_recv = self.zmq_receiver.get_msg()
+                if msg_recv is not None and not msg_recv.is_stopped:
                     break
                 time.sleep(1)
                 print("Waiting for the follower to start...")
@@ -232,6 +241,8 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         )
         self.zmq_sender.send_msg(msg)
         self.speed = 0.0
+        self.walk_x = 0.0
+        self.walk_y = 0.0
         input("Press Enter to reset...")
         # TODO: more safe reset
         force_prev = self.force
@@ -247,9 +258,16 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         #     self.z_pos_delta = -0.01
         #     self.arm_shm.buf[8:16] = struct.pack('d', self.z_pos_delta)
         #     time.sleep(0.5)
-        input("Press Enter to finish...")
+        # input("Press Enter to finish...")
+        # import ipdb; ipdb.set_trace()
+        cur_force = struct.unpack('d', self.arm_shm.buf[:8])[0]
+        while cur_force == -1.0:
+            cur_force = struct.unpack('d', self.arm_shm.buf[:8])[0]
+            print(f"Waiting for force to reset... {cur_force}")
+            time.sleep(0.2)
+        assert cur_force == force_prev
+        print("Reset done")
         self.force = force_prev
-        self.arm_shm.buf[:8] = struct.pack('d', self.force)
         # TODO: how to restart datacollection?
         return obs
 

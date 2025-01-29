@@ -302,14 +302,6 @@ def main(
 
             # Get the latest state from the queue
             obs = sim.get_observation()
-            if policy.is_done(obs):
-                # TODO: add is_done to more policies
-                step_idx = 0
-                start_time = time.time()
-                policy.reset(obs)
-                obs = sim.reset()
-                # if arm_policy is not None:
-                #     arm_policy.reset()
 
             obs.time -= start_time
             if "real" not in sim.name and vis_type != "view":
@@ -351,6 +343,14 @@ def main(
 
             control_inputs, motor_target = policy.step(obs, "real" in sim.name)
 
+            if policy.is_done(obs):
+                # TODO: add is_done to more policies
+                step_idx = 0
+                start_time = time.time()
+                policy.reset(obs)
+                obs = sim.reset()
+                # if arm_policy is not None:
+                #     arm_policy.reset()
             inference_time = time.time()
 
             motor_angles: Dict[str, float] = {}
@@ -362,7 +362,7 @@ def main(
                 print(f"motor_angles: {motor_angles}")
                 print(f"robot.motor_ordering: {robot.motor_ordering}")
                 print(f"motor_target: {motor_target}")
-                import ipdb; ipdb.set_trace()
+                # import ipdb; ipdb.set_trace()
             set_action_time = time.time()
 
             if isinstance(sim, ArmToddlerSim):
@@ -478,14 +478,14 @@ def main(
 
     log("Visualizing...", header="Walking")
 
-    plot_results(
-        robot,
-        loop_time_list,
-        obs_list,
-        control_inputs_list,
-        motor_angles_list,  # TODO: Plot the command_list
-        exp_folder_path,
-    )
+    # plot_results(
+    #     robot,
+    #     loop_time_list,
+    #     obs_list,
+    #     control_inputs_list,
+    #     motor_angles_list,  # TODO: Plot the command_list
+    #     exp_folder_path,
+    # )
 
 def parse_domain_rand(model: mujoco.MjModel, domain_rand_str: str):
     domain_rand_items = domain_rand_str.split(",")

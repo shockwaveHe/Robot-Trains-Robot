@@ -23,11 +23,11 @@ from toddlerbot.finetuning.finetune_config import FinetuneConfig
 from toddlerbot.utils.math_utils import euler2quat
 from toddlerbot.utils.comm_utils import ZMQNode, ZMQMessage
 from toddlerbot.finetuning.logger import FinetuneLogger
-from toddlerbot.utils.misc_utils import profile
 
 class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
     def __init__(self, name, robot: Robot, init_motor_pos: npt.NDArray[np.float32], ckpt: str = "", ip: str = "", *args, **kwargs):
         # set these before super init
+        self.is_stopped = False
         self.finetune_cfg = FinetuneConfig()
         self.num_privileged_obs_history = self.finetune_cfg.frame_stack
         self.privileged_obs_size = self.finetune_cfg.num_single_privileged_obs
@@ -75,7 +75,6 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             action_size=self.num_action,
             value_hidden_layer_sizes=self.finetune_cfg.value_hidden_layer_sizes,
             policy_hidden_layer_sizes=self.finetune_cfg.policy_hidden_layer_sizes,
-            device="cuda" if torch.cuda.is_available() else "cpu",
         )
 
         if len(self.ckpt) > 0:
@@ -128,7 +127,6 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         policy_hidden_layer_sizes: Sequence[int] = (32,) * 4,
         value_hidden_layer_sizes: Sequence[int] = (256,) * 5,
         activation_fn: Callable = torch.nn.SiLU,  # PyTorch equivalent of linen.swish is SiLU
-        device: str = 'cpu'
     ):
         """Make PPO networks with a PyTorch implementation."""
 
@@ -167,7 +165,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             activation_fn=activation_fn
         ).to(self.device)
 
-        self.dynamics = BaseDynamics(device, self.dynamics_net, self.finetune_cfg)
+        self.dynamics = BaseDynamics(self.device, self.dynamics_net, self.finetune_cfg)
 
     def save_networks(self):
         policy_path = os.path.join(self.exp_folder, "policy")
@@ -349,6 +347,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             ((self.n_steps_delay + 1) * self.num_action), dtype=np.float32
         )
         self.step_curr = 0
+        print('Resetting...')
+        # self.is_prepared = False
         if obs is not None:
             # TODO: more things to reset?
             path_pos = np.zeros(3)
@@ -370,6 +370,14 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             self.fixed_command = self._sample_command()
             self.state_ref = np.asarray(self.motion_ref.get_state_ref(state_ref, 0.0, self.fixed_command))
             print('\nnew command: ', self.fixed_command[5:7])
+            while obs.is_done:
+                print('Waiting for new observation...')
+                msg = self.zmq_receiver.get_msg()
+                if msg is not None and not msg.is_done:
+                    obs.is_done = False
+                    break
+                time.sleep(0.1)
+        print('Reset done!')
 
     def is_done(self, obs: Obs) -> bool:
         # TODO: any more metric for done?
@@ -447,6 +455,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             # print("control inputs:", control_inputs)
             if msg.is_stopped:
                 self.stopped = True
+                print("Stopped!")
                 return {}, np.zeros(self.num_action)
         else:
             obs.is_done = False
@@ -464,7 +473,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         reward_dict = self._compute_reward(obs, self.last_action)
         reward = sum(reward_dict.values()) * self.control_dt # TODO: verify
         action, _ = self.get_action(obs_arr, deterministic=True, is_real=is_real)
-        self.logger.log_step(reward_dict)
+        self.logger.log_step(reward_dict, obs)
 
         # TODO: last_obs initial value is all None
         # if len(control_inputs) > 0 and (control_inputs['walk_x'] != 0 or control_inputs['walk_y'] != 0):
@@ -511,7 +520,6 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         # super_obs_arr, delayed_action_jax = super().step(obs, is_real)
         # if not np.allclose(self.last_action, delayed_action, atol=0.1):
         #     import ipdb; ipdb.set_trace()
-        # TODO: any side effect? maybe to change the control signal?
         return control_inputs, motor_target
     
     def _init_reward(self) -> None:

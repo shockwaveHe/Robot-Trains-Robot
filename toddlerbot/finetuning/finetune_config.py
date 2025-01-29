@@ -55,7 +55,7 @@ class FinetuneConfig:
     decay_steps: int = 50_000_000
     
     # Exploration and initialization
-    update_interval: int = 2_000
+    update_interval: int = 3_000
     warmup_steps: int = 100_000
     is_linear_decay: bool = True  # Added from argparse
 
