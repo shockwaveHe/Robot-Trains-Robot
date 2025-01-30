@@ -39,6 +39,7 @@ class ProximalPolicyOptimization:
         self._is_iql = config.is_iql
         self._device = device
         self._policy = policy_net
+        self._policy.to(device)
         #orthogonal_initWeights(self._policy)
         self._optimizer = torch.optim.Adam(
             self._policy.parameters(),
@@ -143,6 +144,7 @@ class ProximalPolicyOptimization:
     def select_action(
         self, s: torch.Tensor, is_sample: bool
     ) -> torch.Tensor:
+        s.to(self._device)
         dist = self._policy(s)
         if is_sample:
             action = dist.sample()

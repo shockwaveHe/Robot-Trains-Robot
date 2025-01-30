@@ -24,7 +24,7 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
     ):
         env_cfg = get_env_config("walk")
         self.cycle_time = env_cfg.action.cycle_time
-        self.command_discount_factor = np.array([0.5, 1.0, 0.75], dtype=np.float32)
+        self.command_discount_factor = np.array([1.0, 1.0, 1.0], dtype=np.float32)
 
         super().__init__(
             name, robot, init_motor_pos, ckpt, ip, joystick, fixed_command, env_cfg, exp_folder=exp_folder,

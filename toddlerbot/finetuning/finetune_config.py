@@ -19,7 +19,7 @@ class FinetuneConfig:
     num_evals: int = 1000
     ope_rollout_length: int = 20
     eval_rollout_length: int = 1000
-    rollout_batch_size: int = 128
+    rollout_batch_size: int = 32
     
     # Update configuration
     num_updates_per_batch: int = 4

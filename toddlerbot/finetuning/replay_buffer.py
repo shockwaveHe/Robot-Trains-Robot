@@ -1,10 +1,9 @@
-import os
-import time
 import torch
 import numpy as np
 from tqdm import tqdm 
-from toddlerbot.finetuning.utils import CONST_EPS, RewardScaling, normalize
+from toddlerbot.finetuning.utils import CONST_EPS, RewardScaling, normalize, Timer
 from copy import deepcopy
+
 
 class OnlineReplayBuffer:
     def __init__(
@@ -25,6 +24,7 @@ class OnlineReplayBuffer:
         self.rng = np.random.default_rng(seed=seed)
 
         self._size = 0
+        self.timer = Timer()
         self.start_collection = False
 
     def __len__(self):
@@ -41,7 +41,7 @@ class OnlineReplayBuffer:
 
         if not self.start_collection:
             self.start_collection = True
-            self.init_time = time.time()
+            self.timer.start()
         self._obs[self._size] = s
         self._action[self._size] = a
         self._reward[self._size] = r
@@ -49,7 +49,7 @@ class OnlineReplayBuffer:
         self._done[self._size] = done
         self._size += 1
         if self._size % 400 == 0:
-            print(f"Data size: {self._size}, Data fps: {self._size/(time.time() - self.init_time)}")
+            print(f"Data size: {self._size}, Data fps: {self._size / self.timer.elapsed()}")
 
 
     def compute_return(

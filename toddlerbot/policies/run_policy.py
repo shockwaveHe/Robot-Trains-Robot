@@ -407,7 +407,9 @@ def main(
 
     except KeyboardInterrupt:
         log("KeyboardInterrupt recieved. Closing...", header=header_name)
-
+    except Exception as e:
+        log(f"Exception: {e}. Closing...", header=header_name)
+        
     finally:
         p_bar.close()
         sim.close()

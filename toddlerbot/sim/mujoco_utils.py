@@ -216,6 +216,7 @@ class MuJoCoRenderer:
 
             media.write_video(video_path, video_frames, fps=1.0 / dt / render_every)
             video_paths.append(video_path)
+            print(f"Saved video to {video_path}")
 
         # Delay to ensure the video files are fully written
         time.sleep(1)

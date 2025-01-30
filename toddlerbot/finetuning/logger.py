@@ -2,6 +2,7 @@ import os
 import time
 import csv
 import math
+import pickle
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')  # for writing figures without an active X server
@@ -64,7 +65,35 @@ class FinetuneLogger:
         self.plot_thread = Thread(target=self._plot_worker, daemon=True)
         self.plot_thread.start()
 
-        self.start_time = time.time()
+
+    def save_state(self, filepath: str):
+        """Saves the current state of the logger to a pickle file."""
+        state = {
+            "env_step_counter": self.env_step_counter,
+            "reward_term_histories": self.reward_term_histories,
+            "update_step_counter": self.update_step_counter,
+            "update_metrics_list": self.update_metrics_list,
+            "profiling_data": self.profiling_data,
+            "profiling_counts": self.profiling_counts,
+        }
+        with open(filepath, "wb") as f:
+            pickle.dump(state, f)
+        print(f"Logger state saved to {filepath}")
+
+    def load_state(self, filepath: str):
+        """Loads the logger state from a pickle file."""
+        with open(filepath, "rb") as f:
+            state = pickle.load(f)
+        
+        self.env_step_counter = state["env_step_counter"]
+        self.reward_term_histories = state["reward_term_histories"]
+        self.update_step_counter = state["update_step_counter"]
+        self.update_metrics_list = state["update_metrics_list"]
+        self.profiling_data = state["profiling_data"]
+        self.profiling_counts = state["profiling_counts"]
+        
+        print(f"Logger state loaded from {filepath}")
+
 
     def _plot_worker(self):
         """Worker thread that handles plotting tasks to avoid blocking the main thread."""
@@ -112,7 +141,6 @@ class FinetuneLogger:
             avg_time = total_time / count if count != 0 else 0
             print(f"{func_name}: total={total_time:.4f}s, calls={count}, avg={avg_time:.6f}s")
         print("==============================")
-        print(f"Total time elapsed: {time.time() - self.start_time:.4f}s")
 
     # ------------------------------------------------------------------
     # 1) PER-STEP REWARD LOGGING
@@ -138,6 +166,7 @@ class FinetuneLogger:
         log_dict["ee_force_x"] = obs.ee_force[0]
         log_dict["ee_force_y"] = obs.ee_force[1]
         log_dict["ee_force_z"] = obs.ee_force[2]
+        log_dict["ee_pos_z"] = obs.pos[2]
         # store each reward term in reward_term_histories
         for rname, rval in log_dict.items():
             if rname not in self.reward_term_histories:
@@ -230,6 +259,7 @@ class FinetuneLogger:
         plt.savefig(path)
         plt.close(fig)
 
+        print(f"Saved reward plot to {path}")
         self._end_profile("plot_rewards", start_t)
 
     # ------------------------------------------------------------------
@@ -356,7 +386,7 @@ class FinetuneLogger:
         path = os.path.join(self.exp_folder, "updates_grid.png")
         plt.savefig(path)
         plt.close(fig)
-
+        print(f"Saved update plot to {path}")
         self._end_profile("plot_updates", start_t)
 
     def close(self):

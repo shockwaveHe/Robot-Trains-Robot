@@ -333,7 +333,7 @@ class ABPPO_Offline_Learner:
                         for i_d in index:
                             self._abppo.replace(index=index)
                             print('------------------------------update behavior policy {}----------------------------------------'.format(i_d))
-                        best_mean_qs = current_mean_qs
+                            best_mean_qs[i_d] = current_mean_qs[i_d]
                         best_policy_idx = np.argmax(best_mean_qs)
                         self._abppo._policy_net.load_state_dict(self._abppo.bppo_ensemble[best_policy_idx]._policy.state_dict()) 
         return np.mean(joint_losses)

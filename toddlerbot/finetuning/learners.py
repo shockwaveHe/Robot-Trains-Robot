@@ -272,6 +272,6 @@ if __name__ == '__main__':
     iql_learner = IQL_QV_Learner(device, q_net, value_net, config)
 
     
-    for i in range(1e4):
+    from tqdm import tqdm
+    for i in tqdm(range(10000)):
         q_loss, value_loss = iql_learner.update(buffer)
-        print(i, value_loss, q_loss)

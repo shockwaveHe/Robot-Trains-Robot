@@ -1,3 +1,4 @@
+from collections import deque
 from multiprocessing import shared_memory
 import struct
 import threading
@@ -44,6 +45,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         self.reset_time = None
 
         self.speed = 0.0
+        self.max_speed = 200.0
 
         self.walk_x = 0.0
         self.walk_y = 0.0
@@ -67,12 +69,17 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
 
         # TODO: put this logic and reset to realworld finetuning sim?
         self.x_force_threshold = 0.5
-        self.treadmill_speed_kp = 0.5
+        self.treadmill_speed_inc_kp = 0.5
+        self.treadmill_speed_dec_kp = 1.0
         self.arm_healthy_ee_pos = np.array([0.0, 3.0])
         self.arm_healthy_ee_force_z = np.array([-10.0, 40.0])
         self.arm_healthy_ee_force_xy = np.array([-5.0, 5.0])
         self.healthy_torso_roll = np.array([-0.5, 0.5])
         self.healthy_torso_pitch = np.array([-0.5, 0.5])
+        self.speed_stall_window = 5
+        self.speed_delta_buffer = deque(maxlen=self.speed_stall_window)
+        for _ in range(self.speed_stall_window):
+            self.speed_delta_buffer.append(np.random.rand())
 
     def close(self):
         self.zmq_sender.close()
@@ -81,12 +88,19 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         self.arm_shm.unlink()
         
     def update_speed(self, obs: Obs):
-        delta_speed = self.treadmill_speed_kp * (np.abs(obs.ee_force[0]) - self.x_force_threshold)
+        delta_speed = np.abs(obs.ee_force[0]) - self.x_force_threshold
+        self.speed_delta_buffer.append(delta_speed)
+        if len(set(self.speed_delta_buffer)) == 1:
+            print(f"Speed delta stalled at {delta_speed}")
+            return
         delta_speed = np.clip(delta_speed, 0.0, 0.5)
         if obs.ee_force[0] > self.x_force_threshold:
+            delta_speed *= self.treadmill_speed_inc_kp
             print(f"about to increase speed {delta_speed}")
             self.speed += delta_speed
+            self.speed = min(self.max_speed, self.speed)
         elif obs.ee_force[0] < -self.x_force_threshold:
+            delta_speed *= self.treadmill_speed_dec_kp
             print(f"about to decrease speed {delta_speed}")
             self.speed -= delta_speed
             self.speed = max(0.0, self.speed)
@@ -131,7 +145,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         self.z_pos_delta += keyboard_inputs["z_pos_delta"]
         self.arm_shm.buf[8:16] = struct.pack('d', keyboard_inputs["z_pos_delta"]) # not add equal
         self.keyboard.reset()
-        print(f"force {self.force}, speed {self.speed}, z_pos_delta {self.z_pos_delta}", control_inputs)
+        # print(f"force {self.force}, speed {self.speed}, z_pos_delta {self.z_pos_delta}", control_inputs)
 
         action = self.default_motor_pos.copy()
 
@@ -176,12 +190,17 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
             self.speed = 0.0
             self.walk_x = 0.0
             self.walk_y = 0.0
+            print("Waiting for the follower to start...")
+            force_prev = self.force
+            self.arm_shm.buf[:8] = struct.pack('d', -2.0)
             while True:
                 msg_recv = self.zmq_receiver.get_msg()
                 if msg_recv is not None and not msg_recv.is_stopped:
                     break
-                time.sleep(1)
-                print("Waiting for the follower to start...")
+                time.sleep(0.1)
+            print("Follower started")
+            self.arm_shm.buf[:8] = struct.pack('d', force_prev)
+
         if self.stopped:
             self.serial_thread.join()
             self.arm_shm.close()
@@ -261,9 +280,9 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         # input("Press Enter to finish...")
         # import ipdb; ipdb.set_trace()
         cur_force = struct.unpack('d', self.arm_shm.buf[:8])[0]
+        print(f"Waiting for force to reset... {cur_force}")
         while cur_force == -1.0:
             cur_force = struct.unpack('d', self.arm_shm.buf[:8])[0]
-            print(f"Waiting for force to reset... {cur_force}")
             time.sleep(0.2)
         assert cur_force == force_prev
         print("Reset done")

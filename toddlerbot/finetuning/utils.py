@@ -1,10 +1,41 @@
+import time
 import torch
 import torch.nn as nn
 from torch.distributions import Distribution
 import numpy as np
 from tqdm import tqdm
 CONST_EPS = 1e-10
-from numpy.linalg import norm
+
+class Timer:
+    def __init__(self):
+        self.start_time = None  # When the timer was last started
+        self.accumulated_time = 0  # Total accumulated time
+        self.running = False  # Whether the timer is currently running
+
+    def start(self):
+        """Start or resume the timer."""
+        if not self.running:
+            self.start_time = time.time()
+            self.running = True
+
+    def stop(self):
+        """Stop the timer and accumulate elapsed time."""
+        if self.running:
+            self.accumulated_time += time.time() - self.start_time
+            self.running = False
+
+    def reset(self):
+        """Reset the timer to zero."""
+        self.start_time = None
+        self.accumulated_time = 0
+        self.running = False
+
+    def elapsed(self):
+        """Get the total accumulated time."""
+        if self.running:
+            return self.accumulated_time + (time.time() - self.start_time)
+        return self.accumulated_time
+
 
 def orthogonal_initWeights(
     net: nn.Module,
@@ -100,13 +131,3 @@ def normalize(observations, actions, rewards, masks, dones_float, next_observati
     rewards *= 1000.0
 
     return rewards
-def antmaze_timeout(dataset):
-    threshold = np.mean(norm(dataset['observations'][1:, :2] - dataset['observations'][:-1, :2], axis=1))
-    print('threshold', threshold)
-    for i in range(dataset['observations'].shape[0]):
-        dataset['timeouts'][i] = False
-    for i in range(dataset['observations'].shape[0] - 1):
-        gap = norm(dataset['observations'][i + 1, :2] - dataset['observations'][i, :2])
-        if gap > threshold * 10:
-            dataset['timeouts'][i] = True
-    return dataset
