@@ -64,7 +64,7 @@ class MJXConfig:
     class RewardsConfig:
         healthy_z_range: List[float] = field(default_factory=lambda: [0.2, 0.4])
         tracking_sigma: float = 100.0
-        arm_force_z_sigma: float = 100.0
+        arm_force_z_sigma: float = 0.1
         min_feet_y_dist: float = 0.05
         max_feet_y_dist: float = 0.13
         torso_roll_range: List[float] = field(default_factory=lambda: [-0.1, 0.1])

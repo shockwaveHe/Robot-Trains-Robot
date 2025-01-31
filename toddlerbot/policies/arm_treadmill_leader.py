@@ -45,7 +45,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         self.reset_time = None
 
         self.speed = 0.0
-        self.max_speed = 200.0
+        self.max_speed = 240.0
 
         self.walk_x = 0.0
         self.walk_y = 0.0
@@ -69,8 +69,10 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
 
         # TODO: put this logic and reset to realworld finetuning sim?
         self.x_force_threshold = 0.5
-        self.treadmill_speed_inc_kp = 0.5
-        self.treadmill_speed_dec_kp = 1.0
+        self.treadmill_speed_inc_kp = 2.5
+        self.treadmill_speed_dec_kp = 2.5
+        self.ee_force_x_ema = 0.0
+        self.ee_force_x_ema_alpha = 0.2
         self.arm_healthy_ee_pos = np.array([0.0, 3.0])
         self.arm_healthy_ee_force_z = np.array([-10.0, 40.0])
         self.arm_healthy_ee_force_xy = np.array([-5.0, 5.0])
@@ -88,18 +90,24 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         self.arm_shm.unlink()
         
     def update_speed(self, obs: Obs):
-        delta_speed = np.abs(obs.ee_force[0]) - self.x_force_threshold
+        self.ee_force_x_ema = self.ee_force_x_ema_alpha * self.ee_force_x_ema + (1 - self.ee_force_x_ema_alpha) * obs.ee_force[0]
+        delta_speed = np.abs(self.ee_force_x_ema) - self.x_force_threshold
+        speed_stalled = True
+        for prev_delta_speed in self.speed_delta_buffer:
+            if not np.allclose(prev_delta_speed, delta_speed):
+                speed_stalled = False
+                break
         self.speed_delta_buffer.append(delta_speed)
-        if len(set(self.speed_delta_buffer)) == 1:
+        if speed_stalled:
             print(f"Speed delta stalled at {delta_speed}")
             return
         delta_speed = np.clip(delta_speed, 0.0, 0.5)
-        if obs.ee_force[0] > self.x_force_threshold:
+        if self.ee_force_x_ema > self.x_force_threshold:
             delta_speed *= self.treadmill_speed_inc_kp
             print(f"about to increase speed {delta_speed}")
             self.speed += delta_speed
             self.speed = min(self.max_speed, self.speed)
-        elif obs.ee_force[0] < -self.x_force_threshold:
+        elif self.ee_force_x_ema < -self.x_force_threshold:
             delta_speed *= self.treadmill_speed_dec_kp
             print(f"about to decrease speed {delta_speed}")
             self.speed -= delta_speed
@@ -160,15 +168,17 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
 
         # compile data to send to follower
         assert control_inputs is not None
-        lin_vel = obs.arm_ee_vel
+        lin_vel = obs.arm_ee_vel.copy()
         lin_vel[0] = self.speed / 1000 - lin_vel[0]
         lin_vel[1] = -lin_vel[1]
+        # print('lin vel', lin_vel, 'speed', self.speed, 'arm_vel', obs.arm_ee_vel)
         is_done = self.is_done(obs)
         msg = ZMQMessage(
             time=time.time(),
             control_inputs=control_inputs,
             arm_force=obs.ee_force,
             arm_torque=obs.ee_torque,
+            arm_ee_pos=obs.arm_ee_pos,
             lin_vel=lin_vel, # TODO: check if this is correct
             is_done=is_done,
             is_stopped=self.stopped
@@ -183,6 +193,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
                 control_inputs=control_inputs,
                 arm_force=np.zeros(3),
                 arm_torque=np.zeros(3),
+                arm_ee_pos=np.zeros(3),
                 lin_vel=lin_vel,
                 is_done=True
             )
@@ -255,6 +266,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
             control_inputs=control_inputs,
             arm_force=np.zeros(3),
             arm_torque=np.zeros(3),
+            arm_ee_pos=np.zeros(3),
             lin_vel=lin_vel,
             is_done=True
         )

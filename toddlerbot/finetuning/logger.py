@@ -22,7 +22,7 @@ class FinetuneLogger:
         reward_csv: str = "training_rewards.csv",
         enable_logging: bool = True,
         enable_profiling: bool = False,
-        smooth_factor: float = 0.5
+        smooth_factor: float = 0.0
     ):
         """
         :param exp_folder: where to store CSV logs and plots
@@ -166,7 +166,7 @@ class FinetuneLogger:
         log_dict["ee_force_x"] = obs.ee_force[0]
         log_dict["ee_force_y"] = obs.ee_force[1]
         log_dict["ee_force_z"] = obs.ee_force[2]
-        log_dict["ee_pos_z"] = obs.pos[2]
+        log_dict["ee_pos_z"] = obs.arm_ee_pos[2]
         # store each reward term in reward_term_histories
         for rname, rval in log_dict.items():
             if rname not in self.reward_term_histories:

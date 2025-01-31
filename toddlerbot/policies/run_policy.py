@@ -405,8 +405,6 @@ def main(
             if ("real" in sim.name or vis_type == "view") and time_until_next_step > 0:
                 time.sleep(time_until_next_step)
 
-    except KeyboardInterrupt:
-        log("KeyboardInterrupt recieved. Closing...", header=header_name)
     except Exception as e:
         log(f"Exception: {e}. Closing...", header=header_name)
         

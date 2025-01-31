@@ -109,12 +109,15 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self._make_learners()
 
         self.sim = MuJoCoSim(robot, vis_type=self.finetune_cfg.sim_vis_type, hang_force=0.0)
+        input('press ENTER to start')
 
     def close(self):
         self.sim.close()
         self.logger.close()
         self.zmq_receiver.close()
         save_networks= input("Save networks? y/n:")
+        while save_networks not in ['y', 'n']:
+            save_networks = input("Save networks? y/n:")
         if save_networks == 'y':
             self.save_networks()
 
@@ -168,7 +171,6 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.dynamics = BaseDynamics(self.device, self.dynamics_net, self.finetune_cfg)
 
     def save_networks(self):
-        import ipdb; ipdb.set_trace()
         policy_path = os.path.join(self.exp_folder, "policy")
         if not os.path.exists(policy_path):
             os.makedirs(policy_path)
@@ -369,8 +371,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             self.fixed_command = self._sample_command()
             self.state_ref = np.asarray(self.motion_ref.get_state_ref(state_ref, 0.0, self.fixed_command))
             print('\nnew command: ', self.fixed_command[5:7])
-            print('Waiting for new observation...')
             if obs.is_done:
+                print('Waiting for new observation...')
                 self.replay_buffer.timer.stop()
                 while obs.is_done:
                     msg = self.zmq_receiver.get_msg()
@@ -452,6 +454,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             control_inputs = msg.control_inputs
             obs.ee_force = msg.arm_force
             obs.ee_torque = msg.arm_torque
+            obs.arm_ee_pos = msg.arm_ee_pos
             obs.lin_vel = msg.lin_vel
             obs.is_done = msg.is_done
             # print("control inputs:", control_inputs)
@@ -472,34 +475,37 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         obs_arr, privileged_obs_arr = self.get_obs(obs, command)
         # import ipdb; ipdb.set_trace()
         
-        reward_dict = self._compute_reward(obs, self.last_action)
-        reward = sum(reward_dict.values()) * self.control_dt # TODO: verify
         action, _ = self.get_action(obs_arr, deterministic=True, is_real=is_real)
-        self.logger.log_step(reward_dict, obs)
 
-        # TODO: last_obs initial value is all None
-        if len(control_inputs) > 0 and (control_inputs['walk_x'] != 0 or control_inputs['walk_y'] != 0):
-            self.replay_buffer.store(obs_arr, privileged_obs_arr, action, reward, self.is_done(obs))
-        # self.replay_buffer.store(obs_arr, privileged_obs_arr, action, reward, self.is_done(obs))
+        if msg is not None and msg.control_inputs is not None:
+            # print(obs.lin_vel, obs.euler)
+            reward_dict = self._compute_reward(obs, self.last_action)
+            reward = sum(reward_dict.values()) * self.control_dt # TODO: verify
+            self.logger.log_step(reward_dict, obs)
+
+            # TODO: last_obs initial value is all None
+            if len(control_inputs) > 0 and (control_inputs['walk_x'] != 0 or control_inputs['walk_y'] != 0):
+                self.replay_buffer.store(obs_arr, privileged_obs_arr, action, reward, self.is_done(obs))
+            # self.replay_buffer.store(obs_arr, privileged_obs_arr, action, reward, self.is_done(obs))
         
-        self.last_last_action = self.last_action.copy()
-        self.last_action = action.copy()
-        if (len(self.replay_buffer) + 1) % self.finetune_cfg.update_interval == 0:
-            self.replay_buffer.timer.stop()
-            self.zmq_sender.send_msg(ZMQMessage(time=time.time(), is_stopped=True))
-            self.logger.plot_queue.put((self.logger.plot_rewards, [])) # no-blocking plot
-            # import ipdb; ipdb.set_trace()
-            self.replay_buffer.compute_return(self.finetune_cfg.gamma)
-            for _ in range(self.finetune_cfg.abppo_update_steps):
-                self.abppo_offline_learner.update(self.replay_buffer)
-            self.logger.plot_queue.put((self.logger.plot_updates, [])) # no-blocking plot
-            self.logger.print_profiling_data()
-            is_sim_done = self.rollout_sim()
-            if is_sim_done:
-                import ipdb; ipdb.set_trace()
-            self.zmq_sender.send_msg(ZMQMessage(time=time.time(), is_stopped=False))
-            self.replay_buffer.timer.start()
-            # self.reset(obs)
+            self.last_last_action = self.last_action.copy()
+            self.last_action = action.copy()
+            if (len(self.replay_buffer) + 1) % self.finetune_cfg.update_interval == 0:
+                self.replay_buffer.timer.stop()
+                self.zmq_sender.send_msg(ZMQMessage(time=time.time(), is_stopped=True))
+                self.logger.plot_queue.put((self.logger.plot_rewards, [])) # no-blocking plot
+                # import ipdb; ipdb.set_trace()
+                self.replay_buffer.compute_return(self.finetune_cfg.gamma)
+                for _ in range(self.finetune_cfg.abppo_update_steps):
+                    self.abppo_offline_learner.update(self.replay_buffer)
+                self.logger.plot_queue.put((self.logger.plot_updates, [])) # no-blocking plot
+                self.logger.print_profiling_data()
+                is_sim_done = self.rollout_sim()
+                if is_sim_done:
+                    import ipdb; ipdb.set_trace()
+                self.zmq_sender.send_msg(ZMQMessage(time=time.time(), is_stopped=False))
+                self.replay_buffer.timer.start()
+                # self.reset(obs)
 
         if is_real:
             delayed_action = action
@@ -605,6 +611,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         # TODO: change treadmill speed according to force x, or estimate from IMU + joint_position
         # TODO: compare which is better
         lin_vel_ref = self.state_ref[7:9]
+        # print('lin_vel_ref', lin_vel_ref)
         error = np.linalg.norm(lin_vel - lin_vel_ref, axis=-1)
         reward = np.exp(-self.tracking_sigma * error**2)
         return reward
