@@ -20,9 +20,10 @@ import toddlerbot.finetuning.networks as networks
 from toddlerbot.finetuning.abppo import AdaptiveBehaviorProximalPolicyOptimization, ABPPO_Offline_Learner
 from scipy.spatial.transform import Rotation
 from toddlerbot.finetuning.finetune_config import FinetuneConfig
-from toddlerbot.utils.math_utils import euler2quat
+from toddlerbot.utils.math_utils import euler2quat, euler2mat
 from toddlerbot.utils.comm_utils import ZMQNode, ZMQMessage
 from toddlerbot.finetuning.logger import FinetuneLogger
+from pyvicon_datastream import tools
 
 class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
     def __init__(self, name, robot: Robot, init_motor_pos: npt.NDArray[np.float32], ckpt: str = "", ip: str = "", *args, **kwargs):
@@ -102,6 +103,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.zmq_sender = ZMQNode(type="sender", ip=ip)
         self.logger = FinetuneLogger(self.exp_folder)
         self._init_reward()
+        self._init_tracker()
 
         if len(ckpt) > 0:
             self.load_networks(ckpt)
@@ -170,6 +172,45 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         self.dynamics = BaseDynamics(self.device, self.dynamics_net, self.finetune_cfg)
 
+    def get_tracking_data(self):
+        result = self.tracker.get_position(self.finetune_cfg.object_name)
+        current_time = time.time()
+        current_pos = np.array(result[2][0][2:5]) / 1000
+        current_euler = np.array(result[2][0][5:8])
+        
+        # Calculate rotation and offset
+        R_current = euler2mat(current_euler)
+        offset_current = R_current @ self.R_default.T @ self.mocap_marker_offset
+        current_pos -= offset_current
+        
+        # Calculate time difference
+        dt = current_time - self.prev_time
+        
+        # Calculate linear velocities (x, y, z)
+        lin_vel = (current_pos - self.prev_pos) / dt
+        
+        # Calculate angular velocities (roll, pitch, yaw)
+        current_unwrapped = np.unwrap([self.prev_unwrapped, current_euler], axis=0)[1]
+        ang_vel = (current_unwrapped - self.prev_unwrapped) / dt
+        
+        # Update previous values
+        self.prev_time = current_time
+        self.prev_pos = current_pos
+        self.prev_unwrapped = current_unwrapped
+
+        # EMA
+        lin_vel = self.tracking_alpha * lin_vel + (1 - self.tracking_alpha) * self.prev_lin_vel
+        ang_vel = self.tracking_alpha * ang_vel + (1 - self.tracking_alpha) * self.prev_ang_vel
+        self.prev_lin_vel = lin_vel
+        self.prev_ang_vel = ang_vel
+        
+        # Transform velocities
+        if self.tracking_tf_matrix is not None:
+            lin_vel = self.tracking_tf_matrix @ lin_vel
+            ang_vel = self.tracking_tf_matrix @ ang_vel
+
+        return lin_vel, ang_vel, current_time
+    
     def save_networks(self):
         policy_path = os.path.join(self.exp_folder, "policy")
         if not os.path.exists(policy_path):
@@ -444,18 +485,21 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         time_curr = self.step_curr * self.control_dt
 
-        msg = self.zmq_receiver.get_msg()
+        msg = None
+        while msg is None:
+            msg = self.zmq_receiver.get_msg()
+        
         control_inputs: Dict[str, float] = {}
         self.control_inputs = {}
-        if len(self.control_inputs) > 0:
-            control_inputs = self.control_inputs
-        # TODO: figure out why there's no is done
-        elif msg is not None and msg.control_inputs is not None:
+        lin_vel, ang_vel, _ = self.get_tracking_data()
+
+        if msg.control_inputs is not None:
             control_inputs = msg.control_inputs
             obs.ee_force = msg.arm_force
             obs.ee_torque = msg.arm_torque
             obs.arm_ee_pos = msg.arm_ee_pos
-            obs.lin_vel = msg.lin_vel
+            obs.lin_vel = msg.lin_vel + lin_vel
+            obs.ang_vel = ang_vel # TODO: obs.euler
             obs.is_done = msg.is_done
             # print("control inputs:", control_inputs)
             if msg.is_stopped:
@@ -463,6 +507,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 print("Stopped!")
                 return {}, np.zeros(self.num_action)
         else:
+            import ipdb; ipdb.set_trace()
             obs.is_done = False
         # import ipdb; ipdb.set_trace()
         if len(control_inputs) == 0:
@@ -477,7 +522,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         
         action, _ = self.get_action(obs_arr, deterministic=True, is_real=is_real)
 
-        if msg is not None and msg.control_inputs is not None:
+        if msg.control_inputs is not None:
             # print(obs.lin_vel, obs.euler)
             reward_dict = self._compute_reward(obs, self.last_action)
             reward = sum(reward_dict.values()) * self.control_dt # TODO: verify
@@ -534,6 +579,23 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         #     import ipdb; ipdb.set_trace()
         return control_inputs, motor_target
     
+    def _init_tracker(self):
+        self.tracker = tools.ObjectTracker(self.finetune_cfg.vicon_ip)
+        self.mocap_marker_offset = self.finetune_cfg.mocap_marker_offset
+        self.tracking_alpha = self.finetune_cfg.tracking_alpha
+        self.tracking_tf_matrix = self.finetune_cfg.tracking_tf_matrix
+        result = self.tracker.get_position(self.finetune_cfg.object_name)
+        self.prev_time = time.time()
+        prev_pos = np.array(result[2][0][2:5]) / 1000
+        prev_euler = np.array(result[2][0][5:8])
+        
+        self.R_default = euler2mat(prev_euler)
+        R_prev = euler2mat(prev_euler)
+        offset_prev = R_prev @ self.R_default.T @ self.mocap_marker_offset
+        self.prev_pos = prev_pos - offset_prev
+        self.prev_euler = prev_euler
+        self.prev_unwrapped = prev_euler.copy()
+
     def _init_reward(self) -> None:
         """Prepares a list of reward functions, which will be called to compute the total reward.
         Looks for self._reward_<REWARD_NAME>, where <REWARD_NAME> are names of all non zero reward scales in the cfg.

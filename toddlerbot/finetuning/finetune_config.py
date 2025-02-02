@@ -84,6 +84,13 @@ class FinetuneConfig:
     is_clip_action: bool = False  # Added from argparse
     sim_vis_type: str = "none"  # Added from argparse
 
+    # Tracking
+    vicon_ip: str = "172.24.69.2"
+    object_name: str = "arya"
+    tracking_tf_matrix: np.ndarray = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    tracking_alpha: float = 0.2
+    mocap_marker_offset: np.ndarray = np.array([0.092, 0, -0.031])
+
     # Healthy range
     healty_ee_force_z: np.ndarray = np.array([-10.0, 40.0])
     healty_ee_force_xy: np.ndarray = np.array([-3.0, 3.0])
