@@ -87,7 +87,8 @@ class FinetuneConfig:
     # Tracking
     vicon_ip: str = "172.24.69.2"
     object_name: str = "arya"
-    tracking_tf_matrix: np.ndarray = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    tracking_tf_matrix: np.ndarray = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]])
+
     tracking_alpha: float = 0.2
     mocap_marker_offset: np.ndarray = np.array([0.092, 0, -0.031])
 

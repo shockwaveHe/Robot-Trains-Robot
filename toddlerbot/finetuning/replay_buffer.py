@@ -48,7 +48,7 @@ class OnlineReplayBuffer:
         self._privileged_obs[self._size] = s_p
         self._done[self._size] = done
         self._size += 1
-        if self._size % 400 == 0:
+        if self._size % 4 == 0:
             print(f"Data size: {self._size}, Data fps: {self._size / self.timer.elapsed()}")
 
 

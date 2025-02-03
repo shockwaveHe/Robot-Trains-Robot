@@ -326,8 +326,8 @@ class ABPPO_Offline_Learner:
                 print('rollout trajectory q mean:{}'.format(current_mean_qs))
                 print(f"Step: {step}, Score: ", current_bppo_scores)
                 
-                index = np.where(current_mean_qs > best_mean_qs)[0]  
-
+                # index = np.where(current_mean_qs > best_mean_qs)[0]  
+                index = np.arange(self._config.num_policy)
                 if len(index) != 0:
                     if self._config.is_update_old_policy: # TODO: what does is do?
                         for i_d in index:

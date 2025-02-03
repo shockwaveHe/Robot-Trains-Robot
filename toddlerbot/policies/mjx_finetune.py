@@ -208,8 +208,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         if self.tracking_tf_matrix is not None:
             lin_vel = self.tracking_tf_matrix @ lin_vel
             ang_vel = self.tracking_tf_matrix @ ang_vel
+            current_euler = self.tracking_tf_matrix @ current_euler
 
-        return lin_vel, ang_vel, current_time
+        return lin_vel, ang_vel, current_euler - self.init_euler, current_time
     
     def save_networks(self):
         policy_path = os.path.join(self.exp_folder, "policy")
@@ -491,15 +492,15 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         
         control_inputs: Dict[str, float] = {}
         self.control_inputs = {}
-        lin_vel, ang_vel, _ = self.get_tracking_data()
-
+        lin_vel, ang_vel, euler, _ = self.get_tracking_data()
+        print('euler:', euler, obs.euler)
         if msg.control_inputs is not None:
             control_inputs = msg.control_inputs
             obs.ee_force = msg.arm_force
             obs.ee_torque = msg.arm_torque
             obs.arm_ee_pos = msg.arm_ee_pos
             obs.lin_vel = msg.lin_vel + lin_vel
-            obs.ang_vel = ang_vel # TODO: obs.euler
+            # obs.ang_vel = ang_vel
             obs.is_done = msg.is_done
             # print("control inputs:", control_inputs)
             if msg.is_stopped:
@@ -590,11 +591,14 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         prev_euler = np.array(result[2][0][5:8])
         
         self.R_default = euler2mat(prev_euler)
+        self.init_euler = prev_euler.copy()
         R_prev = euler2mat(prev_euler)
         offset_prev = R_prev @ self.R_default.T @ self.mocap_marker_offset
         self.prev_pos = prev_pos - offset_prev
         self.prev_euler = prev_euler
         self.prev_unwrapped = prev_euler.copy()
+        self.prev_lin_vel = np.zeros(3)
+        self.prev_ang_vel = np.zeros(3)
 
     def _init_reward(self) -> None:
         """Prepares a list of reward functions, which will be called to compute the total reward.

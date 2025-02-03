@@ -78,7 +78,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         self.arm_healthy_ee_force_xy = np.array([-5.0, 5.0])
         self.healthy_torso_roll = np.array([-0.5, 0.5])
         self.healthy_torso_pitch = np.array([-0.5, 0.5])
-        self.speed_stall_window = 5
+        self.speed_stall_window = 3
         self.speed_delta_buffer = deque(maxlen=self.speed_stall_window)
         for _ in range(self.speed_stall_window):
             self.speed_delta_buffer.append(np.random.rand())
