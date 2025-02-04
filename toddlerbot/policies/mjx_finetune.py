@@ -667,7 +667,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         reward_dict: Dict[str, np.ndarray] = {}
         for i, name in enumerate(self.reward_names):
             # import ipdb; ipdb.set_trace()
-            reward_dict[name] = self.reward_functions[i](obs, action)
+            reward_dict[name] = self.reward_functions[i](obs, action) * self.reward_scales[i]
 
         return reward_dict
     

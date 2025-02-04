@@ -14,7 +14,7 @@ from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.keyboard import Keyboard
 from toddlerbot.utils.comm_utils import ZMQMessage, ZMQNode
-
+from toddlerbot.finetuning.monitor import CSVMonitor
 
 class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
     def __init__(
@@ -29,6 +29,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
 
         self.zmq_sender = ZMQNode(type="sender", ip=ip)
         self.zmq_receiver = ZMQNode(type="receiver")
+        self.reward_monitor = CSVMonitor('training_rewards')
         print(f"ZMQ Connected to {ip}")
 
         self.is_running = False
@@ -83,11 +84,14 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         for _ in range(self.speed_stall_window):
             self.speed_delta_buffer.append(np.random.rand())
 
+        self.reward_monitor.start()
+
     def close(self):
         self.zmq_sender.close()
         self.serial_thread.join()
-        self.arm_shm.close()
-        self.arm_shm.unlink()
+        self.reward_monitor.close()
+        # self.arm_shm.close()
+        # self.arm_shm.unlink()
         
     def update_speed(self, obs: Obs):
         self.ee_force_x_ema = self.ee_force_x_ema_alpha * self.ee_force_x_ema + (1 - self.ee_force_x_ema_alpha) * obs.ee_force[0]
@@ -104,12 +108,12 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         delta_speed = np.clip(delta_speed, 0.0, 0.5)
         if self.ee_force_x_ema > self.x_force_threshold:
             delta_speed *= self.treadmill_speed_inc_kp
-            print(f"about to increase speed {delta_speed}")
+            # print(f"about to increase speed {delta_speed}")
             self.speed += delta_speed
             self.speed = min(self.max_speed, self.speed)
         elif self.ee_force_x_ema < -self.x_force_threshold:
             delta_speed *= self.treadmill_speed_dec_kp
-            print(f"about to decrease speed {delta_speed}")
+            # print(f"about to decrease speed {delta_speed}")
             self.speed -= delta_speed
             self.speed = max(0.0, self.speed)
     # speed not enough is x negative
@@ -184,7 +188,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
             is_stopped=self.stopped
         )
         # import ipdb; ipdb.set_trace()
-        print(f"Speed: {self.speed}, Force: {self.force}, Walk: ({self.walk_x}, {self.walk_y})")
+        print(f"Speed: {self.speed}, Force: {self.force}, Walk: ({self.walk_x}, {self.walk_y}), Arm Delta: {self.z_pos_delta}")
         self.zmq_sender.send_msg(msg)
         msg_recv = self.zmq_receiver.get_msg()
         if msg_recv is not None and msg_recv.is_stopped:
