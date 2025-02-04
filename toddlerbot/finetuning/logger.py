@@ -145,7 +145,7 @@ class FinetuneLogger:
     # ------------------------------------------------------------------
     # 1) PER-STEP REWARD LOGGING
     # ------------------------------------------------------------------
-    def log_step(self, reward_dict: dict, obs: Obs):
+    def log_step(self, reward_dict: dict, obs: Obs, **kwargs):
         """
         Called every environment step to record each reward term.
         reward_dict: { 'torso_pos': float, 'torso_quat': float, ... }
@@ -160,6 +160,7 @@ class FinetuneLogger:
         log_dict["time"] = obs.time
         log_dict["lin_vel_x"] = obs.lin_vel[0]
         log_dict["lin_vel_y"] = obs.lin_vel[1]
+        log_dict["lin_vel_z"] = obs.lin_vel[2]
         log_dict["ang_vel_x"] = obs.ang_vel[0]
         log_dict["ang_vel_y"] = obs.ang_vel[1]
         log_dict["ang_vel_z"] = obs.ang_vel[2]
@@ -167,6 +168,17 @@ class FinetuneLogger:
         log_dict["ee_force_y"] = obs.ee_force[1]
         log_dict["ee_force_z"] = obs.ee_force[2]
         log_dict["ee_pos_z"] = obs.arm_ee_pos[2]
+        for key, value in kwargs.items():
+            if isinstance(value, (int, float)):
+                log_dict[key] = value
+            elif isinstance(value, np.ndarray):
+                if value.size == 1:
+                    log_dict[key] = value.item()
+                else:
+                    assert value.size == 3, f"Expected 3-element array for {key}, got {value}"
+                    log_dict[f"{key}_x"] = value[0]
+                    log_dict[f"{key}_y"] = value[1]
+                    log_dict[f"{key}_z"] = value[2]
         # store each reward term in reward_term_histories
         for rname, rval in log_dict.items():
             if rname not in self.reward_term_histories:
