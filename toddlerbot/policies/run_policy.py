@@ -410,8 +410,8 @@ def main(
         
     finally:
         p_bar.close()
-        sim.close()
         policy.close()
+        sim.close()
 
     log_data_dict: Dict[str, Any] = {
         "obs_list": obs_list,

@@ -104,7 +104,6 @@ class MJXConfig:
         feet_clearance: float = 0.0
         stand_still: float = 0.0  # 1.0
         align_ground: float = 0.0  # 1.0
-        arm_force_z: float = 10.0
 
         def reset(self):
             for key in vars(self):
@@ -164,11 +163,6 @@ class MJXConfig:
         hang_force_decay_episodes: float = 200.0
         tendon_kp: float = 0.0
 
-    @gin.configurable
-    @dataclass
-    class FinetuneConfig:
-        buffer_size: int = 300_00   
-        use_double_q: bool = True
 
     def __init__(self):
         self.sim = self.SimConfig()
@@ -181,7 +175,6 @@ class MJXConfig:
         self.domain_rand = self.DomainRandConfig()
         self.noise = self.NoiseConfig()
         self.hang = self.HangConfig()
-        self.finetune = self.FinetuneConfig()
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ import numpy.typing as npt
 from toddlerbot.sim import Obs
 
 from toddlerbot.locomotion.mjx_config import get_env_config
+from toddlerbot.finetuning.finetune_config import get_finetune_config
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
@@ -23,18 +24,19 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
         exp_folder: Optional[str] = "",
     ):
         env_cfg = get_env_config("walk")
+        finetune_cfg = get_finetune_config("walk")
         self.cycle_time = env_cfg.action.cycle_time
         self.command_discount_factor = np.array([1.0, 1.0, 1.0], dtype=np.float32)
 
         super().__init__(
-            name, robot, init_motor_pos, ckpt, ip, joystick, fixed_command, env_cfg, exp_folder=exp_folder,
+            name, robot, init_motor_pos, ckpt, ip, joystick, fixed_command, env_cfg, finetune_cfg, exp_folder=exp_folder,
         )
-        self.torso_roll_range = env_cfg.rewards.torso_roll_range
-        self.torso_pitch_range = env_cfg.rewards.torso_pitch_range
+        self.torso_roll_range = finetune_cfg.finetune_rewards.torso_roll_range
+        self.torso_pitch_range = finetune_cfg.finetune_rewards.torso_pitch_range
 
         self.max_feet_air_time = self.cycle_time / 2.0
-        self.min_feet_y_dist = env_cfg.rewards.min_feet_y_dist
-        self.max_feet_y_dist = env_cfg.rewards.max_feet_y_dist
+        self.min_feet_y_dist = finetune_cfg.finetune_rewards.min_feet_y_dist
+        self.max_feet_y_dist = finetune_cfg.finetune_rewards.max_feet_y_dist
 
     def get_phase_signal(self, time_curr: float):
         phase_signal = np.array(
@@ -96,7 +98,6 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
         ) / 2
         return reward
 
-    # TODO: Implement the foot rewards
     # def _reward_feet_air_time(self, obs: Obs, action: np.ndarray) -> float:
     #     # Reward air time.
     #     contact_filter = np.logical_or(info["stance_mask"], info["last_stance_mask"])
@@ -106,6 +107,7 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
     #     reward *= jnp.linalg.norm(info["command_obs"]) > self.deadzone
     #     return reward
 
+    # TODO: Implement the foot rewards 
     # def _reward_feet_clearance(
     #     self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     # ) -> jax.Array:

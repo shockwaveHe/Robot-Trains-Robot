@@ -27,15 +27,17 @@ from toddlerbot.finetuning.logger import FinetuneLogger
 from pyvicon_datastream import tools
 
 class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
-    def __init__(self, name, robot: Robot, init_motor_pos: npt.NDArray[np.float32], ckpt: str = "", ip: str = "", *args, **kwargs):
+    def __init__(self, name, robot: Robot, init_motor_pos: npt.NDArray[np.float32], ckpt: str, ip: str, joystick, fixed_command, env_cfg, finetune_cfg: FinetuneConfig, *args, **kwargs):
         # set these before super init
         self.is_stopped = False
-        self.finetune_cfg = FinetuneConfig()
+        self.finetune_cfg: FinetuneConfig = finetune_cfg
+
+
         self.num_privileged_obs_history = self.finetune_cfg.frame_stack
         self.privileged_obs_size = self.finetune_cfg.num_single_privileged_obs
         self.privileged_obs_history_size = self.privileged_obs_size * self.num_privileged_obs_history
         self.replay_buffer = None
-        super().__init__(name, robot, init_motor_pos, "", *args, **kwargs)
+        super().__init__(name, robot, init_motor_pos, "", joystick, fixed_command, env_cfg, *args, **kwargs)
         self.robot = robot
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.inference_device = "cpu"
@@ -66,11 +68,11 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.last_last_action = np.zeros(self.num_action)
 
         print(f"Observation size: {self.obs_size}, Privileged observation size: {self.privileged_obs_size}")
-        self.replay_buffer = OnlineReplayBuffer(self.device, self.obs_size * self.num_obs_history, self.privileged_obs_size * self.num_privileged_obs_history, self.num_action, self.cfg.finetune.buffer_size) # TODO: add priviledged obs to buffer
+        self.replay_buffer = OnlineReplayBuffer(self.device, self.obs_size * self.num_obs_history, self.privileged_obs_size * self.num_privileged_obs_history, self.num_action, self.finetune_cfg.buffer_size) # TODO: add priviledged obs to buffer
         # import pickle
         # with open('buffer_mock.pkl', 'rb') as f:
         #     self.replay_buffer: OnlineReplayBuffer = pickle.load(f)
-        print(f"Buffer size: {self.cfg.finetune.buffer_size}")
+        print(f"Buffer size: {self.finetune_cfg.buffer_size}")
         self._make_networks(
             observation_size=self.finetune_cfg.frame_stack * self.obs_size,
             privileged_observation_size=self.finetune_cfg.frame_stack * self.privileged_obs_size,
@@ -157,7 +159,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             activation_fn=activation_fn
         ).to(self.device)
 
-        Q_net_cls = networks.DoubleQNetwork if self.cfg.finetune.use_double_q else networks.QNetwork
+        Q_net_cls = networks.DoubleQNetwork if self.finetune_cfg.use_double_q else networks.QNetwork
         self.Q_net = Q_net_cls(
             observation_size=privileged_observation_size,
             action_size=action_size,
@@ -292,7 +294,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             with open(os.path.join(self.exp_folder, "buffer.pkl"), 'rb') as f:
                 self.replay_buffer = pickle.load(f)
             print(f"Loaded replay buffer from {self.exp_folder}")
-        import ipdb; ipdb.set_trace()
+
     def _make_learners(self):
         """Make PPO learners with a PyTorch implementation."""
         self.abppo = AdaptiveBehaviorProximalPolicyOptimization(self.device, self.policy_net, self.finetune_cfg)
@@ -365,8 +367,6 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         motor_pos_delta = obs.motor_pos - self.default_motor_pos
         # state_ref_ds = np.asarray(self.motion_ref.get_state_ref_ds(self.state_ref, 0.0, command))
         self.state_ref = np.asarray(self.motion_ref.get_state_ref(self.state_ref, 0.0, command))
-
-        motor_pos_error = obs.motor_pos - self.state_ref[self.ref_start_idx : self.ref_start_idx + self.robot.nu]
         
         obs_arr = np.concatenate(
             [
@@ -388,7 +388,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 motor_pos_delta * self.obs_scales.dof_pos, # (30, )
                 obs.motor_vel * self.obs_scales.dof_vel, # (30, )
                 self.last_action if last_action is None else last_action, # (12, )
-                motor_pos_error, # (30, )
+                obs.motor_pos, # (30, ) change from motor_pos_error
                 obs.lin_vel * self.obs_scales.lin_vel, # (3, )
                 obs.ang_vel * self.obs_scales.ang_vel, # (3, )
                 obs.euler * self.obs_scales.euler, # (3, )
@@ -565,8 +565,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         else:
             command = self.get_command(control_inputs)
 
-
-        self.phase_signal = self.get_phase_signal(time_curr)
+        self.phase_signal = self.get_phase_signal(time_curr) # TODO: should this similar to obs.time?
         obs_arr, privileged_obs_arr = self.get_obs(obs, command)
         # import ipdb; ipdb.set_trace()
         
@@ -574,8 +573,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         if msg is not None:
             # print(obs.lin_vel, obs.euler)
-            reward_dict = self._compute_reward(obs, self.last_action)
-            reward = sum(reward_dict.values()) * self.control_dt # TODO: verify
+            reward_dict = self._compute_reward(obs, action)
+
+            reward = sum(reward_dict.values()) * self.control_dt # TODO: verify, why multiply by dt?
             self.logger.log_step(reward_dict, obs, reward=reward)
 
             # TODO: last_obs initial value is all None
@@ -638,7 +638,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         """Prepares a list of reward functions, which will be called to compute the total reward.
         Looks for self._reward_<REWARD_NAME>, where <REWARD_NAME> are names of all non zero reward scales in the cfg.
         """
-        reward_scale_dict = asdict(self.cfg.reward_scales)
+        reward_scale_dict = asdict(self.finetune_cfg.finetune_reward_scales)
         # Remove zero scales and multiply non-zero ones by dt
         for key in list(reward_scale_dict.keys()):
             if reward_scale_dict[key] == 0:
@@ -648,6 +648,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.reward_names = list(reward_scale_dict.keys())
         self.reward_functions: List[Callable[..., np.ndarray]] = []
         self.reward_scales = np.zeros(len(reward_scale_dict))
+
         for i, (name, scale) in enumerate(reward_scale_dict.items()):
             if getattr(self, "_reward_" + name, None) is None:
                 self.reward_names.remove(name)
@@ -656,9 +657,10 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             self.reward_functions.append(getattr(self, "_reward_" + name))
             self.reward_scales[i] = scale
 
-        self.healthy_z_range = self.cfg.rewards.healthy_z_range
-        self.tracking_sigma = self.cfg.rewards.tracking_sigma
-        self.arm_force_z_sigma = self.cfg.rewards.arm_force_z_sigma
+        self.healthy_z_range = self.finetune_cfg.finetune_rewards.healthy_z_range
+        self.tracking_sigma = self.finetune_cfg.finetune_rewards.tracking_sigma
+        self.arm_force_z_sigma = self.finetune_cfg.finetune_rewards.arm_force_z_sigma
+        self.arm_force_y_sigma = self.finetune_cfg.finetune_rewards.arm_force_y_sigma
 
     def _compute_reward(
         self, obs: Obs, action: np.ndarray
@@ -762,10 +764,15 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         reward = -np.mean(error)
         return reward
     
-    # def _reward_leg_action_acc(self, obs: Obs, action: np.ndarray) -> np.ndarray: # TODO: store last last action?
-
+    def _reward_leg_action_acc(self, obs: Obs, action: np.ndarray) -> np.ndarray: # TODO: store last last action?
+        """Reward for tracking action accelerations"""
+        error = np.square(action - 2 * self.last_action + self.last_last_action)
+        reward = -np.mean(error)
+        return reward
+    
     # def _reward_feet_contact(self, obs: Obs, action: np.ndarray) -> np.ndarray:
     # def _reward_collision(self, obs: Obs, action: np.ndarray) -> np.ndarray:
+
     def _reward_survival(self, obs: Obs, action: np.ndarray) -> np.ndarray:
         is_done = self.is_done(obs)
         reward = -np.where(is_done, 1.0, 0.0)
@@ -775,4 +782,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         # import ipdb; ipdb.set_trace()
         ee_force_z = obs.ee_force[2]
         reward = np.exp(-self.arm_force_z_sigma * np.abs(ee_force_z))
+        return reward
+    
+    def _reward_arm_force_y(self, obs: Obs, action: np.ndarray) -> np.ndarray:
+        ee_force_y = obs.ee_force[1]
+        reward = np.exp(-self.arm_force_y_sigma * np.abs(ee_force_y))
         return reward

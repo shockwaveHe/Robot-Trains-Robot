@@ -1,8 +1,18 @@
-from dataclasses import dataclass
-from typing import Optional, Tuple
-
+from dataclasses import dataclass, field
+from typing import Optional, Tuple, List
+import os
 import gin
 import numpy as np
+
+
+def get_finetune_config(env: str):
+    gin_file_path = os.path.join(os.path.dirname(__file__), env + ".gin")
+    if not os.path.exists(gin_file_path):
+        raise FileNotFoundError(f"File {gin_file_path} not found.")
+
+    gin.parse_config_file(gin_file_path)
+    return FinetuneConfig()
+
 
 @gin.configurable
 @dataclass
@@ -20,6 +30,7 @@ class FinetuneConfig:
     ope_rollout_length: int = 20
     eval_rollout_length: int = 1000
     rollout_batch_size: int = 32
+    buffer_size: int = 30_000
     
     # Update configuration
     num_updates_per_batch: int = 4
@@ -98,3 +109,56 @@ class FinetuneConfig:
     healty_torso_roll: np.ndarray = np.array([-0.5, 0.5])
     healty_torso_pitch: np.ndarray = np.array([-0.5, 0.5])
     pos_error_threshold: float = 0.05
+
+    @gin.configurable
+    @dataclass
+    class FinetuneRewardsConfig:
+        healthy_z_range: List[float] = field(default_factory=lambda: [0.2, 0.4])
+        tracking_sigma: float = 100.0
+        arm_force_z_sigma: float = 0.1
+        arm_force_y_sigma: float = 0.1
+        min_feet_y_dist: float = 0.05
+        max_feet_y_dist: float = 0.13
+        torso_roll_range: List[float] = field(default_factory=lambda: [-0.1, 0.1])
+        torso_pitch_range: List[float] = field(default_factory=lambda: [-0.2, 0.2])
+
+    @gin.configurable
+    @dataclass
+    class FinetuneRewardScales:
+        torso_pos: float = 0.0
+        torso_quat: float = 0.0
+        torso_roll: float = 0.0
+        torso_pitch: float = 0.0
+        lin_vel_xy: float = 1.0
+        lin_vel_z: float = 1.0
+        ang_vel_xy: float = 1.0
+        ang_vel_z: float = 1.0
+        neck_motor_pos: float = 0.0
+        arm_motor_pos: float = 0.0
+        waist_motor_pos: float = 0.0
+        leg_motor_pos: float = 0.0
+        motor_torque: float = 0.0
+        energy: float = 0.0
+        neck_action_rate: float = 0.0  # 1e-2
+        neck_action_acc: float = 0.0  # 1e-2
+        arm_action_rate: float = 0.0  # 1e-2
+        arm_action_acc: float = 0.0  # 1e-2
+        waist_action_rate: float = 0.0  # 1e-2
+        waist_action_acc: float = 0.0  # 1e-2
+        leg_action_rate: float = 0.05
+        leg_action_acc: float = 0.05
+        feet_contact: float = 0.0
+        collision: float = 0.0  # 1.0
+        survival: float = 10.0
+        feet_air_time: float = 0.0
+        feet_distance: float = 0.0
+        feet_slip: float = 0.0
+        feet_clearance: float = 0.0
+        stand_still: float = 0.0  # 1.0
+        align_ground: float = 0.0  # 1.0
+        arm_force_z: float = 10.0
+        arm_force_y: float = 5.0
+
+    def __init__(self):
+        self.finetune_reward_scales = self.FinetuneRewardScales()
+        self.finetune_rewards = self.FinetuneRewardsConfig()

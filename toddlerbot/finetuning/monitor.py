@@ -12,8 +12,6 @@ import time
 
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.use("TkAgg")
 
 class CSVMonitor:
     def __init__(self, file_name, user='toddie', host='10.5.6.248', window=100, ema=0.2, ncols=4, interval=100):
@@ -28,6 +26,9 @@ class CSVMonitor:
         :param ncols: Number of subplots per row.
         :param interval: Plot update interval in milliseconds.
         """
+        import matplotlib
+        matplotlib.use("TkAgg")
+        
         self.file_name = file_name
         self.user = user
         self.host = host

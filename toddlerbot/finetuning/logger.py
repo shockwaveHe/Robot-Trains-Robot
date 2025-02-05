@@ -11,6 +11,8 @@ from collections import defaultdict
 from threading import Thread
 from queue import Queue
 from toddlerbot.sim import Obs
+from scipy.signal import lfilter, lfilter_zi
+
 
 class FinetuneLogger:
     def __init__(
@@ -22,7 +24,7 @@ class FinetuneLogger:
         reward_csv: str = "training_rewards.csv",
         enable_logging: bool = True,
         enable_profiling: bool = False,
-        smooth_factor: float = 0.0
+        smooth_factor: float = 0.98
     ):
         """
         :param exp_folder: where to store CSV logs and plots
@@ -65,6 +67,8 @@ class FinetuneLogger:
         self.plot_thread = Thread(target=self._plot_worker, daemon=True)
         self.plot_thread.start()
 
+        self.start_time = time.time()
+
 
     def save_state(self, filepath: str):
         """Saves the current state of the logger to a pickle file."""
@@ -79,6 +83,7 @@ class FinetuneLogger:
         with open(filepath, "wb") as f:
             pickle.dump(state, f)
         print(f"Logger state saved to {filepath}")
+
 
     def load_state(self, filepath: str):
         """Loads the logger state from a pickle file."""
@@ -105,15 +110,20 @@ class FinetuneLogger:
             func(*args)
             self.plot_queue.task_done()
 
-    def _ema(self, data, alpha):
-        """Apply exponential moving average smoothing to a list of data using a convolution-based approach."""
-        if alpha is None or alpha <= 0 or len(data) < 2:
-            return data
-        kernel = np.array([(1 - alpha) ** i for i in range(len(data))])
-        kernel = kernel / kernel.sum()  # Normalize the kernel
-        smoothed = np.convolve(data, kernel, mode='full')[:len(data)]
-        return smoothed
 
+    def _ema(self, data, alpha):
+        """
+        Compute EMA using an IIR filter.
+        y[0] = x[0]
+        y[i] = (1 - smoothing_factor)*x[i] + smoothing_factor*y[i-1]
+        """
+        b = [1 - alpha]
+        a = [1, -alpha]
+        # Compute steady-state initial condition for a constant input equal to data[0]
+        zi = lfilter_zi(b, a) * data[0]
+        y, _ = lfilter(b, a, data, zi=zi)
+        return y
+    
     # -------------
     # Profiling helpers
     # -------------
@@ -168,6 +178,9 @@ class FinetuneLogger:
         log_dict["ee_force_y"] = obs.ee_force[1]
         log_dict["ee_force_z"] = obs.ee_force[2]
         log_dict["ee_pos_z"] = obs.arm_ee_pos[2]
+        log_dict["torso_roll"] = obs.euler[0]
+        log_dict["torso_pitch"] = obs.euler[1]
+        log_dict["torso_yaw"] = obs.euler[2]
         for key, value in kwargs.items():
             if isinstance(value, (int, float)):
                 log_dict[key] = value
@@ -211,7 +224,7 @@ class FinetuneLogger:
 
         # Build the columns
         column_names = ["time", "env_step"]
-        column_values = [time.time(), self.env_step_counter]
+        column_values = [time.time() - self.start_time, self.env_step_counter]
 
         # for consistent ordering
         sorted_rnames = sorted(self.reward_term_histories.keys())
