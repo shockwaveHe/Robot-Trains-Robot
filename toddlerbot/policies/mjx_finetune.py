@@ -116,7 +116,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         self._make_learners()
 
-        self.sim = MuJoCoSim(robot, vis_type=self.finetune_cfg.sim_vis_type, hang_force=0.0)
+        self.sim = MuJoCoSim(robot, vis_type=self.finetune_cfg.sim_vis_type, hang_force=0.0, n_frames=1)
+        self.min_y_feet_dist = self.finetune_cfg.finetune_rewards.min_feet_y_dist
+        self.max_y_feet_dist = self.finetune_cfg.finetune_rewards.max_feet_y_dist
         input('press ENTER to start')
 
     def close(self):
@@ -184,9 +186,14 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.tracking_alpha = self.finetune_cfg.tracking_alpha
         self.tracking_tf_matrix = self.finetune_cfg.tracking_tf_matrix
 
-        for _ in range(100):
-            result = self.tracker.get_position(self.finetune_cfg.object_name)
-            prev_euler = np.array(result[2][0][5:8])
+        try:
+            for _ in range(100):
+                result = self.tracker.get_position(self.finetune_cfg.object_name)
+                prev_euler = np.array(result[2][0][5:8])
+        except Exception as e:
+            print(f"Error in initializing the tracker: {e}")
+            self.tracker = None
+            prev_euler = np.zeros(3)
 
         self.R_default = euler2mat(prev_euler)
         self.init_euler = prev_euler.copy()
@@ -195,6 +202,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.prev_ang_vel = np.zeros(3)
 
     def get_tracking_data(self):
+        if self.tracker is None:
+            return np.zeros(3), np.zeros(3), np.zeros(3), time.time()
+        
         result = self.tracker.get_position(self.finetune_cfg.object_name)
         current_time = time.time()
         current_pos = np.array(result[2][0][2:5]) / 1000
@@ -538,7 +548,11 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         time_curr = self.step_curr * self.control_dt
 
         msg = self.zmq_receiver.get_msg()
-        
+        self.sim.set_motor_angles(obs.motor_pos)
+        self.sim.forward()
+        feet_pos = self.sim.get_feet_pos()
+        feet_y_dist = feet_pos['left'][1] - feet_pos['right'][1]
+        obs.feet_y_dist = feet_y_dist
         control_inputs: Dict[str, float] = {}
         self.control_inputs = {}
         lin_vel, ang_vel, euler, _ = self.get_tracking_data()
@@ -576,14 +590,14 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             reward_dict = self._compute_reward(obs, action)
 
             reward = sum(reward_dict.values()) * self.control_dt # TODO: verify, why multiply by dt?
-            self.logger.log_step(reward_dict, obs, reward=reward)
+            self.logger.log_step(reward_dict, obs, reward=reward, feet_dist=feet_y_dist)
 
             # TODO: last_obs initial value is all None
             if len(control_inputs) > 0 and (control_inputs['walk_x'] != 0 or control_inputs['walk_y'] != 0):
                 self.replay_buffer.store(obs_arr, privileged_obs_arr, action, reward, self.is_done(obs))
             # self.replay_buffer.store(obs_arr, privileged_obs_arr, action, reward, self.is_done(obs))
 
-            if len(self.replay_buffer) % 400 == 0:
+            if (len(self.replay_buffer) + 1) % 400 == 0:
                 print(f"Data size: {len(self.replay_buffer)}, Steps: {self.total_steps}, Fps: {self.total_steps / self.timer.elapsed()}")
             self.last_last_action = self.last_action.copy()
             self.last_action = action.copy()

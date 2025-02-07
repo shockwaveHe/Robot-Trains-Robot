@@ -118,21 +118,14 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
     #     reward *= jnp.linalg.norm(info["command_obs"]) > self.deadzone
     #     return reward
 
-    # def _reward_feet_distance(
-    #     self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
-    # ):
-    #     # Calculates the reward based on the distance between the feet.
-    #     # Penalize feet get close to each other or too far away on the y axis
-    #     feet_vec = math.rotate(
-    #         pipeline_state.x.pos[self.feet_link_ids[0]]
-    #         - pipeline_state.x.pos[self.feet_link_ids[1]],
-    #         math.quat_inv(pipeline_state.x.rot[0]),
-    #     )
-    #     feet_dist = jnp.abs(feet_vec[1])
-    #     d_min = jnp.clip(feet_dist - self.min_feet_y_dist, max=0.0)
-    #     d_max = jnp.clip(feet_dist - self.max_feet_y_dist, min=0.0)
-    #     reward = (jnp.exp(-jnp.abs(d_min) * 100) + jnp.exp(-jnp.abs(d_max) * 100)) / 2
-    #     return reward
+    def _reward_feet_distance(self, obs: Obs, action: np.ndarray) -> np.ndarray:
+        # Calculates the reward based on the distance between the feet.
+        # Penalize feet get close to each other or too far away on the y axis
+        feet_dist = obs.feet_y_dist
+        d_min = np.clip(feet_dist - self.min_feet_y_dist, a_min=-np.inf, a_max=0.0)
+        d_max = np.clip(feet_dist - self.max_feet_y_dist, a_min=0.0, a_max=np.inf)
+        reward = (np.exp(-np.abs(d_min) * 100) + np.exp(-np.abs(d_max) * 100)) / 2
+        return reward
 
     # def _reward_feet_slip(
     #     self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array

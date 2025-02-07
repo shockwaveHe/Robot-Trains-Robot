@@ -36,6 +36,7 @@ class BasePolicy(ABC):
         name: str,
         robot: Robot,
         init_motor_pos: npt.NDArray[np.float32],
+        init_arm_pos: npt.NDArray[np.float32] = None,
         control_dt: float = 0.02,
         prep_duration: float = 2.0,
         n_steps_total: float = float("inf"),

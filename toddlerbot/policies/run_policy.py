@@ -663,7 +663,7 @@ if __name__ == "__main__":
         raise ValueError("Unknown simulator")
     if args.domain_rand:
         sim.model = parse_domain_rand(sim.model, args.domain_rand)
-
+    obs = sim.get_observation()
     # t2 = time.time()
 
     # t2 = time.time()
@@ -753,6 +753,8 @@ if __name__ == "__main__":
         policy = PolicyClass(
             args.policy, robot, init_motor_pos, args.ckpt, fixed_command=fixed_command
         )
+    elif "at" in args.policy: # Arm Treadmill
+        policy = PolicyClass(args.policy, robot, init_motor_pos, init_arm_pos=obs.arm_ee_pos, ip=args.ip)
     elif len(args.ip) > 0:
         policy = PolicyClass(args.policy, robot, init_motor_pos, ip=args.ip)
     else:

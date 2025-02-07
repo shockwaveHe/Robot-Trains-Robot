@@ -56,7 +56,11 @@ class RealWorldFinetuning(BaseSim):
     
     def close(self):
         self.arm_shm.close()
-        self.arm_shm.unlink()
+        try:
+            self.arm_shm.unlink()
+        except FileNotFoundError:
+            pass
+        print("Shared memory unlinked")
 
     def set_motor_kps(self, motor_kps):
         pass

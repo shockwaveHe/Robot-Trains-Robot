@@ -14,7 +14,6 @@ from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.keyboard import Keyboard
 from toddlerbot.utils.comm_utils import ZMQMessage, ZMQNode
-from toddlerbot.finetuning.monitor import CSVMonitor
 
 class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
     def __init__(
@@ -22,6 +21,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         name: str,
         robot: Robot,
         init_motor_pos: npt.NDArray[np.float32],
+        init_arm_pos: npt.NDArray[np.float32],
         keyboard: Optional[Keyboard] = None,
         ip: str = "192.168.0.70",
     ):
@@ -29,7 +29,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
 
         self.zmq_sender = ZMQNode(type="sender", ip=ip)
         self.zmq_receiver = ZMQNode(type="receiver")
-        self.reward_monitor = CSVMonitor('training_rewards')
+
         print(f"ZMQ Connected to {ip}")
 
         self.is_running = False
@@ -48,7 +48,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         self.speed = 0.0
         self.max_speed = 240.0
 
-        self.walk_x = 0.0
+        self.walk_x = 0.05
         self.walk_y = 0.0
 
         self.stopped = False
@@ -72,6 +72,8 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         self.x_force_threshold = 0.5
         self.treadmill_speed_inc_kp = 2.5
         self.treadmill_speed_dec_kp = 2.5
+        self.treadmill_speed_force_kp = 1.0
+        self.treadmill_speed_pos_kp = -1.0
         self.ee_force_x_ema = 0.0
         self.ee_force_x_ema_alpha = 0.2
         self.arm_healthy_ee_pos = np.array([0.0, 3.0])
@@ -84,14 +86,17 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         for _ in range(self.speed_stall_window):
             self.speed_delta_buffer.append(np.random.rand())
 
-        self.reward_monitor.start()
+        self.init_arm_pos = init_arm_pos.copy()
+        print('init arm pos', self.init_arm_pos)
 
     def close(self):
         self.zmq_sender.close()
         self.serial_thread.join()
-        self.reward_monitor.close()
-        # self.arm_shm.close()
-        # self.arm_shm.unlink()
+        self.arm_shm.close()
+        try:
+            self.arm_shm.unlink()
+        except FileNotFoundError:
+            pass
         
     def update_speed(self, obs: Obs):
         self.ee_force_x_ema = self.ee_force_x_ema_alpha * self.ee_force_x_ema + (1 - self.ee_force_x_ema_alpha) * obs.ee_force[0]
@@ -101,11 +106,13 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
             if not np.allclose(prev_delta_speed, delta_speed):
                 speed_stalled = False
                 break
+        delta_arm_pos_x = obs.arm_ee_pos[0] - self.init_arm_pos[0]
         self.speed_delta_buffer.append(delta_speed)
         if speed_stalled:
             print(f"Speed delta stalled at {delta_speed}")
             return
-        delta_speed = np.clip(delta_speed, 0.0, 0.5)
+        delta_speed = self.treadmill_speed_force_kp * delta_speed + self.treadmill_speed_pos_kp * delta_arm_pos_x
+        delta_speed = np.clip(delta_speed, 0.0, 1.0)
         if self.ee_force_x_ema > self.x_force_threshold:
             delta_speed *= self.treadmill_speed_inc_kp
             # print(f"about to increase speed {delta_speed}")
@@ -116,6 +123,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
             # print(f"about to decrease speed {delta_speed}")
             self.speed -= delta_speed
             self.speed = max(0.0, self.speed)
+        print(f"Delta Arm Pos X: {delta_arm_pos_x}, Force X: {obs.ee_force[0]}, Delta Speed: {delta_speed}")
     # speed not enough is x negative
     # note: calibrate zero at: toddlerbot/tools/calibration/calibrate_zero.py --robot toddlerbot_arms
     # note: zero points can be accessed in config_motors.json
@@ -214,6 +222,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
                     break
                 time.sleep(0.1)
             print("Follower started")
+            self.walk_x = 0.05
             self.arm_shm.buf[:8] = struct.pack('d', force_prev)
 
         if self.stopped:

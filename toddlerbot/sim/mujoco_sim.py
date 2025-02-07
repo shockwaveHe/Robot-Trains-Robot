@@ -157,58 +157,6 @@ class MuJoCoSim(BaseSim):
         transformation[:3, 3] = body_pos
         return transformation
 
-        self.left_foot_transform = self.get_body_transofrm(self.left_foot_name)
-        self.right_foot_transform = self.get_body_transofrm(self.right_foot_name)
-
-    def get_body_transofrm(self, body_name: str):
-        transformation = np.eye(4)
-        body_pos = self.data.body(body_name).xpos.copy()
-        body_mat = self.data.body(body_name).xmat.reshape(3, 3).copy()
-        transformation[:3, :3] = body_mat
-        transformation[:3, 3] = body_pos
-        return transformation
-
-        self.left_foot_transform = self.get_body_transofrm(self.left_foot_name)
-        self.right_foot_transform = self.get_body_transofrm(self.right_foot_name)
-
-    def get_body_transofrm(self, body_name: str):
-        transformation = np.eye(4)
-        body_pos = self.data.body(body_name).xpos.copy()
-        body_mat = self.data.body(body_name).xmat.reshape(3, 3).copy()
-        transformation[:3, :3] = body_mat
-        transformation[:3, 3] = body_pos
-        return transformation
-
-        self.left_foot_transform = self.get_body_transofrm(self.left_foot_name)
-        self.right_foot_transform = self.get_body_transofrm(self.right_foot_name)
-
-    def get_body_transofrm(self, body_name: str):
-        transformation = np.eye(4)
-        body_pos = self.data.body(body_name).xpos.copy()
-        body_mat = self.data.body(body_name).xmat.reshape(3, 3).copy()
-        transformation[:3, :3] = body_mat
-        transformation[:3, 3] = body_pos
-        return transformation
-
-    def get_site_transform(self, site_name: str):
-        transformation = np.eye(4)
-        site_pos = self.data.site(site_name).xpos.copy()
-        site_mat = self.data.site(site_name).xmat.reshape(3, 3).copy()
-        transformation[:3, :3] = site_mat
-        transformation[:3, 3] = site_pos
-        return transformation
-
-        self.left_foot_transform = self.get_body_transofrm(self.left_foot_name)
-        self.right_foot_transform = self.get_body_transofrm(self.right_foot_name)
-
-    def get_body_transofrm(self, body_name: str):
-        transformation = np.eye(4)
-        body_pos = self.data.body(body_name).xpos.copy()
-        body_mat = self.data.body(body_name).xmat.reshape(3, 3).copy()
-        transformation[:3, :3] = body_mat
-        transformation[:3, 3] = body_pos
-        return transformation
-
     def get_site_transform(self, site_name: str):
         transformation = np.eye(4)
         site_pos = self.data.site(site_name).xpos.copy()
@@ -428,6 +376,12 @@ class MuJoCoSim(BaseSim):
         if self.visualizer is not None:
             self.visualizer.visualize(self.data)
 
+    def get_feet_pos(self) -> Dict[str, npt.NDArray[np.float32]]:
+        left_foot_pos = self.data.body("left_ank_pitch_link").xpos
+        right_foot_pos = self.data.body("right_ank_pitch_link").xpos
+
+        return {"left": left_foot_pos, "right": right_foot_pos}
+    
     def step(self):
         for _ in range(self.n_frames):
             self.data.ctrl[: self.data.ctrl.shape[0] - self.hang_motors] = (
