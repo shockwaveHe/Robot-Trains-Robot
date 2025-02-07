@@ -38,8 +38,6 @@ def log(message: str, header: str = "", level: str = "info"):
     - message: The message to log.
     - level: The log level (ERROR, WARNING, INFO).
     """
-    if "Exception" in message:
-        import ipdb; ipdb.set_trace()
     header_msg = f"[{header}] "
     if level == "debug":
         my_logger.debug(Fore.CYAN + "[Debug] " + header_msg + message)

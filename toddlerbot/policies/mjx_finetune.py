@@ -590,7 +590,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             reward_dict = self._compute_reward(obs, action)
 
             reward = sum(reward_dict.values()) * self.control_dt # TODO: verify, why multiply by dt?
-            self.logger.log_step(reward_dict, obs, reward=reward, feet_dist=feet_y_dist)
+            self.logger.log_step(reward_dict, obs, reward=reward, feet_dist=feet_y_dist, walk_command=control_inputs['walk_x'])
 
             # TODO: last_obs initial value is all None
             if len(control_inputs) > 0 and (control_inputs['walk_x'] != 0 or control_inputs['walk_y'] != 0):

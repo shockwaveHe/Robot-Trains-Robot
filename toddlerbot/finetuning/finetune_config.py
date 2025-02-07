@@ -30,7 +30,7 @@ class FinetuneConfig:
     ope_rollout_length: int = 20
     eval_rollout_length: int = 1000
     rollout_batch_size: int = 32
-    buffer_size: int = 30_000
+    buffer_size: int = 50_000
     
     # Update configuration
     num_updates_per_batch: int = 4
@@ -66,7 +66,7 @@ class FinetuneConfig:
     decay_steps: int = 50_000_000
     
     # Exploration and initialization
-    update_interval: int = 3_000
+    update_interval: int = 5_000
     warmup_steps: int = 100_000
     is_linear_decay: bool = True  # Added from argparse
 
@@ -117,10 +117,10 @@ class FinetuneConfig:
         tracking_sigma: float = 100.0
         arm_force_z_sigma: float = 0.1
         arm_force_y_sigma: float = 0.1
-        min_feet_y_dist: float = 0.05
+        min_feet_y_dist: float = 0.06
         max_feet_y_dist: float = 0.13
         torso_roll_range: List[float] = field(default_factory=lambda: [-0.1, 0.1])
-        torso_pitch_range: List[float] = field(default_factory=lambda: [-0.2, 0.2])
+        torso_pitch_range: List[float] = field(default_factory=lambda: [-0.15, 0.15])
 
     @gin.configurable
     @dataclass

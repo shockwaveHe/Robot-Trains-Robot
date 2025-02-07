@@ -125,6 +125,7 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
         d_min = np.clip(feet_dist - self.min_feet_y_dist, a_min=-np.inf, a_max=0.0)
         d_max = np.clip(feet_dist - self.max_feet_y_dist, a_min=0.0, a_max=np.inf)
         reward = (np.exp(-np.abs(d_min) * 100) + np.exp(-np.abs(d_max) * 100)) / 2
+        print(f"feet_dist: {feet_dist}, reward: {reward}")
         return reward
 
     # def _reward_feet_slip(

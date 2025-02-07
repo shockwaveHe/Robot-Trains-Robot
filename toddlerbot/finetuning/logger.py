@@ -223,8 +223,8 @@ class FinetuneLogger:
         start_t = self._start_profile("_write_reward_csv_line")
 
         # Build the columns
-        column_names = ["time", "env_step"]
-        column_values = [time.time() - self.start_time, self.env_step_counter]
+        column_names = ["env_step"]
+        column_values = [self.env_step_counter]
 
         # for consistent ordering
         sorted_rnames = sorted(self.reward_term_histories.keys())

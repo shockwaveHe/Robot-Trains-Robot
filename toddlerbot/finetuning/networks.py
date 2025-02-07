@@ -235,6 +235,8 @@ class GaussianPolicyNetwork(nn.Module):
         log_std = soft_clamp(log_std, self._log_std_bound[0], self._log_std_bound[1])
         std = log_std.exp()
         dist = Normal(mu, std)
+        if (std < 0).any():
+            import ipdb; ipdb.set_trace()
         dist = TransformedDistribution(dist, [TanhTransform(cache_size=1)])
         return dist
     

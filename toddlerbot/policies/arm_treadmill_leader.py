@@ -14,6 +14,7 @@ from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.keyboard import Keyboard
 from toddlerbot.utils.comm_utils import ZMQMessage, ZMQNode
+from toddlerbot.finetuning.utils import Timer
 
 class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
     def __init__(
@@ -48,7 +49,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         self.speed = 0.0
         self.max_speed = 240.0
 
-        self.walk_x = 0.05
+        self.walk_x = 0.0
         self.walk_y = 0.0
 
         self.stopped = False
@@ -73,7 +74,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         self.treadmill_speed_inc_kp = 2.5
         self.treadmill_speed_dec_kp = 2.5
         self.treadmill_speed_force_kp = 1.0
-        self.treadmill_speed_pos_kp = -1.0
+        self.treadmill_speed_pos_kp = -10.0
         self.ee_force_x_ema = 0.0
         self.ee_force_x_ema_alpha = 0.2
         self.arm_healthy_ee_pos = np.array([0.0, 3.0])
@@ -88,6 +89,12 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
 
         self.init_arm_pos = init_arm_pos.copy()
         print('init arm pos', self.init_arm_pos)
+        self.timer = Timer()
+        self.timer.start()
+        self.init_speed = 0.05
+        self.warmup_time = 10.0
+        self.speed_period = 30.0
+        self.walk_speed_range = [0.20, 0.25]
 
     def close(self):
         self.zmq_sender.close()
@@ -111,23 +118,39 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         if speed_stalled:
             print(f"Speed delta stalled at {delta_speed}")
             return
-        delta_speed = self.treadmill_speed_force_kp * delta_speed + self.treadmill_speed_pos_kp * delta_arm_pos_x
+        self.speed += self.treadmill_speed_pos_kp * delta_arm_pos_x
+        delta_speed = self.treadmill_speed_force_kp * delta_speed
         delta_speed = np.clip(delta_speed, 0.0, 1.0)
         if self.ee_force_x_ema > self.x_force_threshold:
             delta_speed *= self.treadmill_speed_inc_kp
             # print(f"about to increase speed {delta_speed}")
             self.speed += delta_speed
-            self.speed = min(self.max_speed, self.speed)
         elif self.ee_force_x_ema < -self.x_force_threshold:
             delta_speed *= self.treadmill_speed_dec_kp
             # print(f"about to decrease speed {delta_speed}")
             self.speed -= delta_speed
             self.speed = max(0.0, self.speed)
-        print(f"Delta Arm Pos X: {delta_arm_pos_x}, Force X: {obs.ee_force[0]}, Delta Speed: {delta_speed}")
+        self.speed = np.clip(self.speed, 0.0, self.max_speed)
+        print(f"ee force {obs.ee_force}, {delta_arm_pos_x}, ee force {obs.ee_force}")
+        # print(f"Delta Arm Pos X: {delta_arm_pos_x}, Force X: {obs.ee_force[0]}, Delta Speed: {delta_speed}")
     # speed not enough is x negative
     # note: calibrate zero at: toddlerbot/tools/calibration/calibrate_zero.py --robot toddlerbot_arms
     # note: zero points can be accessed in config_motors.json
-    
+
+    def walk_speed_schedule(self):
+        current_time = self.timer.elapsed()
+        min_speed, max_speed = self.walk_speed_range
+        
+        if current_time < self.warmup_time:
+            # Linear interpolation from init_speed to min_speed
+            speed = self.init_speed + (min_speed - self.init_speed) * (current_time / self.warmup_time)
+        else:
+            # Sinusoidal oscillation between min_speed and max_speed
+            phase = (current_time - self.warmup_time) / self.speed_period * 2 * np.pi
+            speed = min_speed + (max_speed - min_speed) * (0.5 * (1 - np.cos(phase)))
+        
+        return speed
+
     def is_done(self, obs: Obs):
         if obs.ee_force[2] < self.arm_healthy_ee_force_z[0] or obs.ee_force[2] > self.arm_healthy_ee_force_z[1]:
             print(f"Force Z of {obs.ee_force[2]} is out of range")
@@ -153,6 +176,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         self, obs: Obs, is_real: bool = False
     ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
         keyboard_inputs = self.keyboard.get_keyboard_input()
+        self.walk_x = self.walk_speed_schedule()
         self.walk_x += keyboard_inputs["walk_x_delta"]
         self.walk_y += keyboard_inputs["walk_y_delta"]
         control_inputs = {"walk_x": self.walk_x, "walk_y": self.walk_y, "walk_turn": 0.0}
@@ -200,6 +224,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         self.zmq_sender.send_msg(msg)
         msg_recv = self.zmq_receiver.get_msg()
         if msg_recv is not None and msg_recv.is_stopped:
+            self.timer.reset()
             msg = ZMQMessage(
                 time=time.time(),
                 control_inputs=control_inputs,
@@ -224,6 +249,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
             print("Follower started")
             self.walk_x = 0.05
             self.arm_shm.buf[:8] = struct.pack('d', force_prev)
+            self.timer.start()
 
         if self.stopped:
             self.serial_thread.join()
@@ -272,6 +298,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
 
     def reset(self, obs: Obs = None) -> Obs:
         control_inputs = {"walk_x": 0.0, "walk_y": 0.0, "walk_turn": 0.0}
+        self.timer.reset()
         lin_vel = np.zeros(3)
         lin_vel[0] = self.speed / 1000
         msg = ZMQMessage(
@@ -312,7 +339,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         assert cur_force == force_prev
         print("Reset done")
         self.force = force_prev
-        # TODO: how to restart datacollection?
+        self.timer.start()
         return obs
 
     def reset_after(self, duration: float):

@@ -12,6 +12,8 @@ import mujoco
 import numpy as np
 import numpy.typing as npt
 from tqdm import tqdm
+import ipdb
+import traceback
 
 from toddlerbot.arm_policies import (
     BaseArmPolicy,
@@ -406,8 +408,9 @@ def main(
                 time.sleep(time_until_next_step)
 
     except Exception as e:
+        traceback.print_exc()
         log(f"Exception: {e}. Closing...", header=header_name)
-        
+        ipdb.post_mortem()
     finally:
         p_bar.close()
         policy.close()
@@ -754,6 +757,9 @@ if __name__ == "__main__":
             args.policy, robot, init_motor_pos, args.ckpt, fixed_command=fixed_command
         )
     elif "at" in args.policy: # Arm Treadmill
+        while (obs.arm_ee_pos == 0.0).all():
+            obs = sim.get_observation()
+            time.sleep(0.1)
         policy = PolicyClass(args.policy, robot, init_motor_pos, init_arm_pos=obs.arm_ee_pos, ip=args.ip)
     elif len(args.ip) > 0:
         policy = PolicyClass(args.policy, robot, init_motor_pos, ip=args.ip)
