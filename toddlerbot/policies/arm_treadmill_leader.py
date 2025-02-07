@@ -233,7 +233,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
                 arm_ee_pos=np.zeros(3),
                 lin_vel=lin_vel,
                 is_done=True
-            )
+            ) # TODO: note that arm ee pos and vel needs to rotate 45 degree!
             self.zmq_sender.send_msg(msg)
             self.speed = 0.0
             self.walk_x = 0.0

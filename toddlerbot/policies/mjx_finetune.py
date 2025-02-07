@@ -5,7 +5,6 @@ from dataclasses import asdict
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 from copy import deepcopy
 import torch
-import pickle
 import numpy.typing as npt
 from toddlerbot.sim import Obs
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
@@ -15,14 +14,14 @@ from toddlerbot.finetuning.dynamics import DynamicsNetwork, BaseDynamics
 from toddlerbot.finetuning.utils import Timer
 from toddlerbot.motion.walk_zmp_ref import WalkZMPReference
 from toddlerbot.sim.robot import Robot
-from toddlerbot.utils.math_utils import interpolate_action
 from toddlerbot.finetuning.networks import load_jax_params, load_jax_params_into_pytorch
 import toddlerbot.finetuning.networks as networks
 from toddlerbot.finetuning.abppo import AdaptiveBehaviorProximalPolicyOptimization, ABPPO_Offline_Learner
 from scipy.spatial.transform import Rotation
 from toddlerbot.finetuning.finetune_config import FinetuneConfig
-from toddlerbot.utils.math_utils import euler2quat, euler2mat, mat2euler
+from toddlerbot.utils.math_utils import interpolate_action, euler2quat, euler2mat, mat2euler
 from toddlerbot.utils.comm_utils import ZMQNode, ZMQMessage
+from toddlerbot.utils.misc_utils import log
 from toddlerbot.finetuning.logger import FinetuneLogger
 from pyvicon_datastream import tools
 
@@ -286,24 +285,24 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.logger.save_state(os.path.join(self.exp_folder, "logger.pkl"))
         save_buffer = input("Save replay buffer? y/n:")
         if save_buffer == 'y':
-            with open(os.path.join(self.exp_folder, "buffer.pkl"), 'wb') as f:
-                pickle.dump(self.replay_buffer, f)
+            self.replay_buffer.save_compressed(os.path.join(self.exp_folder, "buffer.npz"))
     
-    def load_networks(self, policy_path):
+    def load_networks(self, exp_folder):
         org_policy_net = deepcopy(self.policy_net)
-        policy_path = os.path.join(policy_path, "policy")
+        policy_path = os.path.join(exp_folder, "policy")
         assert os.path.exists(policy_path), f"Path {policy_path} does not exist"
         self.policy_net.load_state_dict(torch.load(os.path.join(policy_path, "policy_net.pth")))
         self.value_net.load_state_dict(torch.load(os.path.join(policy_path, "value_net.pth")))
         self.Q_net.load_state_dict(torch.load(os.path.join(policy_path, "Q_net.pth")))
         self.dynamics_net.load_state_dict(torch.load(os.path.join(policy_path, "dynamics_net.pth")))
-        assert not torch.allclose(org_policy_net.mlp.layers[0].weight, self.policy_net.mlp.layers[0].weight), "Policy network not loaded correctly"
-        self.logger.load_state(os.path.join(self.exp_folder, "logger.pkl"))
+        if torch.allclose(org_policy_net.mlp.layers[0].weight, self.policy_net.mlp.layers[0].weight):
+            log("Policy network parameters not changed", header="Networks", level="warning")
+        self.logger.load_state(os.path.join(exp_folder, "logger.pkl"))
         print(f"Loaded pretrained model from {policy_path}")
-        if os.path.exists(os.path.join(self.exp_folder, "buffer.pkl")):
-            with open(os.path.join(self.exp_folder, "buffer.pkl"), 'rb') as f:
-                self.replay_buffer = pickle.load(f)
-            print(f"Loaded replay buffer from {self.exp_folder}")
+        if os.path.exists(os.path.join(exp_folder, "buffer.npz")):
+            import ipdb; ipdb.set_trace()
+            self.replay_buffer.load_compressed(os.path.join(exp_folder, "buffer.npz"))
+            print(f"Loaded replay buffer from {exp_folder}")
 
     def _make_learners(self):
         """Make PPO learners with a PyTorch implementation."""
@@ -592,10 +591,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             reward = sum(reward_dict.values()) * self.control_dt # TODO: verify, why multiply by dt?
             self.logger.log_step(reward_dict, obs, reward=reward, feet_dist=feet_y_dist, walk_command=control_inputs['walk_x'])
 
-            # TODO: last_obs initial value is all None
+
             if len(control_inputs) > 0 and (control_inputs['walk_x'] != 0 or control_inputs['walk_y'] != 0):
-                self.replay_buffer.store(obs_arr, privileged_obs_arr, action, reward, self.is_done(obs))
-            # self.replay_buffer.store(obs_arr, privileged_obs_arr, action, reward, self.is_done(obs))
+                self.replay_buffer.store(obs_arr, privileged_obs_arr, action, reward, self.is_done(obs), raw_obs=obs)
 
             if (len(self.replay_buffer) + 1) % 400 == 0:
                 print(f"Data size: {len(self.replay_buffer)}, Steps: {self.total_steps}, Fps: {self.total_steps / self.timer.elapsed()}")
@@ -613,6 +611,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 self.logger.print_profiling_data()
                 is_sim_done = self.rollout_sim()
                 if is_sim_done:
+                    print('Sim early terminated!')
                     import ipdb; ipdb.set_trace()
                 self.zmq_sender.send_msg(ZMQMessage(time=time.time(), is_stopped=False))
                 self.timer.start()
