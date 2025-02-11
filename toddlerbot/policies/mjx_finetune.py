@@ -6,6 +6,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 from copy import deepcopy
 import torch
 import numpy.typing as npt
+from tqdm import tqdm
 from toddlerbot.sim import Obs
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.policies.mjx_policy import MJXPolicy
@@ -109,15 +110,15 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.timer = Timer()
         self._init_reward()
         self._init_tracker()
-
-        if len(ckpt) > 0:
-            self.load_networks(ckpt)
-
         self._make_learners()
 
         self.sim = MuJoCoSim(robot, vis_type=self.finetune_cfg.sim_vis_type, hang_force=0.0, n_frames=1)
         self.min_y_feet_dist = self.finetune_cfg.finetune_rewards.min_feet_y_dist
         self.max_y_feet_dist = self.finetune_cfg.finetune_rewards.max_feet_y_dist
+
+        if len(ckpt) > 0:
+            self.load_networks(ckpt, data_only=True)
+
         input('press ENTER to start')
 
     def close(self):
@@ -129,6 +130,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             save_networks = input("Save networks? y/n:")
         if save_networks == 'y':
             self.save_networks()
+        save_buffer = input("Save replay buffer? y/n:")
+        if save_buffer == 'y':
+            self.replay_buffer.save_compressed(self.exp_folder)
 
     def _make_networks(
         self,
@@ -205,6 +209,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             return np.zeros(3), np.zeros(3), np.zeros(3), time.time()
         
         result = self.tracker.get_position(self.finetune_cfg.object_name)
+        if len(result[2]) == 0:
+            log("No object found in the tracker", header="Tracker", level="warning")
+            return np.zeros(3), np.zeros(3), np.zeros(3), time.time()
         current_time = time.time()
         current_pos = np.array(result[2][0][2:5]) / 1000
         current_euler = np.array(result[2][0][5:8])
@@ -283,26 +290,34 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         torch.save(self.Q_net.state_dict(), os.path.join(policy_path, "Q_net.pth"))
         torch.save(self.dynamics_net.state_dict(), os.path.join(policy_path, "dynamics_net.pth"))
         self.logger.save_state(os.path.join(self.exp_folder, "logger.pkl"))
-        save_buffer = input("Save replay buffer? y/n:")
-        if save_buffer == 'y':
-            self.replay_buffer.save_compressed(os.path.join(self.exp_folder, "buffer.npz"))
     
-    def load_networks(self, exp_folder):
-        org_policy_net = deepcopy(self.policy_net)
+    def load_networks(self, exp_folder, data_only=True):
         policy_path = os.path.join(exp_folder, "policy")
-        assert os.path.exists(policy_path), f"Path {policy_path} does not exist"
-        self.policy_net.load_state_dict(torch.load(os.path.join(policy_path, "policy_net.pth")))
-        self.value_net.load_state_dict(torch.load(os.path.join(policy_path, "value_net.pth")))
-        self.Q_net.load_state_dict(torch.load(os.path.join(policy_path, "Q_net.pth")))
-        self.dynamics_net.load_state_dict(torch.load(os.path.join(policy_path, "dynamics_net.pth")))
-        if torch.allclose(org_policy_net.mlp.layers[0].weight, self.policy_net.mlp.layers[0].weight):
-            log("Policy network parameters not changed", header="Networks", level="warning")
-        self.logger.load_state(os.path.join(exp_folder, "logger.pkl"))
-        print(f"Loaded pretrained model from {policy_path}")
+        buffer_path = os.path.join(exp_folder, "buffer.npz")
+        assert os.path.exists(policy_path) or (os.path.exists(buffer_path) and not data_only)
+        
+        if os.path.exists(policy_path) and not data_only:
+            org_policy_net = deepcopy(self.policy_net)
+            self.policy_net.load_state_dict(torch.load(os.path.join(policy_path, "policy_net.pth")))
+            self.value_net.load_state_dict(torch.load(os.path.join(policy_path, "value_net.pth")))
+            self.Q_net.load_state_dict(torch.load(os.path.join(policy_path, "Q_net.pth")))
+            self.dynamics_net.load_state_dict(torch.load(os.path.join(policy_path, "dynamics_net.pth")))
+            if torch.allclose(org_policy_net.mlp.layers[0].weight, self.policy_net.mlp.layers[0].weight):
+                log("Policy network parameters not changed", header="Networks", level="warning")
+            self.logger.load_state(os.path.join(exp_folder, "logger.pkl"))
+            print(f"Loaded pretrained model from {policy_path}")
+
         if os.path.exists(os.path.join(exp_folder, "buffer.npz")):
-            import ipdb; ipdb.set_trace()
-            self.replay_buffer.load_compressed(os.path.join(exp_folder, "buffer.npz"))
+            self.replay_buffer.load_compressed(exp_folder)
+            # import ipdb; ipdb.set_trace()
             print(f"Loaded replay buffer from {exp_folder}")
+            self.recalculate_reward()
+            self.logger.plot_queue.put((self.logger.plot_rewards, [])) # no-blocking plot
+            for _ in range(self.finetune_cfg.abppo_update_steps):
+                self.abppo_offline_learner.update(self.replay_buffer)
+            self.logger.plot_queue.put((self.logger.plot_updates, [])) # no-blocking plot
+            self.rollout_sim()
+
 
     def _make_learners(self):
         """Make PPO learners with a PyTorch implementation."""
@@ -438,7 +453,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                     'raw_action': raw_actions
                 }
 
-    def reset(self, obs:Obs = None):
+    def reset(self, obs: Obs = None):
         # mjx policy reset
         self.obs_history = np.zeros(self.obs_history_size, dtype=np.float32)
         self.privileged_obs_history = np.zeros(self.privileged_obs_history_size, dtype=np.float32)
@@ -450,6 +465,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             ((self.n_steps_delay + 1) * self.num_action), dtype=np.float32
         )
         self.step_curr = 0
+        self.last_action = np.zeros(self.num_action)
+        self.last_last_action = np.zeros(self.num_action)
         print('Resetting...')
         # self.is_prepared = False
         if obs is not None:
@@ -457,6 +474,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             path_pos = np.zeros(3)
             # path_yaw = self.rng.uniform(low=0, high=2 * np.pi, size=(1,))
             path_yaw = obs.euler[2] # TODO: only change in a small range
+            print(f"Resetting with yaw: {path_yaw}")
             path_euler = np.array([0.0, 0.0, np.degrees(path_yaw)])
             path_quat = euler2quat(path_euler) # TODO: verify usage, wxyz or xyzw?
             lin_vel = np.zeros(3)
@@ -491,11 +509,12 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
     
     def rollout_sim(self):
         obs = self.sim.reset()
+        self.reset(obs)
         start_time = time.time()
-        step_curr = 0
+        step_curr, total_reward = 0
         last_action = np.zeros(self.num_action)
         command = self.fixed_command
-        print('Rollout sim with command: ', command)
+        print('Rollout sim with command: ', command[5:7])
 
         self.sim.init_recording()
         while obs is not None and not self.is_done(obs) and step_curr < self.finetune_cfg.eval_rollout_length:
@@ -505,7 +524,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             obs_arr, privileged_obs_arr = self.get_obs(obs, command, phase_signal, last_action)
             action, _ = self.get_action(obs_arr, deterministic=True, is_real=False)
             action_target = self.default_action + self.action_scale * action
-
+            reward_dict = self._compute_reward(obs, action)
+            total_reward += sum(reward_dict.values()) * self.control_dt
             motor_target = self.default_motor_pos.copy()
             motor_target[self.action_mask] = action_target
 
@@ -523,8 +543,28 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             last_action = action
 
         self.sim.save_recording(self.exp_folder, self.sim.dt, cameras=["perspective"])
-        print(f'Rollout sim for {step_curr} steps')
-        return self.is_done(obs)
+        print(f'Rollout sim for {step_curr} steps with reward: {total_reward}')
+        if self.is_done(obs):
+            print('Sim early terminated!')
+            import ipdb; ipdb.set_trace()
+        return total_reward
+
+    def recalculate_reward(self):
+        self.logger.reset()
+        self.last_action = np.zeros(self.num_action)
+        self.last_last_action = np.zeros(self.num_action)
+        for i in tqdm(range(len(self.replay_buffer)), desc='Recalculating reward'):
+            obs, privileged_obs, action, reward, done, raw_obs = self.replay_buffer[i]
+            reward_dict = self._compute_reward(raw_obs, action)
+            self.replay_buffer._reward[i] = sum(reward_dict.values()) * self.control_dt
+            if not done:
+                self.last_last_action = self.last_action.copy()
+                self.last_action = action.copy()
+            else:
+                self.last_last_action = np.zeros(self.num_action)
+                self.last_action = np.zeros(self.num_action)
+            self.logger.log_step(reward_dict, raw_obs, reward=reward, feet_dist=raw_obs.feet_y_dist, walk_command=obs[3])
+        self.replay_buffer.compute_return(self.finetune_cfg.gamma)
 
     def step(self, obs:Obs, is_real:bool = True):
 
@@ -565,6 +605,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             # obs.ang_vel = ang_vel
             # obs.euler = euler
             obs.is_done = msg.is_done
+            obs.state_ref = self.state_ref[:29]
             # print("control inputs:", control_inputs)
             if msg.is_stopped:
                 self.stopped = True
@@ -584,6 +625,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         
         action, _ = self.get_action(obs_arr, deterministic=True, is_real=is_real)
 
+        self.last_last_action = self.last_action.copy()
+        self.last_action = action.copy()
         if msg is not None:
             # print(obs.lin_vel, obs.euler)
             reward_dict = self._compute_reward(obs, action)
@@ -597,8 +640,6 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
             if (len(self.replay_buffer) + 1) % 400 == 0:
                 print(f"Data size: {len(self.replay_buffer)}, Steps: {self.total_steps}, Fps: {self.total_steps / self.timer.elapsed()}")
-            self.last_last_action = self.last_action.copy()
-            self.last_action = action.copy()
             if (len(self.replay_buffer) + 1) % self.finetune_cfg.update_interval == 0:
                 self.timer.stop()
                 self.zmq_sender.send_msg(ZMQMessage(time=time.time(), is_stopped=True))
@@ -608,11 +649,11 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 for _ in range(self.finetune_cfg.abppo_update_steps):
                     self.abppo_offline_learner.update(self.replay_buffer)
                 self.logger.plot_queue.put((self.logger.plot_updates, [])) # no-blocking plot
-                self.logger.print_profiling_data()
                 is_sim_done = self.rollout_sim()
                 if is_sim_done:
                     print('Sim early terminated!')
                     import ipdb; ipdb.set_trace()
+                self.reset(obs) # TODO: reset with new observation?
                 self.zmq_sender.send_msg(ZMQMessage(time=time.time(), is_stopped=False))
                 self.timer.start()
                 # self.reset(obs)
@@ -698,10 +739,10 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
     def _reward_torso_quat(self, obs: Obs, action: np.ndarray) -> np.ndarray:
         torso_euler = obs.euler
         torso_quat = euler2quat(torso_euler)
-        path_quat_ref = self.state_ref[3:7]
+        path_quat_ref = obs.state_ref[3:7]
         path_rot = Rotation.from_quat(path_quat_ref)
         
-        waist_joint_pos = self.state_ref[self.ref_start_idx + self.robot.nu + self.waist_motor_indices]
+        waist_joint_pos = obs.state_ref[self.ref_start_idx + self.robot.nu + self.waist_motor_indices]
         waist_euler = np.array([waist_joint_pos[0], 0.0, waist_joint_pos[1]])
         waist_rot = Rotation.from_euler("xyz", waist_euler)
         # torso_quat_ref = math.quat_mul(
@@ -725,7 +766,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         # TODO: verify where we get lin vel from
         # TODO: change treadmill speed according to force x, or estimate from IMU + joint_position
         # TODO: compare which is better
-        lin_vel_ref = self.state_ref[7:9]
+        lin_vel_ref = obs.state_ref[7:9]
         # print('lin_vel_ref', lin_vel_ref)
         error = np.linalg.norm(lin_vel - lin_vel_ref, axis=-1)
         reward = np.exp(-self.tracking_sigma * error**2)
@@ -733,7 +774,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
     
     def _reward_lin_vel_z(self, obs: Obs, action: np.ndarray) -> np.ndarray:
         lin_vel = obs.lin_vel[2] # TODO: change to normal force
-        lin_vel_ref = self.state_ref[9]
+        lin_vel_ref = obs.state_ref[9]
         error = np.abs(lin_vel - lin_vel_ref)
         reward = np.exp(-self.tracking_sigma * error**2)
         return reward
@@ -741,14 +782,14 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
     def _reward_ang_vel_xy(self, obs: Obs, action: np.ndarray) -> np.ndarray:
         # DISCUSS: array([-2.9682509e-28,  3.4297700e-28,  4.7041364e-28], dtype=float32), very small, reward near 1 ~0.1~1.0
         ang_vel = obs.ang_vel[:2]
-        ang_vel_ref = self.state_ref[10:12]
+        ang_vel_ref = obs.state_ref[10:12]
         error = np.linalg.norm(ang_vel - ang_vel_ref, axis=-1)
         reward = np.exp(-self.tracking_sigma / 4 * error**2)
         return reward
     
     def _reward_ang_vel_z(self, obs: Obs, action: np.ndarray) -> np.ndarray:
         ang_vel = obs.ang_vel[2]
-        ang_vel_ref = self.state_ref[12]
+        ang_vel_ref = obs.state_ref[12]
         error = np.abs(ang_vel - ang_vel_ref)
         reward = np.exp(-self.tracking_sigma / 4 * error**2)
         return reward
@@ -764,7 +805,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         reward: -2e-4
         """
         motor_pos = obs.motor_pos[self.leg_motor_indices]
-        motor_pos_ref = self.state_ref[self.ref_start_idx + self.leg_motor_indices]
+        print(self.ref_start_idx + self.leg_motor_indices)
+        motor_pos_ref = obs.state_ref[self.ref_start_idx + self.leg_motor_indices]
         error = motor_pos - motor_pos_ref
         reward = -np.mean(error**2) # TODO: why not exp?
         return reward

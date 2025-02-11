@@ -29,6 +29,9 @@ class Obs:
     arm_ee_vel: Optional[npt.NDArray[np.float32]] = np.zeros(3, dtype=np.float64)
     feet_y_dist: Optional[float] = None
     is_done: Optional[bool] = None
+    last_action: Optional[npt.NDArray[np.float32]] = None
+    last_last_action: Optional[npt.NDArray[np.float32]] = None
+    state_ref: Optional[npt.NDArray[np.float32]] = None
 
 
 class BaseSim(ABC):

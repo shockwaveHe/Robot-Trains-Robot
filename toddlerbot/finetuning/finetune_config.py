@@ -55,7 +55,7 @@ class FinetuneConfig:
     kl_alpha: float = 0.1  # Matches argparse (`alpha_bppo`)
     entropy_weight: float = 5e-4
     clipping_epsilon: float = 0.1  # Conflict: argparse uses `clip_ratio=0.25`
-    clip_ratio: float = 0.25  # Added from argparse
+    clip_ratio: float = 0.2  # Added from argparse
 
     # Decay and scaling parameters
     tau: float = 0.005
@@ -66,14 +66,14 @@ class FinetuneConfig:
     decay_steps: int = 50_000_000
     
     # Exploration and initialization
-    update_interval: int = 5_000
+    update_interval: int = 10_000
     warmup_steps: int = 100_000
     is_linear_decay: bool = True  # Added from argparse
 
     # Behavior Cloning and BPPO
-    bppo_steps: int = int(4e2)  # Added from argparse
+    bppo_steps: int = 500  # Added from argparse
     abppo_update_steps: int = 1  # Added from argparse
-    num_policy: int = 4  # Added from argparse
+    num_policy: int = 3  # Added from argparse
     is_update_old_policy: bool = True  # Added from argparse
 
     # Evaluation and rendering
@@ -92,7 +92,7 @@ class FinetuneConfig:
     kl_strategy: str = "max"  # Added from argparse
     kl_bc: str = "data"  # Added from argparse with description
     scale_strategy: Optional[str] = None  # Added from argparse with description
-    is_clip_action: bool = False  # Added from argparse
+    is_clip_action: bool = True  # Added from argparse
     sim_vis_type: str = "none"  # Added from argparse
 
     # Tracking
@@ -149,7 +149,7 @@ class FinetuneConfig:
         leg_action_acc: float = 0.05
         feet_contact: float = 0.0
         collision: float = 0.0  # 1.0
-        survival: float = 10.0
+        survival: float = 100.0
         feet_air_time: float = 0.0
         feet_distance: float = 0.0
         feet_slip: float = 0.0

@@ -1,4 +1,6 @@
 from collections import deque
+import os
+import pickle
 import torch
 import numpy as np
 from tqdm import tqdm
@@ -157,9 +159,19 @@ class OnlineReplayBuffer:
         z = self.rng.uniform(low=alpha, high=beta, size=self._obs.shape)
         self._aug_state = deepcopy(self._obs) * z
 
+    def __getitem__(self, index):
+        return (
+            self._obs[index],
+            self._privileged_obs[index],
+            self._action[index],
+            self._reward[index],
+            self._done[index],
+            self._raw_obs[index],
+        )
+
     def save_compressed(self, path):
         np.savez_compressed(
-            path,
+            os.path.join(path, "buffer.npz"),
             observations=self._obs[: self._size],
             privileged_obs=self._privileged_obs[: self._size],
             actions=self._action[: self._size],
@@ -168,11 +180,12 @@ class OnlineReplayBuffer:
             returns=self._return[: self._size],
             anvanatage=self._advantage[: self._size],
             size=self._size,
-            raw_obs=self._raw_obs,
         )
+        with open(os.path.join(path, 'raw_obs.pkl'), 'wb') as f:
+            pickle.dump(self._raw_obs, f)
 
     def load_compressed(self, path):
-        data = np.load(path, allow_pickle=True)
+        data = np.load(os.path.join(path, "buffer.npz"), allow_pickle=True)
         data_size = data["size"]
         if self._size + data_size > self._max_size:
             print("Data size is larger than the buffer size, enlarge the buffer")
@@ -184,7 +197,9 @@ class OnlineReplayBuffer:
         self._done[self._size : self._size + data_size] = data["terminals"]
         self._return[self._size : self._size + data_size] = data["returns"]
         self._advantage[self._size : self._size + data_size] = data["anvanatage"]
-        self._raw_obs.extend(data["raw_obs"])
+        with open(os.path.join(path, 'raw_obs.pkl'), 'rb') as f:
+            raw_obs = pickle.load(f)
+        self._raw_obs.extend(raw_obs)
         self._size += data_size
 
     def enlarge(self, new_size):

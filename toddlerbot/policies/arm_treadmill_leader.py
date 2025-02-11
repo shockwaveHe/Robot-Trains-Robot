@@ -94,7 +94,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         self.init_speed = 0.05
         self.warmup_time = 10.0
         self.speed_period = 30.0
-        self.walk_speed_range = [0.20, 0.25]
+        self.walk_speed_range = [0.20, 0.23]
 
     def close(self):
         self.zmq_sender.close()
@@ -131,8 +131,8 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
             self.speed -= delta_speed
             self.speed = max(0.0, self.speed)
         self.speed = np.clip(self.speed, 0.0, self.max_speed)
-        print(f"ee force {obs.ee_force}, {delta_arm_pos_x}, ee force {obs.ee_force}")
         # print(f"Delta Arm Pos X: {delta_arm_pos_x}, Force X: {obs.ee_force[0]}, Delta Speed: {delta_speed}")
+        print(f"Delta Arm pose x: {delta_arm_pos_x:.3f}, Arm pose: {obs.arm_ee_pos[0]:.3f} {obs.arm_ee_pos[1]:.3f}, Arm vel: {obs.arm_ee_vel[0]:.3g} {obs.arm_ee_vel[1]:.3g}, Force: {obs.ee_force[0]:.3f} {obs.ee_force[1]:.3f} {obs.ee_force[2]:.3f}")
     # speed not enough is x negative
     # note: calibrate zero at: toddlerbot/tools/calibration/calibrate_zero.py --robot toddlerbot_arms
     # note: zero points can be accessed in config_motors.json
@@ -314,9 +314,10 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         self.speed = 0.0
         self.walk_x = 0.0
         self.walk_y = 0.0
-        input("Press Enter to reset...")
-        # TODO: more safe reset
         force_prev = self.force
+        self.force = -0.5
+        self.arm_shm.buf[:8] = struct.pack('d', self.force)
+        input("Press Enter to reset...")
         self.force = -1.0
         self.arm_shm.buf[:8] = struct.pack('d', self.force)
         # self.force = 30.0

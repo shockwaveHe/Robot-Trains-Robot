@@ -175,7 +175,7 @@ class AdaptiveBehaviorProximalPolicyOptimization:
             dists.append(dist)
             action = dist.sample()
             if self._is_clip_action:
-                action = action.clamp(-(1.-1e-5), 1.+1e-5)
+                action = action.clamp(-(1.-1e-5), 1.-1e-5)
             if kl_update:
                 other_ids = deepcopy(policy_ids)
                 del other_ids[i]

@@ -28,15 +28,16 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
         self.cycle_time = env_cfg.action.cycle_time
         self.command_discount_factor = np.array([1.0, 1.0, 1.0], dtype=np.float32)
 
-        super().__init__(
-            name, robot, init_motor_pos, ckpt, ip, joystick, fixed_command, env_cfg, finetune_cfg, exp_folder=exp_folder,
-        )
         self.torso_roll_range = finetune_cfg.finetune_rewards.torso_roll_range
         self.torso_pitch_range = finetune_cfg.finetune_rewards.torso_pitch_range
 
         self.max_feet_air_time = self.cycle_time / 2.0
         self.min_feet_y_dist = finetune_cfg.finetune_rewards.min_feet_y_dist
         self.max_feet_y_dist = finetune_cfg.finetune_rewards.max_feet_y_dist
+        
+        super().__init__(
+            name, robot, init_motor_pos, ckpt, ip, joystick, fixed_command, env_cfg, finetune_cfg, exp_folder=exp_folder,
+        )
 
     def get_phase_signal(self, time_curr: float):
         phase_signal = np.array(
@@ -125,7 +126,6 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
         d_min = np.clip(feet_dist - self.min_feet_y_dist, a_min=-np.inf, a_max=0.0)
         d_max = np.clip(feet_dist - self.max_feet_y_dist, a_min=0.0, a_max=np.inf)
         reward = (np.exp(-np.abs(d_min) * 100) + np.exp(-np.abs(d_max) * 100)) / 2
-        print(f"feet_dist: {feet_dist}, reward: {reward}")
         return reward
 
     # def _reward_feet_slip(

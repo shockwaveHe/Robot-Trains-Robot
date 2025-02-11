@@ -123,34 +123,6 @@ class FinetuneLogger:
         zi = lfilter_zi(b, a) * data[0]
         y, _ = lfilter(b, a, data, zi=zi)
         return y
-    
-    # -------------
-    # Profiling helpers
-    # -------------
-    def _start_profile(self, name: str):
-        """Call at the start of a function to track time, if profiling is on."""
-        if self.enable_profiling:
-            self.profiling_counts[name] += 1
-            return time.perf_counter()
-        return None
-
-    def _end_profile(self, name: str, start_time: float):
-        """Call at the end of a function to track time, if profiling is on."""
-        if self.enable_profiling and start_time is not None:
-            elapsed = time.perf_counter() - start_time
-            self.profiling_data[name] += elapsed
-
-    def print_profiling_data(self):
-        """Print out total, call count, and average time for each profiled method."""
-        if not self.enable_profiling:
-            print("Profiling is disabled.")
-            return
-        print("===== Profiling Results =====")
-        for func_name, total_time in self.profiling_data.items():
-            count = self.profiling_counts[func_name]
-            avg_time = total_time / count if count != 0 else 0
-            print(f"{func_name}: total={total_time:.4f}s, calls={count}, avg={avg_time:.6f}s")
-        print("==============================")
 
     # ------------------------------------------------------------------
     # 1) PER-STEP REWARD LOGGING
@@ -163,26 +135,25 @@ class FinetuneLogger:
         if not self.enable_logging:
             return
 
-        start_t = self._start_profile("log_step")
-
         self.env_step_counter += 1
         log_dict = {f"rew_{key}": value for key, value in reward_dict.items()}
         log_dict["time"] = obs.time
         log_dict["lin_vel_x"] = obs.lin_vel[0]
         log_dict["lin_vel_y"] = obs.lin_vel[1]
-        log_dict["lin_vel_z"] = obs.lin_vel[2]
+        # log_dict["lin_vel_z"] = obs.lin_vel[2]
         log_dict["ang_vel_x"] = obs.ang_vel[0]
         log_dict["ang_vel_y"] = obs.ang_vel[1]
         log_dict["ang_vel_z"] = obs.ang_vel[2]
         log_dict["ee_force_x"] = obs.ee_force[0]
         log_dict["ee_force_y"] = obs.ee_force[1]
         log_dict["ee_force_z"] = obs.ee_force[2]
-        log_dict["ee_pos_z"] = obs.arm_ee_pos[2]
+        log_dict["ee_pos_x"] = obs.arm_ee_pos[0]
+        log_dict["ee_pos_y"] = obs.arm_ee_pos[1]
         log_dict["torso_roll"] = obs.euler[0]
         log_dict["torso_pitch"] = obs.euler[1]
         log_dict["torso_yaw"] = obs.euler[2]
         for key, value in kwargs.items():
-            if isinstance(value, (int, float)):
+            if isinstance(value, (int, float, np.integer, np.floating)):
                 log_dict[key] = value
             elif isinstance(value, np.ndarray):
                 if value.size == 1:
@@ -211,16 +182,24 @@ class FinetuneLogger:
         # if self.env_step_counter % self.plot_interval_steps == 0:
         #     self.plot_queue.put((self.plot_rewards, []))
 
-        self._end_profile("log_step", start_t)
 
+    def reset(self):
+        """Clears all reward histories and resets counters."""
+        self.env_step_counter = 0
+        self.reward_term_histories = {}
+        self.reward_header_written = False
+        self.update_step_counter = 0
+        self.update_metrics_list = []
+        self.profiling_data = defaultdict(float)
+        self.profiling_counts = defaultdict(int)
+        self.start_time = time.time()
+        
     def _write_reward_csv_line(self):
         """
         Appends one row to the 'reward_csv_path' with the current step's reward data.
         """
         if not self.enable_logging:
             return
-
-        start_t = self._start_profile("_write_reward_csv_line")
 
         # Build the columns
         column_names = ["env_step"]
@@ -243,7 +222,6 @@ class FinetuneLogger:
                 writer.writerow(column_names)
             writer.writerow(column_values)
 
-        self._end_profile("_write_reward_csv_line", start_t)
 
     def plot_rewards(self):
         """
@@ -252,11 +230,8 @@ class FinetuneLogger:
         if not self.enable_logging:
             return
 
-        start_t = self._start_profile("plot_rewards")
-
         reward_term_names = sorted(list(self.reward_term_histories.keys()))
         if len(reward_term_names) == 0:
-            self._end_profile("plot_rewards", start_t)
             return
 
         ncols = 3
@@ -285,7 +260,6 @@ class FinetuneLogger:
         plt.close(fig)
 
         print(f"Saved reward plot to {path}")
-        self._end_profile("plot_rewards", start_t)
 
     # ------------------------------------------------------------------
     # 2) PER-UPDATE LOGGING (for Q, V, Policy, OPE, etc.)
@@ -297,8 +271,6 @@ class FinetuneLogger:
         """
         if not self.enable_logging:
             return
-
-        start_t = self._start_profile("log_update")
 
         self.update_step_counter += 1
         data_point = {
@@ -319,20 +291,13 @@ class FinetuneLogger:
         # if self.update_step_counter % self.plot_interval_steps == 0:
         #     self.plot_queue.put((self.plot_updates, []))
 
-        self._end_profile("log_update", start_t)
 
     def _flush_update_csv(self):
         """
         Writes all update metrics so far into a CSV.
         If new metric keys have appeared, we incorporate them automatically by scanning all data points.
         """
-        if not self.enable_logging:
-            return
-
-        start_t = self._start_profile("_flush_update_csv")
-
-        if len(self.update_metrics_list) == 0:
-            self._end_profile("_flush_update_csv", start_t)
+        if not self.enable_logging or len(self.update_metrics_list) == 0:
             return
 
         # 1) discover all keys
@@ -355,9 +320,6 @@ class FinetuneLogger:
             writer.writeheader()
             writer.writerows(rows)
 
-        self._end_profile("_flush_update_csv", start_t)
-
-
     def plot_updates(self):
         """
         Creates a grid of subplots for any metrics that have been logged via log_update().
@@ -366,10 +328,7 @@ class FinetuneLogger:
         if not self.enable_logging:
             return
 
-        start_t = self._start_profile("plot_updates")
-
         if len(self.update_metrics_list) == 0:
-            self._end_profile("plot_updates", start_t)
             return
 
         # gather all keys except 'time' and 'update_step'
@@ -380,7 +339,6 @@ class FinetuneLogger:
         all_keys.discard("update_step")
         metric_keys = sorted(list(all_keys))
         if len(metric_keys) == 0:
-            self._end_profile("plot_updates", start_t)
             return
 
         ncols = 3
@@ -412,7 +370,6 @@ class FinetuneLogger:
         plt.savefig(path)
         plt.close(fig)
         print(f"Saved update plot to {path}")
-        self._end_profile("plot_updates", start_t)
 
     def close(self):
         """Shut down the plotting thread."""
