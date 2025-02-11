@@ -64,7 +64,7 @@ def smooth_data_lfilter(data, alpha=0.9):
     return y
 
 # Test data (a large random array)
-np.random.seed(42)py
+np.random.seed(42)
 test_data = np.random.rand(100_000)
 
 # Verify correctness

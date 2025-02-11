@@ -275,11 +275,11 @@ if __name__ == '__main__':
     parser.add_argument('--host', help="SSH host (or IP address)", default="10.5.6.248")
     parser.add_argument('--window', type=int, default=500,
                         help="Number of data points to display")
-    parser.add_argument('--ema', type=float, default=0.2,
+    parser.add_argument('--ema', type=float, default=0.5,
                         help="EMA smoothing factor (alpha) between 0 and 1")
     parser.add_argument('--ncols', type=int, default=5,
                         help="Number of subplots per row")
-    parser.add_argument('--interval', type=int, default=100,
+    parser.add_argument('--interval', type=int, default=30,
                         help="Plot update interval in milliseconds")
     args = parser.parse_args()
 

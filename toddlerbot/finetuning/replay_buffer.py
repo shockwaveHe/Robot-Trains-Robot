@@ -12,7 +12,7 @@ from copy import deepcopy
 class OnlineReplayBuffer:
     def __init__(
         self, device: torch.device, 
-        obs_dim: int, privileged_obs_dim: int, action_dim: int, max_size: int, seed: int = 0
+        obs_dim: int, privileged_obs_dim: int, action_dim: int, max_size: int, seed: int = 0, enlarge_when_full: int = 0
     ) -> None:
         self._device = device
         self._dtype = np.float32
@@ -24,12 +24,15 @@ class OnlineReplayBuffer:
         self._action = np.zeros((max_size, action_dim))
         self._reward = np.zeros((max_size, 1))
         self._done = np.zeros((max_size, 1))
+        self._truncated = np.zeros((max_size, 1))
         self._return = np.zeros((max_size, 1))
         self._advantage = np.zeros((max_size, 1))
         self._raw_obs = deque(maxlen=max_size)
         self.rng = np.random.default_rng(seed=seed)
 
-        self.enlarge_when_full = True
+        self.enlarge_when_full = enlarge_when_full
+        self.is_overwriting = False
+        self._truncated_temp = False
 
         self._size = 0
         self._max_size = max_size
@@ -45,6 +48,7 @@ class OnlineReplayBuffer:
         a: np.ndarray,
         r: np.ndarray,
         done: bool,
+        truncated: bool,
         raw_obs: Obs = None,
     ) -> None:
         if not self.start_collection:
@@ -54,25 +58,22 @@ class OnlineReplayBuffer:
         self._reward[self._size] = r
         self._privileged_obs[self._size] = s_p
         self._done[self._size] = done
-        self._size += 1
         self._raw_obs.append(raw_obs)
+        if self.is_overwriting:
+            self._truncated[self._size] = True
+            if self._size > 1:
+                self._truncated[self._size - 1] = self._truncated_temp
+        else:
+            self._truncated[self._size] = truncated
+        self._size += 1
+        self._truncated_temp = truncated
         if self._size >= self._obs.shape[0]:
-            if self.enlarge_when_full:
-                enlarge = input(f"Buffer is full, enlarge the buffer from {self._max_size} to {self._max_size * 2}? y/n:")
-                while enlarge not in ["y", "n"]:
-                    enlarge = input(f"Enlarge the buffer from {self._max_size} to {self._max_size * 2}? y/n:")
-                if enlarge == "y":
-                    self.enlarge(self._max_size)
-                else:
-                    self.enlarge_when_full = False
+            if self.enlarge_when_full > 0:
+                self.enlarge(self.enlarge_when_full)
             else:
                 print("Buffer is full, replacing the old data")
-                self._obs[:-1] = self._obs[1:]
-                self._action[:-1] = self._action[1:]
-                self._reward[:-1] = self._reward[1:]
-                self._privileged_obs[:-1] = self._privileged_obs[1:]
-                self._done[:-1] = self._done[1:]
-                self._size -= 1
+                self.is_overwriting = True
+                self._size = 0
 
     def compute_return(self, gamma: float) -> None:
         pre_return = 0
@@ -135,8 +136,14 @@ class OnlineReplayBuffer:
         }
 
     def sample(self, batch_size: int) -> tuple:
-        ind = self.rng.integers(0, int(self._size), size=batch_size)
-
+        valid_indices = np.flatnonzero(1 - self._truncated[:self._size])
+        # If the number of valid indices is less than the batch size,
+        # sample with replacement; otherwise, you can sample without replacement.
+        if valid_indices.size < batch_size:
+            ind = self.rng.choice(valid_indices, size=batch_size, replace=True)
+        else:
+            ind = self.rng.choice(valid_indices, size=batch_size, replace=False)
+        
         return (
             torch.FloatTensor(self._obs[ind]).to(self._device),
             torch.FloatTensor(self._privileged_obs[ind]).to(self._device),
@@ -166,6 +173,7 @@ class OnlineReplayBuffer:
             self._action[index],
             self._reward[index],
             self._done[index],
+            self._truncated[index],
             self._raw_obs[index],
         )
 
@@ -177,6 +185,7 @@ class OnlineReplayBuffer:
             actions=self._action[: self._size],
             rewards=self._reward[: self._size],
             terminals=self._done[: self._size],
+            truncated=self._truncated[: self._size],
             returns=self._return[: self._size],
             anvanatage=self._advantage[: self._size],
             size=self._size,
@@ -195,12 +204,25 @@ class OnlineReplayBuffer:
         self._action[self._size : self._size + data_size] = data["actions"]
         self._reward[self._size : self._size + data_size] = data["rewards"]
         self._done[self._size : self._size + data_size] = data["terminals"]
+        if "truncated" in data.keys():
+            self._truncated[self._size : self._size + data_size] = data["truncated"]
         self._return[self._size : self._size + data_size] = data["returns"]
         self._advantage[self._size : self._size + data_size] = data["anvanatage"]
+        self._truncated[self._size + data_size - 1] = True
         with open(os.path.join(path, 'raw_obs.pkl'), 'rb') as f:
             raw_obs = pickle.load(f)
+        for done_idx in np.flatnonzero(data['terminals']):
+            raw_obs[done_idx].is_done = True
         self._raw_obs.extend(raw_obs)
+        import ipdb; ipdb.set_trace()
         self._size += data_size
+        if self._size >= self._max_size:
+            if self.enlarge_when_full > 0:
+                self.enlarge(self.enlarge_when_full)
+            else:
+                print("Buffer is full, replacing the old data")
+                self.is_overwriting = True
+                self._size = 0
 
     def enlarge(self, new_size):
         self._obs = np.concatenate((self._obs, np.zeros((new_size, self._obs.shape[1]))), axis=0)
@@ -208,9 +230,12 @@ class OnlineReplayBuffer:
         self._action = np.concatenate((self._action, np.zeros((new_size, self._action.shape[1]))), axis=0)
         self._reward = np.concatenate((self._reward, np.zeros((new_size, self._reward.shape[1]))), axis=0)
         self._done = np.concatenate((self._done, np.zeros((new_size, self._done.shape[1]))), axis=0)
+        self._truncated = np.concatenate((self._truncated, np.zeros((new_size, self._truncated.shape[1]))), axis=0)
         self._return = np.concatenate((self._return, np.zeros((new_size, self._return.shape[1]))), axis=0)
         self._advantage = np.concatenate((self._advantage, np.zeros((new_size, self._advantage.shape[1]))), axis=0)
         self._max_size += new_size
+        self._raw_obs = deque(self._raw_obs, maxlen=int(self._max_size))
+        print(f"Buffer size is enlarged to {self._max_size}")
 
 
 class OfflineReplayBuffer(OnlineReplayBuffer):

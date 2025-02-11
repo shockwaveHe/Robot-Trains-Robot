@@ -281,7 +281,7 @@ class ABPPO_Offline_Learner:
     def fit_q_v(self, replay_buffer: OnlineReplayBuffer):
         print("fitting q_v ......")
         value_loss, Q_loss = 0.0, 0.0
-        for step in tqdm(range(int(self._config.value_update_steps)), desc=f'value loss {value_loss:.3g}, Q loss {Q_loss:.3g}'): 
+        for step in tqdm(range(int(self._config.value_update_steps)), desc=f'value loss {value_loss:.6f}, Q loss {Q_loss:.6f}'): 
             if self._config.is_iql:
                 Q_loss, value_loss = self._iql_learner.update(replay_buffer=replay_buffer)
             else:
@@ -293,7 +293,7 @@ class ABPPO_Offline_Learner:
     def fit_dynamics(self, replay_buffer: OnlineReplayBuffer):
         print('fitting dynamics ......')
         dynamics_loss = 0.0
-        for step in tqdm(range(int(self._config.dynamics_update_steps)), desc=f'dynamics loss {dynamics_loss:.3g}'): 
+        for step in tqdm(range(int(self._config.dynamics_update_steps)), desc=f'dynamics loss {dynamics_loss:.6f}'): 
             dynamics_loss = self._dynamics.update(replay_buffer=replay_buffer)
             self._logger.log_update(dynamics_loss=dynamics_loss)
     
@@ -307,7 +307,7 @@ class ABPPO_Offline_Learner:
         current_bppo_scores = [0 for i in range(self._config.num_policy)]
         losses = np.zeros(self._config.num_policy)
         joint_losses = []
-        for step in tqdm(range(self._config.bppo_steps), desc=f'bppo loss {losses.mean():.3g}'):
+        for step in tqdm(range(self._config.bppo_steps), desc=f'bppo loss {losses.mean():.6f}'):
             if self._config.is_linear_decay:
                 bppo_lr_now = self._config.bppo_lr * (1 - step / self._config.bppo_steps)
                 clip_ratio_now = self._config.clip_ratio * (1 - step / self._config.bppo_steps)
@@ -326,8 +326,8 @@ class ABPPO_Offline_Learner:
                 print('rollout trajectory q mean:{}'.format(current_mean_qs))
                 print(f"Step: {step}, Score: ", current_bppo_scores)
                 
-                # index = np.where(current_mean_qs > best_mean_qs)[0]  
-                index = np.arange(self._config.num_policy)
+                index = np.where(current_mean_qs > best_mean_qs)[0]  
+                # index = np.arange(self._config.num_policy)
                 if len(index) != 0:
                     if self._config.is_update_old_policy: # TODO: what does is do?
                         for i_d in index:

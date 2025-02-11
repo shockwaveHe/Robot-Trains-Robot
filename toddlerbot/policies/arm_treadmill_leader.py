@@ -77,7 +77,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         self.treadmill_speed_pos_kp = -10.0
         self.ee_force_x_ema = 0.0
         self.ee_force_x_ema_alpha = 0.2
-        self.arm_healthy_ee_pos = np.array([0.0, 3.0])
+        self.arm_healthy_ee_pos_y = np.array([0.06, 0.22])
         self.arm_healthy_ee_force_z = np.array([-10.0, 40.0])
         self.arm_healthy_ee_force_xy = np.array([-5.0, 5.0])
         self.healthy_torso_roll = np.array([-0.5, 0.5])
@@ -155,7 +155,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         if obs.ee_force[2] < self.arm_healthy_ee_force_z[0] or obs.ee_force[2] > self.arm_healthy_ee_force_z[1]:
             print(f"Force Z of {obs.ee_force[2]} is out of range")
             return True
-        if obs.arm_ee_pos[2] < self.arm_healthy_ee_pos[0] or obs.arm_ee_pos[2] > self.arm_healthy_ee_pos[1]:
+        if obs.arm_ee_pos[1] < self.arm_healthy_ee_pos_y[0] or obs.arm_ee_pos[1] > self.arm_healthy_ee_pos_y[1]:
             print(f"Position Z of {obs.arm_ee_pos[2]} is out of range")
             return True
         if obs.ee_force[0] > self.arm_healthy_ee_force_xy[1] or obs.ee_force[1] > self.arm_healthy_ee_force_xy[1]:

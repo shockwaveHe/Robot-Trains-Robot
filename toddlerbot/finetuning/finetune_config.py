@@ -34,8 +34,8 @@ class FinetuneConfig:
     
     # Update configuration
     num_updates_per_batch: int = 4
-    value_update_steps: int = 128
-    dynamics_update_steps: int = 128
+    value_update_steps: int = 256
+    dynamics_update_steps: int = 512
     target_update_freq: int = 2  # Matches the value from the argparse config
     
     # Discounting and learning rates
@@ -67,11 +67,12 @@ class FinetuneConfig:
     
     # Exploration and initialization
     update_interval: int = 10_000
+    enlarge_when_full: bool = True
     warmup_steps: int = 100_000
     is_linear_decay: bool = True  # Added from argparse
 
     # Behavior Cloning and BPPO
-    bppo_steps: int = 500  # Added from argparse
+    bppo_steps: int = 2000  # Added from argparse
     abppo_update_steps: int = 1  # Added from argparse
     num_policy: int = 3  # Added from argparse
     is_update_old_policy: bool = True  # Added from argparse

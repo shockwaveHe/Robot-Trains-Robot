@@ -27,7 +27,7 @@ from toddlerbot.finetuning.logger import FinetuneLogger
 from pyvicon_datastream import tools
 
 class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
-    def __init__(self, name, robot: Robot, init_motor_pos: npt.NDArray[np.float32], ckpt: str, ip: str, joystick, fixed_command, env_cfg, finetune_cfg: FinetuneConfig, *args, **kwargs):
+    def __init__(self, name, robot: Robot, init_motor_pos: npt.NDArray[np.float32], ckpts: List[str], ip: str, joystick, fixed_command, env_cfg, finetune_cfg: FinetuneConfig, *args, **kwargs):
         # set these before super init
         self.is_stopped = False
         self.finetune_cfg: FinetuneConfig = finetune_cfg
@@ -68,7 +68,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.last_last_action = np.zeros(self.num_action)
 
         print(f"Observation size: {self.obs_size}, Privileged observation size: {self.privileged_obs_size}")
-        self.replay_buffer = OnlineReplayBuffer(self.device, self.obs_size * self.num_obs_history, self.privileged_obs_size * self.num_privileged_obs_history, self.num_action, self.finetune_cfg.buffer_size) # TODO: add priviledged obs to buffer
+        self.replay_buffer = OnlineReplayBuffer(self.device, self.obs_size * self.num_obs_history, self.privileged_obs_size * self.num_privileged_obs_history, self.num_action, self.finetune_cfg.buffer_size, enlarge_when_full=self.finetune_cfg.update_interval * self.finetune_cfg.enlarge_when_full) # TODO: add priviledged obs to buffer
         # import pickle
         # with open('buffer_mock.pkl', 'rb') as f:
         #     self.replay_buffer: OnlineReplayBuffer = pickle.load(f)
@@ -116,9 +116,15 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.min_y_feet_dist = self.finetune_cfg.finetune_rewards.min_feet_y_dist
         self.max_y_feet_dist = self.finetune_cfg.finetune_rewards.max_feet_y_dist
 
-        if len(ckpt) > 0:
-            self.load_networks(ckpt, data_only=True)
-
+        if len(ckpts) > 0:
+            for ckpt in ckpts:
+                self.load_networks(ckpt, data_only=True)
+            self.recalculate_reward()
+            self.logger.plot_queue.put((self.logger.plot_rewards, [])) # no-blocking plot
+            for _ in range(self.finetune_cfg.abppo_update_steps):
+                self.abppo_offline_learner.update(self.replay_buffer)
+            self.logger.plot_queue.put((self.logger.plot_updates, [])) # no-blocking plot
+            self.rollout_sim()
         input('press ENTER to start')
 
     def close(self):
@@ -206,80 +212,45 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
     def get_tracking_data(self):
         if self.tracker is None:
-            return np.zeros(3), np.zeros(3), np.zeros(3), time.time()
+            log("No tracker available", header="Tracker", level="warning")
+            return np.zeros(3), time.time()
         
         result = self.tracker.get_position(self.finetune_cfg.object_name)
         if len(result[2]) == 0:
             log("No object found in the tracker", header="Tracker", level="warning")
-            return np.zeros(3), np.zeros(3), np.zeros(3), time.time()
+            return np.zeros(3), time.time()
         current_time = time.time()
         current_pos = np.array(result[2][0][2:5]) / 1000
         current_euler = np.array(result[2][0][5:8])
-        # current_euler = np.array([current_euler[2], current_euler[1], current_euler[0]])
-        
+
         # Calculate rotation and offset
         R_current = euler2mat(current_euler)
-        current_euler = mat2euler(R_current @ self.R_default.T)
         offset_current = R_current @ self.R_default.T @ self.mocap_marker_offset
         current_pos -= offset_current
-        
-        # Initialize angular velocity with zeros
-        ang_vel = np.zeros(3)
         
         # Calculate time difference
         if hasattr(self, 'prev_time'):
             dt = current_time - self.prev_time
         else:
             self.prev_time = current_time
-            return np.zeros(3), np.zeros(3), np.zeros(3), current_time
+            return np.zeros(3), current_time
         
         # Calculate linear velocities (x, y, z)
         lin_vel = (current_pos - self.prev_pos) / dt if hasattr(self, 'prev_pos') else np.zeros(3)
         
-        # Calculate angular velocities
-        if hasattr(self, 'prev_euler'):
-            # Compute Euler angle derivatives
-            delta_euler = current_euler - self.prev_euler
-            dphi_dt, dtheta_dt, dpsi_dt = delta_euler / dt
-
-            # Get current Euler angles
-            _, beta, gamma = current_euler
-
-            # Compute trigonometric values
-            sin_beta = np.sin(beta)
-            cos_beta = np.cos(beta)
-            sin_gamma = np.sin(gamma)
-            cos_gamma = np.cos(gamma)
-
-            # Construct transformation matrix
-            E = np.array([
-                [cos_beta * cos_gamma, -sin_gamma, 0],
-                [cos_beta * sin_gamma, cos_gamma, 0],
-                [-sin_beta, 0, 1]
-            ])
-            # Calculate angular velocity
-            ang_vel = E @ np.array([dphi_dt, dtheta_dt, dpsi_dt])
-        else:
-            ang_vel = np.zeros(3)
-
         # Update previous values
         self.prev_time = current_time
         self.prev_pos = current_pos
-        self.prev_euler = current_euler.copy()
 
         # EMA filtering
         lin_vel = self.tracking_alpha * lin_vel + (1 - self.tracking_alpha) * self.prev_lin_vel
-        ang_vel = self.tracking_alpha * ang_vel + (1 - self.tracking_alpha) * self.prev_ang_vel
         self.prev_lin_vel = lin_vel
-        self.prev_ang_vel = ang_vel
         
         # Transform velocities
         if self.tracking_tf_matrix is not None:
             lin_vel = self.tracking_tf_matrix @ lin_vel
-            ang_vel = self.tracking_tf_matrix @ ang_vel
-            current_euler = self.tracking_tf_matrix @ current_euler
 
-        return lin_vel, ang_vel, current_euler, current_time
+        return lin_vel, current_time
     
     def save_networks(self):
         policy_path = os.path.join(self.exp_folder, "policy")
@@ -294,7 +265,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
     def load_networks(self, exp_folder, data_only=True):
         policy_path = os.path.join(exp_folder, "policy")
         buffer_path = os.path.join(exp_folder, "buffer.npz")
-        assert os.path.exists(policy_path) or (os.path.exists(buffer_path) and not data_only)
+        assert (os.path.exists(policy_path) and not data_only) or os.path.exists(buffer_path)
         
         if os.path.exists(policy_path) and not data_only:
             org_policy_net = deepcopy(self.policy_net)
@@ -311,12 +282,6 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             self.replay_buffer.load_compressed(exp_folder)
             # import ipdb; ipdb.set_trace()
             print(f"Loaded replay buffer from {exp_folder}")
-            self.recalculate_reward()
-            self.logger.plot_queue.put((self.logger.plot_rewards, [])) # no-blocking plot
-            for _ in range(self.finetune_cfg.abppo_update_steps):
-                self.abppo_offline_learner.update(self.replay_buffer)
-            self.logger.plot_queue.put((self.logger.plot_updates, [])) # no-blocking plot
-            self.rollout_sim()
 
 
     def _make_learners(self):
@@ -511,7 +476,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         obs = self.sim.reset()
         self.reset(obs)
         start_time = time.time()
-        step_curr, total_reward = 0
+        step_curr, total_reward = 0, 0
         last_action = np.zeros(self.num_action)
         command = self.fixed_command
         print('Rollout sim with command: ', command[5:7])
@@ -524,6 +489,10 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             obs_arr, privileged_obs_arr = self.get_obs(obs, command, phase_signal, last_action)
             action, _ = self.get_action(obs_arr, deterministic=True, is_real=False)
             action_target = self.default_action + self.action_scale * action
+            obs.state_ref = self.state_ref[:29]
+            feet_pos = self.sim.get_feet_pos()
+            feet_y_dist = feet_pos['left'][1] - feet_pos['right'][1]
+            obs.feet_y_dist = feet_y_dist
             reward_dict = self._compute_reward(obs, action)
             total_reward += sum(reward_dict.values()) * self.control_dt
             motor_target = self.default_motor_pos.copy()
@@ -554,10 +523,12 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.last_action = np.zeros(self.num_action)
         self.last_last_action = np.zeros(self.num_action)
         for i in tqdm(range(len(self.replay_buffer)), desc='Recalculating reward'):
-            obs, privileged_obs, action, reward, done, raw_obs = self.replay_buffer[i]
+            obs, privileged_obs, action, reward, done, trunc, raw_obs = self.replay_buffer[i]
             reward_dict = self._compute_reward(raw_obs, action)
+            if done:
+                print('Done!', reward_dict['survival'])
             self.replay_buffer._reward[i] = sum(reward_dict.values()) * self.control_dt
-            if not done:
+            if not (done or trunc):
                 self.last_last_action = self.last_action.copy()
                 self.last_action = action.copy()
             else:
@@ -565,7 +536,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 self.last_action = np.zeros(self.num_action)
             self.logger.log_step(reward_dict, raw_obs, reward=reward, feet_dist=raw_obs.feet_y_dist, walk_command=obs[3])
         self.replay_buffer.compute_return(self.finetune_cfg.gamma)
+        import ipdb; ipdb.set_trace()
 
+    # @profile()
     def step(self, obs:Obs, is_real:bool = True):
 
         if not self.is_prepared:
@@ -594,7 +567,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         obs.feet_y_dist = feet_y_dist
         control_inputs: Dict[str, float] = {}
         self.control_inputs = {}
-        lin_vel, ang_vel, euler, _ = self.get_tracking_data()
+        lin_vel, _ = self.get_tracking_data()
         # print('ang_vel:', ang_vel - obs.ang_vel, 'euler:', euler - obs.euler)
         if msg is not None:
             control_inputs = msg.control_inputs
@@ -634,29 +607,25 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             reward = sum(reward_dict.values()) * self.control_dt # TODO: verify, why multiply by dt?
             self.logger.log_step(reward_dict, obs, reward=reward, feet_dist=feet_y_dist, walk_command=control_inputs['walk_x'])
 
-
-            if len(control_inputs) > 0 and (control_inputs['walk_x'] != 0 or control_inputs['walk_y'] != 0):
-                self.replay_buffer.store(obs_arr, privileged_obs_arr, action, reward, self.is_done(obs), raw_obs=obs)
-
             if (len(self.replay_buffer) + 1) % 400 == 0:
                 print(f"Data size: {len(self.replay_buffer)}, Steps: {self.total_steps}, Fps: {self.total_steps / self.timer.elapsed()}")
-            if (len(self.replay_buffer) + 1) % self.finetune_cfg.update_interval == 0:
-                self.timer.stop()
-                self.zmq_sender.send_msg(ZMQMessage(time=time.time(), is_stopped=True))
-                self.logger.plot_queue.put((self.logger.plot_rewards, [])) # no-blocking plot
-                # import ipdb; ipdb.set_trace()
-                self.replay_buffer.compute_return(self.finetune_cfg.gamma)
-                for _ in range(self.finetune_cfg.abppo_update_steps):
-                    self.abppo_offline_learner.update(self.replay_buffer)
-                self.logger.plot_queue.put((self.logger.plot_updates, [])) # no-blocking plot
-                is_sim_done = self.rollout_sim()
-                if is_sim_done:
-                    print('Sim early terminated!')
-                    import ipdb; ipdb.set_trace()
-                self.reset(obs) # TODO: reset with new observation?
-                self.zmq_sender.send_msg(ZMQMessage(time=time.time(), is_stopped=False))
-                self.timer.start()
-                # self.reset(obs)
+
+            truncated = (len(self.replay_buffer) + 1) % self.finetune_cfg.update_interval == 0
+            if len(control_inputs) > 0 and (control_inputs['walk_x'] != 0 or control_inputs['walk_y'] != 0):
+                self.replay_buffer.store(obs_arr, privileged_obs_arr, action, reward, self.is_done(obs), truncated, raw_obs=deepcopy(obs))
+
+                if truncated:
+                    self.timer.stop()
+                    self.zmq_sender.send_msg(ZMQMessage(time=time.time(), is_stopped=True))
+                    self.logger.plot_queue.put((self.logger.plot_rewards, [])) # no-blocking plot
+                    self.replay_buffer.compute_return(self.finetune_cfg.gamma)
+                    for _ in range(self.finetune_cfg.abppo_update_steps):
+                        self.abppo_offline_learner.update(self.replay_buffer)
+                    self.logger.plot_queue.put((self.logger.plot_updates, [])) # no-blocking plot
+                    self.rollout_sim()
+                    self.reset(obs) # TODO: reset with new observation?
+                    self.zmq_sender.send_msg(ZMQMessage(time=time.time(), is_stopped=False))
+                    self.timer.start()
 
         if is_real:
             delayed_action = action
