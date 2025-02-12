@@ -127,7 +127,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 for _ in range(self.finetune_cfg.abppo_update_steps):
                     self.abppo_offline_learner.update(self.replay_buffer)
                
-                import ipdb; ipdb.set_trace()
+                # import ipdb; ipdb.set_trace()
                 self.policy_net.load_state_dict(self.abppo._policy_net.state_dict())
                 assert not torch.allclose(org_policy_net.mlp.layers[0].weight, self.policy_net.mlp.layers[0].weight)
                 self.logger.plot_queue.put((self.logger.plot_updates, [])) # no-blocking plot
@@ -266,7 +266,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         torch.save(self.value_net.state_dict(), os.path.join(policy_path, "value_net.pth"))
         torch.save(self.Q_net.state_dict(), os.path.join(policy_path, "Q_net.pth"))
         torch.save(self.dynamics_net.state_dict(), os.path.join(policy_path, "dynamics_net.pth"))
-        self.logger.save_state(os.path.join(self.exp_folder, "logger.pkl"))
+        self.logger.save_state(self.exp_folder)
     
     def load_networks(self, exp_folder, data_only=True):
         policy_path = os.path.join(exp_folder, "policy")
@@ -281,7 +281,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             self.dynamics_net.load_state_dict(torch.load(os.path.join(policy_path, "dynamics_net.pth")))
             if torch.allclose(org_policy_net.mlp.layers[0].weight, self.policy_net.mlp.layers[0].weight):
                 log("Policy network parameters not changed", header="Networks", level="warning")
-            self.logger.load_state(os.path.join(exp_folder, "logger.pkl"))
+            # self.logger.load_state(exp_folder)
             print(f"Loaded pretrained model from {policy_path}")
 
         if os.path.exists(os.path.join(exp_folder, "buffer.npz")):

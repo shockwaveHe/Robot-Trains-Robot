@@ -44,7 +44,7 @@ class FinetuneConfig:
     policy_lr: float = 1e-4
     Q_lr: float = 1e-4
     bc_lr: float = 1e-4  # Added from argparse (BehaviorCloning learning rate)
-    bppo_lr: float = 1e-4  # Added from argparse (BPPO learning rate)
+    bppo_lr: float = 2e-4  # Added from argparse (BPPO learning rate)
     dynamics_lr: float = 1e-4 
 
     # Batch sizes
@@ -53,15 +53,15 @@ class FinetuneConfig:
     dynamics_batch_size: int = 512
     # Alpha, entropy, and clipping parameters
     kl_alpha: float = 0.1  # Matches argparse (`alpha_bppo`)
-    entropy_weight: float = 5e-4
+    entropy_weight: float = 1e-3
     clipping_epsilon: float = 0.1  # Conflict: argparse uses `clip_ratio=0.25`
     clip_ratio: float = 0.25  # Added from argparse
+    is_clip_decay: bool = False  # Added from argparse
 
     # Decay and scaling parameters
     tau: float = 0.005
     omega: float = 0.9
     decay: float = 0.96  # Added from argparse
-    is_clip_decay: bool = True  # Added from argparse
     is_bppo_lr_decay: bool = False  # Added from argparse
     decay_steps: int = 50_000_000
     
@@ -72,9 +72,9 @@ class FinetuneConfig:
     is_linear_decay: bool = True  # Added from argparse
 
     # Behavior Cloning and BPPO
-    bppo_steps: int = 1000  # Added from argparse
+    bppo_steps: int = 2000  # Added from argparse
     abppo_update_steps: int = 1  # Added from argparse
-    num_policy: int = 1  # Added from argparse
+    num_policy: int = 3  # Added from argparse
     is_update_old_policy: bool = True  # Added from argparse
 
     # Evaluation and rendering

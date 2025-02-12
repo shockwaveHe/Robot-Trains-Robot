@@ -5,6 +5,7 @@ from toddlerbot.finetuning.networks import GaussianPolicyNetwork
 from toddlerbot.finetuning.replay_buffer import OnlineReplayBuffer
 from toddlerbot.finetuning.finetune_config import FinetuneConfig
 from torch.distributions import Distribution
+from torch.distributions.transformed_distribution import TransformedDistribution
 
 def log_prob_func(
     dist: Distribution, action: torch.Tensor
@@ -74,6 +75,9 @@ class ProximalPolicyOptimization:
 
     def get_entropy_loss(self, new_dist):
         pre_tanh_sample = new_dist.rsample()
+        if isinstance(new_dist, TransformedDistribution):
+            for transform in reversed(new_dist.transforms):
+                pre_tanh_sample = transform.inv(pre_tanh_sample)
         log_det_jac = self._policy.forward_log_det_jacobian(pre_tanh_sample)
         entropy_loss = torch.sum(new_dist.base_dist.entropy() + log_det_jac, dim=-1) * self._entropy_weight
         return entropy_loss

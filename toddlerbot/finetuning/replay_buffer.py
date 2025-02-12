@@ -209,8 +209,12 @@ class OnlineReplayBuffer:
         self._return[self._size : self._size + data_size] = data["returns"]
         self._advantage[self._size : self._size + data_size] = data["anvanatage"]
         self._truncated[self._size + data_size - 1] = True
-        with open(os.path.join(path, 'raw_obs.pkl'), 'rb') as f:
-            raw_obs = pickle.load(f)
+        if os.path.exists(os.path.join(path, 'raw_obs.pkl')):
+            with open(os.path.join(path, 'raw_obs.pkl'), 'rb') as f:
+                raw_obs = pickle.load(f)
+        else:
+            assert "raw_obs" in data.keys()
+            raw_obs = data["raw_obs"]
         for done_idx in np.flatnonzero(data['terminals']):
             raw_obs[done_idx].is_done = True
         self._raw_obs.extend(raw_obs)

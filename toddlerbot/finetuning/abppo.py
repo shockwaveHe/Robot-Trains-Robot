@@ -30,17 +30,17 @@ class BehaviorProximalPolicyOptimization(ProximalPolicyOptimization):
         s: torch.Tensor,
         advantage: torch.Tensor,
         a: torch.Tensor,
-        old_dist: torch.Tensor,
+        old_dist: torch.distributions.transformed_distribution.TransformedDistribution,
         clip_ratio_now: float = None,
         kl_logprob_a: torch.Tensor = None
     ) -> torch.Tensor:
 
         new_dist = self._policy(s)
 
-        new_log_prob = torch.sum(new_dist.log_prob(a), -1) # TODO: verify
+        new_log_prob = torch.sum(new_dist.log_prob(a), -1)
         old_log_prob = torch.sum(old_dist.log_prob(a), -1)
         ratio = (new_log_prob - old_log_prob).exp()
-        print(ratio.mean().item(), old_log_prob.mean().item(), new_log_prob.mean().item(), advantage.abs().mean().item())
+        # print(ratio.mean().item(), old_log_prob.mean().item(), new_log_prob.mean().item(), advantage.abs().mean().item())
         loss1 =  ratio * advantage 
 
         if self._config.is_clip_decay:
@@ -57,12 +57,12 @@ class BehaviorProximalPolicyOptimization(ProximalPolicyOptimization):
         # entropy_loss = torch.sum(new_dist.base_dist.entropy(), dim=-1) * self._entropy_weight
         entropy_loss = self.get_entropy_loss(new_dist)
         loss = -(torch.min(loss1, loss2) + entropy_loss)
-        print(loss1.mean().item(), loss2.mean().item(), entropy_loss.mean().item(), loss.mean().item())
+        # print(loss1.mean().item(), loss2.mean().item(), entropy_loss.mean().item(), loss.mean().item())
         if self._config.kl_update:
             kl_loss = - self._config.kl_alpha * (new_log_prob - kl_logprob_a.detach())
             loss = loss + kl_loss
 
-        return loss.mean()
+        return loss.mean(), ratio.mean().item()
 
     def update(
         self, 
@@ -74,7 +74,7 @@ class BehaviorProximalPolicyOptimization(ProximalPolicyOptimization):
         clip_ratio_now: float = None,
         kl_logprob_a: torch.Tensor = None
     ) -> float:
-        policy_loss = self.loss(s, advantage, action, old_dist, clip_ratio_now, kl_logprob_a)
+        policy_loss, ratios = self.loss(s, advantage, action, old_dist, clip_ratio_now, kl_logprob_a)
         
         self._optimizer.zero_grad()
         policy_loss.backward()
@@ -86,7 +86,7 @@ class BehaviorProximalPolicyOptimization(ProximalPolicyOptimization):
         if self._config.is_linear_decay:
             for p in self._optimizer.param_groups:
                 p['lr'] = bppo_lr_now    
-        return policy_loss.item()
+        return policy_loss.item(), ratios
 
 
 class AdaptiveBehaviorProximalPolicyOptimization:
@@ -128,12 +128,12 @@ class AdaptiveBehaviorProximalPolicyOptimization:
         s, s_p, _, _, _, _, _, _, _, _ = replay_buffer.sample(self._batch_size)
         # import ipdb; ipdb.set_trace()
         actions, advantages, dists, kl_logprob_a = self.kl_update(iql, s, s_p, self._kl_update, self._kl_strategy)
-        losses = []
+        losses, ratios = [], []
         for i, bppo in enumerate(self.bppo_ensemble):
-            loss = bppo.update(s, advantages[i], actions[i], dists[i], bppo_lr_now, clip_ratio_now, kl_logprob_a[i])
+            loss, ratio = bppo.update(s, advantages[i], actions[i], dists[i], bppo_lr_now, clip_ratio_now, kl_logprob_a[i])
             losses.append(loss)
-
-        return np.array(losses)
+            ratios.append(ratio)
+        return np.array(losses), np.array(ratios).mean()
     
 
     def behavior_update(self, iql: IQL_QV_Learner, privileged_obs: torch.Tensor, obs: torch.Tensor)-> None:
@@ -319,8 +319,8 @@ class ABPPO_Offline_Learner:
                 bppo_lr_now = None
                 clip_ratio_now = None
         
-            losses = self._abppo.joint_train(replay_buffer, self._iql_learner, bppo_lr_now, clip_ratio_now)
-            self._logger.log_update(policy_loss_mean=losses.mean(), policy_loss_std=losses.std(), bppo_lr=bppo_lr_now, clip_ratio=clip_ratio_now)
+            losses, ratios = self._abppo.joint_train(replay_buffer, self._iql_learner, bppo_lr_now, clip_ratio_now)
+            self._logger.log_update(policy_loss_mean=losses.mean(), policy_loss_std=losses.std(), bppo_lr=bppo_lr_now, clip_ratio=clip_ratio_now, ratio_mean=ratios)
             joint_losses.append(losses)
             pbar.set_description(f'bppo loss {losses.mean():.6f}')
 
@@ -338,6 +338,6 @@ class ABPPO_Offline_Learner:
                             self._abppo.replace(index=index)
                             print('------------------------------update behavior policy {}----------------------------------------'.format(i_d))
                             best_mean_qs[i_d] = current_mean_qs[i_d]
-                        best_policy_idx = np.argmax(best_mean_qs)
-                        self._abppo._policy_net.load_state_dict(self._abppo.bppo_ensemble[best_policy_idx]._policy.state_dict()) 
+                    best_policy_idx = np.argmax(current_mean_qs)
+                    self._abppo._policy_net.load_state_dict(self._abppo.bppo_ensemble[best_policy_idx]._policy.state_dict()) 
         return np.mean(joint_losses)

@@ -70,7 +70,7 @@ class FinetuneLogger:
         self.start_time = time.time()
 
 
-    def save_state(self, filepath: str):
+    def save_state(self, exp_folder: str):
         """Saves the current state of the logger to a pickle file."""
         state = {
             "env_step_counter": self.env_step_counter,
@@ -80,15 +80,14 @@ class FinetuneLogger:
             "profiling_data": self.profiling_data,
             "profiling_counts": self.profiling_counts,
         }
-        with open(filepath, "wb") as f:
-            pickle.dump(state, f)
-        print(f"Logger state saved to {filepath}")
+        np.savez_compressed(os.path.join(exp_folder, "logger.npz"), **state)
+        print(f"Logger state saved to {exp_folder}")
 
 
-    def load_state(self, filepath: str):
+    def load_state(self, exp_folder: str):
         """Loads the logger state from a pickle file."""
-        with open(filepath, "rb") as f:
-            state = pickle.load(f)
+        logger_path = os.path.join(exp_folder, "logger.npz")
+        state = np.load(logger_path, allow_pickle=True)
         
         self.env_step_counter = state["env_step_counter"]
         self.reward_term_histories = state["reward_term_histories"]
@@ -97,7 +96,7 @@ class FinetuneLogger:
         self.profiling_data = state["profiling_data"]
         self.profiling_counts = state["profiling_counts"]
         
-        print(f"Logger state loaded from {filepath}")
+        print(f"Logger state loaded from {logger_path}")
 
 
     def _plot_worker(self):
