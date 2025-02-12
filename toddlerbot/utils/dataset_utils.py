@@ -7,34 +7,47 @@ import joblib
 import numpy as np
 import numpy.typing as npt
 
-"""
-Dataset format:
-Dict: {"state_array":[n,1+16+1], "images":[n,h,w,3]}
-state_array: [time(1), joint_angles(14), fsrL(1), fsrR(1), camera_frame_idx(1)]
-images: [n,h,w,3], RGB images uint8
-"""
-
 
 @dataclass
 class Data:
+    """Data class for logging teleoperation data during an episode."""
+
     time: float
+    action: npt.NDArray[np.float32]
     motor_pos: npt.NDArray[np.float32]
-    fsr_data: npt.NDArray[np.float32]
     image: Optional[npt.NDArray[np.uint8]] = None
 
 
 class DatasetLogger:
+    """A class for logging teleoperation data during an episode and saving it to disk."""
+
     def __init__(self):
+        """Initializes the object with an empty data list and sets the episode count to zero."""
         self.data_list = []
         self.n_episodes = 0
 
     def log_entry(self, data: Data):
+        """Adds a data entry to the internal list.
+
+        Args:
+            data (Data): The data entry to be added to the list.
+        """
         self.data_list.append(data)
 
-    # episode end index is the index of the last state entry in the episode +1
     def save(self):
-        # watchout for saving time in float32, it will get truncated to 100s accuracy
-        # Assuming self.data_list is a list of Data instances
+        """Saves the current data list to a compressed file and resets the data list.
+
+        This method converts the attributes of each data object in `self.data_list` into a dictionary of numpy arrays, adds a start time, and saves the dictionary to a file in LZ4 compressed format. The file is named using the current number of episodes. After saving, the episode count is incremented, and the data list is cleared.
+
+        Attributes:
+            data_list (list): A list of data objects to be saved.
+            n_episodes (int): The current number of episodes logged.
+
+        Side Effects:
+            Increments `self.n_episodes`.
+            Clears `self.data_list`.
+            Prints a log message indicating the number of episodes logged and their length.
+        """
         data_dict = {
             field.name: np.array(
                 [getattr(data, field.name) for data in self.data_list],
@@ -55,7 +68,11 @@ class DatasetLogger:
         self.data_list = []
 
     def move_files_to_exp_folder(self, exp_folder_path: str):
-        # Find all files that match the pattern
+        """Moves files with a specific naming pattern from the temporary directory to a specified experiment folder.
+
+        Args:
+            exp_folder_path (str): The destination directory path where the files will be moved.
+        """
         lz4_files = [
             f
             for f in os.listdir("/tmp")

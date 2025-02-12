@@ -12,8 +12,8 @@ from brax.training.agents.ppo import networks as ppo_networks
 
 from toddlerbot.locomotion.mjx_config import MJXConfig
 from toddlerbot.locomotion.ppo_config import PPOConfig
-from toddlerbot.motion.motion_ref import MotionReference
 from toddlerbot.policies import BasePolicy
+from toddlerbot.reference.motion_ref import MotionReference
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
@@ -23,6 +23,8 @@ from toddlerbot.utils.math_utils import interpolate_action
 
 
 class MJXPolicy(BasePolicy, policy_name="mjx"):
+    """Policy for controlling the robot using the MJX model."""
+
     def __init__(
         self,
         name: str,
@@ -35,6 +37,21 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         motion_ref: Optional[MotionReference] = None,
         exp_folder: Optional[str] = "",
     ):
+        """Initializes the class with configuration and state parameters for controlling a robot.
+
+        Args:
+            name (str): The name of the robot controller.
+            robot (Robot): The robot instance to be controlled.
+            init_motor_pos (npt.NDArray[np.float32]): Initial motor positions.
+            ckpt (str): Path to the checkpoint file for loading model parameters.
+            joystick (Optional[Joystick]): Joystick instance for manual control, if available.
+            fixed_command (Optional[npt.NDArray[np.float32]]): Fixed command array, if any.
+            cfg (Optional[MJXConfig]): Configuration object containing control parameters.
+            motion_ref (Optional[MotionReference]): Reference for motion planning.
+
+        Raises:
+            AssertionError: If `cfg` is not provided.
+        """
         super().__init__(name, robot, init_motor_pos, exp_folder=exp_folder)
 
         assert cfg is not None, "cfg is required in the subclass!"
@@ -120,6 +137,19 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         self.reset()
 
     def warmup(self, result_container, event):
+        """Initializes and loads a policy for the agent, preparing it for inference.
+
+        This method sets up the necessary configurations and loads a pre-trained policy
+        from a specified path. It compiles the policy for efficient execution and stores
+        the compiled inference function and random number generator in a shared result
+        container. It also signals the completion of the setup process.
+
+        Args:
+            result_container (dict): A shared container to store the compiled inference
+                function and random number generator.
+            event (threading.Event): An event object used to signal the completion of
+                the warmup process.
+        """
         try:
             if "walk" in self.name:
                 policy_name = "walk"
@@ -147,10 +177,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
                     policy_path = os.path.join("results", run_name, "policy")
             else:
                 policy_path = os.path.join(
-                    "toddlerbot",
-                    "policies",
-                    "checkpoints",
-                    f"{self.robot.name}_{policy_name}_policy",
+                    "toddlerbot", "policies", "checkpoints", f"{policy_name}_policy"
                 )
 
             print(f"Loading policy from {policy_path}")
@@ -168,26 +195,12 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             # Signal that the thread is done
             event.set()
 
-    def reset(self, obs:Obs = None):
-        print(f"Resetting the {self.name} policy...")
-        # if path_state is None:
-        #     path_state = np.concatenate(
-        #         [
-        #             np.zeros(3, dtype=np.float32),  # Position
-        #             np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),  # Quaternion
-        #         ]
-        #     )
+    def reset(self):
+        """Resets the internal state of the policy to its initial configuration.
 
-        # self.state_ref = np.concatenate(
-        #     [
-        #         path_state,  # Path state
-        #         np.zeros(3, dtype=np.float32),  # Linear velocity
-        #         np.zeros(3, dtype=np.float32),  # Angular velocity
-        #         self.default_motor_pos,  # Motor positions
-        #         self.default_joint_pos,  # Joint positions
-        #         np.ones(2, dtype=np.float32),  # Stance mask
-        #     ]
-        # )
+        This method clears the observation history, phase signal, command list, and action buffer. It also sets the standing state to True and initializes the last action and current step counter to zero.
+        """
+        print(f"Resetting the {self.name} policy...")
         self.obs_history = np.zeros(self.obs_history_size, dtype=np.float32)
         self.phase_signal = np.zeros(2, dtype=np.float32)
         self.is_standing = True
@@ -199,15 +212,40 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         self.step_curr = 0
 
     def get_phase_signal(self, time_curr: float) -> npt.NDArray[np.float32]:
+        """Get the phase signal at the current time.
+
+        Args:
+            time_curr (float): The current time for which the phase signal is requested.
+
+        Returns:
+            npt.NDArray[np.float32]: An array containing the phase signal as a float32 value.
+        """
         return np.zeros(1, dtype=np.float32)
 
     def get_command(self, control_inputs: Dict[str, float]) -> npt.NDArray[np.float32]:
+        """Returns a fixed command as a NumPy array.
+
+        Args:
+            control_inputs (Dict[str, float]): A dictionary of control inputs, where keys are input names and values are their respective float values.
+
+        Returns:
+            npt.NDArray[np.float32]: A fixed command represented as a NumPy array of float32 values.
+        """
         return self.fixed_command
 
     # @profile()
     def step(
         self, obs: Obs, is_real: bool = False
     ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
+        """Processes a single step in the control loop, updating the system's state and generating motor target positions.
+
+        Args:
+            obs (Obs): The current observation containing motor positions, velocities, and other sensor data.
+            is_real (bool, optional): Indicates if the system is operating in a real environment. Defaults to False.
+
+        Returns:
+            Tuple[Dict[str, float], npt.NDArray[np.float32]]: A tuple containing the control inputs and the target motor positions.
+        """
         if not self.is_prepared:
             self.is_prepared = True
             self.prep_duration = 7.0 if is_real else 0.0
@@ -247,20 +285,19 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             command = self.get_command(control_inputs)
 
         self.phase_signal = self.get_phase_signal(time_curr)
-        # self.state_ref = np.asarray(
-        #     self.motion_ref.get_state_ref(self.state_ref, time_curr, command)
-        # )
         motor_pos_delta = obs.motor_pos - self.default_motor_pos
-        # motor_pos_error = obs.motor_pos - self.state_ref[13 : 13 + self.robot.nu]
-        # obs.ang_vel[0] *= 0.5
-        # obs.ang_vel += np.random.normal(0.0, 0.5, 3)
+        motor_vel = obs.motor_vel
+
+        if self.robot.has_gripper:
+            motor_pos_delta = motor_pos_delta[:-2]
+            motor_vel = motor_vel[:-2]
 
         obs_arr = np.concatenate(
             [
                 self.phase_signal,
                 command[self.command_obs_indices],
                 motor_pos_delta * self.obs_scales.dof_pos,
-                obs.motor_vel * self.obs_scales.dof_vel,
+                motor_vel * self.obs_scales.dof_vel,
                 self.last_action,
                 # motor_pos_error,
                 # obs.lin_vel * self.obs_scales.lin_vel,

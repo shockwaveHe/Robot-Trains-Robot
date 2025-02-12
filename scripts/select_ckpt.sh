@@ -2,8 +2,8 @@
 
 # shellcheck disable=SC2086
 
-# Assign positional arguments to variables
-# Default values
+# This script is used to select the best checkpoint for a given task
+
 TIME_STR=""
 ROBOT="toddlerbot"
 ENV="walk"

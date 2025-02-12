@@ -15,6 +15,18 @@ def get_default_config(
     motor_config: Dict[str, Dict[str, Any]],
     joint_dyn_config: Dict[str, Dict[str, float]],
 ):
+    """Generates a default configuration dictionary for a robot based on its URDF structure and provided configurations.
+
+    Args:
+        robot_name (str): The name of the robot, used to determine specific configurations.
+        root (ET.Element): The root element of the robot's URDF XML structure.
+        general_config (Dict[str, Any]): General configuration settings for the robot.
+        motor_config (Dict[str, Dict[str, Any]]): Configuration settings for each motor, including control parameters.
+        joint_dyn_config (Dict[str, Dict[str, float]]): Dynamic configuration settings for each joint, such as damping and friction.
+
+    Returns:
+        Dict[str, Dict[str, Any]]: A dictionary containing the default configuration for the robot, including general settings and detailed joint configurations.
+    """
     config_dict: Dict[str, Dict[str, Any]] = {"general": general_config, "joints": {}}
 
     # Define the URDF file path
@@ -200,6 +212,16 @@ def get_default_config(
 
 
 def main() -> None:
+    """Main function to generate and save configuration files for a specified robot.
+
+    This function parses command-line arguments to determine the robot's name and sets up
+    various configuration parameters based on the robot's characteristics. It generates
+    general, motor, joint dynamics, and collision configurations, saving them to JSON files
+    in the appropriate directories.
+
+    Raises:
+        ValueError: If the motor configuration file is not found for the specified robot.
+    """
     parser = argparse.ArgumentParser(description="Get the config.")
     parser.add_argument(
         "--robot",
@@ -228,7 +250,6 @@ def main() -> None:
         "has_imu": False,
         "has_dynamixel": True,
         "dynamixel_baudrate": baud * 1000000,
-        "has_sunny_sky": False,
         "solref": [0.004, 1],
     }
     if "sysID" not in args.robot and "arms" not in args.robot:

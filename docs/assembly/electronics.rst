@@ -1,4 +1,0 @@
-.. _electronics:
-
-Electronics
-===========

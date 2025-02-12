@@ -22,6 +22,8 @@ pygame.joystick.init()
 
 
 class DeckAxis(Enum):
+    """Steam Deck Controller axis mapping."""
+
     LEFT_JOYSTICK_VERTICAL = 1
     LEFT_JOYSTICK_HORIZONTAL = 0
     RIGHT_JOYSTICK_VERTICAL = 3
@@ -31,6 +33,8 @@ class DeckAxis(Enum):
 
 
 class DeckButton(Enum):
+    """Steam Deck Controller button mapping."""
+
     A = 3
     B = 4
     X = 5
@@ -50,6 +54,8 @@ class DeckButton(Enum):
 
 
 class AsusAxis(Enum):
+    """ROG Ally X Controller axis mapping."""
+
     LEFT_JOYSTICK_VERTICAL = 1
     LEFT_JOYSTICK_HORIZONTAL = 0
     RIGHT_JOYSTICK_VERTICAL = 3
@@ -59,6 +65,8 @@ class AsusAxis(Enum):
 
 
 class AsusButton(Enum):
+    """ROG Ally X Controller button mapping."""
+
     A = 0
     B = 1
     X = 2
@@ -74,6 +82,8 @@ class AsusButton(Enum):
 
 
 class XboxAxis(Enum):
+    """Xbox Controller axis mapping."""
+
     LEFT_JOYSTICK_VERTICAL = 1
     LEFT_JOYSTICK_HORIZONTAL = 0
     RIGHT_JOYSTICK_VERTICAL = 4
@@ -83,6 +93,8 @@ class XboxAxis(Enum):
 
 
 class XboxButton(Enum):
+    """Xbox Controller button mapping."""
+
     A = 0
     B = 1
     X = 2
@@ -99,6 +111,8 @@ class XboxButton(Enum):
 
 
 class StadiaAxis(Enum):
+    """Google Stadia Controller axis mapping."""
+
     LEFT_JOYSTICK_VERTICAL = 1
     LEFT_JOYSTICK_HORIZONTAL = 0
     RIGHT_JOYSTICK_VERTICAL = 3
@@ -108,6 +122,8 @@ class StadiaAxis(Enum):
 
 
 class StadiaButton(Enum):
+    """Google Stadia Controller button mapping."""
+
     A = 0
     B = 1
     X = 2
@@ -123,6 +139,8 @@ class StadiaButton(Enum):
 
 
 class JoystickAction(Enum):
+    """Joystick action mapping."""
+
     VIEW = "reset"
     MENU = "teleop"
     LEFT_JOYSTICK_VERTICAL = "walk_x"
@@ -138,11 +156,9 @@ class JoystickAction(Enum):
     X = "look_left"
     B = "look_right"
     L1 = "hug"
-    R1 = "release"
-    L2 = "grab"
-    R2 = "wave"
-    # L3 = "heart"
-    # R3 = "pull_up"
+    R1 = "pick"
+    L2 = "push_cart"
+    R2 = "cuddle"
     L4 = "push_up"
     R4 = "dance_1"
     L5 = "dance_2"
@@ -150,7 +166,17 @@ class JoystickAction(Enum):
 
 
 class Joystick:
+    """Joystick controller class for handling input from a connected joystick."""
+
     def __init__(self, dead_zone: float = 0.1):
+        """Initializes the controller configuration by detecting and setting up a compatible joystick.
+
+        Args:
+            dead_zone (float): The threshold value for joystick input sensitivity, below which inputs are ignored. Defaults to 0.1.
+
+        Raises:
+            ValueError: If no joystick is detected or if an unsupported controller is detected.
+        """
         self.dead_zone = dead_zone
         self.joystick = None
 
@@ -204,6 +230,13 @@ class Joystick:
                 raise ValueError(f"Unsupported controller detected: {device_name}")
 
     def get_controller_input(self) -> Dict[str, float]:
+        """Retrieves and processes input from a connected joystick, mapping it to control actions.
+
+        This function reads the current state of the joystick, including button presses and axis movements, and translates these inputs into a dictionary of control actions with corresponding float values. It handles both button and axis inputs, applying a dead zone threshold to filter out minor movements. Special handling is applied for D-pad directions and trigger buttons (L2, R2).
+
+        Returns:
+            Dict[str, float]: A dictionary where keys are control action names and values are the processed input values from the joystick.
+        """
         pygame.event.pump()
         control_inputs: Dict[str, float] = {}
 
@@ -227,6 +260,9 @@ class Joystick:
                     # Handle axis motions
                     axis_id = self.axis_mapping[key].value
                     value = self.joystick.get_axis(axis_id)
+                    if "L2" in key or "R2" in key:
+                        value = 0 if value < 0.9 else 1
+
                     control_inputs[task] = 0.0 if abs(value) < self.dead_zone else value
 
         self.update_walk_command(control_inputs)
@@ -234,6 +270,18 @@ class Joystick:
         return control_inputs
 
     def update_walk_command(self, control_inputs: Dict[str, float]):
+        """Updates the walk command inputs by interpolating control values to specified ranges.
+
+        Args:
+            control_inputs (Dict[str, float]): A dictionary containing control tasks as keys
+                ('walk_x', 'walk_y', 'walk_turn') and their corresponding input values. The input
+                values are expected to be in the range [-1, 1].
+
+        Modifies:
+            control_inputs: The input values for each task are updated by interpolating them to
+            the respective ranges defined by `self.walk_x_range`, `self.walk_y_range`, and
+            `self.walk_turn_range`.
+        """
         for task, input in control_inputs.items():
             if task == "walk_x":
                 control_inputs[task] = np.interp(

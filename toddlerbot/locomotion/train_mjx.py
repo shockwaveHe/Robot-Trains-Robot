@@ -44,7 +44,13 @@ jax.config.update("jax_default_matmul_precision", jax.lax.Precision.HIGH)
 
 
 def dynamic_import_envs(env_package: str):
-    """Dynamically import all modules in the given package."""
+    """Imports all modules from a specified package.
+
+    This function dynamically imports all modules within a given package, allowing their contents to be accessed programmatically. It is useful for loading environment configurations or plugins from a specified package directory.
+
+    Args:
+        env_package (str): The name of the package from which to import all modules.
+    """
     package = importlib.import_module(env_package)
     package_path = package.__path__
 
@@ -70,6 +76,19 @@ def render_video(
     height: int = 360,
     width: int = 640,
 ):
+    """Renders and saves a video of the environment from multiple camera angles.
+
+    Args:
+        env (MJXEnv): The environment to render.
+        rollout (List[Any]): A list of environment states or actions to render.
+        run_name (str): The name of the run, used to organize output files.
+        render_every (int, optional): Interval at which frames are rendered from the rollout. Defaults to 2.
+        height (int, optional): The height of the rendered video frames. Defaults to 360.
+        width (int, optional): The width of the rendered video frames. Defaults to 640.
+
+    Creates:
+        A video file for each camera angle ('perspective', 'side', 'top', 'front') and a final concatenated video in a 2x2 grid layout, saved in the 'results' directory under the specified run name.
+    """
     # Define paths for each camera's video
     video_paths: List[str] = []
 
@@ -105,12 +124,25 @@ def log_metrics(
     width: int = 80,
     pad: int = 35,
 ):
+    """Logs and formats metrics for display, including elapsed time and optional step information.
+
+    Args:
+        metrics (Dict[str, Any]): A dictionary containing metric names and their corresponding values.
+        time_elapsed (float): The time elapsed since the start of the process.
+        num_steps (int, optional): The current number of steps completed. Defaults to -1.
+        num_total_steps (int, optional): The total number of steps to be completed. Defaults to -1.
+        width (int, optional): The width of the log display. Defaults to 80.
+        pad (int, optional): The padding for metric names in the log display. Defaults to 35.
+
+    Returns:
+        Dict[str, Any]: A dictionary containing the logged data, including time elapsed and processed metrics.
+    """
     log_data: Dict[str, Any] = {"time_elapsed": time_elapsed}
-    log_string = f"""{'#' * width}\n"""
+    log_string = f"""{"#" * width}\n"""
     if num_steps >= 0 and num_total_steps > 0:
         log_data["num_steps"] = num_steps
-        title = f" \033[1m Learning steps {num_steps}/{num_total_steps } \033[0m "
-        log_string += f"""{title.center(width, ' ')}\n"""
+        title = f" \033[1m Learning steps {num_steps}/{num_total_steps} \033[0m "
+        log_string += f"""{title.center(width, " ")}\n"""
 
     for key, value in metrics.items():
         if "std" in key:
@@ -130,27 +162,27 @@ def log_metrics(
             "episode_reward" not in metric_name
             and "avg_episode_length" not in metric_name
         ):
-            log_string += f"""{f'{metric_name}:':>{pad}} {value:.4f}\n"""
+            log_string += f"""{f"{metric_name}:":>{pad}} {value:.4f}\n"""
 
     log_string += (
-        f"""{'-' * width}\n""" f"""{'Time elapsed:':>{pad}} {time_elapsed:.1f}\n"""
+        f"""{"-" * width}\n""" f"""{"Time elapsed:":>{pad}} {time_elapsed:.1f}\n"""
     )
     if "eval/episode_reward" in metrics:
         log_string += (
-            f"""{'Mean reward:':>{pad}} {metrics['eval/episode_reward']:.3f}\n"""
+            f"""{"Mean reward:":>{pad}} {metrics["eval/episode_reward"]:.3f}\n"""
         )
     if "eval/avg_episode_length" in metrics:
-        log_string += f"""{'Mean episode length:':>{pad}} {metrics['eval/avg_episode_length']:.3f}\n"""
+        log_string += f"""{"Mean episode length:":>{pad}} {metrics["eval/avg_episode_length"]:.3f}\n"""
 
     if "hang_force" in metrics:
-        log_string += f"""{'Hang force:':>{pad}} {metrics['hang_force']:.3f}\n"""
+        log_string += f"""{"Hang force:":>{pad}} {metrics["hang_force"]:.3f}\n"""
     if "episode_num" in metrics:
-        log_string += f"""{'Episode num:':>{pad}} {metrics['episode_num']}\n"""
+        log_string += f"""{"Episode num:":>{pad}} {metrics["episode_num"]}\n"""
 
     if num_steps > 0 and num_total_steps > 0:
         log_string += (
-            f"""{'Computation:':>{pad}} {(num_steps / time_elapsed ):.1f} steps/s\n"""
-            f"""{'ETA:':>{pad}} {(time_elapsed / num_steps) * (num_total_steps - num_steps):.1f}s\n"""
+            f"""{"Computation:":>{pad}} {(num_steps / time_elapsed):.1f} steps/s\n"""
+            f"""{"ETA:":>{pad}} {(time_elapsed / num_steps) * (num_total_steps - num_steps):.1f}s\n"""
         )
 
     print(log_string)
@@ -159,12 +191,34 @@ def log_metrics(
 
 
 def get_body_mass_attr_range(
-    robot: Robot, body_mass_range: List[float], ee_mass_range: List[float],
-    other_mass_range: List[float], init_hang_force: float, num_envs: int
+    robot: Robot,
+    body_mass_range: List[float],
+    ee_mass_range: List[float],
+    other_mass_range: List[float],
+    init_hang_force: float,
+    num_envs: int,
 ):
+    """Generates a range of body mass attributes for a robot across multiple environments.
+
+    This function modifies the body mass and inertia of a robot model based on specified
+    ranges for different body parts (torso, end-effector, and others) and returns a dictionary
+    containing the updated attributes for each environment.
+
+    Args:
+        robot (Robot): The robot object containing configuration and name.
+        body_mass_range (List[float]): The range of mass deltas for the torso.
+        ee_mass_range (List[float]): The range of mass deltas for the end-effector.
+        other_mass_range (List[float]): The range of mass deltas for other body parts.
+        num_envs (int): The number of environments to generate.
+
+    Returns:
+        Dict[str, jax.Array | npt.NDArray[np.float32]]: A dictionary with keys representing
+        different body mass attributes and values as JAX arrays or NumPy arrays containing
+        the attribute values across all environments.
+    """
+
     suffix = "_hang_scene.xml" if init_hang_force > 0 else "_scene.xml"
     xml_path: str = find_robot_file_path(robot.name, suffix=suffix)
-
     torso_name = "torso"
     ee_name = robot.config["general"]["ee_name"]
 
@@ -252,10 +306,25 @@ def domain_randomize(
     gravity_range: List[float],
     body_mass_attr_range: Optional[Dict[str, jax.Array | npt.NDArray[np.float32]]],
 ) -> Tuple[base.System, base.System]:
+    """Randomizes the physical parameters of a system within specified ranges.
+
+    Args:
+        sys (base.System): The system whose parameters are to be randomized.
+        rng (jax.Array): Random number generator state.
+        friction_range (List[float]): Range for randomizing friction values.
+        damping_range (List[float]): Range for randomizing damping values.
+        armature_range (List[float]): Range for randomizing armature values.
+        frictionloss_range (List[float]): Range for randomizing friction loss values.
+        body_mass_attr_range (Optional[Dict[str, jax.Array | npt.NDArray[np.float32]]]): Optional dictionary specifying ranges for body mass attributes.
+
+    Returns:
+        Tuple[base.System, base.System]: A tuple containing the randomized system and the in_axes configuration for JAX transformations.
+    """
+
     @jax.vmap
     def rand(rng: jax.Array):
-        _, rng_friction, rng_damping, rng_armature, rng_frictionloss, rng_gravity = jax.random.split(
-            rng, 6
+        _, rng_friction, rng_damping, rng_armature, rng_frictionloss, rng_gravity = (
+            jax.random.split(rng, 6)
         )
 
         friction = jax.random.uniform(
@@ -379,6 +448,18 @@ def train(
     run_name: str,
     restore_path: str,
 ):
+    """Trains a reinforcement learning agent using the Proximal Policy Optimization (PPO) algorithm.
+
+    This function sets up the training environment, initializes configurations, and manages the training process, including saving configurations, logging metrics, and handling checkpoints.
+
+    Args:
+        env (MJXEnv): The training environment.
+        eval_env (MJXEnv): The evaluation environment.
+        make_networks_factory (Any): Factory function to create neural network models.
+        train_cfg (PPOConfig): Configuration settings for the PPO training process.
+        run_name (str): Name of the training run, used for organizing results.
+        restore_path (str): Path to restore a previous checkpoint, if any.
+    """
     exp_folder_path = os.path.join("results", run_name)
     os.makedirs(exp_folder_path, exist_ok=True)
 
@@ -444,16 +525,16 @@ def train(
             body_mass_attr_range = get_body_mass_attr_range(
                 env.robot,
                 env.cfg.domain_rand.body_mass_range,
-                env_cfg.domain_rand.ee_mass_range,
-                env_cfg.domain_rand.other_mass_range,
+                env.cfg.domain_rand.ee_mass_range,
+                env.cfg.domain_rand.other_mass_range,
                 env.cfg.hang.init_hang_force,
                 train_cfg.num_envs,
             )
             eval_body_mass_attr_range = get_body_mass_attr_range(
                 eval_env.robot,
                 env.cfg.domain_rand.body_mass_range,
-                env_cfg.domain_rand.ee_mass_range,
-                env_cfg.domain_rand.other_mass_range,
+                env.cfg.domain_rand.ee_mass_range,
+                env.cfg.domain_rand.other_mass_range,
                 env.cfg.hang.init_hang_force,
                 train_cfg.num_envs,
             )
@@ -559,6 +640,15 @@ def evaluate(
     num_steps: int = 1000,
     log_every: int = 100,
 ):
+    """Evaluates a policy in a given environment using a specified network factory and logs the results.
+
+    Args:
+        env (MJXEnv): The environment in which the policy is evaluated.
+        make_networks_factory (Any): A factory function to create network architectures for the policy.
+        run_name (str): The name of the run, used for saving and loading policy parameters.
+        num_steps (int, optional): The number of steps to evaluate the policy. Defaults to 1000.
+        log_every (int, optional): The frequency (in steps) at which metrics are logged. Defaults to 100.
+    """
     ppo_network = make_networks_factory(
         env.obs_size, env.privileged_obs_size, env.action_size
     )
@@ -604,8 +694,18 @@ def evaluate(
         print("Failed to render the video. Skipped.")
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run the walking simulation.")
+def main(args=None):
+    """Trains or evaluates a policy for a specified robot and environment using PPO.
+
+    This function sets up the training or evaluation of a policy for a robot in a specified environment. It parses command-line arguments to configure the robot, environment, evaluation settings, and other parameters. It then loads configuration files, binds any overridden parameters, and initializes the environment and robot. Depending on the arguments, it either trains a new policy or evaluates an existing one.
+
+    Args:
+        args (list, optional): List of command-line arguments. If None, arguments are parsed from sys.argv.
+
+    Raises:
+        FileNotFoundError: If a specified gin configuration file or evaluation run is not found.
+    """
+    parser = argparse.ArgumentParser(description="Train the mjx policy.")
     parser.add_argument(
         "--robot",
         type=str,
@@ -755,3 +855,7 @@ if __name__ == "__main__":
     else:
         train(env, eval_env, make_networks_factory, train_cfg, run_name, args.restore)
         evaluate(test_env, make_networks_factory, run_name)
+
+
+if __name__ == "__main__":
+    main()

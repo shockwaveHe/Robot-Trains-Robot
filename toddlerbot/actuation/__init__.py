@@ -5,13 +5,18 @@ from typing import Dict, List
 
 @dataclass
 class JointState:
+    """Data class for storing joint state information"""
+
     time: float
     pos: float
     vel: float = 0.0
+    cur: float = 0.0
     tor: float = 0.0
 
 
 class BaseController(ABC):
+    """Base class for motor controllers"""
+
     @abstractmethod
     def __init__(self):
         pass

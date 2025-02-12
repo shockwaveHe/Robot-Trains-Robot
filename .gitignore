@@ -1,6 +1,9 @@
 ### Project ###
 .vscode/
-results
+datasets/
+!toddlerbot/manipulation/datasets
+plots/
+results/
 scripts/run_*_remote.sh
 scripts/run_*_remote.py
 wandb/
@@ -177,16 +180,6 @@ standard_bot
 .Zone.Identifier
 *.TXT
 *.gitkeep
-
 # Datasets
 **/.DS_Store
-datasets/*.lz4
-archived
-test_*
-run_toddler.py
-mujoco_tutorial.ipynb
-key_frames
-ref_motion
-datasets/*.lz4
-toddlerbot/policies/checkpoints/teleop_model*
-*.pkl
+tests

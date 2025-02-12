@@ -1,0 +1,10 @@
+{
+    "documentId": "ff1e767f256dd9c8abf2206a",
+    "outputFormat": "urdf",
+    "assemblyName": "toddlerbot_teleop",
+    "robotName": "toddlerbot_teleop",
+    "mergeSTLs": "all",
+    "mergeSTLsCollisions": true,
+    "simplifySTLs": "all",
+    "maxSTLSize": 1
+}

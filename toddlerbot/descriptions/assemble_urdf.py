@@ -7,6 +7,8 @@ from typing import List
 
 @dataclass
 class URDFConfig:
+    """Data class for storing URDF configuration parameters."""
+
     robot_name: str
     body_name: str
     arm_name: str
@@ -14,6 +16,14 @@ class URDFConfig:
 
 
 def find_root_link_name(root: ET.Element):
+    """Updates link names in `part_root` to ensure uniqueness in `body_root` and updates all references.
+
+    Args:
+        root (ET.Element): The root XML element of the part URDF being merged.
+
+    Returns:
+        str: The new unique name for the root link.
+    """
     child_links = {joint.find("child").get("link") for joint in root.findall("joint")}  # type: ignore
     all_links = {link.get("name") for link in root.findall("link")}
 
@@ -30,11 +40,11 @@ def update_link_names_and_references(body_root: ET.Element, part_root: ET.Elemen
     Updates link names in part_root to ensure uniqueness in body_root and updates all references.
 
     Args:
-    - body_root: The root XML element of the main URDF body.
-    - part_root: The root XML element of the part URDF being merged.
+        body_root: The root XML element of the main URDF body.
+        part_root: The root XML element of the part URDF being merged.
 
     Returns:
-    - None: The function directly modifies part_root in-place.
+        None: The function directly modifies part_root in-place.
     """
     existing_links = {link.attrib["name"] for link in body_root.findall("link")}
 
@@ -70,6 +80,16 @@ def update_link_names_and_references(body_root: ET.Element, part_root: ET.Elemen
 
 
 def assemble_urdf(urdf_config: URDFConfig):
+    """Assembles a URDF file for a robot based on the provided configuration.
+
+    This function constructs a complete URDF (Unified Robot Description Format) file by combining a base body URDF with optional arm and leg components specified in the configuration. It updates mesh file paths and ensures the correct structure for simulation.
+
+    Args:
+        urdf_config (URDFConfig): Configuration object containing the names of the robot, body, arms, and legs to be assembled.
+
+    Raises:
+        ValueError: If a source URDF for a specified link cannot be found.
+    """
     # Parse the target URDF
     description_dir = os.path.join("toddlerbot", "descriptions")
     assembly_dir = os.path.join(description_dir, "assemblies")
@@ -164,7 +184,11 @@ def assemble_urdf(urdf_config: URDFConfig):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Process the urdf.")
+    """Parses command-line arguments to configure and assemble a URDF (Unified Robot Description Format) file.
+
+    This function sets up an argument parser to accept parameters for robot configuration, including the robot's name, body, arm, and leg components. It then calls the `assemble_urdf` function with the parsed arguments to generate the URDF file.
+    """
+    parser = argparse.ArgumentParser(description="Assemble the urdf.")
     parser.add_argument(
         "--robot",
         type=str,

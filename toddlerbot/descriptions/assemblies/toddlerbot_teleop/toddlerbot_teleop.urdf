@@ -1,0 +1,90 @@
+<?xml version="1.0" ?><robot name="toddlerbot_teleop">  
+  <link name="torso">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/torso_visual.stl"/>        
+      </geometry>      
+      <material name="torso_material">        
+        <color rgba="0.63866204066417398 0.79042612983052984443 0.89591918647189450198 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/torso_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="-0.0025146157670445038607 -0.003462452547209261388 0.0655293959220907829" rpy="0 0 0"/>      
+      <mass value="1.085065963101202513"/>      
+      <inertia ixx="0.0028272039396820131119" ixy="7.4126802941129710614e-05" ixz="1.8774159564661221055e-05" iyy="0.002249597677268255682" iyz="-2.9332579430688765992e-05" izz="0.0023020777581455828011"/>      
+    </inertial>    
+  </link>  
+
+  <link name="left_arm_teleop">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_arm_teleop_visual.stl"/>        
+      </geometry>      
+      <material name="left_arm_teleop_material">        
+        <color rgba="0.72664946328722046509 0.83742241919811932771 0.9009251939461877523 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/left_arm_teleop_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="-0.00014075053043836245636 0.089050560746595022743 0.033791705246081417402" rpy="0 0 0"/>      
+      <mass value="0.43420014698257969332"/>      
+      <inertia ixx="0.0020359349426736844321" ixy="-8.4996609788529357328e-06" ixz="8.9716478000574520916e-08" iyy="0.00014184937718412328001" iyz="9.6209868953748555755e-05" izz="0.0019974400108921774172"/>      
+    </inertial>    
+  </link>  
+
+  <joint name="left_sho_pitch" type="revolute">    
+    <origin xyz="-0.0035000000000004762545 0.067000000000000961564 0.10423651076281736927" rpy="-1.5707963267949092145 6.9112556635015512211e-16 3.4723733359249325577e-14"/>    
+    <parent link="torso"/>    
+    <child link="left_arm_teleop"/>    
+    <axis xyz="0 0 1"/>    
+    <limit effort="1" velocity="20" lower="-3.141592653589793116" upper="1.570796326794896558"/>    
+    <joint_properties friction="0.0"/>    
+  </joint>  
+
+  <link name="right_arm_teleop">    
+    <visual>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/right_arm_teleop_visual.stl"/>        
+      </geometry>      
+      <material name="right_arm_teleop_material">        
+        <color rgba="0.72664946328722035407 0.83742241919811932771 0.9009251939461877523 1.0"/>        
+      </material>      
+    </visual>    
+    <collision>      
+      <origin xyz="0 0 0" rpy="0 -0 0"/>      
+      <geometry>        
+        <mesh filename="package:///meshes/right_arm_teleop_collision.stl"/>        
+      </geometry>      
+    </collision>    
+    <inertial>      
+      <origin xyz="-0.00010323747753076321064 0.089050560746590595729 0.033791705265583518725" rpy="0 0 0"/>      
+      <mass value="0.43420014698257969332"/>      
+      <inertia ixx="0.0020359349426143217611" ixy="-1.0407004320276587653e-05" ixz="1.4658996238953558853e-07" iyy="0.00014185335124391491987" iyz="9.6209867943119488885e-05" izz="0.0019974439850108322361"/>      
+    </inertial>    
+  </link>  
+
+  <joint name="right_sho_pitch" type="revolute">    
+    <origin xyz="-0.0034999999999987077039 -0.067000000000001072586 0.10423651076281723049" rpy="-1.5707963267948896746 -1.3979005215161089346e-14 -3.141592653589758033"/>    
+    <parent link="torso"/>    
+    <child link="right_arm_teleop"/>    
+    <axis xyz="0 0 1"/>    
+    <limit effort="1" velocity="20" lower="-1.570796326794896558" upper="3.141592653589793116"/>    
+    <joint_properties friction="0.0"/>    
+  </joint>  
+
+
+</robot>

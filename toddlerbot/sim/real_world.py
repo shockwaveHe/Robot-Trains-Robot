@@ -1,5 +1,4 @@
 import platform
-
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List
 
@@ -9,17 +8,27 @@ from toddlerbot.actuation import JointState
 from toddlerbot.sim import BaseSim, Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_ports
-# from toddlerbot.utils.misc_utils import profile
 
 
 class RealWorld(BaseSim):
+    """Real-world robot interface class."""
+
     def __init__(self, robot: Robot):
+        """Initializes the real-world robot interface.
+
+        Args:
+            robot (Robot): An instance of the Robot class containing configuration details.
+
+        Attributes:
+            has_imu (bool): Indicates if the robot is equipped with an Inertial Measurement Unit (IMU).
+            has_dynamixel (bool): Indicates if the robot uses Dynamixel motors.
+            negated_motor_names (List[str]): A list of motor names that require direction negation due to URDF configuration issues.
+        """
         super().__init__("real_world")
         self.robot = robot
 
         self.has_imu = self.robot.config["general"]["has_imu"]
         self.has_dynamixel = self.robot.config["general"]["has_dynamixel"]
-        self.has_sunny_sky = self.robot.config["general"]["has_sunny_sky"]
 
         # TODO: Fix the mate directions in the URDF and remove the negated_motor_names
         self.negated_motor_names: List[str] = [
@@ -37,6 +46,10 @@ class RealWorld(BaseSim):
         self.initialize()
 
     def initialize(self) -> None:
+        """Initializes the robot's components, including IMU and Dynamixel controllers, if available.
+
+        This method sets up a thread pool executor to initialize the IMU and Dynamixel controllers asynchronously. It checks the operating system type to determine the appropriate port description for Dynamixel communication. If the robot is configured with an IMU, it initializes the IMU in a separate thread. Similarly, if the robot has Dynamixel actuators, it configures and initializes the Dynamixel controller using the specified port, baud rate, and control parameters. After initialization, it retrieves the results of the asynchronous operations and assigns them to the respective attributes. Finally, it performs a series of observations to ensure the components are functioning correctly.
+        """
         self.executor = ThreadPoolExecutor()
 
         os_type = platform.system()
@@ -49,7 +62,7 @@ class RealWorld(BaseSim):
 
         future_dynamixel = None
         if self.has_dynamixel:
-            from toddlerbot.actuation.dynamixel.dynamixel_control import (
+            from toddlerbot.actuation.dynamixel_control import (
                 DynamixelConfig,
                 DynamixelController,
             )
@@ -80,36 +93,6 @@ class RealWorld(BaseSim):
                 DynamixelController, dynamixel_config, dynamixel_ids
             )
 
-        future_sunny_sky = None
-        if self.has_sunny_sky:
-            from toddlerbot.actuation.sunny_sky.sunny_sky_control import (
-                SunnySkyConfig,
-                SunnySkyController,
-            )
-
-            sunny_sky_ports: List[str] = find_ports("Feather")
-
-            sunny_sky_ids = self.robot.get_joint_attrs("type", "sunny_sky", "id")
-            sunny_sky_config = SunnySkyConfig(
-                port=sunny_sky_ports[0],
-                kP=self.robot.get_joint_attrs("type", "sunny_sky", "kp_real"),
-                kD=self.robot.get_joint_attrs("type", "sunny_sky", "kd_real"),
-                i_ff=self.robot.get_joint_attrs("type", "sunny_sky", "i_ff_real"),
-                gear_ratio=self.robot.get_joint_attrs(
-                    "type", "sunny_sky", "gear_ratio"
-                ),
-                joint_limit=self.robot.get_joint_attrs(
-                    "type", "sunny_sky", "joint_limit"
-                ),
-                init_pos=self.robot.get_joint_attrs("type", "sunny_sky", "init_pos"),
-            )
-            future_sunny_sky = self.executor.submit(
-                SunnySkyController, sunny_sky_config, sunny_sky_ids
-            )
-
-        # Assign the results of futures to the attributes
-        if future_sunny_sky is not None:
-            self.sunny_sky_controller = future_sunny_sky.result()
         if future_dynamixel is not None:
             self.dynamixel_controller = future_dynamixel.result()
         if future_imu is not None:
@@ -124,18 +107,20 @@ class RealWorld(BaseSim):
 
     # @profile()
     def process_motor_reading(self, results: Dict[str, Dict[int, JointState]]) -> Obs:
+        """Processes motor readings and returns an observation object.
+
+        Args:
+            results (Dict[str, Dict[int, JointState]]): A dictionary containing motor state data, indexed by motor type and ID.
+
+        Returns:
+            Obs: An observation object containing the current time, motor positions, velocities, and torques.
+        """
         motor_state_dict_unordered: Dict[str, JointState] = {}
         if self.has_dynamixel:
             dynamixel_state = results["dynamixel"]
             for motor_name in self.robot.get_joint_attrs("type", "dynamixel"):
                 motor_id = self.robot.config["joints"][motor_name]["id"]
                 motor_state_dict_unordered[motor_name] = dynamixel_state[motor_id]
-
-        if self.has_sunny_sky:
-            sunny_sky_state = results["sunny_sky"]
-            for motor_name in self.robot.get_joint_attrs("type", "sunny_sky"):
-                motor_id = self.robot.config["joints"][motor_name]["id"]
-                motor_state_dict_unordered[motor_name] = sunny_sky_state[motor_id]
 
         time_curr = 0.0
         motor_pos = np.zeros(len(self.robot.motor_ordering), dtype=np.float32)
@@ -169,19 +154,23 @@ class RealWorld(BaseSim):
         return self.get_observation()
 
     # @profile()
-    def get_observation(self, retries: int = 0) -> Obs:
+    def get_observation(self, retries: int = 0):
+        """Retrieve and process sensor observations asynchronously.
+
+        This method collects data from available sensors, such as Dynamixel motors and IMU, using asynchronous calls. It processes the collected data to generate a comprehensive observation object.
+
+        Args:
+            retries (int, optional): The number of retry attempts for obtaining motor state data. Defaults to 0.
+
+        Returns:
+            An observation object containing processed sensor data, including motor states and, if available, IMU angular velocity and Euler angles.
+        """
         results: Dict[str, Any] = {}
         futures: Dict[str, Any] = {}
         if self.has_dynamixel:
             # results["dynamixel"] = self.dynamixel_controller.get_motor_state(retries)
             futures["dynamixel"] = self.executor.submit(
                 self.dynamixel_controller.get_motor_state, retries
-            )
-
-        if self.has_sunny_sky:
-            # results["sunny_sky"] = self.sunny_sky_controller.get_motor_state()
-            futures["sunny_sky"] = self.executor.submit(
-                self.sunny_sky_controller.get_motor_state
             )
 
         if self.has_imu:
@@ -207,9 +196,13 @@ class RealWorld(BaseSim):
 
     # @profile()
     def set_motor_target(self, motor_angles: Dict[str, float]):
-        # Directions are tuned to match the assembly of the robot.
-        # joints_config = self.robot.config["joints"]
+        """Sets the target angles for the robot's motors, adjusting for any negated motor directions and updating the positions of Dynamixel motors if present.
 
+        Args:
+            motor_angles (Dict[str, float]): A dictionary mapping motor names to their target angles in degrees.
+        """
+
+        # Directions are tuned to match the assembly of the robot.
         motor_angles_updated: Dict[str, float] = {}
         for name, angle in motor_angles.items():
             if name in self.negated_motor_names:
@@ -222,20 +215,17 @@ class RealWorld(BaseSim):
                 motor_angles_updated[k]
                 for k in self.robot.get_joint_attrs("type", "dynamixel")
             ]
-            self.executor.submit(
-                self.dynamixel_controller.set_pos, dynamixel_pos, interp=False
-            )
-
-        if self.has_sunny_sky:
-            sunny_sky_pos = [
-                motor_angles_updated[k]
-                for k in self.robot.get_joint_attrs("type", "sunny_sky")
-            ]
-            self.executor.submit(
-                self.sunny_sky_controller.set_pos, sunny_sky_pos, interp=False
-            )
+            self.executor.submit(self.dynamixel_controller.set_pos, dynamixel_pos)
 
     def set_motor_kps(self, motor_kps: Dict[str, float]):
+        """Sets the proportional gain (Kp) values for motors of type 'dynamixel'.
+
+        If the robot has Dynamixel motors, this method updates their Kp values based on the provided dictionary. If a motor's Kp is not specified in the dictionary, it defaults to the value in the robot's configuration.
+
+        Args:
+            motor_kps (Dict[str, float]): A dictionary mapping motor names to their desired Kp values.
+        """
+
         if self.has_dynamixel:
             dynamixel_kps: List[float] = []
             for k in self.robot.get_joint_attrs("type", "dynamixel"):
@@ -248,12 +238,15 @@ class RealWorld(BaseSim):
 
     def is_done(self, obs):
         return super().is_done(obs)
-    
+
     def close(self):
+        """Closes all active components and shuts down the executor.
+
+        This method checks for active components such as Dynamixel motors and IMU sensors. If they are present, it submits tasks to close them using the executor. Finally, it shuts down the executor, ensuring all submitted tasks are completed before termination.
+        """
+
         if self.has_dynamixel:
             self.executor.submit(self.dynamixel_controller.close_motors)
-        if self.has_sunny_sky:
-            self.executor.submit(self.sunny_sky_controller.close_motors)
         if self.has_imu:
             self.executor.submit(self.imu.close)
 

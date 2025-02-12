@@ -11,6 +11,8 @@ from toddlerbot.utils.math_utils import quat2euler
 
 
 class ZMPWalk:
+    """A class for generating ZMP-based walking trajectories for a robot."""
+
     def __init__(
         self,
         robot: Robot,
@@ -21,6 +23,17 @@ class ZMPWalk:
         control_cost_Q: float = 1.0,
         control_cost_R: float = 1e-1,
     ):
+        """Initializes the trajectory planner for a robot, precomputing and storing trajectories for a range of commands.
+
+        Args:
+            robot (Robot): The robot instance for which the trajectories are being planned.
+            cycle_time (float): The time duration of one complete cycle of the robot's movement.
+            single_double_ratio (float, optional): The ratio of single support phase to double support phase. Defaults to 2.0.
+            foot_step_height (float, optional): The height of the foot step during the robot's movement. Defaults to 0.05.
+            control_dt (float, optional): The time step for control updates. Defaults to 0.02.
+            control_cost_Q (float, optional): The weight for the control cost in the Q matrix. Defaults to 1.0.
+            control_cost_R (float, optional): The weight for the control cost in the R matrix. Defaults to 0.1.
+        """
         self.robot = robot
         self.cycle_time = cycle_time
         self.double_support_phase = cycle_time / 2 / (single_double_ratio + 1)
@@ -52,8 +65,18 @@ class ZMPWalk:
         command_range: List[List[float]] = [[-0.2, 0.4], [-0.2, 0.2], [-0.8, 0.8]],
         interval: float = 0.02,
     ):
-        """
-        Precompute and store the trajectories for a range of commands.
+        """Builds a lookup table for command references and associated data.
+
+        Args:
+            command_range (List[List[float]]): A list of command ranges for each dimension, where each range is defined by a start and stop value. Defaults to [[-0.2, 0.4], [-0.2, 0.2], [-0.8, 0.8]].
+            interval (float): The interval at which to sample command values within each range. Defaults to 0.02.
+
+        Returns:
+            Tuple[List[Tuple[float, ...]], List[ArrayType], List[ArrayType], List[ArrayType]]: A tuple containing:
+                - A list of tuples representing the command keys.
+                - A list of arrays for the center of mass reference data.
+                - A list of arrays for the leg joint position reference data.
+                - A list of arrays for the stance mask reference data.
         """
         lookup_keys: List[Tuple[float, ...]] = []
         com_ref_list: List[ArrayType] = []
@@ -106,6 +129,22 @@ class ZMPWalk:
         total_time: float = 20.0,
         rotation_radius: float = 0.1,
     ) -> Tuple[ArrayType, ArrayType, ArrayType, ArrayType]:
+        """Plans the trajectory for a bipedal robot's movement based on the given path and command.
+
+        Args:
+            path_pos (ArrayType): The initial position of the path as a 2D array.
+            path_quat (ArrayType): The initial orientation of the path in quaternion form.
+            command (ArrayType): The desired movement command, including translation and rotation.
+            total_time (float, optional): The total time for the planned movement. Defaults to 20.0.
+            rotation_radius (float, optional): The radius for rotation movements. Defaults to 0.1.
+
+        Returns:
+            Tuple[ArrayType, ArrayType, ArrayType, ArrayType]: A tuple containing:
+                - The desired Zero Moment Points (ZMPs) as an array.
+                - The trajectory of the center of mass (CoM) as an array.
+                - The reference positions for leg joints as an array.
+                - The stance mask reference indicating foot contact states as an array.
+        """
         path_euler = quat2euler(path_quat)
         pose_curr = np.array(
             [path_pos[0], path_pos[1], path_euler[2]], dtype=np.float32
@@ -279,6 +318,15 @@ class ZMPWalk:
     def compute_foot_trajectories(
         self, time_steps: ArrayType, footsteps: List[ArrayType]
     ) -> Tuple[ArrayType, ...]:
+        """Compute the trajectories for the left and right foot positions and orientations, as well as the torso orientation and stance mask over a series of time steps.
+
+        Args:
+            time_steps (ArrayType): An array of time steps at which the trajectories are computed.
+            footsteps (List[ArrayType]): A list of arrays representing the footstep positions and orientations, with each array containing the x, y, and orientation values.
+
+        Returns:
+            Tuple[ArrayType, ...]: A tuple containing arrays for the left foot position trajectory, left foot orientation trajectory, right foot position trajectory, right foot orientation trajectory, torso orientation trajectory, and stance mask trajectory.
+        """
         offset = np.array(
             [
                 -np.sin(footsteps[0][2]) * self.foot_to_com_y,
@@ -424,6 +472,20 @@ class ZMPWalk:
         right_foot_ori_traj: ArrayType,
         com_pose_traj: ArrayType,
     ):
+        """Solves the inverse kinematics (IK) for a bipedal robot's legs based on foot and center of mass (COM) trajectories.
+
+        This function computes the joint positions for the left and right legs by adjusting the foot position and orientation trajectories relative to the COM trajectory. It then uses inverse kinematics to determine the necessary joint angles for achieving the desired foot trajectories.
+
+        Args:
+            left_foot_pos_traj (ArrayType): Trajectory of the left foot positions.
+            left_foot_ori_traj (ArrayType): Trajectory of the left foot orientations.
+            right_foot_pos_traj (ArrayType): Trajectory of the right foot positions.
+            right_foot_ori_traj (ArrayType): Trajectory of the right foot orientations.
+            com_pose_traj (ArrayType): Trajectory of the center of mass poses.
+
+        Returns:
+            ArrayType: Combined joint position trajectories for both left and right legs.
+        """
         com_pos_traj = np.hstack(
             [com_pose_traj[:, :2], np.zeros((com_pose_traj.shape[0], 1))]
         )
@@ -469,6 +531,16 @@ class ZMPWalk:
         target_foot_ori: ArrayType,
         side: str = "left",
     ) -> ArrayType:
+        """Calculates the inverse kinematics for a robot's foot, determining the necessary joint angles to achieve a specified foot position and orientation.
+
+        Args:
+            target_foot_pos (ArrayType): The target position of the foot in 3D space, specified as an array with shape (n, 3), where each row represents the x, y, and z coordinates.
+            target_foot_ori (ArrayType): The target orientation of the foot, specified as an array with shape (n, 3), where each row represents the roll, pitch, and yaw angles.
+            side (str, optional): The side of the robot for which the calculations are performed. Defaults to "left".
+
+        Returns:
+            ArrayType: An array of joint angles required to achieve the specified foot position and orientation, with shape (n, 6), where each row contains the angles for hip pitch, hip roll, hip yaw, knee pitch, ankle roll, and ankle pitch.
+        """
         target_x = target_foot_pos[:, 0]
         target_y = target_foot_pos[:, 1]
         target_z = target_foot_pos[:, 2]

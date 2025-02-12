@@ -1,0 +1,19 @@
+﻿Designator,Footprint,Quantity,Value,LCSC Part #
+H1,MountingHole_3.2mm_M3,1,MountingHole,
+H3,MountingHole_3.2mm_M3,1,SpacerHole,
+J1,PinSocket_1x04_P2.54mm_Vertical,1,Conn_01x04,C5116530
+J10,JST_EH_B3B-EH-A_1x03_P2.50mm_Vertical,1,TTL Out5,C160259
+J11,JST_EH_B3B-EH-A_1x03_P2.50mm_Vertical,1,TTL Out6,C160259
+J12,TerminalBlock_MetzConnect_Type011_RT05502HBWC_1x02_P5.00mm_Horizontal,1,Switch Terminal,C5188440
+J13,PinSocket_2x06_P2.54mm_Vertical,1,Conn_02x06_Buck2,C2902689
+J14,PinSocket_2x06_P2.54mm_Vertical,1,Conn_02x06_Buck1,C2902689
+J2,AMASS_XT30UPB-F_1x02_P5.0mm_Vertical,1,Power Out [Jetson],C108769
+J3,AMASS_XT30UPB-F_1x02_P5.0mm_Vertical,1,Power Out [Extra1],C108769
+J4,AMASS_XT30UPB-F_1x02_P5.0mm_Vertical,1,Power Out[Extra2],C108769
+J5,JST_EH_B3B-EH-A_1x03_P2.50mm_Vertical,1,TTL Input Socket,C160259
+J6,JST_EH_B3B-EH-A_1x03_P2.50mm_Vertical,1,TTL Out1,C160259
+J7,JST_EH_B3B-EH-A_1x03_P2.50mm_Vertical,1,TTL Out2,C160259
+J8,JST_EH_B3B-EH-A_1x03_P2.50mm_Vertical,1,TTL Out3,C160259
+J9,JST_EH_B3B-EH-A_1x03_P2.50mm_Vertical,1,TTL Out4,C160259
+JP1,SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm,1,12V jumper,
+U1,XT30UPB-M,1,XT30UPB-M,C428721

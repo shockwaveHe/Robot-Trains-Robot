@@ -15,6 +15,18 @@ def get_random_sine_signal_config(
     frequency_range: List[float],
     amplitude_range: List[float],
 ):
+    """Generates a random sinusoidal signal configuration based on specified parameters.
+
+    Args:
+        duration (float): The total duration of the signal in seconds.
+        control_dt (float): The time step for signal generation.
+        mean (float): The mean value around which the sinusoidal signal oscillates.
+        frequency_range (List[float]): A list containing the minimum and maximum frequency values for the signal.
+        amplitude_range (List[float]): A list containing the minimum and maximum amplitude values for the signal.
+
+    Returns:
+        Tuple[ArrayType, ArrayType]: A tuple containing the time array and the generated sinusoidal signal array.
+    """
     frequency = np.random.uniform(*frequency_range)
     amplitude = np.random.uniform(*amplitude_range)
 
@@ -30,8 +42,13 @@ def get_random_sine_signal_config(
 
 
 def get_sine_signal(sine_signal_config: Dict[str, float]):
-    """
-    Generates a sinusoidal signal based on the given parameters.
+    """Generate a sine signal based on the provided configuration.
+
+    Args:
+        sine_signal_config (Dict[str, float]): Configuration dictionary containing parameters for the sine signal, such as amplitude, frequency, and phase.
+
+    Returns:
+        np.ndarray: Array representing the generated sine signal.
     """
     t = np.linspace(
         0,
@@ -56,6 +73,23 @@ def get_chirp_signal(
     decay_rate: float,
     method: str = "linear",  # "linear", "quadratic", "logarithmic", etc.
 ) -> Tuple[ArrayType, ArrayType]:
+    """Generate a chirp signal over a specified duration with varying frequency and amplitude.
+
+    Args:
+        duration: Total duration of the chirp signal in seconds.
+        control_dt: Time step for the signal generation.
+        mean: Mean value of the signal.
+        initial_frequency: Starting frequency of the chirp in Hz.
+        final_frequency: Ending frequency of the chirp in Hz.
+        amplitude: Amplitude of the chirp signal.
+        decay_rate: Rate at which the amplitude decays over time.
+        method: Method of frequency variation, e.g., "linear", "quadratic", "logarithmic".
+
+    Returns:
+        A tuple containing:
+        - Time array for the chirp signal.
+        - Generated chirp signal array.
+    """
     t = np.linspace(
         0, duration, int(duration / control_dt), endpoint=False, dtype=np.float32
     )
@@ -105,6 +139,15 @@ def round_floats(obj: Any, precision: int = 6) -> Any:
 
 
 def round_to_sig_digits(x: float, digits: int):
+    """Round a floating-point number to a specified number of significant digits.
+
+    Args:
+        x: The number to be rounded.
+        digits: The number of significant digits to round to.
+
+    Returns:
+        The number rounded to the specified number of significant digits.
+    """
     if x == 0.0:
         return 0.0  # Zero is zero in any significant figure
     return round(x, digits - int(math.floor(math.log10(abs(x)))) - 1)
@@ -255,7 +298,7 @@ def quat2mat(quat: ArrayType, order: str = "wxyz") -> ArrayType:
     return mat
 
 
-def euler2mat(euler: ArrayType) -> ArrayType:
+def euler2mat(euler: ArrayType, order: str = "zyx") -> ArrayType:
     """
     Convert Euler angles (roll, pitch, yaw) to a 3x3 rotation matrix.
 
@@ -279,12 +322,27 @@ def euler2mat(euler: ArrayType) -> ArrayType:
 
     R_yaw = np.array([[cy, -sy, 0], [sy, cy, 0], [0, 0, 1]])
 
-    # Combined rotation matrix
-    R = R_yaw @ R_pitch @ R_roll
+    if order == "xyz":
+        R = R_roll @ R_pitch @ R_yaw
+    elif order == "xzy":
+        R = R_roll @ R_yaw @ R_pitch
+    elif order == "yxz":
+        R = R_pitch @ R_roll @ R_yaw
+    elif order == "yzx":
+        R = R_pitch @ R_yaw @ R_roll
+    elif order == "zxy":
+        R = R_yaw @ R_roll @ R_pitch
+    elif order == "zyx":
+        R = R_yaw @ R_pitch @ R_roll
+    else:
+        raise ValueError(
+            "Invalid order. Must be one of 'xyz', 'xzy', 'yxz', 'yzx', 'zxy', 'zyx'."
+        )
+
     return R
 
 
-def mat2euler(mat: ArrayType) -> ArrayType:
+def mat2euler(mat: ArrayType, order: str = "zyx") -> ArrayType:
     """
     Convert a 3x3 rotation matrix to Euler angles (roll, pitch, yaw).
 
@@ -294,36 +352,78 @@ def mat2euler(mat: ArrayType) -> ArrayType:
     Returns:
         Euler angles as [roll, pitch, yaw].
     """
-    # Check for gimbal lock
-    if np.isclose(mat[2, 0], -1.0):
-        pitch = np.pi / 2
-        roll = np.arctan2(mat[0, 1], mat[0, 2])
-        yaw = 0
-    elif np.isclose(mat[2, 0], 1.0):
-        pitch = -np.pi / 2
-        roll = np.arctan2(-mat[0, 1], -mat[0, 2])
-        yaw = 0
+    if order == "zyx":
+        # ZYX order (yaw, pitch, roll)
+        if np.isclose(mat[2, 0], -1.0):
+            # Gimbal lock case (pitch = 90 degrees)
+            pitch = np.pi / 2
+            roll = np.arctan2(mat[0, 1], mat[0, 2])
+            yaw = 0
+        elif np.isclose(mat[2, 0], 1.0):
+            # Gimbal lock case (pitch = -90 degrees)
+            pitch = -np.pi / 2
+            roll = np.arctan2(-mat[0, 1], -mat[0, 2])
+            yaw = 0
+        else:
+            # General case
+            pitch = np.arcsin(-mat[2, 0])
+            roll = np.arctan2(mat[2, 1] / np.cos(pitch), mat[2, 2] / np.cos(pitch))
+            yaw = np.arctan2(mat[1, 0] / np.cos(pitch), mat[0, 0] / np.cos(pitch))
+
+    elif order == "xyz":
+        # XYZ order (roll, pitch, yaw)
+        if np.isclose(mat[0, 2], -1.0):
+            # Gimbal lock case (pitch = 90 degrees)
+            pitch = np.pi / 2
+            yaw = np.arctan2(mat[1, 0], mat[1, 1])
+            roll = 0
+        elif np.isclose(mat[0, 2], 1.0):
+            # Gimbal lock case (pitch = -90 degrees)
+            pitch = -np.pi / 2
+            yaw = np.arctan2(-mat[1, 0], -mat[1, 1])
+            roll = 0
+        else:
+            # General case
+            pitch = np.arcsin(mat[0, 2])
+            yaw = np.arctan2(-mat[0, 1] / np.cos(pitch), mat[0, 0] / np.cos(pitch))
+            roll = np.arctan2(-mat[1, 2] / np.cos(pitch), mat[2, 2] / np.cos(pitch))
+
     else:
-        pitch = np.arcsin(-mat[2, 0])
-        roll = np.arctan2(mat[2, 1] / np.cos(pitch), mat[2, 2] / np.cos(pitch))
-        yaw = np.arctan2(mat[1, 0] / np.cos(pitch), mat[0, 0] / np.cos(pitch))
+        raise ValueError("Invalid order. Supported orders are 'zyx' and 'xyz'.")
 
     return np.array([roll, pitch, yaw])
 
 
 def quat_inv(quat: ArrayType, order: str = "wxyz") -> ArrayType:
-    """Compute the inverse of a quaternion."""
+    """Calculates the inverse of a quaternion.
+
+    Args:
+        quat (ArrayType): A quaternion represented as an array of four elements.
+        order (str, optional): The order of the quaternion components. Either "wxyz" or "xyzw". Defaults to "wxyz".
+
+    Returns:
+        ArrayType: The inverse of the input quaternion.
+    """
     if order == "xyzw":
         x, y, z, w = quat
     else:
         w, x, y, z = quat
 
     norm = w**2 + x**2 + y**2 + z**2
-    return np.array([w, -x, -y, -z]) / norm
+    return np.array([w, -x, -y, -z]) / np.sqrt(norm)
 
 
 def quat_mult(q1: ArrayType, q2: ArrayType, order: str = "wxyz") -> ArrayType:
-    """Multiply two quaternions."""
+    """Multiplies two quaternions and returns the resulting quaternion.
+
+    Args:
+        q1 (ArrayType): The first quaternion, represented as an array of four elements.
+        q2 (ArrayType): The second quaternion, represented as an array of four elements.
+        order (str, optional): The order of quaternion components, either "wxyz" or "xyzw". Defaults to "wxyz".
+
+    Returns:
+        ArrayType: The resulting quaternion from the multiplication, in the specified order.
+    """
     if order == "wxyz":
         w1, x1, y1, z1 = q1
         w2, x2, y2, z2 = q2
@@ -339,7 +439,15 @@ def quat_mult(q1: ArrayType, q2: ArrayType, order: str = "wxyz") -> ArrayType:
 
 
 def rotate_vec(vector: ArrayType, quat: ArrayType):
-    """Rotate a vector by a quaternion."""
+    """Rotate a vector using a quaternion.
+
+    Args:
+        vector (ArrayType): The vector to be rotated.
+        quat (ArrayType): The quaternion representing the rotation.
+
+    Returns:
+        ArrayType: The rotated vector.
+    """
     v = np.array([0.0] + list(vector))
     q_inv = quat_inv(quat)
     v_rotated = quat_mult(quat_mult(quat, v), q_inv)
@@ -351,6 +459,18 @@ def exponential_moving_average(
     current_value: ArrayType | float,
     previous_filtered_value: Optional[ArrayType | float] = None,
 ) -> ArrayType | float:
+    """Calculate the exponential moving average of a current value.
+
+    This function computes the exponential moving average (EMA) for a given current value using a specified smoothing factor, `alpha`. If a previous filtered value is provided, it is used to compute the EMA; otherwise, the current value is used as the initial EMA.
+
+    Args:
+        alpha (ArrayType | float): The smoothing factor, where 0 < alpha <= 1.
+        current_value (ArrayType | float): The current data point to be filtered.
+        previous_filtered_value (Optional[ArrayType | float]): The previous EMA value. If None, the current value is used as the initial EMA.
+
+    Returns:
+        ArrayType | float: The updated exponential moving average.
+    """
     if previous_filtered_value is None:
         return current_value
     return alpha * current_value + (1 - alpha) * previous_filtered_value
@@ -368,15 +488,15 @@ def butterworth(
     Apply Butterworth filter to a single data point `x` using filter coefficients `b` and `a`.
     State holds past input and output values to maintain continuity.
 
-    Arguments:
-    - b: Filter numerator coefficients (b_0, b_1, ..., b_m)
-    - a: Filter denominator coefficients (a_0, a_1, ..., a_n) with a[0] = 1
-    - x: Current input value
-    - state: Tuple of (past_inputs, past_outputs)
+    Args:
+        b: Filter numerator coefficients (b_0, b_1, ..., b_m)
+        a: Filter denominator coefficients (a_0, a_1, ..., a_n) with a[0] = 1
+        x: Current input value
+        state: Tuple of (past_inputs, past_outputs)
 
     Returns:
-    - y: Filtered output
-    - new_state: Updated state to use in the next step
+        y: Filtered output
+        new_state: Updated state to use in the next step
     """
     # Compute the current output y[n] based on the difference equation
     y = (
@@ -393,6 +513,16 @@ def butterworth(
 
 
 def gaussian_basis_functions(phase: ArrayType, N: int = 50):
+    """Resample a trajectory to a specified time interval using interpolation.
+
+    Args:
+        trajectory (List[Tuple[float, Dict[str, float]]]): The original trajectory, where each element is a tuple containing a timestamp and a dictionary of joint angles.
+        desired_interval (float, optional): The desired time interval between resampled points. Defaults to 0.01.
+        interp_type (str, optional): The type of interpolation to use ('linear', 'quadratic', 'cubic'). Defaults to 'linear'.
+
+    Returns:
+        List[Tuple[float, Dict[str, float]]]: The resampled trajectory with interpolated joint angles at the specified time intervals.
+    """
     centers = np.linspace(0, 1, N)
     # Compute the Gaussian basis functions
     basis = np.exp(-np.square(phase - centers) / (2 * N**2))
@@ -409,15 +539,15 @@ def interpolate(
     """
     Interpolate position at time t using specified interpolation type.
 
-    Parameters:
-    - p_start: Initial position.
-    - p_end: Desired end position.
-    - duration: Total duration from start to end.
-    - t: Current time (within 0 to duration).
-    - interp_type: Type of interpolation ('linear', 'quadratic', 'cubic').
+    Args:
+        p_start: Initial position.
+        p_end: Desired end position.
+        duration: Total duration from start to end.
+        t: Current time (within 0 to duration).
+        interp_type: Type of interpolation ('linear', 'quadratic', 'cubic').
 
     Returns:
-    - Position at time t.
+        Position at time t.
     """
     if t <= 0:
         return p_start
@@ -440,6 +570,15 @@ def interpolate(
 
 
 def binary_search(arr: ArrayType, t: ArrayType | float) -> int:
+    """Performs a binary search on a sorted array to find the index of a target value.
+
+    Args:
+        arr (ArrayType): A sorted array of numbers.
+        t (ArrayType | float): The target value to search for.
+
+    Returns:
+        int: The index of the target value if found; otherwise, the index of the largest element less than the target.
+    """
     # Implement binary search using either NumPy or JAX.
     low, high = 0, len(arr) - 1
     while low <= high:
@@ -459,6 +598,17 @@ def interpolate_action(
     action_arr: ArrayType,
     interp_type: str = "linear",
 ):
+    """Interpolates an action value at a given time using specified interpolation method.
+
+    Args:
+        t (ArrayType | float): The time at which to interpolate the action.
+        time_arr (ArrayType): An array of time points corresponding to the action values.
+        action_arr (ArrayType): An array of action values corresponding to the time points.
+        interp_type (str, optional): The type of interpolation to use. Defaults to "linear".
+
+    Returns:
+        The interpolated action value at time `t`.
+    """
     if t <= time_arr[0]:
         return action_arr[0]
     elif t >= time_arr[-1]:
@@ -474,37 +624,21 @@ def interpolate_action(
     return interpolate(p_start, p_end, duration, t - time_arr[idx], interp_type)
 
 
-# def interpolate_pos(
-#     set_pos: Callable[[npt.NDArray[np.float32]], None],
-#     pos_start: npt.NDArray[np.float32],
-#     pos: npt.NDArray[np.float32],
-#     duration: float,
-#     interp_type: str,
-#     sleep_time: float = 0.0,
-# ):
-#     time_start = time.time()
-#     time_curr = 0
-#     counter = 0
-#     while time_curr <= duration:
-#         time_curr = time.time() - time_start
-#         pos_interp = interpolate(
-#             pos_start, pos, duration, time_curr, interp_type=interp_type
-#         )
-#         set_pos(pos_interp)
-
-#         time_elapsed = time.time() - time_start - time_curr
-#         time_until_next_step = sleep_time - time_elapsed
-#         if time_until_next_step > 0:
-#             precise_sleep(time_until_next_step)
-
-#         counter += 1
-
-
 def resample_trajectory(
     trajectory: List[Tuple[float, Dict[str, float]]],
     desired_interval: float = 0.01,
     interp_type: str = "linear",
 ) -> List[Tuple[float, Dict[str, float]]]:
+    """Resamples a trajectory of joint angles over time to a specified time interval using interpolation.
+
+    Args:
+        trajectory (List[Tuple[float, Dict[str, float]]]): A list of tuples where each tuple contains a timestamp and a dictionary of joint angles.
+        desired_interval (float, optional): The desired time interval between resampled points. Defaults to 0.01.
+        interp_type (str, optional): The type of interpolation to use ('linear', etc.). Defaults to 'linear'.
+
+    Returns:
+        List[Tuple[float, Dict[str, float]]]: A resampled list of tuples with timestamps and interpolated joint angles.
+    """
     resampled_trajectory: List[Tuple[float, Dict[str, float]]] = []
     for i in range(len(trajectory) - 1):
         t0, joint_angles_0 = trajectory[i]

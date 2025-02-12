@@ -6,6 +6,17 @@ import gin
 
 
 def get_env_config(env: str):
+    """Retrieves and parses the configuration for a specified environment.
+
+    Args:
+        env (str): The name of the environment for which to retrieve the configuration.
+
+    Returns:
+        MJXConfig: An instance of MJXConfig initialized with the parsed configuration.
+
+    Raises:
+        FileNotFoundError: If the configuration file for the specified environment does not exist.
+    """
     gin_file_path = os.path.join(os.path.dirname(__file__), env + ".gin")
     if not os.path.exists(gin_file_path):
         raise FileNotFoundError(f"File {gin_file_path} not found.")
@@ -17,6 +28,8 @@ def get_env_config(env: str):
 @gin.configurable
 @dataclass
 class MJXConfig:
+    """Configuration class for the MJX environment."""
+
     @gin.configurable
     @dataclass
     class SimConfig:
@@ -162,7 +175,6 @@ class MJXConfig:
         final_hang_force: float = 0.0
         hang_force_decay_episodes: float = 200.0
         tendon_kp: float = 0.0
-
 
     def __init__(self):
         self.sim = self.SimConfig()

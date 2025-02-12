@@ -3,15 +3,59 @@ import json
 import os
 import shutil
 import subprocess
+import xml.dom.minidom
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import List, Set
 
-from toddlerbot.utils.file_utils import prettify
+
+def is_xml_pretty_printed(file_path: str) -> bool:
+    """Check if an XML file is pretty-printed by examining indentation.
+
+    Args:
+        file_path (str): The path to the XML file to be checked.
+
+    Returns:
+        bool: True if the XML file is pretty-printed with indentation, False otherwise.
+    """
+    with open(file_path, "r") as file:
+        lines = file.readlines()
+
+        # Check if there's indentation in lines after the first non-empty one
+        for line in lines[1:]:  # Skip XML declaration or root element line
+            stripped_line = line.lstrip()
+            # If any line starts with a tag and has leading whitespace, assume pretty-printing
+            if stripped_line.startswith("<") and len(line) > len(stripped_line):
+                return True
+
+    return False
+
+
+def prettify(elem: ET.Element, file_path: str):
+    """Formats an XML element into a pretty-printed string.
+
+    This function converts an XML element into a string and formats it with indentation for improved readability. If the XML file at the specified path is already pretty-printed, it returns the compact XML string; otherwise, it returns a pretty-printed version with indentation.
+
+    Args:
+        elem (ET.Element): The XML element to be formatted.
+        file_path (str): The path to the XML file to check for pretty-printing.
+
+    Returns:
+        str: A string representation of the XML element, either compact or pretty-printed.
+    """
+    rough_string = ET.tostring(elem, "utf-8")
+    reparsed = xml.dom.minidom.parseString(rough_string)
+
+    if is_xml_pretty_printed(file_path):
+        return reparsed.toxml()
+    else:
+        return reparsed.toprettyxml(indent="  ", newl="")
 
 
 @dataclass
 class OnShapeConfig:
+    """Data class for storing OnShape configuration parameters."""
+
     doc_id_list: List[str]
     assembly_list: List[str]
     # The following are the default values for the config.json file
@@ -22,6 +66,22 @@ class OnShapeConfig:
 
 
 def process_urdf_and_stl_files(assembly_path: str):
+    """Processes URDF and STL files within a specified assembly directory.
+
+    This function performs several operations on URDF and STL files located in the given assembly path:
+    1. Parses the URDF file and updates the robot name to match the directory name.
+    2. Identifies and collects all referenced STL files from the URDF.
+    3. Deletes any STL or PART files in the directory that are not referenced in the URDF.
+    4. Moves referenced STL files to a 'meshes' directory, creating it if necessary.
+    5. Updates the URDF file to reflect the new locations of the STL files.
+    6. Renames the URDF file to match the base directory name if needed.
+
+    Args:
+        assembly_path (str): The path to the directory containing the URDF and STL files.
+
+    Raises:
+        ValueError: If no URDF file is found in the specified directory.
+    """
     urdf_path = os.path.join(assembly_path, "robot.urdf")
     if not os.path.exists(urdf_path):
         raise ValueError("No URDF file found in the robot directory.")
@@ -87,6 +147,13 @@ def process_urdf_and_stl_files(assembly_path: str):
 
 
 def run_onshape_to_robot(onshape_config: OnShapeConfig):
+    """Processes OnShape assemblies and converts them to URDF format for robotic applications.
+
+    This function iterates over a list of OnShape document IDs and corresponding assembly names, creating a directory for each assembly. It generates a configuration JSON file for each assembly, specifying parameters for URDF conversion. The function then executes a command to convert the assembly to URDF format and processes the resulting URDF and STL files.
+
+    Args:
+        onshape_config (OnShapeConfig): Configuration object containing lists of document IDs and assembly names, along with settings for STL merging, collision handling, simplification, and maximum STL size.
+    """
     assembly_dir = os.path.join("toddlerbot", "descriptions", "assemblies")
 
     # Process each assembly in series
@@ -123,6 +190,13 @@ def run_onshape_to_robot(onshape_config: OnShapeConfig):
 
 
 def main():
+    """Parses command-line arguments for document and assembly names and processes them using OnShape.
+
+    This function sets up an argument parser to handle command-line inputs for document IDs and assembly names, ensuring they match the names in OnShape. It then invokes the `run_onshape_to_robot` function with the parsed arguments.
+
+    Raises:
+        SystemExit: If required command-line arguments are not provided.
+    """
     parser = argparse.ArgumentParser(description="Process the urdf.")
     parser.add_argument(
         "--doc-id-list",

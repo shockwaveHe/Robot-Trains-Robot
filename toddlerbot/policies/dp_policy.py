@@ -19,6 +19,8 @@ from toddlerbot.utils.math_utils import interpolate_action
 
 
 class DPPolicy(BalancePDPolicy, policy_name="dp"):
+    """Policy for executing manipulation tasks using a deep policy model."""
+
     def __init__(
         self,
         name: str,
@@ -33,6 +35,24 @@ class DPPolicy(BalancePDPolicy, policy_name="dp"):
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
         task: str = "",
     ):
+        """Initializes the robot control system with specified parameters and loads the appropriate policy model.
+
+        Args:
+            name (str): The name of the robot control instance.
+            robot (Robot): The robot object to be controlled.
+            init_motor_pos (npt.NDArray[np.float32]): Initial positions of the robot's motors.
+            ckpt (str): Checkpoint identifier for loading the policy model.
+            joystick (Optional[Joystick]): Joystick object for manual control, if available.
+            cameras (Optional[List[Camera]]): List of camera objects for visual input, if available.
+            zmq_receiver (Optional[ZMQNode]): ZMQ node for receiving data, if applicable.
+            zmq_sender (Optional[ZMQNode]): ZMQ node for sending data, if applicable.
+            ip (str): IP address for network communication.
+            fixed_command (Optional[npt.NDArray[np.float32]]): Predefined command sequence, if any.
+            task (str): Task identifier, such as "pick" or "hug", to configure task-specific parameters.
+
+        Raises:
+            ValueError: If the motion data file for the specified task is not found.
+        """
         super().__init__(
             name,
             robot,
@@ -48,7 +68,7 @@ class DPPolicy(BalancePDPolicy, policy_name="dp"):
         self.zmq_sender = None
 
         self.task = task
-        prep = "hold" if task == "hug" else "kneel"
+        prep = "kneel" if task == "pick" else "hold"
 
         if len(ckpt) > 0:
             run_name = f"{self.robot.name}_{task}_dp_{ckpt}"
@@ -69,16 +89,32 @@ class DPPolicy(BalancePDPolicy, policy_name="dp"):
         # deque for observation
         self.obs_deque: deque = deque([], maxlen=self.model.obs_horizon)
         self.model_action_seq: List[npt.NDArray[np.float32]] = []
+        self.action_dropout = 3
 
         self.neck_pitch_idx = robot.motor_ordering.index("neck_pitch_act")
-        self.neck_pitch_ratio = 1.0  # 0.25  # Stitch
-        self.num_arm_motors = 7
+        if task == "hug":
+            self.neck_pitch_ratio = 1.0
+        elif task == "pick":
+            self.neck_pitch_ratio = 0.75
+        else:
+            self.neck_pitch_ratio = 1.0
+
+        self.left_arm_indices = self.arm_motor_indices[:7]
+        self.right_arm_indices = self.arm_motor_indices[7:14]
+        if self.robot.has_gripper:
+            self.left_arm_indices = np.concatenate(
+                [self.left_arm_indices, self.arm_motor_indices[-2:-1]]
+            )
+            self.right_arm_indices = np.concatenate(
+                [self.right_arm_indices, self.arm_motor_indices[-1:]]
+            )
 
         if len(task) > 0:
             self.manip_duration = 2.0
-            self.idle_duration = 6.0
+            self.idle_duration = 5.0 if task == "hug" else 6.0
+            self.reset_duration = 7.0 if task == "hug" else 2.0
 
-            motion_file_path = os.path.join("toddlerbot", "motion", f"{prep}.pkl")
+            motion_file_path = os.path.join("motion", f"{prep}.pkl")
             if os.path.exists(motion_file_path):
                 data_dict = joblib.load(motion_file_path)
             else:
@@ -87,8 +123,10 @@ class DPPolicy(BalancePDPolicy, policy_name="dp"):
             self.manip_motor_pos = np.array(data_dict["action_traj"], dtype=np.float32)[
                 -1
             ]
-            if prep != "kneel":
-                self.manip_motor_pos[self.neck_pitch_idx] *= self.neck_pitch_ratio
+            self.manip_motor_pos[self.neck_pitch_idx] *= self.neck_pitch_ratio
+            if task == "hug":
+                self.manip_motor_pos[self.left_sho_pitch_idx] -= 0.2
+                self.manip_motor_pos[self.right_sho_pitch_idx] += 0.2
 
             if self.robot.has_gripper:
                 self.manip_motor_pos = np.concatenate(
@@ -96,76 +134,138 @@ class DPPolicy(BalancePDPolicy, policy_name="dp"):
                 )
 
         self.capture_frame = True
-        self.last_arm_motor_pos = None
-
         self.manip_count = 0
         self.wrap_up_time = None
 
-        self.reset_duration = 5.0
-        self.reset_end_time = 1.0
-        self.reset_time = None
+    def reset(self) -> None:
+        """Resets the state of the object to its initial configuration.
+
+        This method clears the observation deque, resets the model action sequence,
+        sets the manipulation count to zero, and clears the wrap-up time. It also
+        invokes the reset method of the superclass to ensure any inherited state
+        is also reset.
+        """
+        super().reset()
+
+        self.obs_deque = deque([], maxlen=self.model.obs_horizon)
+        self.model_action_seq = []
+        self.manip_count = 0
+        self.wrap_up_time = None
 
     def get_arm_motor_pos(self, obs: Obs) -> npt.NDArray[np.float32]:
-        arm_motor_pos = self.manip_motor_pos[self.arm_motor_indices]
+        """Calculates the arm motor positions based on the current observation and task.
+
+        This function determines the appropriate motor positions for the robot's arm by utilizing a sequence of model-generated actions. If the observation deque is full, it retrieves actions from the model and adjusts them based on the task type. For a "pick" task, it combines the model actions with the current manipulator positions. If the robot lacks a gripper, it adjusts the action sequence accordingly. If the observation deque is not full, it defaults to using the current manipulator positions.
+
+        Args:
+            obs (Obs): The current observation of the environment.
+
+        Returns:
+            npt.NDArray[np.float32]: The calculated arm motor positions.
+        """
         if len(self.obs_deque) == self.model.obs_horizon:
             if len(self.model_action_seq) == 0:
                 t1 = time.time()
                 self.model_action_seq = list(
-                    self.model.get_action_from_obs(self.obs_deque)
+                    self.model.get_action_from_obs(self.obs_deque)[
+                        self.action_dropout :
+                    ]
                 )
                 t2 = time.time()
-                print(f"Model inference time: {t2-t1:.3f}s")
+                print(f"Model inference time: {t2 - t1:.3f}s")
 
-            if self.robot.has_gripper:
-                arm_motor_pos = self.model_action_seq.pop(0)
+            arm_motor_pos = self.model_action_seq.pop(0)
+            if self.task == "pick":
+                arm_motor_pos = np.concatenate(
+                    [
+                        self.manip_motor_pos[self.left_arm_indices[:-1]],
+                        arm_motor_pos[:-1],
+                        self.manip_motor_pos[self.left_arm_indices[-1:]],
+                        arm_motor_pos[-1:],
+                    ]
+                )
             else:
-                arm_motor_pos = self.model_action_seq.pop(0)[:-2]
+                if not self.robot.has_gripper:
+                    arm_motor_pos = arm_motor_pos[:-2]
+        else:
+            arm_motor_pos = self.manip_motor_pos[self.arm_motor_indices]
 
         return arm_motor_pos
 
     def step(
         self, obs: Obs, is_real: bool = False
     ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
+        """Executes a step in the robot's control loop, updating motor targets and handling task-specific logic.
+
+        Args:
+            obs (Obs): The current observation containing sensor data and motor positions.
+            is_real (bool, optional): Flag indicating whether the step is being executed in a real environment. Defaults to False.
+
+        Returns:
+            Tuple[Dict[str, float], npt.NDArray[np.float32]]: A tuple containing control inputs and the target motor positions.
+        """
         control_inputs, motor_target = super().step(obs, is_real)
 
         if (
-            obs.time - self.prep_duration
+            obs.time - self.time_start
             >= self.manip_duration
             + (self.manip_count + 1) * self.idle_duration
-            + self.manip_count * 6.0
+            + self.manip_count * self.reset_duration
         ):
             self.is_running = False
             if self.wrap_up_time is None:
                 if self.task == "hug":
                     twist_motor_pos = obs.motor_pos.copy()
-                    waist_motor_pos = self.robot.waist_ik([0.0, -np.pi / 2])
+                    waist_motor_pos = self.robot.waist_ik([-0.1, -np.pi / 2])
                     twist_motor_pos[self.waist_motor_indices] = waist_motor_pos
+                    twist_motor_pos[self.left_sho_pitch_idx] -= 0.2
+                    twist_motor_pos[self.right_sho_pitch_idx] += 0.2
                     release_motor_pos = self.manip_motor_pos.copy()
                     release_motor_pos[self.waist_motor_indices] = waist_motor_pos
 
                     twist_time, twist_action = self.move(
-                        obs.time - self.control_dt, obs.motor_pos, twist_motor_pos, 2.0
+                        obs.time - self.control_dt,
+                        obs.motor_pos,
+                        twist_motor_pos,
+                        (self.reset_duration - 1) / 3,  # 2
                     )
                     release_time, release_action = self.move(
-                        twist_time[-1], twist_motor_pos, release_motor_pos, 2.0
+                        twist_time[-1], twist_motor_pos, release_motor_pos, 1.0
                     )
+                    back_motor_pos = self.manip_motor_pos.copy()
+                    back_motor_pos[self.left_sho_pitch_idx] = self.default_motor_pos[
+                        self.left_sho_pitch_idx
+                    ]
+                    back_motor_pos[self.right_sho_pitch_idx] = self.default_motor_pos[
+                        self.right_sho_pitch_idx
+                    ]
+                    back_motor_pos[self.left_sho_roll_idx] = -1.4
+                    back_motor_pos[self.right_sho_roll_idx] = -1.4
                     back_time, back_action = self.move(
-                        release_time[-1], release_motor_pos, self.manip_motor_pos, 2.0
+                        release_time[-1],
+                        release_motor_pos,
+                        back_motor_pos,  # self.manip_motor_pos,
+                        (self.reset_duration - 1) / 3,  # 2
+                    )
+                    default_time, default_action = self.move(
+                        back_time[-1],
+                        back_motor_pos,
+                        self.default_motor_pos,
+                        (self.reset_duration - 1) / 3,
                     )
 
                     self.wrap_up_time = np.concatenate(
-                        [twist_time, release_time, back_time]
+                        [twist_time, release_time, back_time, default_time]
                     )
                     self.wrap_up_action = np.concatenate(
-                        [twist_action, release_action, back_action]
+                        [twist_action, release_action, back_action, default_action]
                     )
                 else:
                     self.wrap_up_time, self.wrap_up_action = self.move(
                         obs.time - self.control_dt,
-                        obs.motor_pos[self.arm_motor_indices],
-                        self.manip_motor_pos[self.arm_motor_indices],
+                        obs.motor_pos,
+                        self.manip_motor_pos,
                         self.reset_duration,
-                        end_time=self.reset_end_time,
                     )
 
             if self.wrap_up_time is not None and obs.time < self.wrap_up_time[-1]:
@@ -173,43 +273,49 @@ class DPPolicy(BalancePDPolicy, policy_name="dp"):
                     interpolate_action(obs.time, self.wrap_up_time, self.wrap_up_action)
                 )
             else:
+                motor_target = self.wrap_up_action[-1]
                 self.manip_count += 1
                 self.wrap_up_time = None
 
-        elif obs.time - self.prep_duration >= self.manip_duration:
+        elif obs.time - self.time_start >= self.manip_duration:
             self.is_running = True
             if self.task == "pick":
-                motor_target[self.neck_motor_indices] = self.manip_motor_pos[self.waist_motor_indices]
-                motor_target[self.arm_motor_indices[: self.num_arm_motors]] = (
-                    self.manip_motor_pos[self.arm_motor_indices[: self.num_arm_motors]]
-                )
-                motor_target[self.waist_motor_indices] = self.manip_motor_pos[self.waist_motor_indices]
+                motor_target[self.neck_motor_indices] = self.manip_motor_pos[
+                    self.neck_motor_indices
+                ]
+                motor_target[self.left_arm_indices] = self.manip_motor_pos[
+                    self.left_arm_indices
+                ]
+                motor_target[self.waist_motor_indices] = self.manip_motor_pos[
+                    self.waist_motor_indices
+                ]
                 motor_target[self.leg_motor_indices] = self.manip_motor_pos[
                     self.leg_motor_indices
                 ]
 
         if self.is_running:
             if self.camera_frame is not None:
-                image = cv2.resize(self.camera_frame, (128, 96))[:96, 16:112] / 255.0
+                image = cv2.resize(self.camera_frame, (128, 96))[:96, 16:112] / 255.0  # type: ignore
 
                 # Visualize the cropped frame
                 # cv2.imshow("Camera Frame", image)
                 # cv2.waitKey(1)  # Needed to update the display window
 
                 image = image.transpose(2, 0, 1)
-                agent_pos = obs.motor_pos[self.arm_motor_indices]
-                if not self.robot.has_gripper:
-                    agent_pos = np.concatenate(
-                        [agent_pos, np.zeros(2, dtype=np.float32)]
-                    )
+                if self.task == "pick":
+                    agent_pos = obs.motor_pos[self.right_arm_indices]
+                else:
+                    agent_pos = obs.motor_pos[self.arm_motor_indices]
+                    if not self.robot.has_gripper:
+                        agent_pos = np.concatenate(
+                            [agent_pos, np.zeros(2, dtype=np.float32)]
+                        )
 
                 obs_entry = {
                     "image": image,
                     "agent_pos": agent_pos,
                 }
                 self.obs_deque.append(obs_entry)
-            else:
-                raise ValueError("Camera frame is needed for DP policy.")
         else:
             self.obs_deque.clear()
             self.model_action_seq = []

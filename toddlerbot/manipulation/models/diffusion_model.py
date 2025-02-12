@@ -19,6 +19,9 @@ import torch.nn as nn
 # `cond` is applied to `x` with [FiLM](https://arxiv.org/abs/1709.07871) conditioning.
 
 
+# This script defines the architecture for the diffusion model.
+
+
 class SinusoidalPosEmb(nn.Module):
     def __init__(self, dim):
         super().__init__()

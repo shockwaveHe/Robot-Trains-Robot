@@ -1,76 +1,47 @@
+import glob
 import os
 import platform
-import xml.dom.minidom
-import xml.etree.ElementTree as ET
 from typing import List, Optional
 
 import serial.tools.list_ports as list_ports
-from PIL import Image
+from serial.tools.list_ports_linux import SysFS
 
 from toddlerbot.utils.misc_utils import log
 
 
-def get_load_path(root: str, load_run: str = "", checkpoint: int = -1):
-    try:
-        runs = os.listdir(root)
-        runs.sort()
-        if "exported" in runs:
-            runs.remove("exported")
-
-        last_run = os.path.join(root, runs[-1])
-
-    except Exception:
-        raise ValueError("No runs in this directory: " + root)
-
-    if len(load_run) == 0:
-        load_run = last_run
-    else:
-        load_run = os.path.join(root, load_run)
-
-    if checkpoint == -1:
-        models = [file for file in os.listdir(load_run) if "model" in file]
-        models.sort(key=lambda m: "{0:0>15}".format(m))
-        model = models[-1]
-    else:
-        model = "model_{}.pt".format(checkpoint)
-
-    load_path = os.path.join(load_run, model)
-
-    return load_path
-
-
-def combine_images(image1_path: str, image2_path: str, output_path: str):
-    # Open the two images
-    image1 = Image.open(image1_path)
-    image2 = Image.open(image2_path)
-
-    # Get the dimensions of the images
-    width1, height1 = image1.size
-    width2, height2 = image2.size
-
-    # Create a new image with the combined width and the maximum height
-    combined_image = Image.new("RGB", (width1 + width2, max(height1, height2)))
-
-    # Paste the first image at the left
-    combined_image.paste(image1, (0, 0))
-
-    # Paste the second image at the right
-    combined_image.paste(image2, (width1, 0))
-
-    # Save the combined image
-    combined_image.save(output_path)
-
-
 def find_ports(target: str) -> List[str]:
+    """Find open network ports on a specified target.
+
+    Args:
+        target: The IP address or hostname of the target to scan for open ports.
+
+    Returns:
+        A list of strings representing the open ports on the target.
+    """
+    if target == "dynamixel":
+        keyword = "Serial"
+    else:
+        keyword = target
+
     ports = list(list_ports.comports())
+    if len(ports) == 0:
+        port_names = glob.glob("/dev/ttyCH9344USB*")
+        ports.extend(
+            [
+                info
+                for info in [SysFS(d) for d in port_names]
+                if info.subsystem != "platform"
+            ]
+        )
+
     target_ports: List[str] = []
 
     os_type = platform.system()
 
     for port, desc, hwid in ports:
         # Adjust the condition below according to your board's unique identifier or pattern
-        print(port, desc, hwid)
-        if target in desc:
+        # print(port, desc, hwid)
+        if keyword in desc:
             if os_type != "Windows":
                 port = port.replace("cu", "tty")
 
@@ -92,11 +63,11 @@ def find_last_result_dir(result_dir: str, prefix: str = "") -> Optional[str]:
     Find the latest (most recent) result directory within a given directory.
 
     Args:
-    - result_dir: The path to the directory containing result subdirectories.
-    - prefix: The prefix of result directory names to consider.
+        result_dir: The path to the directory containing result subdirectories.
+        prefix: The prefix of result directory names to consider.
 
     Returns:
-    - The path to the latest result directory, or None if no matching directory is found.
+        The path to the latest result directory, or None if no matching directory is found.
     """
     # Get a list of all items in the result directory
     try:
@@ -169,29 +140,3 @@ def find_robot_file_path(robot_name: str, suffix: str = ".urdf") -> str:
             return file_path
 
     raise FileNotFoundError(f"No {suffix} file found for robot '{robot_name}'.")
-
-
-def is_xml_pretty_printed(file_path: str) -> bool:
-    """Check if an XML file is pretty-printed based on indentation and line breaks."""
-    with open(file_path, "r") as file:
-        lines = file.readlines()
-
-        # Check if there's indentation in lines after the first non-empty one
-        for line in lines[1:]:  # Skip XML declaration or root element line
-            stripped_line = line.lstrip()
-            # If any line starts with a tag and has leading whitespace, assume pretty-printing
-            if stripped_line.startswith("<") and len(line) > len(stripped_line):
-                return True
-
-    return False
-
-
-def prettify(elem: ET.Element, file_path: str):
-    """Return a pretty-printed XML string for the Element."""
-    rough_string = ET.tostring(elem, "utf-8")
-    reparsed = xml.dom.minidom.parseString(rough_string)
-
-    if is_xml_pretty_printed(file_path):
-        return reparsed.toxml()
-    else:
-        return reparsed.toprettyxml(indent="  ", newl="")

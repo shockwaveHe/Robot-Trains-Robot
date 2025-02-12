@@ -10,8 +10,16 @@ from transforms3d.euler import euler2quat
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.math_utils import round_to_sig_digits
 
+# This script contains utility functions for modifying and writing MJCF XML files.
+
 
 def pretty_write_xml(root: ET.Element, file_path: str):
+    """Formats an XML Element into a pretty-printed XML string and writes it to a specified file.
+
+    Args:
+        root (ET.Element): The root element of the XML tree to be formatted.
+        file_path (str): The path to the file where the formatted XML will be written.
+    """
     # Convert the Element or ElementTree to a string
     xml_str = ET.tostring(root, encoding="utf-8").decode("utf-8")
 
@@ -28,6 +36,17 @@ def pretty_write_xml(root: ET.Element, file_path: str):
 
 
 def find_root_link_name(root: ET.Element):
+    """Finds the root link name in a URDF XML structure.
+
+    Args:
+        root (ET.Element): The root element of the URDF XML tree.
+
+    Returns:
+        str: The name of the root link.
+
+    Raises:
+        ValueError: If no root link can be identified in the URDF.
+    """
     child_links = {joint.find("child").get("link") for joint in root.findall("joint")}  # type: ignore
     all_links = {link.get("name") for link in root.findall("link")}
 
@@ -40,6 +59,13 @@ def find_root_link_name(root: ET.Element):
 
 
 def replace_mesh_file(root: ET.Element, old_file: str, new_file: str):
+    """Replaces occurrences of a specified mesh file name with a new file name in an XML structure.
+
+    Args:
+        root (ET.Element): The root element of the XML tree to search within.
+        old_file (str): The file name to be replaced.
+        new_file (str): The new file name to replace the old file name with.
+    """
     # Find all mesh elements
     for mesh in root.findall(".//mesh"):
         # Check if the file attribute matches the old file name
@@ -49,6 +75,16 @@ def replace_mesh_file(root: ET.Element, old_file: str, new_file: str):
 
 
 def update_compiler_settings(root: ET.Element):
+    """Updates the compiler settings in the given XML element.
+
+    This function searches for a 'compiler' element within the provided XML root element and updates its 'autolimits' attribute to 'true'. If no 'compiler' element is found, a ValueError is raised.
+
+    Args:
+        root (ET.Element): The root XML element containing the compiler settings.
+
+    Raises:
+        ValueError: If no 'compiler' element is found in the XML.
+    """
     compiler = root.find("compiler")
     if compiler is None:
         raise ValueError("No compiler element found in the XML.")
@@ -57,6 +93,13 @@ def update_compiler_settings(root: ET.Element):
 
 
 def add_option_settings(root: ET.Element):
+    """Adds or updates the 'option' settings in the given XML element.
+
+    This function searches for an 'option' subelement within the provided XML root element. If found, it removes the existing 'option' element. It then creates a new 'option' subelement with a 'flag' child element that has an attribute 'eulerdamp' set to 'disable'.
+
+    Args:
+        root (ET.Element): The root XML element to modify.
+    """
     option = root.find("option")
     if option is not None:
         root.remove(option)
@@ -67,6 +110,21 @@ def add_option_settings(root: ET.Element):
 
 
 def add_imu_sensor(root: ET.Element, general_config: Dict[str, Any]):
+    """Adds an IMU sensor site to the worldbody element of an XML tree.
+
+    This function inserts a new site element representing an IMU sensor into the
+    worldbody of the provided XML tree. The position and orientation of the sensor
+    are determined by the offsets specified in the general configuration.
+
+    Args:
+        root (ET.Element): The root element of the XML tree, expected to contain a
+            worldbody element.
+        general_config (Dict[str, Any]): A dictionary containing configuration
+            details, including offsets for the IMU sensor's position and orientation.
+
+    Raises:
+        ValueError: If the worldbody element is not found in the XML tree.
+    """
     worldbody = root.find("worldbody")
     if worldbody is None:
         raise ValueError("No worldbody element found in the XML.")
@@ -155,6 +213,12 @@ def add_imu_sensor(root: ET.Element, general_config: Dict[str, Any]):
 
 
 def update_joint_params(root: ET.Element, joints_config: Dict[str, Any]):
+    """Updates joint parameters in an XML structure based on a given configuration.
+
+    Args:
+        root (ET.Element): The root element of the XML structure containing joint elements.
+        joints_config (Dict[str, Any]): A dictionary mapping joint names to their configuration attributes and values. Attributes can include 'damping', 'armature', and 'frictionloss'.
+    """
     # Iterate over all joints in the XML
     for joint in root.findall(".//joint"):
         joint_name = joint.get("name")
@@ -174,6 +238,15 @@ def update_joint_params(root: ET.Element, joints_config: Dict[str, Any]):
 
 
 def update_geom_classes(root: ET.Element, geom_keys: List[str]):
+    """Updates the class attribute of geometry elements in an XML tree.
+
+    Args:
+        root (ET.Element): The root element of the XML tree containing geometry elements.
+        geom_keys (List[str]): A list of attribute keys to be removed from each geometry element.
+
+    Raises:
+        ValueError: If a geometry element's name does not contain "visual" or "collision".
+    """
     for geom in root.findall(".//geom"):
         name: str | None = geom.get("name")
         if name is None:
@@ -195,6 +268,18 @@ def update_geom_classes(root: ET.Element, geom_keys: List[str]):
 
 
 def add_keyframes(root: ET.Element, robot: Robot, is_fixed: bool):
+    """Adds keyframes to the given XML element for a robot's configuration.
+
+    This function modifies the provided XML element by creating or updating a
+    <keyframe> element based on the robot's configuration and whether the robot
+    is fixed. It constructs a string representing the robot's joint positions
+    (`qpos`) and assigns it to the keyframe.
+
+    Args:
+        root (ET.Element): The root XML element to which the keyframe will be added.
+        robot (Robot): The robot object containing configuration and motor ordering.
+        is_fixed (bool): A flag indicating whether the robot is fixed in place.
+    """
     # Create or find the <default> element
     keyframe = root.find("keyframe")
     if keyframe is not None:
@@ -267,6 +352,21 @@ def add_default_settings(
     joints_config: Dict[str, Any],
     actuator_type: str,
 ):
+    """Adds default settings to an XML element tree for a simulation environment.
+
+    This function modifies the provided XML root element by adding or updating
+    a `<default>` element with specific settings for visual, collision, and motor
+    configurations based on the provided general and joint configurations.
+
+    Args:
+        root (ET.Element): The root XML element to which default settings will be added.
+        general_config (Dict[str, Any]): A dictionary containing general configuration
+            parameters, such as solution reference values.
+        joints_config (Dict[str, Any]): A dictionary containing joint-specific configuration
+            parameters, including motor specifications.
+        actuator_type (str): The type of actuator to configure, either 'motor' or another
+            type, which determines the range settings applied to the actuators.
+    """
     # Create or find the <default> element
     default = root.find("default")
     if default is not None:
@@ -324,12 +424,25 @@ def add_default_settings(
 
 
 def include_all_contacts(root: ET.Element):
+    """Removes the first 'contact' element from the given XML root element if it exists.
+
+    Args:
+        root (ET.Element): The root element of an XML tree from which the 'contact' element will be removed.
+    """
     contact = root.find("contact")
     if contact is not None:
         root.remove(contact)
 
 
 def exclude_all_contacts(root: ET.Element):
+    """Removes existing contact elements and creates new exclusions for all pairs of collision bodies in the XML tree.
+
+    Args:
+        root (ET.Element): The root element of the XML tree to modify.
+
+    Modifies:
+        The XML tree by removing the existing "contact" element and adding a new one with "exclude" sub-elements for each pair of bodies that have collision geometries.
+    """
     contact = root.find("contact")
     if contact is not None:
         root.remove(contact)
@@ -350,6 +463,15 @@ def exclude_all_contacts(root: ET.Element):
 
 
 def add_contacts(root: ET.Element, collision_config: Dict[str, Dict[str, Any]]):
+    """Adds contact and exclusion pairs to an XML element based on a collision configuration.
+
+    Args:
+        root (ET.Element): The root XML element to which contact pairs and exclusions will be added.
+        collision_config (Dict[str, Dict[str, Any]]): A dictionary containing collision configuration for each body. Each entry specifies which other bodies it can contact with.
+
+    Raises:
+        ValueError: If a geometry name cannot be found for any of the specified body pairs.
+    """
     # Ensure there is a <contact> element
     contact = root.find("contact")
     if contact is not None:
@@ -406,6 +528,12 @@ def add_contacts(root: ET.Element, collision_config: Dict[str, Dict[str, Any]]):
 
 
 def add_neck_constraints(root: ET.Element, general_config: Dict[str, Any]):
+    """Adds neck constraints to an XML element by creating equality constraints between specified body pairs.
+
+    Args:
+        root (ET.Element): The root XML element to which the neck constraints will be added.
+        general_config (Dict[str, Any]): A dictionary containing configuration parameters, specifically 'solref', which is used to set the solref attribute for the constraints.
+    """
     # Ensure there is an <equality> element
     equality = root.find("./equality")
     if equality is None:
@@ -429,6 +557,14 @@ def add_neck_constraints(root: ET.Element, general_config: Dict[str, Any]):
 
 
 def add_waist_constraints(root: ET.Element, general_config: Dict[str, Any]):
+    """Adds waist constraints to the given XML element by creating and configuring tendon elements for waist roll and yaw.
+
+    This function modifies the provided XML element by removing any existing 'tendon' element and adding a new one with specific constraints for waist roll and yaw. The constraints are defined using coefficients and backlash values from the general configuration.
+
+    Args:
+        root (ET.Element): The root XML element to which the waist constraints will be added.
+        general_config (Dict[str, Any]): A dictionary containing configuration values, including offsets and backlash for waist roll and yaw.
+    """
     # Ensure there is an <equality> element
     tendon = root.find("tendon")
     if tendon is not None:
@@ -468,6 +604,12 @@ def add_waist_constraints(root: ET.Element, general_config: Dict[str, Any]):
 
 
 def add_knee_constraints(root: ET.Element, general_config: Dict[str, Any]):
+    """Adds knee constraints to an XML structure by ensuring the presence of an `<equality>` element and appending `<weld>` elements for specified body pairs.
+
+    Args:
+        root (ET.Element): The root element of the XML structure to which constraints are added.
+        general_config (Dict[str, Any]): Configuration dictionary containing parameters for the constraints, specifically the 'solref' values.
+    """
     # Ensure there is an <equality> element
     equality = root.find("./equality")
     if equality is None:
@@ -493,6 +635,12 @@ def add_knee_constraints(root: ET.Element, general_config: Dict[str, Any]):
 
 
 def add_ankle_constraints(root: ET.Element, general_config: Dict[str, Any]):
+    """Adds ankle constraints to an XML structure by creating or modifying an `<equality>` element with specified body pairs and configuration parameters.
+
+    Args:
+        root (ET.Element): The root element of the XML structure to which the ankle constraints will be added.
+        general_config (Dict[str, Any]): A dictionary containing configuration parameters, including offsets and solver settings for the constraints.
+    """
     # Ensure there is an <equality> element
     equality = root.find("./equality")
     if equality is None:
@@ -521,6 +669,16 @@ def add_ankle_constraints(root: ET.Element, general_config: Dict[str, Any]):
 def add_joint_constraints(
     root: ET.Element, general_config: Dict[str, Any], joints_config: Dict[str, Any]
 ):
+    """Adds joint constraints to an XML element based on the provided configuration.
+
+    Args:
+        root (ET.Element): The root XML element to which joint constraints will be added.
+        general_config (Dict[str, Any]): General configuration containing parameters like 'solref'.
+        joints_config (Dict[str, Any]): Configuration for each joint, specifying details such as 'transmission' type and 'gear_ratio'.
+
+    Raises:
+        ValueError: If a required driven or pinion joint is not found in the XML structure.
+    """
     equality = root.find("./equality")
     if equality is None:
         equality = ET.SubElement(root, "equality")
@@ -578,6 +736,21 @@ def add_joint_constraints(
 
 
 def add_position_actuators_to_mjcf(root: ET.Element, joints_config: Dict[str, Any]):
+    """Adds position actuators to the MJCF model based on the provided joint configurations.
+
+    This function modifies the given MJCF XML tree by adding or updating the `<actuator>` element
+    with `<position>` actuators for each joint specified in the `joints_config` dictionary. Each
+    actuator is configured with properties such as `kp`, `ctrlrange`, and `class` based on the
+    joint's configuration.
+
+    Args:
+        root (ET.Element): The root element of the MJCF XML tree.
+        joints_config (Dict[str, Any]): A dictionary where keys are joint names and values are
+            dictionaries containing joint configuration details, including 'spec' and 'kp_sim'.
+
+    Raises:
+        ValueError: If a joint specified in `joints_config` is not found in the MJCF model.
+    """
     # Create <actuator> element if it doesn't exist
     actuator = root.find("./actuator")
     if actuator is not None:
@@ -607,6 +780,17 @@ def add_position_actuators_to_mjcf(root: ET.Element, joints_config: Dict[str, An
 
 
 def add_motor_actuators_to_mjcf(root: ET.Element, joints_config: Dict[str, Any]):
+    """Adds motor actuators to the MJCF XML structure based on the provided joint configurations.
+
+    This function modifies the given MJCF XML root element by creating or updating an `<actuator>` element. It iterates over the provided joint configurations and adds a `<motor>` element for each joint that has a specified configuration. If a joint specified in the configuration is not found in the XML, a `ValueError` is raised.
+
+    Args:
+        root (ET.Element): The root element of the MJCF XML structure.
+        joints_config (Dict[str, Any]): A dictionary containing joint names as keys and their configuration details as values. Each configuration must include a "spec" key to be considered valid.
+
+    Raises:
+        ValueError: If a joint specified in the `joints_config` is not found in the MJCF XML structure.
+    """
     # Create <actuator> element if it doesn't exist
     actuator = root.find("./actuator")
     if actuator is not None:
@@ -628,6 +812,15 @@ def add_motor_actuators_to_mjcf(root: ET.Element, joints_config: Dict[str, Any])
 
 
 def parse_urdf_body_link(root: ET.Element, root_link_name: str):
+    """Parses the URDF body link to extract inertial properties.
+
+    Args:
+        root (ET.Element): The root element of the URDF XML structure.
+        root_link_name (str): The name of the link to extract properties from.
+
+    Returns:
+        dict or None: A dictionary containing the position, quaternion, mass, and diagonal inertia of the link if found; otherwise, None.
+    """
     # Assuming you want to extract properties for 'body_link'
     body_link = root.find(f"link[@name='{root_link_name}']")
     inertial = body_link.find("inertial") if body_link is not None else None
@@ -654,6 +847,19 @@ def parse_urdf_body_link(root: ET.Element, root_link_name: str):
 
 
 def add_body_link(root: ET.Element, urdf_path: str, offsets: Dict[str, float]):
+    """Adds a body link to the XML tree based on URDF file specifications.
+
+    Args:
+        root (ET.Element): The root element of the XML tree to which the body link will be added.
+        urdf_path (str): The file path to the URDF file containing the robot's description.
+        offsets (Dict[str, float]): A dictionary containing offset values, specifically for the 'torso_z' position.
+
+    Raises:
+        ValueError: If no 'worldbody' element is found in the XML tree.
+
+    Prints:
+        A message if no inertial properties are found in the URDF file.
+    """
     urdf_tree = ET.parse(urdf_path)
     urdf_root = urdf_tree.getroot()
     root_link_name: str = find_root_link_name(urdf_root)
@@ -690,9 +896,15 @@ def add_body_link(root: ET.Element, urdf_path: str, offsets: Dict[str, float]):
         body_link.append(element)
 
 
-def add_ee_sites(root: ET.Element, general_config: Dict[str, Any]):
-    # Foot names should be specified in your general configuration
-    ee_name = general_config["ee_name"]
+def add_ee_sites(root: ET.Element, ee_name: str):
+    """Adds end-effector (EE) sites to the XML structure based on the specified configuration.
+
+    Args:
+        root (ET.Element): The root element of the XML tree to which EE sites will be added.
+        ee_name (str): The name of the end-effector to identify target geometries.
+
+    The function identifies geometries in the XML that are relevant to the end-effector based on naming conventions and adds site elements to these geometries. The sites are positioned relative to the geometries and are configured with predefined specifications.
+    """
 
     def is_ee_collision(geom_name: str) -> bool:
         if "gripper" in ee_name:
@@ -741,10 +953,15 @@ def add_ee_sites(root: ET.Element, general_config: Dict[str, Any]):
         )
 
 
-def add_foot_sites(root: ET.Element, general_config: Dict[str, Any]):
-    # Foot names should be specified in your general configuration
-    foot_name = general_config["foot_name"]
+def add_foot_sites(root: ET.Element, foot_name: str):
+    """Adds foot sites to the XML structure based on the specified foot name in the configuration.
 
+    Args:
+        root (ET.Element): The root element of the XML structure to which foot sites will be added.
+        foot_name (str): The name of the foot to identify target geometries.
+
+    The function searches for geometries in the XML structure that match the specified foot name and contain "collision" in their name. For each matching geometry, it calculates the position for a new site and adds it as a child element to the geometry's parent, with predefined specifications for type, size, and color.
+    """
     # Site specifications
     site_specifications = {"type": "sphere", "size": "0.005", "rgba": "0.9 0.1 0.1 0.8"}
 
@@ -774,6 +991,19 @@ def add_foot_sites(root: ET.Element, general_config: Dict[str, Any]):
 
 
 def replace_box_collision(root: ET.Element, general_config: Dict[str, Any]):
+    """Replaces box-shaped collision geometries with sphere-shaped ones in an XML structure.
+
+    This function searches for geometries within an XML element that match a specified naming pattern, indicating they are foot-related collision boxes. It then replaces each box with four spheres positioned at the corners of the original box. The function also updates the contact pairs in the XML to reflect these changes.
+
+    Args:
+        root (ET.Element): The root element of the XML tree to be modified.
+        general_config (Dict[str, Any]): Configuration dictionary containing:
+            - "foot_name" (str): Substring to identify target geometries.
+            - "is_ankle_closed_loop" (bool): Determines the positioning of spheres.
+
+    Raises:
+        ValueError: If no geometries matching the specified naming pattern are found.
+    """
     # Search for the target geom using the substring condition
     foot_name = general_config["foot_name"]
 
@@ -821,7 +1051,7 @@ def replace_box_collision(root: ET.Element, general_config: Dict[str, Any]):
             sphere = ET.Element(
                 "geom",
                 {
-                    "name": f"{name}_ball_{i+1}",
+                    "name": f"{name}_ball_{i + 1}",
                     "type": "sphere",
                     "size": f"{sphere_radius}",
                     "pos": f"{ball_pos[0]} {ball_pos[1]} {ball_pos[2]}",
@@ -989,6 +1219,14 @@ def add_hanging(root: ET.Element, general_config: Dict[str, Any]):
 
 
 def create_scene_xml(mjcf_path: str, is_fixed: bool):
+    """Generates an XML scene file for a robot model based on the provided MJCF file path and configuration.
+
+    Args:
+        mjcf_path (str): The file path to the MJCF XML file of the robot model.
+        is_fixed (bool): A flag indicating whether the robot is fixed in place. If True, adjusts camera positions and scene settings accordingly.
+
+    Creates an XML scene file that includes the robot model, visual settings, and camera configurations. The scene is saved in the same directory as the input MJCF file with a modified filename.
+    """
     robot_name = os.path.basename(mjcf_path).replace(".xml", "")
 
     # Create the root element
@@ -1128,6 +1366,12 @@ def create_scene_xml(mjcf_path: str, is_fixed: bool):
 
 
 def process_mjcf_file(root: ET.Element, robot: Robot):
+    """Processes an MJCF (MuJoCo XML) file by updating and adding various settings and constraints based on the robot's configuration.
+
+    Args:
+        root (ET.Element): The root element of the MJCF XML tree.
+        robot (Robot): The robot object containing configuration details.
+    """
     update_compiler_settings(root)
     add_option_settings(root)
 
@@ -1150,8 +1394,11 @@ def process_mjcf_file(root: ET.Element, robot: Robot):
     if robot.config["general"]["is_ankle_closed_loop"]:
         add_ankle_constraints(root, robot.config["general"])
 
-    add_ee_sites(root, robot.config["general"])
-    add_foot_sites(root, robot.config["general"])
+    if "ee_name" in robot.config["general"]:
+        add_ee_sites(root, robot.config["general"]["ee_name"])
+
+    if "foot_name" in robot.config["general"]:
+        add_foot_sites(root, robot.config["general"]["foot_name"])
 
     if "sysID" not in robot.name:
         add_keyframes(root, robot, True)
@@ -1160,6 +1407,16 @@ def process_mjcf_file(root: ET.Element, robot: Robot):
 
 
 def get_mjcf_files(robot_name: str, generate_hanging: bool = False):
+    """Generates and processes MJCF files for a specified robot.
+
+    This function removes any existing cache file for the robot, parses the URDF file, and generates MJCF files with visual and fixed configurations. It processes the MJCF files by adding actuators, default settings, and other necessary elements. The function also handles the creation of scene XML files for both fixed and non-fixed configurations.
+
+    Args:
+        robot_name (str): The name of the robot for which to generate MJCF files.
+
+    Raises:
+        ValueError: If the source MJCF file 'mjmodel.xml' is not found in the current directory.
+    """
     cache_file_path = os.path.join(
         "toddlerbot", "descriptions", robot_name, f"{robot_name}_data.pkl"
     )
@@ -1229,6 +1486,10 @@ def get_mjcf_files(robot_name: str, generate_hanging: bool = False):
 
 
 def main():
+    """Parses command-line arguments to process MJCF files for a specified robot.
+
+    This function sets up an argument parser to accept a robot name, which should match the name in the descriptions. It then calls the `get_mjcf_files` function with the provided robot name to process the corresponding MJCF files.
+    """
     parser = argparse.ArgumentParser(description="Process the MJCF.")
     parser.add_argument(
         "--robot",

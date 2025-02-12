@@ -8,22 +8,20 @@ import numpy as np
 import numpy.typing as npt
 
 from toddlerbot.actuation import JointState
-from toddlerbot.actuation.mujoco.mujoco_control import (
+from toddlerbot.sim import BaseSim, Obs
+from toddlerbot.sim.mujoco_control import (
     MotorController,
     PositionController,
 )
-from toddlerbot.sim import BaseSim, Obs
 from toddlerbot.sim.mujoco_utils import MuJoCoRenderer, MuJoCoViewer
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.math_utils import quat2euler, quat_inv, rotate_vec
 
-"""
-vis_type: ["render", "view"]
-"""
-
 
 class MuJoCoSim(BaseSim):
+    """A class for the MuJoCo simulation environment."""
+
     def __init__(
         self,
         robot: Robot,
@@ -36,7 +34,18 @@ class MuJoCoSim(BaseSim):
         assets: Any = None,
         vis_type: str = "",
     ):
-        """Initialize the MuJoCo simulation environment."""
+        """Initializes the simulation environment for a robot using the MuJoCo physics engine.
+
+        Args:
+            robot (Robot): The robot object to be simulated.
+            n_frames (int, optional): Number of frames per control step. Defaults to 20.
+            dt (float, optional): Time step for the simulation in seconds. Defaults to 0.001.
+            fixed_base (bool, optional): Whether the robot has a fixed base. Defaults to False.
+            xml_path (str, optional): Path to the XML file defining the robot model. Defaults to an empty string.
+            xml_str (str, optional): XML string defining the robot model. Defaults to an empty string.
+            assets (Any, optional): Additional assets required for the XML model. Defaults to None.
+            vis_type (str, optional): Type of visualization to use ('render' or 'view'). Defaults to an empty string.
+        """
         super().__init__("mujoco")
 
         self.robot = robot
@@ -118,6 +127,9 @@ class MuJoCoSim(BaseSim):
         self.hang_motors = 12 if self.hang_force > 0.0 else 0
         self.hang_dofs = 8 if self.hang_force > 0.0 else 0
 
+        self.default_qpos = np.array(self.model.keyframe("home").qpos, dtype=np.float32)
+        self.data.qpos = self.default_qpos.copy()
+
     def reset(self):
         self.load_keyframe()
         return self.get_observation()
@@ -150,6 +162,14 @@ class MuJoCoSim(BaseSim):
         self.right_foot_transform = self.get_body_transofrm(self.right_foot_name)
 
     def get_body_transofrm(self, body_name: str):
+        """Computes the transformation matrix for a specified body.
+
+        Args:
+            body_name (str): The name of the body for which to compute the transformation matrix.
+
+        Returns:
+            np.ndarray: A 4x4 transformation matrix representing the position and orientation of the body.
+        """
         transformation = np.eye(4)
         body_pos = self.data.body(body_name).xpos.copy()
         body_mat = self.data.body(body_name).xmat.reshape(3, 3).copy()
@@ -158,6 +178,18 @@ class MuJoCoSim(BaseSim):
         return transformation
 
     def get_site_transform(self, site_name: str):
+        """Retrieves the transformation matrix for a specified site.
+
+        This method constructs a 4x4 transformation matrix for the given site name,
+        using the site's position and orientation matrix. The transformation matrix
+        is composed of a 3x3 rotation matrix and a 3x1 translation vector.
+
+        Args:
+            site_name (str): The name of the site for which to retrieve the transformation matrix.
+
+        Returns:
+            numpy.ndarray: A 4x4 transformation matrix representing the site's position and orientation.
+        """
         transformation = np.eye(4)
         site_pos = self.data.site(site_name).xpos.copy()
         site_mat = self.data.site(site_name).xmat.reshape(3, 3).copy()
@@ -166,6 +198,12 @@ class MuJoCoSim(BaseSim):
         return transformation
 
     def get_motor_state(self) -> Dict[str, JointState]:
+        """Retrieve the current state of each motor in the robot.
+
+        Returns:
+            Dict[str, JointState]: A dictionary mapping each motor's name to its
+            current state, including position, velocity, and torque.
+        """
         motor_state_dict: Dict[str, JointState] = {}
         for name in self.robot.motor_ordering:
             motor_state_dict[name] = JointState(
@@ -180,6 +218,18 @@ class MuJoCoSim(BaseSim):
     def get_motor_angles(
         self, type: str = "dict"
     ) -> Dict[str, float] | npt.NDArray[np.float32]:
+        """Retrieves the current angles of the robot's motors.
+
+        Args:
+            type (str): The format in which to return the motor angles.
+                Options are "dict" for a dictionary format or "array" for a NumPy array.
+                Defaults to "dict".
+
+        Returns:
+            Dict[str, float] or npt.NDArray[np.float32]: The motor angles in the specified format.
+            If "dict", returns a dictionary with motor names as keys and angles as values.
+            If "array", returns a NumPy array of motor angles.
+        """
         motor_angles: Dict[str, float] = {}
         for name in self.robot.motor_ordering:
             motor_angles[name] = self.data.joint(name).qpos.item()
@@ -191,6 +241,12 @@ class MuJoCoSim(BaseSim):
             return motor_angles
 
     def get_joint_state(self) -> Dict[str, JointState]:
+        """Retrieves the current state of each joint in the robot.
+
+        Returns:
+            Dict[str, JointState]: A dictionary mapping each joint's name to its current state,
+            which includes the timestamp, position, and velocity.
+        """
         joint_state_dict: Dict[str, JointState] = {}
         for name in self.robot.joint_ordering:
             joint_state_dict[name] = JointState(
@@ -204,6 +260,18 @@ class MuJoCoSim(BaseSim):
     def get_joint_angles(
         self, type: str = "dict"
     ) -> Dict[str, float] | npt.NDArray[np.float32]:
+        """Retrieves the current joint angles of the robot.
+
+        Args:
+            type (str): The format in which to return the joint angles.
+                Options are "dict" for a dictionary format or "array" for a NumPy array.
+                Defaults to "dict".
+
+        Returns:
+            Dict[str, float] or npt.NDArray[np.float32]: The joint angles of the robot.
+                Returns a dictionary with joint names as keys and angles as values if
+                `type` is "dict". Returns a NumPy array of joint angles if `type` is "array".
+        """
         joint_angles: Dict[str, float] = {}
         for name in self.robot.joint_ordering:
             joint_angles[name] = self.data.joint(name).qpos.item()
@@ -215,6 +283,21 @@ class MuJoCoSim(BaseSim):
             return joint_angles
 
     def get_observation(self) -> Obs:
+        """Retrieves the current observation of the robot's state, including motor and joint states, and torso dynamics.
+
+        Returns:
+            Obs: An observation object containing the following attributes:
+                - time (float): The timestamp of the observation.
+                - motor_pos (np.ndarray): Array of motor positions.
+                - motor_vel (np.ndarray): Array of motor velocities.
+                - motor_tor (np.ndarray): Array of motor torques.
+                - lin_vel (np.ndarray): Linear velocity of the torso.
+                - ang_vel (np.ndarray): Angular velocity of the torso.
+                - pos (np.ndarray): Position of the torso.
+                - euler (np.ndarray): Euler angles of the torso.
+                - joint_pos (np.ndarray): Array of joint positions.
+                - joint_vel (np.ndarray): Array of joint velocities.
+        """
         motor_state_dict = self.get_motor_state()
         joint_state_dict = self.get_joint_state()
 
@@ -296,16 +379,43 @@ class MuJoCoSim(BaseSim):
         return obs
 
     def get_mass(self) -> float:
+        """Calculate and return the mass of the subtree.
+
+        Returns:
+            float: The mass of the subtree as a floating-point number.
+        """
         subtree_mass = float(self.model.body(0).subtreemass)
         return subtree_mass
 
     def set_torso_pos(self, torso_pos: npt.NDArray[np.float32]):
+        """Set the position of the torso in the simulation.
+
+        Args:
+            torso_pos (npt.NDArray[np.float32]): A numpy array representing the desired position of the torso in 3D space.
+        """
         self.data.joint(0).qpos[:3] = torso_pos
 
     def set_torso_quat(self, torso_quat: npt.NDArray[np.float32]):
+        """Set the quaternion of the torso joint.
+
+        This method updates the quaternion orientation of the torso joint in the
+        simulation data.
+
+        Args:
+            torso_quat (npt.NDArray[np.float32]): A numpy array representing the
+                quaternion to set for the torso joint, with four elements
+                corresponding to the quaternion components.
+        """
         self.data.joint(0).qpos[3:7] = torso_quat
 
     def set_motor_kps(self, motor_kps: Dict[str, float]):
+        """Sets the proportional gain (Kp) values for the motors.
+
+        This method updates the Kp values for each motor specified in the `motor_kps` dictionary. If the controller is an instance of `MotorController`, it sets the Kp value directly in the controller. Otherwise, it adjusts the gain and bias parameters of the actuator model.
+
+        Args:
+            motor_kps (Dict[str, float]): A dictionary where keys are motor names and values are the Kp values to be set.
+        """
         for name, kp in motor_kps.items():
             if isinstance(self.controller, MotorController):
                 self.controller.kp[self.model.actuator(name).id] = kp / 128
@@ -316,6 +426,11 @@ class MuJoCoSim(BaseSim):
     def set_motor_target(
         self, motor_angles: Dict[str, float] | npt.NDArray[np.float32]
     ):
+        """Sets the target angles for the motors.
+
+        Args:
+            motor_angles (Dict[str, float] | npt.NDArray[np.float32]): A dictionary mapping motor names to their target angles or a NumPy array of target angles. If a dictionary is provided, the values are converted to a NumPy array of type float32.
+        """
         if isinstance(motor_angles, dict):
             self.target_motor_angles = np.array(
                 list(motor_angles.values()), dtype=np.float32
@@ -326,6 +441,11 @@ class MuJoCoSim(BaseSim):
     def set_motor_angles(
         self, motor_angles: Dict[str, float] | npt.NDArray[np.float32]
     ):
+        """Sets the motor angles for the robot and updates the corresponding joint and passive angles.
+
+        Args:
+            motor_angles (Dict[str, float] | npt.NDArray[np.float32]): A dictionary mapping motor names to angles or an array of motor angles in the order specified by the robot's motor ordering.
+        """
         if not isinstance(motor_angles, dict):
             motor_angles = dict(zip(self.robot.motor_ordering, motor_angles))
 
@@ -343,6 +463,13 @@ class MuJoCoSim(BaseSim):
     def set_joint_angles(
         self, joint_angles: Dict[str, float] | npt.NDArray[np.float32]
     ):
+        """Sets the joint angles of the robot.
+
+        This method updates the joint positions of the robot based on the provided joint angles. It converts the input joint angles to motor and passive angles and updates the robot's data structure accordingly.
+
+        Args:
+            joint_angles (Dict[str, float] | npt.NDArray[np.float32]): A dictionary mapping joint names to their respective angles, or a NumPy array of joint angles in the order specified by the robot's joint ordering.
+        """
         if not isinstance(joint_angles, dict):
             joint_angles = dict(zip(self.robot.joint_ordering, joint_angles))
 
@@ -358,18 +485,37 @@ class MuJoCoSim(BaseSim):
             self.data.joint(name).qpos = passive_angles[name]
 
     def set_qpos(self, qpos: npt.NDArray[np.float32]):
+        """Set the position of the system's generalized coordinates.
+
+        Args:
+            qpos (npt.NDArray[np.float32]): An array representing the desired positions of the system's generalized coordinates.
+        """
         self.data.qpos = qpos
 
     def set_joint_dynamics(self, joint_dyn: Dict[str, Dict[str, float]]):
+        """Sets the dynamics parameters for specified joints in the model.
+
+        Args:
+            joint_dyn (Dict[str, Dict[str, float]]): A dictionary where each key is a joint name and the value is another dictionary containing dynamics parameters and their corresponding values to be set for that joint.
+        """
         for joint_name, dyn in joint_dyn.items():
             for key, value in dyn.items():
                 setattr(self.model.joint(joint_name), key, value)
 
     def set_motor_dynamics(self, motor_dyn: Dict[str, float]):
+        """Sets the motor dynamics by updating the controller's attributes.
+
+        Args:
+            motor_dyn (Dict[str, float]): A dictionary where keys are attribute names and values are the corresponding dynamics values to be set on the controller.
+        """
         for key, value in motor_dyn.items():
             setattr(self.controller, key, value)
 
     def forward(self):
+        """Advances the simulation forward by a specified number of frames and visualizes the result if a visualizer is available.
+
+        Iterates through the simulation for the number of frames specified by `self.n_frames`, updating the model state at each step. If a visualizer is provided, it visualizes the current state of the simulation data.
+        """
         for _ in range(self.n_frames):
             mujoco.mj_forward(self.model, self.data)
 
@@ -381,8 +527,12 @@ class MuJoCoSim(BaseSim):
         right_foot_pos = self.data.body("right_ank_pitch_link").xpos
 
         return {"left": left_foot_pos, "right": right_foot_pos}
-    
+
     def step(self):
+        """Advances the simulation by a specified number of frames and updates the visualizer.
+
+        This method iterates over the number of frames defined by `n_frames`, updating the control inputs using the controller's step method based on the current position and velocity of the motors. It then advances the simulation state using Mujoco's `mj_step` function. If a visualizer is provided, it updates the visualization with the current simulation data.
+        """
         for _ in range(self.n_frames):
             self.data.ctrl[: self.data.ctrl.shape[0] - self.hang_motors] = (
                 self.controller.step(
@@ -440,6 +590,16 @@ class MuJoCoSim(BaseSim):
         | List[npt.NDArray[np.float32]]
         | npt.NDArray[np.float32],
     ) -> List[Dict[str, JointState]]:
+        """Simulate the dynamics of a robotic system using a sequence of motor controls.
+
+        This function performs a simulation rollout of a robotic system using the provided motor controls, which can be specified as either motor angles or torques. The simulation is executed over a series of frames, and the resulting joint states are returned.
+
+        Args:
+            motor_ctrls_list: A list containing motor control inputs. Each element can be a dictionary mapping motor names to control values or a NumPy array of control values. The controls can represent either motor angles or torques.
+
+        Returns:
+            A list of dictionaries, where each dictionary represents the joint states at a specific time step. Each dictionary maps joint names to their corresponding `JointState`, which includes the time and position of the joint.
+        """
         n_state = mujoco.mj_stateSize(self.model, mujoco.mjtState.mjSTATE_FULLPHYSICS)
         initial_state = np.empty(n_state, dtype=np.float64)
         mujoco.mj_getState(
@@ -492,13 +652,24 @@ class MuJoCoSim(BaseSim):
         name: str = "mujoco.mp4",
         cameras: List[str] = ["perspective", "side", "top", "front"],
     ):
+        """Saves a recording of the current MuJoCo simulation.
+
+        Args:
+            exp_folder_path (str): The path to the folder where the recording will be saved.
+            dt (float): The time step interval for the recording.
+            render_every (int): The frequency at which frames are rendered.
+            name (str, optional): The name of the output video file. Defaults to "mujoco.mp4".
+        """
         if isinstance(self.visualizer, MuJoCoRenderer):
-            self.visualizer.save_recording(exp_folder_path, dt, render_every, name, cameras)
+            self.visualizer.save_recording(
+                exp_folder_path, dt, render_every, name, cameras
+            )
 
     def init_recording(self):
         if isinstance(self.visualizer, MuJoCoRenderer):
             self.visualizer.init_recording()
 
     def close(self):
+        """Closes the visualizer if it is currently open."""
         if self.visualizer is not None:
             self.visualizer.close()

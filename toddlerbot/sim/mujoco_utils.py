@@ -21,6 +21,16 @@ warnings.filterwarnings("ignore", category=UserWarning, module="moviepy")
 
 
 def mj_render(model, data, lib="plt"):
+    """Renders a MuJoCo simulation scene using the specified library.
+
+    Args:
+        model: The MuJoCo model to be rendered.
+        data: The simulation data associated with the model.
+        lib (str): The library to use for rendering. Options are "plt" for matplotlib and any other value for OpenCV. Defaults to "plt".
+
+    Raises:
+        ValueError: If the specified library is not supported.
+    """
     renderer = mujoco.Renderer(model)
     renderer.update_scene(data)
     pixels = renderer.render()
@@ -35,7 +45,23 @@ def mj_render(model, data, lib="plt"):
 
 
 class MuJoCoViewer:
+    """A class for visualizing MuJoCo simulation data."""
+
     def __init__(self, robot: Robot, model: Any, data: Any):
+        """Initializes the class with a robot, model, and data, and sets up the viewer and foot geometry.
+
+        Args:
+            robot (Robot): The robot instance containing configuration and state information.
+            model (Any): The model object representing the simulation environment.
+            data (Any): The data object containing the simulation state.
+
+        Attributes:
+            robot (Robot): Stores the robot instance.
+            model (Any): Stores the model object.
+            viewer: Launches a passive viewer for the simulation using the provided model and data.
+            foot_names (list of str): List of foot collision geometry names based on the robot's foot name.
+            local_bbox_corners (np.ndarray): Local coordinates of the bounding box corners for the foot geometry.
+        """
         self.robot = robot
         self.model = model
         self.viewer = mujoco.viewer.launch_passive(model, data)
@@ -62,6 +88,12 @@ class MuJoCoViewer:
         data: Any,
         vis_flags: List[str] = ["com", "support_poly"],
     ):
+        """Visualizes specified components of the data using the viewer.
+
+        Args:
+            data (Any): The data to be visualized.
+            vis_flags (List[str], optional): A list of visualization flags indicating which components to visualize. Defaults to ["com", "support_poly"].
+        """
         with self.viewer.lock():
             self.viewer.user_scn.ngeom = 0
             if "com" in vis_flags:
@@ -74,6 +106,15 @@ class MuJoCoViewer:
         self.viewer.sync()
 
     def visualize_com(self, data: Any):
+        """Visualize the center of mass (COM) of a given body in the simulation environment.
+
+        This function adds a visual representation of the center of mass for a specified body
+        to the simulation viewer. The COM is depicted as a small red sphere.
+
+        Args:
+            data (Any): The simulation data object containing information about the bodies,
+                including their center of mass positions.
+        """
         i = self.viewer.user_scn.ngeom
         com_pos = np.array(data.body(0).subtree_com, dtype=np.float32)
         mujoco.mjv_initGeom(
@@ -87,6 +128,11 @@ class MuJoCoViewer:
         self.viewer.user_scn.ngeom = i + 1
 
     def visualize_support_poly(self, data: Any):
+        """Visualizes the support polygon of the feet by drawing lines between the transformed bounding box corners in the world coordinates.
+
+        Args:
+            data (Any): The simulation data object containing geometric information about the feet.
+        """
         i = self.viewer.user_scn.ngeom
 
         for foot_name in self.foot_names:
@@ -164,11 +210,21 @@ class MuJoCoViewer:
     #     self.viewer.user_scn.ngeom = i
 
     def close(self):
+        """Closes the viewer associated with the current instance."""
         self.viewer.close()
 
 
 class MuJoCoRenderer:
+    """A class for rendering MuJoCo simulation data and saving video recordings."""
+
     def __init__(self, model: Any, height: int = 360, width: int = 640):
+        """Initializes the object with a given model and sets up a renderer.
+
+        Args:
+            model (Any): The model to be used for rendering.
+            height (int, optional): The height of the rendering window. Defaults to 360.
+            width (int, optional): The width of the rendering window. Defaults to 640.
+        """
         self.model = model
         self.renderer = mujoco.Renderer(model, height=height, width=width)
         self.anim_data: Dict[str, Any] = {}
@@ -176,6 +232,15 @@ class MuJoCoRenderer:
         self.qvel_data: List[Any] = []
 
     def visualize(self, data: Any, vis_data: Dict[str, Any] = {}):
+        """Visualizes the given data by updating pose, position, and velocity information.
+
+        This method processes the input data to update the animation pose and appends
+        the position and velocity data to their respective lists for further visualization.
+
+        Args:
+            data (Any): The input data containing pose, position, and velocity information.
+            vis_data (Dict[str, Any], optional): Additional visualization data. Defaults to an empty dictionary.
+        """
         self.anim_pose_callback(data)
         self.qpos_data.append(data.qpos.copy())
         self.qvel_data.append(data.qvel.copy())
@@ -184,7 +249,7 @@ class MuJoCoRenderer:
         self.anim_data: Dict[str, Any] = {}
         self.qpos_data: List[Any] = []
         self.qvel_data: List[Any] = []
-        
+
     def save_recording(
         self,
         exp_folder_path: str,
@@ -194,6 +259,15 @@ class MuJoCoRenderer:
         dump_data: bool = False,
         cameras: List[str] = ["perspective", "side", "top", "front"],
     ):
+        """Saves a recording of the simulation from multiple camera angles and optionally dumps animation data.
+
+        Args:
+            exp_folder_path (str): The path to the folder where the recording and data will be saved.
+            dt (float): The time step duration for rendering frames.
+            render_every (int): The interval at which frames are rendered.
+            name (str, optional): The name of the final video file. Defaults to "mujoco.mp4".
+            dump_data (bool, optional): If True, dumps the animation data to a pickle file. Defaults to False.
+        """
         if dump_data:
             anim_data_path = os.path.join(exp_folder_path, "anim_data.pkl")
             with open(anim_data_path, "wb") as f:
@@ -230,6 +304,17 @@ class MuJoCoRenderer:
             final_video.write_videofile(os.path.join(exp_folder_path, name))
 
     def anim_pose_callback(self, data: Any):
+        """Processes animation pose data and updates the animation data dictionary.
+
+        Args:
+            data (Any): An object containing pose data for multiple bodies, including
+                body names, positions, orientations, and a timestamp.
+
+        Updates:
+            self.anim_data (dict): A dictionary where each key is a body name and each
+            value is a list of tuples. Each tuple contains a timestamp, position, and
+            orientation for the corresponding body.
+        """
         for i in range(self.model.nbody):
             body_name = data.body(i).name
             pos = data.body(i).xpos.copy()
@@ -242,4 +327,9 @@ class MuJoCoRenderer:
                 self.anim_data[body_name] = [data_tuple]
 
     def close(self):
+        """Closes the renderer associated with the current instance.
+
+        This method ensures that the renderer is properly closed and any resources
+        associated with it are released.
+        """
         self.renderer.close()

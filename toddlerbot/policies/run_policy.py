@@ -6,14 +6,16 @@ import os
 import pickle
 import pkgutil
 import time
+import traceback
 from typing import Any, Dict, List
 
+import ipdb
+import matplotlib.pyplot as plt
 import mujoco
 import numpy as np
 import numpy.typing as npt
+from moviepy.editor import ImageSequenceClip
 from tqdm import tqdm
-import ipdb
-import traceback
 
 from toddlerbot.arm_policies import (
     BaseArmPolicy,
@@ -24,39 +26,46 @@ from toddlerbot.policies import BasePolicy, get_policy_class, get_policy_names
 from toddlerbot.policies.balance_pd import BalancePDPolicy
 from toddlerbot.policies.calibrate import CalibratePolicy
 from toddlerbot.policies.dp_policy import DPPolicy
-from toddlerbot.policies.mjx_policy import MJXPolicy
-from toddlerbot.policies.record import RecordPolicy
 from toddlerbot.policies.mjx_finetune import MJXFinetunePolicy
+from toddlerbot.policies.mjx_policy import MJXPolicy
+from toddlerbot.policies.push_cart import PushCartPolicy
+from toddlerbot.policies.record import RecordPolicy
 from toddlerbot.policies.replay import ReplayPolicy
 from toddlerbot.policies.sysID import SysIDFixedPolicy
 from toddlerbot.policies.teleop_follower_pd import TeleopFollowerPDPolicy
+from toddlerbot.policies.teleop_joystick import TeleopJoystickPolicy
 from toddlerbot.policies.teleop_leader import TeleopLeaderPolicy
 from toddlerbot.sim import BaseSim, Obs
 from toddlerbot.sim.arm import BaseArm, get_arm_class
 from toddlerbot.sim.arm_toddler_sim import ArmToddlerSim
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.real_world import RealWorld
-from toddlerbot.sim.realworld_mock import RealWorldMock
 from toddlerbot.sim.real_world_finetuning import RealWorldFinetuning
+from toddlerbot.sim.realworld_mock import RealWorldMock
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.comm_utils import sync_time
 from toddlerbot.utils.misc_utils import dump_profiling_data, log, snake2camel
 from toddlerbot.visualization.vis_plot import (
-    plot_control_inputs,
     plot_joint_tracking,
     plot_joint_tracking_frequency,
     plot_joint_tracking_single,
     plot_line_graph,
     plot_loop_time,
     plot_motor_vel_tor_mapping,
-    plot_path_tracking,
+    # plot_path_tracking,
 )
 
 # from toddlerbot.utils.misc_utils import profile
 
 
 def dynamic_import_policies(policy_package: str):
-    """Dynamically import all modules in the given package."""
+    """Dynamically imports all modules within a specified package.
+
+    This function attempts to import each module found in the given package directory. If a module cannot be imported, a log message is generated.
+
+    Args:
+        policy_package (str): The name of the package containing the modules to be imported.
+    """
     package = importlib.import_module(policy_package)
     package_path = package.__path__
 
@@ -65,7 +74,7 @@ def dynamic_import_policies(policy_package: str):
         full_module_name = f"{policy_package}.{module_name}"
         try:
             importlib.import_module(full_module_name)
-        except ModuleNotFoundError:
+        except Exception:
             log(f"Could not import {full_module_name}", header="Dynamic Import")
 
 
@@ -82,6 +91,16 @@ def plot_results(
     motor_angles_list: List[Dict[str, float]],
     exp_folder_path: str,
 ):
+    """Generates and saves various plots to visualize the performance and behavior of a robot during an experiment.
+
+    Args:
+        robot (Robot): The robot object containing information about the robot's configuration and state.
+        loop_time_list (List[List[float]]): A list of lists containing timing information for each loop iteration.
+        obs_list (List[Obs]): A list of observations recorded during the experiment.
+        control_inputs_list (List[Dict[str, float]]): A list of dictionaries containing control inputs applied to the robot.
+        motor_angles_list (List[Dict[str, float]]): A list of dictionaries containing motor angles recorded during the experiment.
+        exp_folder_path (str): The path to the folder where the plots will be saved.
+    """
     loop_time_dict: Dict[str, List[float]] = {
         "obs_time": [],
         "inference_time": [],
@@ -164,6 +183,8 @@ def plot_results(
                 control_inputs_dict[control_name] = []
             control_inputs_dict[control_name].append(control_input)
 
+    plt.switch_backend("Agg")
+
     plot_loop_time(loop_time_dict, exp_folder_path)
 
     if "sysID" in robot.name:
@@ -220,19 +241,14 @@ def plot_results(
         save_path=exp_folder_path,
         file_name="euler_tracking",
     )()
-    if len(control_inputs_dict) > 0:
-        plot_control_inputs(
-            time_obs_list,
-            control_inputs_dict,
-            save_path=exp_folder_path,
-        )
-        plot_path_tracking(
-            time_obs_list,
-            pos_obs_list,
-            euler_obs_list,
-            control_inputs_dict,
-            save_path=exp_folder_path,
-        )
+    # if len(control_inputs_dict) > 0:
+    #     plot_path_tracking(
+    #         time_obs_list,
+    #         pos_obs_list,
+    #         euler_obs_list,
+    #         control_inputs_dict,
+    #         save_path=exp_folder_path,
+    #     )
     plot_joint_tracking(
         time_seq_dict,
         time_seq_ref_dict,
@@ -263,7 +279,7 @@ def plot_results(
 
 
 # @profile()
-def main(
+def run_policy(
     robot: Robot,
     arm: BaseArm,
     sim: BaseSim,
@@ -271,7 +287,17 @@ def main(
     arm_policy: BaseArmPolicy | None,
     vis_type: str,
     exp_folder_path: str,
+    plot: bool,
 ):
+    """Executes a control policy on a robot within a simulation environment, logging data and optionally visualizing results.
+
+    Args:
+        robot (Robot): The robot instance to control.
+        sim (BaseSim): The simulation environment in which the robot operates.
+        policy (BasePolicy): The control policy to execute.
+        vis_type (str): The type of visualization to use ('view', 'render', etc.).
+        plot (bool): Whether to plot the results after execution.
+    """
     header_name = snake2camel(sim.name)
 
     loop_time_list: List[List[float]] = []
@@ -299,7 +325,7 @@ def main(
     # print(timeit.timeit(lambda: policy.motion_ref.get_state_ref(policy.state_ref, 0.0, command), number=100000))
     # print(timeit.timeit(lambda: policy.motion_ref.get_state_ref_ds(policy.state_ref, 0.0, command), number=100000))
     try:
-        while step_idx < n_steps_total and not getattr(policy, 'stopped', False):
+        while step_idx < n_steps_total and not getattr(policy, "stopped", False):
             step_start = time.time()
 
             # Get the latest state from the queue
@@ -413,7 +439,17 @@ def main(
         ipdb.post_mortem()
     finally:
         p_bar.close()
-        policy.close()
+
+        exp_name = f"{robot.name}_{policy.name}_{sim.name}"
+        time_str = time.strftime("%Y%m%d_%H%M%S")
+        exp_folder_path = f"results/{exp_name}_{time_str}"
+
+        os.makedirs(exp_folder_path, exist_ok=True)
+
+        if vis_type == "render" and hasattr(sim, "save_recording"):
+            assert isinstance(sim, MuJoCoSim)
+            sim.save_recording(exp_folder_path, policy.control_dt, 2)
+
         sim.close()
 
     log_data_dict: Dict[str, Any] = {
@@ -433,7 +469,6 @@ def main(
         assert isinstance(sim, MuJoCoSim)
         sim.save_recording(exp_folder_path, policy.control_dt, 2)
 
-
     if isinstance(policy, SysIDFixedPolicy):
         log_data_dict["ckpt_dict"] = policy.ckpt_dict
 
@@ -446,6 +481,13 @@ def main(
 
     if isinstance(policy, TeleopFollowerPDPolicy):
         policy.dataset_logger.move_files_to_exp_folder(exp_folder_path)
+
+    if isinstance(policy, DPPolicy) and len(policy.camera_frame_list) > 0:
+        fps = int(1 / np.diff(policy.camera_time_list).mean())
+        log(f"visual_obs fps: {fps}", header=header_name)
+        video_path = os.path.join(exp_folder_path, "visual_obs.mp4")
+        video_clip = ImageSequenceClip(policy.camera_frame_list, fps=fps)
+        video_clip.write_videofile(video_path, codec="libx264", fps=fps)
 
     if isinstance(policy, ReplayPolicy):
         with open(os.path.join(exp_folder_path, "keyframes.pkl"), "wb") as f:
@@ -479,16 +521,45 @@ def main(
         else:
             raise FileNotFoundError(f"Could not find {motor_config_path}")
 
-    log("Visualizing...", header="Walking")
+    if isinstance(policy, PushCartPolicy):
+        video_path = os.path.join(exp_folder_path, "visual_obs.mp4")
+        fps = int(1 / np.diff(policy.grasp_policy.camera_time_list).mean())
+        log(f"visual_obs fps: {fps}", header=header_name)
+        video_clip = ImageSequenceClip(policy.grasp_policy.camera_frame_list, fps=fps)
+        video_clip.write_videofile(video_path, codec="libx264", fps=fps)
 
-    # plot_results(
-    #     robot,
-    #     loop_time_list,
-    #     obs_list,
-    #     control_inputs_list,
-    #     motor_angles_list,  # TODO: Plot the command_list
-    #     exp_folder_path,
-    # )
+    if isinstance(policy, TeleopJoystickPolicy):
+        policy_dict = {
+            "hug": policy.hug_policy,
+            "pick": policy.pick_policy,
+            "grasp": policy.push_cart_policy.grasp_policy
+            if hasattr(policy.push_cart_policy, "grasp_policy")
+            else policy.teleop_policy,
+        }
+        for task_name, task_policy in policy_dict.items():
+            if (
+                not isinstance(task_policy, DPPolicy)
+                or len(task_policy.camera_frame_list) == 0
+            ):
+                continue
+
+            video_path = os.path.join(exp_folder_path, f"{task_name}_visual_obs.mp4")
+            fps = int(1 / np.diff(task_policy.camera_time_list).mean())
+            log(f"{task_name} visual_obs fps: {fps}", header=header_name)
+            video_clip = ImageSequenceClip(task_policy.camera_frame_list, fps=fps)
+            video_clip.write_videofile(video_path, codec="libx264", fps=fps)
+
+    if plot:
+        log("Visualizing...", header=header_name)
+        plot_results(
+            robot,
+            loop_time_list,
+            obs_list,
+            control_inputs_list,
+            motor_angles_list,
+            exp_folder_path,
+        )
+
 
 def parse_domain_rand(model: mujoco.MjModel, domain_rand_str: str):
     domain_rand_items = domain_rand_str.split(",")
@@ -518,8 +589,19 @@ def parse_domain_rand(model: mujoco.MjModel, domain_rand_str: str):
     return model
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run the walking simulation.")
+def main(args=None):
+    """Executes a policy for a specified robot and simulator configuration.
+
+    This function parses command-line arguments to configure and run a policy for a robot. It supports different robots, simulators, visualization types, and tasks. The function initializes the appropriate simulation environment and policy based on the provided arguments and executes the policy.
+
+    Args:
+        args (list, optional): List of command-line arguments. If None, defaults to sys.argv.
+
+    Raises:
+        ValueError: If an unknown simulator is specified.
+        AssertionError: If the teleop leader policy is used with an unsupported robot or simulator.
+    """
+    parser = argparse.ArgumentParser(description="Run a policy.")
     parser.add_argument(
         "--robot",
         type=str,
@@ -576,7 +658,7 @@ if __name__ == "__main__":
         "--ckpt",
         type=str,
         default="",
-        nargs='+',
+        nargs="+",
         help="The policy checkpoint to load for RL policies.",
     )
     parser.add_argument(
@@ -623,12 +705,20 @@ if __name__ == "__main__":
         choices=["hug", "pick"],
         help="The name of the task.",
     )
+    parser.add_argument(
+        "--no-plot",
+        action="store_false",
+        dest="plot",
+        default=True,
+        help="Skip the plot functions.",
+    )
     args = parser.parse_args()
 
     robot = Robot(args.robot)
 
     ArmClass = get_arm_class(args.arm_type)
     arm: BaseArm = ArmClass()  # type: ignore
+    # t1 = time.time()
 
     sim: BaseSim | None = None
     if args.sim == "mujoco":
@@ -638,7 +728,7 @@ if __name__ == "__main__":
         )
         init_motor_pos = sim.get_observation().motor_pos
     elif args.sim == "arm_toddler":
-        rigid_connection = args.rigid_connection
+        # rigid_connection = args.rigid_connection
         sensors = ["attachment_force"]  # DISCUSS
         fixed_base = "fixed" in args.policy or args.rigid_connection
         sim = ArmToddlerSim(
@@ -665,17 +755,11 @@ if __name__ == "__main__":
         init_motor_pos = sim.get_observation().motor_pos
     else:
         raise ValueError("Unknown simulator")
+
     if args.domain_rand:
         sim.model = parse_domain_rand(sim.model, args.domain_rand)
+
     obs = sim.get_observation()
-    # t2 = time.time()
-
-    # t2 = time.time()
-
-    # t2 = time.time()
-
-    # t2 = time.time()
-
     # t2 = time.time()
 
     PolicyClass = get_policy_class(args.policy.replace("_fixed", ""))
@@ -693,27 +777,27 @@ if __name__ == "__main__":
             args.ckpt = args.ckpt[0]
 
     if "replay" in args.policy:
-        assert (
-            args.robot in args.run_name
-        ), "The robot name needs to be in the run name to ensure a successful replay"
+        assert args.robot in args.run_name, (
+            "The robot name needs to be in the run name to ensure a successful replay"
+        )
         policy = PolicyClass(args.policy, robot, init_motor_pos, args.run_name)
 
     elif "teleop_leader" in args.policy:
-        assert (
-            args.robot == "toddlerbot_arms"
-        ), "The teleop leader policy is only for the arms"
-        assert (
-            args.sim == "real"
-        ), "The sim needs to be the real world for the teleop leader policy"
+        assert args.robot == "toddlerbot_arms", (
+            "The teleop leader policy is only for the arms"
+        )
+        assert args.sim == "real", (
+            "The sim needs to be the real world for the teleop leader policy"
+        )
         for motor_name in robot.motor_ordering:
             for gain_name in ["kp_real", "kd_real", "kff1_real", "kff2_real"]:
                 robot.config["joints"][motor_name][gain_name] = 0.0
 
         policy = PolicyClass(
-            args.policy, robot, init_motor_pos, ip=args.ip, prep=args.prep
+            args.policy, robot, init_motor_pos, ip=args.ip, task=args.task
         )  # type: ignore
 
-    elif "follower" in args.policy:
+    elif "teleop_follower" in args.policy:
         # Run the command
         if len(args.ip) > 0:
             sync_time(args.ip)
@@ -727,27 +811,42 @@ if __name__ == "__main__":
             sync_time(args.ip)
 
         policy = PolicyClass(  # type: ignore
-            args.policy, robot, init_motor_pos, ckpt=args.ckpt, ip=args.ip
+            args.policy, robot, init_motor_pos, ip=args.ip, run_name=args.run_name
         )
+
+    elif "push_cart" in args.policy:
+        policy = PolicyClass(args.policy, robot, init_motor_pos, args.ckpt)
 
     elif issubclass(PolicyClass, MJXPolicy):
         if len(args.ip) > 0:
             sync_time(args.ip)
-            
+
         fixed_command = None
         if len(args.command) > 0:
             fixed_command = np.array(args.command.split(" "), dtype=np.float32)
         if issubclass(PolicyClass, MJXFinetunePolicy):
             policy = PolicyClass(
-                args.policy, robot=robot, init_motor_pos=init_motor_pos, ckpt=args.ckpt, fixed_command=fixed_command, exp_folder=exp_folder_path, ip=args.ip
+                args.policy,
+                robot=robot,
+                init_motor_pos=init_motor_pos,
+                ckpt=args.ckpt,
+                fixed_command=fixed_command,
+                exp_folder=exp_folder_path,
+                ip=args.ip,
             )
         else:
             policy = PolicyClass(
-                args.policy, robot=robot, init_motor_pos=init_motor_pos, ckpt=args.ckpt, fixed_command=fixed_command
+                args.policy,
+                robot=robot,
+                init_motor_pos=init_motor_pos,
+                ckpt=args.ckpt,
+                fixed_command=fixed_command,
             )
 
     elif issubclass(PolicyClass, DPPolicy):
-        policy = PolicyClass(args.policy, robot, init_motor_pos, args.ckpt, task=args.task)
+        policy = PolicyClass(
+            args.policy, robot, init_motor_pos, args.ckpt, task=args.task
+        )
 
     elif issubclass(PolicyClass, BalancePDPolicy):
         # Run the command
@@ -761,15 +860,18 @@ if __name__ == "__main__":
         policy = PolicyClass(
             args.policy, robot, init_motor_pos, args.ckpt, fixed_command=fixed_command
         )
-    elif "at" in args.policy: # Arm Treadmill
+    elif "at" in args.policy:  # Arm Treadmill
         while (obs.arm_ee_pos == 0.0).all():
             obs = sim.get_observation()
             time.sleep(0.1)
-        policy = PolicyClass(args.policy, robot, init_motor_pos, init_arm_pos=obs.arm_ee_pos, ip=args.ip)
-    elif len(args.ip) > 0:
-        policy = PolicyClass(args.policy, robot, init_motor_pos, ip=args.ip)
+        policy = PolicyClass(
+            args.policy, robot, init_motor_pos, init_arm_pos=obs.arm_ee_pos, ip=args.ip
+        )
+    elif "talk" in args.policy:
+        policy = PolicyClass(args.policy, robot, init_motor_pos, ip=args.ip)  # type:ignore
     else:
         policy = PolicyClass(args.policy, robot, init_motor_pos)
+
     arm_policy = None
     if args.sim == "arm_toddler":
         if args.arm_policy == "fix_arm" or "ee" in args.arm_policy:
@@ -777,5 +879,15 @@ if __name__ == "__main__":
         else:
             raise ValueError(f"Unknown arm policy {args.arm_policy}")
 
-    # input("Press Enter to start the simulation...")
-    main(robot, arm, sim, policy, arm_policy, args.vis, exp_folder_path)
+    # t3 = time.time()
+
+    # print(f"Time taken to initialize sim: {t2 - t1:.2f} s")
+    # print(f"Time taken to initialize policy: {t3 - t2:.2f} s")
+
+    run_policy(
+        robot, arm, sim, policy, arm_policy, args.vis, exp_folder_path, args.plot
+    )
+
+
+if __name__ == "__main__":
+    main()

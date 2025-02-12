@@ -1,13 +1,9 @@
-import collections
-
 import numpy as np
 import torch
 import torch.nn as nn
 import torchvision.models as models
 from diffusers.schedulers.scheduling_ddim import DDIMScheduler
 from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
-from diffusers.schedulers.scheduling_ddim import DDIMScheduler
-from tqdm.auto import tqdm
 
 from toddlerbot.manipulation.models.diffusion_model import ConditionalUnet1D
 from toddlerbot.manipulation.utils.dataset_utils import (
@@ -19,11 +15,28 @@ from toddlerbot.manipulation.utils.model_utils import get_resnet, replace_bn_wit
 
 class DPModel:
     def __init__(self, ckpt_path, stats=None):
+        """Initializes the model by setting up the device, loading parameters from a checkpoint, and configuring the noise schedulers.
+
+        Args:
+            ckpt_path (str): Path to the checkpoint file containing model parameters.
+            stats (optional): Additional statistics or configurations for model initialization. Defaults to None.
+        """
+
         # |o|o|                             observations: 2
         # | |a|a|a|a|a|a|a|a|               actions executed: 8
         # |p|p|p|p|p|p|p|p|p|p|p|p|p|p|p|p| actions predicted: 16
 
-        params = torch.load(ckpt_path)["params"]
+        if torch.cuda.is_available():
+            device_str = "cuda"
+        elif torch.backends.mps.is_available():
+            device_str = "mps"
+        else:
+            device_str = "cpu"
+
+        # Check if CUDA is available
+        self.device = torch.device(device_str)
+        # Load parameters and move to the correct device
+        params = torch.load(ckpt_path, map_location=self.device)["params"]
 
         # net definitions
         self.weights = (
@@ -72,6 +85,14 @@ class DPModel:
         self.load_model(ckpt_path, stats=stats)
 
     def load_model(self, ckpt_path, stats=None):
+        """Loads a pre-trained model from a checkpoint file and initializes the network components.
+
+        Args:
+            ckpt_path (str): Path to the checkpoint file containing the model's state dictionary.
+            stats (dict, optional): Pre-computed statistics for the model. If not provided, statistics will be loaded from the checkpoint.
+
+        Loads the model's state dictionary and statistics from the checkpoint, or uses provided statistics. Sets the model to evaluation mode.
+        """
         # Construct the network
         vision_encoder = get_resnet("resnet18", weights=self.weights)
         vision_encoder = replace_bn_with_gn(vision_encoder)
@@ -92,10 +113,6 @@ class DPModel:
             {"vision_encoder": vision_encoder, "noise_pred_net": noise_pred_net}
         )
 
-        if torch.cuda.is_available():
-            self.device = torch.device("cuda")
-        else:
-            self.device = torch.device("mps")
         self.ema_nets = self.ema_nets.to(self.device)
 
         if stats is None:
@@ -112,6 +129,22 @@ class DPModel:
         self.ema_nets.eval()
 
     def prepare_inputs(self, obs_deque):
+        """Prepares and normalizes input data for model processing.
+
+        This function stacks and normalizes the last set of observations from a deque,
+        transferring them to the specified device for further processing.
+
+        Args:
+            obs_deque (collections.deque): A deque containing the most recent observations,
+                where each observation is a dictionary with keys "image" and "agent_pos".
+
+        Returns:
+            tuple: A tuple containing:
+                - nimages (torch.Tensor): A tensor of stacked and normalized images,
+                  transferred to the specified device.
+                - nagent_poses (torch.Tensor): A tensor of normalized agent positions,
+                  transferred to the specified device.
+        """
         # stack the last obs_horizon number of observations
         images = np.stack([x["image"] for x in obs_deque])
         agent_poses = np.stack([x["agent_pos"] for x in obs_deque])
@@ -132,6 +165,16 @@ class DPModel:
         return nimages, nagent_poses
 
     def prediction_to_action(self, naction):
+        """Converts a normalized action prediction to a denormalized action sequence.
+
+        This method takes a normalized action prediction tensor, detaches it from the computation graph, and converts it to a NumPy array. It then denormalizes the action data using predefined statistics and extracts a sequence of actions based on the specified action horizon.
+
+        Args:
+            naction (torch.Tensor): A tensor containing the normalized action predictions with shape (B, pred_horizon, action_dim).
+
+        Returns:
+            numpy.ndarray: A denormalized action sequence with shape (action_horizon, action_dim).
+        """
         # denormalize action
         naction = naction.detach().to("cpu").numpy()  # (B, pred_horizon, action_dim)
         naction = naction[0]
@@ -144,6 +187,16 @@ class DPModel:
         return action
 
     def inference_ddim(self, obs_cond, nsteps=10, naction=None):
+        """Performs DDIM (Denoising Diffusion Implicit Models) inference to generate actions based on observed conditions.
+
+        Args:
+            obs_cond (torch.Tensor): The observed conditions used as input to condition the action generation.
+            nsteps (int, optional): The number of diffusion steps to perform. Defaults to 10.
+            naction (torch.Tensor, optional): Initial noisy actions. If None, actions are initialized from Gaussian noise.
+
+        Returns:
+            torch.Tensor: The denoised actions after performing the specified number of diffusion steps.
+        """
         # initialize n(oisy) action from Guassian noise
         B = 1
         if naction is None:
@@ -168,6 +221,18 @@ class DPModel:
         return naction
 
     def inference_ddpm(self, obs_cond, nsteps, naction=None):
+        """Performs inference using the Denoising Diffusion Probabilistic Model (DDPM) to generate actions.
+
+        This function initializes a noisy action from Gaussian noise and iteratively refines it using a noise prediction network and a noise scheduler. The process involves predicting noise at each timestep and removing it to obtain a cleaner action sample.
+
+        Args:
+            obs_cond (Tensor): The observation condition tensor used as global conditioning input for the noise prediction network.
+            nsteps (int): The number of diffusion steps to perform during the inference process.
+            naction (Tensor, optional): Initial noisy action tensor. If not provided, it is initialized from Gaussian noise.
+
+        Returns:
+            Tensor: The refined action tensor after performing the inverse diffusion process.
+        """
         # initialize n(oisy) action from Guassian noise
         B = 1
         if naction is None:
@@ -192,6 +257,16 @@ class DPModel:
         return naction
 
     def get_action_from_obs(self, obs_deque):
+        """Generate an action based on a sequence of observations.
+
+        This function processes a deque of observations to prepare inputs, extracts features using a vision encoder, and performs inference to generate an action. The action is derived from denoised samples obtained through a diffusion model.
+
+        Args:
+            obs_deque (collections.deque): A deque containing the sequence of observations.
+
+        Returns:
+            torch.Tensor: The generated action in the required format.
+        """
         # prepare inputs
         nimages, nagent_poses = self.prepare_inputs(obs_deque)
 
@@ -216,78 +291,3 @@ class DPModel:
         action = self.prediction_to_action(naction)
 
         return action
-
-
-if __name__ == "__main__":
-    from skvideo.io import vwrite
-
-    from toddlerbot.manipulation.datasets.pusht_dataset import PushTImageDataset
-    from toddlerbot.manipulation.envs.pusht_env import PushTImageEnv
-
-    pred_horizon, obs_horizon, action_horizon = 16, 2, 8
-    lowdim_obs_dim, action_dim = 2, 2
-
-    # create dataset from file
-    dataset_path = "diffusion_policy_minimal/pusht_cchi_v7_replay.zarr.zip"
-    dataset = PushTImageDataset(
-        dataset_path=dataset_path,
-        pred_horizon=pred_horizon,
-        obs_horizon=obs_horizon,
-        action_horizon=action_horizon,
-    )
-    # save training data statistics (min, max) for each dim
-    stats = dataset.stats
-
-    model = DPModel(
-        "diffusion_policy_minimal/checkpoints/pusht_vision_100ep.ckpt",
-        stats=stats,
-    )
-
-    # ### **Inference**
-
-    # limit enviornment interaction to 200 steps before termination
-    max_steps = 200
-    env = PushTImageEnv()
-    # use a seed >200 to avoid initial states seen in the training dataset
-    env.seed(100000)
-
-    # get first observation
-    obs, info = env.reset()
-
-    # keep a queue of last 2 steps of observations
-    obs_deque = collections.deque([obs] * obs_horizon, maxlen=obs_horizon)
-    # save visualization and rewards
-    imgs = [env.render(mode="rgb_array")]
-    rewards = list()
-    done = False
-    step_idx = 0
-
-    with tqdm(total=max_steps, desc="Eval PushTImageEnv") as pbar:
-        while not done:
-            action = model.get_action_from_obs(obs_deque)
-
-            # execute action_horizon number of steps
-            # without replanning
-            for i in range(len(action)):
-                # stepping env
-                obs, reward, done, _, info = env.step(action[i])
-                # save observations
-                obs_deque.append(obs)
-                # and reward/vis
-                rewards.append(reward)
-                imgs.append(env.render(mode="rgb_array"))
-
-                # update progress bar
-                step_idx += 1
-                pbar.update(1)
-                pbar.set_postfix(reward=reward)
-                if step_idx > max_steps:
-                    done = True
-                if done:
-                    break
-
-    # print out the maximum target coverage
-    print("Score: ", max(rewards))
-
-    # visualize
-    vwrite("vis.mp4", imgs)

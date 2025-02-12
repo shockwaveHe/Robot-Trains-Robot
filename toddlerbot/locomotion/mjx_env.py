@@ -12,9 +12,9 @@ from jax import numpy as jnp
 from mujoco import mjx
 from mujoco.mjx._src import support  # type: ignore
 
-from toddlerbot.actuation.mujoco.mujoco_control import MotorController
 from toddlerbot.locomotion.mjx_config import MJXConfig
-from toddlerbot.motion.motion_ref import MotionReference
+from toddlerbot.reference.motion_ref import MotionReference
+from toddlerbot.sim.mujoco_control import MotorController
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_robot_file_path
 from toddlerbot.utils.math_utils import (
@@ -33,6 +33,17 @@ env_registry: Dict[str, Type["MJXEnv"]] = {}
 
 
 def get_env_class(env_name: str) -> Type["MJXEnv"]:
+    """Returns the environment class associated with the given environment name.
+
+    Args:
+        env_name (str): The name of the environment to retrieve.
+
+    Returns:
+        Type[MJXEnv]: The class of the specified environment.
+
+    Raises:
+        ValueError: If the environment name is not found in the registry.
+    """
     if env_name not in env_registry:
         raise ValueError(f"Unknown env: {env_name}")
 
@@ -40,6 +51,11 @@ def get_env_class(env_name: str) -> Type["MJXEnv"]:
 
 
 def get_env_names() -> List[str]:
+    """Retrieve a list of environment names.
+
+    Returns:
+        List[str]: A list containing the names of all registered environments.
+    """
     return list(env_registry.keys())
 
 
@@ -55,6 +71,18 @@ class MJXEnv(PipelineEnv):
         add_domain_rand: bool = True,
         **kwargs: Any,
     ):
+        """Initializes the environment with the specified configuration and robot parameters.
+
+        Args:
+            name (str): The name of the environment.
+            robot (Robot): The robot instance to be used in the environment.
+            cfg (MJXConfig): Configuration settings for the environment and simulation.
+            motion_ref (MotionReference): Reference for motion planning and execution.
+            fixed_base (bool, optional): Whether the robot has a fixed base. Defaults to False.
+            add_noise (bool, optional): Whether to add noise to the simulation. Defaults to True.
+            add_domain_rand (bool, optional): Whether to add domain randomization. Defaults to True.
+            **kwargs (Any): Additional keyword arguments for environment initialization.
+        """
         self.name = name
         self.cfg = cfg
         self.robot = robot
@@ -97,11 +125,21 @@ class MJXEnv(PipelineEnv):
 
     # Automatic registration of subclasses
     def __init_subclass__(cls, env_name: str = "", **kwargs):
+        """Initializes a subclass and optionally registers it in the environment registry.
+
+        Args:
+            env_name (str): The name of the environment to register the subclass under. If provided, the subclass is added to the `env_registry` with this name.
+            **kwargs: Additional keyword arguments passed to the superclass initializer.
+        """
         super().__init_subclass__(**kwargs)
         if len(env_name) > 0:
             env_registry[env_name] = cls
 
     def _init_env(self) -> None:
+        """Initializes the environment by setting up various system parameters, colliders, joint indices, motor indices, actuator indices, and action configurations.
+
+        This method configures the environment based on the system and robot specifications, including the number of joints, colliders, and actuators. It identifies and categorizes joint and motor indices for different body parts such as legs, arms, neck, and waist. It also sets up action masks, default actions, and noise scales for the simulation. Additionally, it configures filters and command parameters for controlling the robot's movements and interactions within the environment.
+        """
         self.nu = self.sys.nu
         self.nq = self.sys.nq
         self.nv = self.sys.nv
@@ -333,8 +371,9 @@ class MJXEnv(PipelineEnv):
         self.push_ang_vel = self.cfg.domain_rand.push_ang_vel
 
     def _init_reward(self) -> None:
-        """Prepares a list of reward functions, which will be called to compute the total reward.
-        Looks for self._reward_<REWARD_NAME>, where <REWARD_NAME> are names of all non zero reward scales in the cfg.
+        """Initializes the reward system by filtering and scaling reward components.
+
+        This method processes the reward scales configuration by removing any components with a scale of zero and scaling the remaining components by a time factor. It then prepares a list of reward function names and their corresponding scales, which are stored for later use in reward computation. Additionally, it sets parameters related to health and tracking rewards.
         """
         reward_scale_dict = asdict(self.cfg.reward_scales)
         # Remove zero scales and multiply non-zero ones by dt
@@ -355,10 +394,26 @@ class MJXEnv(PipelineEnv):
 
     @property
     def action_size(self) -> int:  # override default action_size
+        """Returns the number of possible actions.
+
+        Overrides the default action size to provide the specific number of actions available.
+
+        Returns:
+            int: The number of possible actions.
+        """
         return self.num_action
 
     def reset(self, rng: jax.Array) -> State:
-        """Resets the environment to an initial state."""
+        """Resets the environment state and initializes various components for a new episode.
+
+        This function splits the input random number generator (RNG) into multiple streams for different components, initializes the state information dictionary, and sets up the initial positions, velocities, and commands for the environment. It also applies domain randomization if enabled and prepares observation histories.
+
+        Args:
+            rng (jax.Array): The random number generator state for initializing the environment.
+
+        Returns:
+            State: The initialized state of the environment, including pipeline state, observations, rewards, and other relevant information.
+        """
         (
             rng,
             rng_torso_yaw,
@@ -506,7 +561,17 @@ class MJXEnv(PipelineEnv):
         )
 
     def pipeline_step(self, state: State, action: jax.Array) -> base.State:
-        """Takes a physics step using the physics pipeline."""
+        """Executes a pipeline step by applying a control action to the system state.
+
+        This function iteratively applies a control action to the system's state over a specified number of frames. It uses a controller to compute control signals based on the current state and action, and updates the pipeline state accordingly.
+
+        Args:
+            state (State): The current state of the system, containing information required for control computations.
+            action (jax.Array): The control action to be applied to the system.
+
+        Returns:
+            base.State: The updated state of the system after applying the control action over the specified number of frames.
+        """
 
         progress = jnp.minimum(
             state.info.get("episode_num", 0) / self.cfg.hang.hang_force_decay_episodes,
@@ -565,7 +630,17 @@ class MJXEnv(PipelineEnv):
         return jax.lax.scan(f, state.pipeline_state, (), self._n_frames)[0]
 
     def step(self, state: State, action: jax.Array) -> State:
-        """Runs one timestep of the environment's dynamics."""
+        """Advances the simulation by one time step, updating the state based on the given action.
+
+        This function updates the state of the simulation by processing the given action, applying filters, and incorporating domain randomization if enabled. It computes the motor targets, updates the pipeline state, and checks for termination conditions. Additionally, it calculates rewards and updates various state information, including contact forces, stance masks, and command resampling.
+
+        Args:
+            state (State): The current state of the simulation, containing information about the system's dynamics and metadata.
+            action (jax.Array): The action to be applied at this time step, influencing the system's behavior.
+
+        Returns:
+            State: The updated state after applying the action and advancing the simulation by one step.
+        """
         rng, cmd_rng, push_lin_rng, push_ang_rng = jax.random.split(
             state.info["rng"], 4
         )
@@ -706,7 +781,8 @@ class MJXEnv(PipelineEnv):
         # jax.debug.print("step: {}", state.info["step"])
 
         state.info["command"] = jax.lax.cond(
-            state.info["step"] % self.resample_steps == 0, # TODO: set resample_steps to a large value, no last_command
+            state.info["step"] % self.resample_steps
+            == 0,  # TODO: set resample_steps to a large value, no last_command
             lambda: self._sample_command(cmd_rng, state.info["command"]),
             lambda: state.info["command"],
         )
@@ -740,6 +816,15 @@ class MJXEnv(PipelineEnv):
     def _sample_command_uniform(
         self, rng: jax.Array, command_range: jax.Array
     ) -> jax.Array:
+        """Generates a uniformly distributed random sample within specified command ranges.
+
+        Args:
+            rng (jax.Array): A JAX random number generator array.
+            command_range (jax.Array): A 2D array where each row specifies the minimum and maximum values for sampling.
+
+        Returns:
+            jax.Array: An array of uniformly distributed random samples, one for each range specified in `command_range`.
+        """
         return jax.random.uniform(
             rng,
             (command_range.shape[0],),
@@ -750,6 +835,16 @@ class MJXEnv(PipelineEnv):
     def _sample_command_normal(
         self, rng: jax.Array, command_range: jax.Array
     ) -> jax.Array:
+        """Samples a command from a normal distribution and clips it to a specified range.
+
+        Args:
+            rng (jax.Array): Random number generator array for sampling.
+            command_range (jax.Array): Array specifying the range for each command dimension,
+                where each row is [min, max].
+
+        Returns:
+            jax.Array: An array of sampled commands, clipped to the specified range.
+        """
         return jnp.clip(
             jax.random.normal(rng, (command_range.shape[0],))
             * command_range[:, 1]
@@ -761,6 +856,18 @@ class MJXEnv(PipelineEnv):
     def _sample_command_normal_reversion(
         self, rng: jax.Array, command_range: jax.Array, last_command: jax.Array
     ) -> jax.Array:
+        """Generates a sample command using normal distribution with mean reversion.
+
+        This function samples a command from a normal distribution, applies mean reversion to the last command, and clips the result within specified command ranges.
+
+        Args:
+            rng (jax.Array): Random number generator array for sampling.
+            command_range (jax.Array): Array specifying the min and max range for each command dimension.
+            last_command (jax.Array): The last command array to apply mean reversion.
+
+        Returns:
+            jax.Array: A new command array sampled and adjusted according to the specified parameters.
+        """
         return jnp.clip(
             jax.random.normal(rng, (command_range.shape[0],))
             * command_range[:, 1]
@@ -771,6 +878,22 @@ class MJXEnv(PipelineEnv):
         )
 
     def _get_contact_forces(self, data: mjx.Data):
+        """Compute contact forces between colliders and determine foot contact masks.
+
+        This function calculates the contact forces between colliders based on the provided
+        simulation data. It also determines whether the left and right foot colliders are in
+        contact with the ground by comparing the contact forces against a predefined threshold.
+
+        Args:
+            data (mjx.Data): The simulation data containing contact information.
+
+        Returns:
+            Tuple[jax.Array, jax.Array, jax.Array]: A tuple containing:
+                - A 3D array of shape (num_colliders, num_colliders, 3) representing the global
+                  contact forces between colliders.
+                - A 1D array indicating whether each left foot collider is in contact.
+                - A 1D array indicating whether each right foot collider is in contact.
+        """
         # Extract geom1 and geom2 directly
         geom1 = data.contact.geom1
         geom2 = data.contact.geom2
@@ -812,7 +935,17 @@ class MJXEnv(PipelineEnv):
         obs_history: jax.Array,
         privileged_obs_history: jax.Array,
     ) -> Tuple[jax.Array, jax.Array]:
-        """Observes humanoid body position, velocities, and angles."""
+        """Generates and returns the current and privileged observations for the system.
+
+        Args:
+            pipeline_state (base.State): The current state of the pipeline, containing position, velocity, and other dynamics information.
+            info (dict[str, Any]): A dictionary containing additional information such as random number generator state, reference states, and other auxiliary data.
+            obs_history (jax.Array): An array storing the history of observations for the system.
+            privileged_obs_history (jax.Array): An array storing the history of privileged observations for the system.
+
+        Returns:
+            Tuple[jax.Array, jax.Array]: A tuple containing the updated observation and privileged observation arrays.
+        """
         rng, obs_rng = jax.random.split(info["rng"], 2)
 
         motor_pos = pipeline_state.q[self.q_start_idx + self.motor_indices]
@@ -891,6 +1024,16 @@ class MJXEnv(PipelineEnv):
     def _compute_reward(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ):
+        """Computes a dictionary of rewards based on the current pipeline state, additional information, and the action taken.
+
+        Args:
+            pipeline_state (base.State): The current state of the pipeline.
+            info (dict[str, Any]): Additional information that may be required for reward computation.
+            action (jax.Array): The action taken, which influences the reward calculation.
+
+        Returns:
+            Dict[str, jax.Array]: A dictionary where keys are reward names and values are the computed rewards as JAX arrays.
+        """
         # Create an array of indices to map over
         indices = jnp.arange(len(self.reward_names))
         # Use jax.lax.map to compute rewards
@@ -915,7 +1058,23 @@ class MJXEnv(PipelineEnv):
     def _reward_torso_pos(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ):
-        """Reward for track torso position"""
+        """Calculates the reward based on the position of the torso.
+
+        This function computes a reward by comparing the current position of the torso
+        to a reference position. The reward is calculated using a Gaussian function
+        that penalizes deviations from the reference position.
+
+        Args:
+            pipeline_state (base.State): The current state of the system, containing
+                positional information.
+            info (dict[str, Any]): A dictionary containing reference state information,
+                specifically the reference position of the torso.
+            action (jax.Array): The action taken, though not used in this reward calculation.
+
+        Returns:
+            jax.Array: The computed reward based on the deviation of the torso's position
+            from the reference position.
+        """
         torso_pos = pipeline_state.x.pos[0][:2]  # Assuming [:2] extracts xy components
         torso_pos_ref = info["state_ref"][:2]
         error = jnp.linalg.norm(torso_pos - torso_pos_ref, axis=-1)
@@ -925,7 +1084,16 @@ class MJXEnv(PipelineEnv):
     def _reward_torso_quat(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ):
-        """Reward for track torso orientation"""
+        """Calculates a reward based on the alignment of the torso's quaternion orientation with a reference orientation.
+
+        Args:
+            pipeline_state (base.State): The current state of the system, containing the rotation of the torso.
+            info (dict[str, Any]): A dictionary containing reference state information, including the reference quaternion and waist joint positions.
+            action (jax.Array): The action taken, though not used in this function.
+
+        Returns:
+            jax.Array: A reward value computed from the quaternion angle difference between the current and reference torso orientations.
+        """
         torso_quat = pipeline_state.x.rot[0]
         path_quat_ref = info["state_ref"][3:7]
 
@@ -949,7 +1117,16 @@ class MJXEnv(PipelineEnv):
     def _reward_lin_vel_xy(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ):
-        """Reward for track linear velocity in xy"""
+        """Calculates the reward based on the linear velocity in the XY plane.
+
+        Args:
+            pipeline_state (base.State): The current state of the system, including position and velocity.
+            info (dict[str, Any]): Additional information, including reference state data.
+            action (jax.Array): The action taken by the agent.
+
+        Returns:
+            jax.Array: The computed reward value, which is a function of the error between the current and reference linear velocities in the XY plane.
+        """
         lin_vel_local = rotate_vec(
             pipeline_state.xd.vel[0], quat_inv(pipeline_state.x.rot[0])
         )
@@ -962,7 +1139,23 @@ class MJXEnv(PipelineEnv):
     def _reward_lin_vel_z(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ):
-        """Reward for track linear velocity in z"""
+        """Calculate the reward based on the vertical component of linear velocity.
+
+        This function computes a reward that measures how closely the vertical component
+        of the linear velocity of an object matches a reference value. The reward is
+        calculated using a Gaussian function of the error between the actual and
+        reference vertical velocities.
+
+        Args:
+            pipeline_state (base.State): The current state of the system, containing
+                position and velocity information.
+            info (dict[str, Any]): A dictionary containing reference state information,
+                specifically the reference vertical velocity.
+            action (jax.Array): The action taken, not used in this calculation.
+
+        Returns:
+            jax.Array: The computed reward based on the vertical velocity tracking error.
+        """
         lin_vel_local = rotate_vec(
             pipeline_state.xd.vel[0], quat_inv(pipeline_state.x.rot[0])
         )
@@ -975,7 +1168,18 @@ class MJXEnv(PipelineEnv):
     def _reward_ang_vel_xy(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ):
-        """Reward for track angular velocity in xy"""
+        """Calculates a reward based on the angular velocity in the XY plane.
+
+        This function computes the reward by comparing the current angular velocity in the XY plane to a reference value. The reward is calculated using a Gaussian function of the error between the current and reference angular velocities.
+
+        Args:
+            pipeline_state (base.State): The current state of the system, containing rotational and angular velocity information.
+            info (dict[str, Any]): A dictionary containing reference state information, specifically the target angular velocity in the XY plane.
+            action (jax.Array): The action taken, though not directly used in this function.
+
+        Returns:
+            jax.Array: The computed reward based on the angular velocity tracking error.
+        """
         ang_vel_local = rotate_vec(
             pipeline_state.xd.ang[0], quat_inv(pipeline_state.x.rot[0])
         )
@@ -988,7 +1192,23 @@ class MJXEnv(PipelineEnv):
     def _reward_ang_vel_z(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ):
-        """Reward for track angular velocity in z"""
+        """Calculate the reward based on the z-component of angular velocity.
+
+        This function computes a reward that measures how closely the z-component of the
+        angular velocity of a system matches a reference value. The reward is calculated
+        using a Gaussian function of the error between the actual and reference angular
+        velocities.
+
+        Args:
+            pipeline_state (base.State): The current state of the system, including
+                angular velocities and orientations.
+            info (dict[str, Any]): A dictionary containing reference states, including
+                the reference angular velocity.
+            action (jax.Array): The action taken, though not used in this calculation.
+
+        Returns:
+            jax.Array: The computed reward based on the angular velocity error.
+        """
         ang_vel_local = rotate_vec(
             pipeline_state.xd.ang[0], quat_inv(pipeline_state.x.rot[0])
         )
@@ -1001,7 +1221,23 @@ class MJXEnv(PipelineEnv):
     def _reward_feet_contact(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ):
-        """Reward for contact"""
+        """Calculates the reward based on the contact of feet with the ground.
+
+        This function computes the reward by comparing the stance mask from the
+        `info` dictionary with the reference state, specifically the last two
+        elements of the `state_ref` array. The reward is the sum of matches
+        between these two arrays, indicating the number of feet in contact with
+        the ground as expected.
+
+        Args:
+            pipeline_state (base.State): The current state of the pipeline.
+            info (dict[str, Any]): A dictionary containing information about the
+                current state, including the 'stance_mask' and 'state_ref'.
+            action (jax.Array): The action taken, represented as a JAX array.
+
+        Returns:
+            jax.numpy.ndarray: The computed reward as a float32 value.
+        """
         reward = jnp.sum(info["stance_mask"] == info["state_ref"][-2:]).astype(
             jnp.float32
         )
@@ -1010,7 +1246,18 @@ class MJXEnv(PipelineEnv):
     def _reward_leg_motor_pos(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
-        """Reward for tracking leg joint positions"""
+        """Calculates the reward based on the position error of leg motors.
+
+        This function computes the reward by evaluating the squared error between the current leg motor positions and the reference positions. The reward is the negative mean of these squared errors, encouraging the motor positions to match the reference.
+
+        Args:
+            pipeline_state (base.State): The current state of the system, containing the positions of all motors.
+            info (dict[str, Any]): A dictionary containing reference state information, including the desired motor positions.
+            action (jax.Array): The action taken, though not used in this reward calculation.
+
+        Returns:
+            jax.Array: The calculated reward as a negative mean of the squared position errors.
+        """
         motor_pos = pipeline_state.q[self.q_start_idx + self.leg_motor_indices]
         motor_pos_ref = info["state_ref"][self.ref_start_idx + self.leg_ref_indices]
         error = motor_pos - motor_pos_ref
@@ -1020,17 +1267,37 @@ class MJXEnv(PipelineEnv):
     def _reward_arm_motor_pos(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
-        """Reward for tracking arm joint positions"""
+        """Calculates the reward based on the position error of the arm motor.
+
+        This function computes the reward by evaluating the mean squared error between the current motor positions and the reference motor positions. The reward is negative, indicating that smaller errors result in higher rewards.
+
+        Args:
+            pipeline_state (base.State): The current state of the system, containing the motor positions.
+            info (dict[str, Any]): A dictionary containing reference state information, including the target motor positions.
+            action (jax.Array): The action taken, though not used in this function.
+
+        Returns:
+            jax.Array: The calculated reward as a negative mean squared error of the motor position differences.
+        """
         motor_pos = pipeline_state.q[self.q_start_idx + self.arm_motor_indices]
         motor_pos_ref = info["state_ref"][self.ref_start_idx + self.arm_ref_indices]
         error = motor_pos - motor_pos_ref
         reward = -jnp.mean(error**2)
-        return reward.astype(dtype)
+        return reward
 
     def _reward_neck_motor_pos(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
-        """Reward for tracking neck joint positions"""
+        """Calculates the reward based on the neck motor positions by comparing the current motor positions to reference positions.
+
+        Args:
+            pipeline_state (base.State): The current state of the pipeline containing motor positions.
+            info (dict[str, Any]): A dictionary containing reference state information.
+            action (jax.Array): The action taken, not used in this function.
+
+        Returns:
+            jax.Array: The calculated reward as a negative mean squared error between current and reference neck motor positions.
+        """
         motor_pos = pipeline_state.q[self.q_start_idx + self.neck_motor_indices]
         motor_pos_ref = info["state_ref"][self.ref_start_idx + self.neck_ref_indices]
         error = motor_pos - motor_pos_ref
@@ -1040,16 +1307,42 @@ class MJXEnv(PipelineEnv):
     def _reward_waist_motor_pos(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
-        """Reward for tracking waist joint positions"""
+        """Calculates the reward based on the position error of the waist motor.
+
+        This function computes the reward by evaluating the mean squared error between the current waist motor positions and the reference positions. A lower error results in a higher reward.
+
+        Args:
+            pipeline_state (base.State): The current state of the system, containing the positions of all motors.
+            info (dict[str, Any]): A dictionary containing reference state information, including the desired motor positions.
+            action (jax.Array): The action taken, represented as a JAX array.
+
+        Returns:
+            jax.Array: The calculated reward as a JAX array, where a lower position error results in a higher reward.
+        """
         motor_pos = pipeline_state.q[self.q_start_idx + self.waist_motor_indices]
         motor_pos_ref = info["state_ref"][self.ref_start_idx + self.waist_ref_indices]
         error = motor_pos - motor_pos_ref
         reward = -jnp.mean(error**2)
-        return reward.astype(dtype)
+        return reward
 
     def _reward_collision(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ):
+        """Calculates a negative reward based on collision forces in the environment.
+
+        This function computes a penalty for collisions by evaluating the contact forces
+        between objects, excluding the floor. If the force exceeds a threshold, it is
+        considered a collision, and a negative reward is accumulated for each collision.
+
+        Args:
+            pipeline_state (base.State): The current state of the simulation pipeline.
+            info (dict[str, Any]): A dictionary containing information about the current
+                simulation step, including contact forces.
+            action (jax.Array): The action taken by the agent, not used in this function.
+
+        Returns:
+            float: A negative reward representing the penalty for collisions.
+        """
         collision_forces = jnp.linalg.norm(
             info["contact_forces"][1:, 1:],  # exclude the floor
             axis=-1,
@@ -1061,7 +1354,19 @@ class MJXEnv(PipelineEnv):
     def _reward_motor_torque(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
-        """Reward for minimizing joint torques"""
+        """Calculates the reward based on motor torque.
+
+        This function computes a reward by evaluating the squared error of the motor torque
+        and returning its negative mean. The reward is designed to penalize high torque values.
+
+        Args:
+            pipeline_state (base.State): The current state of the pipeline, containing actuator forces.
+            info (dict[str, Any]): Additional information, not used in this function.
+            action (jax.Array): The action taken, not used in this function.
+
+        Returns:
+            jax.Array: The calculated reward as a negative mean of the squared torque error.
+        """
         torque = pipeline_state.qfrc_actuator[self.qd_start_idx + self.motor_indices]
         error = jnp.square(torque)
         reward = -jnp.mean(error)
@@ -1070,6 +1375,24 @@ class MJXEnv(PipelineEnv):
     def _reward_energy(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
+        """Calculates the energy-based reward for a given pipeline state and action.
+
+        This function computes the reward based on the energy consumption of the actuators
+        in the system. It calculates the energy as the product of torque and motor velocity,
+        then computes the error as the square of the energy. The reward is the negative mean
+        of this error, encouraging actions that minimize energy consumption.
+
+        Args:
+            pipeline_state (base.State): The current state of the pipeline, containing
+                information about actuator forces and velocities.
+            info (dict[str, Any]): Additional information that might be used for reward
+                calculation (not used in this function).
+            action (jax.Array): The action taken, represented as a JAX array.
+
+        Returns:
+            jax.Array: The calculated reward as a JAX array, representing the negative mean
+            of the squared energy error.
+        """
         torque = pipeline_state.qfrc_actuator[self.qd_start_idx + self.motor_indices]
         motor_vel = pipeline_state.qvel[self.qd_start_idx + self.motor_indices]
         energy = torque * motor_vel
@@ -1080,7 +1403,18 @@ class MJXEnv(PipelineEnv):
     def _reward_leg_action_rate(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
-        """Reward for tracking leg action rates"""
+        """Calculates the reward based on the rate of change of leg actions.
+
+        This function computes a reward by evaluating the squared difference between the current and last leg actions, averaged over all leg actuators. The reward is negative, encouraging minimal change in leg actions.
+
+        Args:
+            pipeline_state (base.State): The current state of the pipeline, not used in this function.
+            info (dict[str, Any]): A dictionary containing the last action taken, with key "last_act".
+            action (jax.Array): The current action array, from which leg actions are extracted.
+
+        Returns:
+            jax.Array: A scalar reward representing the negative mean squared error of leg action changes.
+        """
         leg_action = action[self.leg_actuator_indices]
         last_leg_action = info["last_act"][self.leg_actuator_indices]
         error = jnp.square(leg_action - last_leg_action)
@@ -1090,7 +1424,16 @@ class MJXEnv(PipelineEnv):
     def _reward_leg_action_acc(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
-        """Reward for tracking leg action accelerations"""
+        """Calculates the reward based on the acceleration of leg actions.
+
+        Args:
+            pipeline_state (base.State): The current state of the pipeline.
+            info (dict[str, Any]): A dictionary containing information about previous actions.
+            action (jax.Array): The current action array.
+
+        Returns:
+            jax.Array: The calculated reward as a negative mean squared error of the leg action acceleration.
+        """
         leg_action = action[self.leg_actuator_indices]
         last_leg_action = info["last_act"][self.leg_actuator_indices]
         last_last_leg_action = info["last_last_act"][self.leg_actuator_indices]
@@ -1101,7 +1444,18 @@ class MJXEnv(PipelineEnv):
     def _reward_arm_action_rate(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
-        """Reward for tracking arm action rates"""
+        """Calculates the reward based on the rate of change of arm actions.
+
+        This function computes the reward by evaluating the squared error between the current and last arm actions, and returns the negative mean of these errors. The reward is designed to penalize large changes in arm actions, encouraging smoother transitions.
+
+        Args:
+            pipeline_state (base.State): The current state of the pipeline, not used in this function.
+            info (dict[str, Any]): A dictionary containing additional information, specifically the last action taken.
+            action (jax.Array): The current action array, from which the arm actions are extracted.
+
+        Returns:
+            jax.Array: The calculated reward as a negative mean of the squared differences between current and last arm actions.
+        """
         arm_action = action[self.arm_actuator_indices]
         last_arm_action = info["last_act"][self.arm_actuator_indices]
         error = jnp.square(arm_action - last_arm_action)
@@ -1111,7 +1465,25 @@ class MJXEnv(PipelineEnv):
     def _reward_arm_action_acc(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
-        """Reward for tracking arm action accelerations"""
+        """Calculate the reward based on the acceleration of arm actions.
+
+        This function computes the reward by evaluating the acceleration of arm actions
+        using the difference between the current, last, and second-to-last actions. The
+        reward is the negative mean of the squared error of this acceleration, promoting
+        smooth transitions in arm movements.
+
+        Args:
+            pipeline_state (base.State): The current state of the pipeline, not used in
+                the computation.
+            info (dict[str, Any]): A dictionary containing information about previous
+                actions, specifically 'last_act' and 'last_last_act' for arm actuators.
+            action (jax.Array): The current action array from which arm actuator actions
+                are extracted.
+
+        Returns:
+            jax.Array: The calculated reward as a negative mean of the squared error of
+            the arm action acceleration.
+        """
         arm_action = action[self.arm_actuator_indices]
         last_arm_action = info["last_act"][self.arm_actuator_indices]
         last_last_arm_action = info["last_last_act"][self.arm_actuator_indices]
@@ -1122,7 +1494,25 @@ class MJXEnv(PipelineEnv):
     def _reward_neck_action_rate(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
-        """Reward for tracking neck action rates"""
+        """Calculates the reward based on the rate of change of neck actuator actions.
+
+        This function computes a reward by evaluating the squared difference between
+        the current and previous actions of neck actuators, and then returns the
+        negative mean of these squared differences. The reward is designed to
+        penalize large changes in neck actuator actions, encouraging smoother
+        movements.
+
+        Args:
+            pipeline_state (base.State): The current state of the pipeline.
+            info (dict[str, Any]): A dictionary containing additional information,
+                including the last actions taken.
+            action (jax.Array): An array representing the current actions for all
+                actuators.
+
+        Returns:
+            jax.Array: A scalar reward value representing the penalty for the rate
+            of change in neck actuator actions.
+        """
         neck_action = action[self.neck_actuator_indices]
         last_neck_action = info["last_act"][self.neck_actuator_indices]
         error = jnp.square(neck_action - last_neck_action)
@@ -1132,7 +1522,16 @@ class MJXEnv(PipelineEnv):
     def _reward_neck_action_acc(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
-        """Reward for tracking neck action accelerations"""
+        """Calculates the reward for neck actuator actions based on acceleration error.
+
+        Args:
+            pipeline_state (base.State): The current state of the pipeline.
+            info (dict[str, Any]): A dictionary containing information about previous actions, specifically the last and second-to-last neck actuator actions.
+            action (jax.Array): The current action array containing actions for all actuators.
+
+        Returns:
+            jax.Array: The calculated reward as a negative mean squared error of the neck actuator acceleration.
+        """
         neck_action = action[self.neck_actuator_indices]
         last_neck_action = info["last_act"][self.neck_actuator_indices]
         last_last_neck_action = info["last_last_act"][self.neck_actuator_indices]
@@ -1143,7 +1542,18 @@ class MJXEnv(PipelineEnv):
     def _reward_waist_action_rate(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
-        """Reward for tracking waist action rates"""
+        """Calculates the reward based on the rate of change of waist actuator actions.
+
+        This function computes a reward by evaluating the squared difference between the current and last actions of the waist actuators. The reward is the negative mean of these squared differences, encouraging minimal change in actuator actions.
+
+        Args:
+            pipeline_state (base.State): The current state of the pipeline, not used in this function.
+            info (dict[str, Any]): A dictionary containing additional information, including the last actions under the key "last_act".
+            action (jax.Array): The current action array, from which waist actuator actions are extracted.
+
+        Returns:
+            jax.Array: A scalar reward representing the negative mean squared error of the waist actuator actions.
+        """
         waist_action = action[self.waist_actuator_indices]
         last_waist_action = info["last_act"][self.waist_actuator_indices]
         error = jnp.square(waist_action - last_waist_action)
@@ -1153,7 +1563,16 @@ class MJXEnv(PipelineEnv):
     def _reward_waist_action_acc(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
-        """Reward for tracking waist action accelerations"""
+        """Calculates the reward based on the acceleration of the waist actuator actions.
+
+        Args:
+            pipeline_state (base.State): The current state of the pipeline, not used in this function.
+            info (dict[str, Any]): A dictionary containing information about previous actions, specifically the last and second-to-last waist actuator actions.
+            action (jax.Array): The current action array from which the waist actuator actions are extracted.
+
+        Returns:
+            jax.Array: A scalar reward value calculated as the negative mean squared error of the waist actuator acceleration.
+        """
         waist_action = action[self.waist_actuator_indices]
         last_waist_action = info["last_act"][self.waist_actuator_indices]
         last_last_waist_action = info["last_last_act"][self.waist_actuator_indices]
@@ -1166,7 +1585,21 @@ class MJXEnv(PipelineEnv):
     def _reward_survival(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     ) -> jax.Array:
-        return -(info["done"] & (info["step"] < self.reset_steps)).astype(dtype)
+        """Calculates a survival reward based on the pipeline state and action taken.
+
+        The reward is negative if the episode is marked as done before reaching the
+        specified number of reset steps, encouraging survival until the reset threshold.
+
+        Args:
+            pipeline_state (base.State): The current state of the pipeline.
+            info (dict[str, Any]): A dictionary containing episode information, including
+                whether the episode is done and the current step count.
+            action (jax.Array): The action taken at the current step.
+
+        Returns:
+            jax.Array: A float32 array representing the survival reward.
+        """
+        return -(info["done"] & (info["step"] < self.reset_steps)).astype(jnp.float32)
 
     def _reward_tendon_len_eq(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array

@@ -6,20 +6,28 @@ from typing import Dict, List
 
 import numpy as np
 
-from toddlerbot.actuation.dynamixel.dynamixel_control import (
+from toddlerbot.actuation.dynamixel_control import (
     DynamixelConfig,
     DynamixelController,
-)
-from toddlerbot.actuation.sunny_sky.sunny_sky_control import (
-    SunnySkyConfig,
-    SunnySkyController,
 )
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_ports
 from toddlerbot.utils.misc_utils import log
 
 
+# This script is used to calibrate the zero points of the Dynamixel motors.
+
+
 def calibrate_dynamixel(port: str, robot: Robot, group: str):
+    """Calibrates the Dynamixel motors for a specified group of joints in a robot.
+
+    This function retrieves the necessary configuration and state information for the Dynamixel motors associated with a specified group of joints in the robot. It then calculates the initial positions for these motors and updates the robot's joint attributes accordingly.
+
+    Args:
+        port (str): The communication port used to connect to the Dynamixel motors.
+        robot (Robot): The robot instance containing joint and configuration data.
+        group (str): The group of joints to be calibrated.
+    """
     dynamixel_ids = robot.get_joint_attrs("type", "dynamixel", "id", group)
     dynamixel_config = DynamixelConfig(
         port=port,
@@ -55,27 +63,22 @@ def calibrate_dynamixel(port: str, robot: Robot, group: str):
     controller.close_motors()
 
 
-def calibrate_sunny_sky(port: str):
-    sunny_sky_ids = robot.get_joint_attrs("type", "sunny_sky", "id")
-    sunny_sky_config = SunnySkyConfig(
-        port=port,
-        kP=robot.get_joint_attrs("type", "sunny_sky", "kp_real"),
-        kD=robot.get_joint_attrs("type", "sunny_sky", "kd_real"),
-        i_ff=robot.get_joint_attrs("type", "sunny_sky", "i_ff_real"),
-        gear_ratio=robot.get_joint_attrs("type", "sunny_sky", "gear_ratio"),
-        joint_limit=robot.get_joint_attrs("type", "sunny_sky", "joint_limit"),
-        init_pos=[],
-    )
-    controller = SunnySkyController(sunny_sky_config, sunny_sky_ids)
-
-    init_pos: Dict[int, float] = controller.calibrate_motors()
-
-    robot.set_joint_attrs("type", "sunny_sky", "init_pos", init_pos)
-
-    controller.close_motors()
-
-
 def main(robot: Robot, parts: List[str]):
+    """Calibrates the robot's motors based on specified parts and updates the configuration.
+
+    This function prompts the user to confirm the installation of calibration parts,
+    calibrates the Dynamixel motors if present, and updates the motor configuration
+    file with the initial positions of the specified parts.
+
+    Args:
+        robot (Robot): The robot instance containing configuration and joint attributes.
+        parts (List[str]): A list of parts to calibrate. Can include specific parts
+            like 'left_arm', 'right_arm', or 'all' to calibrate all parts.
+
+    Raises:
+        ValueError: If an invalid part is specified in the `parts` list.
+        FileNotFoundError: If the motor configuration file is not found.
+    """
     while True:
         response = input("Have you installed the calibration parts? (y/n) > ")
         response = response.strip().lower()
@@ -89,7 +92,6 @@ def main(robot: Robot, parts: List[str]):
     executor = ThreadPoolExecutor()
 
     has_dynamixel = robot.config["general"]["has_dynamixel"]
-    has_sunny_sky = robot.config["general"]["has_sunny_sky"]
 
     future_dynamixel = None
     if has_dynamixel:
@@ -98,13 +100,6 @@ def main(robot: Robot, parts: List[str]):
             calibrate_dynamixel, dynamixel_ports[0], robot, "all"
         )
 
-    future_sunny_sky = None
-    if has_sunny_sky:
-        sunny_sky_ports: List[str] = find_ports("Feather")
-        future_sunny_sky = executor.submit(calibrate_sunny_sky, sunny_sky_ports[0])
-
-    if future_sunny_sky is not None:
-        future_sunny_sky.result()
     if future_dynamixel is not None:
         future_dynamixel.result()
 

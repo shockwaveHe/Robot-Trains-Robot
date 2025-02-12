@@ -4,85 +4,63 @@ build-backend = "hatchling.build"
 
 [project]
 name = "toddlerbot"
-version = "0.0.0"
-description = "A project for the toddlerbot system."
+version = "0.1.0"
+description = "The software stack of ToddlerBot."
 authors = [
-    { name = "Toddy", email = "toddy@example.com" }
+    { name = "Haochen Shi", email = "hshi74@stanford.edu" },
+    { name = "Weizhuo Wang", email = "weizhuo2@stanford.edu" }
 ]
 readme = "README.md"
 requires-python = ">=3.10"
 # license = { text = "MIT" }
 
 dependencies = [
-    "Adafruit-Blinka==8.39.1",
-    "adafruit-circuitpython-bno08x==1.2.6",
-    "colorama==0.4.6",
+    "adafruit-circuitpython-bno08x",
+    "colorama",
     "control==0.9.4",
     "diffusers==0.30.3",
     "dynamixel-sdk==3.7.31",
-    "furo==2024.8.6",
-    "gdown==5.2.0",
-    "gin-config==0.5.0",
-    "gym==0.26.2",
-    "jax==0.4.28", 
-    "jaxlib==0.4.28",
-    "joblib==1.4.2",
-    "line_profiler==4.1.3",
-    "lz4==4.3.3",
-    "matplotlib==3.7.4",
-    "mediapy==1.2.0",
-    "mink==0.0.5",
+    "gdown",
+    "gin-config",
+    "joblib",
+    "line_profiler",
+    "lz4",
+    "matplotlib",
+    "mediapy",
     "moviepy==1.0.3",
-    "mujoco-mjx==3.2.4",
-    "mypy==1.11.2",
-    "networkx==3.1",
-    "numpy==1.24.4",
-    "opencv-python==4.9.0.80",
-    "open3d==0.18.0",
-    "optuna==3.6.1",
-    "pillow==10.2.0",
-    "pupil_apriltags==1.0.4.post10",
-    "pygame==2.6.0",
-    "pymunk==6.9.0",
-    "pyserial==3.5",
-    "PyYAML==6.0.1",
-    "scikit-image==0.24.0",
-    "scikit-learn==1.3.2",
-    "scikit-video==1.1.11",
-    "scipy==1.10.1",
-    "seaborn==0.11.2",
-    "setuptools==75.6.0",
-    "sphinx==8.0.2",
-    "sphinx-tabs==3.4.5",
-    "tensorboard==2.17.0",
-    "tqdm==4.66.2",
-    "transforms3d==0.4.1",
-    "trimesh==3.21.7",
-    "wandb==0.16.6",
-    "zarr==2.18.3",
-    "zmq==0.0.0",
-    "pigar==2.1.1",
+    "mypy",
+    "numpy==1.26.4",
     "onshape-to-robot==0.3.24",
-    "pytest==7.4.4",
-    "pyglet==1.5.28",
-    "cmaes==0.10.0",
-    "optuna-dashboard==0.15.1",
-    "psycopg2-binary==2.9.9",
-    "sphinx-autobuild"
+    "openai[realtime]",
+    "opencv-python==4.9.0.80",
+    "optuna",
+    "optuna-dashboard",
+    "pupil_apriltags",
+    "pygame",
+    "pymunk",
+    "pytest",
+    "pyserial",
+    "PySide6",
+    "scipy",
+    "seaborn",
+    "setuptools==75.6.0",
+    "sounddevice", 
+    "soundfile",
+    "soxr",
+    "textual",
+    "tqdm",
+    "transforms3d",
+    "wandb",
+    "zmq"
 ]
 
 [project.optional-dependencies]
-linux = ["jax[cuda12]==0.4.28", "torch==2.3.1", "torchvision==0.18.1"]
+docs = ["sphinx", "sphinx-tabs", "sphinx-design", "sphinx-autobuild", "furo"]
+test = ["torch==2.3.1", "torchvision==0.18.1"]
+linux = ["jax[cuda12]==0.4.28", "pynput", "tensorboard", "torch==2.3.1", "torchvision==0.18.1"]
 macos = ["torch==2.3.1", "torchvision==0.18.1"]
 windows = ["torch==2.3.1", "torchvision==0.18.1"]
-jetson = [
-    "SpeechRecognition==3.11.0",
-    "sounddevice==0.5.1",
-    "soundfile==0.12.1",
-    "librosa==0.10.2.post1",
-    "openai==1.54.3"
-]
-steam_deck = ["torch==2.3.1", "torchvision==0.18.1"]
+jetson = ["Jetson.GPIO", "pyaudio", "pydub"]
 
 [tool.setuptools.packages.find]
 where = ["."]

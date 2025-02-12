@@ -7,6 +7,8 @@ import gin
 @gin.configurable
 @dataclass
 class PPOConfig:
+    """Data class for storing PPO hyperparameters."""
+
     policy_hidden_layer_sizes: Tuple[int, ...] = (512, 256, 128)
     value_hidden_layer_sizes: Tuple[int, ...] = (512, 256, 128)
     num_timesteps: int = 100_000_000

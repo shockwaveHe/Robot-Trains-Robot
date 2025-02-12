@@ -15,9 +15,21 @@ from toddlerbot.utils.math_utils import euler2mat, interpolate_action, quat2eule
 
 
 class PullUpPolicy(BasePolicy, policy_name="pull_up"):
+    """Policy for pulling up the robot."""
+
     def __init__(
         self, name: str, robot: Robot, init_motor_pos: npt.NDArray[np.float32]
     ):
+        """Initializes the object with specified parameters and sets up camera and motion data.
+
+        Args:
+            name (str): The name of the object.
+            robot (Robot): The robot instance associated with this object.
+            init_motor_pos (npt.NDArray[np.float32]): Initial motor positions.
+
+        Raises:
+            ValueError: If required motion data files are not found.
+        """
         super().__init__(name, robot, init_motor_pos)
 
         self.left_eye = None
@@ -52,7 +64,7 @@ class PullUpPolicy(BasePolicy, policy_name="pull_up"):
         self.tag_pose_avg: Optional[npt.NDArray[np.float32]] = None
 
         self.grasp_motion_updated = False
-        grasp_motion_path = os.path.join("toddlerbot", "motion", "pull_up_grasp.pkl")
+        grasp_motion_path = os.path.join("motion", "pull_up_grasp.pkl")
         if os.path.exists(grasp_motion_path):
             grasp_data_dict = joblib.load(grasp_motion_path)
         else:
@@ -77,7 +89,7 @@ class PullUpPolicy(BasePolicy, policy_name="pull_up"):
         self.grasped_time = 0.0
         self.grasped_action = np.zeros(robot.nu, dtype=np.float32)
 
-        pull_motion_path = os.path.join("toddlerbot", "motion", "pull_up_pull.pkl")
+        pull_motion_path = os.path.join("motion", "pull_up_pull.pkl")
         if os.path.exists(pull_motion_path):
             pull_data_dict = joblib.load(pull_motion_path)
         else:
@@ -91,6 +103,14 @@ class PullUpPolicy(BasePolicy, policy_name="pull_up"):
         self.is_prepared = False
 
     def search_for_tag(self, obs: Obs):
+        """Searches for a tag using the robot's sensors and updates the robot's action based on detected tag positions.
+
+        Args:
+            obs (Obs): An observation object containing the current state of the robot, including time and motor positions.
+
+        Returns:
+            np.ndarray: An action array with updated neck pitch position based on the detected tag.
+        """
         neck_pitch_act_pos = np.clip(
             self.neck_pitch_vel * (obs.time - self.prep_duration),
             self.robot.joint_limits["neck_pitch"][0],
@@ -130,6 +150,19 @@ class PullUpPolicy(BasePolicy, policy_name="pull_up"):
     def update_grasp_traj(
         self, grasp_delta_x: float = -0.01, grasp_delta_z: float = 0.0
     ):
+        """Updates the grasp trajectory by adjusting the end-effector positions and corresponding motor actions based on specified deltas.
+
+        Args:
+            grasp_delta_x (float): The change in the x-coordinate for the grasp position. Default is -0.01.
+            grasp_delta_z (float): The change in the z-coordinate for the grasp position. Default is 0.0.
+
+        Raises:
+            AssertionError: If `self.tag_pose_avg` is None.
+
+        Modifies:
+            self.grasp_ee_arr: Updates the end-effector trajectory with interpolated adjustments.
+            self.grasp_action_arr: Updates the motor actions to reflect the new trajectory.
+        """
         assert self.tag_pose_avg is not None
 
         left_delta = np.array(
@@ -282,6 +315,17 @@ class PullUpPolicy(BasePolicy, policy_name="pull_up"):
     def arm_ik(
         self, x: float, z: float, pitch: float, side: str
     ) -> npt.NDArray[np.float32]:
+        """Calculates the inverse kinematics for a robotic arm to determine joint angles based on target position and orientation.
+
+        Args:
+            x (float): The target x-coordinate in the arm's plane.
+            z (float): The target z-coordinate in the arm's plane.
+            pitch (float): The desired end-effector pitch angle in radians.
+            side (str): The side of the arm ('left' or 'right').
+
+        Returns:
+            npt.NDArray[np.float32]: An array of joint angles for the arm motors, in radians.
+        """
         L1 = self.elbow_roll_to_sho_pitch
         L2 = self.wrist_pitch_to_elbow_roll
         L3 = self.ee_center_to_wrist_pitch
@@ -325,6 +369,15 @@ class PullUpPolicy(BasePolicy, policy_name="pull_up"):
     def step(
         self, obs: Obs, is_real: bool = False
     ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
+        """Executes a step in the control loop, determining the appropriate action based on the current observation and state.
+
+        Args:
+            obs (Obs): The current observation containing time and other relevant data.
+            is_real (bool, optional): Flag indicating whether the operation is in a real environment. Defaults to False.
+
+        Returns:
+            Tuple[Dict[str, float], npt.NDArray[np.float32]]: A tuple containing an empty dictionary and the computed action as a NumPy array.
+        """
         if not self.is_prepared:
             self.is_prepared = True
             self.prep_duration = 10.0 if is_real else 2.0

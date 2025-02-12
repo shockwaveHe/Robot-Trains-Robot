@@ -4,7 +4,6 @@
         "has_imu": true,
         "has_dynamixel": true,
         "dynamixel_baudrate": 2000000,
-        "has_sunny_sky": false,
         "solref": [
             0.004,
             1

@@ -15,9 +15,9 @@ from toddlerbot.manipulation.utils.dataset_utils import (
 from toddlerbot.visualization.vis_plot import plot_teleop_dataset
 
 
-# episode_ends idx is the index of the next start. In other words, you can use
-# train_data[:episode_ends[idx]], and train_data[episode_ends[idx]:episode_ends[idx+1]]
 class TeleopImageDataset(torch.utils.data.Dataset):
+    """Dataset class for teleoperation data with images."""
+
     def __init__(
         self,
         dataset_path_list: List[str],
@@ -26,7 +26,17 @@ class TeleopImageDataset(torch.utils.data.Dataset):
         obs_horizon: int,
         action_horizon: int,
     ):
-        # read from zarr dataset
+        """Initializes the data processing pipeline for a teleoperation dataset.
+
+        This constructor loads multiple datasets, processes and normalizes the data, and prepares it for model training or evaluation. It handles image, agent position, and action data, creating video visualizations and plots for analysis. The method also computes sample indices for state-action sequences, considering prediction, observation, and action horizons.
+
+        Args:
+            dataset_path_list (List[str]): List of file paths to the datasets to be loaded.
+            exp_folder_path (str): Path to the folder where experiment outputs, such as videos and plots, will be saved.
+            pred_horizon (int): The prediction horizon length for the model.
+            obs_horizon (int): The observation horizon length for the model.
+            action_horizon (int): The action horizon length for the model.
+        """
         train_image_list = []
         train_agent_pos_list = []
         train_action_list = []
@@ -92,9 +102,24 @@ class TeleopImageDataset(torch.utils.data.Dataset):
         self.obs_horizon = obs_horizon
 
     def __len__(self):
+        """Returns the number of elements in the collection.
+
+        This method provides the length of the collection by returning the count of indices stored.
+
+        Returns:
+            int: The number of elements in the collection.
+        """
         return len(self.indices)
 
     def __getitem__(self, idx):
+        """Retrieves a normalized data sample for a given index.
+
+        Args:
+            idx (int): The index of the data point to retrieve.
+
+        Returns:
+            dict: A dictionary containing the normalized data sample with keys 'image' and 'agent_pos', each truncated to the observation horizon.
+        """
         # get the start/end indices for this datapoint
         buffer_start_idx, buffer_end_idx, sample_start_idx, sample_end_idx = (
             self.indices[idx]

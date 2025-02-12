@@ -31,12 +31,12 @@ my_logger.propagate = False
 
 
 def log(message: str, header: str = "", level: str = "info"):
-    """
-    Log a message to the console with color coding.
+    """Logs a message with an optional header and severity level.
 
-    Parameters:
-    - message: The message to log.
-    - level: The log level (ERROR, WARNING, INFO).
+    Args:
+        message (str): The message to log.
+        header (str, optional): An optional header for the log message. Defaults to an empty string.
+        level (str, optional): The severity level of the log message (e.g., 'info', 'warning', 'error'). Defaults to 'info'.
     """
     header_msg = f"[{header}] "
     if level == "debug":
@@ -50,11 +50,10 @@ def log(message: str, header: str = "", level: str = "info"):
 
 
 def precise_sleep(duration: float):
-    """
-    Sleep for a specified amount of time.
+    """Sleeps for a specified duration with high precision.
 
-    Parameters:
-    - time: The amount of time to sleep (in seconds).
+    Args:
+        duration (float): The time to sleep in seconds.
     """
     try:
         # Convert to seconds and subtract a little
@@ -78,6 +77,15 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 
 def profile() -> Callable[[F], F]:
+    """Convert a snake_case string to CamelCase.
+
+    Args:
+        snake_str: The snake_case string to convert.
+
+    Returns:
+        The CamelCase string.
+    """
+
     def decorator(func: F) -> F:
         # Register function to the global profiler
         global_profiler.add_function(func)
@@ -105,6 +113,11 @@ def profile() -> Callable[[F], F]:
 
 
 def dump_profiling_data(prof_path: str = "profile_output.lprof"):
+    """Save profiling data to a specified file path.
+
+    Args:
+        prof_path (str): The file path where the profiling data will be saved. Defaults to "profile_output.lprof".
+    """
     # Dump all profiling data into a single file
     global_profiler.dump_stats(prof_path)
     txt_path = prof_path.replace(".lprof", ".txt")
@@ -114,27 +127,25 @@ def dump_profiling_data(prof_path: str = "profile_output.lprof"):
 
 
 def snake2camel(snake_str: str) -> str:
-    """
-    Convert a snake_case string to CamelCase.
+    """Converts a snake_case string to CamelCase.
 
-    Parameters:
-    - snake_str: The snake_case string to convert.
+    Args:
+        snake_str (str): The snake_case string to convert.
 
     Returns:
-    - The CamelCase string.
+        str: The CamelCase string.
     """
     return "".join(word.title() for word in snake_str.split("_"))
 
 
 def camel2snake(camel_str: str) -> str:
-    """
-    Convert a CamelCase string to snake_case.
+    """Converts a CamelCase string to snake_case.
 
-    Parameters:
-    - camel_str: The CamelCase string to convert.
+    Args:
+        camel_str (str): The CamelCase string to be converted.
 
     Returns:
-    - The snake_case string.
+        str: The converted snake_case string.
     """
     return "".join(["_" + c.lower() if c.isupper() else c for c in camel_str]).lstrip(
         "_"
@@ -142,6 +153,15 @@ def camel2snake(camel_str: str) -> str:
 
 
 def set_seed(seed: int):
+    """Sets the random seed for various libraries to ensure reproducibility.
+
+    This function sets the seed for Python's `random` module, NumPy, and the
+    environment variable `PYTHONHASHSEED`. If the provided seed is -1, a random
+    seed is generated and used.
+
+    Args:
+        seed (int): The seed value to set. If -1, a random seed is generated.
+    """
     import os
     import random
 
@@ -162,7 +182,14 @@ def set_seed(seed: int):
 
 
 def parse_value(value: str):
-    """Helper function to parse value from string to int/float/bool/list if needed."""
+    """Recursively converts a dataclass to a dictionary, handling nested dataclasses by directly accessing their fields.
+
+    Args:
+        value (str): The string representation of the value to be parsed.
+
+    Returns:
+        dict: A dictionary representation of the dataclass.
+    """
 
     # Trim any extra whitespace
     value = value.strip()
@@ -196,9 +223,14 @@ def parse_value(value: str):
 
 
 def dataclass2dict(obj):
-    """
-    Recursively convert a dataclass to a dictionary.
-    Handles nested dataclasses by directly accessing their fields.
+    """Converts a dataclass instance to a dictionary, including nested dataclasses.
+
+    Args:
+        obj: A dataclass instance to be converted.
+
+    Returns:
+        dict: A dictionary representation of the dataclass, with nested dataclasses
+        also converted to dictionaries.
     """
     assert is_dataclass(obj)
     if len(asdict(obj)) == 0:

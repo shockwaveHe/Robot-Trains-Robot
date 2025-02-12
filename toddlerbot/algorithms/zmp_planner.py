@@ -9,16 +9,27 @@ GRAVITY = 9.81
 
 
 class PPoly:
+    """Piecewise polynomial class."""
+
     def __init__(self, c: ArrayType, x: ArrayType):
-        """
-        x: breakpoints (knots) of the piecewise polynomial.
-        c: coefficients of the polynomials for each interval. The shape should be (k, n), where
-            k is the degree of the polynomial + 1, and n is the number of intervals.
+        """Initializes the piecewise polynomial with given breakpoints and coefficients.
+
+        Args:
+            c (ArrayType): Coefficients of the polynomials for each interval. The shape should be (k, n), where k is the degree of the polynomial + 1, and n is the number of intervals.
+            x (ArrayType): Breakpoints (knots) of the piecewise polynomial.
         """
         self.c = c
         self.x = x
 
     def __call__(self, t: float | ArrayType) -> ArrayType:
+        """Returns the value of the polynomial and exponential components at the specified time `t`.
+
+        Args:
+            t (float | ArrayType): The time or array of times at which to evaluate the function.
+
+        Returns:
+            ArrayType: The evaluated value of the polynomial and exponential components at time `t`.
+        """
         # Find the index of the interval that t falls into
         idx = np.clip(np.searchsorted(self.x, t, side="right") - 1, 0, len(self.x) - 2)
 
@@ -38,8 +49,13 @@ class PPoly:
         return result
 
     def derivative(self, order: int = 1) -> "PPoly":
-        """
-        Returns a new PPoly representing the derivative of this polynomial.
+        """Compute the derivative of the piecewise polynomial.
+
+        Args:
+            order (int): The order of the derivative to compute. Defaults to 1.
+
+        Returns:
+            PPoly: A new piecewise polynomial representing the derivative of the specified order.
         """
         if order == 0:
             return self
@@ -50,6 +66,8 @@ class PPoly:
 
 
 class ExpPlusPPoly:
+    """Exponential plus piecewise polynomial class."""
+
     def __init__(
         self,
         K: ArrayType,
@@ -57,12 +75,28 @@ class ExpPlusPPoly:
         alpha: ArrayType,
         ppoly: PPoly,
     ):
+        """Initializes the object with given parameters.
+
+        Args:
+            K (ArrayType): An array representing the stiffness matrix.
+            A (ArrayType): An array representing the area matrix.
+            alpha (ArrayType): An array representing the thermal expansion coefficients.
+            ppoly (PPoly): A piecewise polynomial object for interpolation.
+        """
         self.K = K
         self.A = A
         self.alpha = alpha
         self.ppoly = ppoly
 
     def value(self, t: float | ArrayType) -> ArrayType:
+        """Evaluate the value of a piecewise polynomial with an exponential component at a given time.
+
+        Args:
+            t (float | ArrayType): The time or array of times at which to evaluate the function.
+
+        Returns:
+            ArrayType: The evaluated value(s) of the function at the specified time(s).
+        """
         # Evaluate the polynomial part at time t
         result = self.ppoly(t)
 
@@ -82,6 +116,14 @@ class ExpPlusPPoly:
         return result
 
     def derivative(self, order: int) -> "ExpPlusPPoly":
+        """Computes the derivative of the ExpPlusPPoly object to a specified order.
+
+        Args:
+            order (int): The order of the derivative to compute.
+
+        Returns:
+            ExpPlusPPoly: A new ExpPlusPPoly object representing the derivative of the specified order.
+        """
         K_new = self.K
         for _ in range(order):
             K_new = K_new @ self.A
@@ -96,7 +138,14 @@ class ExpPlusPPoly:
 
 
 class ZMPPlanner:
+    """Zero Moment Point (ZMP) planner class based on the paper "A Generalized ZMP Preview Control for Bipedal Walking" by Kajita et al."""
+
     def __init__(self):
+        """Initializes an instance of the class with a default planned status.
+
+        Attributes:
+            planned (bool): Indicates whether the instance is planned. Defaults to False.
+        """
         self.planned = False
 
     def plan(
@@ -108,6 +157,18 @@ class ZMPPlanner:
         Qy: ArrayType,
         R: ArrayType,
     ):
+        """Plans the Center of Mass (CoM) trajectory and control gains for a system based on the desired Zero Moment Point (ZMP) trajectory.
+
+        Args:
+            time_steps (ArrayType): Array of time steps for the trajectory.
+            zmp_d (List[ArrayType]): List of desired ZMP positions at each time step.
+            x0 (ArrayType): Initial state of the system.
+            com_z (float): Height of the Center of Mass.
+            Qy (ArrayType): Weighting matrix for the output in the cost function.
+            R (ArrayType): Weighting matrix for the control input in the cost function.
+
+        This function computes the time-varying linear and constant terms in the value function, solves for parameters of the CoM trajectory, and updates the planned CoM position, velocity, and acceleration.
+        """
         self.time_steps = time_steps
         self.zmp_d = zmp_d
 
@@ -261,6 +322,20 @@ class ZMPPlanner:
         self.planned = True
 
     def get_optim_com_acc(self, time: float | ArrayType, x: ArrayType) -> ArrayType:
+        """Calculates the optimal center of mass acceleration.
+
+        This function computes the optimal center of mass (CoM) acceleration based on the current state and time. It requires that a planning step has been executed prior to its invocation.
+
+        Args:
+            time (float | ArrayType): The current time or an array of time values.
+            x (ArrayType): The current state vector.
+
+        Returns:
+            ArrayType: The calculated optimal CoM acceleration.
+
+        Raises:
+            ValueError: If the planning step has not been executed before calling this function.
+        """
         if not self.planned:
             raise ValueError("Plan must be called first.")
 
@@ -271,35 +346,101 @@ class ZMPPlanner:
         return self.K @ x_bar + self.k2.value(time)
 
     def com_acc_to_cop(self, x: ArrayType, u: ArrayType) -> ArrayType:
+        """Calculates the control output based on the current state and input.
+
+        This function computes the control output using the state vector `x` and the input vector `u` by applying the transformation matrices `C` and `D`. It requires that the planning step has been completed prior to execution.
+
+        Args:
+            x (ArrayType): The current state vector.
+            u (ArrayType): The current input vector.
+
+        Returns:
+            ArrayType: The resulting control output vector.
+
+        Raises:
+            ValueError: If the planning step has not been completed.
+        """
         if not self.planned:
             raise ValueError("Plan must be called first.")
         return self.C @ x + self.D @ u
 
     def get_desired_zmp_traj(self):
+        """Retrieves the desired Zero Moment Point (ZMP) trajectory.
+
+        Returns:
+            tuple: A tuple containing the time steps and the desired ZMP trajectory.
+
+        Raises:
+            ValueError: If the plan has not been executed prior to calling this method.
+        """
         if not self.planned:
             raise ValueError("Plan must be called first.")
 
         return self.time_steps, self.zmp_d
 
     def get_desired_zmp(self, time: float | ArrayType) -> ArrayType:
+        """Retrieves the desired Zero Moment Point (ZMP) at a specified time.
+
+        Args:
+            time (float | ArrayType): The time or array of times at which to retrieve the desired ZMP.
+
+        Returns:
+            ArrayType: The desired ZMP corresponding to the given time.
+
+        Raises:
+            ValueError: If the plan has not been initialized by calling the `plan` method.
+        """
         if not self.planned:
             raise ValueError("Plan must be called first.")
 
         return self.zmp_d[np.searchsorted(self.time_steps, time, side="right") - 1]
 
     def get_nominal_com(self, time: float | ArrayType) -> ArrayType:
+        """Retrieve the nominal center of mass (CoM) position at a specified time or times.
+
+        Args:
+            time (float | ArrayType): The time or array of times at which to evaluate the CoM position.
+
+        Returns:
+            ArrayType: The nominal CoM position(s) corresponding to the given time(s).
+
+        Raises:
+            ValueError: If the plan has not been initialized by calling the `plan` method.
+        """
         if not self.planned:
             raise ValueError("Plan must be called first.")
 
         return self.com_pos.value(time)
 
     def get_nominal_com_vel(self, time: float | ArrayType) -> ArrayType:
+        """Retrieve the nominal center of mass velocity at a specified time.
+
+        Args:
+            time (float | ArrayType): The time or array of times at which to evaluate the center of mass velocity.
+
+        Returns:
+            ArrayType: The nominal center of mass velocity at the specified time(s).
+
+        Raises:
+            ValueError: If the plan has not been called prior to this method.
+        """
         if not self.planned:
             raise ValueError("Plan must be called first.")
 
         return self.com_vel.value(time)
 
     def get_nominal_com_acc(self, time: float | ArrayType) -> ArrayType:
+        """Calculates the nominal center of mass acceleration at a given time or times.
+
+        Args:
+            time (float | ArrayType): The time or array of times at which to evaluate the center of mass acceleration.
+
+        Returns:
+            ArrayType: The center of mass acceleration at the specified time(s).
+
+        Raises:
+            ValueError: If the plan has not been initialized by calling the `plan` method.
+        """
         if not self.planned:
             raise ValueError("Plan must be called first.")
 

@@ -1,15 +1,15 @@
-from toddlerbot.policies.mjx_finetune import MJXFinetunePolicy
 from typing import Dict, Optional, Tuple
 
 import numpy as np
 import numpy.typing as npt
-from toddlerbot.sim import Obs
 
-from toddlerbot.locomotion.mjx_config import get_env_config
 from toddlerbot.finetuning.finetune_config import get_finetune_config
+from toddlerbot.locomotion.mjx_config import get_env_config
+from toddlerbot.policies.mjx_finetune import MJXFinetunePolicy
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
+
 
 class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
     def __init__(
@@ -34,9 +34,18 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
         self.max_feet_air_time = self.cycle_time / 2.0
         self.min_feet_y_dist = finetune_cfg.finetune_rewards.min_feet_y_dist
         self.max_feet_y_dist = finetune_cfg.finetune_rewards.max_feet_y_dist
-        
+
         super().__init__(
-            name, robot, init_motor_pos, ckpt, ip, joystick, fixed_command, env_cfg, finetune_cfg, exp_folder=exp_folder,
+            name,
+            robot,
+            init_motor_pos,
+            ckpt,
+            ip,
+            joystick,
+            fixed_command,
+            env_cfg,
+            finetune_cfg,
+            exp_folder=exp_folder,
         )
 
     def get_phase_signal(self, time_curr: float):
@@ -48,7 +57,7 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
             dtype=np.float32,
         )
         return phase_signal
-    
+
     def get_command(self, control_inputs: Dict[str, float]) -> npt.NDArray[np.float32]:
         command = np.zeros(self.num_commands, dtype=np.float32)
         command[5:] = self.command_discount_factor * np.array(
@@ -61,7 +70,7 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
 
         # print(f"walk_command: {command}")
         return command
-    
+
     def step(
         self, obs: Obs, is_real: bool = False
     ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
@@ -80,20 +89,25 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
         """Reward for torso pitch"""
         torso_roll = obs.euler[0]
         # DISCUSS: torso_roll = -0.03, min and max are all 0.
-        roll_min = np.clip(torso_roll - self.torso_roll_range[0], a_min=-np.inf, a_max=0.0)
-        roll_max = np.clip(torso_roll - self.torso_roll_range[1], a_min=0.0, a_max=np.inf)
-        reward = (
-            np.exp(-np.abs(roll_min) * 100) + np.exp(-np.abs(roll_max) * 100)
-        ) / 2
+        roll_min = np.clip(
+            torso_roll - self.torso_roll_range[0], a_min=-np.inf, a_max=0.0
+        )
+        roll_max = np.clip(
+            torso_roll - self.torso_roll_range[1], a_min=0.0, a_max=np.inf
+        )
+        reward = (np.exp(-np.abs(roll_min) * 100) + np.exp(-np.abs(roll_max) * 100)) / 2
         return reward
 
     def _reward_torso_pitch(self, obs: Obs, action: np.ndarray) -> float:
-
         """Reward for torso pitch"""
         torso_pitch = obs.euler[1]
         # DISCUSS: torso_pitch = 0.05, min and max are all 0.
-        pitch_min = np.clip(torso_pitch - self.torso_pitch_range[0], a_min=-np.inf, a_max=0.0)
-        pitch_max = np.clip(torso_pitch - self.torso_pitch_range[1], a_min=0.0, a_max=np.inf)
+        pitch_min = np.clip(
+            torso_pitch - self.torso_pitch_range[0], a_min=-np.inf, a_max=0.0
+        )
+        pitch_max = np.clip(
+            torso_pitch - self.torso_pitch_range[1], a_min=0.0, a_max=np.inf
+        )
         reward = (
             np.exp(-np.abs(pitch_min) * 100) + np.exp(-np.abs(pitch_max) * 100)
         ) / 2
@@ -108,7 +122,7 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
     #     reward *= jnp.linalg.norm(info["command_obs"]) > self.deadzone
     #     return reward
 
-    # TODO: Implement the foot rewards 
+    # TODO: Implement the foot rewards
     # def _reward_feet_clearance(
     #     self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     # ) -> jax.Array:
@@ -139,9 +153,7 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
 
     def _reward_stand_still(self, obs: Obs, action: np.ndarray) -> float:
         # Penalize motion at zero commands
-        qpos_diff = np.sum(
-            np.abs(obs.motor_pos - self.default_motor_pos)
-        )
+        qpos_diff = np.sum(np.abs(obs.motor_pos - self.default_motor_pos))
         reward = -(qpos_diff**2)
         # DISCUSS: reward: -0.06,-> 0
         reward *= np.linalg.norm(self.fixed_command) < self.deadzone

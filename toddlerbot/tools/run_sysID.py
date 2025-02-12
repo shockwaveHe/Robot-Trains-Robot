@@ -11,8 +11,8 @@ import numpy.typing as npt
 import optuna
 from optuna.logging import _get_library_root_logger
 
-from toddlerbot.actuation.mujoco.mujoco_control import MotorController
 from toddlerbot.sim import Obs
+from toddlerbot.sim.mujoco_control import MotorController
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.misc_utils import log
@@ -21,10 +21,29 @@ from toddlerbot.visualization.vis_plot import (
     plot_joint_tracking_frequency,
 )
 
+# This script is used to optimize the parameters of the robot's dynamics model using system identification (SysID) techniques.
+
 logger = _get_library_root_logger()
 
 
 def load_datasets(robot: Robot, data_path: str):
+    """Loads and processes datasets from a specified path for a given robot, extracting observation positions, actions, and motor gains.
+
+    Args:
+        robot (Robot): The robot instance containing motor and joint configurations.
+        data_path (str): The directory path where the dataset files are located.
+
+    Returns:
+        Tuple[Dict[str, List[npt.NDArray[np.float32]]], Dict[str, List[npt.NDArray[np.float32]]], Dict[str, List[float]]]:
+        A tuple containing three dictionaries:
+            - obs_pos_dict: Maps joint names to lists of observation position arrays.
+            - action_dict: Maps joint names to lists of action arrays.
+            - kp_dict: Maps joint names to lists of motor gain values.
+
+    Raises:
+        ValueError: If no data files are found at the specified path.
+    """
+
     # Use glob to find all pickle files matching the pattern
     pickle_file_path = os.path.join(data_path, "log_data.pkl")
     if not os.path.exists(pickle_file_path):
@@ -121,6 +140,34 @@ def optimize_parameters(
     q_dot_tau_max_range: Tuple[float, float, float] = (0.0, 5.0, 1e-2),
     q_dot_max_range: Tuple[float, float, float] = (5.0, 10.0, 1e-1),
 ):
+    """Optimize the parameters of a robot joint using simulation and Optuna.
+
+    This function performs parameter optimization for a specified joint of a robot using a simulation environment. It utilizes Optuna for hyperparameter tuning to minimize the error between simulated and observed joint positions.
+
+    Args:
+        robot (Robot): The robot object containing joint and motor information.
+        sim_name (str): The name of the simulation environment, currently supports "mujoco".
+        joint_name (str): The name of the joint to optimize.
+        obs_list (List[npt.NDArray[np.float32]]): List of observed joint positions.
+        action_list (List[npt.NDArray[np.float32]]): List of actions applied to the joint.
+        kp_list (List[float]): List of proportional gains for the motor.
+        n_iters (int, optional): Number of optimization iterations. Defaults to 1000.
+        early_stop_rounds (int, optional): Number of rounds for early stopping. Defaults to 200.
+        freq_max (float, optional): Maximum frequency for filtering in Fourier Transform. Defaults to 10.
+        sampler_name (str, optional): Name of the Optuna sampler to use. Defaults to "CMA".
+        damping_range (Tuple[float, float, float], optional): Range for damping parameter. Defaults to (0.0, 0.5, 1e-3).
+        armature_range (Tuple[float, float, float], optional): Range for armature parameter. Defaults to (0.0, 0.01, 1e-4).
+        frictionloss_range (Tuple[float, float, float], optional): Range for friction loss parameter. Defaults to (0.0, 1.0, 1e-3).
+        q_dot_tau_max_range (Tuple[float, float, float], optional): Range for q_dot_tau_max parameter. Defaults to (0.0, 5.0, 1e-2).
+        q_dot_max_range (Tuple[float, float, float], optional): Range for q_dot_max parameter. Defaults to (5.0, 10.0, 1e-1).
+
+    Returns:
+        Tuple[Dict[str, float], float]: The best parameters found and the corresponding error value.
+
+    Raises:
+        ValueError: If an invalid simulator or sampler is specified.
+    """
+
     if sim_name == "mujoco":
         sim = MuJoCoSim(robot, fixed_base=True)
 
@@ -141,6 +188,15 @@ def optimize_parameters(
     def early_stop_check(
         study: optuna.Study, trial: optuna.Trial, early_stopping_rounds: int
     ):
+        """Checks if the current trial should trigger early stopping based on the number of rounds since the best trial.
+
+        Args:
+            study (optuna.Study): The study object containing all trials.
+            trial (optuna.Trial): The current trial being evaluated.
+            early_stopping_rounds (int): The number of rounds to wait before stopping after the best trial.
+
+        Logs a debug message and stops the study if early stopping conditions are met.
+        """
         current_trial_number = trial.number
         best_trial_number = study.best_trial.number
         should_stop = (
@@ -151,6 +207,16 @@ def optimize_parameters(
             study.stop()
 
     def objective(trial: optuna.Trial):
+        """Optimize simulation parameters to minimize the error between simulated and real joint positions.
+
+        This function uses Optuna to suggest values for various simulation parameters, including damping, armature, and friction loss, to optimize the joint dynamics of a robot simulation. If the robot's name contains "sysID", additional motor dynamics parameters are also optimized. The function calculates the root mean square error (RMSE) between the simulated and real joint positions and performs a Fourier Transform to compare the frequency domain characteristics, returning a combined error metric.
+
+        Args:
+            trial (optuna.Trial): An Optuna trial object used to suggest parameter values.
+
+        Returns:
+            float: The combined error metric, consisting of the RMSE and a weighted frequency domain error.
+        """
         # gain = trial.suggest_float("gain", *gain_range[:2], step=gain_range[2])
         damping = trial.suggest_float(
             "damping", *damping_range[:2], step=damping_range[2]
@@ -252,6 +318,7 @@ def optimize_parameters(
                 q_dot_max=float(sim.controller.q_dot_max),
             )
         )
+
     study.enqueue_trial(initial_trial)
 
     study.optimize(
@@ -282,6 +349,21 @@ def optimize_all(
     n_iters: int,
     early_stop_rounds: int,
 ):
+    """Optimizes parameters for each joint of a robot using provided observation and action data.
+
+    Args:
+        robot (Robot): The robot instance for which parameters are being optimized.
+        sim_name (str): The name of the simulation.
+        obs_pos_dict (Dict[str, List[npt.NDArray[np.float32]]]): A dictionary mapping joint names to lists of observed positions.
+        action_dict (Dict[str, List[npt.NDArray[np.float32]]]): A dictionary mapping joint names to lists of actions taken.
+        kp_dict (Dict[str, List[float]]): A dictionary mapping joint names to lists of proportional gain values.
+        n_iters (int): The number of iterations for the optimization process.
+        early_stop_rounds (int): The number of rounds for early stopping criteria.
+
+    Returns:
+        Tuple[Dict[str, Dict[str, float]], Dict[str, float]]: A tuple containing two dictionaries. The first dictionary maps joint names to their optimized parameters, and the second dictionary maps joint names to their optimized values.
+    """
+
     # return sysID_file_path
     optimize_args: List[
         Tuple[
@@ -339,6 +421,22 @@ def evaluate(
     opt_values_dict: Dict[str, float],
     exp_folder_path: str,
 ):
+    """Evaluates the performance of a robot simulation by comparing simulated and real joint positions, and logs the results.
+
+    Args:
+        robot (Robot): The robot object containing joint and motor configurations.
+        sim_name (str): The name of the simulator to use, e.g., "mujoco".
+        obs_pos_dict (Dict[str, List[npt.NDArray[np.float32]]]): Dictionary mapping joint names to lists of observed position arrays.
+        action_dict (Dict[str, List[npt.NDArray[np.float32]]]): Dictionary mapping joint names to lists of action arrays.
+        kp_dict (Dict[str, List[float]]): Dictionary mapping joint names to lists of proportional gain values.
+        opt_params_dict (Dict[str, Dict[str, float]]): Dictionary of optimized parameters for each joint.
+        opt_values_dict (Dict[str, float]): Dictionary of optimized values for each joint.
+        exp_folder_path (str): Path to the folder where experiment results will be saved.
+
+    Raises:
+        ValueError: If an invalid simulator name is provided.
+    """
+
     opt_params_file_path = os.path.join(exp_folder_path, "opt_params.json")
     opt_values_file_path = os.path.join(exp_folder_path, "opt_values.json")
 
@@ -499,6 +597,17 @@ def evaluate(
 
 
 def main():
+    """Executes the SysID optimization process for a specified robot and simulator.
+
+    This function parses command-line arguments to configure the optimization process,
+    validates the experiment folder path, and initializes the robot and experiment settings.
+    It then loads datasets, optimizes hyperparameters, and evaluates the optimized parameters
+    in the simulation.
+
+    Raises:
+        ValueError: If the specified experiment folder path does not exist.
+    """
+
     parser = argparse.ArgumentParser(description="Run the SysID optimization.")
     parser.add_argument(
         "--robot",

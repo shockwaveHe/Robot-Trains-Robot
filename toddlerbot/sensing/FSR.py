@@ -6,8 +6,16 @@ from toddlerbot.utils.file_utils import find_ports
 
 
 class FSR:
+    """A class for interfacing with the FSR sensors on the robot."""
+
     def __init__(self, baud_rate=115200):
-        # If on ubuntu
+        """Initializes the FSR interface with a specified baud rate for serial communication.
+
+        Args:
+            baud_rate (int, optional): The baud rate for the serial connection. Defaults to 115200.
+
+        Reads the most recent FSR values from the serial port, which are percentages ranging from 0 to 100. Returns (0, 0) if no valid data is available and retries up to two times if an error occurs.
+        """
         os_type = platform.system()
         if os_type == "Linux":
             description = "/dev/ttyACM*"
@@ -29,12 +37,17 @@ class FSR:
             raise Exception("Error: Could not open FSR interface.")
 
     def get_state(self):
+        """Reads the most recent Force Sensitive Resistor (FSR) values from the serial port and returns them as percentages.
+
+        The function attempts to read the FSR values, which are expected to be in the range of 0 to 100 percent. If no valid data is available, it returns (0, 0). The function retries up to two additional times if an error occurs during the reading process.
+
+        Returns:
+            tuple: A tuple containing two float values representing the FSR values as percentages. Returns (0, 0) if no valid data is available or if an error persists after retries.
         """
-        Reads the most recent FSR values from the serial port.
-        The FSR values are percentage in the range from 0 to 100.
-        Returns (0, 0) if no valid data is available.
-        Retries up to two times if an error occurs.
-        """
+        # Reads the most recent FSR values from the serial port.
+        # The FSR values are percentage in the range from 0 to 100.
+        # Returns (0, 0) if no valid data is available.
+        # Retries up to two times if an error occurs.
         for attempt in range(3):  # Try up to 3 times (initial attempt + 2 retries)
             try:
                 # Flush the input buffer to discard old data
@@ -65,5 +78,9 @@ class FSR:
                     return 0.0, 0.0
 
     def close(self):
+        """Closes the connection to the FSR interface.
+
+        This method closes the serial connection to the FSR (Force Sensing Resistor) interface and prints a confirmation message indicating that the connection has been successfully closed.
+        """
         self.ser.close()
         print("Closed connection to FSR interface.")

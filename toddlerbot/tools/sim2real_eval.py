@@ -17,8 +17,24 @@ from toddlerbot.visualization.vis_plot import (
     plot_sim2real_gap_line,
 )
 
+# This script is used to evaluate the simulation-to-real gap for the robot's motor control.
+
 
 def load_datasets(robot: Robot, sim_data_path: str, real_data_path: str):
+    """Loads and processes simulation and real-world datasets for a robot.
+
+    This function reads simulation and real-world data from specified file paths, processes the data, and returns it in a structured format. The data includes observations and motor angles, which are organized into dictionaries for easy access.
+
+    Args:
+        robot (Robot): The robot object containing motor ordering information.
+        sim_data_path (str): The file path to the simulation data.
+        real_data_path (str): The file path to the real-world data.
+
+    Returns:
+        Tuple[Dict[str, Dict[str, npt.NDArray[np.float32]]], Dict[str, Dict[str, npt.NDArray[np.float32]]]]:
+        A tuple containing two dictionaries. The first dictionary contains the processed simulation data, and the second contains the processed real-world data. Each dictionary is structured with keys for IMU data and motor data, organized by motor name.
+    """
+
     # Use glob to find all pickle files matching the pattern
     sim_pickle_file_path = os.path.join(sim_data_path, "log_data.pkl")
     if not os.path.exists(sim_pickle_file_path):
@@ -85,6 +101,15 @@ def evaluate(
     real_data: Dict[str, Dict[str, npt.NDArray[np.float32]]],
     exp_folder_path: str,
 ):
+    """Evaluates the performance of a robot by comparing simulated and real-world data, and generates plots to visualize the differences.
+
+    Args:
+        robot (Robot): The robot object containing motor ordering and joint limits.
+        sim_data (Dict[str, Dict[str, npt.NDArray[np.float32]]]): Simulated data for each motor, including position, velocity, action, and time sequences.
+        real_data (Dict[str, Dict[str, npt.NDArray[np.float32]]]): Real-world data for each motor, including position, velocity, action, and time sequences.
+        exp_folder_path (str): The path to the folder where the evaluation plots will be saved.
+    """
+
     time_seq_sim_dict: Dict[str, List[float]] = {}
     time_seq_real_dict: Dict[str, List[float]] = {}
     motor_pos_sim_dict: Dict[str, List[float]] = {}
@@ -239,6 +264,14 @@ def evaluate(
 
 
 def main():
+    """Runs the SysID optimization process by parsing command-line arguments, validating data paths, and evaluating optimized parameters.
+
+    This function sets up the environment for system identification by accepting command-line arguments for robot name, task policy, and paths to simulation and real-world data. It validates the existence of the specified data directories, initializes the robot, and creates a results directory with a timestamp. The function then loads the datasets and evaluates the optimized parameters.
+
+    Raises:
+        ValueError: If the specified simulation or real experiment folder paths do not exist.
+    """
+
     parser = argparse.ArgumentParser(description="Run the SysID optimization.")
     parser.add_argument(
         "--robot",

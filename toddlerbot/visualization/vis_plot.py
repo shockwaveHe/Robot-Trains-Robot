@@ -11,6 +11,8 @@ from toddlerbot.visualization.vis_utils import (
     make_vis_function,
 )
 
+# This script contains all sorts of visualization functions.
+
 LINE_STYLES = ["-", "--", "-.", ":"]
 MARKERS = ["o", "s", "D", "v", "^", "<"]
 COLORS = ["b", "g", "r", "c", "y", "k"]
@@ -334,59 +336,6 @@ def plot_loop_time(
     )()
 
 
-def plot_control_inputs(
-    time_obs_list: List[float],
-    control_inputs_dict: Dict[str, List[float]],
-    save_path: str,
-    file_name: str = "control_inputs",
-):
-    n_plots = 6
-    n_cols = 3
-    n_rows = int(np.ceil(n_plots / n_cols))
-
-    fig, axs = plt.subplots(n_rows, n_cols, figsize=(n_cols * 5, n_rows * 3))
-    plt.subplots_adjust(hspace=0.4, wspace=0.4)
-
-    y_labels_list: List[List[str]] = [[] for _ in range(n_plots)]
-    for control_name, control_inputs in control_inputs_dict.items():
-        if "reset" in control_name or "teleop" in control_name:
-            y_labels_list[0].append(control_name)
-        elif "walk" in control_name or "squat" in control_name:
-            y_labels_list[1].append(control_name)
-        elif "lean" in control_name or "twist" in control_name:
-            y_labels_list[2].append(control_name)
-        elif "look" in control_name:
-            y_labels_list[3].append(control_name)
-        elif "dance" in control_name:
-            y_labels_list[4].append(control_name)
-        else:
-            y_labels_list[5].append(control_name)
-
-    # for control_name, control_inputs in control_inputs_dict.items():
-    #     print(f"{control_name}: {len(control_inputs)}")
-
-    control_length = len(control_inputs_dict[list(control_inputs_dict.keys())[0]])
-
-    for i, ax in enumerate(axs.flat):
-        if i >= n_plots:
-            ax.set_visible(False)
-            continue
-
-        if len(y_labels_list[i]) > 0:
-            plot_line_graph(
-                [control_inputs_dict[x] for x in y_labels_list[i]],
-                time_obs_list[-control_length:],
-                legend_labels=y_labels_list[i],
-                title=" ".join(y_labels_list[i]),
-                x_label="Time (s)",
-                y_label="Control Inputs",
-                save_config=True if i == n_plots - 1 else False,
-                save_path=save_path if i == n_plots - 1 else "",
-                file_name=file_name if i == n_plots - 1 else "",
-                ax=ax,
-            )()
-
-
 def plot_path_tracking(
     time_obs_list: List[float],
     pos_obs_list: List[npt.NDArray[np.float32]],
@@ -521,7 +470,7 @@ def plot_joint_tracking(
             x_label=x_label,
             y_label=y_label,
             save_config=True if i == n_plots - 1 else False,
-            save_path=save_path if i == n_plots - 1 else "",
+            save_path=save_path if i == n_plots - 1 else None,
             file_name=file_name if i == n_plots - 1 else "",
             file_suffix=file_suffix,
             ax=ax,
@@ -602,7 +551,7 @@ def plot_joint_tracking_frequency(
             x_label=x_label,
             y_label=y_label,
             save_config=True if i == n_plots - 1 else False,
-            save_path=save_path if i == n_plots - 1 else "",
+            save_path=save_path if i == n_plots - 1 else None,
             file_name=file_name if i == n_plots - 1 else "",
             file_suffix=file_suffix,
             ax=ax,
@@ -651,7 +600,7 @@ def plot_joint_tracking_single(
             x_label=x_label,
             y_label=y_label,
             save_config=True if i == n_plots - 1 else False,
-            save_path=save_path if i == n_plots - 1 else "",
+            save_path=save_path if i == n_plots - 1 else None,
             file_name=file_name if i == n_plots - 1 else "",
             file_suffix=file_suffix,
             ax=ax,

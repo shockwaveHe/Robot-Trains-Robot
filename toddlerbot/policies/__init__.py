@@ -14,6 +14,17 @@ policy_registry: Dict[str, Type["BasePolicy"]] = {}
 
 
 def get_policy_class(policy_name: str) -> Type["BasePolicy"]:
+    """Retrieves the policy class associated with the given policy name.
+
+    Args:
+        policy_name (str): The name of the policy to retrieve.
+
+    Returns:
+        Type[BasePolicy]: The class of the policy corresponding to the given name.
+
+    Raises:
+        ValueError: If the policy name is not found in the policy registry.
+    """
     if policy_name not in policy_registry:
         raise ValueError(f"Unknown policy: {policy_name}")
 
@@ -21,6 +32,15 @@ def get_policy_class(policy_name: str) -> Type["BasePolicy"]:
 
 
 def get_policy_names() -> List[str]:
+    """Retrieves a list of policy names from the policy registry.
+
+    This function iterates over the keys in the policy registry and generates a list
+    of policy names. For each key, it adds the key itself and a modified version of
+    the key with the suffix '_fixed' to the list.
+
+    Returns:
+        List[str]: A list containing the original and modified policy names.
+    """
     policy_names: List[str] = []
     for key in policy_registry.keys():
         policy_names.append(key)
@@ -30,6 +50,8 @@ def get_policy_names() -> List[str]:
 
 
 class BasePolicy(ABC):
+    """Base class for all policies."""
+
     @abstractmethod
     def __init__(
         self,
@@ -42,6 +64,16 @@ class BasePolicy(ABC):
         n_steps_total: float = float("inf"),
         exp_folder: str = "",
     ):
+        """Initializes the class with robot configuration and control parameters.
+
+        Args:
+            name (str): The name of the robot or component.
+            robot (Robot): An instance of the Robot class containing robot specifications.
+            init_motor_pos (npt.NDArray[np.float32]): Initial positions of the robot's motors.
+            control_dt (float, optional): Time interval for control updates. Defaults to 0.02.
+            prep_duration (float, optional): Duration for preparation phase. Defaults to 2.0.
+            n_steps_total (float, optional): Total number of control steps. Defaults to infinity.
+        """
         self.name = name
         self.robot = robot
         self.exp_folder = exp_folder
@@ -84,6 +116,12 @@ class BasePolicy(ABC):
 
     # Automatic registration of subclasses
     def __init_subclass__(cls, policy_name: str = "", **kwargs):
+        """Initializes a subclass and registers it with a policy name.
+
+        Args:
+            policy_name (str): The name of the policy to register the subclass under. If not provided, the subclass will not be registered.
+            **kwargs: Additional keyword arguments passed to the superclass initializer.
+        """
         super().__init_subclass__(**kwargs)
         if len(policy_name) > 0:
             policy_registry[policy_name] = cls
@@ -113,6 +151,18 @@ class BasePolicy(ABC):
         duration: float,
         end_time: float = 0.0,
     ):
+        """Calculates the trajectory of an action over a specified duration, interpolating between current and next actions.
+
+        Args:
+            time_curr (float): The current time from which the trajectory starts.
+            action_curr (npt.NDArray[np.float32]): The current action state as a NumPy array.
+            action_next (npt.NDArray[np.float32]): The next action state as a NumPy array.
+            duration (float): The total duration over which the action should be interpolated.
+            end_time (float, optional): The time at the end of the duration where the action should remain constant. Defaults to 0.0.
+
+        Returns:
+            Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]: A tuple containing the time steps and the corresponding interpolated positions.
+        """
         reset_time = np.linspace(
             0,
             duration,

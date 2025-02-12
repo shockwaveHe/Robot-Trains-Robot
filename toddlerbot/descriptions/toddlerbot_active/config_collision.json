@@ -28,8 +28,9 @@
         "contact_pairs": [
             "floor"
         ],
-        "type": "capsule",
+        "type": "box",
         "scale": [
+            1.0,
             1.0,
             1.0
         ]
@@ -52,8 +53,9 @@
         "contact_pairs": [
             "floor"
         ],
-        "type": "capsule",
+        "type": "box",
         "scale": [
+            1.0,
             1.0,
             1.0
         ]

@@ -3,6 +3,7 @@ import os
 import time
 from typing import List
 
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn as nn
@@ -33,6 +34,24 @@ def train(
     early_stopping_patience: int = 100,  # Stop if no improvement for X epochs
     train_split_ratio: float = 0.8,
 ):
+    """Trains a neural network model using a dataset of teleoperation images and actions.
+
+    Args:
+        dataset_path_list (List[str]): List of paths to the datasets.
+        exp_folder_path (str): Path to the folder where experiment outputs will be saved.
+        weights (str): Pre-trained weights for the vision encoder.
+        pred_horizon (int): Prediction horizon for the model.
+        obs_horizon (int): Observation horizon for the model.
+        action_horizon (int): Action horizon for the model.
+        action_dim (int, optional): Dimensionality of the action space. Defaults to 16.
+        vision_feature_dim (int, optional): Dimensionality of the vision feature space. Defaults to 512.
+        num_diffusion_iters (int, optional): Number of diffusion iterations. Defaults to 100.
+        num_epochs (int, optional): Number of training epochs. Defaults to 1000.
+        early_stopping_patience (int, optional): Number of epochs to wait for improvement before stopping early. Defaults to 100.
+        train_split_ratio (float, optional): Ratio of the dataset to use for training. Defaults to 0.8.
+    """
+    plt.switch_backend("Agg")
+
     # ### **Network Demo**
     dataset = TeleopImageDataset(
         dataset_path_list, exp_folder_path, pred_horizon, obs_horizon, action_horizon
@@ -338,7 +357,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--obs-horizon",
         type=int,
-        default=5,
+        default=7,
         help="The horizon of the observation.",
     )
     parser.add_argument(
@@ -361,7 +380,9 @@ if __name__ == "__main__":
     for time_str in time_str_list:
         if len(time_str) > 0:
             dataset_path_list.append(
-                os.path.join("datasets", f"teleop_dataset_{time_str}.lz4")
+                os.path.join(
+                    "datasets", f"{args.task}_dataset_{time_str}", "dataset.lz4"
+                )
             )
 
     exp_name = f"{args.robot}_{args.task}_dp"

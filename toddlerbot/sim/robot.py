@@ -2,22 +2,15 @@ import json
 import os
 from typing import Any, Dict, List
 
-import mujoco
-import numpy as np
-
 
 class Robot:
-    """Class representing a humanoid robot."""
+    """This class defines some data strucutres, FK, IK of ToddlerBot."""
 
     def __init__(self, robot_name: str):
-        """
-        Initialize a humanoid robot with the given name.
+        """Initializes a robot with specified configurations and paths.
 
         Args:
-            robot_name (str): The name of the robot.
-
-        Raises:
-            ValueError: If the robot name is not supported.
+            robot_name (str): The name of the robot, used to set up directory paths and configurations.
         """
         self.id = 0
         self.name = robot_name
@@ -34,6 +27,11 @@ class Robot:
         self.initialize()
 
     def load_robot_config(self):
+        """Load the robot's configuration and collision configuration from JSON files.
+
+        Raises:
+            FileNotFoundError: If the main configuration file or the collision configuration file does not exist at the specified paths.
+        """
         if os.path.exists(self.config_path):
             with open(self.config_path, "r") as f:
                 self.config = json.load(f)
@@ -51,6 +49,27 @@ class Robot:
             )
 
     def initialize(self) -> None:
+        """Initializes the robot's joint and motor configurations based on the provided configuration data.
+
+        This method sets up the initial and default motor angles, establishes mappings between motors and joints, identifies passive joints, and configures collision detection. It also determines the presence of a gripper and sets joint groups and limits.
+
+        Attributes:
+            init_motor_angles (Dict[str, float]): Initial motor angles for active joints.
+            init_joint_angles (Dict[str, float]): Initial joint angles derived from motor angles.
+            motor_ordering (List[str]): Order of motors based on initial configuration.
+            joint_ordering (List[str]): Order of joints based on initial configuration.
+            default_motor_angles (Dict[str, float]): Default motor angles for active joints.
+            default_joint_angles (Dict[str, float]): Default joint angles derived from motor angles.
+            motor_to_joint_name (Dict[str, List[str]]): Mapping from motor names to joint names.
+            joint_to_motor_name (Dict[str, List[str]]): Mapping from joint names to motor names.
+            passive_joint_names (List[str]): Names of passive joints.
+            foot_name (str): Name of the foot, if specified in the configuration.
+            has_gripper (bool): Indicates if the robot has a gripper.
+            collider_names (List[str]): Names of links with collision enabled.
+            nu (int): Number of active motors.
+            joint_groups (Dict[str, str]): Group classification for each joint.
+            joint_limits (Dict[str, List[float]]): Lower and upper limits for each joint.
+        """
         self.init_motor_angles: Dict[str, float] = {}
         for joint_name, joint_config in self.config["joints"].items():
             if not joint_config["is_passive"]:
@@ -147,6 +166,17 @@ class Robot:
         attr_name: str = "name",
         group: str = "all",
     ) -> List[Any]:
+        """Returns a list of attributes for joints that match specified criteria.
+
+        Args:
+            key_name (str): The key to search for in each joint's configuration.
+            key_value (Any): The value that the specified key must have for a joint to be included.
+            attr_name (str, optional): The attribute to retrieve from each matching joint. Defaults to "name".
+            group (str, optional): The group to which the joint must belong. Use "all" to include joints from any group. Defaults to "all".
+
+        Returns:
+            List[Any]: A list of attributes from joints that match the specified key-value pair and group criteria.
+        """
         attrs: List[Any] = []
         for joint_name, joint_config in self.config["joints"].items():
             if (
@@ -169,6 +199,15 @@ class Robot:
         attr_values: Any,
         group: str = "all",
     ):
+        """Sets attributes for joints in the configuration based on specified criteria.
+
+        Args:
+            key_name (str): The key to match in each joint's configuration.
+            key_value (Any): The value that the key must have for the joint to be modified.
+            attr_name (str): The name of the attribute to set for matching joints.
+            attr_values (Any): The values to assign to the attribute. Can be a dictionary or a list.
+            group (str, optional): The group to which the joint must belong to be modified. Defaults to "all".
+        """
         i = 0
         for joint_name, joint_config in self.config["joints"].items():
             if (
@@ -184,12 +223,28 @@ class Robot:
                     i += 1
 
     def waist_fk(self, motor_pos: List[float]) -> List[float]:
+        """Calculates the forward kinematics for the waist joint based on motor positions.
+
+        Args:
+            motor_pos (List[float]): A list containing the positions of the motors.
+
+        Returns:
+            List[float]: A list containing the calculated waist roll and yaw angles.
+        """
         offsets = self.config["general"]["offsets"]
         waist_roll = offsets["waist_roll_coef"] * (-motor_pos[0] + motor_pos[1])
         waist_yaw = offsets["waist_yaw_coef"] * (motor_pos[0] + motor_pos[1])
         return [waist_roll, waist_yaw]
 
     def waist_ik(self, waist_pos: List[float]) -> List[float]:
+        """Calculates the inverse kinematics for the waist actuators based on the desired waist position.
+
+        Args:
+            waist_pos (List[float]): A list containing the desired roll and yaw positions of the waist.
+
+        Returns:
+            List[float]: A list containing the calculated positions for the two waist actuators.
+        """
         offsets = self.config["general"]["offsets"]
         roll = waist_pos[0] / offsets["waist_roll_coef"]
         yaw = waist_pos[1] / offsets["waist_yaw_coef"]
@@ -197,47 +252,16 @@ class Robot:
         waist_act_2 = (roll + yaw) / 2
         return [waist_act_1, waist_act_2]
 
-    def is_valid_waist_point(
-        self, point: List[float], direction: str = "forward"
-    ) -> bool:
-        # Create Delaunay triangulation
-        if direction == "forward":
-            waist_roll, waist_yaw = self.waist_ik(point)
-        else:
-            waist_roll, waist_yaw = point
-
-        roll_limits = self.joint_limits["waist_roll"]
-        yaw_limits = self.joint_limits["waist_yaw"]
-        if (
-            waist_roll < roll_limits[0]
-            or waist_roll > roll_limits[1]
-            or waist_yaw < yaw_limits[0]
-            or waist_yaw > yaw_limits[1]
-        ):
-            return False
-        else:
-            return True
-
-    def sample_waist_point(self, direction: str = "forward") -> List[float]:
-        if direction == "forward":
-            min_bounds, max_bounds = zip(
-                self.joint_limits["waist_act_1"], self.joint_limits["waist_act_2"]
-            )
-        else:
-            min_bounds, max_bounds = zip(
-                self.joint_limits["waist_roll"], self.joint_limits["waist_yaw"]
-            )
-
-        while True:
-            # Generate a random point within the bounding box of the convex hull
-            random_point = list(np.random.uniform(min_bounds, max_bounds))
-
-            # Check if the point is within the convex hull
-            if self.is_valid_waist_point(random_point, direction):
-                return random_point
-
     # @profile()
     def motor_to_joint_angles(self, motor_angles: Dict[str, float]) -> Dict[str, float]:
+        """Converts motor angles to joint angles based on the robot's configuration.
+
+        Args:
+            motor_angles (Dict[str, float]): A dictionary mapping motor names to their respective angles.
+
+        Returns:
+            Dict[str, float]: A dictionary mapping joint names to their calculated angles.
+        """
         joint_angles: Dict[str, float] = {}
         joints_config = self.config["joints"]
         waist_act_pos: List[float] = []
@@ -279,19 +303,17 @@ class Robot:
                 waist_act_pos
             )
 
-        # if len(left_ank_act_pos) > 0:
-        #     joint_angles["left_ank_roll"], joint_angles["left_ank_pitch"] = (
-        #         self.ankle_fk(left_ank_act_pos, "left")
-        #     )
-
-        # if len(right_ank_act_pos) > 0:
-        #     joint_angles["right_ank_roll"], joint_angles["right_ank_pitch"] = (
-        #         self.ankle_fk(right_ank_act_pos, "right")
-        #     )
-
         return joint_angles
 
     def joint_to_motor_angles(self, joint_angles: Dict[str, float]) -> Dict[str, float]:
+        """Converts joint angles to motor angles based on the transmission type specified in the configuration.
+
+        Args:
+            joint_angles (Dict[str, float]): A dictionary mapping joint names to their respective angles.
+
+        Returns:
+            Dict[str, float]: A dictionary mapping motor names to their calculated angles.
+        """
         motor_angles: Dict[str, float] = {}
         joints_config = self.config["joints"]
         waist_pos: List[float] = []
@@ -333,21 +355,21 @@ class Robot:
                 waist_pos
             )
 
-        # if len(left_ankle_pos) > 0:
-        #     motor_angles["left_ank_act_1"], motor_angles["left_ank_act_2"] = (
-        #         self.ankle_ik(left_ankle_pos, "left")
-        #     )
-
-        # if len(right_ankle_pos) > 0:
-        #     motor_angles["right_ank_act_1"], motor_angles["right_ank_act_2"] = (
-        #         self.ankle_ik(right_ankle_pos, "right")
-        #     )
-
         return motor_angles
 
     def joint_to_passive_angles(
         self, joint_angles: Dict[str, float]
     ) -> Dict[str, float]:
+        """Converts joint angles to passive angles based on the transmission type.
+
+        This function processes a dictionary of joint angles and converts them into passive angles using the transmission configuration specified in the object's configuration. It supports two types of transmissions: 'linkage' and 'rack_and_pinion'. For 'linkage' transmissions, it generates additional passive angles with specific suffixes, applying a sign change for knee joints. For 'rack_and_pinion' transmissions, it mirrors the joint angle.
+
+        Args:
+            joint_angles (Dict[str, float]): A dictionary where keys are joint names and values are their respective angles.
+
+        Returns:
+            Dict[str, float]: A dictionary of passive angles derived from the input joint angles.
+        """
         passive_angles: Dict[str, float] = {}
         joints_config = self.config["joints"]
         for joint_name, joint_pos in joint_angles.items():
@@ -365,25 +387,3 @@ class Robot:
                 passive_angles[joint_name + "_mirror"] = joint_pos
 
         return passive_angles
-
-    def sample_motor_angles(self) -> Dict[str, float]:
-        random_motor_angles: Dict[str, float] = {}
-        for motor_name in self.motor_ordering:
-            random_motor_angles[motor_name] = np.random.uniform(
-                self.joint_limits[motor_name][0],
-                self.joint_limits[motor_name][1],
-            )
-
-        # random_motor_angles["left_ank_act_1"], random_motor_angles["left_ank_act_2"] = (
-        #     self.sample_ankle_point(side="left")
-        # )
-        # (
-        #     random_motor_angles["right_ank_act_1"],
-        #     random_motor_angles["right_ank_act_2"],
-        # ) = self.sample_ankle_point(side="right")
-
-        random_motor_angles["waist_act_1"], random_motor_angles["waist_act_2"] = (
-            self.sample_waist_point()
-        )
-
-        return random_motor_angles

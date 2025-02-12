@@ -1,0 +1,10 @@
+{
+    "documentId": "1b5c9dbba7df364619e54663",
+    "outputFormat": "urdf",
+    "assemblyName": "right_arm_teleop",
+    "robotName": "right_arm_teleop",
+    "mergeSTLs": "all",
+    "mergeSTLsCollisions": true,
+    "simplifySTLs": "all",
+    "maxSTLSize": 1
+}

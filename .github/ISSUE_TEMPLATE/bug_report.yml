@@ -1,0 +1,65 @@
+name: "Bug Report"
+description: "Report a reproducible issue with ToddlerBot"
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: "### Describe the Bug"
+  
+  - type: textarea
+    attributes:
+      label: "What happened?"
+      description: "A clear and concise description of what the bug is."
+      placeholder: "Describe the issue..."
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: "Steps to Reproduce"
+      description: "How can we reproduce this issue?"
+      placeholder: |
+        1. Run `python script.py`
+        2. Observe the error
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: "Expected Behavior"
+      description: "What should have happened instead?"
+      placeholder: "Expected behavior..."
+
+  - type: textarea
+    attributes:
+      label: "Screenshots or Logs"
+      description: "Paste logs or screenshots if applicable."
+      placeholder: "Attach logs or screenshots here..."
+
+  - type: dropdown
+    attributes:
+      label: "Operating System"
+      description: "Select your OS."
+      options:
+        - "Linux"
+        - "MacOS"
+        - "Windows"
+        - "Jetson"
+        - "ROG Ally X"
+        - "Steam Deck"
+        - "Other"
+    validations:
+      required: true
+
+  - type: input
+    attributes:
+      label: "Python Version"
+      description: "What version of Python are you using?"
+      placeholder: "e.g., 3.10.1"
+
+  - type: textarea
+    attributes:
+      label: "Additional Context"
+      description: "Any other details?"
+      placeholder: "Add any other relevant details here..."

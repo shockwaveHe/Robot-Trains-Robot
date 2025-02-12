@@ -23,12 +23,21 @@ from toddlerbot.utils.math_utils import (
 
 
 class IMU:
+    """Class for interfacing with the BNO08X IMU sensor."""
+
     def __init__(
         self,
         euler_alpha: float = 0.5,
         ang_vel_alpha: float = 0.5,
         ang_vel_max: float = np.pi / 2,
     ):
+        """Initializes the sensor interface with specified parameters for smoothing and maximum angular velocity.
+
+        Args:
+            euler_alpha (float): Smoothing factor for Euler angles. Defaults to 0.5.
+            ang_vel_alpha (float): Smoothing factor for angular velocity. Defaults to 0.5.
+            ang_vel_max (float): Maximum allowable angular velocity in radians per second. Defaults to π/2.
+        """
         self.euler_alpha = euler_alpha
         self.ang_vel_alpha = ang_vel_alpha
         self.ang_vel_max = ang_vel_max
@@ -75,6 +84,15 @@ class IMU:
         self.euler_prev: npt.NDArray[np.float32] | None = None
 
     def get_state(self) -> Dict[str, npt.NDArray[np.float32]]:
+        """Computes and returns the current state of the system, including filtered Euler angles and angular velocity.
+
+        This function processes raw sensor data to compute the relative rotation and angular velocity of the system. It applies an exponential moving average to filter the Euler angles and angular velocity, ensuring smoother transitions. The function returns these values in a dictionary format.
+
+        Returns:
+            Dict[str, npt.NDArray[np.float32]]: A dictionary containing:
+                - "euler": The filtered Euler angles as a NumPy array.
+                - "ang_vel": The filtered angular velocity as a NumPy array.
+        """
         quat_raw = np.array(
             [self.sensor.quaternion[3], *self.sensor.quaternion[:3]],
             dtype=np.float32,

@@ -2,8 +2,8 @@ from typing import Callable, Dict
 
 try:
     from pynput import keyboard
-except ImportError as e:
-    print('keyboard is not supported through ssh connection')
+except ImportError:
+    pass
 
 keyboard_actions = {
     "save": "s",
@@ -18,7 +18,10 @@ keyboard_actions = {
 
 
 class Keyboard:
+    """A class for handling keyboard input events."""
+
     def __init__(self):
+        """Initializes the KeyListener class, setting up dictionaries to track key inputs and flags, and starts a keyboard listener to handle key press and release events."""
         self.key_inputs = {name: 0.0 for name in keyboard_actions.keys()}
         self.key_flags = {name: False for name in keyboard_actions.keys()}
         self.key_funcs = {}
@@ -28,10 +31,24 @@ class Keyboard:
         self.listener.start()
 
     def register(self, name: str, func: Callable):
+        """Registers a function to a specified key if the key is already present in `key_inputs` but not in `key_funcs`.
+
+        Args:
+            name (str): The key associated with the function to be registered.
+            func (Callable): The function to be registered under the specified key.
+        """
         if name in self.key_inputs and name not in self.key_funcs:
             self.key_funcs[name] = func
 
     def check(self, name: str, **kwargs):
+        """Checks and updates the state of a key input, triggering associated functions.
+
+        This method evaluates the current state of a specified key input. If the key input is active and has not been flagged, it triggers the associated function and updates the flag. If the key input is inactive and has been flagged, it resets the flag.
+
+        Args:
+            name (str): The name of the key input to check.
+            **kwargs: Additional keyword arguments to pass to the associated function.
+        """
         if self.key_inputs[name] == 1.0 and not self.key_flags[name]:
             # Append the current action to keyframes
             self.key_flags[name] = True
@@ -54,10 +71,10 @@ class Keyboard:
 
         try:
             if key == keyboard.KeyCode.from_char("6"):
-                print('change speed delta to 1.0')
+                print("change speed delta to 1.0")
                 self.key_inputs["speed_delta"] = 1.0
             elif key == keyboard.KeyCode.from_char("4"):
-                print('change speed delta to -1.0')
+                print("change speed delta to -1.0")
                 self.key_inputs["speed_delta"] = -1.0
             elif key == keyboard.KeyCode.from_char("8"):
                 self.key_inputs["force_delta"] = 1.0
@@ -87,7 +104,13 @@ class Keyboard:
             pass
 
     def on_release(self, key):
-        """Handles key release events."""
+        """Handle key release events to update key input states.
+
+        This method is triggered when a key is released. It specifically checks for the 's' and 'n' keys and resets their corresponding states in the `key_inputs` dictionary to 0.0. If the released key does not have a character attribute, the exception is caught and ignored.
+
+        Args:
+            key: The key event object containing information about the released key.
+        """
         try:
             if key.char == "s":  # Reset the 's' key state when released
                 self.key_inputs["save"] = 0.0
@@ -99,7 +122,7 @@ class Keyboard:
     def close(self):
         """Stop the keyboard listener."""
         self.listener.stop()
-        
+
     def get_keyboard_input(self) -> Dict[str, float]:
         """Return the current keyboard input state."""
         # print(self.key_inputs)

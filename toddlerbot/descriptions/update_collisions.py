@@ -7,8 +7,18 @@ import numpy as np
 import trimesh
 from scipy.spatial import ConvexHull
 
+# This script updates the collision elements in a robot's URDF file based on a configuration file.
+
 
 def compute_bounding_box(mesh: trimesh.Trimesh):
+    """Computes the size and center of the bounding box for a given 3D mesh.
+
+    Args:
+        mesh (trimesh.Trimesh): The 3D mesh for which to compute the bounding box.
+
+    Returns:
+        tuple: A tuple containing the size (width, height, depth) of the bounding box and the center point of the bounding box.
+    """
     # Compute the minimum and maximum bounds along each axis
     bounds_min = mesh.bounds[0]
     bounds_max = mesh.bounds[1]
@@ -23,6 +33,16 @@ def compute_bounding_box(mesh: trimesh.Trimesh):
 
 
 def compute_bounding_sphere(mesh: trimesh.Trimesh):
+    """Computes the bounding sphere of a given 3D mesh.
+
+    The bounding sphere is defined by its centroid and radius, where the radius is the maximum distance from the centroid to any vertex of the mesh.
+
+    Args:
+        mesh (trimesh.Trimesh): The 3D mesh for which to compute the bounding sphere.
+
+    Returns:
+        tuple: A tuple containing the radius (float) and the centroid (numpy.ndarray) of the bounding sphere.
+    """
     # Compute the centroid of the mesh
     centroid = mesh.centroid
 
@@ -34,6 +54,17 @@ def compute_bounding_sphere(mesh: trimesh.Trimesh):
 
 
 def compute_bounding_cylinder(mesh: trimesh.Trimesh):
+    """Compute the bounding cylinder of a 3D mesh with the smallest volume.
+
+    This function calculates the bounding cylinders of a given 3D mesh along each of the principal axes (X, Y, Z) and selects the one with the smallest volume. The bounding cylinder is defined by its radius, height, centroid, and orientation in terms of roll-pitch-yaw (RPY) angles.
+
+    Args:
+        mesh (trimesh.Trimesh): The 3D mesh for which the bounding cylinder is to be computed.
+
+    Returns:
+        tuple: A tuple containing the radius, height, centroid (as a 3D coordinate), and RPY angles of the bounding cylinder with the smallest volume.
+    """
+
     def bounding_cylinder_along_axis(axis: int):
         # Project the mesh vertices onto the plane perpendicular to the axis
         axes = [0, 1, 2]
@@ -81,6 +112,16 @@ def compute_bounding_cylinder(mesh: trimesh.Trimesh):
 
 
 def compute_bounding_capsule(mesh: trimesh.Trimesh):
+    """Compute the smallest bounding capsule for a given 3D mesh along its principal axes.
+
+    This function calculates bounding capsules along the X, Y, and Z axes of the mesh and selects the one with the smallest volume. A bounding capsule is defined by its radius, height, centroid, and orientation in terms of roll, pitch, and yaw (RPY) angles.
+
+    Args:
+        mesh (trimesh.Trimesh): A 3D mesh object for which the bounding capsule is to be computed.
+
+    Returns:
+        tuple: A tuple containing the radius, height, centroid (as a 3D coordinate), and RPY orientation of the smallest bounding capsule.
+    """
     hull = ConvexHull(mesh.vertices)
     hull_vertices = mesh.vertices[hull.vertices]
 
@@ -136,6 +177,16 @@ def compute_bounding_capsule(mesh: trimesh.Trimesh):
 
 
 def update_collisons(robot_name: str):
+    """Updates the collision elements in a robot's URDF file based on a configuration file.
+
+    This function reads a collision configuration from a JSON file and updates the
+    collision elements in the specified robot's URDF file. It computes bounding
+    geometries for each link that requires a collision element and modifies the URDF
+    accordingly.
+
+    Args:
+        robot_name (str): The name of the robot whose collision elements are to be updated.
+    """
     robot_dir = os.path.join("toddlerbot", "descriptions", robot_name)
     collision_config_file_path = os.path.join(robot_dir, "config_collision.json")
     urdf_path = os.path.join(robot_dir, f"{robot_name}.urdf")
@@ -187,7 +238,7 @@ def update_collisons(robot_name: str):
                 geometry = ET.SubElement(collision, "geometry")
 
                 if collision_config[link_name]["type"] == "box":
-                    size, center = compute_bounding_box(mesh)
+                    size, center = compute_bounding_box(mesh)  # type: ignore
                     rpy = [0, 0, 0]
                     size[0] *= collision_config[link_name]["scale"][0]
                     size[1] *= collision_config[link_name]["scale"][1]
@@ -198,12 +249,12 @@ def update_collisons(robot_name: str):
                         {"size": f"{size[0]} {size[1]} {size[2]}"},
                     )
                 elif collision_config[link_name]["type"] == "sphere":
-                    radius, center = compute_bounding_sphere(mesh)
+                    radius, center = compute_bounding_sphere(mesh)  # type: ignore
                     radius *= collision_config[link_name]["scale"][0]
                     rpy = [0, 0, 0]
                     ET.SubElement(geometry, "sphere", {"radius": str(radius)})
                 elif collision_config[link_name]["type"] == "cylinder":
-                    radius, height, center, rpy = compute_bounding_cylinder(mesh)
+                    radius, height, center, rpy = compute_bounding_cylinder(mesh)  # type: ignore
                     radius *= collision_config[link_name]["scale"][0]
                     height *= collision_config[link_name]["scale"][1]
                     ET.SubElement(
@@ -212,7 +263,7 @@ def update_collisons(robot_name: str):
                         {"radius": str(radius), "length": str(height)},
                     )
                 elif collision_config[link_name]["type"] == "capsule":
-                    radius, height, center, rpy = compute_bounding_capsule(mesh)
+                    radius, height, center, rpy = compute_bounding_capsule(mesh)  # type: ignore
                     radius *= collision_config[link_name]["scale"][0]
                     height *= collision_config[link_name]["scale"][1]
                     ET.SubElement(

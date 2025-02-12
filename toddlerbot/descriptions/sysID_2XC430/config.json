@@ -4,11 +4,11 @@
         "has_imu": false,
         "has_dynamixel": true,
         "dynamixel_baudrate": 2000000,
-        "has_sunny_sky": false,
         "solref": [
             0.004,
             1
         ],
+        "is_neck_closed_loop": false,
         "is_waist_closed_loop": false,
         "is_knee_closed_loop": false,
         "is_ankle_closed_loop": false

@@ -52,8 +52,9 @@
         "contact_pairs": [
             "floor"
         ],
-        "type": "capsule",
+        "type": "box",
         "scale": [
+            1.0,
             1.0,
             1.0
         ]
@@ -191,30 +192,6 @@
         "type": "sphere",
         "scale": [
             0.9
-        ]
-    },
-    "gripper_connector": {
-        "has_collision": true,
-        "contact_pairs": [
-            "floor"
-        ],
-        "type": "box",
-        "scale": [
-            1.0,
-            1.0,
-            1.0
-        ]
-    },
-    "gripper_connector_2": {
-        "has_collision": true,
-        "contact_pairs": [
-            "floor"
-        ],
-        "type": "box",
-        "scale": [
-            1.0,
-            1.0,
-            1.0
         ]
     },
     "left_rail_guide": {
@@ -413,5 +390,29 @@
     },
     "spur_gear_(18_teeth)_2": {
         "has_collision": false
+    },
+    "left_gripper_connector": {
+        "has_collision": true,
+        "contact_pairs": [
+            "floor"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "right_gripper_connector": {
+        "has_collision": true,
+        "contact_pairs": [
+            "floor"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
     }
 }

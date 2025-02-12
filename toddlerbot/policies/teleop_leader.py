@@ -14,8 +14,13 @@ from toddlerbot.tools.joystick import Joystick
 from toddlerbot.utils.comm_utils import ZMQMessage, ZMQNode
 from toddlerbot.utils.math_utils import interpolate_action
 
+# Connect the leader arms to the remote controller and run this script on the remote controller
+# during the teleoperation data collection session.
+
 
 class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
+    """Teleoperation leader policy for the leader arms of ToddlerBot."""
+
     def __init__(
         self,
         name: str,
@@ -25,6 +30,19 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
         ip: str = "",
         task: str = "",
     ):
+        """Initializes the object with specified parameters, setting up the robot's motor positions, joystick, and task-specific configurations.
+
+        Args:
+            name (str): The name of the object.
+            robot (Robot): The robot instance to be controlled.
+            init_motor_pos (npt.NDArray[np.float32]): Initial motor positions for the robot.
+            joystick (Optional[Joystick]): An optional joystick for manual control. Defaults to None.
+            ip (str): The IP address for the ZMQNode. Defaults to an empty string.
+            task (str): The task to be performed, affecting motor position setup. Defaults to an empty string.
+
+        Raises:
+            ValueError: If the task-specific motion file does not exist.
+        """
         super().__init__(name, robot, init_motor_pos)
 
         self.zmq = ZMQNode(type="sender", ip=ip)
@@ -48,14 +66,17 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
         self.reset_end_time = 1.0
         self.reset_time = None
 
+        self.left_sho_pitch_idx = robot.motor_ordering.index("left_sho_pitch")
+        self.right_sho_pitch_idx = robot.motor_ordering.index("right_sho_pitch")
+
         self.is_prepared = False
 
         if len(task) > 0:
             self.manip_duration = 2.0
 
-            prep = "hold" if task == "hug" else "kneel"
+            prep = "kneel" if task == "pick" else "hold"
 
-            motion_file_path = os.path.join("toddlerbot", "motion", f"{prep}.pkl")
+            motion_file_path = os.path.join("motion", f"{prep}.pkl")
             if os.path.exists(motion_file_path):
                 data_dict = joblib.load(motion_file_path)
             else:
@@ -64,6 +85,10 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
             self.manip_motor_pos = np.array(data_dict["action_traj"], dtype=np.float32)[
                 -1
             ][16:30]  # hard coded for toddlerbot_arms
+
+            if task == "hug":
+                self.manip_motor_pos[self.left_sho_pitch_idx] -= 0.2
+                self.manip_motor_pos[self.right_sho_pitch_idx] += 0.2
         else:
             self.manip_motor_pos = self.default_motor_pos.copy()
 
@@ -73,6 +98,15 @@ class TeleopLeaderPolicy(BasePolicy, policy_name="teleop_leader"):
     def step(
         self, obs: Obs, is_real: bool = False
     ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
+        """Processes the current observation and determines the appropriate action and control inputs.
+
+        Args:
+            obs (Obs): The current observation containing time and motor positions.
+            is_real (bool, optional): Flag indicating if the operation is in a real environment. Defaults to False.
+
+        Returns:
+            Tuple[Dict[str, float], npt.NDArray[np.float32]]: A tuple containing the control inputs and the action to be taken.
+        """
         if not self.is_prepared:
             self.is_prepared = True
             self.prep_duration = 2.0

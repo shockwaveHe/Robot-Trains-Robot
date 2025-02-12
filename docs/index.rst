@@ -3,66 +3,47 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Toddlerbot
+ToddlerBot
 ========================
 
-Hello! I'm Toddy! Nice to Meet you!
+ToddlerBot is a low-cost, open-source humanoid robot platform designed for scalable policy learning and research in robotics and AI.
 
-Introduction
+If you want to know more about ToddlerBot, here are some useful links:
+
+`Paper <https://example.com>`__  |  
+`Website <https://toddlerbot.github.io/>`__  |  
+`Video <https://youtu.be/A43QxHSgLyM>`__  |  
+`Code <https://github.com/hshi74/toddlerbot>`__  |  
+`Tweet <https://twitter.com/your-tweet>`__
+
+Getting Started
 ------------------------
 
-Welcome to the Toddlerbot documentation! This documentation is a comprehensive guide to building and setting up the Toddlerbot. 
-The Toddlerbot is a low-cost, open-source, and easy-to-build robot designed for educational purposes. 
-The robot is designed to be easy to build and use, and is intended to be used as a platform for learning about robotics and programming.
+Welcome! This documentation provides a comprehensive guide to building the hardware and setting up the software for ToddlerBot.
+If you are new to the ToddlerBot family, we recommend going through :ref:`hardware` and :ref:`software` first.
 
+.. _next_steps:
 
-Contents
+What's Next?
 ------------------------
 
-.. toctree::
-   :maxdepth: 2
-   :caption: New to toddlerbot?
+If you have successfully built your ToddlerBot and are looking to extend its capabilities or fixing some issues, 
+check out the following sections:
 
-   tutorial/001_getting_started
+#. :ref:`additional_features`
+#. :ref:`useful_tools`
+#. :ref:`tips`
+#. :ref:`api`
+
 
 .. toctree::
    :maxdepth: 1
-   :caption: Returning Users
+   :caption: Table of Contents
+   :hidden:
 
-   tutorial/questions
-
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Assembly
-
-   assembly/bill_of_materials
-   assembly/3d_printing
-   assembly/assembly_manual
-   assembly/electronics
-   assembly/teleoperation_arms
-   assembly/test_stand
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Setup
-
-   setup/general
-   setup/jetson_orin
-   setup/steam_deck
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Tutorial
-
-   tutorial/calibration
-   tutorial/dynamixel
-   tutorial/walkthrough
-   tutorial/tips
-   tutorial/questions
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Miscellaneous
-
-   misc/misc
+   sections/01_hardware
+   sections/02_software
+   sections/03_additional_features
+   sections/04_useful_tools
+   sections/05_tips_and_tricks
+   sections/06_api

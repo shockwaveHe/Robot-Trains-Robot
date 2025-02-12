@@ -19,7 +19,16 @@ def inplace_update(
     idx: int | slice | ArrayType | tuple[int | slice | ArrayType, ...],
     value: Any,
 ) -> ArrayType:
-    """Updates the array at the specified index with the given value."""
+    """Updates the specified elements of an array in place with a given value.
+
+    Args:
+        array (ArrayType): The array to be updated.
+        idx (int | slice | ArrayType | tuple[int | slice | ArrayType, ...]): The indices of the elements to update. Can be an integer, slice, array, or a tuple of these.
+        value (Any): The value to set at the specified indices.
+
+    Returns:
+        ArrayType: The updated array.
+    """
     if USE_JAX:
         # JAX requires using .at[idx].set(value) for in-place updates
         return array.at[idx].set(value)  # type: ignore
@@ -32,7 +41,16 @@ def inplace_update(
 def inplace_add(
     array: ArrayType, idx: int | slice | tuple[int | slice, ...], value: Any
 ) -> ArrayType:
-    """Performs an in-place addition to the array at the specified index."""
+    """Performs an in-place addition to an array at specified indices.
+
+    Args:
+        array (ArrayType): The array to be updated.
+        idx (int | slice | tuple[int | slice, ...]): The index or indices where the addition should occur.
+        value (Any): The value to add to the specified indices.
+
+    Returns:
+        ArrayType: The updated array after performing the in-place addition.
+    """
     if USE_JAX:
         return array.at[idx].add(value)  # type: ignore
     else:

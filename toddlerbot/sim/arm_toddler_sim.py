@@ -5,9 +5,9 @@ import mujoco
 import numpy as np
 
 from toddlerbot.actuation import JointState
-from toddlerbot.actuation.mujoco.mujoco_control import JointController, MotorController
 from toddlerbot.sim import Obs
 from toddlerbot.sim.arm import BaseArm
+from toddlerbot.sim.mujoco_control import JointController, MotorController
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_arm_toddler_file_path

@@ -11,8 +11,13 @@ from toddlerbot.utils.math_utils import get_chirp_signal, interpolate_action
 from toddlerbot.utils.misc_utils import set_seed
 
 
+# This script collects data for system identification of the motors.
+
+
 @dataclass
 class SysIDSpecs:
+    """Dataclass for system identification specifications."""
+
     amplitude_list: List[float]
     initial_frequency: float = 0.1
     final_frequency: float = 10.0
@@ -23,9 +28,25 @@ class SysIDSpecs:
 
 
 class SysIDFixedPolicy(BasePolicy, policy_name="sysID"):
+    """System identification policy for the toddlerbot robot."""
+
     def __init__(
         self, name: str, robot: Robot, init_motor_pos: npt.NDArray[np.float32]
     ):
+        """Initializes the class with specified parameters and sets up system identification specifications for robot joints.
+
+        Args:
+            name (str): The name of the instance.
+            robot (Robot): The robot object containing joint and motor information.
+            init_motor_pos (npt.NDArray[np.float32]): Initial motor positions as a NumPy array.
+
+        Attributes:
+            prep_duration (float): Duration for preparation phase.
+            ckpt_dict (Dict[float, Dict[str, float]]): Dictionary storing checkpoint data for joint names and their corresponding kp values.
+            time_arr (npt.NDArray[np.float32]): Concatenated array of time steps for the entire process.
+            action_arr (npt.NDArray[np.float32]): Concatenated array of actions corresponding to each time step.
+            n_steps_total (int): Total number of steps in the time array.
+        """
         super().__init__(name, robot, init_motor_pos)
 
         set_seed(0)
@@ -281,6 +302,15 @@ class SysIDFixedPolicy(BasePolicy, policy_name="sysID"):
     def step(
         self, obs: Obs, is_real: bool = False
     ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
+        """Executes a step in the environment by interpolating an action based on the given observation time.
+
+        Args:
+            obs (Obs): The observation containing the current time.
+            is_real (bool, optional): Flag indicating whether the step is in a real environment. Defaults to False.
+
+        Returns:
+            Tuple[Dict[str, float], npt.NDArray[np.float32]]: A tuple containing an empty dictionary and the interpolated action as a NumPy array.
+        """
         action = np.asarray(
             interpolate_action(obs.time, self.time_arr, self.action_arr)
         )

@@ -1,19 +1,24 @@
 #!/bin/bash
 
+# Run DP experiments sequentially
+
 # Define the different configurations for each experiment
-# robot="toddlerbot_gripper"
-# task="pick"
-# time_strs=("20241216_162951 20241216_164545")
 robot="toddlerbot"
 task="hug"
-time_strs=("20241217_162015")
+time_strs=("20250109_220617") 
+# robot="toddlerbot_gripper"
+# task="pick"
+# time_strs=("20250110_194100")
+# robot="toddlerbot"
+# task="grasp"
+# time_strs=("20250106_181537")
 configs=(
     "--weights imagenet"
-    "--weights imagenet --obs-horizon 3"
-    "--weights imagenet --obs-horizon 7"
-    "--weights imagenet --pred-horizon 8"
+    "--weights imagenet --obs-horizon 5"
+    "--weights imagenet --action-horizon 5"
     "--weights imagenet --action-horizon 3"
-    "--weights imagenet --action-horizon 8"
+    "--weights imagenet --obs-horizon 3"
+    "--weights imagenet --pred-horizon 8"
 )
 
 # Iterate over all configurations
