@@ -214,7 +214,6 @@ class OnlineReplayBuffer:
         for done_idx in np.flatnonzero(data['terminals']):
             raw_obs[done_idx].is_done = True
         self._raw_obs.extend(raw_obs)
-        import ipdb; ipdb.set_trace()
         self._size += data_size
         if self._size >= self._max_size:
             if self.enlarge_when_full > 0:

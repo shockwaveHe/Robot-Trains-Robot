@@ -27,7 +27,7 @@ class FinetuneConfig:
     
     # Evaluation and episode configuration
     num_evals: int = 1000
-    ope_rollout_length: int = 20
+    ope_rollout_length: int = 50
     eval_rollout_length: int = 1000
     rollout_batch_size: int = 32
     buffer_size: int = 50_000
@@ -55,7 +55,7 @@ class FinetuneConfig:
     kl_alpha: float = 0.1  # Matches argparse (`alpha_bppo`)
     entropy_weight: float = 5e-4
     clipping_epsilon: float = 0.1  # Conflict: argparse uses `clip_ratio=0.25`
-    clip_ratio: float = 0.2  # Added from argparse
+    clip_ratio: float = 0.25  # Added from argparse
 
     # Decay and scaling parameters
     tau: float = 0.005
@@ -72,14 +72,14 @@ class FinetuneConfig:
     is_linear_decay: bool = True  # Added from argparse
 
     # Behavior Cloning and BPPO
-    bppo_steps: int = 2000  # Added from argparse
+    bppo_steps: int = 1000  # Added from argparse
     abppo_update_steps: int = 1  # Added from argparse
-    num_policy: int = 3  # Added from argparse
+    num_policy: int = 1  # Added from argparse
     is_update_old_policy: bool = True  # Added from argparse
 
     # Evaluation and rendering
     render_interval: int = 50
-    eval_step: int = 100  # Added from argparse
+    eval_step: int = 200  # Added from argparse
 
     # Miscellaneous
     is_iql: bool = True # Added from argparse

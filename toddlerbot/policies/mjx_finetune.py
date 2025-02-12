@@ -118,13 +118,19 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         if len(ckpts) > 0:
             for ckpt in ckpts:
-                self.load_networks(ckpt, data_only=True)
-            self.recalculate_reward()
-            self.logger.plot_queue.put((self.logger.plot_rewards, [])) # no-blocking plot
-            for _ in range(self.finetune_cfg.abppo_update_steps):
-                self.abppo_offline_learner.update(self.replay_buffer)
-            self.logger.plot_queue.put((self.logger.plot_updates, [])) # no-blocking plot
-            self.rollout_sim()
+                self.load_networks(ckpt, data_only=False)
+            if len(self.replay_buffer):
+                self.recalculate_reward()
+                org_policy_net = deepcopy(self.policy_net)
+                self.logger.plot_queue.put((self.logger.plot_rewards, [])) # no-blocking plot
+              
+                for _ in range(self.finetune_cfg.abppo_update_steps):
+                    self.abppo_offline_learner.update(self.replay_buffer)
+               
+                import ipdb; ipdb.set_trace()
+                self.policy_net.load_state_dict(self.abppo._policy_net.state_dict())
+                assert not torch.allclose(org_policy_net.mlp.layers[0].weight, self.policy_net.mlp.layers[0].weight)
+                self.logger.plot_queue.put((self.logger.plot_updates, [])) # no-blocking plot
         input('press ENTER to start')
 
     def close(self):
@@ -425,7 +431,6 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.phase_signal = np.zeros(2, dtype=np.float32)
         self.is_standing = True
         self.command_list = []
-        self.last_action = np.zeros(self.num_action, dtype=np.float32)
         self.action_buffer = np.zeros(
             ((self.n_steps_delay + 1) * self.num_action), dtype=np.float32
         )
@@ -525,8 +530,6 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         for i in tqdm(range(len(self.replay_buffer)), desc='Recalculating reward'):
             obs, privileged_obs, action, reward, done, trunc, raw_obs = self.replay_buffer[i]
             reward_dict = self._compute_reward(raw_obs, action)
-            if done:
-                print('Done!', reward_dict['survival'])
             self.replay_buffer._reward[i] = sum(reward_dict.values()) * self.control_dt
             if not (done or trunc):
                 self.last_last_action = self.last_action.copy()
@@ -536,7 +539,6 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 self.last_action = np.zeros(self.num_action)
             self.logger.log_step(reward_dict, raw_obs, reward=reward, feet_dist=raw_obs.feet_y_dist, walk_command=obs[3])
         self.replay_buffer.compute_return(self.finetune_cfg.gamma)
-        import ipdb; ipdb.set_trace()
 
     # @profile()
     def step(self, obs:Obs, is_real:bool = True):
@@ -598,11 +600,11 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         
         action, _ = self.get_action(obs_arr, deterministic=True, is_real=is_real)
 
-        self.last_last_action = self.last_action.copy()
-        self.last_action = action.copy()
         if msg is not None:
             # print(obs.lin_vel, obs.euler)
             reward_dict = self._compute_reward(obs, action)
+            self.last_last_action = self.last_action.copy()
+            self.last_action = action.copy()
 
             reward = sum(reward_dict.values()) * self.control_dt # TODO: verify, why multiply by dt?
             self.logger.log_step(reward_dict, obs, reward=reward, feet_dist=feet_y_dist, walk_command=control_inputs['walk_x'])
@@ -619,8 +621,12 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                     self.zmq_sender.send_msg(ZMQMessage(time=time.time(), is_stopped=True))
                     self.logger.plot_queue.put((self.logger.plot_rewards, [])) # no-blocking plot
                     self.replay_buffer.compute_return(self.finetune_cfg.gamma)
+                    org_policy_net = deepcopy(self.policy_net)
                     for _ in range(self.finetune_cfg.abppo_update_steps):
                         self.abppo_offline_learner.update(self.replay_buffer)
+                    self.policy_net.load_state_dict(self.abppo._policy_net.state_dict())
+                    
+                    assert not torch.allclose(org_policy_net.mlp.layers[0].weight, self.policy_net.mlp.layers[0].weight)
                     self.logger.plot_queue.put((self.logger.plot_updates, [])) # no-blocking plot
                     self.rollout_sim()
                     self.reset(obs) # TODO: reset with new observation?

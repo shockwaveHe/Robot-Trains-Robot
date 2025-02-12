@@ -40,7 +40,7 @@ class BehaviorProximalPolicyOptimization(ProximalPolicyOptimization):
         new_log_prob = torch.sum(new_dist.log_prob(a), -1) # TODO: verify
         old_log_prob = torch.sum(old_dist.log_prob(a), -1)
         ratio = (new_log_prob - old_log_prob).exp()
-        
+        print(ratio.mean().item(), old_log_prob.mean().item(), new_log_prob.mean().item(), advantage.abs().mean().item())
         loss1 =  ratio * advantage 
 
         if self._config.is_clip_decay:
@@ -57,7 +57,7 @@ class BehaviorProximalPolicyOptimization(ProximalPolicyOptimization):
         # entropy_loss = torch.sum(new_dist.base_dist.entropy(), dim=-1) * self._entropy_weight
         entropy_loss = self.get_entropy_loss(new_dist)
         loss = -(torch.min(loss1, loss2) + entropy_loss)
-
+        print(loss1.mean().item(), loss2.mean().item(), entropy_loss.mean().item(), loss.mean().item())
         if self._config.kl_update:
             kl_loss = - self._config.kl_alpha * (new_log_prob - kl_logprob_a.detach())
             loss = loss + kl_loss
@@ -78,7 +78,7 @@ class BehaviorProximalPolicyOptimization(ProximalPolicyOptimization):
         
         self._optimizer.zero_grad()
         policy_loss.backward()
-        torch.nn.utils.clip_grad_norm_(self._policy.parameters(), 0.5)
+        torch.nn.utils.clip_grad_norm_(self._policy.parameters(), 1.0)
         self._optimizer.step()
         
         if self._config.is_bppo_lr_decay:
@@ -281,21 +281,25 @@ class ABPPO_Offline_Learner:
     def fit_q_v(self, replay_buffer: OnlineReplayBuffer):
         print("fitting q_v ......")
         value_loss, Q_loss = 0.0, 0.0
-        for step in tqdm(range(int(self._config.value_update_steps)), desc=f'value loss {value_loss:.6f}, Q loss {Q_loss:.6f}'): 
+        pbar = tqdm(range(int(self._config.value_update_steps)))
+        for _ in pbar: 
             if self._config.is_iql:
                 Q_loss, value_loss = self._iql_learner.update(replay_buffer=replay_buffer)
             else:
                 Q_loss = self._q_learner.update(replay_buffer=replay_buffer)
                 value_loss = self._value_learner.update(replay_buffer=replay_buffer)
             self._logger.log_update(q_loss=Q_loss, value_loss=value_loss)
+            pbar.set_description(f'value loss {value_loss:.6f}, Q loss {Q_loss:.6f}')
 
     
     def fit_dynamics(self, replay_buffer: OnlineReplayBuffer):
         print('fitting dynamics ......')
         dynamics_loss = 0.0
-        for step in tqdm(range(int(self._config.dynamics_update_steps)), desc=f'dynamics loss {dynamics_loss:.6f}'): 
+        pbar = tqdm(range(int(self._config.dynamics_update_steps)), desc=f'dynamics loss {dynamics_loss:.6f}')
+        for step in pbar: 
             dynamics_loss = self._dynamics.update(replay_buffer=replay_buffer)
             self._logger.log_update(dynamics_loss=dynamics_loss)
+            pbar.set_description(f'dynamics loss {dynamics_loss:.6f}')
     
     def update(self, replay_buffer: OnlineReplayBuffer):
         self.fit_q_v(replay_buffer)
@@ -304,10 +308,10 @@ class ABPPO_Offline_Learner:
         self._logger.log_update(ope_length_mean=rollout_lengths.mean(), ope_Q_mean=best_mean_qs.mean(), ope_Q_std=best_mean_qs.std())
         
         print('fitting bppo ......')
-        current_bppo_scores = [0 for i in range(self._config.num_policy)]
         losses = np.zeros(self._config.num_policy)
         joint_losses = []
-        for step in tqdm(range(self._config.bppo_steps), desc=f'bppo loss {losses.mean():.6f}'):
+        pbar = tqdm(range(self._config.bppo_steps), desc=f'bppo loss {losses.mean():.6f}')
+        for step in pbar:
             if self._config.is_linear_decay:
                 bppo_lr_now = self._config.bppo_lr * (1 - step / self._config.bppo_steps)
                 clip_ratio_now = self._config.clip_ratio * (1 - step / self._config.bppo_steps)
@@ -318,16 +322,16 @@ class ABPPO_Offline_Learner:
             losses = self._abppo.joint_train(replay_buffer, self._iql_learner, bppo_lr_now, clip_ratio_now)
             self._logger.log_update(policy_loss_mean=losses.mean(), policy_loss_std=losses.std(), bppo_lr=bppo_lr_now, clip_ratio=clip_ratio_now)
             joint_losses.append(losses)
+            pbar.set_description(f'bppo loss {losses.mean():.6f}')
 
             if (step+1) % self._config.eval_step == 0:
                 
                 current_mean_qs, rollout_lengths = self._abppo.ope_dynamics_eval(self._q_net, self._dynamics, replay_buffer)
                 self._logger.log_update(ope_length_mean=rollout_lengths.mean(), ope_Q_mean=best_mean_qs.mean(), ope_Q_std=best_mean_qs.std())
-                print('rollout trajectory q mean:{}'.format(current_mean_qs))
-                print(f"Step: {step}, Score: ", current_bppo_scores)
+                print(f"Step: {step}, rollout trajectory q mean:{current_mean_qs}")
                 
-                index = np.where(current_mean_qs > best_mean_qs)[0]  
-                # index = np.arange(self._config.num_policy)
+                # index = np.where(current_mean_qs > best_mean_qs)[0]  
+                index = np.arange(self._config.num_policy)
                 if len(index) != 0:
                     if self._config.is_update_old_policy: # TODO: what does is do?
                         for i_d in index:

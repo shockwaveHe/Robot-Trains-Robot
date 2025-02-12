@@ -68,7 +68,6 @@ class ProximalPolicyOptimization:
         if self._omega == 0.5:
             return advantage
         else:
-
             weight = torch.where(advantage > 0, self._omega, (1 - self._omega))
             weight.to(self._device)
             return weight * advantage

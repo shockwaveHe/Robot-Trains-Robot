@@ -19,7 +19,7 @@ class FinetuneLogger:
         self,
         exp_folder: str,
         log_interval_steps: int = 3,
-        plot_interval_steps: int = 500,
+        plot_interval_steps: int = 2000,
         update_csv: str = "training_updates.csv",
         reward_csv: str = "training_rewards.csv",
         enable_logging: bool = True,
@@ -260,6 +260,54 @@ class FinetuneLogger:
         plt.close(fig)
 
         print(f"Saved reward plot to {path}")
+
+        # Create a stacked area plot of reward proportions
+        # First, gather the reward-term data (and apply smoothing if needed)
+        term_data = {}
+        for term in self.reward_term_histories:
+            if term.startswith("rew_"):
+                data = np.array(self.reward_term_histories[term])
+                if self.smooth_factor:
+                    data = self._ema(data, 0.99)
+                term_data[term] = data
+
+        # Assume that all reward-term arrays have the same length.
+        T = len(next(iter(term_data.values())))
+        steps = np.arange(T)
+
+        # Compute the total reward at each time step.
+        total = np.zeros(T, dtype=float)
+        for data in term_data.values():
+            total += data
+        # Avoid division by zero (if total is 0 at any step)
+        total[total == 0] = 1e-8
+
+        # Compute the proportion of each reward term at each time step.
+        term_props = {}
+        for term, data in term_data.items():
+            term_props[term] = data / total
+
+        # Sort the reward terms by their overall (e.g. average) proportion,
+        # so that the term with the highest average is at the bottom of the stack.
+        avg_props = {term: np.mean(props) for term, props in term_props.items()}
+        sorted_terms = sorted(avg_props, key=avg_props.get, reverse=True)
+
+        # Prepare the data in sorted order.
+        props_sorted = [term_data[term] for term in sorted_terms]
+        # Create the stacked area plot.
+        fig2, ax2 = plt.subplots(figsize=(10, 6))
+        # Generate distinct colors for each term (using, e.g., tab10)
+        colors = plt.cm.tab10(np.linspace(0, 1, len(sorted_terms)))
+        ax2.stackplot(steps, *props_sorted, labels=[term[4:] for term in sorted_terms], colors=colors)
+        ax2.set_title("Stacked Reward Proportions Over Time")
+        ax2.set_xlabel("Env Steps")
+        ax2.set_ylabel("Proportion of Total Reward")
+        ax2.legend(loc="upper left")
+
+        path2 = os.path.join(self.exp_folder, "rewards_stack.png")
+        plt.savefig(path2)
+        plt.close(fig2)
+        print(f"Saved stacked reward proportion plot to {path2}")
 
     # ------------------------------------------------------------------
     # 2) PER-UPDATE LOGGING (for Q, V, Policy, OPE, etc.)

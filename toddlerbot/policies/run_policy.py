@@ -688,8 +688,9 @@ if __name__ == "__main__":
     os.makedirs(exp_folder_path, exist_ok=True)
     print(f"Saving results to {exp_folder_path}")
     if not issubclass(PolicyClass, MJXFinetunePolicy) and args.ckpt is not None:
-        assert len(args.ckpt) == 1, "Only one checkpoint can be loaded"
-        args.ckpt = args.ckpt[0]
+        assert len(args.ckpt) <= 1, "Only one checkpoint can be loaded"
+        if len(args.ckpt) == 1:
+            args.ckpt = args.ckpt[0]
 
     if "replay" in args.policy:
         assert (

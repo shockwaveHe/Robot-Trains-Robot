@@ -156,7 +156,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
             print(f"Force Z of {obs.ee_force[2]} is out of range")
             return True
         if obs.arm_ee_pos[1] < self.arm_healthy_ee_pos_y[0] or obs.arm_ee_pos[1] > self.arm_healthy_ee_pos_y[1]:
-            print(f"Position Z of {obs.arm_ee_pos[2]} is out of range")
+            print(f"Position Y of {obs.arm_ee_pos[2]} is out of range")
             return True
         if obs.ee_force[0] > self.arm_healthy_ee_force_xy[1] or obs.ee_force[1] > self.arm_healthy_ee_force_xy[1]:
             print(f"Force XY of {obs.ee_force[:2]} is out of range")
