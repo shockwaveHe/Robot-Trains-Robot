@@ -427,7 +427,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             x = np.zeros(1)
             y = np.zeros(1)
             z = np.where(
-                self.rng.uniform((1,)) < 0.5,q
+                self.rng.uniform((1,)) < 0.5,
                 self.rng.uniform(
                     low=self.deadzone,
                     high=self.command_range[7][1],
@@ -678,7 +678,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             )
         self.replay_buffer.compute_return(self.finetune_cfg.gamma)
 
-    @profile()
+    # @profile()
     def step(self, obs: Obs, is_real: bool = True):
         if not self.is_prepared:
             self.is_prepared = True

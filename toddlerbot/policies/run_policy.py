@@ -317,8 +317,7 @@ def run_policy(
     last_ckpt_idx = -1
     # import ipdb; ipdb.set_trace()
     obs = sim.reset()
-
-    if isinstance(policy, MJXPolicy):
+    if isinstance(policy, MJXFinetunePolicy):
         policy.reset(obs)
     # command = policy._sample_command()
     # import timeit
