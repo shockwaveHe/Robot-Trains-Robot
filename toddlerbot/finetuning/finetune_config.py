@@ -66,7 +66,7 @@ class FinetuneConfig:
     decay_steps: int = 50_000_000
     
     # Exploration and initialization
-    update_interval: int = 10_000
+    update_interval: int = 10_00
     enlarge_when_full: bool = True
     warmup_steps: int = 100_000
     is_linear_decay: bool = True  # Added from argparse
@@ -83,7 +83,7 @@ class FinetuneConfig:
 
     # Miscellaneous
     is_iql: bool = True # Added from argparse
-    update_mode: str = "remote"  # remote or local
+    update_mode: str = "remote" # remote or local
     kl_update: bool = False  # Added from argparse
     log_freq: int = 100 
     frame_stack: int = 15

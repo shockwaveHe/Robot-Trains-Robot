@@ -5,7 +5,7 @@ import torch
 import numpy as np
 from tqdm import tqdm
 from toddlerbot.finetuning.utils import CONST_EPS, RewardScaling, normalize
-from toddlerbot.finetuning.server_client import RemoteClient
+from toddlerbot.finetuning.server_client import RemoteClient, dump_experience_to_base64
 from toddlerbot.sim import Obs
 from copy import deepcopy
 from dataclasses import asdict
@@ -20,7 +20,7 @@ class RemoteReplayBuffer:
         self.is_overwriting = False
         self.enlarge_when_full = enlarge_when_full
 
-    def store(self, obs_arr, privileged_obs_arr, action, reward, done, truncated, raw_obs):
+    def store(self, obs_arr: np.ndarray, privileged_obs_arr: np.ndarray, action: np.ndarray, reward, done, truncated, raw_obs):
         # Instead of sending the full stacked version,
         # send only the latest frame of each.
         # Assume obs_arr is a 1D np.array of length (obs_dim * num_obs_history)
@@ -29,22 +29,23 @@ class RemoteReplayBuffer:
 
         latest_obs = obs_arr[-obs_frame_dim:]
         latest_priv = privileged_obs_arr[-priv_frame_dim:]
-        raw_obs_dict = asdict(raw_obs)
-        for key in raw_obs_dict:
-            if isinstance(raw_obs_dict[key], np.ndarray):
-                raw_obs_dict[key] = raw_obs_dict[key].tolist()
+        # import ipdb; ipdb.set_trace()
         data = {
-            'type': 'experience',
-            's': latest_obs.tolist(),
-            's_p': latest_priv.tolist(),
-            'a': np.array(action).tolist(),
+            's': latest_obs,
+            's_p': latest_priv,
+            'a': np.array(action),
             'r': float(reward),
             'done': bool(done),
             'truncated': bool(truncated),
-            'raw_obs': raw_obs_dict,   # if raw_obs is JSON–serializable; otherwise convert appropriately
+            'raw_obs': raw_obs,  
             # Optionally, include additional fields (e.g., a sequence number) for debugging.
         }
-        self.client.send_experience(data)
+        b64_experience = dump_experience_to_base64(data)
+        payload = {
+            "type": "experience",
+            "data_b64": b64_experience,
+        }
+        self.client.send_experience(payload)
         # print(f"Sent message of length {len(pickle.dumps(data))} at {time.time()} to {self.remote_address}")
         self._count += 1
         # When the count reaches max_size, set overwriting and reset _count

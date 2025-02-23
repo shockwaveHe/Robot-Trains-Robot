@@ -181,7 +181,13 @@ class FinetuneLogger:
         # if self.env_step_counter % self.plot_interval_steps == 0:
         #     self.plot_queue.put((self.plot_rewards, []))
 
-
+    def set_exp_folder(self, exp_folder: str):
+        """Sets the experiment folder for saving logs and plots."""
+        self.exp_folder = exp_folder
+        self.reward_csv_path = os.path.join(exp_folder, "training_rewards.csv")
+        self.update_csv_path = os.path.join(exp_folder, "training_updates.csv")
+        self.reward_header_written = False
+        
     def reset(self):
         """Clears all reward histories and resets counters."""
         self.env_step_counter = 0
@@ -276,7 +282,7 @@ class FinetuneLogger:
 
         # Compute the total reward at each time step.
         total = np.zeros(T, dtype=float)
-        for data in term_data.values():
+        for key, data in term_data.items():
             total += data
         # Avoid division by zero (if total is 0 at any step)
         total[total == 0] = 1e-8

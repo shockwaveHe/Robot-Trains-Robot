@@ -439,12 +439,6 @@ def run_policy(
     finally:
         p_bar.close()
 
-        exp_name = f"{robot.name}_{policy.name}_{sim.name}"
-        time_str = time.strftime("%Y%m%d_%H%M%S")
-        exp_folder_path = f"results/{exp_name}_{time_str}"
-
-        os.makedirs(exp_folder_path, exist_ok=True)
-
         if vis_type == "render" and hasattr(sim, "save_recording"):
             assert isinstance(sim, MuJoCoSim)
             sim.save_recording(exp_folder_path, policy.control_dt, 2)

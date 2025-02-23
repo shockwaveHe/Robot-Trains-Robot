@@ -22,9 +22,14 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
         joystick: Optional[Joystick] = None,
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
         exp_folder: Optional[str] = "",
+        env_cfg: Optional[Dict] = None,
+        finetune_cfg: Optional[Dict] = None,
+        is_real: bool = True,
     ):
-        env_cfg = get_env_config("walk")
-        finetune_cfg = get_finetune_config("walk")
+        if env_cfg is None:
+            env_cfg = get_env_config("walk")
+        if finetune_cfg is None:
+            finetune_cfg = get_finetune_config("walk")
         self.cycle_time = env_cfg.action.cycle_time
         self.command_discount_factor = np.array([1.0, 1.0, 1.0], dtype=np.float32)
 
@@ -46,6 +51,7 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
             env_cfg,
             finetune_cfg,
             exp_folder=exp_folder,
+            is_real=is_real
         )
 
     def get_phase_signal(self, time_curr: float):

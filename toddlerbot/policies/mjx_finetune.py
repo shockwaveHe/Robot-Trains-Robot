@@ -51,6 +51,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         fixed_command,
         env_cfg,
         finetune_cfg: FinetuneConfig,
+        is_real: bool = True,
         *args,
         **kwargs,
     ):
@@ -105,6 +106,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.obs_size = self.finetune_cfg.num_single_obs
         self.last_action = np.zeros(self.num_action)
         self.last_last_action = np.zeros(self.num_action)
+        self.is_real = is_real
 
         print(
             f"Observation size: {self.obs_size}, Privileged observation size: {self.privileged_obs_size}"
@@ -120,6 +122,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 enlarge_when_full=self.finetune_cfg.update_interval
                 * self.finetune_cfg.enlarge_when_full,
             )
+            self.remote_client = None
         else:
             assert self.finetune_cfg.update_mode == 'remote'
             self.remote_client = RemoteClient(
@@ -159,15 +162,18 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.privileged_obs_history = np.zeros(
             self.num_privileged_obs_history * self.privileged_obs_size
         )
-        self.zmq_receiver = ZMQNode(type="receiver")
-        assert len(ip) > 0, "Please provide the IP address of the sender"
-        self.zmq_sender = ZMQNode(type="sender", ip=ip)
+        if is_real:
+            self.zmq_receiver = ZMQNode(type="receiver")
+            assert len(ip) > 0, "Please provide the IP address of the sender"
+            self.zmq_sender = ZMQNode(type="sender", ip=ip)
+            self._init_tracker()
+
         self.logger = FinetuneLogger(self.exp_folder)
 
         self.total_steps = 0
         self.timer = Timer()
+
         self._init_reward()
-        self._init_tracker()
         self._make_learners()
 
         self.sim = MuJoCoSim(
@@ -179,8 +185,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         if len(ckpts) > 0:
             for ckpt in ckpts:
                 self.load_networks(ckpt, data_only=False)
-            if len(self.replay_buffer):
                 self.recalculate_reward()
+            if len(self.replay_buffer) and self.is_real:
                 org_policy_net = deepcopy(self.policy_net)
                 self.logger.plot_queue.put(
                     (self.logger.plot_rewards, [])
@@ -198,7 +204,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 self.logger.plot_queue.put(
                     (self.logger.plot_updates, [])
                 )  # no-blocking plot
-        input("press ENTER to start")
+        if is_real:
+            input("press ENTER to start")
 
     def close(self):
         self.sim.close()
@@ -646,12 +653,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             motor_target = np.clip(
                 motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
             )
-            motor_angles: Dict[str, float] = {}
-            for motor_name, motor_angle in zip(self.robot.motor_ordering, motor_target):
-                motor_angles[motor_name] = motor_angle
-
-            self.sim.set_motor_target(motor_angles)
-            self.sim.step()
+            motor_angles: Dict[str, float] = {}and self.finetune_cfg.update_mode == 'local'
             obs = self.sim.get_observation()
             step_curr += 1
             last_action = action
@@ -711,11 +713,12 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         time_curr = self.step_curr * self.control_dt
 
         msg = self.zmq_receiver.get_msg()
-        self.sim.set_motor_angles(obs.motor_pos)
-        self.sim.forward()
-        feet_pos = self.sim.get_feet_pos()
-        feet_y_dist = feet_pos["left"][1] - feet_pos["right"][1]
-        obs.feet_y_dist = feet_y_dist
+        if self.finetune_cfg.update_mode == 'local':
+            self.sim.set_motor_angles(obs.motor_pos)
+            self.sim.forward()
+            feet_pos = self.sim.get_feet_pos()
+            feet_y_dist = feet_pos["left"][1] - feet_pos["right"][1]
+            obs.feet_y_dist = feet_y_dist
         control_inputs: Dict[str, float] = {}
         self.control_inputs = {}
         lin_vel, _ = self.get_tracking_data()
@@ -759,21 +762,23 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         if msg is not None:
             # print(obs.lin_vel, obs.euler)
-            # TODO: only calculate reward when update mode is local
-            reward_dict = self._compute_reward(obs, action)
-            self.last_last_action = self.last_action.copy()
-            self.last_action = action.copy()
+            if self.finetune_cfg.update_mode == 'local':
+                reward_dict = self._compute_reward(obs, action)
+                self.last_last_action = self.last_action.copy()
+                self.last_action = action.copy()
 
-            reward = (
-                sum(reward_dict.values()) * self.control_dt
-            )  # TODO: verify, why multiply by dt?
-            self.logger.log_step(
-                reward_dict,
-                obs,
-                reward=reward,
-                feet_dist=feet_y_dist,
-                walk_command=control_inputs["walk_x"],
-            )
+                reward = (
+                    sum(reward_dict.values()) * self.control_dt
+                )  # TODO: verify, why multiply by dt?
+                self.logger.log_step(
+                    reward_dict,
+                    obs,
+                    reward=reward,
+                    feet_dist=feet_y_dist,
+                    walk_command=control_inputs["walk_x"],
+                )
+            else:
+                reward = 0.0
 
             if (len(self.replay_buffer) + 1) % 400 == 0:
                 print(
@@ -796,7 +801,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                     raw_obs=deepcopy(obs),
                 )
 
-                if truncated:
+                if truncated and self.finetune_cfg.update_mode == 'local':
                     self.timer.stop()
                     self.zmq_sender.send_msg(
                         ZMQMessage(time=time.time(), is_stopped=True)
