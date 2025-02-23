@@ -1,0 +1,191 @@
+import socket
+import threading
+import json
+import time
+import numpy as np
+import io
+import base64
+import torch
+
+def state_dict_to_base64(state_dict):
+    """
+    Serializes the state dict to a base64–encoded string.
+    """
+    buffer = io.BytesIO()
+    torch.save(state_dict, buffer)
+    buffer.seek(0)
+    b64_str = base64.b64encode(buffer.read()).decode('utf-8')
+    return b64_str
+
+def base64_to_state_dict(b64_str, device='cpu'):
+    """
+    Converts a base64–encoded string back into a state dict.
+    The state dict is loaded onto the specified device.
+    """
+    buffer = io.BytesIO(base64.b64decode(b64_str))
+    state_dict = torch.load(buffer, map_location=device)
+    return state_dict
+
+class RemoteClient:
+    def __init__(self, server_ip, server_port, exp_folder):
+        self.server_addr = (server_ip, server_port)
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.connect(self.server_addr)
+        try:
+            self.sock.sendall(f"{exp_folder}\n".encode('utf-8'))
+        except Exception as e:
+            print("Error sending hello message:", e)
+        self.new_state_dict = None
+        self.ready_to_update = False
+        print(f"Connected to learner at {server_ip}:{server_port}")
+        threading.Thread(target=self._receive_policy_updates, daemon=True).start()
+    
+    def send_experience(self, data: dict):
+        msg = json.dumps(data) + "\n"
+        try:
+            self.sock.sendall(msg.encode('utf-8'))
+        except Exception as e:
+            print("Error sending experience:", e)
+    
+    def _receive_policy_updates(self):
+        buffer = ""
+        while True:
+            try:
+                data = self.sock.recv(4096)
+                if not data:
+                    print("Connection closed by learner")
+                    break
+                buffer += data.decode('utf-8')
+                while "\n" in buffer:
+                    line, buffer = buffer.split("\n", 1)
+                    if line:
+                        msg = json.loads(line)
+                        if msg.get('type') == 'policy_update':
+                            # Here we call the callback with the new parameters.
+                            received_b64 = msg['params_b64']
+                            self.new_state_dict = base64_to_state_dict(received_b64)
+                            self.ready_to_update = True
+            except Exception as e:
+                print("Error receiving policy update:", e)
+                break
+
+
+class RemoteServer:
+    def __init__(self, host, port):
+        self.host = host
+        self.port = port
+        self.exp_folder = None
+        self.clients = []   # list of (conn, addr)
+        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server.bind((host, port))
+        self.server.listen(5)
+        print(f"RemoteBufferServer listening on {host}:{port}")
+
+    def handle_client(self, conn, addr, replay_buffer):
+        print("Connected by", addr)
+        # Define dimensions based on your optimizations.
+        obs_frame_dim = 83    # latest frame dimension for obs
+        priv_frame_dim = 122  # latest frame dimension for privileged obs
+        num_frames = 15       # number of frames to stack
+
+        # Initialize the stacks with zeros.
+        obs_stack = np.zeros((num_frames, obs_frame_dim), dtype=np.float32)
+        priv_stack = np.zeros((num_frames, priv_frame_dim), dtype=np.float32)
+        buffer = ""
+
+        while True:
+            try:
+                data = conn.recv(65536)
+                if not data:
+                    print(f"Client {addr} disconnected")
+                    break
+                buffer += data.decode('utf-8')
+                while "\n" in buffer:
+                    line, buffer = buffer.split("\n", 1)
+                    if line:
+                        try:
+                            msg = json.loads(line)
+                        except Exception as e:
+                            print("JSON decode error:", e)
+                            continue
+                        if msg.get('type') == 'experience':
+                            # Extract the latest frame for obs and privileged obs.
+                            latest_obs = np.array(msg['s'], dtype=np.float32)    # shape: (83,)
+                            latest_priv = np.array(msg['s_p'], dtype=np.float32)   # shape: (126,)
+                            
+                            # If a done/truncated flag is True, reset the stacks.
+                            if msg.get('done') or msg.get('truncated'):
+                                obs_stack = np.zeros((num_frames, obs_frame_dim), dtype=np.float32)
+                                priv_stack = np.zeros((num_frames, priv_frame_dim), dtype=np.float32)
+                            else:
+                                # Shift stacks left and append the new frame at the end.
+                                obs_stack = np.roll(obs_stack, -1, axis=0)
+                                obs_stack[-1] = latest_obs
+                                priv_stack = np.roll(priv_stack, -1, axis=0)
+                                priv_stack[-1] = latest_priv
+                            
+                            # Reconstruct full stacked states (flattened).
+                            full_obs = obs_stack.flatten()      # shape: (15 * 83 = 1245,)
+                            full_priv = priv_stack.flatten()    # shape: (15 * 126 = 1890,)
+                            
+                            # Use the original OnlineReplayBuffer's store method.
+                            replay_buffer.store(
+                                s=full_obs,
+                                s_p=full_priv,
+                                a=np.array(msg['a']),
+                                r=msg['r'],
+                                done=msg['done'],
+                                truncated=msg['truncated'],
+                                raw_obs=msg['raw_obs']
+                            )
+            except Exception as e:
+                print(f"Error handling client {addr}: {e}")
+                break
+
+        conn.close()
+
+    def start_receiving_data(self, replay_buffer):
+        """
+        Start accepting connections and receiving experience data.
+        The received data is processed and the full (stacked) state is stored in replay_buffer.
+        """
+        def accept_connections():
+            while True:
+                try:
+                    conn, addr = self.server.accept()
+                    data = conn.recv(1024)
+                    if data:
+                        self.exp_folder = data.decode('utf-8').strip()
+                        print(f"Accepted connection from {addr} for experiment {self.exp_folder}")
+                    else:
+                        print("Received empty message from", addr)
+                    self.clients.append((conn, addr))
+                    client_thread = threading.Thread(
+                        target=self.handle_client, args=(conn, addr, replay_buffer), daemon=True
+                    )
+                    client_thread.start()
+                except Exception as e:
+                    print("Error accepting connection:", e)
+                    break
+
+        threading.Thread(target=accept_connections, daemon=True).start()
+
+    def push_policy_parameters(self, policy_state_dict):
+        """
+        Push the latest policy parameters to all connected agents.
+        The policy_state_dict must be JSON–serializable (or converted appropriately).
+        """
+        b64_state = state_dict_to_base64(policy_state_dict)
+        payload = {
+            'type': 'policy_update',
+            'params_b64': b64_state
+        }
+        msg = json.dumps(payload) + "\n"
+        for conn, addr in self.clients:
+            try:
+                start_time = time.time()
+                conn.sendall(msg.encode('utf-8'))
+                end_time = time.time()
+                print(f"Sent policy update to {addr} in {(end_time - start_time) * 1000:.2f} ms")
+            except Exception as e:
+                print(f"Error sending policy update to {addr}: {e}")

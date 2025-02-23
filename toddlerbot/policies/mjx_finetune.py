@@ -10,7 +10,8 @@ from tqdm import tqdm
 from toddlerbot.sim import Obs
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.policies.mjx_policy import MJXPolicy
-from toddlerbot.finetuning.replay_buffer import OnlineReplayBuffer
+from toddlerbot.finetuning.replay_buffer import OnlineReplayBuffer, RemoteReplayBuffer
+from toddlerbot.finetuning.server_client import RemoteClient
 from toddlerbot.finetuning.dynamics import DynamicsNetwork, BaseDynamics
 from toddlerbot.finetuning.utils import Timer
 from toddlerbot.reference.walk_zmp_ref import WalkZMPReference
@@ -108,15 +109,26 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         print(
             f"Observation size: {self.obs_size}, Privileged observation size: {self.privileged_obs_size}"
         )
-        self.replay_buffer = OnlineReplayBuffer(
-            self.device,
-            self.obs_size * self.num_obs_history,
-            self.privileged_obs_size * self.num_privileged_obs_history,
-            self.num_action,
-            self.finetune_cfg.buffer_size,
-            enlarge_when_full=self.finetune_cfg.update_interval
-            * self.finetune_cfg.enlarge_when_full,
-        )  # TODO: add priviledged obs to buffer
+        
+        if self.finetune_cfg.update_mode == 'local':
+            self.replay_buffer = OnlineReplayBuffer(
+                self.device,
+                self.obs_size * self.num_obs_history,
+                self.privileged_obs_size * self.num_privileged_obs_history,
+                self.num_action,
+                self.finetune_cfg.buffer_size,
+                enlarge_when_full=self.finetune_cfg.update_interval
+                * self.finetune_cfg.enlarge_when_full,
+            )
+        else:
+            assert self.finetune_cfg.update_mode == 'remote'
+            self.remote_client = RemoteClient(
+                server_ip='172.24.68.176', 
+                server_port=5000,
+                exp_folder=self.exp_folder,
+            )
+            self.replay_buffer = RemoteReplayBuffer(self.remote_client, self.finetune_cfg.buffer_size, num_obs_history=self.num_obs_history, num_privileged_obs_history=self.num_privileged_obs_history, enlarge_when_full=self.finetune_cfg.update_interval * self.finetune_cfg.enlarge_when_full)
+        
         # import pickle
         # with open('buffer_mock.pkl', 'rb') as f:
         #     self.replay_buffer: OnlineReplayBuffer = pickle.load(f)
@@ -735,12 +747,19 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             time_curr
         )  # TODO: should this similar to obs.time?
         obs_arr, privileged_obs_arr = self.get_obs(obs, command)
-        # import ipdb; ipdb.set_trace()
-
+        if self.remote_client is not None and self.remote_client.ready_to_update:
+            # import ipdb; ipdb.set_trace()
+            assert not torch.allclose(
+                self.policy_net.mlp.layers[0].weight,
+                self.remote_client.new_state_dict["mlp.layers.0.weight"]
+            )
+            self.policy_net.load_state_dict(self.remote_client.new_state_dict)
+            self.remote_client.ready_to_update = False
         action, _ = self.get_action(obs_arr, deterministic=True, is_real=is_real)
 
         if msg is not None:
             # print(obs.lin_vel, obs.euler)
+            # TODO: only calculate reward when update mode is local
             reward_dict = self._compute_reward(obs, action)
             self.last_last_action = self.last_action.copy()
             self.last_action = action.copy()

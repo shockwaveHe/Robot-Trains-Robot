@@ -72,7 +72,7 @@ class FinetuneConfig:
     is_linear_decay: bool = True  # Added from argparse
 
     # Behavior Cloning and BPPO
-    bppo_steps: int = 2000  # Added from argparse
+    bppo_steps: int = 1000  # Added from argparse
     abppo_update_steps: int = 1  # Added from argparse
     num_policy: int = 3  # Added from argparse
     is_update_old_policy: bool = True  # Added from argparse
@@ -83,6 +83,7 @@ class FinetuneConfig:
 
     # Miscellaneous
     is_iql: bool = True # Added from argparse
+    update_mode: str = "remote"  # remote or local
     kl_update: bool = False  # Added from argparse
     log_freq: int = 100 
     frame_stack: int = 15
