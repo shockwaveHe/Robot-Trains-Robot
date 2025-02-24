@@ -161,7 +161,6 @@ class RemoteServer:
                             raw_obs.feet_y_dist = feet_y_dist
                             reward_dict = self.policy._compute_reward(raw_obs, msg['a'])
                             reward = sum(reward_dict.values()) * self.policy.control_dt
-                            print(f"Calculated reward: {reward}, Feet y dist: {feet_y_dist}")
                             self.policy.last_last_action = self.policy.last_action.copy()
                             self.policy.last_action = msg['a'].copy()
                             self.policy.logger.log_step(
@@ -184,11 +183,11 @@ class RemoteServer:
                 print(f"Error handling client {addr}: {e}")
                 import traceback
                 traceback.print_exc()
-                self.is_running = False
                 break
         
         conn.close()
         self.server.close()
+        self.is_running = False
         print("Connection closed by", addr)
 
     def start_receiving_data(self):
@@ -196,22 +195,18 @@ class RemoteServer:
         Start accepting connections and receiving experience data.
         The received data is processed and the full (stacked) state is stored in replay_buffer.
         """
-        try:
-            conn, addr = self.server.accept()
-            data = conn.recv(1024)
-            if data:
-                self.exp_folder = data.decode('utf-8').strip()
-                print(f"Accepted connection from {addr} for experiment {self.exp_folder}")
-            else:
-                print("Received empty message from", addr)
-            self.clients.append((conn, addr))
-            client_thread = threading.Thread(
-                target=self.handle_client, args=(conn, addr, self.policy.replay_buffer), daemon=True
-            )
-            client_thread.start()
-        except Exception as e:
-            print(f"Error accepting connection: {e}")
-            self.is_running = False
+        conn, addr = self.server.accept()
+        data = conn.recv(1024)
+        if data:
+            self.exp_folder = data.decode('utf-8').strip()
+            print(f"Accepted connection from {addr} for experiment {self.exp_folder}")
+        else:
+            print("Received empty message from", addr)
+        self.clients.append((conn, addr))
+        self.client_thread = threading.Thread(
+            target=self.handle_client, args=(conn, addr, self.policy.replay_buffer), daemon=True
+        )
+        self.client_thread.start()
 
     def push_policy_parameters(self, policy_state_dict):
         """

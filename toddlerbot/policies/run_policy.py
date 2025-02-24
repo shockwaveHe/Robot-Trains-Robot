@@ -311,7 +311,6 @@ def run_policy(
         else policy.n_steps_total
     )
     p_bar = tqdm(total=n_steps_total, desc="Running the policy")
-    start_time = time.time()
     step_idx = 0
     time_until_next_step = 0.0
     last_ckpt_idx = -1
@@ -323,6 +322,7 @@ def run_policy(
     # import timeit
     # print(timeit.timeit(lambda: policy.motion_ref.get_state_ref(policy.state_ref, 0.0, command), number=100000))
     # print(timeit.timeit(lambda: policy.motion_ref.get_state_ref_ds(policy.state_ref, 0.0, command), number=100000))
+    start_time = time.time()
     try:
         while step_idx < n_steps_total and not getattr(policy, "stopped", False):
             step_start = time.time()

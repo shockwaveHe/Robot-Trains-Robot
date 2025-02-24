@@ -127,7 +127,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             assert self.finetune_cfg.update_mode == 'remote'
             self.remote_client = RemoteClient(
                 server_ip='172.24.68.176', 
-                server_port=5000,
+                server_port=5001,
                 exp_folder=self.exp_folder,
             )
             self.replay_buffer = RemoteReplayBuffer(self.remote_client, self.finetune_cfg.buffer_size, num_obs_history=self.num_obs_history, num_privileged_obs_history=self.num_privileged_obs_history, enlarge_when_full=self.finetune_cfg.update_interval * self.finetune_cfg.enlarge_when_full)
@@ -241,7 +241,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             action_size=action_size,
             activation_fn=activation_fn,
         ).to(self.inference_device)
-        self.policy_net_opt = torch.compile(self.policy_net)
+        if self.is_real:
+            self.policy_net_opt = torch.compile(self.policy_net)
         # Create value network
         self.value_net = networks.ValueNetwork(
             observation_size=privileged_observation_size,
@@ -524,6 +525,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self, obs_arr: np.ndarray, deterministic: bool = True, is_real: bool = False
     ) -> Tuple[np.ndarray, Dict[str, Any]]:
         # import ipdb; ipdb.set_trace()
+        assert not self.is_real
         obs_tensor = (
             torch.as_tensor(obs_arr, dtype=torch.float32)
             .to(self.inference_device)
@@ -779,6 +781,10 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 )
             else:
                 reward = 0.0
+
+            time_elapsed = self.timer.elapsed()
+            if time_elapsed < time_curr:
+                time.sleep(time_curr - time_elapsed)
 
             if (len(self.replay_buffer) + 1) % 400 == 0:
                 print(
