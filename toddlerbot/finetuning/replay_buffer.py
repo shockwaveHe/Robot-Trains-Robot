@@ -8,7 +8,6 @@ from toddlerbot.finetuning.utils import CONST_EPS, RewardScaling, normalize
 from toddlerbot.finetuning.server_client import RemoteClient, dump_experience_to_base64
 from toddlerbot.sim import Obs
 from copy import deepcopy
-from dataclasses import asdict
 
 class RemoteReplayBuffer:
     def __init__(self, client: RemoteClient, buffer_size: int, num_obs_history: int, num_privileged_obs_history: int, enlarge_when_full: int = 0):

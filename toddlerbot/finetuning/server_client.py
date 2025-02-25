@@ -163,11 +163,22 @@ class RemoteServer:
                             reward = sum(reward_dict.values()) * self.policy.control_dt
                             self.policy.last_last_action = self.policy.last_action.copy()
                             self.policy.last_action = msg['a'].copy()
+                            current_Q = self.policy.Q_net(
+                                torch.as_tensor(privileged_obs_history, device=self.policy.device).unsqueeze(0), 
+                                torch.as_tensor(msg['a'], device=self.policy.device).unsqueeze(0)
+                            ).item()
+                            current_value = self.policy.value_net(
+                                torch.as_tensor(privileged_obs_history, device=self.policy.device).unsqueeze(0)
+                            ).item()
+                            current_adv = current_Q - current_value
                             self.policy.logger.log_step(
                                 reward_dict,
                                 raw_obs,
                                 reward=reward,
                                 feet_dist=feet_y_dist,
+                                current_Q=current_Q,
+                                current_value=current_value,
+                                current_adv=current_adv,
                                 # walk_command=control_inputs["walk_x"],
                             )
                             replay_buffer.store(

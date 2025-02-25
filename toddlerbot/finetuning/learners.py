@@ -53,7 +53,7 @@ class ValueLearner:
             self._value.parameters(), 
             lr=config.value_lr,
             )
-        self._scheduler = LinearCosineScheduler(self._optimizer, config.warmup_steps, config.decay_steps)
+        # self._scheduler = LinearCosineScheduler(self._optimizer, config.warmup_steps, config.decay_steps)
         self._batch_size = config.value_batch_size
 
 
@@ -72,7 +72,7 @@ class ValueLearner:
         self._optimizer.zero_grad()
         value_loss.backward()
         self._optimizer.step()
-        self._scheduler.step()
+        # self._scheduler.step()
 
         return value_loss.item()
 
@@ -123,16 +123,14 @@ class QLearner:
         return self._Q(s, a)
 
 
-    def loss(
-        self, replay_buffer: OnlineReplayBuffer, pi
-    ) -> torch.Tensor:
-        raise NotImplementedError
-
-
     def update(
-        self, replay_buffer: OnlineReplayBuffer, pi
+        self, replay_buffer: OnlineReplayBuffer
     ) -> float:
-        Q_loss = self.loss(replay_buffer, pi)
+        _, s, a, r, _, s_n, a_n, done, _, _ = replay_buffer.sample(self._batch_size)
+        with torch.no_grad():
+            target_Q = r.squeeze() + (1 - done.squeeze()) * self._gamma * self._target_Q(s_n, a_n)
+        Q = self._Q(s, a)
+        Q_loss = F.mse_loss(Q, target_Q.squeeze())
         self._optimizer.zero_grad()
         Q_loss.backward()
         self._optimizer.step()

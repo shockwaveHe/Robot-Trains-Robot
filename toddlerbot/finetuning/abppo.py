@@ -271,9 +271,8 @@ class ABPPO_Offline_Learner:
         self._q_net = q_net
         self._value_net = value_net
         self._logger = logger
-        if self._config.is_iql:
-            self._iql_learner = IQL_QV_Learner(device, q_net, value_net, config)
-        else:
+        self._iql_learner = IQL_QV_Learner(device, q_net, value_net, config)
+        if not self._config.is_iql:
             self._q_learner = QLearner(device, q_net, config)
             self._value_learner = ValueLearner(device, value_net, config)
         self._dynamics = dynamics
@@ -282,6 +281,8 @@ class ABPPO_Offline_Learner:
         print("fitting q_v ......")
         value_loss, Q_loss = 0.0, 0.0
         pbar = tqdm(range(int(self._config.value_update_steps)))
+        if not self._config.is_iql:
+            replay_buffer.compute_return(self._config.gamma)
         for _ in pbar: 
             if self._config.is_iql:
                 Q_loss, value_loss = self._iql_learner.update(replay_buffer=replay_buffer)
@@ -333,7 +334,7 @@ class ABPPO_Offline_Learner:
                 # index = np.where(current_mean_qs > best_mean_qs)[0]  
                 index = np.arange(self._config.num_policy)
                 if len(index) != 0:
-                    if self._config.is_update_old_policy: # TODO: what does is do?
+                    if self._config.is_update_old_policy:
                         for i_d in index:
                             self._abppo.replace(index=index)
                             # print('------------------------------update behavior policy {}----------------------------------------'.format(i_d))

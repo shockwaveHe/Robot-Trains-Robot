@@ -93,8 +93,8 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         self.timer.start()
         self.init_speed = 0.05
         self.warmup_time = 10.0
-        self.speed_period = 30.0
-        self.walk_speed_range = [0.20, 0.23]
+        self.speed_period = 60.0
+        self.walk_speed_range = [0.2, 0.2]
 
     def close(self):
         self.zmq_sender.close()

@@ -65,6 +65,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             self.privileged_obs_size * self.num_privileged_obs_history
         )
         self.replay_buffer = None
+        self.num_updates = 0
+
         super().__init__(
             name,
             robot,
@@ -127,7 +129,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             assert self.finetune_cfg.update_mode == 'remote'
             self.remote_client = RemoteClient(
                 server_ip='172.24.68.176', 
-                server_port=5001,
+                server_port=5007,
                 exp_folder=self.exp_folder,
             )
             self.replay_buffer = RemoteReplayBuffer(self.remote_client, self.finetune_cfg.buffer_size, num_obs_history=self.num_obs_history, num_privileged_obs_history=self.num_privileged_obs_history, enlarge_when_full=self.finetune_cfg.update_interval * self.finetune_cfg.enlarge_when_full)
@@ -186,7 +188,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             for ckpt in ckpts:
                 self.load_networks(ckpt, data_only=False)
                 self.recalculate_reward()
-            if len(self.replay_buffer) and self.is_real:
+            if len(self.replay_buffer):
                 org_policy_net = deepcopy(self.policy_net)
                 self.logger.plot_queue.put(
                     (self.logger.plot_rewards, [])
@@ -525,7 +527,6 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self, obs_arr: np.ndarray, deterministic: bool = True, is_real: bool = False
     ) -> Tuple[np.ndarray, Dict[str, Any]]:
         # import ipdb; ipdb.set_trace()
-        assert not self.is_real
         obs_tensor = (
             torch.as_tensor(obs_arr, dtype=torch.float32)
             .to(self.inference_device)
@@ -690,7 +691,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 raw_obs,
                 reward=reward,
                 feet_dist=raw_obs.feet_y_dist,
-                walk_command=obs[3],
+                # walk_command=obs[3],
             )
         self.replay_buffer.compute_return(self.finetune_cfg.gamma)
 
@@ -754,6 +755,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         obs_arr, privileged_obs_arr = self.get_obs(obs, command)
         if self.remote_client is not None and self.remote_client.ready_to_update:
             # import ipdb; ipdb.set_trace()
+            self.num_updates += 1
+            print(f"Updated policy network to {self.num_updates}!")
             assert not torch.allclose(
                 self.policy_net.mlp.layers[0].weight,
                 self.remote_client.new_state_dict["mlp.layers.0.weight"]
@@ -783,8 +786,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 reward = 0.0
 
             time_elapsed = self.timer.elapsed()
-            if time_elapsed < time_curr:
-                time.sleep(time_curr - time_elapsed)
+            if time_elapsed < self.total_steps * self.control_dt:
+                time.sleep(self.total_steps * self.control_dt - time_elapsed)
 
             if (len(self.replay_buffer) + 1) % 400 == 0:
                 print(
