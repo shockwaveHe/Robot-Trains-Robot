@@ -48,11 +48,6 @@ class ProximalPolicyOptimization:
             )
         self._policy_lr = config.policy_lr
         self._old_policy: GaussianPolicyNetwork = deepcopy(self._policy)
-        self._scheduler = torch.optim.lr_scheduler.StepLR(
-            self._optimizer,
-            step_size=2,
-            gamma=0.98
-            )
         
         self._clip_ratio = config.clip_ratio
         self._entropy_weight = config.entropy_weight

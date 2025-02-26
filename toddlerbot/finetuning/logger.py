@@ -19,7 +19,7 @@ class FinetuneLogger:
         self,
         exp_folder: str,
         log_interval_steps: int = 3,
-        plot_interval_steps: int = 2000,
+        plot_interval_steps: int = 1000,
         update_csv: str = "training_updates.csv",
         reward_csv: str = "training_rewards.csv",
         enable_logging: bool = True,
@@ -178,8 +178,8 @@ class FinetuneLogger:
             self._write_reward_csv_line()
 
         # optionally update reward plots
-        # if self.env_step_counter % self.plot_interval_steps == 0:
-        #     self.plot_queue.put((self.plot_rewards, []))
+        if self.env_step_counter % self.plot_interval_steps == 0:
+            self.plot_queue.put((self.plot_updates, []))
 
     def set_exp_folder(self, exp_folder: str):
         """Sets the experiment folder for saving logs and plots."""
@@ -282,8 +282,13 @@ class FinetuneLogger:
 
         # Compute the total reward at each time step.
         total = np.zeros(T, dtype=float)
-        for key, data in term_data.items():
-            total += data
+        try:
+            for key, data in term_data.items():
+                total += data
+        except ValueError as e:
+            import traceback
+            traceback.print_exc()
+            print(key, data.shape)
         # Avoid division by zero (if total is 0 at any step)
         total[total == 0] = 1e-8
 
@@ -407,7 +412,7 @@ class FinetuneLogger:
                 val = dp.get(mkey, None)
                 if val is not None:
                     yvals.append(val)
-            if self.smooth_factor:
+            if self.smooth_factor and len(yvals):
                 yvals = self._ema(yvals, self.smooth_factor)
             ax.plot(yvals, label=mkey)
             ax.set_title(mkey)

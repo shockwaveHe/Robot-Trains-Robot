@@ -49,7 +49,14 @@ class RemoteClient:
     def __init__(self, server_ip, server_port, exp_folder):
         self.server_addr = (server_ip, server_port)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.connect(self.server_addr)
+        connection_established = False
+        print(f"Connecting to learner at {server_ip}:{server_port}")
+        while not connection_established:
+            try:
+                self.sock.connect(self.server_addr)
+                connection_established = True
+            except Exception as e:
+                time.sleep(1)
         try:
             self.sock.sendall(f"{exp_folder}\n".encode('utf-8'))
         except Exception as e:

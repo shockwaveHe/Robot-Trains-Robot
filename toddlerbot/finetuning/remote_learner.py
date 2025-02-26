@@ -21,7 +21,9 @@ if __name__ == "__main__":
     finetune_cfg.update_mode = "local"
     env_cfg = get_env_config("walk")
     # ckpt_folder = "results/stored/toddlerbot_walk_finetune_real_world_20250211_101354"
-    ckpt_folder = "results/toddlerbot_walk_finetune_real_world_20250224_222209"
+    ckpt_folders = [
+        # "results/toddlerbot_walk_finetune_real_world_20250224_222209"
+    ]
 
     # policy.abppo_offline_learner.update(policy.replay_buffer)
     # policy.logger.plot_updates()
@@ -29,12 +31,13 @@ if __name__ == "__main__":
         "walk_finetune",
         robot,
         init_motor_pos,
-        ckpt=[ckpt_folder],
+        ckpt=ckpt_folders,
         exp_folder="tests/logging",
         env_cfg=env_cfg,
         finetune_cfg=finetune_cfg,
         is_real=False
     )
+
     server = RemoteServer(host='172.24.68.176', port=5007, policy=policy)
     server.start_receiving_data()
     while not server.exp_folder:
@@ -43,19 +46,20 @@ if __name__ == "__main__":
         os.makedirs(server.exp_folder)
     policy.exp_folder = server.exp_folder
     policy.logger.set_exp_folder(server.exp_folder)
+    # policy.logger.plot_updates()
 
     try:
         while server.is_running and server.client_thread.is_alive():
-            if len(policy.replay_buffer) > 50000 and (len(policy.replay_buffer) + 1) % 100 == 0:
+            # if len(policy.replay_buffer) == 47316 and len(ckpt_folders):
+            #     server.push_policy_parameters(policy.abppo._policy_net.state_dict())
+            if len(policy.replay_buffer) > 3000 and (len(policy.replay_buffer) + 1) % 1000 == 0:
                 print("Replay buffer size:", len(policy.replay_buffer))
                 policy.abppo_offline_learner.update(policy.replay_buffer)
                 server.push_policy_parameters(policy.abppo._policy_net.state_dict())  # Push latest parameters to agent A.
                 print("Pushed policy parameters to agent A.")
                 print("Replay buffer size:", len(policy.replay_buffer))
             time.sleep(0.01)
-            if (len(policy.replay_buffer) + 1) % 3000 == 0:
-                policy.logger.plot_queue.put((policy.logger.plot_rewards, []))
-                policy.logger.plot_queue.put((policy.logger.plot_updates, []))
+
     except Exception as e:
         print("Exception:", e)
     finally:

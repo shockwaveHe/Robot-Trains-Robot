@@ -96,6 +96,8 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         self.speed_period = 60.0
         self.walk_speed_range = [0.2, 0.2]
 
+        self.treadmill_pause_time = time.time()
+
     def close(self):
         self.zmq_sender.close()
         self.serial_thread.join()
@@ -106,6 +108,9 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
             pass
         
     def update_speed(self, obs: Obs):
+        if time.time() - self.treadmill_pause_time < 2.0:
+            return
+        
         self.ee_force_x_ema = self.ee_force_x_ema_alpha * self.ee_force_x_ema + (1 - self.ee_force_x_ema_alpha) * obs.ee_force[0]
         delta_speed = np.abs(self.ee_force_x_ema) - self.x_force_threshold
         speed_stalled = True
@@ -339,6 +344,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
             time.sleep(0.2)
         assert cur_force == force_prev
         print("Reset done")
+        self.treadmill_pause_time = time.time()
         self.force = force_prev
         self.timer.start()
         return obs

@@ -686,13 +686,13 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             else:
                 self.last_last_action = np.zeros(self.num_action)
                 self.last_action = np.zeros(self.num_action)
-            self.logger.log_step(
-                reward_dict,
-                raw_obs,
-                reward=reward,
-                feet_dist=raw_obs.feet_y_dist,
-                # walk_command=obs[3],
-            )
+            # self.logger.log_step(
+            #     reward_dict,
+            #     raw_obs,
+            #     reward=reward,
+            #     feet_dist=raw_obs.feet_y_dist,
+            #     # walk_command=obs[3],
+            # )
         self.replay_buffer.compute_return(self.finetune_cfg.gamma)
 
     # @profile()
