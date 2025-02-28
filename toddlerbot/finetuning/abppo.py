@@ -139,6 +139,21 @@ class BehaviorProximalPolicyOptimization:
                 p['lr'] = bppo_lr_now    
         return policy_loss.item(), ratios
 
+    def get_action(
+        self, s: torch.Tensor, deterministic: bool
+    ) -> torch.Tensor:
+        s.to(self._device)
+        dist = self._policy(s)
+        if not deterministic:
+            action = dist.sample()
+        else:    
+            action = dist.base_dist.mode
+            for transform in dist.transforms:
+                action = transform(action)
+        # clip 
+        action = action.clamp(-1., 1.)
+        log_prob = dist.log_prob(action)
+        return action, log_prob
 
 class AdaptiveBehaviorProximalPolicyOptimization:
     def __init__(
@@ -176,7 +191,7 @@ class AdaptiveBehaviorProximalPolicyOptimization:
         bppo_lr_now: float = None,
         clip_ratio_now: float = None
         ) -> np.ndarray:
-        s, s_p, _, _, _, _, _, _, _, _ = replay_buffer.sample(self._batch_size)
+        s, s_p, _, _, _, _, _, _, _, _, _ = replay_buffer.sample(self._batch_size)
         # import ipdb; ipdb.set_trace()
         actions, advantages, dists, kl_logprob_a = self.kl_update(iql, s, s_p, self._kl_update, self._kl_strategy)
         losses, ratios = [], []

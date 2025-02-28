@@ -114,7 +114,7 @@ class BaseDynamics:
     def update(
         self, replay_buffer: OfflineReplayBuffer
     ) -> float:
-        _, s, a, r, _, s_n, _, _, _, _ = replay_buffer.sample(self._batch_size)
+        _, s, a, r, _, s_n, _, _, _, _, _ = replay_buffer.sample(self._batch_size)
         dynamics_loss = F.mse_loss(self._model(s, a), torch.concatenate([s_n, r], dim=1))
         self._optim.zero_grad()
         dynamics_loss.backward()
@@ -168,7 +168,7 @@ def rollout(
             for length in range(rollout_length):
                 # import ipdb; ipdb.set_trace()
                 obs = get_obs_from_priviledged_obs(priviledged_obs)
-                actions = policy.get_action(obs, deterministic=True)
+                actions, _ = policy.get_action(obs, deterministic=True)
 
                 Q_value = Q(priviledged_obs, actions)
                 next_priviledged_obs, rewards, terminals, info = dynamics.step(priviledged_obs.cpu().data.numpy(), actions.cpu().data.numpy())
@@ -188,12 +188,12 @@ def rollout(
                     break
 
                 priviledged_obs = torch.FloatTensor(next_priviledged_obs[nonterm_mask]).to(dynamics._device)
-        import ipdb; ipdb.set_trace()
+
         return total_q.mean(), rewards_arr.mean(), length
     
 
 def dynamics_eval(config: FinetuneConfig, policy: PPO, Q: QNetwork, dynamics: BaseDynamics, replay_buffer: OfflineReplayBuffer):
-    s, s_p, _, _, _, _, _, _, _, _ = replay_buffer.sample(config.rollout_batch_size)
+    s, s_p, _, _, _, _, _, _, _, _, _ = replay_buffer.sample(config.rollout_batch_size)
     Q_mean, reward_mean, rollout_length = rollout(Q, policy, dynamics, s, s_p, config.ope_rollout_length)
     return Q_mean, reward_mean, rollout_length
 
@@ -255,7 +255,7 @@ if __name__ == "__main__":
     for i in range(config.value_update_steps):
         q_loss, value_loss = iql_learner.update(replay_buffer)
         print(i, value_loss, q_loss)
-    initial_obs, initial_privileged_obs, _, _, _, _, _, _, _, _, = replay_buffer.sample(1)
+    initial_obs, initial_privileged_obs, _, _, _, _, _, _, _, _, _ = replay_buffer.sample(1)
     obs = initial_obs.reshape(15, -1)
     pri_obs = initial_privileged_obs.reshape(15, -1)
     obs_cat = np.concatenate([pri_obs[:, :77], pri_obs[:, -12:-6]], axis=1) # 110: 116

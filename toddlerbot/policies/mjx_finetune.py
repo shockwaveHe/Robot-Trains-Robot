@@ -551,11 +551,11 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 actions = action_dist.base_dist.mode
                 for transform in action_dist.transforms:
                     actions = transform(actions)
-                log_prob = action_dist.log_prob(actions)
+                log_prob = action_dist.log_prob(actions).sum()
             else:
                 # Stochastic: sample raw pre-tanh actions
                 actions = action_dist.sample() # action is transformed so no need to clamp
-                log_prob = action_dist.log_prob(actions)
+                log_prob = action_dist.log_prob(actions).sum()
             return actions.cpu().numpy().flatten(), log_prob.cpu().numpy().flatten()
 
 
@@ -715,7 +715,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 self.abppo_offline_learner.update(self.replay_buffer)
             self.policy_net.load_state_dict(self.abppo._policy_net.state_dict())
         elif self.learning_stage == "online":
-            self.online_ppo.update(self.replay_buffer)
+            self.online_ppo.update(self.replay_buffer, self.total_steps - self.finetune_cfg.offline_total_steps)
             self.policy_net.load_state_dict(self.online_ppo._policy_net.state_dict())
 
         assert not torch.allclose(
@@ -733,7 +733,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.timer.start()
 
     def switch_learning_stage(self):
-        if self.finetune_cfg.update_mode == 'local':
+        if self.finetune_cfg.update_mode == 'local' and len(self.replay_buffer) > 0:
             self.update_policy()
         self.learning_stage = "online"
         self.replay_buffer.reset()
@@ -818,7 +818,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         
         deterministic = self.learning_stage == "offline" # use deterministic action during offline learning
         action, action_prob = self.get_action(obs_arr, deterministic=deterministic, is_real=is_real)
-        import ipdb; ipdb.set_trace()
+
         if msg is not None:
             # print(obs.lin_vel, obs.euler)
             if self.finetune_cfg.update_mode == 'local':
@@ -851,7 +851,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             if len(control_inputs) > 0 and (
                 control_inputs["walk_x"] != 0 or control_inputs["walk_y"] != 0
             ):
-                time_to_update = (len(self.replay_buffer) + 1) % self.finetune_cfg.update_interval == 0 or (len(self.replay_buffer) + 1) % self.finetune_cfg.online.batch_size == 0
+                time_to_update = (self.learning_stage == "offline" and (len(self.replay_buffer) + 1) % self.finetune_cfg.update_interval == 0) or (self.learning_stage == "online" and len(self.replay_buffer) == self.finetune_cfg.online.batch_size)
                 truncated = time_to_update and self.finetune_cfg.update_mode == 'local'
                 self.replay_buffer.store(
                     obs_arr,

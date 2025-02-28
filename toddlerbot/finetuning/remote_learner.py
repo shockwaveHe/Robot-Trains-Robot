@@ -61,9 +61,8 @@ if __name__ == "__main__":
                     policy.policy_net.load_state_dict(policy.abppo._policy_net.state_dict())
                     server.push_policy_parameters(policy.abppo._policy_net.state_dict())  # Push latest parameters to agent A.
                     print("Replay buffer size:", len(policy.replay_buffer))
-            elif policy.learning_stage == "online" and (len(policy.replay_buffer) + 1) % finetune_cfg.online.batch_size == 0:
+            elif policy.learning_stage == "online" and len(policy.replay_buffer) == finetune_cfg.online.batch_size:
                 policy.online_ppo.update(policy.replay_buffer)
-                import ipdb; ipdb.set_trace()
                 policy.policy_net.load_state_dict(policy.online_ppo._policy_net.state_dict())
                 print("Replay buffer size:", len(policy.replay_buffer))
             time.sleep(0.01)

@@ -1,3 +1,4 @@
+from copy import deepcopy
 import torch
 import torch.nn.functional as F
 from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
@@ -40,7 +41,7 @@ class PPO:
         self._device = device
         self._logger = logger # TODO: improve logging, seperate online offline?
 
-        self._policy_net = policy_net.to(self.device)
+        self._policy_net = deepcopy(policy_net).to(self.device)
         # if args.scale_strategy == 'dynamic' or args.scale_strategy == 'number': # DISCUSS
         #     self.critic = ValueReluMLP(args).to(self.device)
         # else:
@@ -56,7 +57,7 @@ class PPO:
     def evaluate_value(self, replay_buffer: OnlineReplayBuffer, steps = 20000):
         mean_value = []
         for _ in tqdm(range(steps), desc='check buffer value'):
-            _, s_p, _, _, _, _, _, _, Return, _ = replay_buffer.sample(512)
+            _, s_p, _, _, _, _, _, _, _, Return, _ = replay_buffer.sample(512)
             value = self._value_net(s_p)
             mean_value.append(torch.mean(value.cpu().detach()).item())
 
@@ -96,18 +97,18 @@ class PPO:
         return a.cpu().numpy().flatten(), a_logprob.cpu().numpy().flatten()
 
     def update(self, replay_buffer: OnlineReplayBuffer, current_steps):
-        s, a, a_logprob, r, s_, terms, truncs = replay_buffer.sample(self.batch_size)  # Get training data
+        s, sp, a, r, s_, sp_, _, terms, truncs, _, a_logprob_old = replay_buffer.sample(self.batch_size)  # Get training data
         adv = []
         gae = 0
         with torch.no_grad():  # adv and v_target have no gradient
-            vs = self._value_net(s)
-            vs_ = self._value_net(s_)
+            vs = self._value_net(sp)
+            vs_ = self._value_net(sp_)
             deltas = r + self.gamma * (1.0 - terms) * vs_ - vs
             for delta, term, trunc in zip(reversed(deltas.flatten().cpu().numpy()), reversed(terms.flatten().cpu().numpy()), reversed(truncs.flatten().cpu().numpy())):
                 gae = delta + self.gamma * self.lamda * gae * (1.0 - term) * (1.0 - trunc)
                 adv.insert(0, gae)
             adv = torch.tensor(adv, dtype=torch.float).view(-1, 1).to(self.device)
-            v_target = adv + vs
+            v_target = adv.flatten() + vs
             if self.use_adv_norm:  # Trick 1:advantage normalization
                 adv = ((adv - adv.mean()) / (adv.std() + 1e-5))
 
@@ -120,9 +121,9 @@ class PPO:
                 dist_entropy = new_dist.base_dist.entropy().sum(1, keepdim=True)  # shape(mini_batch_size X 1)
                 # TODO: entropy modification for tanh
                 a_logprob_now = new_dist.log_prob(a[index])
-                import ipdb; ipdb.set_trace()
+
                 # a/b=exp(log(a)-log(b))  In multi-dimensional continuous action space，we need to sum up the log_prob
-                ratios = torch.exp(a_logprob_now.sum(1, keepdim=True) - a_logprob[index])  # shape(mini_batch_size X 1)
+                ratios = torch.exp(a_logprob_now.sum(1, keepdim=True) - a_logprob_old[index])  # shape(mini_batch_size X 1)
 
                 surr1 = ratios * adv[index]  # Only calculate the gradient of 'a_logprob_now' in ratios
                 surr2 = torch.clamp(ratios, 1 - self.epsilon, 1 + self.epsilon) * adv[index]
@@ -135,7 +136,7 @@ class PPO:
                     torch.nn.utils.clip_grad_norm_(self._policy_net.parameters(), 0.5)
                 self.optimizer_actor.step()
 
-                v_s = self._value_net(s[index])
+                v_s = self._value_net(sp[index])
                 if self.is_clip_value:
                     old_value_clipped = vs[index] + (v_s - vs[index]).clamp(-self.epsilon, self.epsilon)
                     value_loss = (v_s - v_target[index].detach().float()).pow(2)
@@ -151,7 +152,7 @@ class PPO:
                     torch.nn.utils.clip_grad_norm_(self._value_net.parameters(), 0.5)
                 self.optimizer_critic.step()
                 self._logger.log_update(
-                    a_logprob_now=a_logprob[index].mean().item(),
+                    a_logprob_now=a_logprob_old[index].mean().item(),
                     ratios=ratios.mean().item(),
                     adv=adv[index].mean().item(),
                     v_s=v_s.mean().item(),
@@ -162,7 +163,7 @@ class PPO:
 
         if self.use_lr_decay:  # Trick 6:learning rate Decay
             self.lr_decay(current_steps)
-
+        import ipdb; ipdb.set_trace()
         replay_buffer.reset()
         return np.mean(actor_losses), np.mean(critic_losses)
     

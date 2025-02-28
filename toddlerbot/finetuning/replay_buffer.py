@@ -193,6 +193,7 @@ class OnlineReplayBuffer:
             torch.FloatTensor(self._privileged_obs[ind + 1]).to(self._device),
             torch.FloatTensor(self._action[ind + 1]).to(self._device),
             torch.FloatTensor(self._terminated[ind]).to(self._device),
+            torch.FloatTensor(self._truncated[ind]).to(self._device),
             torch.FloatTensor(self._return[ind]).to(self._device),
             torch.FloatTensor(self._action_prob[ind]).to(self._device),
         )

@@ -66,7 +66,7 @@ class ValueLearner:
     def update(
         self, replay_buffer: OnlineReplayBuffer
     ) -> float:
-        _, s, _, _, _, _, _, _, Return, _ = replay_buffer.sample(self._batch_size)
+        _, s, _, _, _, _, _, _, _, Return, _ = replay_buffer.sample(self._batch_size)
         value_loss = F.mse_loss(self._value(s), Return.squeeze())
         # import ipdb; ipdb.set_trace()
         self._optimizer.zero_grad()
@@ -126,7 +126,7 @@ class QLearner:
     def update(
         self, replay_buffer: OnlineReplayBuffer
     ) -> float:
-        _, s, a, r, _, s_n, a_n, term, _, _ = replay_buffer.sample(self._batch_size)
+        _, s, a, r, _, s_n, a_n, term, _, _, _ = replay_buffer.sample(self._batch_size)
         with torch.no_grad():
             target_Q = r.squeeze() + (1 - term.squeeze()) * self._gamma * self._target_Q(s_n, a_n)
         Q = self._Q(s, a)
@@ -197,7 +197,7 @@ class IQL_QV_Learner:
         return weight * (loss**2)
     
     def update(self, replay_buffer: OnlineReplayBuffer) -> float:
-        _, s, a, r, _, s_n, _, term, _, _ = replay_buffer.sample(self._batch_size)
+        _, s, a, r, _, s_n, _, term, _, _, _ = replay_buffer.sample(self._batch_size)
         # Compute value loss
         with torch.no_grad():
             self._Q_target.eval()
