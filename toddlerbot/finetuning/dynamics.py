@@ -11,7 +11,7 @@ from torch import nn
 import torch.nn.functional as F
 from toddlerbot.finetuning.networks import ValueNetwork, QNetwork, DynamicsNetwork, GaussianPolicyNetwork, load_jax_params, load_jax_params_into_pytorch
 from toddlerbot.finetuning.replay_buffer import OfflineReplayBuffer
-from toddlerbot.finetuning.ppo import ProximalPolicyOptimization
+from toddlerbot.finetuning.ppo import PPO
 
 def terminate_fn(privileged_obs: np.ndarray, config: FinetuneConfig) -> np.ndarray:
     # last obs is the frist obs in the frames_stack frames
@@ -149,7 +149,7 @@ class BaseDynamics:
 
 def rollout(
         Q: QNetwork,
-        policy: ProximalPolicyOptimization,
+        policy: PPO,
         dynamics: BaseDynamics,
         init_obs: np.ndarray,
         init_privileged_obs: np.ndarray,
@@ -168,7 +168,7 @@ def rollout(
             for length in range(rollout_length):
                 # import ipdb; ipdb.set_trace()
                 obs = get_obs_from_priviledged_obs(priviledged_obs)
-                actions = policy.select_action(obs, is_sample=False)
+                actions = policy.get_action(obs, deterministic=True)
 
                 Q_value = Q(priviledged_obs, actions)
                 next_priviledged_obs, rewards, terminals, info = dynamics.step(priviledged_obs.cpu().data.numpy(), actions.cpu().data.numpy())
@@ -188,11 +188,11 @@ def rollout(
                     break
 
                 priviledged_obs = torch.FloatTensor(next_priviledged_obs[nonterm_mask]).to(dynamics._device)
-
+        import ipdb; ipdb.set_trace()
         return total_q.mean(), rewards_arr.mean(), length
     
 
-def dynamics_eval(config: FinetuneConfig, policy: ProximalPolicyOptimization, Q: QNetwork, dynamics: BaseDynamics, replay_buffer: OfflineReplayBuffer):
+def dynamics_eval(config: FinetuneConfig, policy: PPO, Q: QNetwork, dynamics: BaseDynamics, replay_buffer: OfflineReplayBuffer):
     s, s_p, _, _, _, _, _, _, _, _ = replay_buffer.sample(config.rollout_batch_size)
     Q_mean, reward_mean, rollout_length = rollout(Q, policy, dynamics, s, s_p, config.ope_rollout_length)
     return Q_mean, reward_mean, rollout_length
@@ -229,7 +229,7 @@ if __name__ == "__main__":
     jax_params = load_jax_params(policy_path)
     load_jax_params_into_pytorch(policy_net, jax_params[1]["params"])
     policy_net.eval()
-    policy = ProximalPolicyOptimization(
+    policy = PPO(
         device=device,
         policy_net=policy_net,
         config=config,

@@ -22,7 +22,7 @@ if __name__ == "__main__":
     env_cfg = get_env_config("walk")
     # ckpt_folder = "results/stored/toddlerbot_walk_finetune_real_world_20250211_101354"
     ckpt_folders = [
-        # "results/toddlerbot_walk_finetune_real_world_20250224_222209"
+        "results/toddlerbot_walk_finetune_real_world_20250224_222209"
     ]
 
     # policy.abppo_offline_learner.update(policy.replay_buffer)
@@ -52,11 +52,19 @@ if __name__ == "__main__":
         while server.is_running and server.client_thread.is_alive():
             # if len(policy.replay_buffer) == 47316 and len(ckpt_folders):
             #     server.push_policy_parameters(policy.abppo._policy_net.state_dict())
-            if len(policy.replay_buffer) > 3000 and (len(policy.replay_buffer) + 1) % 1000 == 0:
-                print("Replay buffer size:", len(policy.replay_buffer))
-                policy.abppo_offline_learner.update(policy.replay_buffer)
-                server.push_policy_parameters(policy.abppo._policy_net.state_dict())  # Push latest parameters to agent A.
-                print("Pushed policy parameters to agent A.")
+            if len(policy.replay_buffer) == finetune_cfg.offline_total_steps:
+                policy.switch_learning_stage()
+            if policy.learning_stage == "offline":
+                if len(policy.replay_buffer) > finetune_cfg.offline_inital_steps and (len(policy.replay_buffer) + 1) % finetune_cfg.update_interval == 0:
+                    for _ in range(policy.finetune_cfg.abppo_update_steps):
+                        policy.abppo_offline_learner.update(policy.replay_buffer)
+                    policy.policy_net.load_state_dict(policy.abppo._policy_net.state_dict())
+                    server.push_policy_parameters(policy.abppo._policy_net.state_dict())  # Push latest parameters to agent A.
+                    print("Replay buffer size:", len(policy.replay_buffer))
+            elif policy.learning_stage == "online" and (len(policy.replay_buffer) + 1) % finetune_cfg.online.batch_size == 0:
+                policy.online_ppo.update(policy.replay_buffer)
+                import ipdb; ipdb.set_trace()
+                policy.policy_net.load_state_dict(policy.online_ppo._policy_net.state_dict())
                 print("Replay buffer size:", len(policy.replay_buffer))
             time.sleep(0.01)
 

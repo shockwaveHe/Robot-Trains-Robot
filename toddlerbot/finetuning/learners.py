@@ -126,9 +126,9 @@ class QLearner:
     def update(
         self, replay_buffer: OnlineReplayBuffer
     ) -> float:
-        _, s, a, r, _, s_n, a_n, done, _, _ = replay_buffer.sample(self._batch_size)
+        _, s, a, r, _, s_n, a_n, term, _, _ = replay_buffer.sample(self._batch_size)
         with torch.no_grad():
-            target_Q = r.squeeze() + (1 - done.squeeze()) * self._gamma * self._target_Q(s_n, a_n)
+            target_Q = r.squeeze() + (1 - term.squeeze()) * self._gamma * self._target_Q(s_n, a_n)
         Q = self._Q(s, a)
         Q_loss = F.mse_loss(Q, target_Q.squeeze())
         self._optimizer.zero_grad()
@@ -197,7 +197,7 @@ class IQL_QV_Learner:
         return weight * (loss**2)
     
     def update(self, replay_buffer: OnlineReplayBuffer) -> float:
-        _, s, a, r, _, s_n, _, done, _, _ = replay_buffer.sample(self._batch_size)
+        _, s, a, r, _, s_n, _, term, _, _ = replay_buffer.sample(self._batch_size)
         # Compute value loss
         with torch.no_grad():
             self._Q_target.eval()
@@ -215,7 +215,7 @@ class IQL_QV_Learner:
             self._value_net.eval()
             next_v = self._value_net(s_n)
             
-        target_q = r + (1 - done) * self._gamma * next_v
+        target_q = r + (1 - term) * self._gamma * next_v
         if self._is_double_q: 
             current_q1, current_q2 = self._Q_net(s, a, return_min=False)
             q_loss = ((current_q1 - target_q)**2 + (current_q2 - target_q)**2).mean()

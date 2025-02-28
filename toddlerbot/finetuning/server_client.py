@@ -137,7 +137,15 @@ class RemoteServer:
                         except Exception as e:
                             print("JSON decode error:", e)
                             continue
-                        if msg.get('type') == 'experience':
+                        if msg.get('type') == 'reset':
+                            # Reset the stacks.
+                            obs_history = np.zeros(num_frames * obs_frame_dim, dtype=np.float32)
+                            privileged_obs_history = np.zeros(num_frames * priv_frame_dim, dtype=np.float32)
+                            self.policy.last_action = np.zeros(self.policy.num_action, dtype=np.float32)
+                            self.policy.last_last_action = np.zeros(self.policy.num_action, dtype=np.float32)
+                            replay_buffer.reset()
+                            
+                        elif msg.get('type') == 'experience':
                             msg = load_experience_from_base64(msg['data_b64'])
                             # Extract the latest frame for obs and privileged obs.
                             latest_obs = msg['s']   # shape: (83,)
@@ -245,3 +253,4 @@ class RemoteServer:
                 print(f"Sent policy update to {addr} in {(end_time - start_time) * 1000:.2f} ms")
             except Exception as e:
                 print(f"Error sending policy update to {addr}: {e}")
+        print("Pushed policy parameters to agents.")

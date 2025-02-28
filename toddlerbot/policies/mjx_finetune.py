@@ -18,10 +18,8 @@ from toddlerbot.reference.walk_zmp_ref import WalkZMPReference
 from toddlerbot.sim.robot import Robot
 from toddlerbot.finetuning.networks import load_jax_params, load_jax_params_into_pytorch
 import toddlerbot.finetuning.networks as networks
-from toddlerbot.finetuning.abppo import (
-    AdaptiveBehaviorProximalPolicyOptimization,
-    ABPPO_Offline_Learner,
-)
+from toddlerbot.finetuning.abppo import AdaptiveBehaviorProximalPolicyOptimization, ABPPO_Offline_Learner
+from toddlerbot.finetuning.ppo import PPO
 from scipy.spatial.transform import Rotation
 from toddlerbot.finetuning.finetune_config import FinetuneConfig
 from toddlerbot.utils.math_utils import (
@@ -64,8 +62,6 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.privileged_obs_history_size = (
             self.privileged_obs_size * self.num_privileged_obs_history
         )
-        self.replay_buffer = None
-        self.num_updates = 0
 
         super().__init__(
             name,
@@ -164,19 +160,27 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.privileged_obs_history = np.zeros(
             self.num_privileged_obs_history * self.privileged_obs_size
         )
-        if is_real:
+        if self.is_real:
             self.zmq_receiver = ZMQNode(type="receiver")
             assert len(ip) > 0, "Please provide the IP address of the sender"
             self.zmq_sender = ZMQNode(type="sender", ip=ip)
             self._init_tracker()
+        else:
+            self.zmq_receiver = None
+            self.zmq_sender = None
+            self.tracker = None
 
         self.logger = FinetuneLogger(self.exp_folder)
 
         self.total_steps = 0
+        self.num_updates = 0
         self.timer = Timer()
 
         self._init_reward()
         self._make_learners()
+
+        self.need_reset = True
+        self.learning_stage = "offline"
 
         self.sim = MuJoCoSim(
             robot, vis_type=self.finetune_cfg.sim_vis_type, hang_force=0.0, n_frames=1
@@ -206,7 +210,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 self.logger.plot_queue.put(
                     (self.logger.plot_updates, [])
                 )  # no-blocking plot
-        if is_real:
+        if self.is_real:
             input("press ENTER to start")
 
     def close(self):
@@ -415,6 +419,13 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             self.dynamics,
             self.logger,
         )
+        self.online_ppo = PPO(
+            self.device,
+            self.finetune_cfg,
+            self.policy_net,
+            self.value_net,
+            self.logger
+        )
 
     def _sample_command(self, last_command: Optional[np.ndarray] = None) -> np.ndarray:
         # Randomly sample an index from the command list
@@ -528,33 +539,25 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
     ) -> Tuple[np.ndarray, Dict[str, Any]]:
         # import ipdb; ipdb.set_trace()
         obs_tensor = (
-            torch.as_tensor(obs_arr, dtype=torch.float32)
-            .to(self.inference_device)
-            .squeeze(0)
+            torch.as_tensor(obs_arr, dtype=torch.float32).squeeze(0)
         )
         with torch.no_grad():
-            action_dist = self.policy_net_opt(
-                obs_tensor
-            )  # use the compiled model for faster inference, the parameters are shared with the original model, see test_compile.py
+            if self.is_real:
+                action_dist = self.policy_net_opt(obs_tensor.to(self.inference_device))
+            else:
+                action_dist = self.policy_net(obs_tensor.to(self.device))
             if deterministic:
                 # Deterministic: use mode
                 actions = action_dist.base_dist.mode
                 for transform in action_dist.transforms:
                     actions = transform(actions)
-                actions = actions.cpu().numpy().flatten()
-
-                return actions, {}
+                log_prob = action_dist.log_prob(actions)
             else:
                 # Stochastic: sample raw pre-tanh actions
-                postprocessed_actions = action_dist.sample()
+                actions = action_dist.sample() # action is transformed so no need to clamp
                 log_prob = action_dist.log_prob(actions)
-                raw_actions = deepcopy(postprocessed_actions)
-                for transform in reversed(action_dist.transforms):
-                    raw_actions = transform.inv(raw_actions)
-                return postprocessed_actions, {
-                    "log_prob": log_prob,
-                    "raw_action": raw_actions,
-                }
+            return actions.cpu().numpy().flatten(), log_prob.cpu().numpy().flatten()
+
 
     def reset(self, obs: Obs = None):
         # mjx policy reset
@@ -674,6 +677,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.logger.reset()
         self.last_action = np.zeros(self.num_action)
         self.last_last_action = np.zeros(self.num_action)
+        assert isinstance(self.replay_buffer, OnlineReplayBuffer)
         for i in tqdm(range(len(self.replay_buffer)), desc="Recalculating reward"):
             obs, privileged_obs, action, reward, done, trunc, raw_obs = (
                 self.replay_buffer[i]
@@ -695,6 +699,46 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             # )
         self.replay_buffer.compute_return(self.finetune_cfg.gamma)
 
+    def update_policy(self):
+        self.timer.stop()
+        self.zmq_sender.send_msg(
+            ZMQMessage(time=time.time(), is_stopped=True)
+        )
+        self.logger.plot_queue.put(
+            (self.logger.plot_rewards, [])
+        )  # no-blocking plot
+        self.replay_buffer.compute_return(self.finetune_cfg.gamma)
+        org_policy_net = deepcopy(self.policy_net)
+
+        if self.learning_stage == "offline":
+            for _ in range(self.finetune_cfg.abppo_update_steps):
+                self.abppo_offline_learner.update(self.replay_buffer)
+            self.policy_net.load_state_dict(self.abppo._policy_net.state_dict())
+        elif self.learning_stage == "online":
+            self.online_ppo.update(self.replay_buffer)
+            self.policy_net.load_state_dict(self.online_ppo._policy_net.state_dict())
+
+        assert not torch.allclose(
+            org_policy_net.mlp.layers[0].weight,
+            self.policy_net.mlp.layers[0].weight,
+        )
+        self.logger.plot_queue.put(
+            (self.logger.plot_updates, [])
+        )  # no-blocking plot
+        self.rollout_sim()
+        self.need_reset = True
+        self.zmq_sender.send_msg(
+            ZMQMessage(time=time.time(), is_stopped=False)
+        )
+        self.timer.start()
+
+    def switch_learning_stage(self):
+        if self.finetune_cfg.update_mode == 'local':
+            self.update_policy()
+        self.learning_stage = "online"
+        self.replay_buffer.reset()
+        print("Switched to online learning!")
+
     # @profile()
     def step(self, obs: Obs, is_real: bool = True):
         if not self.is_prepared:
@@ -713,9 +757,13 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             )
             return {}, action
 
+        if self.need_reset:
+            self.reset(obs)
+            self.need_reset = False
+        
         time_curr = self.step_curr * self.control_dt
 
-        msg = self.zmq_receiver.get_msg()
+        msg = None if not self.is_real else self.zmq_receiver.get_msg()
         if self.finetune_cfg.update_mode == 'local':
             self.sim.set_motor_angles(obs.motor_pos)
             self.sim.forward()
@@ -753,6 +801,10 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             time_curr
         )  # TODO: should this similar to obs.time?
         obs_arr, privileged_obs_arr = self.get_obs(obs, command)
+
+        if self.total_steps == self.finetune_cfg.offline_total_steps:
+            self.switch_learning_stage()
+
         if self.remote_client is not None and self.remote_client.ready_to_update:
             # import ipdb; ipdb.set_trace()
             self.num_updates += 1
@@ -763,8 +815,10 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             )
             self.policy_net.load_state_dict(self.remote_client.new_state_dict)
             self.remote_client.ready_to_update = False
-        action, _ = self.get_action(obs_arr, deterministic=True, is_real=is_real)
-
+        
+        deterministic = self.learning_stage == "offline" # use deterministic action during offline learning
+        action, action_prob = self.get_action(obs_arr, deterministic=deterministic, is_real=is_real)
+        import ipdb; ipdb.set_trace()
         if msg is not None:
             # print(obs.lin_vel, obs.euler)
             if self.finetune_cfg.update_mode == 'local':
@@ -794,12 +848,11 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                     f"Data size: {len(self.replay_buffer)}, Steps: {self.total_steps}, Fps: {self.total_steps / self.timer.elapsed()}"
                 )
 
-            truncated = (
-                len(self.replay_buffer) + 1
-            ) % self.finetune_cfg.update_interval == 0
             if len(control_inputs) > 0 and (
                 control_inputs["walk_x"] != 0 or control_inputs["walk_y"] != 0
             ):
+                time_to_update = (len(self.replay_buffer) + 1) % self.finetune_cfg.update_interval == 0 or (len(self.replay_buffer) + 1) % self.finetune_cfg.online.batch_size == 0
+                truncated = time_to_update and self.finetune_cfg.update_mode == 'local'
                 self.replay_buffer.store(
                     obs_arr,
                     privileged_obs_arr,
@@ -807,36 +860,12 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                     reward,
                     self.is_done(obs),
                     truncated,
+                    action_prob,
                     raw_obs=deepcopy(obs),
                 )
 
-                if truncated and self.finetune_cfg.update_mode == 'local':
-                    self.timer.stop()
-                    self.zmq_sender.send_msg(
-                        ZMQMessage(time=time.time(), is_stopped=True)
-                    )
-                    self.logger.plot_queue.put(
-                        (self.logger.plot_rewards, [])
-                    )  # no-blocking plot
-                    self.replay_buffer.compute_return(self.finetune_cfg.gamma)
-                    org_policy_net = deepcopy(self.policy_net)
-                    for _ in range(self.finetune_cfg.abppo_update_steps):
-                        self.abppo_offline_learner.update(self.replay_buffer)
-                    self.policy_net.load_state_dict(self.abppo._policy_net.state_dict())
-
-                    assert not torch.allclose(
-                        org_policy_net.mlp.layers[0].weight,
-                        self.policy_net.mlp.layers[0].weight,
-                    )
-                    self.logger.plot_queue.put(
-                        (self.logger.plot_updates, [])
-                    )  # no-blocking plot
-                    self.rollout_sim()
-                    self.reset(obs)  # TODO: reset with new observation?
-                    self.zmq_sender.send_msg(
-                        ZMQMessage(time=time.time(), is_stopped=False)
-                    )
-                    self.timer.start()
+                if truncated:
+                    self.update_policy()
 
         if is_real:
             delayed_action = action

@@ -8,21 +8,48 @@ from toddlerbot.finetuning.networks import GaussianPolicyNetwork, QNetwork, Valu
 from toddlerbot.finetuning.replay_buffer import OnlineReplayBuffer
 from toddlerbot.finetuning.learners import ValueLearner, QLearner, IQL_QV_Learner
 from toddlerbot.finetuning.finetune_config import FinetuneConfig
-from toddlerbot.finetuning.dynamics import DynamicsNetwork, BaseDynamics, dynamics_eval
-from toddlerbot.finetuning.ppo import ProximalPolicyOptimization, log_prob_func
+from toddlerbot.finetuning.dynamics import BaseDynamics, dynamics_eval
 from toddlerbot.finetuning.logger import FinetuneLogger
+from torch.distributions import Distribution
+from torch.distributions.transformed_distribution import TransformedDistribution
 
 CONST_EPS = 1e-8
 
-class BehaviorProximalPolicyOptimization(ProximalPolicyOptimization):
+def log_prob_func(
+    dist: Distribution, action: torch.Tensor
+    ) -> torch.Tensor:
+    log_prob = dist.log_prob(action)
+    if len(log_prob.shape) == 1:
+        return log_prob
+    else:
+        return log_prob.sum(-1, keepdim=True)
 
+
+class BehaviorProximalPolicyOptimization:
     def __init__(
         self,
         device: torch.device,
         policy_net: GaussianPolicyNetwork,
         config: FinetuneConfig,
     ) -> None:
-        super().__init__(device, policy_net, config)
+        self._is_iql = config.is_iql
+        self._device = device
+        self._policy = policy_net
+        self._policy.to(device)
+        #orthogonal_initWeights(self._policy)
+        self._optimizer = torch.optim.Adam(
+            self._policy.parameters(),
+            lr=config.policy_lr
+            )
+        self._policy_lr = config.policy_lr
+        self._old_policy: GaussianPolicyNetwork = deepcopy(self._policy)
+        
+        self._clip_ratio = config.clip_ratio
+        self._entropy_weight = config.entropy_weight
+        self._decay = config.decay
+        self._omega = config.omega
+        self._batch_size = config.policy_batch_size
+        self._config = config
         self.temperature = config.temperature
 
     def loss(
@@ -63,6 +90,30 @@ class BehaviorProximalPolicyOptimization(ProximalPolicyOptimization):
             loss = loss + kl_loss
 
         return loss.mean(), ratio.mean().item()
+
+    def weighted_advantage(
+        self,
+        advantage: torch.Tensor
+    ) -> torch.Tensor:
+        if self._omega == 0.5:
+            return advantage
+        else:
+            weight = torch.where(advantage > 0, self._omega, (1 - self._omega))
+            weight.to(self._device)
+            return weight * advantage
+
+    def get_entropy_loss(self, new_dist):
+        pre_tanh_sample = new_dist.rsample()
+        if isinstance(new_dist, TransformedDistribution):
+            pre_tanh_sample = new_dist.transforms[-1].inv(pre_tanh_sample)
+        log_det_jac = self._policy.forward_log_det_jacobian(pre_tanh_sample) # return 2.0 * (torch.log(torch.tensor(2.0)) - x - F.softplus(-2.0 * x))
+        entropy_loss = torch.sum(new_dist.base_dist.entropy() + log_det_jac, dim=-1) * self._entropy_weight
+        return entropy_loss
+    
+    def set_old_policy(
+        self,
+    ) -> None:
+        self._old_policy.load_state_dict(self._policy.state_dict())
 
     def update(
         self, 

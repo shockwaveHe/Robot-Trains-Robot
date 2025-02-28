@@ -27,7 +27,7 @@ class FinetuneConfig:
     
     # Evaluation and episode configuration
     num_evals: int = 1000
-    ope_rollout_length: int = 50
+    ope_rollout_length: int = 200
     eval_rollout_length: int = 1000
     rollout_batch_size: int = 32
     buffer_size: int = 50_000
@@ -35,7 +35,7 @@ class FinetuneConfig:
     # Update configuration
     num_updates_per_batch: int = 4
     value_update_steps: int = 256
-    dynamics_update_steps: int = 512
+    dynamics_update_steps: int = 256
     target_update_freq: int = 2  # Matches the value from the argparse config
     
     # Discounting and learning rates
@@ -55,12 +55,12 @@ class FinetuneConfig:
     kl_alpha: float = 0.1  # Matches argparse (`alpha_bppo`)
     entropy_weight: float = 1e-3
     clipping_epsilon: float = 0.1  # Conflict: argparse uses `clip_ratio=0.25`
-    clip_ratio: float = 0.25  # Added from argparse
+    clip_ratio: float = 0.1  # Added from argparse
     is_clip_decay: bool = False  # Added from argparse
 
     # Decay and scaling parameters
     tau: float = 0.005
-    omega: float = 0.9
+    omega: float = 0.5
     decay: float = 0.96  # Added from argparse
     is_bppo_lr_decay: bool = False  # Added from argparse
     decay_steps: int = 50_000_000
@@ -73,8 +73,10 @@ class FinetuneConfig:
 
     # Behavior Cloning and BPPO
     bppo_steps: int = 1000  # Added from argparse
+    offline_inital_steps: int = 3000  # Added from argparse
+    offline_total_steps: int = 5000
     abppo_update_steps: int = 1  # Added from argparse
-    num_policy: int = 3  # Added from argparse
+    num_policy: int = 4  # Added from argparse
     is_update_old_policy: bool = True  # Added from argparse
 
     # Evaluation and rendering
@@ -83,7 +85,7 @@ class FinetuneConfig:
 
     # Miscellaneous
     is_iql: bool = True # Added from argparse
-    update_mode: str = "remote" # remote or local
+    update_mode: str = "local" # remote or local
     kl_update: bool = False  # Added from argparse
     log_freq: int = 100 
     frame_stack: int = 15
@@ -126,6 +128,30 @@ class FinetuneConfig:
 
     @gin.configurable
     @dataclass
+    class OnlineConfig:
+        # base parameters for online PPO
+        max_train_step = 1e6
+        batch_size = 2048
+        mini_batch_size = 128
+        K_epochs = 30
+        gamma = 0.99
+        lamda = 0.95
+        epsilon = 0.05 # PPO clip ratio
+        entropy_coef = 0.01
+        lr_a = 1e-4
+        lr_c = 1e-4
+
+        use_adv_norm = True
+        use_grad_clip = True
+        use_lr_decay = True
+        is_clip_value = True
+        is_clip_decay = False
+        set_adam_eps = True
+        is_state_norm = False
+        is_eval_state_norm = False
+        is_double_q = True
+    @gin.configurable
+    @dataclass
     class FinetuneRewardScales:
         torso_pos: float = 0.0
         torso_quat: float = 0.0
@@ -164,3 +190,4 @@ class FinetuneConfig:
     def __init__(self):
         self.finetune_reward_scales = self.FinetuneRewardScales()
         self.finetune_rewards = self.FinetuneRewardsConfig()
+        self.online = self.OnlineConfig()
