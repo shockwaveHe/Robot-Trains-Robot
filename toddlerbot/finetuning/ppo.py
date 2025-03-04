@@ -36,7 +36,7 @@ class PPO:
         self.use_adv_norm = config.online.use_adv_norm
         self.is_clip_value = config.online.is_clip_value
         self.device = device
-        self.has_set_critic = False
+
         self._config = config
         self._device = device
         self._logger = logger # TODO: improve logging, seperate online offline?
@@ -70,11 +70,10 @@ class PPO:
         self._value_net.load_state_dict(torch.load(value_path, map_location=self.device))
 
 
-    def set_critic(self, value_net: ValueNetwork):
-        if not self.has_set_critic:
-            self._value_net.load_state_dict(value_net.state_dict())
-            self.has_set_critic = True
-            print('Successfully set critic from pretraining')
+    def set_networks(self, value_net: ValueNetwork, policy_net: GaussianPolicyNetwork):
+        self._value_net.load_state_dict(value_net.state_dict())
+        self._policy_net.load_state_dict(policy_net.state_dict())
+        print('Successfully set networks from pretraining')
 
     def evaluate(self, s):  # When evaluating the policy, we only use the mean
         s = torch.unsqueeze(torch.tensor(s, dtype=torch.float), 0).to(self.device)
@@ -88,7 +87,7 @@ class PPO:
         with torch.no_grad():
             dist = self._policy_net(s)
             if deterministic:
-                a = dist.mean
+                a = torch.tanh(dist.base_dist.loc) # TODO: remove hardcoding
                 a_logprob = dist.log_prob(a)
             else:
                 a = dist.sample()  # Sample the action according to the probability distribution
@@ -97,13 +96,14 @@ class PPO:
         return a.cpu().numpy().flatten(), a_logprob.cpu().numpy().flatten()
 
     def update(self, replay_buffer: OnlineReplayBuffer, current_steps):
-        s, sp, a, r, s_, sp_, _, terms, truncs, _, a_logprob_old = replay_buffer.sample(self.batch_size)  # Get training data
+        states, sp, actions, rewards, s_, sp_, _, terms, truncs, _, a_logprob_old = replay_buffer.sample(self.batch_size)  # Get training data
+        # states, sp, actions, rewards, s_, sp_, _, terms, truncs, _, a_logprob_old = replay_buffer.sample_all()  # Get training data
         adv = []
         gae = 0
         with torch.no_grad():  # adv and v_target have no gradient
             vs = self._value_net(sp)
             vs_ = self._value_net(sp_)
-            deltas = r + self.gamma * (1.0 - terms) * vs_ - vs
+            deltas = rewards + self.gamma * (1.0 - terms) * vs_ - vs
             for delta, term, trunc in zip(reversed(deltas.flatten().cpu().numpy()), reversed(terms.flatten().cpu().numpy()), reversed(truncs.flatten().cpu().numpy())):
                 gae = delta + self.gamma * self.lamda * gae * (1.0 - term) * (1.0 - trunc)
                 adv.insert(0, gae)
@@ -114,24 +114,25 @@ class PPO:
 
         # Optimize policy for K epochs:
         actor_losses, critic_losses = [], []
-        for _ in range(self.K_epochs):
+        pbar = tqdm(range(self.K_epochs), desc='PPO training')
+        for i in pbar:
             # Random sampling and no repetition. 'False' indicates that training will continue even if the number of samples in the last time is less than mini_batch_size
             for index in BatchSampler(SubsetRandomSampler(range(self.batch_size)), self.mini_batch_size, False):
-                new_dist = self._policy_net(s[index])
+                new_dist = self._policy_net(states[index])
                 dist_entropy = new_dist.base_dist.entropy().sum(1, keepdim=True)  # shape(mini_batch_size X 1)
                 # TODO: entropy modification for tanh
-                a_logprob_now = new_dist.log_prob(a[index])
+                a_logprob_now = new_dist.log_prob(actions[index])
 
                 # a/b=exp(log(a)-log(b))  In multi-dimensional continuous action space，we need to sum up the log_prob
                 ratios = torch.exp(a_logprob_now.sum(1, keepdim=True) - a_logprob_old[index])  # shape(mini_batch_size X 1)
 
                 surr1 = ratios * adv[index]  # Only calculate the gradient of 'a_logprob_now' in ratios
                 surr2 = torch.clamp(ratios, 1 - self.epsilon, 1 + self.epsilon) * adv[index]
-                actor_loss = -torch.min(surr1, surr2) - self.entropy_coef * dist_entropy  # Trick 5: policy entropy
-                actor_losses.append(actor_loss.mean().item())
+                actor_loss = (-torch.min(surr1, surr2) - self.entropy_coef * dist_entropy).mean()  # Trick 5: policy entropy
+                actor_losses.append(actor_loss.item())
                 # Update actor
                 self.optimizer_actor.zero_grad()
-                actor_loss.mean().backward()
+                actor_loss.backward()
                 if self.use_grad_clip:  # Trick 7: Gradient clip
                     torch.nn.utils.clip_grad_norm_(self._policy_net.parameters(), 0.5)
                 self.optimizer_actor.step()
@@ -141,10 +142,10 @@ class PPO:
                     old_value_clipped = vs[index] + (v_s - vs[index]).clamp(-self.epsilon, self.epsilon)
                     value_loss = (v_s - v_target[index].detach().float()).pow(2)
                     value_loss_clipped = (old_value_clipped - v_target[index].detach().float()).pow(2)
-                    critic_loss = torch.max(value_loss,value_loss_clipped).mean()
+                    critic_loss = torch.max(value_loss, value_loss_clipped).mean()
                 else:
-                    critic_loss = F.mse_loss(v_target[index], v_s)
-                critic_losses.append(critic_loss.mean().item())
+                    critic_loss = F.mse_loss(v_target[index], v_s).mean()
+                critic_losses.append(critic_loss.item())
                 # Update critic
                 self.optimizer_critic.zero_grad()
                 critic_loss.backward()
@@ -156,10 +157,11 @@ class PPO:
                     ratios=ratios.mean().item(),
                     adv=adv[index].mean().item(),
                     v_s=v_s.mean().item(),
-                    actor_loss=actor_loss.mean().item(),
+                    actor_loss=actor_loss.item(),
                     dist_entropy=dist_entropy.mean().item(),
-                    critic_loss=critic_loss.mean().item()
+                    critic_loss=critic_loss.item()
                 )
+                pbar.set_description(f'PPO training step {i} (actor_loss: {actor_loss.item()}, critic_loss: {critic_loss.item()})')
 
         if self.use_lr_decay:  # Trick 6:learning rate Decay
             self.lr_decay(current_steps)

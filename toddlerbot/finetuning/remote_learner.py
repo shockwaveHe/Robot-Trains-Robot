@@ -22,7 +22,7 @@ if __name__ == "__main__":
     env_cfg = get_env_config("walk")
     # ckpt_folder = "results/stored/toddlerbot_walk_finetune_real_world_20250211_101354"
     ckpt_folders = [
-        "results/toddlerbot_walk_finetune_real_world_20250224_222209"
+        # "results/toddlerbot_walk_finetune_real_world_20250224_222209"
     ]
 
     # policy.abppo_offline_learner.update(policy.replay_buffer)
@@ -38,7 +38,7 @@ if __name__ == "__main__":
         is_real=False
     )
 
-    server = RemoteServer(host='172.24.68.176', port=5007, policy=policy)
+    server = RemoteServer(host='192.168.0.227', port=5007, policy=policy)
     server.start_receiving_data()
     while not server.exp_folder:
         time.sleep(0.1)
@@ -52,22 +52,25 @@ if __name__ == "__main__":
         while server.is_running and server.client_thread.is_alive():
             # if len(policy.replay_buffer) == 47316 and len(ckpt_folders):
             #     server.push_policy_parameters(policy.abppo._policy_net.state_dict())
-            if len(policy.replay_buffer) == finetune_cfg.offline_total_steps:
-                policy.switch_learning_stage()
             if policy.learning_stage == "offline":
-                if len(policy.replay_buffer) > finetune_cfg.offline_inital_steps and (len(policy.replay_buffer) + 1) % finetune_cfg.update_interval == 0:
+                if len(policy.replay_buffer) > finetune_cfg.offline_initial_steps and (len(policy.replay_buffer) + 1) % finetune_cfg.update_interval == 0:
                     for _ in range(policy.finetune_cfg.abppo_update_steps):
-                        policy.abppo_offline_learner.update(policy.replay_buffer)
+                        policy.offline_abppo_learner.update(policy.replay_buffer)
                     policy.policy_net.load_state_dict(policy.abppo._policy_net.state_dict())
                     server.push_policy_parameters(policy.abppo._policy_net.state_dict())  # Push latest parameters to agent A.
                     print("Replay buffer size:", len(policy.replay_buffer))
+                if len(policy.replay_buffer) >= finetune_cfg.offline_total_steps:
+                    policy.switch_learning_stage()
             elif policy.learning_stage == "online" and len(policy.replay_buffer) == finetune_cfg.online.batch_size:
-                policy.online_ppo.update(policy.replay_buffer)
-                policy.policy_net.load_state_dict(policy.online_ppo._policy_net.state_dict())
+                policy.online_ppo_learner.update(policy.replay_buffer, policy.total_steps - policy.finetune_cfg.offline_total_steps)
+                policy.policy_net.load_state_dict(policy.online_ppo_learner._policy_net.state_dict())
+                server.push_policy_parameters(policy.online_ppo_learner._policy_net.state_dict())
                 print("Replay buffer size:", len(policy.replay_buffer))
             time.sleep(0.01)
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         print("Exception:", e)
     finally:
         print("Server stopped running.")

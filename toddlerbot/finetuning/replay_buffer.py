@@ -5,7 +5,7 @@ import torch
 import numpy as np
 from tqdm import tqdm
 from toddlerbot.finetuning.utils import CONST_EPS, RewardScaling, normalize
-from toddlerbot.finetuning.server_client import RemoteClient, dump_experience_to_base64
+from toddlerbot.finetuning.server_client import RemoteClient, dump_experience_to_base64, load_experience_from_base64
 from toddlerbot.sim import Obs
 from copy import deepcopy
 
@@ -19,23 +19,24 @@ class RemoteReplayBuffer:
         self.is_overwriting = False
         self.enlarge_when_full = enlarge_when_full
 
-    def store(self, obs_arr: np.ndarray, privileged_obs_arr: np.ndarray, action: np.ndarray, reward, done, truncated, raw_obs):
+    def store(self, obs_arr: np.ndarray, privileged_obs_arr: np.ndarray, action: np.ndarray, reward, done, truncated, action_logprob, raw_obs):
         # Instead of sending the full stacked version,
         # send only the latest frame of each.
         # Assume obs_arr is a 1D np.array of length (obs_dim * num_obs_history)
         obs_frame_dim = obs_arr.size // self.num_obs_history  # e.g., 1245/15 = 83
         priv_frame_dim = privileged_obs_arr.size // self.num_privileged_obs_history  # e.g., 1890/15 = 126
 
-        latest_obs = obs_arr[-obs_frame_dim:]
-        latest_priv = privileged_obs_arr[-priv_frame_dim:]
+        latest_obs = obs_arr[:obs_frame_dim]
+        latest_priv = privileged_obs_arr[:priv_frame_dim]
         # import ipdb; ipdb.set_trace()
         data = {
             's': latest_obs,
             's_p': latest_priv,
-            'a': np.array(action),
+            'a': action,
             'r': float(reward),
             'done': bool(done),
             'truncated': bool(truncated),
+            'a_logprob': action_logprob,
             'raw_obs': raw_obs,  
             # Optionally, include additional fields (e.g., a sequence number) for debugging.
         }
@@ -76,12 +77,12 @@ class OnlineReplayBuffer:
         self._privileged_obs = np.zeros(
             (max_size, privileged_obs_dim), dtype=self._dtype
         )
-        self._action = np.zeros((max_size, action_dim))
-        self._reward = np.zeros((max_size, 1))
-        self._terminated = np.zeros((max_size, 1))
-        self._truncated = np.zeros((max_size, 1))
-        self._return = np.zeros((max_size, 1))
-        self._action_prob = np.zeros((max_size, 1))
+        self._action = np.zeros((max_size, action_dim), dtype=self._dtype)
+        self._reward = np.zeros((max_size, 1), dtype=self._dtype)
+        self._terminated = np.zeros((max_size, 1), dtype=self._dtype)
+        self._truncated = np.zeros((max_size, 1), dtype=self._dtype)
+        self._return = np.zeros((max_size, 1), dtype=self._dtype)
+        self._action_logprob = np.zeros((max_size, 1), dtype=self._dtype)
         self._raw_obs = deque(maxlen=max_size)
         self.rng = np.random.default_rng(seed=seed)
 
@@ -103,14 +104,14 @@ class OnlineReplayBuffer:
         r: np.ndarray,
         done: bool,
         truncated: bool,
-        a_prob: np.ndarray = np.zeros((1, 1)),
+        a_logprob: np.ndarray,
         raw_obs: Obs = None,
     ) -> None:
         self._obs[self._size] = s
         self._action[self._size] = a
         self._reward[self._size] = r
         self._privileged_obs[self._size] = s_p
-        self._action_prob[self._size] = a_prob
+        self._action_logprob[self._size] = a_logprob
         self._terminated[self._size] = done
         self._raw_obs.append(raw_obs)
         if self.is_overwriting:
@@ -149,31 +150,22 @@ class OnlineReplayBuffer:
         self._terminated = self._terminated[indices]
         self._privileged_obs = self._privileged_obs[indices]
         self._return = self._return[indices]
-        self._action_prob = self._action_prob[indices]
+        self._action_logprob = self._action_logprob[indices]
 
-    def sample_all(self,):
-        return {
-            "observations": self._obs[:self._size - 1].copy(),
-            "actions": self._action[:self._size - 1].copy(),
-            "next_observations": self._obs[1:self._size].copy(),
-            "terminals": self._terminated[:self._size - 1].copy(),
-            "rewards": self._reward[:self._size - 1].copy()
-        }
-
-    def sample_aug_all(self,):
-        self._obs = np.concatenate((self._obs, self._aug_state), axis=0)
-        self._action = np.concatenate((self._action, self._action), axis = 0)
-        self._terminated = np.concatenate((self._terminated, self._terminated), axis = 0)
-        self._reward = np.concatenate((self._reward, self._reward), axis = 0)
-        indices = np.arange(self._obs.shape[0])
-        self.rng.shuffle(indices)
-        return {
-            "observations": self._obs[indices].copy(),
-            "actions": self._action[indices].copy(),
-            "next_observations": self._obs[indices + 1].copy(),
-            "terminals": self._terminated[indices].copy(),
-            "rewards": self._reward[indices].copy(),
-        }
+    def sample_all(self) -> tuple:
+        return (
+            torch.FloatTensor(self._obs[:self._size]).to(self._device),
+            torch.FloatTensor(self._privileged_obs[:self._size]).to(self._device),
+            torch.FloatTensor(self._action[:self._size]).to(self._device),
+            torch.FloatTensor(self._reward[:self._size]).to(self._device),
+            torch.FloatTensor(self._obs[1:self._size + 1]).to(self._device),
+            torch.FloatTensor(self._privileged_obs[1:self._size + 1]).to(self._device),
+            torch.FloatTensor(self._action[1:self._size + 1]).to(self._device),
+            torch.FloatTensor(self._terminated[:self._size]).to(self._device),
+            torch.FloatTensor(self._truncated[:self._size]).to(self._device),
+            torch.FloatTensor(self._return[:self._size]).to(self._device),
+            torch.FloatTensor(self._action_logprob[:self._size]).to(self._device),
+        )
 
     def sample(self, batch_size: int) -> tuple:
         valid_indices = np.flatnonzero(1 - self._truncated[:self._size])
@@ -195,7 +187,7 @@ class OnlineReplayBuffer:
             torch.FloatTensor(self._terminated[ind]).to(self._device),
             torch.FloatTensor(self._truncated[ind]).to(self._device),
             torch.FloatTensor(self._return[ind]).to(self._device),
-            torch.FloatTensor(self._action_prob[ind]).to(self._device),
+            torch.FloatTensor(self._action_logprob[ind]).to(self._device),
         )
 
     def __getitem__(self, index):
@@ -206,6 +198,7 @@ class OnlineReplayBuffer:
             self._reward[index],
             self._terminated[index],
             self._truncated[index],
+            self._action_logprob[index],
             self._raw_obs[index],
         )
 
@@ -219,7 +212,7 @@ class OnlineReplayBuffer:
             terminals=self._terminated[: self._size],
             truncated=self._truncated[: self._size],
             returns=self._return[: self._size],
-            anvanatage=self._action_prob[: self._size],
+            anvanatage=self._action_logprob[: self._size],
             size=self._size,
         )
         with open(os.path.join(path, 'raw_obs.pkl'), 'wb') as f:
@@ -239,7 +232,7 @@ class OnlineReplayBuffer:
         if "truncated" in data.keys():
             self._truncated[self._size : self._size + data_size] = data["truncated"]
         self._return[self._size : self._size + data_size] = data["returns"]
-        self._action_prob[self._size : self._size + data_size] = data["anvanatage"]
+        self._action_logprob[self._size : self._size + data_size] = data["anvanatage"]
         self._truncated[self._size + data_size - 1] = True
         if os.path.exists(os.path.join(path, 'raw_obs.pkl')):
             with open(os.path.join(path, 'raw_obs.pkl'), 'rb') as f:
@@ -267,7 +260,7 @@ class OnlineReplayBuffer:
         self._terminated = np.concatenate((self._terminated, np.zeros((new_size, self._terminated.shape[1]))), axis=0)
         self._truncated = np.concatenate((self._truncated, np.zeros((new_size, self._truncated.shape[1]))), axis=0)
         self._return = np.concatenate((self._return, np.zeros((new_size, self._return.shape[1]))), axis=0)
-        self._action_prob = np.concatenate((self._action_prob, np.zeros((new_size, self._action_prob.shape[1]))), axis=0)
+        self._action_logprob = np.concatenate((self._action_logprob, np.zeros((new_size, self._action_logprob.shape[1]))), axis=0)
         self._max_size += new_size
         self._raw_obs = deque(self._raw_obs, maxlen=int(self._max_size))
         print(f"Buffer size is enlarged to {self._max_size}")

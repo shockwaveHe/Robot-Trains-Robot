@@ -30,7 +30,7 @@ class FinetuneConfig:
     ope_rollout_length: int = 200
     eval_rollout_length: int = 1000
     rollout_batch_size: int = 32
-    buffer_size: int = 50_000
+    buffer_size: int = 1_000
     
     # Update configuration
     num_updates_per_batch: int = 4
@@ -73,7 +73,7 @@ class FinetuneConfig:
 
     # Behavior Cloning and BPPO
     bppo_steps: int = 1000  # Added from argparse
-    offline_inital_steps: int = 3000  # Added from argparse
+    offline_initial_steps: int = 3000  # Added from argparse
     offline_total_steps: int = 5000
     abppo_update_steps: int = 1  # Added from argparse
     num_policy: int = 4  # Added from argparse
@@ -85,7 +85,7 @@ class FinetuneConfig:
 
     # Miscellaneous
     is_iql: bool = True # Added from argparse
-    update_mode: str = "local" # remote or local
+    update_mode: str = "remote" # remote or local
     kl_update: bool = False  # Added from argparse
     log_freq: int = 100 
     frame_stack: int = 15
@@ -131,7 +131,7 @@ class FinetuneConfig:
     class OnlineConfig:
         # base parameters for online PPO
         max_train_step = 1e6
-        batch_size = 2048
+        batch_size = 512
         mini_batch_size = 128
         K_epochs = 30
         gamma = 0.99

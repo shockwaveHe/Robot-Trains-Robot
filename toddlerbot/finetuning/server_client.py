@@ -8,34 +8,44 @@ import io
 import base64
 import torch
 
+import io
+import base64
+import torch
+import pickle
+
 def state_dict_to_base64(state_dict):
     """
     Serializes the state dict to a base64–encoded string.
     """
-    buffer = io.BytesIO()
-    torch.save(state_dict, buffer)
-    buffer.seek(0)
-    b64_str = base64.b64encode(buffer.read()).decode('utf-8')
-    return b64_str
+    with io.BytesIO() as buffer:
+        torch.save(state_dict, buffer)
+        buffer.seek(0)
+        return base64.b64encode(buffer.read()).decode('utf-8')
 
 def base64_to_state_dict(b64_str, device='cpu'):
     """
     Converts a base64–encoded string back into a state dict.
     The state dict is loaded onto the specified device.
     """
-    buffer = io.BytesIO(base64.b64decode(b64_str))
-    state_dict = torch.load(buffer, map_location=device)
-    return state_dict
+    with io.BytesIO(base64.b64decode(b64_str)) as buffer:
+        return torch.load(buffer, map_location=device)
 
 def dump_experience_to_base64(exp_data: dict) -> str:
     """
     Serializes the experience data (a dict) into a base64–encoded string.
     """
-    buffer = io.BytesIO()
-    pickle.dump(exp_data, buffer)
-    buffer.seek(0)
-    b64_str = base64.b64encode(buffer.read()).decode('utf-8')
-    return b64_str
+    with io.BytesIO() as buffer:
+        pickle.dump(exp_data, buffer)
+        buffer.seek(0)
+        return base64.b64encode(buffer.read()).decode('utf-8')
+
+def load_experience_from_base64(b64_str: str) -> dict:
+    """
+    Converts a base64–encoded string back into the original experience data dict.
+    """
+    with io.BytesIO(base64.b64decode(b64_str)) as buffer:
+        return pickle.load(buffer)
+
 
 def load_experience_from_base64(b64_str: str) -> dict:
     """
@@ -149,7 +159,7 @@ class RemoteServer:
                             msg = load_experience_from_base64(msg['data_b64'])
                             # Extract the latest frame for obs and privileged obs.
                             latest_obs = msg['s']   # shape: (83,)
-                            latest_priv = msg['s_p']   # shape: (126,)
+                            latest_priv = msg['s_p']   # shape: (122,)
                             
                             # If a done/truncated flag is True, reset the stacks.
                             if msg.get('done') or msg.get('truncated'):
@@ -161,7 +171,7 @@ class RemoteServer:
                                 # Shift stacks left and append the new frame at the end.
 
                                 obs_history = np.roll(obs_history, latest_obs.size)
-                                obs_history[: latest_obs.size] = latest_obs
+                                obs_history[:latest_obs.size] = latest_obs
                                 privileged_obs_history = np.roll(
                                     privileged_obs_history, latest_priv.size
                                 )
@@ -203,6 +213,7 @@ class RemoteServer:
                                 r=reward,
                                 done=msg['done'],
                                 truncated=msg['truncated'],
+                                a_logprob=msg['a_logprob'],
                                 raw_obs=raw_obs
                             )
             except Exception as e:
