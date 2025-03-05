@@ -528,6 +528,12 @@ class MuJoCoSim(BaseSim):
 
         return {"left": left_foot_pos, "right": right_foot_pos}
 
+    def get_hand_pos(self) -> Dict[str, npt.NDArray[np.float32]]:
+        left_hand_pos = self.data.site("left_ee_center").xpos
+        right_hand_pos = self.data.site("right_ee_center").xpos
+
+        return {"left": left_hand_pos, "right": right_hand_pos}
+    
     def step(self):
         """Advances the simulation by a specified number of frames and updates the visualizer.
 

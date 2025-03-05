@@ -30,7 +30,7 @@ class FinetuneConfig:
     ope_rollout_length: int = 200
     eval_rollout_length: int = 1000
     rollout_batch_size: int = 32
-    buffer_size: int = 1_000
+    buffer_size: int = 50_000
     
     # Update configuration
     num_updates_per_batch: int = 4
@@ -85,7 +85,7 @@ class FinetuneConfig:
 
     # Miscellaneous
     is_iql: bool = True # Added from argparse
-    update_mode: str = "remote" # remote or local
+    update_mode: str = "local" # remote or local
     kl_update: bool = False  # Added from argparse
     log_freq: int = 100 
     frame_stack: int = 15
@@ -130,26 +130,27 @@ class FinetuneConfig:
     @dataclass
     class OnlineConfig:
         # base parameters for online PPO
-        max_train_step = 1e6
-        batch_size = 512
-        mini_batch_size = 128
-        K_epochs = 30
-        gamma = 0.99
-        lamda = 0.95
-        epsilon = 0.05 # PPO clip ratio
-        entropy_coef = 0.01
-        lr_a = 1e-4
-        lr_c = 1e-4
+        max_train_step: int = 1e6
+        batch_size: int = 512
+        mini_batch_size: int = 128
+        K_epochs: int = 30
+        gamma: float = 0.99
+        lamda: float = 0.95
+        epsilon: float = 0.05 # PPO clip ratio
+        entropy_coef: float = 0.01
+        lr_a: float = 1e-4
+        lr_c: float = 1e-4
 
-        use_adv_norm = True
-        use_grad_clip = True
-        use_lr_decay = True
-        is_clip_value = True
-        is_clip_decay = False
-        set_adam_eps = True
-        is_state_norm = False
-        is_eval_state_norm = False
-        is_double_q = True
+        use_adv_norm: bool = True
+        use_grad_clip: bool = True
+        use_lr_decay: bool = True
+        is_clip_value: bool = True
+        is_clip_decay: bool = False
+        set_adam_eps: bool = True
+        is_state_norm: bool = False
+        is_eval_state_norm: bool = False
+        is_double_q: bool = True
+    
     @gin.configurable
     @dataclass
     class FinetuneRewardScales:
@@ -157,10 +158,10 @@ class FinetuneConfig:
         torso_quat: float = 0.0
         torso_roll: float = 0.0
         torso_pitch: float = 0.0
-        lin_vel_xy: float = 1.0
-        lin_vel_z: float = 1.0
-        ang_vel_xy: float = 1.0
-        ang_vel_z: float = 1.0
+        lin_vel_xy: float = 0.0
+        lin_vel_z: float = 0.0
+        ang_vel_xy: float = 0.0
+        ang_vel_z: float = 0.0
         neck_motor_pos: float = 0.0
         arm_motor_pos: float = 0.0
         waist_motor_pos: float = 0.0
@@ -173,21 +174,22 @@ class FinetuneConfig:
         arm_action_acc: float = 0.0  # 1e-2
         waist_action_rate: float = 0.0  # 1e-2
         waist_action_acc: float = 0.0  # 1e-2
-        leg_action_rate: float = 0.05
-        leg_action_acc: float = 0.05
+        leg_action_rate: float = 0.0
+        leg_action_acc: float = 0.0
         feet_contact: float = 0.0
         collision: float = 0.0  # 1.0
-        survival: float = 100.0
+        survival: float = 0.0
         feet_air_time: float = 0.0
         feet_distance: float = 0.0
         feet_slip: float = 0.0
         feet_clearance: float = 0.0
         stand_still: float = 0.0  # 1.0
         align_ground: float = 0.0  # 1.0
-        arm_force_z: float = 10.0
-        arm_force_y: float = 5.0
+        arm_force_z: float = 0.0
+        arm_force_y: float = 0.0
+        arm_position: float = 0.0
 
-    def __init__(self):
+    def __post_init__(self):
         self.finetune_reward_scales = self.FinetuneRewardScales()
         self.finetune_rewards = self.FinetuneRewardsConfig()
         self.online = self.OnlineConfig()

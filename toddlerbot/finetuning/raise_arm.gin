@@ -1,0 +1,18 @@
+FinetuneConfig.num_single_obs = 1
+FinetuneConfig.num_single_privileged_obs = 1
+FinetuneConfig.policy_hidden_layer_sizes = (128, 64, 32)
+FinetuneConfig.value_hidden_layer_sizes = (128, 64, 32)
+FinetuneConfig.dynamics_hidden_layer_sizes = (128, 64, 32)
+
+
+FinetuneConfig.offline_total_steps = 0
+FinetuneConfig.update_mode = "local"
+FinetuneConfig.frame_stack = 15
+
+FinetuneRewardScales.arm_action_rate = 0.0
+FinetuneRewardScales.arm_position = 10.0
+FinetuneRewardScales.survival = 10.0
+
+OnlineConfig.batch_size = 2048
+OnlineConfig.is_clip_value = False
+OnlineConfig.lr_c = 5e-4

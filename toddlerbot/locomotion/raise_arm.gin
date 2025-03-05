@@ -1,0 +1,9 @@
+CommandsConfig.command_range = []
+CommandsConfig.deadzone = []
+CommandsConfig.command_obs_indices = []
+
+ObsConfig.num_single_obs = 1
+ObsConfig.num_single_privileged_obs = 1
+ObsConfig.frame_stack = 15
+
+ActionConfig.filter_type = "ema"

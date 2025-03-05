@@ -174,8 +174,8 @@ class FinetuneLogger:
                 self.reward_term_histories[existing_rname].append(0.0)
 
         # optionally write CSV line
-        if self.env_step_counter % self.log_interval_steps == 0:
-            self._write_reward_csv_line()
+        # if self.env_step_counter % self.log_interval_steps == 0:
+        #     self._write_reward_csv_line()
 
         # optionally update reward plots
         if self.env_step_counter % self.plot_interval_steps == 0:
@@ -346,8 +346,8 @@ class FinetuneLogger:
         if self.update_step_counter % self.log_interval_steps == 0:
             self._flush_update_csv()
         
-        # if self.update_step_counter % self.plot_interval_steps == 0:
-        #     self.plot_queue.put((self.plot_updates, []))
+        if self.update_step_counter % self.plot_interval_steps == 0:
+            self.plot_queue.put((self.plot_updates, []))
 
 
     def _flush_update_csv(self):

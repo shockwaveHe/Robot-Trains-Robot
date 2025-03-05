@@ -366,7 +366,7 @@ def run_policy(
                 sim.dynamixel_controller.disable_motors(policy.disable_motor_indices)
                 policy.toggle_motor = False
 
-            control_inputs, motor_target = policy.step(obs, "real" in sim.name)
+            control_inputs, motor_target, obs = policy.step(obs, "real" in sim.name)
 
             if policy.is_done(obs):
                 # TODO: add is_done to more policies
@@ -820,7 +820,7 @@ def main(args=None):
                 args.policy,
                 robot=robot,
                 init_motor_pos=init_motor_pos,
-                ckpt=args.ckpt,
+                ckpts=args.ckpt,
                 fixed_command=fixed_command,
                 exp_folder=exp_folder_path,
                 ip=args.ip,

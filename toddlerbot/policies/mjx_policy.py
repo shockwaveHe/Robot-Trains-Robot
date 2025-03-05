@@ -36,6 +36,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         cfg: Optional[MJXConfig] = None,
         motion_ref: Optional[MotionReference] = None,
         exp_folder: Optional[str] = "",
+        need_warmup: Optional[bool] = True,
     ):
         """Initializes the class with configuration and state parameters for controlling a robot.
 
@@ -114,15 +115,25 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         self.jit_inference_fn = None
         self.rng = None
 
-        self.warmup_result: Dict[str, Any] = {}
-        self.warmup_event = threading.Event()
-
-        self.warmup_thread = threading.Thread(
-            target=self.warmup,
-            args=(self.warmup_result, self.warmup_event),
-            daemon=True,
+        # Filter
+        self.filter_type = self.cfg.action.filter_type
+        self.filter_order = self.cfg.action.filter_order
+        # EMA
+        self.ema_alpha = float(
+            self.cfg.action.filter_cutoff
+            / (self.cfg.action.filter_cutoff + 1 / (self.control_dt * 2 * np.pi))
         )
-        self.warmup_thread.start()
+        
+        if need_warmup:
+            self.warmup_result: Dict[str, Any] = {}
+            self.warmup_event = threading.Event()
+
+            self.warmup_thread = threading.Thread(
+                target=self.warmup,
+                args=(self.warmup_result, self.warmup_event),
+                daemon=True,
+            )
+            self.warmup_thread.start()
 
         self.joystick = joystick
         if joystick is None:

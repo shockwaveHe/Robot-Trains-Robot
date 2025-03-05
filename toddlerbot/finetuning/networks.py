@@ -246,7 +246,6 @@ class GaussianPolicyNetwork(nn.Module):
             return dist.mean
     
     def forward_log_det_jacobian(self, x):
-        # Matches JAX implementation
         # 2 * (log(2) - x - softplus(-2x))
         return 2.0 * (torch.log(torch.tensor(2.0)) - x - F.softplus(-2.0 * x))
     

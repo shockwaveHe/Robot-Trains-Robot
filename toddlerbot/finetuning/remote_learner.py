@@ -31,7 +31,7 @@ if __name__ == "__main__":
         "walk_finetune",
         robot,
         init_motor_pos,
-        ckpt=ckpt_folders,
+        ckpts=ckpt_folders,
         exp_folder="tests/logging",
         env_cfg=env_cfg,
         finetune_cfg=finetune_cfg,
