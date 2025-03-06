@@ -13,7 +13,7 @@ from toddlerbot.finetuning.networks import ValueNetwork, QNetwork, DynamicsNetwo
 from toddlerbot.finetuning.replay_buffer import OfflineReplayBuffer
 from toddlerbot.finetuning.ppo import PPO
 
-def terminate_fn(privileged_obs: np.ndarray, config: FinetuneConfig) -> np.ndarray:
+def _terminate_fn(privileged_obs: np.ndarray, config: FinetuneConfig) -> np.ndarray:
     # last obs is the frist obs in the frames_stack frames
     if privileged_obs.ndim == 1:
         privileged_obs = privileged_obs[None, :]
@@ -99,7 +99,9 @@ class BaseDynamics:
         self, 
         device: torch.device, 
         model: DynamicsNetwork,
-        config: FinetuneConfig
+        config: FinetuneConfig,
+        terminate_fn: callable = _terminate_fn,
+        extract_obs_fn: callable = get_obs_from_priviledged_obs
     ) -> None:
         super().__init__()
         self._device = device
@@ -110,6 +112,8 @@ class BaseDynamics:
             )
         self._config = config
         self._batch_size = config.dynamics_batch_size
+        self._terminate_fn = terminate_fn
+        self._extract_obs_fn = extract_obs_fn
 
     def update(
         self, replay_buffer: OfflineReplayBuffer
@@ -129,7 +133,7 @@ class BaseDynamics:
         predicted_states = self._model(obs, act).cpu().numpy()
         next_obs = predicted_states[..., :-1]
         rewards = predicted_states[..., -1:]
-        terminals = terminate_fn(obs, self._config)
+        terminals = self._terminate_fn(obs, self._config)
         info = {}
         return next_obs, rewards, terminals, info
     
@@ -163,11 +167,11 @@ def rollout(
         # rollout
         obs = init_obs.to(dynamics._device)
         priviledged_obs = init_privileged_obs.to(dynamics._device)
-        assert torch.allclose(get_obs_from_priviledged_obs(priviledged_obs), obs)
+        assert torch.allclose(dynamics._extract_obs_fn(priviledged_obs), obs)
         with torch.no_grad():
             for length in range(rollout_length):
                 # import ipdb; ipdb.set_trace()
-                obs = get_obs_from_priviledged_obs(priviledged_obs)
+                obs = dynamics._extract_obs_fn(priviledged_obs)
                 actions, _ = policy.get_action(obs, deterministic=True)
 
                 Q_value = Q(priviledged_obs, actions)
@@ -184,7 +188,7 @@ def rollout(
                 total_q = np.append(total_q, Q_value.cpu().data.numpy().flatten())
                 nonterm_mask = (~terminals).flatten()
                 if nonterm_mask.sum() == 0:
-                    print('terminal length: {}'.format(length))
+                    # print('terminal length: {}'.format(length))
                     break
 
                 priviledged_obs = torch.FloatTensor(next_priviledged_obs[nonterm_mask]).to(dynamics._device)
@@ -208,8 +212,7 @@ if __name__ == "__main__":
         replay_buffer: OfflineReplayBuffer = pickle.load(f)
     replay_buffer.compute_return(config.gamma)
     replay_buffer._device = device
-    preprocess_observations_fn = lambda x, y: x
-    dynamics_model = DynamicsNetwork(replay_buffer._privileged_obs.shape[1], replay_buffer._action.shape[1], preprocess_observations_fn, config.dynamics_hidden_layer_sizes)
+    dynamics_model = DynamicsNetwork(replay_buffer._privileged_obs.shape[1], replay_buffer._action.shape[1], lambda x, y: x, config.dynamics_hidden_layer_sizes)
     base_dynamics = BaseDynamics(device, dynamics_model, config)
     for i in range(config.dynamics_update_steps):
         loss = base_dynamics.update(replay_buffer)
@@ -217,7 +220,7 @@ if __name__ == "__main__":
     policy_net = GaussianPolicyNetwork(
         action_size=replay_buffer._action.shape[1],
         observation_size=replay_buffer._obs.shape[1],
-        preprocess_observations_fn=preprocess_observations_fn,
+        preprocess_observations_fn=lambda x, y: x,
         hidden_layers=config.policy_hidden_layer_sizes,
     )
     policy_path = os.path.join(
@@ -236,13 +239,13 @@ if __name__ == "__main__":
     )
     value_net = ValueNetwork(
         replay_buffer._privileged_obs.shape[1],
-        preprocess_observations_fn,
+        lambda x, y: x,
         config.value_hidden_layer_sizes,
     )
     q_net = QNetwork(
         replay_buffer._privileged_obs.shape[1],
         replay_buffer._action.shape[1],
-        preprocess_observations_fn,
+        lambda x, y: x,
         config.value_hidden_layer_sizes,
     )
     config.use_double_q = False

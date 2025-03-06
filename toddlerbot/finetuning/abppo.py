@@ -373,8 +373,9 @@ class ABPPO_Offline_Learner:
     def update(self, replay_buffer: OnlineReplayBuffer):
         self.fit_q_v(replay_buffer)
         self.fit_dynamics(replay_buffer)
-        best_mean_qs, best_mean_rewards, rollout_lengths = self._abppo.ope_dynamics_eval(self._q_net, self._dynamics, replay_buffer)
-        self._logger.log_update(ope_length_mean=rollout_lengths.mean(), ope_rewards_mean=best_mean_rewards.mean(), ope_Q_mean=best_mean_qs.mean(), ope_Q_std=best_mean_qs.std())
+        if self._abppo._num_policy > 1:
+            best_mean_qs, best_mean_rewards, rollout_lengths = self._abppo.ope_dynamics_eval(self._q_net, self._dynamics, replay_buffer)
+            self._logger.log_update(ope_length_mean=rollout_lengths.mean(), ope_rewards_mean=best_mean_rewards.mean(), ope_Q_mean=best_mean_qs.mean(), ope_Q_std=best_mean_qs.std())
         
         print('fitting bppo ......')
         losses = np.zeros(self._config.num_policy)
@@ -394,19 +395,22 @@ class ABPPO_Offline_Learner:
             pbar.set_description(f'bppo loss {losses.mean():.6f}')
 
             if (step+1) % self._config.eval_step == 0:
-                
-                current_mean_qs, current_mean_rewards, rollout_lengths = self._abppo.ope_dynamics_eval(self._q_net, self._dynamics, replay_buffer)
-                self._logger.log_update(ope_length_mean=rollout_lengths.mean(), ope_rewards_mean=current_mean_rewards.mean(), ope_Q_mean=current_mean_qs.mean(), ope_Q_std=current_mean_qs.std())
-                print(f"Step: {step}, rollout trajectory q mean:{current_mean_rewards}")
-                
-                index = np.where(current_mean_qs > best_mean_qs)[0]  
-                # index = np.arange(self._config.num_policy)
-                if len(index) != 0:
-                    if self._config.is_update_old_policy:
-                        for i_d in index:
-                            self._abppo.replace(index=index)
-                            print('------------------------------update behavior policy {}----------------------------------------'.format(i_d))
-                            best_mean_qs[i_d] = current_mean_qs[i_d]
-                    best_policy_idx = np.argmax(current_mean_qs)
-                    self._abppo._policy_net.load_state_dict(self._abppo.bppo_ensemble[best_policy_idx]._policy.state_dict()) 
+                if self._abppo._num_policy > 1:
+                    current_mean_qs, current_mean_rewards, rollout_lengths = self._abppo.ope_dynamics_eval(self._q_net, self._dynamics, replay_buffer)
+                    self._logger.log_update(ope_length_mean=rollout_lengths.mean(), ope_rewards_mean=current_mean_rewards.mean(), ope_Q_mean=current_mean_qs.mean(), ope_Q_std=current_mean_qs.std())
+                    print(f"Step: {step}, rollout trajectory q mean: {current_mean_rewards}, length: {rollout_lengths}")
+                    
+                    index = np.where(current_mean_qs > best_mean_qs)[0]  
+                    # index = np.arange(self._config.num_policy)
+                    if len(index) != 0:
+                        if self._config.is_update_old_policy:
+                            for i_d in index:
+                                self._abppo.replace(index=index)
+                                print('------------------------------update behavior policy {}----------------------------------------'.format(i_d))
+                                best_mean_qs[i_d] = current_mean_qs[i_d]
+                        best_policy_idx = np.argmax(current_mean_qs)
+                        self._abppo._policy_net.load_state_dict(self._abppo.bppo_ensemble[best_policy_idx]._policy.state_dict()) 
+                else:
+                    self._abppo.replace(index=[0])
+                    self._abppo._policy_net.load_state_dict(self._abppo.bppo_ensemble[0]._policy.state_dict())
         return np.mean(joint_losses)

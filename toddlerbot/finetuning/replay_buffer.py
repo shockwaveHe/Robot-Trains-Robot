@@ -66,17 +66,12 @@ class RemoteReplayBuffer:
         self.client.send_experience({"type": "reset"})
 
 class OnlineReplayBuffer:
-    def __init__(
-        self, device: torch.device, 
-        obs_dim: int, privileged_obs_dim: int, action_dim: int, max_size: int, seed: int = 0, enlarge_when_full: int = 0
-    ) -> None:
+    def __init__(self, device: torch.device, obs_dim: int, privileged_obs_dim: int, action_dim: int, max_size: int, seed: int = 0, enlarge_when_full: int = 0):
         self._device = device
         self._dtype = np.float32
 
         self._obs = np.zeros((max_size, obs_dim), dtype=self._dtype)
-        self._privileged_obs = np.zeros(
-            (max_size, privileged_obs_dim), dtype=self._dtype
-        )
+        self._privileged_obs = np.zeros((max_size, privileged_obs_dim), dtype=self._dtype)
         self._action = np.zeros((max_size, action_dim), dtype=self._dtype)
         self._reward = np.zeros((max_size, 1), dtype=self._dtype)
         self._terminated = np.zeros((max_size, 1), dtype=self._dtype)
@@ -134,41 +129,25 @@ class OnlineReplayBuffer:
         self._size = 0
         self._truncated_temp = False
         self.is_overwriting = False
-        
-    def compute_return(self, gamma: float) -> None:
-        pre_return = 0
-        for i in tqdm(reversed(range(self._size)), desc='Computing the returns'):
-            self._return[i] = self._reward[i] + gamma * pre_return * (1 - self._terminated[i])
-            pre_return = self._return[i]
 
-    def shuffle(self,):
-        indices = np.arange(self._obs.shape[0])
-        self.rng.shuffle(indices)
-        self._obs = self._obs[indices]
-        self._action = self._action[indices]
-        self._reward = self._reward[indices]
-        self._terminated = self._terminated[indices]
-        self._privileged_obs = self._privileged_obs[indices]
-        self._return = self._return[indices]
-        self._action_logprob = self._action_logprob[indices]
-
-    def sample_all(self) -> tuple:
+    def sample_all(self):
         return (
-            torch.FloatTensor(self._obs[:self._size]).to(self._device),
-            torch.FloatTensor(self._privileged_obs[:self._size]).to(self._device),
-            torch.FloatTensor(self._action[:self._size]).to(self._device),
-            torch.FloatTensor(self._reward[:self._size]).to(self._device),
-            torch.FloatTensor(self._obs[1:self._size + 1]).to(self._device),
-            torch.FloatTensor(self._privileged_obs[1:self._size + 1]).to(self._device),
-            torch.FloatTensor(self._action[1:self._size + 1]).to(self._device),
-            torch.FloatTensor(self._terminated[:self._size]).to(self._device),
-            torch.FloatTensor(self._truncated[:self._size]).to(self._device),
-            torch.FloatTensor(self._return[:self._size]).to(self._device),
-            torch.FloatTensor(self._action_logprob[:self._size]).to(self._device),
+            torch.FloatTensor(self._obs[:self._size-1]).to(self._device),
+            torch.FloatTensor(self._privileged_obs[:self._size-1]).to(self._device),
+            torch.FloatTensor(self._action[:self._size-1]).to(self._device),
+            torch.FloatTensor(self._reward[:self._size-1]).to(self._device),
+            torch.FloatTensor(self._obs[1:self._size]).to(self._device) if self._size < self._max_size else torch.FloatTensor(self._obs[:1]).to(self._device),
+            torch.FloatTensor(self._privileged_obs[1:self._size]).to(self._device) if self._size < self._max_size else torch.FloatTensor(self._privileged_obs[:1]).to(self._device),
+            torch.FloatTensor(self._action[1:self._size]).to(self._device) if self._size < self._max_size else torch.FloatTensor(self._action[:1]).to(self._device),
+            torch.FloatTensor(self._terminated[:self._size-1]).to(self._device),
+            torch.FloatTensor(self._truncated[:self._size-1]).to(self._device),
+            torch.FloatTensor(self._return[:self._size-1]).to(self._device),
+            torch.FloatTensor(self._action_logprob[:self._size-1]).to(self._device),
         )
 
     def sample(self, batch_size: int) -> tuple:
-        valid_indices = np.flatnonzero(1 - self._truncated[:self._size])
+        assert self._size > 0, "Buffer is empty"
+        valid_indices = np.flatnonzero(1 - self._truncated[:self._size - 1])
         # If the number of valid indices is less than the batch size,
         # sample with replacement; otherwise, you can sample without replacement.
         if valid_indices.size < batch_size:
