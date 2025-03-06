@@ -475,6 +475,32 @@ def exponential_moving_average(
         return current_value
     return alpha * current_value + (1 - alpha) * previous_filtered_value
 
+def inverse_exponential_moving_average(
+    alpha: float,
+    current_filtered_value: ArrayType,
+    previous_filtered_value: Optional[ArrayType] = None,
+) -> ArrayType:
+    """
+    Recover the original data point from an exponential moving average (EMA) filtered value.
+    
+    Given the EMA:
+        y_t = alpha * x_t + (1 - alpha) * y_{t-1},
+    the inverse transformation is:
+        x_t = (y_t - (1 - alpha) * y_{t-1}) / alpha, for t > 0,
+        x_0 = y_0.
+    
+    Args:
+        alpha (float): The smoothing factor, 0 < alpha <= 1.
+        current_filtered_value (ArrayType): The current filtered data point (y_t).
+        previous_filtered_value (Optional[ArrayType]): The previous filtered data point (y_{t-1}).
+            If None, returns current_filtered_value.
+    
+    Returns:
+        ArrayType: The recovered original data point (x_t).
+    """
+    if previous_filtered_value is None:
+        return current_filtered_value
+    return (current_filtered_value - (1 - alpha) * previous_filtered_value) / alpha
 
 # Recursive Butterworth filter implementation in JAX
 def butterworth(

@@ -360,7 +360,6 @@ class ABPPO_Offline_Learner:
             self._logger.log_update(q_loss=Q_loss, value_loss=value_loss)
             pbar.set_description(f'value loss {value_loss:.6f}, Q loss {Q_loss:.6f}')
 
-    
     def fit_dynamics(self, replay_buffer: OnlineReplayBuffer):
         print('fitting dynamics ......')
         dynamics_loss = 0.0

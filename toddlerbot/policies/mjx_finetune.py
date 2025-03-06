@@ -20,7 +20,6 @@ from toddlerbot.finetuning.networks import load_jax_params, load_jax_params_into
 import toddlerbot.finetuning.networks as networks
 from toddlerbot.finetuning.abppo import AdaptiveBehaviorProximalPolicyOptimization, ABPPO_Offline_Learner
 from toddlerbot.finetuning.ppo import PPO
-from scipy.spatial.transform import Rotation
 from toddlerbot.finetuning.finetune_config import FinetuneConfig
 from toddlerbot.utils.math_utils import (
     interpolate_action,
@@ -71,6 +70,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             joystick,
             fixed_command,
             env_cfg,
+            need_warmup=False
             *args,
             **kwargs,
         )
@@ -189,29 +189,35 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.max_y_feet_dist = self.finetune_cfg.finetune_rewards.max_feet_y_dist
 
         if len(ckpts) > 0:
-            for ckpt in ckpts:
-                self.load_networks(ckpt, data_only=False)
-                self.recalculate_reward()
-            if len(self.replay_buffer):
-                org_policy_net = deepcopy(self.policy_net)
-                self.logger.plot_queue.put(
-                    (self.logger.plot_rewards, [])
-                )  # no-blocking plot
-
-                for _ in range(self.finetune_cfg.abppo_update_steps):
-                    self.offline_abppo_learner.update(self.replay_buffer)
-               
-                # import ipdb; ipdb.set_trace()
-                self.policy_net.load_state_dict(self.abppo._policy_net.state_dict())
-                assert not torch.allclose(
-                    org_policy_net.mlp.layers[0].weight,
-                    self.policy_net.mlp.layers[0].weight,
-                )
-                self.logger.plot_queue.put(
-                    (self.logger.plot_updates, [])
-                )  # no-blocking plot
+            self.load_ckpts(ckpts)
+        
         if self.is_real:
             input("press ENTER to start")
+
+
+    def load_ckpts(self, ckpts):
+        for ckpt in ckpts:
+            self.load_networks(ckpt, data_only=False)
+            self.recalculate_reward()
+        if len(self.replay_buffer):
+            org_policy_net = deepcopy(self.policy_net)
+            self.logger.plot_queue.put(
+                (self.logger.plot_rewards, [])
+            )  # no-blocking plot
+
+            for _ in range(self.finetune_cfg.abppo_update_steps):
+                self.offline_abppo_learner.update(self.replay_buffer)
+            
+            # import ipdb; ipdb.set_trace()
+            self.policy_net.load_state_dict(self.abppo._policy_net.state_dict())
+            assert not torch.allclose(
+                org_policy_net.mlp.layers[0].weight,
+                self.policy_net.mlp.layers[0].weight,
+            )
+            self.logger.plot_queue.put(
+                (self.logger.plot_updates, [])
+            )  # no-blocking plot
+    
 
     def close(self):
         self.sim.close()
@@ -719,7 +725,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.logger.plot_queue.put(
             (self.logger.plot_updates, [])
         )  # no-blocking plot
-        self.rollout_sim()
+        if getattr(self, "state_ref", None) is not None: # hack to only rollout in walk tasks.
+            self.rollout_sim()
         if self.is_real:
             self.need_reset = True
             self.zmq_sender.send_msg(
@@ -761,7 +768,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
             )
-            return {}, action
+            return {}, action, obs
 
         if self.need_reset:
             self.reset(obs)
@@ -902,7 +909,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         # super_obs_arr, delayed_action_jax = super().step(obs, is_real)
         # if not np.allclose(self.last_action, delayed_action, atol=0.1):
         #     import ipdb; ipdb.set_trace()
-        return control_inputs, motor_target
+        return control_inputs, motor_target, obs
 
     def _init_reward(self) -> None:
         """Prepares a list of reward functions, which will be called to compute the total reward.
@@ -941,126 +948,3 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             )
 
         return reward_dict
-
-    # @njit
-    def _reward_torso_pos(self, obs: Obs, action: np.ndarray) -> np.ndarray:
-        torso_pos = obs.pos[:2]  # TODO: no torso pos
-        torso_pos_ref = self.motion_ref[:2]
-        error = np.linalg.norm(torso_pos - torso_pos_ref, axis=-1)
-        reward = np.exp(-200.0 * error**2)  # TODO: scale
-        return reward
-
-    # TODO: change all rotation apis
-    def _reward_torso_quat(self, obs: Obs, action: np.ndarray) -> np.ndarray:
-        torso_euler = obs.euler
-        torso_quat = euler2quat(torso_euler)
-        path_quat_ref = obs.state_ref[3:7]
-        path_rot = Rotation.from_quat(path_quat_ref)
-
-        waist_joint_pos = obs.state_ref[
-            self.ref_start_idx + self.robot.nu + self.waist_motor_indices
-        ]
-        waist_euler = np.array([waist_joint_pos[0], 0.0, waist_joint_pos[1]])
-        waist_rot = Rotation.from_euler("xyz", waist_euler)
-        # torso_quat_ref = math.quat_mul(
-        #     path_quat_ref, math.quat_inv(waist_quat)
-        # )
-        torso_rot = path_rot * waist_rot.inv()
-        torso_quat_ref = torso_rot.as_quat()
-
-        # Quaternion dot product (cosine of the half-angle)
-        dot_product = np.sum(torso_quat * torso_quat_ref, axis=-1)
-        # Ensure the dot product is within the valid range
-        dot_product = np.clip(dot_product, -1.0, 1.0)
-        # Quaternion angle difference
-        angle_diff = 2.0 * np.arccos(np.abs(dot_product))
-        reward = np.exp(
-            -20.0 * (angle_diff**2)
-        )  # DISCUSS: angle_diff = 3, dot_product = -0.03, result super small
-        return reward
-
-    def _reward_lin_vel_xy(self, obs: Obs, action: np.ndarray) -> np.ndarray:
-        lin_vel = obs.lin_vel[:2]  # TODO: rotate to local? or get it from treadmill
-        # array([-0.00291435, -0.00068869, -0.00109268])
-        # TODO: verify where we get lin vel from
-        # TODO: change treadmill speed according to force x, or estimate from IMU + joint_position
-        # TODO: compare which is better
-        lin_vel_ref = obs.state_ref[7:9]
-        # print('lin_vel_ref', lin_vel_ref)
-        error = np.linalg.norm(lin_vel - lin_vel_ref, axis=-1)
-        reward = np.exp(-self.tracking_sigma * error**2)
-        return reward
-
-    def _reward_lin_vel_z(self, obs: Obs, action: np.ndarray) -> np.ndarray:
-        lin_vel = obs.lin_vel[2]  # TODO: change to normal force
-        lin_vel_ref = obs.state_ref[9]
-        error = np.abs(lin_vel - lin_vel_ref)
-        reward = np.exp(-self.tracking_sigma * error**2)
-        return reward
-
-    def _reward_ang_vel_xy(self, obs: Obs, action: np.ndarray) -> np.ndarray:
-        # DISCUSS: array([-2.9682509e-28,  3.4297700e-28,  4.7041364e-28], dtype=float32), very small, reward near 1 ~0.1~1.0
-        ang_vel = obs.ang_vel[:2]
-        ang_vel_ref = obs.state_ref[10:12]
-        error = np.linalg.norm(ang_vel - ang_vel_ref, axis=-1)
-        reward = np.exp(-self.tracking_sigma / 4 * error**2)
-        return reward
-
-    def _reward_ang_vel_z(self, obs: Obs, action: np.ndarray) -> np.ndarray:
-        ang_vel = obs.ang_vel[2]
-        ang_vel_ref = obs.state_ref[12]
-        error = np.abs(ang_vel - ang_vel_ref)
-        reward = np.exp(-self.tracking_sigma / 4 * error**2)
-        return reward
-
-    def _reward_leg_motor_pos(self, obs: Obs, action: np.ndarray) -> np.ndarray:
-        """DISCUSS:
-         motor_pos: aray([ 0.1503303 ,  0.        ,  0.        , -0.5338259 ,  0.        ,
-        -0.38042712, -0.15033007, -0.00153399,  0.        ,  0.53535914,
-         0.        ,  0.37735915], dtype=float32)
-         motor_pos_ref: array([ 0.12043477,  0.00283779, -0.        , -0.52191615,  0.00283779,
-        -0.40148139, -0.12043477, -0.00283779, -0.        ,  0.52191615,
-         0.00283779,  0.40148139])
-         reward: -2e-4
-        """
-        motor_pos = obs.motor_pos[self.leg_motor_indices]
-        print(self.ref_start_idx + self.leg_motor_indices)
-        motor_pos_ref = obs.state_ref[self.ref_start_idx + self.leg_motor_indices]
-        error = motor_pos - motor_pos_ref
-        reward = -np.mean(error**2)  # TODO: why not exp?
-        return reward
-
-    # def _reward_motor_torque(self, obs: Obs, action: np.ndarray) -> np.ndarray: # TODO: how to get motor torque?
-    # def _reward_energy(self, obs: Obs, action: np.ndarray) -> np.ndarray: # TODO: how to get energy?
-
-    def _reward_leg_action_rate(self, obs: Obs, action: np.ndarray) -> np.ndarray:
-        error = np.square(action - self.last_action)
-        reward = -np.mean(error)
-        return reward
-
-    def _reward_leg_action_acc(
-        self, obs: Obs, action: np.ndarray
-    ) -> np.ndarray:  # TODO: store last last action?
-        """Reward for tracking action accelerations"""
-        error = np.square(action - 2 * self.last_action + self.last_last_action)
-        reward = -np.mean(error)
-        return reward
-
-    # def _reward_feet_contact(self, obs: Obs, action: np.ndarray) -> np.ndarray:
-    # def _reward_collision(self, obs: Obs, action: np.ndarray) -> np.ndarray:
-
-    def _reward_survival(self, obs: Obs, action: np.ndarray) -> np.ndarray:
-        is_done = self.is_done(obs)
-        reward = -np.where(is_done, 1.0, 0.0)
-        return reward
-
-    def _reward_arm_force_z(self, obs: Obs, action: np.ndarray) -> np.ndarray:
-        # import ipdb; ipdb.set_trace()
-        ee_force_z = obs.ee_force[2]
-        reward = np.exp(-self.arm_force_z_sigma * np.abs(ee_force_z))
-        return reward
-
-    def _reward_arm_force_y(self, obs: Obs, action: np.ndarray) -> np.ndarray:
-        ee_force_y = obs.ee_force[1]
-        reward = np.exp(-self.arm_force_y_sigma * np.abs(ee_force_y))
-        return reward

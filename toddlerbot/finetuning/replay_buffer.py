@@ -3,9 +3,8 @@ import os
 import pickle
 import torch
 import numpy as np
-from tqdm import tqdm
 from toddlerbot.finetuning.utils import CONST_EPS, RewardScaling, normalize
-from toddlerbot.finetuning.server_client import RemoteClient, dump_experience_to_base64, load_experience_from_base64
+from toddlerbot.finetuning.server_client import RemoteClient, dump_experience_to_base64
 from toddlerbot.sim import Obs
 from copy import deepcopy
 
@@ -125,6 +124,11 @@ class OnlineReplayBuffer:
                 self.is_overwriting = True
                 self._size = 0
 
+    # Shift the action sequence by shift_steps for offline data collection
+    def shift_action(self, shift_steps: int) -> None:
+        self._action = np.roll(self._action, -shift_steps)
+        self._size -= shift_steps
+
     def reset(self):
         self._size = 0
         self._truncated_temp = False
@@ -132,17 +136,17 @@ class OnlineReplayBuffer:
 
     def sample_all(self):
         return (
-            torch.FloatTensor(self._obs[:self._size-1]).to(self._device),
-            torch.FloatTensor(self._privileged_obs[:self._size-1]).to(self._device),
-            torch.FloatTensor(self._action[:self._size-1]).to(self._device),
-            torch.FloatTensor(self._reward[:self._size-1]).to(self._device),
-            torch.FloatTensor(self._obs[1:self._size]).to(self._device) if self._size < self._max_size else torch.FloatTensor(self._obs[:1]).to(self._device),
-            torch.FloatTensor(self._privileged_obs[1:self._size]).to(self._device) if self._size < self._max_size else torch.FloatTensor(self._privileged_obs[:1]).to(self._device),
-            torch.FloatTensor(self._action[1:self._size]).to(self._device) if self._size < self._max_size else torch.FloatTensor(self._action[:1]).to(self._device),
-            torch.FloatTensor(self._terminated[:self._size-1]).to(self._device),
-            torch.FloatTensor(self._truncated[:self._size-1]).to(self._device),
-            torch.FloatTensor(self._return[:self._size-1]).to(self._device),
-            torch.FloatTensor(self._action_logprob[:self._size-1]).to(self._device),
+            torch.FloatTensor(self._obs[:self._size - 1]).to(self._device),
+            torch.FloatTensor(self._privileged_obs[:self._size - 1]).to(self._device),
+            torch.FloatTensor(self._action[:self._size - 1]).to(self._device),
+            torch.FloatTensor(self._reward[:self._size - 1]).to(self._device),
+            torch.FloatTensor(self._obs[1:self._size]).to(self._device),
+            torch.FloatTensor(self._privileged_obs[1:self._size]).to(self._device),
+            torch.FloatTensor(self._action[1:self._size]).to(self._device),
+            torch.FloatTensor(self._terminated[:self._size - 1]).to(self._device),
+            torch.FloatTensor(self._truncated[:self._size - 1]).to(self._device),
+            torch.FloatTensor(self._return[:self._size - 1]).to(self._device),
+            torch.FloatTensor(self._action_logprob[:self._size - 1]).to(self._device),
         )
 
     def sample(self, batch_size: int) -> tuple:

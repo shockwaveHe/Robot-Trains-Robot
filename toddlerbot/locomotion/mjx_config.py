@@ -5,7 +5,7 @@ from typing import List
 import gin
 
 
-def get_env_config(env: str):
+def get_env_config(env: str, gin_file_path: str = None) -> "MJXConfig":
     """Retrieves and parses the configuration for a specified environment.
 
     Args:
@@ -17,7 +17,8 @@ def get_env_config(env: str):
     Raises:
         FileNotFoundError: If the configuration file for the specified environment does not exist.
     """
-    gin_file_path = os.path.join(os.path.dirname(__file__), env + ".gin")
+    if gin_file_path is None:
+        gin_file_path = os.path.join(os.path.dirname(__file__), env + ".gin")
     if not os.path.exists(gin_file_path):
         raise FileNotFoundError(f"File {gin_file_path} not found.")
 
