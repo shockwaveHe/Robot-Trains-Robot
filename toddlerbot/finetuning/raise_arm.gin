@@ -5,9 +5,12 @@ FinetuneConfig.value_hidden_layer_sizes = (128, 64, 32)
 FinetuneConfig.dynamics_hidden_layer_sizes = (128, 64, 32)
 
 
-FinetuneConfig.offline_total_steps = 0
+FinetuneConfig.num_policy = 1
+FinetuneConfig.offline_total_steps = 5000
+FinetuneConfig.offline_initial_steps = 5000
 FinetuneConfig.update_mode = "local"
 FinetuneConfig.frame_stack = 15
+
 
 FinetuneRewardScales.arm_action_rate = 0.0
 FinetuneRewardScales.arm_position = 10.0

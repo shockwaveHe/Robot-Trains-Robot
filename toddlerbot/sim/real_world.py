@@ -95,6 +95,8 @@ class RealWorld(BaseSim):
 
         if future_dynamixel is not None:
             self.dynamixel_controller = future_dynamixel.result()
+        # input('disable torque:')
+        # self.dynamixel_controller.client.set_torque_enabled(self.dynamixel_controller.client.motor_ids, False)
         if future_imu is not None:
             try:
                 self.imu = future_imu.result()

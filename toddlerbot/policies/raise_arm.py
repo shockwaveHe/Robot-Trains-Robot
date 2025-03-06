@@ -26,7 +26,7 @@ from toddlerbot.sim.robot import Robot
 from toddlerbot.finetuning.networks import load_jax_params, load_jax_params_into_pytorch
 import toddlerbot.finetuning.networks as networks
 from toddlerbot.finetuning.finetune_config import FinetuneConfig
-from toddlerbot.utils.math_utils import interpolate_action, exponential_moving_average
+from toddlerbot.utils.math_utils import interpolate_action, exponential_moving_average, inverse_exponential_moving_average
 from toddlerbot.utils.comm_utils import ZMQNode, ZMQMessage
 from toddlerbot.utils.misc_utils import log, profile
 from toddlerbot.finetuning.logger import FinetuneLogger
@@ -92,7 +92,9 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         self.num_action = self.action_mask.shape[0]
         self.default_action = self.default_motor_pos[self.action_mask]
         self.last_action_target = self.default_action
+        self.last_raw_action = None
         self.is_stopped = False
+        self.action_shift_steps = 1
 
         if self.finetune_cfg.update_mode == 'local':
             self.replay_buffer = OnlineReplayBuffer(
@@ -165,6 +167,18 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
 
         return self.obs_history, self.privileged_obs_history
     
+    def get_raw_action(self, obs: Obs) -> np.ndarray:
+        motor_target = obs.motor_pos.copy()
+        action_target = motor_target[self.action_mask]
+        
+        if self.filter_type == "ema":
+            action_target = inverse_exponential_moving_average(
+                self.ema_alpha, action_target, self.last_raw_action
+            )
+            self.last_raw_action = action_target
+
+        raw_action = (action_target - self.default_action) / self.action_scale
+        return raw_action
 
     def step(self, obs: Obs, is_real: bool = True):
         if self.need_reset:
@@ -198,6 +212,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         obs_arr, privileged_obs_arr = self.get_obs(obs)
         if self.total_steps == self.finetune_cfg.offline_total_steps:
             self.switch_learning_stage()
+            self.replay_buffer.shift_action(self.action_shift_steps) # TODO: only support continuous data collection, no offline updates in between
 
         if self.remote_client is not None and self.remote_client.ready_to_update:
             # import ipdb; ipdb.set_trace()
@@ -210,8 +225,12 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
             self.policy_net.load_state_dict(self.remote_client.new_state_dict)
             self.remote_client.ready_to_update = False
         
-        deterministic = self.learning_stage == "offline" # use deterministic action during offline learning
-        action, action_logprob = self.get_action(obs_arr, deterministic=deterministic, is_real=is_real)
+        if self.learning_stage == "online": # use deterministic action during offline learning
+            action, action_logprob = self.get_action(obs_arr, deterministic=False, is_real=is_real)
+        else:
+            # data collection stage
+            action = self.get_raw_action(obs)
+            action_logprob = 0.0
 
         if self.finetune_cfg.update_mode == 'local':
             reward_dict = self._compute_reward(obs, action)
@@ -238,7 +257,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
             print(
                 f"Data size: {len(self.replay_buffer)}, Steps: {self.total_steps}, Fps: {self.total_steps / self.timer.elapsed()}"
             )
-        time_to_update = (self.learning_stage == "offline" and (len(self.replay_buffer) + 1) % self.finetune_cfg.update_interval == 0) or (self.learning_stage == "online" and len(self.replay_buffer) == self.finetune_cfg.online.batch_size - 1)
+        time_to_update = (self.learning_stage == "offline" and (len(self.replay_buffer) >= self.finetune_cfg.offline_initial_steps and len(self.replay_buffer) + 1) % self.finetune_cfg.update_interval == 0) or (self.learning_stage == "online" and len(self.replay_buffer) == self.finetune_cfg.online.batch_size - 1)
         truncated = time_to_update and self.finetune_cfg.update_mode == 'local'
 
         self.replay_buffer.store(
@@ -247,8 +266,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
             action,
             reward,
             self.is_done(obs),
-            # truncated,
-            False,
+            truncated,
             action_logprob,
             raw_obs=deepcopy(obs),
         )
@@ -273,7 +291,6 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
             )
 
         # clip diff(action_target, last_action_target) to motor_speed_limits
-        print(action_target, self.last_action_target)
         action_target = np.clip(
             action_target,
             self.last_action_target - self.motor_speed_limits,

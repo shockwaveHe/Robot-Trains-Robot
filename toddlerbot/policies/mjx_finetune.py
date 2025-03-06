@@ -725,7 +725,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.logger.plot_queue.put(
             (self.logger.plot_updates, [])
         )  # no-blocking plot
-        if self.learning_stage == "offline": # TODO: only rollout when dynamics model is trained.
+        if getattr(self, "state_ref", None) is not None: # hack to only rollout in walk tasks.
             self.rollout_sim()
         if self.is_real:
             self.need_reset = True
