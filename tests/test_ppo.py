@@ -8,6 +8,8 @@ from torch.distributions.transforms import TanhTransform
 from torch.utils.data import BatchSampler, SubsetRandomSampler
 import gin
 from copy import deepcopy
+
+from tqdm import tqdm
 from toddlerbot.finetuning.logger import FinetuneLogger
 import torch.nn.functional as F
 
@@ -102,11 +104,11 @@ class OnlineConfig:
     max_train_step: int = int(1e6)
     batch_size: int = 2048
     mini_batch_size: int = 128
-    K_epochs: int = 30
+    K_epochs: int = 10
     gamma: float = 0.99
     lamda: float = 0.95
     epsilon: float = 0.2  # Adjusted from 0.05 for less conservative updates
-    entropy_coef: float = 0.01
+    entropy_coef: float = 0.05
     lr_a: float = 3e-4  # Increased from 1e-4
     lr_c: float = 3e-4  # Increased from 1e-4
     use_adv_norm: bool = True
@@ -167,7 +169,7 @@ class PPO:
         self._value_net = value_net.to(self.device)
         self.optimizer_actor = torch.optim.Adam(self._policy_net.parameters(), lr=self.lr_a, eps=1e-5 if self.set_adam_eps else 1e-8)
         self.optimizer_critic = torch.optim.Adam(self._value_net.parameters(), lr=self.lr_c, eps=1e-5 if self.set_adam_eps else 1e-8)
-        self._logger = FinetuneLogger('test_ppo')
+        self._logger = FinetuneLogger('tests/logging/ppo')
 
     def get_action(self, s, deterministic=False):
         s = torch.unsqueeze(torch.tensor(s, dtype=torch.float), 0).to(self.device)
@@ -179,26 +181,25 @@ class PPO:
             else:
                 a = dist.sample()
                 a_logprob = dist.log_prob(a)
-        return a.cpu().numpy().flatten(), a_logprob.cpu().numpy().flatten()
+        return a.cpu().numpy().flatten(), a_logprob.sum(axis=-1, keepdim=True).cpu().numpy()
 
     def update(self, replay_buffer: OnlineReplayBuffer, current_steps):
         states, sp, actions, rewards, s_, sp_, _, terms, truncs, _, a_logprob_old = replay_buffer.sample_all()
-        adv = []
         gae = 0
+        advantage = torch.zeros_like(rewards)
         with torch.no_grad():
-            vs = self._value_net(sp)
-            vs_ = self._value_net(sp_)
-            deltas = rewards + self.gamma * (1.0 - terms) * (1.0 - truncs) * vs_ - vs
-            for delta, term in zip(reversed(deltas.flatten().cpu().numpy()), reversed(terms.flatten().cpu().numpy())):
-                gae = delta + self.gamma * self.lamda * gae * (1.0 - term)  # Fixed GAE: removed (1.0 - trunc)
-                adv.insert(0, gae)
-            adv = torch.tensor(adv, dtype=torch.float).view(-1, 1).to(self.device)
-            # import ipdb; ipdb.set_trace()
-            v_target = adv.flatten() + vs
+            values = self._value_net(sp) # "old" value calculated at the start of the update
+            next_values = self._value_net(sp_)
+            deltas = rewards.flatten() + self.gamma * (1.0 - terms.flatten()) * next_values - values
+            for step in reversed(range(len(deltas))):
+                gae = deltas[step] + self.gamma * self.lamda * gae * (1.0 - terms[step]) * (1.0 - truncs[step])
+                advantage[step] = gae
+            returns = advantage.flatten() + values
             if self.use_adv_norm:
-                adv = (adv - adv.mean()) / (adv.std() + 1e-5)
-        update_steps = 0
-        for _ in range(self.K_epochs):
+                advantage = (advantage - advantage.mean()) / (advantage.std() + 1e-5)
+        actor_losses, critic_losses = [], []
+        pbar = tqdm(range(self.K_epochs), desc='PPO training')
+        for i in pbar:
             for index in BatchSampler(SubsetRandomSampler(range(len(states))), self.mini_batch_size, False):  # Fixed indexing
                 new_dist = self._policy_net(states[index])
                 # dist_entropy = new_dist.base_dist.entropy().sum(1, keepdim=True)
@@ -211,23 +212,24 @@ class PPO:
                 a_logprob_now = new_dist.log_prob(actions[index])
 
                 ratios = torch.exp(a_logprob_now.sum(1, keepdim=True) - a_logprob_old[index])
-                surr1 = ratios * adv[index]
-                surr2 = torch.clamp(ratios, 1 - self.epsilon, 1 + self.epsilon) * adv[index]
+                surr1 = ratios * advantage[index]
+                surr2 = torch.clamp(ratios, 1 - self.epsilon, 1 + self.epsilon) * advantage[index]
                 actor_loss = (-torch.min(surr1, surr2) - self.entropy_coef * dist_entropy).mean()
+                actor_losses.append(actor_loss.item())
                 self.optimizer_actor.zero_grad()
                 actor_loss.backward()
                 if self.use_grad_clip:
                     torch.nn.utils.clip_grad_norm_(self._policy_net.parameters(), 0.5)
                 self.optimizer_actor.step()
-                update_steps += 1
-                v_s = self._value_net(sp[index])
+                current_values = self._value_net(sp[index]) # "new" value calculated after the actor update
                 if self.is_clip_value:
-                    old_value_clipped = vs[index] + (v_s - vs[index]).clamp(-self.epsilon, self.epsilon)
-                    value_loss = (v_s - v_target[index].detach().float()).pow(2)
-                    value_loss_clipped = (old_value_clipped - v_target[index].detach().float()).pow(2)
+                    old_value_clipped = values[index] + (current_values - values[index]).clamp(-self.epsilon, self.epsilon)
+                    value_loss = (current_values - returns[index].detach().float()).pow(2)
+                    value_loss_clipped = (old_value_clipped - returns[index].detach().float()).pow(2)
                     critic_loss = torch.max(value_loss, value_loss_clipped).mean()
                 else:
-                    critic_loss = nn.functional.mse_loss(v_target[index], v_s).mean()
+                    critic_loss = nn.functional.mse_loss(returns[index], current_values).mean()
+                critic_losses.append(critic_loss.item())
                 self.optimizer_critic.zero_grad()
                 critic_loss.backward()
                 if self.use_grad_clip:
@@ -236,16 +238,17 @@ class PPO:
                 self._logger.log_update(
                     a_logprob_now=a_logprob_old[index].mean().item(),
                     ratios=ratios.mean().item(),
-                    adv=adv[index].mean().item(),
-                    v_s=v_s.mean().item(),
+                    adv=advantage[index].mean().item(),
+                    current_values=current_values.mean().item(),
                     actor_loss=actor_loss.item(),
                     dist_entropy=dist_entropy.mean().item(),
                     critic_loss=critic_loss.item()
                 )
-        print(f"PPO update complete at step {current_steps} for {update_steps} steps")  
+                pbar.set_description(f'PPO training step {i} (actor_loss: {actor_loss.item()}, critic_loss: {critic_loss.item()})')
         if self.use_lr_decay:
             self.lr_decay(current_steps)
         replay_buffer.reset()
+        return np.mean(actor_losses), np.mean(critic_losses)
 
     def lr_decay(self, current_steps):
         lr_a_now = self.lr_a * (1 - current_steps / self.max_train_step)
@@ -255,10 +258,6 @@ class PPO:
         for p in self.optimizer_critic.param_groups:
             p['lr'] = lr_c_now
 
-# Dummy Logger (replace with your FinetuneLogger if needed)
-class DummyLogger:
-    def log_update(self, **kwargs):
-        pass
 
 # Training Loop
 def train():
@@ -299,7 +298,8 @@ def train():
         s = s_next
 
         if terminated or truncated:
-            print(f"Episode ended at step {total_steps}, Reward: {episode_reward}")
+            # print(f"Episode ended at step {total_steps}, Reward: {episode_reward}")
+            ppo._logger.log_update(episode_reward=episode_reward, episode_steps=episode_steps)
             episode_reward = 0
             episode_steps = 0
             s, _ = env.reset()

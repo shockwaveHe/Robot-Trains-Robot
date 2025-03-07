@@ -1,3 +1,4 @@
+import os
 from typing import List
 import torch
 import numpy as np
@@ -114,6 +115,9 @@ class BehaviorProximalPolicyOptimization:
         self,
     ) -> None:
         self._old_policy.load_state_dict(self._policy.state_dict())
+
+    def load(self, path: str) -> None:
+        self._policy.load_state_dict(torch.load(path))
 
     def update(
         self, 
@@ -278,7 +282,6 @@ class AdaptiveBehaviorProximalPolicyOptimization:
 
             advantages.append(advantage)
 
-
         return actions, advantages, dists, kl_logprob_a
 
 
@@ -321,6 +324,10 @@ class AdaptiveBehaviorProximalPolicyOptimization:
             weight.to(self._device)
             return weight * advantage
         
+    def load_bc(self, policy_folder: str, policy_prefix: str="pi")-> None:
+        for i in range(self._num_policy):
+            self.bppo_ensemble[i].load(os.path.join(policy_folder, f'{policy_prefix}_{i}.pt'))
+    
 # ABPPO offline learner
 class ABPPO_Offline_Learner:
     def __init__(
@@ -351,13 +358,14 @@ class ABPPO_Offline_Learner:
         pbar = tqdm(range(int(self._config.value_update_steps)))
         if not self._config.is_iql:
             replay_buffer.compute_return(self._config.gamma)
-        for _ in pbar: 
+        for step in pbar: 
             if self._config.is_iql:
                 Q_loss, value_loss = self._iql_learner.update(replay_buffer=replay_buffer)
             else:
                 Q_loss = self._q_learner.update(replay_buffer=replay_buffer)
                 value_loss = self._value_learner.update(replay_buffer=replay_buffer)
-            self._logger.log_update(q_loss=Q_loss, value_loss=value_loss)
+            if step % self._config.log_freq == 0:
+                self._logger.log_update(q_loss=Q_loss, value_loss=value_loss)
             pbar.set_description(f'value loss {value_loss:.6f}, Q loss {Q_loss:.6f}')
 
     def fit_dynamics(self, replay_buffer: OnlineReplayBuffer):
@@ -366,7 +374,8 @@ class ABPPO_Offline_Learner:
         pbar = tqdm(range(int(self._config.dynamics_update_steps)), desc=f'dynamics loss {dynamics_loss:.6f}')
         for step in pbar: 
             dynamics_loss = self._dynamics.update(replay_buffer=replay_buffer)
-            self._logger.log_update(dynamics_loss=dynamics_loss)
+            if step % self._config.log_freq == 0:
+                self._logger.log_update(dynamics_loss=dynamics_loss)
             pbar.set_description(f'dynamics loss {dynamics_loss:.6f}')
     
     def update(self, replay_buffer: OnlineReplayBuffer):

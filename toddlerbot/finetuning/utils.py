@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch.distributions import Distribution
 import numpy as np
 from tqdm import tqdm
-CONST_EPS = 1e-10
+CONST_EPS = 1e-6
 
 class Timer:
     def __init__(self):
@@ -48,6 +48,7 @@ def orthogonal_initWeights(
 def log_prob_func(
     dist: Distribution, action: torch.Tensor
     ) -> torch.Tensor:
+    action = action.clamp(-1 + CONST_EPS, 1 - CONST_EPS)
     log_prob = dist.log_prob(action)
     if len(log_prob.shape) == 1:
         return log_prob

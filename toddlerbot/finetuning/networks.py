@@ -241,9 +241,14 @@ class GaussianPolicyNetwork(nn.Module):
     def select_action(self, obs: torch.Tensor, is_sample: bool = True, processer_params=None) -> torch.Tensor:
         dist = self.forward(obs, processer_params)
         if is_sample:
-            return dist.rsample()
+            dist.rsample()
         else:
-            return dist.mean
+            if isinstance(dist, TransformedDistribution):
+                assert len(dist.transforms) == 1 and isinstance(dist.transforms[0], TanhTransform)
+                return torch.tanh(dist.base_dist.loc)
+            else:
+                assert isinstance(dist, Normal)
+                return dist.loc
     
     def forward_log_det_jacobian(self, x):
         # 2 * (log(2) - x - softplus(-2x))
