@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from typing import List, Optional, Tuple, Any, Union
 import torch
 import torch.nn as nn

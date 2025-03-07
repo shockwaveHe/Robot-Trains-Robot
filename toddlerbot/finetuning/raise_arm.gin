@@ -22,4 +22,4 @@ OnlineConfig.is_clip_value = True
 OnlineConfig.lr_c = 5e-4
 OnlineConfig.lr_a = 3e-4
 OnlineConfig.entropy_coef = 0.05
-OnlineConfig.K_epochs = 10
+OnlineConfig.K_epochs = 20

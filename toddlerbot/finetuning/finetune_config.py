@@ -1,17 +1,21 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from typing import Optional, Tuple, List
 import os
 import gin
 import numpy as np
 
 
-def get_finetune_config(env: str):
+def get_finetune_config(env: str, save_path: str = None):
     gin_file_path = os.path.join(os.path.dirname(__file__), env + ".gin")
     if not os.path.exists(gin_file_path):
         raise FileNotFoundError(f"File {gin_file_path} not found.")
 
     gin.parse_config_file(gin_file_path)
-    return FinetuneConfig()
+    finetune_config = FinetuneConfig()
+    if save_path is not None:
+        with open(os.path.join(save_path, "finetune_config.gin"), "w") as f:
+            f.writelines(gin.operative_config_str())
+    return finetune_config
 
 
 @gin.configurable

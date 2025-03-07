@@ -1,10 +1,9 @@
 import argparse
 import bisect
-import importlib
+
 import json
 import os
 import pickle
-import pkgutil
 import time
 import traceback
 from typing import Any, Dict, List
@@ -22,7 +21,7 @@ from toddlerbot.arm_policies import (
     get_arm_policy_class,
     get_arm_policy_names,
 )
-from toddlerbot.policies import BasePolicy, get_policy_class, get_policy_names
+from toddlerbot.policies import BasePolicy, get_policy_class, get_policy_names, dynamic_import_policies
 from toddlerbot.policies.balance_pd import BalancePDPolicy
 from toddlerbot.policies.calibrate import CalibratePolicy
 from toddlerbot.policies.dp_policy import DPPolicy
@@ -54,28 +53,6 @@ from toddlerbot.visualization.vis_plot import (
     plot_motor_vel_tor_mapping,
     # plot_path_tracking,
 )
-
-# from toddlerbot.utils.misc_utils import profile
-
-
-def dynamic_import_policies(policy_package: str):
-    """Dynamically imports all modules within a specified package.
-
-    This function attempts to import each module found in the given package directory. If a module cannot be imported, a log message is generated.
-
-    Args:
-        policy_package (str): The name of the package containing the modules to be imported.
-    """
-    package = importlib.import_module(policy_package)
-    package_path = package.__path__
-
-    # Iterate over all modules in the given package directory
-    for _, module_name, _ in pkgutil.iter_modules(package_path):
-        full_module_name = f"{policy_package}.{module_name}"
-        try:
-            importlib.import_module(full_module_name)
-        except Exception:
-            log(f"Could not import {full_module_name}", header="Dynamic Import")
 
 
 # Call this to import all policies dynamically

@@ -121,14 +121,10 @@ class RemoteServer:
 
     def handle_client(self, conn, addr, replay_buffer):
         print("Connected by", addr)
-        # Define dimensions based on your optimizations.
-        obs_frame_dim = 83    # latest frame dimension for obs
-        priv_frame_dim = 122  # latest frame dimension for privileged obs
-        num_frames = 15       # number of frames to stack
 
         # Initialize the stacks with zeros.
-        obs_history = np.zeros(num_frames * obs_frame_dim, dtype=np.float32)
-        privileged_obs_history = np.zeros(num_frames * priv_frame_dim, dtype=np.float32)
+        obs_history = np.zeros(replay_buffer._obs.shape[1], dtype=np.float32)
+        privileged_obs_history = np.zeros(replay_buffer._privileged_obs.shape[1], dtype=np.float32)
         buffer = ""
 
         while True:
@@ -149,8 +145,8 @@ class RemoteServer:
                             continue
                         if msg.get('type') == 'reset':
                             # Reset the stacks.
-                            obs_history = np.zeros(num_frames * obs_frame_dim, dtype=np.float32)
-                            privileged_obs_history = np.zeros(num_frames * priv_frame_dim, dtype=np.float32)
+                            obs_history = np.zeros(replay_buffer._obs.shape[1], dtype=np.float32)
+                            privileged_obs_history = np.zeros(replay_buffer._privileged_obs.shape[1], dtype=np.float32)
                             self.policy.last_action = np.zeros(self.policy.num_action, dtype=np.float32)
                             self.policy.last_last_action = np.zeros(self.policy.num_action, dtype=np.float32)
                             replay_buffer.reset()
@@ -163,8 +159,8 @@ class RemoteServer:
                             
                             # If a done/truncated flag is True, reset the stacks.
                             if msg.get('done') or msg.get('truncated'):
-                                obs_history = np.zeros(num_frames * obs_frame_dim, dtype=np.float32)
-                                privileged_obs_history = np.zeros(num_frames * priv_frame_dim, dtype=np.float32)
+                                obs_history = np.zeros(replay_buffer._obs.shape[1], dtype=np.float32)
+                                privileged_obs_history = np.zeros(replay_buffer._privileged_obs.shape[1], dtype=np.float32)
                                 self.policy.last_action = np.zeros(self.policy.num_action, dtype=np.float32)
                                 self.policy.last_last_action = np.zeros(self.policy.num_action, dtype=np.float32)
                             else:
@@ -184,6 +180,8 @@ class RemoteServer:
                             feet_pos = self.policy.sim.get_feet_pos()
                             feet_y_dist = feet_pos["left"][1] - feet_pos["right"][1]
                             raw_obs.feet_y_dist = feet_y_dist
+                            hand_pos = self.policy.sim.get_hand_pos()
+                            raw_obs.hand_z_dist = hand_pos["left"][2]
                             reward_dict = self.policy._compute_reward(raw_obs, msg['a'])
                             reward = sum(reward_dict.values()) * self.policy.control_dt
                             self.policy.last_last_action = self.policy.last_action.copy()
@@ -201,6 +199,7 @@ class RemoteServer:
                                 raw_obs,
                                 reward=reward,
                                 feet_dist=feet_y_dist,
+                                hand_dist=hand_pos["left"][2],
                                 current_Q=current_Q,
                                 current_value=current_value,
                                 current_adv=current_adv,

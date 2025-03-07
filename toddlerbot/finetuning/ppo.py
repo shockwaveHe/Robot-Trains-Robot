@@ -98,6 +98,8 @@ class PPO:
 
     def update(self, replay_buffer: OnlineReplayBuffer, current_steps):
         states, sp, actions, rewards, s_, sp_, _, terms, truncs, _, a_logprob_old = replay_buffer.sample_all()
+        # reset immediately after sampling to let remote client continue collecting data
+        replay_buffer.reset()
         # Compute advantage
         gae = 0
         advantage = torch.zeros_like(rewards)
@@ -164,7 +166,6 @@ class PPO:
                 pbar.set_description(f'PPO training step {i} (actor_loss: {actor_loss.item()}, critic_loss: {critic_loss.item()})')
         if self.use_lr_decay:
             self.lr_decay(current_steps)
-        replay_buffer.reset()
         return np.mean(actor_losses), np.mean(critic_losses)
     
     def lr_decay(self, current_steps):

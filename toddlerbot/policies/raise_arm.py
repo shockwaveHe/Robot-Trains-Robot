@@ -47,9 +47,9 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         ip: Optional[str] = None
     ):
         if env_cfg is None:
-            env_cfg = get_env_config("raise_arm")
+            env_cfg = get_env_config("raise_arm", exp_folder)
         if finetune_cfg is None:
-            finetune_cfg = get_finetune_config("raise_arm")
+            finetune_cfg = get_finetune_config("raise_arm", exp_folder)
         # import ipdb; ipdb.set_trace()
        
         self.finetune_cfg: FinetuneConfig = finetune_cfg
@@ -76,14 +76,14 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
 
         # self.control_dt = 0.1
         self.robot = robot
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.inference_device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = "cuda" if torch.cuda.is_available() and self.finetune_cfg.update_mode == 'local' else "cpu"
+        self.inference_device = "cuda" if torch.cuda.is_available() and self.finetune_cfg.update_mode == 'local' else "cpu"
         self.rng = np.random.default_rng()
         self.num_obs_history = self.cfg.obs.frame_stack
         self.obs_size = self.finetune_cfg.num_single_obs
         self.last_action = np.zeros(self.num_action)
         self.last_last_action = np.zeros(self.num_action)
-        self.is_real = False # hardcode to False
+        self.is_real = False # hardcode to False for zmq, etc.
 
         self.shoulder_motor_idx = 16
         self.motor_speed_limits = np.array([0.05])
@@ -117,7 +117,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
                 exp_folder=self.exp_folder,
             )
             self.replay_buffer = RemoteReplayBuffer(self.remote_client, self.finetune_cfg.buffer_size, num_obs_history=self.num_obs_history, num_privileged_obs_history=self.num_privileged_obs_history, enlarge_when_full=self.finetune_cfg.update_interval * self.finetune_cfg.enlarge_when_full)
-        
+
         self._make_networks(
             observation_size=self.finetune_cfg.frame_stack * self.obs_size,
             privileged_observation_size=self.finetune_cfg.frame_stack
@@ -226,7 +226,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
             print(f"Updated policy network to {self.num_updates}!")
             assert not torch.allclose(
                 self.policy_net.mlp.layers[0].weight,
-                self.remote_client.new_state_dict["mlp.layers.0.weight"]
+                self.remote_client.new_state_dict["mlp.layers.0.weight"].to(self.inference_device)
             )
             self.policy_net.load_state_dict(self.remote_client.new_state_dict)
             self.remote_client.ready_to_update = False

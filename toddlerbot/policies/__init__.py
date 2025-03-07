@@ -4,10 +4,12 @@ from typing import Dict, List, Tuple, Type
 import numpy as np
 import numpy.typing as npt
 
+import pkgutil
+import importlib
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.math_utils import interpolate
-from toddlerbot.utils.misc_utils import snake2camel
+from toddlerbot.utils.misc_utils import snake2camel, log
 
 # Global registry to store policy names and their corresponding classes
 policy_registry: Dict[str, Type["BasePolicy"]] = {}
@@ -47,6 +49,26 @@ def get_policy_names() -> List[str]:
         policy_names.append(key + "_fixed")
 
     return policy_names
+
+
+def dynamic_import_policies(policy_package: str):
+    """Dynamically imports all modules within a specified package.
+
+    This function attempts to import each module found in the given package directory. If a module cannot be imported, a log message is generated.
+
+    Args:
+        policy_package (str): The name of the package containing the modules to be imported.
+    """
+    package = importlib.import_module(policy_package)
+    package_path = package.__path__
+
+    # Iterate over all modules in the given package directory
+    for _, module_name, _ in pkgutil.iter_modules(package_path):
+        full_module_name = f"{policy_package}.{module_name}"
+        try:
+            importlib.import_module(full_module_name)
+        except Exception:
+            log(f"Could not import {full_module_name}", header="Dynamic Import")
 
 
 class BasePolicy(ABC):

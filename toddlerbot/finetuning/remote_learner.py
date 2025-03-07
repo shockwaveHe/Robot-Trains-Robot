@@ -1,25 +1,31 @@
 import os
-import sys
+import ipdb
 import time
-
 import torch
+import traceback
 import numpy as np
 from toddlerbot.sim.robot import Robot
 from toddlerbot.finetuning.server_client import RemoteServer
 from toddlerbot.policies.walk_finetune import WalkFinetunePolicy
 from toddlerbot.finetuning.finetune_config import get_finetune_config
 from toddlerbot.locomotion.mjx_config import get_env_config
+from toddlerbot.policies import get_policy_class, dynamic_import_policies
 torch.set_float32_matmul_precision('high')
 
+# Call this to import all policies dynamically
+dynamic_import_policies("toddlerbot.policies")
 
 NUM_ACTIONS = 12
 
 if __name__ == "__main__":
     robot = Robot("toddlerbot")
     init_motor_pos = np.zeros(len(robot.motor_ordering), dtype=np.float32)
-    finetune_cfg = get_finetune_config("walk")
+    current_task = "raise_arm"
+    env_cfg = get_env_config(current_task)
+    finetune_cfg = get_finetune_config(current_task)
+    if current_task == "walk":
+        current_task += "_finetune"
     finetune_cfg.update_mode = "local"
-    env_cfg = get_env_config("walk")
     # ckpt_folder = "results/stored/toddlerbot_walk_finetune_real_world_20250211_101354"
     ckpt_folders = [
         # "results/toddlerbot_walk_finetune_real_world_20250224_222209"
@@ -27,8 +33,9 @@ if __name__ == "__main__":
 
     # policy.abppo_offline_learner.update(policy.replay_buffer)
     # policy.logger.plot_updates()
-    policy = WalkFinetunePolicy(
-        "walk_finetune",
+    PolicyClass = get_policy_class(current_task)
+    policy = PolicyClass(
+        current_task,
         robot,
         init_motor_pos,
         ckpts=ckpt_folders,
@@ -64,14 +71,15 @@ if __name__ == "__main__":
             elif policy.learning_stage == "online" and len(policy.replay_buffer) == finetune_cfg.online.batch_size:
                 policy.online_ppo_learner.update(policy.replay_buffer, policy.total_steps - policy.finetune_cfg.offline_total_steps)
                 policy.policy_net.load_state_dict(policy.online_ppo_learner._policy_net.state_dict())
+                policy.logger.plot_queue.put((policy.logger.plot_rewards, []))
+                
                 server.push_policy_parameters(policy.online_ppo_learner._policy_net.state_dict())
                 print("Replay buffer size:", len(policy.replay_buffer))
             time.sleep(0.01)
 
     except Exception as e:
-        import traceback
+        ipdb.post_mortem()
         traceback.print_exc()
-        print("Exception:", e)
     finally:
         print("Server stopped running.")
         policy.logger.plot_rewards()

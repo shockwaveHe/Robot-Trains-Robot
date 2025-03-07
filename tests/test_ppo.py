@@ -9,6 +9,10 @@ from torch.utils.data import BatchSampler, SubsetRandomSampler
 import gin
 from copy import deepcopy
 
+import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from tqdm import tqdm
 from toddlerbot.finetuning.logger import FinetuneLogger
 import torch.nn.functional as F

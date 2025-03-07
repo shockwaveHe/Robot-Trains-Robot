@@ -223,14 +223,15 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.sim.close()
         self.logger.close()
         self.zmq_receiver.close()
-        save_networks = input("Save networks? y/n:")
-        while save_networks not in ["y", "n"]:
+        if self.finetune_cfg.update_mode == 'local':
             save_networks = input("Save networks? y/n:")
-        if save_networks == "y":
-            self.save_networks()
-        save_buffer = input("Save replay buffer? y/n:")
-        if save_buffer == "y":
-            self.replay_buffer.save_compressed(self.exp_folder)
+            while save_networks not in ["y", "n"]:
+                save_networks = input("Save networks? y/n:")
+            if save_networks == "y":
+                self.save_networks()
+            save_buffer = input("Save replay buffer? y/n:")
+            if save_buffer == "y":
+                self.replay_buffer.save_compressed(self.exp_folder)
 
     def _make_networks(
         self,

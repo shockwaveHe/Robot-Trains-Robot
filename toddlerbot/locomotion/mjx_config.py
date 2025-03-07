@@ -1,11 +1,10 @@
 import os
 from dataclasses import dataclass, field
 from typing import List
-
 import gin
 
 
-def get_env_config(env: str, gin_file_path: str = None) -> "MJXConfig":
+def get_env_config(env: str, save_path: str = None) -> "MJXConfig":
     """Retrieves and parses the configuration for a specified environment.
 
     Args:
@@ -17,14 +16,14 @@ def get_env_config(env: str, gin_file_path: str = None) -> "MJXConfig":
     Raises:
         FileNotFoundError: If the configuration file for the specified environment does not exist.
     """
-    if gin_file_path is None:
-        gin_file_path = os.path.join(os.path.dirname(__file__), env + ".gin")
-    if not os.path.exists(gin_file_path):
-        raise FileNotFoundError(f"File {gin_file_path} not found.")
+    gin_file_path = os.path.join(os.path.dirname(__file__), env + ".gin")
 
     gin.parse_config_file(gin_file_path)
-    return MJXConfig()
-
+    env_config = MJXConfig()
+    if save_path is not None:
+        with open(os.path.join(save_path, "env_config.gin"), "w") as f:
+            f.writelines(gin.operative_config_str())
+    return env_config
 
 @gin.configurable
 @dataclass

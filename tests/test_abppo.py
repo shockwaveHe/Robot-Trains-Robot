@@ -55,15 +55,14 @@ def termination_fn_hopper(obs, config = None):
 
     height = obs[:, 0]
     angle = obs[:, 1]
-    not_done =  torch.isfinite(obs).all(axis=-1) \
-                * (torch.abs(obs[:,1:]) < 100).all(axis=-1) \
-                * (height > .7) \
-                * (torch.abs(angle) < .2)
-    done = ~not_done
+    not_done = torch.isfinite(obs).all(axis=-1) \
+            * (torch.abs(obs[:,1:]) < 100).all(axis=-1) \
+            * (height > .7) \
+            * (torch.abs(angle) < .2)
+    done = torch.logical_not(not_done)
     return done[:,None].cpu().numpy()
 
 
-# TODO: test dynamics predict termination accuracy
 if __name__ == "__main__":
     # --------------------------
     # Load Minari offline dataset and populate replay buffer

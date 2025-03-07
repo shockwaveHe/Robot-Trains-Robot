@@ -12,6 +12,7 @@ from toddlerbot.tools.joystick import Joystick
 from scipy.spatial.transform import Rotation
 from toddlerbot.utils.math_utils import euler2quat
 
+
 class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
     def __init__(
         self,
@@ -28,9 +29,9 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
         is_real: bool = True,
     ):
         if env_cfg is None:
-            env_cfg = get_env_config("walk")
+            env_cfg = get_env_config("walk", exp_folder)
         if finetune_cfg is None:
-            finetune_cfg = get_finetune_config("walk")
+            finetune_cfg = get_finetune_config("walk", exp_folder)
         self.cycle_time = env_cfg.action.cycle_time
         self.command_discount_factor = np.array([1.0, 1.0, 1.0], dtype=np.float32)
 
@@ -52,7 +53,7 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
             env_cfg,
             finetune_cfg,
             exp_folder=exp_folder,
-            is_real=is_real
+            is_real=is_real,
         )
 
     def get_phase_signal(self, time_curr: float):
@@ -213,7 +214,7 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
         ee_force_y = obs.ee_force[1]
         reward = np.exp(-self.arm_force_y_sigma * np.abs(ee_force_y))
         return reward
-    
+
     def _reward_torso_roll(self, obs: Obs, action: np.ndarray) -> float:
         """Reward for torso pitch"""
         torso_roll = obs.euler[0]

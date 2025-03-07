@@ -7,7 +7,6 @@ from toddlerbot.finetuning.utils import log_prob_func, orthogonal_initWeights
 import os
 from copy import deepcopy
 from typing import List
-from torch.distributions import Normal
 
 LOG_SIG_MAX = 2
 LOG_SIG_MIN = -20

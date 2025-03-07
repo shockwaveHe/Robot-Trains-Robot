@@ -2,7 +2,6 @@ import os
 import time
 import csv
 import math
-import pickle
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')  # for writing figures without an active X server
@@ -285,7 +284,7 @@ class FinetuneLogger:
         try:
             for key, data in term_data.items():
                 total += data
-        except ValueError as e:
+        except ValueError as _:
             import traceback
             traceback.print_exc()
             print(key, data.shape)
