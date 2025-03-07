@@ -114,7 +114,8 @@ class PPO:
         actor_losses, critic_losses = [], []
         pbar = tqdm(range(self.K_epochs), desc='PPO training')
         for i in pbar:
-            for index in BatchSampler(SubsetRandomSampler(range(len(states))), self.mini_batch_size, False):  # Fixed indexing
+            # Random sampling and no repetition. 'False' indicates that training will continue even if the number of samples in the last time is less than mini_batch_size
+            for index in BatchSampler(SubsetRandomSampler(range(len(states))), self.mini_batch_size, False):
                 new_dist = self._policy_net(states[index])
                 # dist_entropy = new_dist.base_dist.entropy().sum(1, keepdim=True)
                 if isinstance(new_dist, TransformedDistribution):

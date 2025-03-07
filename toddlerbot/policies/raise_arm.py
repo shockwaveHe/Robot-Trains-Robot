@@ -82,12 +82,14 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         self.num_obs_history = self.cfg.obs.frame_stack
         self.obs_size = self.finetune_cfg.num_single_obs
         self.last_action = np.zeros(self.num_action)
+        self.last_last_action = np.zeros(self.num_action)
         self.is_real = False # hardcode to False
 
         self.shoulder_motor_idx = 16
         self.motor_speed_limits = np.array([0.05])
-        self.hand_z_dist_base = 0.25
-        self.hand_z_dist_terminal = 0.5
+        self.hand_z_dist_base = 0.266
+        self.arm_radius = 0.1685
+        self.hand_z_dist_terminal = 0.43
         self.action_mask = np.array([self.shoulder_motor_idx])
         self.num_action = self.action_mask.shape[0]
         self.default_action = self.default_motor_pos[self.action_mask]
@@ -132,8 +134,9 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         
         self.logger = FinetuneLogger(self.exp_folder)
 
-        self.total_steps = 0
         self.num_updates = 0
+        self.total_steps, self.current_steps = 0, 0
+        self.step_limit = int(5e4)
 
         self._init_reward()
         self._make_learners()
@@ -141,6 +144,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         self.need_reset = True
         self.learning_stage = "offline"
 
+        self.max_hand_z = -np.inf
         self.sim = MuJoCoSim(
             robot, vis_type=self.finetune_cfg.sim_vis_type, hang_force=0.0, n_frames=1
         )
@@ -148,9 +152,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         self.control_dt = 0.001
         if len(ckpts) > 0:
             self.load_ckpts(ckpts)
-        self.action_cur = 0.0
         input("press ENTER to start")
-
 
     def get_obs(self, obs: Obs, command: np.ndarray=None, phase_signal=None, last_action=None) -> Obs:
         motor_pos_delta = obs.motor_pos - self.default_motor_pos
@@ -164,7 +166,6 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
             self.privileged_obs_history, privileged_obs_arr.size
         )
         self.privileged_obs_history[: privileged_obs_arr.size] = privileged_obs_arr
-
         return self.obs_history, self.privileged_obs_history
     
     def get_raw_action(self, obs: Obs) -> np.ndarray:
@@ -180,6 +181,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         raw_action = (action_target - self.default_action) / self.action_scale
         return raw_action
 
+    # TODO: add a timeout and truncation?
     def step(self, obs: Obs, is_real: bool = True):
         if self.need_reset:
             self.reset(obs)
@@ -207,12 +209,16 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
             self.sim.forward()
             hand_pos = self.sim.get_hand_pos()
             hand_z_dist = hand_pos["left"][2]
+            if hand_z_dist > self.max_hand_z:
+                self.max_hand_z = hand_z_dist
+                print(f"max z reached: {self.max_hand_z}")
             obs.hand_z_dist = hand_z_dist
 
         obs_arr, privileged_obs_arr = self.get_obs(obs)
         if self.total_steps == self.finetune_cfg.offline_total_steps:
             self.switch_learning_stage()
-            self.replay_buffer.shift_action(self.action_shift_steps) # TODO: only support continuous data collection, no offline updates in between
+            if len(self.replay_buffer) > 0:
+                self.replay_buffer.shift_action(self.action_shift_steps) # TODO: only support continuous data collection, no offline updates in between
 
         if self.remote_client is not None and self.remote_client.ready_to_update:
             # import ipdb; ipdb.set_trace()
@@ -234,6 +240,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
 
         if self.finetune_cfg.update_mode == 'local':
             reward_dict = self._compute_reward(obs, action)
+            self.last_last_action = self.last_action.copy()
             self.last_action = action.copy()
 
             reward = (
@@ -248,7 +255,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
             )
         else:
             reward = 0.0
-        print(reward_dict)
+        # print(reward_dict)
         time_elapsed = self.timer.elapsed()
         if time_elapsed < self.total_steps * self.control_dt:
             time.sleep(self.total_steps * self.control_dt - time_elapsed)
@@ -259,6 +266,11 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
             )
         time_to_update = (self.learning_stage == "offline" and (len(self.replay_buffer) >= self.finetune_cfg.offline_initial_steps and len(self.replay_buffer) + 1) % self.finetune_cfg.update_interval == 0) or (self.learning_stage == "online" and len(self.replay_buffer) == self.finetune_cfg.online.batch_size - 1)
         truncated = time_to_update and self.finetune_cfg.update_mode == 'local'
+
+        if self.is_truncated():
+            truncated = True
+            self.current_steps = 0
+            print("Truncated! Resetting...")
 
         self.replay_buffer.store(
             obs_arr,
@@ -305,9 +317,8 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         motor_target = np.clip(
             motor_target, self.motor_limits[:, 0], self.motor_limits[:, 1]
         )
-
-        self.last_action = delayed_action
         self.total_steps += 1
+        self.current_steps += 1
         self.timer.start()
         control_inputs = {}
         self.control_inputs = control_inputs
@@ -330,6 +341,9 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
     def is_done(self, obs: Obs) -> bool:
         return obs.hand_z_dist > self.hand_z_dist_terminal
 
+    def is_truncated(self) -> bool:
+        return self.current_steps >= self.step_limit
+    
     def reset(self, obs: Obs = None):
         # mjx policy reset
         self.timer.stop()
@@ -350,10 +364,17 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
             print("done reward")
         return self.is_done(obs)
     
+    # h = r * (1 - cos(theta))
+    # theta = acos(1 - h / r)
     def _reward_arm_position(self, obs: Obs, action: np.ndarray) -> np.ndarray:
-        return np.sqrt(4 * np.clip(obs.hand_z_dist - self.hand_z_dist_base, 0, self.hand_z_dist_terminal))
+        return np.arccos(1 - np.clip(obs.hand_z_dist - self.hand_z_dist_base, 0, np.inf) / self.arm_radius)
 
     def _reward_arm_action_rate(self, obs: Obs, action: np.ndarray) -> np.ndarray:
         error = np.square(action - self.last_action)
+        reward = -np.mean(error)
+        return reward
+
+    def _reward_arm_action_acc(self, obs: Obs, action: np.ndarray) -> np.ndarray:
+        error = np.square(action - 2 * self.last_action + self.last_last_action)
         reward = -np.mean(error)
         return reward

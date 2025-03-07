@@ -3,6 +3,7 @@ import os
 import pickle
 import torch
 import numpy as np
+from tqdm import tqdm
 from toddlerbot.finetuning.utils import CONST_EPS, RewardScaling, normalize
 from toddlerbot.finetuning.server_client import RemoteClient, dump_experience_to_base64
 from toddlerbot.sim import Obs
@@ -133,8 +134,25 @@ class OnlineReplayBuffer:
         self._size = 0
         self._truncated_temp = False
         self.is_overwriting = False
+        
+    def compute_return(self, gamma: float) -> None:
+        pre_return = 0
+        for i in tqdm(reversed(range(self._size)), desc='Computing the returns'):
+            self._return[i] = self._reward[i] + gamma * pre_return * (1 - self._terminated[i])
+            pre_return = self._return[i]
 
-    def sample_all(self):
+    def shuffle(self,):
+        indices = np.arange(self._obs.shape[0])
+        self.rng.shuffle(indices)
+        self._obs = self._obs[indices]
+        self._action = self._action[indices]
+        self._reward = self._reward[indices]
+        self._terminated = self._terminated[indices]
+        self._privileged_obs = self._privileged_obs[indices]
+        self._return = self._return[indices]
+        self._action_logprob = self._action_logprob[indices]
+
+    def sample_all(self) -> tuple:
         return (
             torch.FloatTensor(self._obs[:self._size - 1]).to(self._device),
             torch.FloatTensor(self._privileged_obs[:self._size - 1]).to(self._device),

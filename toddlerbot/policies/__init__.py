@@ -136,6 +136,9 @@ class BasePolicy(ABC):
     def is_done(self, obs: Obs) -> bool:
         return False
     
+    def is_truncated(self) -> bool:
+        return False
+
     def reset(self) -> Obs:
         pass
     

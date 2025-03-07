@@ -4,6 +4,8 @@ CommandsConfig.command_obs_indices = []
 
 ObsConfig.num_single_obs = 1
 ObsConfig.num_single_privileged_obs = 1
-ObsConfig.frame_stack = 15
+ObsConfig.frame_stack = 5
+
+ActionConfig.action_scale = 1.5
 
 ActionConfig.filter_type = "ema"

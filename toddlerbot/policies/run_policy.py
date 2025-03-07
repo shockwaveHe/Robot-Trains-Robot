@@ -368,7 +368,7 @@ def run_policy(
 
             control_inputs, motor_target, obs = policy.step(obs, "real" in sim.name)
 
-            if policy.is_done(obs):
+            if policy.is_done(obs) or policy.is_truncated():
                 # TODO: add is_done to more policies
                 step_idx = 0
                 start_time = time.time()
@@ -436,7 +436,7 @@ def run_policy(
         ipdb.post_mortem()
     finally:
         p_bar.close()
-
+        policy.close()
         if vis_type == "render" and hasattr(sim, "save_recording"):
             assert isinstance(sim, MuJoCoSim)
             sim.save_recording(exp_folder_path, policy.control_dt, 2)
