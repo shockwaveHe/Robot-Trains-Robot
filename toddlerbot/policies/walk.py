@@ -92,7 +92,7 @@ class WalkPolicy(MJXPolicy, policy_name="walk"):
         Returns:
             Tuple[Dict[str, float], npt.NDArray[np.float32]]: A tuple containing the control inputs as a dictionary and the motor target as a NumPy array.
         """
-        control_inputs, motor_target = super().step(obs, is_real)
+        control_inputs, motor_target, _ = super().step(obs, is_real)
 
         if len(self.command_list) >= int(1 / self.control_dt):
             last_commands = self.command_list[-int(1 / self.control_dt) :]
@@ -101,4 +101,4 @@ class WalkPolicy(MJXPolicy, policy_name="walk"):
         else:
             self.is_standing = False
 
-        return control_inputs, motor_target
+        return control_inputs, motor_target, None

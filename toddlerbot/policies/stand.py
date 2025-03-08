@@ -40,6 +40,6 @@ class StandPolicy(BasePolicy, policy_name="stand"):
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
             )
-            return {}, action
+            return {}, action, None
 
-        return {}, self.default_motor_pos
+        return {}, self.default_motor_pos, None

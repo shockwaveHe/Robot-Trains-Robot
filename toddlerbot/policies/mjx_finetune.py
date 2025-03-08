@@ -13,12 +13,15 @@ from toddlerbot.policies.mjx_policy import MJXPolicy
 from toddlerbot.finetuning.replay_buffer import OnlineReplayBuffer, RemoteReplayBuffer
 from toddlerbot.finetuning.server_client import RemoteClient
 from toddlerbot.finetuning.dynamics import DynamicsNetwork, BaseDynamics
-from toddlerbot.finetuning.utils import Timer
+from toddlerbot.finetuning.utils import Timer, CONST_EPS
 from toddlerbot.reference.walk_zmp_ref import WalkZMPReference
 from toddlerbot.sim.robot import Robot
 from toddlerbot.finetuning.networks import load_jax_params, load_jax_params_into_pytorch
 import toddlerbot.finetuning.networks as networks
-from toddlerbot.finetuning.abppo import AdaptiveBehaviorProximalPolicyOptimization, ABPPO_Offline_Learner
+from toddlerbot.finetuning.abppo import (
+    AdaptiveBehaviorProximalPolicyOptimization,
+    ABPPO_Offline_Learner,
+)
 from toddlerbot.finetuning.ppo import PPO
 from toddlerbot.finetuning.finetune_config import FinetuneConfig
 from toddlerbot.utils.math_utils import (
@@ -27,7 +30,7 @@ from toddlerbot.utils.math_utils import (
     euler2mat,
 )
 from toddlerbot.utils.comm_utils import ZMQNode, ZMQMessage
-from toddlerbot.utils.misc_utils import log, profile
+from toddlerbot.utils.misc_utils import log
 from toddlerbot.finetuning.logger import FinetuneLogger
 
 try:
@@ -70,7 +73,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             joystick,
             fixed_command,
             env_cfg,
-            need_warmup=False
+            need_warmup=False,
             *args,
             **kwargs,
         )
@@ -109,8 +112,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         print(
             f"Observation size: {self.obs_size}, Privileged observation size: {self.privileged_obs_size}"
         )
-        
-        if self.finetune_cfg.update_mode == 'local':
+
+        if self.finetune_cfg.update_mode == "local":
             self.replay_buffer = OnlineReplayBuffer(
                 self.device,
                 self.obs_size * self.num_obs_history,
@@ -122,14 +125,21 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             )
             self.remote_client = None
         else:
-            assert self.finetune_cfg.update_mode == 'remote'
+            assert self.finetune_cfg.update_mode == "remote"
             self.remote_client = RemoteClient(
-                server_ip='192.168.0.227', 
+                server_ip="192.168.0.227",
                 server_port=5007,
                 exp_folder=self.exp_folder,
             )
-            self.replay_buffer = RemoteReplayBuffer(self.remote_client, self.finetune_cfg.buffer_size, num_obs_history=self.num_obs_history, num_privileged_obs_history=self.num_privileged_obs_history, enlarge_when_full=self.finetune_cfg.update_interval * self.finetune_cfg.enlarge_when_full)
-        
+            self.replay_buffer = RemoteReplayBuffer(
+                self.remote_client,
+                self.finetune_cfg.buffer_size,
+                num_obs_history=self.num_obs_history,
+                num_privileged_obs_history=self.num_privileged_obs_history,
+                enlarge_when_full=self.finetune_cfg.update_interval
+                * self.finetune_cfg.enlarge_when_full,
+            )
+
         # import pickle
         # with open('buffer_mock.pkl', 'rb') as f:
         #     self.replay_buffer: OnlineReplayBuffer = pickle.load(f)
@@ -155,6 +165,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         print(f"Loading pretrained model from {policy_path}")
         jax_params = load_jax_params(policy_path)
         load_jax_params_into_pytorch(self.policy_net, jax_params[1]["params"])
+
+        if self.finetune_cfg.use_residual:
+            self._make_residual_policy()
 
         self.obs_history = np.zeros(self.num_obs_history * self.obs_size)
         self.privileged_obs_history = np.zeros(
@@ -190,10 +203,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         if len(ckpts) > 0:
             self.load_ckpts(ckpts)
-        
+
         if self.is_real:
             input("press ENTER to start")
-
 
     def load_ckpts(self, ckpts):
         for ckpt in ckpts:
@@ -207,7 +219,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
             for _ in range(self.finetune_cfg.abppo_update_steps):
                 self.offline_abppo_learner.update(self.replay_buffer)
-            
+
             # import ipdb; ipdb.set_trace()
             self.policy_net.load_state_dict(self.abppo._policy_net.state_dict())
             assert not torch.allclose(
@@ -217,13 +229,12 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             self.logger.plot_queue.put(
                 (self.logger.plot_updates, [])
             )  # no-blocking plot
-    
 
     def close(self):
         self.sim.close()
         self.logger.close()
         self.zmq_receiver.close()
-        if self.finetune_cfg.update_mode == 'local':
+        if self.finetune_cfg.update_mode == "local":
             save_networks = input("Save networks? y/n:")
             while save_networks not in ["y", "n"]:
                 save_networks = input("Save networks? y/n:")
@@ -254,8 +265,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             action_size=action_size,
             activation_fn=activation_fn,
         ).to(self.inference_device)
-        if self.is_real:
-            self.policy_net_opt = torch.compile(self.policy_net)
+        self.policy_net_opt = (
+            torch.compile(self.policy_net) if self.is_real else self.policy_net
+        )
         # Create value network
         self.value_net = networks.ValueNetwork(
             observation_size=privileged_observation_size,
@@ -286,6 +298,21 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         ).to(self.device)
 
         self.dynamics = BaseDynamics(self.device, self.dynamics_net, self.finetune_cfg)
+
+    def _make_residual_policy(self):
+        self.base_policy_net = deepcopy(self.policy_net)
+        # make the last layer of the residual policy network to have zero weights, we will only tune the residual network
+        self.policy_net.mlp.layers[-1].weight.data = torch.zeros_like(
+            self.policy_net.mlp.layers[-1].weight
+        )
+        self.policy_net.mlp.layers[-1].bias.data = torch.zeros_like(
+            self.policy_net.mlp.layers[-1].bias
+        )
+        self.base_policy_net.requires_grad_(False)
+        self.base_policy_net.eval()
+        self.base_policy_net_opt = (
+            torch.compile(self.base_policy_net) if self.is_real else self.base_policy_net
+        )
 
     def _init_tracker(self):
         self.tracker = tools.ObjectTracker(self.finetune_cfg.vicon_ip)
@@ -415,7 +442,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
     def _make_learners(self):
         """Make PPO learners with a PyTorch implementation."""
         self.abppo = AdaptiveBehaviorProximalPolicyOptimization(
-            self.device, self.policy_net, self.finetune_cfg
+            self.device,
+            self.self.policy_net,
+            self.finetune_cfg,
         )
         self.offline_abppo_learner = ABPPO_Offline_Learner(
             self.device,
@@ -431,7 +460,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             self.finetune_cfg,
             self.policy_net,
             self.value_net,
-            self.logger
+            self.logger,
+            self.base_policy_net if self.finetune_cfg.use_residual else None,
         )
 
     def _sample_command(self, last_command: Optional[np.ndarray] = None) -> np.ndarray:
@@ -541,30 +571,35 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         return self.obs_history, self.privileged_obs_history
 
+    @torch.no_grad()
     def get_action(
         self, obs_arr: np.ndarray, deterministic: bool = True, is_real: bool = False
     ) -> Tuple[np.ndarray, Dict[str, Any]]:
         # import ipdb; ipdb.set_trace()
-        obs_tensor = (
-            torch.as_tensor(obs_arr, dtype=torch.float32).squeeze(0)
-        )
-        with torch.no_grad():
-            if self.is_real:
-                action_dist = self.policy_net_opt(obs_tensor.to(self.inference_device))
-            else:
-                action_dist = self.policy_net(obs_tensor.to(self.device))
-            if deterministic:
-                # Deterministic: use mode
-                actions = action_dist.base_dist.mode
-                for transform in action_dist.transforms:
-                    actions = transform(actions)
-                log_prob = action_dist.log_prob(actions).sum()
-            else:
-                # Stochastic: sample raw pre-tanh actions
-                actions = action_dist.sample() # action is transformed so no need to clamp
-                log_prob = action_dist.log_prob(actions).sum()
-            return actions.cpu().numpy().flatten(), log_prob.cpu().numpy().flatten()
+        obs_tensor = torch.as_tensor(obs_arr, dtype=torch.float32).squeeze(0)
+        # TODO: change name to reuse _opt networks
+        action_dist = self.policy_net_opt(obs_tensor.to(self.inference_device))
 
+        if deterministic:
+            # Deterministic: use mode
+            actions_pi = action_dist.base_dist.mode
+            for transform in action_dist.transforms:
+                actions_pi = transform(actions_pi)
+        else:
+            # Stochastic: sample raw pre-tanh actions
+            actions_pi = action_dist.sample()  # action is transformed so no need to clamp
+        log_prob = action_dist.log_prob(actions_pi).sum()
+
+        if self.finetune_cfg.use_residual:
+            base_action_dist = self.base_policy_net_opt(obs_tensor.to(self.inference_device))
+            base_actions = base_action_dist.base_dist.mode
+            for transform in base_action_dist.transforms:
+                base_actions = transform(base_actions)
+            actions_real = actions_pi + base_actions
+        else:
+            actions_real = actions_pi
+        actions_real.clamp_(-1.0 + CONST_EPS, 1.0 - CONST_EPS)
+        return actions_pi.cpu().numpy().flatten(), actions_real.cpu().numpy().flatten(), log_prob.cpu().numpy().flatten()
 
     def reset(self, obs: Obs = None):
         # mjx policy reset
@@ -652,17 +687,17 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             obs_arr, privileged_obs_arr = self.get_obs(
                 obs, command, phase_signal, last_action
             )
-            action, _ = self.get_action(obs_arr, deterministic=True, is_real=False)
+            action_pi, action_real, _ = self.get_action(obs_arr, deterministic=True, is_real=False)
             obs.state_ref = self.state_ref[:29]
             feet_pos = self.sim.get_feet_pos()
             feet_y_dist = feet_pos["left"][1] - feet_pos["right"][1]
             obs.feet_y_dist = feet_y_dist
-            reward_dict = self._compute_reward(obs, action)
+            reward_dict = self._compute_reward(obs, action_real)
             total_reward += sum(reward_dict.values()) * self.control_dt
 
             obs = self.sim.get_observation()
             step_curr += 1
-            last_action = action
+            last_action = action_real
 
         self.sim.save_recording(self.exp_folder, self.sim.dt, cameras=["perspective"])
         print(f"Rollout sim for {step_curr} steps with reward: {total_reward}")
@@ -702,12 +737,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
     def update_policy(self):
         self.timer.stop()
         if self.is_real:
-            self.zmq_sender.send_msg(
-                ZMQMessage(time=time.time(), is_stopped=True)
-            )
-        self.logger.plot_queue.put(
-            (self.logger.plot_rewards, [])
-        )  # no-blocking plot
+            self.zmq_sender.send_msg(ZMQMessage(time=time.time(), is_stopped=True))
+        self.logger.plot_queue.put((self.logger.plot_rewards, []))  # no-blocking plot
         self.replay_buffer.compute_return(self.finetune_cfg.gamma)
         org_policy_net = deepcopy(self.policy_net)
 
@@ -716,27 +747,30 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 self.offline_abppo_learner.update(self.replay_buffer)
             self.policy_net.load_state_dict(self.abppo._policy_net.state_dict())
         elif self.learning_stage == "online":
-            self.online_ppo_learner.update(self.replay_buffer, self.total_steps - self.finetune_cfg.offline_total_steps)
-            self.policy_net.load_state_dict(self.online_ppo_learner._policy_net.state_dict())
+            self.online_ppo_learner.update(
+                self.replay_buffer,
+                self.total_steps - self.finetune_cfg.offline_total_steps,
+            )
+            self.policy_net.load_state_dict(
+                self.online_ppo_learner._policy_net.state_dict()
+            )
 
         assert not torch.allclose(
             org_policy_net.mlp.layers[0].weight,
             self.policy_net.mlp.layers[0].weight,
         )
-        self.logger.plot_queue.put(
-            (self.logger.plot_updates, [])
-        )  # no-blocking plot
-        if getattr(self, "state_ref", None) is not None: # hack to only rollout in walk tasks.
+        self.logger.plot_queue.put((self.logger.plot_updates, []))  # no-blocking plot
+        if (
+            getattr(self, "state_ref", None) is not None
+        ):  # hack to only rollout in walk tasks.
             self.rollout_sim()
         if self.is_real:
             self.need_reset = True
-            self.zmq_sender.send_msg(
-                ZMQMessage(time=time.time(), is_stopped=False)
-            )
+            self.zmq_sender.send_msg(ZMQMessage(time=time.time(), is_stopped=False))
         self.timer.start()
 
     def switch_learning_stage(self):
-        if self.finetune_cfg.update_mode == 'local' and len(self.replay_buffer) > 0:
+        if self.finetune_cfg.update_mode == "local" and len(self.replay_buffer) > 0:
             # self.update_policy()
             self.offline_abppo_learner.fit_q_v(self.replay_buffer)
             save_offline_buffer = input("Save offline buffer? y/n:")
@@ -749,7 +783,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.online_ppo_learner.set_networks(self.value_net, self.policy_net)
         assert torch.allclose(
             self.value_net.mlp.layers[0].weight,
-            self.offline_abppo_learner._value_net.mlp.layers[0].weight
+            self.offline_abppo_learner._value_net.mlp.layers[0].weight,
         )
         print("Switched to online learning!")
 
@@ -766,22 +800,22 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 end_time=5.0 if is_real else 0.0,
             )
         if obs.time < self.prep_duration:
-            action = np.asarray(
+            motor_target = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
             )
-            return {}, action, obs
+            return {}, motor_target, obs
 
         if self.need_reset:
             self.reset(obs)
             self.need_reset = False
-        
+
         time_curr = self.step_curr * self.control_dt
 
         msg = None
         while self.is_real and msg is None:
             msg = self.zmq_receiver.get_msg()
 
-        if self.finetune_cfg.update_mode == 'local':
+        if self.finetune_cfg.update_mode == "local":
             self.sim.set_motor_angles(obs.motor_pos)
             self.sim.forward()
             feet_pos = self.sim.get_feet_pos()
@@ -828,19 +862,23 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             print(f"Updated policy network to {self.num_updates}!")
             assert not torch.allclose(
                 self.policy_net.mlp.layers[0].weight,
-                self.remote_client.new_state_dict["mlp.layers.0.weight"]
+                self.remote_client.new_state_dict["mlp.layers.0.weight"],
             )
             self.policy_net.load_state_dict(self.remote_client.new_state_dict)
             self.remote_client.ready_to_update = False
-        deterministic = self.learning_stage == "offline" # use deterministic action during offline learning
-        action, action_logprob = self.get_action(obs_arr, deterministic=deterministic, is_real=is_real)
+        deterministic = (
+            self.learning_stage == "offline"
+        )  # use deterministic action during offline learning
+        action_pi, action_real, action_logprob = self.get_action(
+            obs_arr, deterministic=deterministic, is_real=is_real
+        )
 
         if msg is not None:
             # print(obs.lin_vel, obs.euler)
-            if self.finetune_cfg.update_mode == 'local':
-                reward_dict = self._compute_reward(obs, action)
+            if self.finetune_cfg.update_mode == "local":
+                reward_dict = self._compute_reward(obs, action_real)
                 self.last_last_action = self.last_action.copy()
-                self.last_action = action.copy()
+                self.last_action = action_real.copy()
 
                 reward = (
                     sum(reward_dict.values()) * self.control_dt
@@ -867,12 +905,20 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             if len(control_inputs) > 0 and (
                 control_inputs["walk_x"] != 0 or control_inputs["walk_y"] != 0
             ):
-                time_to_update = (self.learning_stage == "offline" and (len(self.replay_buffer) + 1) % self.finetune_cfg.update_interval == 0) or (self.learning_stage == "online" and len(self.replay_buffer) == self.finetune_cfg.online.batch_size)
-                truncated = time_to_update and self.finetune_cfg.update_mode == 'local'
+                time_to_update = (
+                    self.learning_stage == "offline"
+                    and (len(self.replay_buffer) + 1)
+                    % self.finetune_cfg.update_interval
+                    == 0
+                ) or (
+                    self.learning_stage == "online"
+                    and len(self.replay_buffer) == self.finetune_cfg.online.batch_size
+                )
+                truncated = time_to_update and self.finetune_cfg.update_mode == "local"
                 self.replay_buffer.store(
                     obs_arr,
                     privileged_obs_arr,
-                    action,
+                    action_pi,
                     reward,
                     self.is_done(obs),
                     truncated,
@@ -884,10 +930,10 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                     self.update_policy()
 
         if is_real:
-            delayed_action = action
+            delayed_action = action_real
         else:
-            self.action_buffer = np.roll(self.action_buffer, action.size)
-            self.action_buffer[: action.size] = action
+            self.action_buffer = np.roll(self.action_buffer, action_real.size)
+            self.action_buffer[: action_real.size] = action_real
             delayed_action = self.action_buffer[-self.num_action :]
 
         action_target = self.default_action + self.action_scale * delayed_action

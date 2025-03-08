@@ -272,7 +272,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
             )
-            return {}, action
+            return {}, action, None
 
         if self.jit_inference_fn is None or self.rng is None:
             self.warmup_event.wait()  # Block until the event is set
@@ -352,4 +352,4 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         self.last_action = delayed_action
         self.step_curr += 1
 
-        return control_inputs, motor_target
+        return control_inputs, motor_target, None

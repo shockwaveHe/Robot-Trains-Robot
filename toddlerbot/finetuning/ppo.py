@@ -1,4 +1,5 @@
 from copy import deepcopy
+from typing import Optional
 import torch
 import torch.nn.functional as F
 from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
@@ -11,6 +12,7 @@ from toddlerbot.finetuning.networks import GaussianPolicyNetwork, ValueNetwork
 from toddlerbot.finetuning.replay_buffer import OnlineReplayBuffer
 from toddlerbot.finetuning.finetune_config import FinetuneConfig
 from toddlerbot.finetuning.logger import FinetuneLogger
+from toddlerbot.finetuning.utils import CONST_EPS
 
 class PPO:
     def __init__(
@@ -19,7 +21,8 @@ class PPO:
         config: FinetuneConfig,
         policy_net: GaussianPolicyNetwork,
         value_net: ValueNetwork,
-        logger: FinetuneLogger
+        logger: FinetuneLogger,
+        base_policy_net: Optional[GaussianPolicyNetwork] = None,
     ):
         self.batch_size = config.online.batch_size
         self.mini_batch_size = config.online.mini_batch_size
@@ -42,7 +45,8 @@ class PPO:
         self._device = device
         self._logger = logger # TODO: improve logging, seperate online offline?
 
-        self._policy_net = deepcopy(policy_net).to(self.device)
+        self._policy_net = policy_net.to(self.device)
+        self._base_policy_net = base_policy_net.to(self.device) if base_policy_net is not None else None
         # if args.scale_strategy == 'dynamic' or args.scale_strategy == 'number': # DISCUSS
         #     self.critic = ValueReluMLP(args).to(self.device)
         # else:
@@ -76,25 +80,22 @@ class PPO:
         self._policy_net.load_state_dict(policy_net.state_dict())
         print('Successfully set networks from pretraining')
 
-    def evaluate(self, s):  # When evaluating the policy, we only use the mean
-        s = torch.unsqueeze(torch.tensor(s, dtype=torch.float), 0).to(self.device)
-        
-        a = self._policy_net(s).detach().cpu().numpy().flatten()
-        return a
-    
     def get_action(self, s, deterministic=False):
         s = torch.unsqueeze(torch.tensor(s, dtype=torch.float), 0).to(self.device)
-        
         with torch.no_grad():
             dist = self._policy_net(s)
             if deterministic:
-                a = torch.tanh(dist.base_dist.loc) # TODO: remove hardcoding
-                a_logprob = dist.log_prob(a)
+                a_pi = torch.tanh(dist.base_dist.loc)
             else:
-                a = dist.sample()  # Sample the action according to the probability distribution
-                a = torch.clamp(a, -self.max_action, self.max_action)  # [-max,max]
-                a_logprob = dist.log_prob(a)  # The log probability density of the action
-        return a.cpu().numpy().flatten(), a_logprob.cpu().numpy().flatten()
+                a_pi = dist.sample()
+            a_logprob = dist.log_prob(a_pi).sum(axis=-1, keepdim=True)
+        if self.use_residual:
+            base_dist = self._base_policy_net(s)
+            a_real = a_pi + torch.tanh(base_dist.base_dist.loc)
+            a_real.clamp_(-1.0 + CONST_EPS, 1.0 - CONST_EPS)
+        else:
+            a_real = a_pi
+        return a_pi.cpu().numpy().flatten(), a_real.cpu().numpy().flatten(), a_logprob.cpu().numpy()
 
     def update(self, replay_buffer: OnlineReplayBuffer, current_steps):
         states, sp, actions, rewards, s_, sp_, _, terms, truncs, _, a_logprob_old = replay_buffer.sample_all()

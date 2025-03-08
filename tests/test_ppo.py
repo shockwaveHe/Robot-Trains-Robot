@@ -1,3 +1,4 @@
+from typing import Optional
 import gymnasium as gym
 import torch
 import torch.nn as nn
@@ -16,6 +17,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from tqdm import tqdm
 from toddlerbot.finetuning.logger import FinetuneLogger
 import torch.nn.functional as F
+
+CONST_EPS = 1e-6
 
 # Assuming these are defined elsewhere in your codebase
 class MLP(nn.Module):
@@ -120,6 +123,7 @@ class OnlineConfig:
     use_lr_decay: bool = True
     is_clip_value: bool = False
     set_adam_eps: bool = True
+    use_residual: bool = True
 
 class GaussianPolicyNetwork(nn.Module):
     def __init__(self, observation_size: int, hidden_layers: tuple, action_size: int, preprocess_observations_fn, activation_fn=nn.SiLU):
@@ -152,7 +156,7 @@ class ValueNetwork(nn.Module):
         return self.mlp(obs).squeeze(-1)
 
 class PPO:
-    def __init__(self, device: torch.device, config: OnlineConfig, policy_net: GaussianPolicyNetwork, value_net: ValueNetwork):
+    def __init__(self, device: torch.device, config: OnlineConfig, policy_net: GaussianPolicyNetwork, value_net: ValueNetwork, base_policy_net: Optional[GaussianPolicyNetwork] = None):
         self.batch_size = config.batch_size
         self.mini_batch_size = config.mini_batch_size
         self.max_train_step = config.max_train_step
@@ -167,25 +171,32 @@ class PPO:
         self.use_grad_clip = config.use_grad_clip
         self.use_lr_decay = config.use_lr_decay
         self.use_adv_norm = config.use_adv_norm
+        self.use_residual = config.use_residual
         self.is_clip_value = config.is_clip_value
         self.device = device
         self._policy_net = deepcopy(policy_net).to(self.device)
+        self._base_policy_net = base_policy_net.to(self.device) if base_policy_net is not None else None
         self._value_net = value_net.to(self.device)
         self.optimizer_actor = torch.optim.Adam(self._policy_net.parameters(), lr=self.lr_a, eps=1e-5 if self.set_adam_eps else 1e-8)
         self.optimizer_critic = torch.optim.Adam(self._value_net.parameters(), lr=self.lr_c, eps=1e-5 if self.set_adam_eps else 1e-8)
-        self._logger = FinetuneLogger('tests/logging/ppo')
+        self._logger = FinetuneLogger('tests/logging/ppo', plot_interval_steps=500)
 
     def get_action(self, s, deterministic=False):
         s = torch.unsqueeze(torch.tensor(s, dtype=torch.float), 0).to(self.device)
         with torch.no_grad():
             dist = self._policy_net(s)
             if deterministic:
-                a = torch.tanh(dist.base_dist.loc)
-                a_logprob = dist.log_prob(a)
+                a_pi = torch.tanh(dist.base_dist.loc)
             else:
-                a = dist.sample()
-                a_logprob = dist.log_prob(a)
-        return a.cpu().numpy().flatten(), a_logprob.sum(axis=-1, keepdim=True).cpu().numpy()
+                a_pi = dist.sample()
+            a_logprob = dist.log_prob(a_pi).sum(axis=-1, keepdim=True)
+        if self.use_residual:
+            base_dist = self._base_policy_net(s)
+            a_real = a_pi + torch.tanh(base_dist.base_dist.loc)
+            a_real.clamp_(-1.0 + CONST_EPS, 1.0 - CONST_EPS)
+        else:
+            a_real = a_pi
+        return a_pi.cpu().numpy().flatten(), a_real.cpu().numpy().flatten(), a_logprob.cpu().numpy(),
 
     def update(self, replay_buffer: OnlineReplayBuffer, current_steps):
         states, sp, actions, rewards, s_, sp_, _, terms, truncs, _, a_logprob_old = replay_buffer.sample_all()
@@ -262,6 +273,18 @@ class PPO:
         for p in self.optimizer_critic.param_groups:
             p['lr'] = lr_c_now
 
+def make_residual_policy(policy_net):
+    base_policy_net = deepcopy(policy_net)
+    # make the last layer of the residual policy network to have zero weights, we will only tune the residual network
+    policy_net.mlp.layers[-1].weight.data = torch.zeros_like(
+        policy_net.mlp.layers[-1].weight
+    )
+    policy_net.mlp.layers[-1].bias.data = torch.zeros_like(
+        policy_net.mlp.layers[-1].bias
+    )
+    base_policy_net.requires_grad_(False)
+    base_policy_net.eval()
+    return policy_net, base_policy_net
 
 # Training Loop
 def train():
@@ -277,24 +300,33 @@ def train():
     replay_buffer = OnlineReplayBuffer(device, obs_dim, obs_dim, action_dim, max_size=2 * config.batch_size)
     policy_net = GaussianPolicyNetwork(obs_dim, (64, 64), action_dim, lambda x, _: x)
     value_net = ValueNetwork(obs_dim, lambda x, _: x, (64, 64))
-    ppo = PPO(device, config, policy_net, value_net)
 
-    max_steps = int(1e6)
+    if config.use_residual:
+        with open('tests/logging/ppo/policy_net.pt', 'rb') as f:
+            policy_net.load_state_dict(torch.load(f))
+        with open('tests/logging/ppo/value_net.pt', 'rb') as f:
+            value_net.load_state_dict(torch.load(f))
+        policy_net, base_policy_net = make_residual_policy(policy_net)
+    else:
+        base_policy_net = None
+    ppo = PPO(device, config, policy_net, value_net, base_policy_net)
+
+    max_steps = int(1e5)
     episode_reward = 0
     episode_steps = 0
     total_steps = 0
     s, _ = env.reset()
 
-    while total_steps < max_steps:
-        a, a_logprob = ppo.get_action(s)
-        a_env = a * action_scale + action_bias  # Scale action to [-2, 2]
+    for _ in tqdm(range(max_steps)):
+        a_pi, a_real, a_logprob = ppo.get_action(s)
+        a_env = a_real * action_scale + action_bias  # Scale action to [-2, 2]
         s_next, r, terminated, truncated, _ = env.step(a_env)
         episode_reward += r
         episode_steps += 1
         total_steps += 1
 
         # Store experience (obs and privileged_obs are the same)
-        replay_buffer.store(s, s, a, r, terminated, truncated, a_logprob)
+        replay_buffer.store(s, s, a_pi, r, terminated, truncated, a_logprob)
 
         if len(replay_buffer) >= config.batch_size:
             ppo.update(replay_buffer, total_steps)
@@ -307,6 +339,12 @@ def train():
             episode_reward = 0
             episode_steps = 0
             s, _ = env.reset()
+
+    if not config.use_residual:
+        with open('tests/logging/ppo/policy_net.pt', 'wb') as f:
+            torch.save(ppo._policy_net.state_dict(), f)
+        with open('tests/logging/ppo/value_net.pt', 'wb') as f:
+            torch.save(ppo._value_net.state_dict(), f)
 
 if __name__ == "__main__":
     train()

@@ -89,7 +89,7 @@ class FinetuneConfig:
 
     # Miscellaneous
     is_iql: bool = True # Added from argparse
-    update_mode: str = "local" # remote or local
+    update_mode: str = "remote" # remote or local
     kl_update: bool = False  # Added from argparse
     log_freq: int = 100 
     frame_stack: int = 15
@@ -118,6 +118,8 @@ class FinetuneConfig:
     healty_torso_pitch: np.ndarray = np.array([-0.5, 0.5])
     pos_error_threshold: float = 0.05
 
+    use_residual: bool = False
+
     @gin.configurable
     @dataclass
     class FinetuneRewardsConfig:
@@ -140,7 +142,7 @@ class FinetuneConfig:
         K_epochs: int = 30
         gamma: float = 0.99
         lamda: float = 0.95
-        epsilon: float = 0.05 # PPO clip ratio
+        epsilon: float = 0.1 # PPO clip ratio
         entropy_coef: float = 0.01
         lr_a: float = 1e-4
         lr_c: float = 1e-4

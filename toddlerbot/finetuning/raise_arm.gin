@@ -8,7 +8,7 @@ FinetuneConfig.dynamics_hidden_layer_sizes = (128, 64, 32)
 FinetuneConfig.num_policy = 1
 FinetuneConfig.offline_total_steps = 0
 FinetuneConfig.offline_initial_steps = 5000
-FinetuneConfig.update_mode = "local"
+FinetuneConfig.update_mode = "remote"
 FinetuneConfig.frame_stack = 5
 
 
