@@ -34,11 +34,12 @@ class FinetuneConfig:
     ope_rollout_length: int = 200
     eval_rollout_length: int = 1000
     rollout_batch_size: int = 32
-    buffer_size: int = 50_000
-    
+    buffer_size: int = 105_000
+    buffer_valid_size: int = 5000
+
     # Update configuration
     num_updates_per_batch: int = 4
-    value_update_steps: int = 256
+    value_update_steps: int = int(1e6)
     dynamics_update_steps: int = 256
     target_update_freq: int = 2  # Matches the value from the argparse config
     
@@ -77,8 +78,8 @@ class FinetuneConfig:
 
     # Behavior Cloning and BPPO
     bppo_steps: int = 1000  # Added from argparse
-    offline_initial_steps: int = 3000  # Added from argparse
-    offline_total_steps: int = 5000
+    offline_initial_steps: int = 105000  # Added from argparse
+    offline_total_steps: int = 100000
     abppo_update_steps: int = 1  # Added from argparse
     num_policy: int = 4  # Added from argparse
     is_update_old_policy: bool = True  # Added from argparse
@@ -92,6 +93,7 @@ class FinetuneConfig:
     update_mode: str = "remote" # remote or local
     kl_update: bool = False  # Added from argparse
     log_freq: int = 100 
+    valid_freq: int = 5e3
     frame_stack: int = 15
     use_double_q: bool = True  # Matches argparse (`is_double_q`)
     is_state_norm: bool = False  # Added from argparse

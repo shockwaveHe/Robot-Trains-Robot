@@ -94,6 +94,7 @@ class OnlineReplayBuffer:
         privileged_obs_dim: int,
         action_dim: int,
         max_size: int,
+        validation_size: int = 0,
         seed: int = 0,
         enlarge_when_full: int = 0,
     ):
@@ -118,6 +119,7 @@ class OnlineReplayBuffer:
         self._truncated_temp = False
 
         self._size = 0
+        self._validation_size = validation_size
         self._max_size = max_size
 
     def __len__(self):
@@ -175,19 +177,6 @@ class OnlineReplayBuffer:
             )
             pre_return = self._return[i]
 
-    def shuffle(
-        self,
-    ):
-        indices = np.arange(self._obs.shape[0])
-        self.rng.shuffle(indices)
-        self._obs = self._obs[indices]
-        self._action = self._action[indices]
-        self._reward = self._reward[indices]
-        self._terminated = self._terminated[indices]
-        self._privileged_obs = self._privileged_obs[indices]
-        self._return = self._return[indices]
-        self._action_logprob = self._action_logprob[indices]
-
     def sample_all(self) -> tuple:
         return (
             torch.FloatTensor(self._obs[: self._size - 1]).to(self._device),
@@ -203,16 +192,21 @@ class OnlineReplayBuffer:
             torch.FloatTensor(self._action_logprob[: self._size - 1]).to(self._device),
         )
 
-    def sample(self, batch_size: int) -> tuple:
+    def sample(self, batch_size: int, sample_validation: bool = False) -> tuple:
         assert self._size > 0, "Buffer is empty"
-        valid_indices = np.flatnonzero(1 - self._truncated[: self._size - 1])
+        assert self._size > self._validation_size
+        if sample_validation:
+            valid_indices = np.flatnonzero(1 - self._truncated[: self._validation_size - 1])
+        else:
+            valid_indices = np.flatnonzero(1 - self._truncated[self._validation_size: self._size - 1])
         # If the number of valid indices is less than the batch size,
         # sample with replacement; otherwise, you can sample without replacement.
         if valid_indices.size < batch_size:
             ind = self.rng.choice(valid_indices, size=batch_size, replace=True)
         else:
             ind = self.rng.choice(valid_indices, size=batch_size, replace=False)
-
+        if not sample_validation:
+            ind += self._validation_size
         return (
             torch.FloatTensor(self._obs[ind]).to(self._device),
             torch.FloatTensor(self._privileged_obs[ind]).to(self._device),
@@ -226,6 +220,9 @@ class OnlineReplayBuffer:
             torch.FloatTensor(self._return[ind]).to(self._device),
             torch.FloatTensor(self._action_logprob[ind]).to(self._device),
         )
+
+    def split_train_valid(self, valid_ratio: float) -> tuple:
+        self._validation_size = int(self._size * valid_ratio)
 
     def __getitem__(self, index):
         return (

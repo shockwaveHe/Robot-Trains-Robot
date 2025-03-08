@@ -28,6 +28,7 @@ from toddlerbot.utils.math_utils import (
     interpolate_action,
     euler2quat,
     euler2mat,
+    exponential_moving_average,
 )
 from toddlerbot.utils.comm_utils import ZMQNode, ZMQMessage
 from toddlerbot.utils.misc_utils import log
@@ -107,6 +108,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.obs_size = self.finetune_cfg.num_single_obs
         self.last_action = np.zeros(self.num_action)
         self.last_last_action = np.zeros(self.num_action)
+        self.last_action_target = self.default_action
         self.is_real = is_real
 
         print(
@@ -122,6 +124,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 self.finetune_cfg.buffer_size,
                 enlarge_when_full=self.finetune_cfg.update_interval
                 * self.finetune_cfg.enlarge_when_full,
+                validation_size=self.finetune_cfg.buffer_valid_size,
             )
             self.remote_client = None
         else:
@@ -443,7 +446,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         """Make PPO learners with a PyTorch implementation."""
         self.abppo = AdaptiveBehaviorProximalPolicyOptimization(
             self.device,
-            self.self.policy_net,
+            self.policy_net,
             self.finetune_cfg,
         )
         self.offline_abppo_learner = ABPPO_Offline_Learner(
@@ -770,6 +773,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.timer.start()
 
     def switch_learning_stage(self):
+        input('switch stage?')
         if self.finetune_cfg.update_mode == "local" and len(self.replay_buffer) > 0:
             # self.update_policy()
             self.offline_abppo_learner.fit_q_v(self.replay_buffer)
@@ -937,6 +941,12 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             delayed_action = self.action_buffer[-self.num_action :]
 
         action_target = self.default_action + self.action_scale * delayed_action
+
+        if self.filter_type == "ema":
+            action_target = exponential_moving_average(
+                self.ema_alpha, action_target, self.last_action_target
+            )
+
         self.last_action_target = action_target.copy()
 
         # motor_target = self.state_ref[13 : 13 + self.robot.nu].copy()

@@ -76,6 +76,15 @@ class ValueLearner:
 
         return value_loss.item()
 
+    def valid(
+        self, replay_buffer: OnlineReplayBuffer
+    ) -> float:
+        valid_losses = []
+        for _ in range(100):
+            _, s, _, _, _, _, _, _, _, Return, _ = replay_buffer.sample(self._batch_size, sample_validation=True)
+            value_loss = F.mse_loss(self._value(s), Return.squeeze())
+            valid_losses.append(value_loss.item())
+        return sum(valid_losses) / len(valid_losses)
 
     def save(
         self, path: str

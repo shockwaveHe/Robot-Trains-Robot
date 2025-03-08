@@ -45,8 +45,8 @@ class PPO:
         self._device = device
         self._logger = logger # TODO: improve logging, seperate online offline?
 
-        self._policy_net = policy_net.to(self.device)
-        self._base_policy_net = base_policy_net.to(self.device) if base_policy_net is not None else None
+        self._policy_net = deepcopy(policy_net).to(self.device) # deepcopy to keep policy on inference device
+        self._base_policy_net = deepcopy(base_policy_net).to(self.device) if base_policy_net is not None else None
         # if args.scale_strategy == 'dynamic' or args.scale_strategy == 'number': # DISCUSS
         #     self.critic = ValueReluMLP(args).to(self.device)
         # else:

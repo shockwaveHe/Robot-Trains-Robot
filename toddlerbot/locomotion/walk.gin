@@ -25,3 +25,5 @@ RewardScales.collision = 0.1
 RewardScales.stand_still = 1.0
 RewardScales.align_ground = 1.0
 RewardScales.energy = 0.05
+
+ActionConfig.filter_type = "ema"

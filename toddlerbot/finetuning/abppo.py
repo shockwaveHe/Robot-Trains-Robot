@@ -354,7 +354,7 @@ class ABPPO_Offline_Learner:
 
     def fit_q_v(self, replay_buffer: OnlineReplayBuffer):
         print("fitting q_v ......")
-        value_loss, Q_loss = 0.0, 0.0
+        value_loss, Q_loss, valid_loss = 0.0, 0.0, 0.0
         pbar = tqdm(range(int(self._config.value_update_steps)))
         if not self._config.is_iql:
             replay_buffer.compute_return(self._config.gamma)
@@ -362,11 +362,15 @@ class ABPPO_Offline_Learner:
             if self._config.is_iql:
                 Q_loss, value_loss = self._iql_learner.update(replay_buffer=replay_buffer)
             else:
-                Q_loss = self._q_learner.update(replay_buffer=replay_buffer)
+                # Q_loss = self._q_learner.update(replay_buffer=replay_buffer)
+                Q_loss = 0.0
                 value_loss = self._value_learner.update(replay_buffer=replay_buffer)
+                if step % self._config.valid_freq == 0:
+                    valid_loss = self._value_learner.valid(replay_buffer)
+                    self._logger.log_update(valid_loss=valid_loss)
             if step % self._config.log_freq == 0:
                 self._logger.log_update(q_loss=Q_loss, value_loss=value_loss)
-            pbar.set_description(f'value loss {value_loss:.6f}, Q loss {Q_loss:.6f}')
+            pbar.set_description(f'value loss {value_loss:.6f}, Q loss {Q_loss:.6f}, valid loss {valid_loss:.6f}')
 
     def fit_dynamics(self, replay_buffer: OnlineReplayBuffer):
         print('fitting dynamics ......')
