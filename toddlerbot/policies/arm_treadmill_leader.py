@@ -108,7 +108,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
             pass
         
     def update_speed(self, obs: Obs):
-        if time.time() - self.treadmill_pause_time < 2.0:
+        if time.time() - self.treadmill_pause_time < 1:
             return
         
         self.ee_force_x_ema = self.ee_force_x_ema_alpha * self.ee_force_x_ema + (1 - self.ee_force_x_ema_alpha) * obs.ee_force[0]

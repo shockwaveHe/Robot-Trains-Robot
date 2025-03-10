@@ -51,7 +51,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         if finetune_cfg is None:
             finetune_cfg = get_finetune_config("raise_arm", exp_folder)
         # import ipdb; ipdb.set_trace()
-       
+
         self.finetune_cfg: FinetuneConfig = finetune_cfg
 
         self.timer = Timer()

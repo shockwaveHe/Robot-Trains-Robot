@@ -371,6 +371,9 @@ class ABPPO_Offline_Learner:
             if step % self._config.log_freq == 0:
                 self._logger.log_update(q_loss=Q_loss, value_loss=value_loss)
             pbar.set_description(f'value loss {value_loss:.6f}, Q loss {Q_loss:.6f}, valid loss {valid_loss:.6f}')
+        # if not self._config.is_iql:
+        #     self._value_net.load_state_dict(self._value_learner._best_model_dict)
+        #     print('best value model loaded')
 
     def fit_dynamics(self, replay_buffer: OnlineReplayBuffer):
         print('fitting dynamics ......')

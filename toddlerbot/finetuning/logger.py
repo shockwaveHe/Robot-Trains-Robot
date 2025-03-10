@@ -17,7 +17,7 @@ class FinetuneLogger:
     def __init__(
         self,
         exp_folder: str,
-        log_interval_steps: int = 3,
+        log_interval_steps: int = 5,
         plot_interval_steps: int = 1000,
         update_csv: str = "training_updates.csv",
         reward_csv: str = "training_rewards.csv",
@@ -173,8 +173,8 @@ class FinetuneLogger:
                 self.reward_term_histories[existing_rname].append(0.0)
 
         # optionally write CSV line
-        # if self.env_step_counter % self.log_interval_steps == 0:
-        #     self._write_reward_csv_line()
+        if self.env_step_counter % self.log_interval_steps == 0:
+            self._write_reward_csv_line()
 
         # optionally update reward plots
         if self.env_step_counter % self.plot_interval_steps == 0:
@@ -272,7 +272,7 @@ class FinetuneLogger:
             if term.startswith("rew_"):
                 data = np.array(self.reward_term_histories[term])
                 if self.smooth_factor:
-                    data = self._ema(data, 0.99)
+                    data = self._ema(data, 0.995)
                 term_data[term] = data
 
         # Assume that all reward-term arrays have the same length.
@@ -280,21 +280,20 @@ class FinetuneLogger:
         steps = np.arange(T)
 
         # Compute the total reward at each time step.
-        total = np.zeros(T, dtype=float)
+        total = 1e-8
         try:
             for key, data in term_data.items():
-                total += data
+                total += data.mean()
         except ValueError as _:
             import traceback
             traceback.print_exc()
             print(key, data.shape)
         # Avoid division by zero (if total is 0 at any step)
-        total[total == 0] = 1e-8
 
         # Compute the proportion of each reward term at each time step.
         term_props = {}
         for term, data in term_data.items():
-            term_props[term] = data / total
+            term_props[term] = data.mean() / total
 
         # Sort the reward terms by their overall (e.g. average) proportion,
         # so that the term with the highest average is at the bottom of the stack.
@@ -302,7 +301,8 @@ class FinetuneLogger:
         sorted_terms = sorted(avg_props, key=avg_props.get, reverse=True)
 
         # Prepare the data in sorted order.
-        props_sorted = [term_data[term] for term in sorted_terms]
+        props_len = min([len(term_data[term]) for term in sorted_terms])
+        props_sorted = [term_data[term][:props_len] for term in sorted_terms]
         # Create the stacked area plot.
         fig2, ax2 = plt.subplots(figsize=(10, 6))
         # Generate distinct colors for each term (using, e.g., tab10)
@@ -345,8 +345,8 @@ class FinetuneLogger:
         # if self.update_step_counter % self.log_interval_steps == 0:
         #     self._flush_update_csv()
         
-        if self.update_step_counter % self.plot_interval_steps == 0:
-            self.plot_queue.put((self.plot_updates, []))
+        # if self.update_step_counter % self.plot_interval_steps == 0:
+        #     self.plot_queue.put((self.plot_updates, []))
 
 
     def _flush_update_csv(self):

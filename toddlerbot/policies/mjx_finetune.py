@@ -146,7 +146,6 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         # import pickle
         # with open('buffer_mock.pkl', 'rb') as f:
         #     self.replay_buffer: OnlineReplayBuffer = pickle.load(f)
-        print(f"Buffer size: {self.finetune_cfg.buffer_size}")
         self._make_networks(
             observation_size=self.finetune_cfg.frame_stack * self.obs_size,
             privileged_observation_size=self.finetune_cfg.frame_stack
@@ -171,6 +170,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         if self.finetune_cfg.use_residual:
             self._make_residual_policy()
+            self._residual_action_scale = self.finetune_cfg.residual_action_scale
 
         self.obs_history = np.zeros(self.num_obs_history * self.obs_size)
         self.privileged_obs_history = np.zeros(
@@ -598,7 +598,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             base_actions = base_action_dist.base_dist.mode
             for transform in base_action_dist.transforms:
                 base_actions = transform(base_actions)
-            actions_real = actions_pi + base_actions
+            actions_real = self._residual_action_scale * actions_pi + base_actions
         else:
             actions_real = actions_pi
         actions_real.clamp_(-1.0 + CONST_EPS, 1.0 - CONST_EPS)
@@ -773,7 +773,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.timer.start()
 
     def switch_learning_stage(self):
-        input('switch stage?')
+        # input('switch stage?')
         if self.finetune_cfg.update_mode == "local" and len(self.replay_buffer) > 0:
             # self.update_policy()
             self.offline_abppo_learner.fit_q_v(self.replay_buffer)
@@ -782,7 +782,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 save_offline_buffer = input("Save offline buffer? y/n:")
             if save_offline_buffer == "y":
                 self.replay_buffer.save_compressed(self.exp_folder)
-            self.replay_buffer.reset()
+        self.replay_buffer.reset()
         self.learning_stage = "online"
         self.online_ppo_learner.set_networks(self.value_net, self.policy_net)
         assert torch.allclose(
@@ -843,7 +843,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             if msg.is_stopped:
                 self.stopped = True
                 print("Stopped!")
-                return {}, np.zeros(self.num_action)
+                return {}, np.zeros(self.num_action), obs
         else:
             obs.is_done = False
         # import ipdb; ipdb.set_trace()
@@ -876,7 +876,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         action_pi, action_real, action_logprob = self.get_action(
             obs_arr, deterministic=deterministic, is_real=is_real
         )
-
+        obs.raw_action_mean = action_pi.mean()
+        obs.base_action_mean = (action_real - action_pi).mean()
         if msg is not None:
             # print(obs.lin_vel, obs.euler)
             if self.finetune_cfg.update_mode == "local":

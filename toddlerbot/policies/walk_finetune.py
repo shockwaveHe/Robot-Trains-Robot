@@ -29,7 +29,7 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
         is_real: bool = True,
     ):
         if env_cfg is None:
-            env_cfg = get_env_config("walk", exp_folder)
+            env_cfg = get_env_config("walk")
         if finetune_cfg is None:
             finetune_cfg = get_finetune_config("walk", exp_folder)
         self.cycle_time = env_cfg.action.cycle_time
@@ -37,7 +37,7 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
 
         self.torso_roll_range = finetune_cfg.finetune_rewards.torso_roll_range
         self.torso_pitch_range = finetune_cfg.finetune_rewards.torso_pitch_range
-
+        self.last_torso_yaw = 0.0
         self.max_feet_air_time = self.cycle_time / 2.0
         self.min_feet_y_dist = finetune_cfg.finetune_rewards.min_feet_y_dist
         self.max_feet_y_dist = finetune_cfg.finetune_rewards.max_feet_y_dist
@@ -90,7 +90,7 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
             self.is_standing = all_zeros and abs(self.phase_signal[0]) > 1 - 1e-6
         else:
             self.is_standing = False
-
+        self.last_torso_yaw = obs.euler[2]
         return control_inputs, motor_target, obs
 
     def _reward_torso_pos(self, obs: Obs, action: np.ndarray) -> np.ndarray:
@@ -243,6 +243,12 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
         ) / 2
         return reward
 
+    def _reward_torso_yaw_vel(self, obs: Obs, action: np.ndarray) -> float:
+        """Reward for torso yaw velocity"""
+        torso_yaw_vel = obs.ang_vel[2]
+        reward = -np.abs(torso_yaw_vel)
+        return reward
+    
     # def _reward_feet_air_time(self, obs: Obs, action: np.ndarray) -> float:
     #     # Reward air time.
     #     contact_filter = np.logical_or(info["stance_mask"], info["last_stance_mask"])

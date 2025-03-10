@@ -36,10 +36,10 @@ class FinetuneConfig:
     rollout_batch_size: int = 32
     buffer_size: int = 105_000
     buffer_valid_size: int = 5000
-
+    
     # Update configuration
     num_updates_per_batch: int = 4
-    value_update_steps: int = int(1e6)
+    value_update_steps: int = int(1e4)
     dynamics_update_steps: int = 256
     target_update_freq: int = 2  # Matches the value from the argparse config
     
@@ -78,8 +78,8 @@ class FinetuneConfig:
 
     # Behavior Cloning and BPPO
     bppo_steps: int = 1000  # Added from argparse
-    offline_initial_steps: int = 105000  # Added from argparse
-    offline_total_steps: int = 100000
+    offline_initial_steps: int = 0  # Added from argparse
+    offline_total_steps: int = 0
     abppo_update_steps: int = 1  # Added from argparse
     num_policy: int = 4  # Added from argparse
     is_update_old_policy: bool = True  # Added from argparse
@@ -89,11 +89,11 @@ class FinetuneConfig:
     eval_step: int = 200  # Added from argparse
 
     # Miscellaneous
-    is_iql: bool = True # Added from argparse
+    is_iql: bool = False # Added from argparse
     update_mode: str = "remote" # remote or local
     kl_update: bool = False  # Added from argparse
-    log_freq: int = 100 
-    valid_freq: int = 5e3
+    log_freq: int = 10 
+    valid_freq: int = 1e3
     frame_stack: int = 15
     use_double_q: bool = True  # Matches argparse (`is_double_q`)
     is_state_norm: bool = False  # Added from argparse
@@ -121,6 +121,7 @@ class FinetuneConfig:
     pos_error_threshold: float = 0.05
 
     use_residual: bool = False
+    residual_action_scale: float = 0.1
 
     @gin.configurable
     @dataclass
@@ -139,9 +140,9 @@ class FinetuneConfig:
     class OnlineConfig:
         # base parameters for online PPO
         max_train_step: int = 1e6
-        batch_size: int = 512
+        batch_size: int = 1024
         mini_batch_size: int = 128
-        K_epochs: int = 30
+        K_epochs: int = 20
         gamma: float = 0.99
         lamda: float = 0.95
         epsilon: float = 0.1 # PPO clip ratio
@@ -166,6 +167,7 @@ class FinetuneConfig:
         torso_quat: float = 0.0
         torso_roll: float = 0.0
         torso_pitch: float = 0.0
+        torso_yaw_vel: float = 0.0
         lin_vel_xy: float = 0.0
         lin_vel_z: float = 0.0
         ang_vel_xy: float = 0.0

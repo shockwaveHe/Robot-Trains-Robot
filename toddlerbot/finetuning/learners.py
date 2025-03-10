@@ -49,12 +49,15 @@ class ValueLearner:
         super().__init__()
         self._device = device
         self._value = value_net.to(device)
+        self._value_opt = torch.compile(self._value)
         self._optimizer = torch.optim.Adam(
             self._value.parameters(), 
             lr=config.value_lr,
             )
         # self._scheduler = LinearCosineScheduler(self._optimizer, config.warmup_steps, config.decay_steps)
         self._batch_size = config.value_batch_size
+        self._best_valid_loss = float('inf')
+        self._best_model_dict = deepcopy(self._value.state_dict())
 
 
     def __call__(
@@ -67,7 +70,7 @@ class ValueLearner:
         self, replay_buffer: OnlineReplayBuffer
     ) -> float:
         _, s, _, _, _, _, _, _, _, Return, _ = replay_buffer.sample(self._batch_size)
-        value_loss = F.mse_loss(self._value(s), Return.squeeze())
+        value_loss = F.mse_loss(self._value_opt(s), Return.squeeze())
         # import ipdb; ipdb.set_trace()
         self._optimizer.zero_grad()
         value_loss.backward()
@@ -84,7 +87,12 @@ class ValueLearner:
             _, s, _, _, _, _, _, _, _, Return, _ = replay_buffer.sample(self._batch_size, sample_validation=True)
             value_loss = F.mse_loss(self._value(s), Return.squeeze())
             valid_losses.append(value_loss.item())
-        return sum(valid_losses) / len(valid_losses)
+        valid_loss = sum(valid_losses) / len(valid_losses)
+        if valid_loss < self._best_valid_loss:
+            self._best_valid_loss = valid_loss
+            self._best_model_dict = deepcopy(self._value.state_dict())
+            print(f'Best model updated with valid loss {valid_loss}')
+        return valid_loss
 
     def save(
         self, path: str
@@ -244,7 +252,36 @@ class IQL_QV_Learner:
 
 
         return q_loss.item(), value_loss.item()
-        
+    
+    @torch.no_grad()
+    def valid(self, replay_buffer: OnlineReplayBuffer) -> float:
+        valid_q_losses = []
+        valid_v_losses = []
+        for _ in range(100):
+            _, s, a, r, _, s_n, _, term, _, _, _ = replay_buffer.sample(self._batch_size, sample_validation=True)
+            # Compute value loss
+            self._Q_net.eval()
+            self._value_net.eval()
+            with torch.no_grad():
+                target_q = self._Q_net(s, a)
+                value = self._value_net(s)
+                value_loss = self.expectile_loss(target_q - value).mean()
+                valid_v_losses.append(value_loss.item())
+            # Compute critic loss
+            with torch.no_grad():
+                next_v = self._value_net(s_n)
+                target_q = r + (1 - term) * self._gamma * next_v
+                if self._is_double_q: 
+                    current_q1, current_q2 = self._Q_net(s, a, return_min=False)
+                    q_loss = ((current_q1 - target_q)**2 + (current_q2 - target_q)**2).mean()
+                else:
+                    Q = self._Q_net(s, a)
+                    q_loss = F.mse_loss(Q, target_q)
+                valid_q_losses.append(q_loss.item())
+        valid_q_loss = sum(valid_q_losses) / len(valid_q_losses)
+        valid_v_loss = sum(valid_v_losses) / len(valid_v_losses)
+        return valid_q_loss, valid_v_loss
+    
     def get_advantage(self, s, a)->torch.Tensor:
         return self._Q_net(s, a) - self._value_net(s)
     

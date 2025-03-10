@@ -90,6 +90,7 @@ class MJXConfig:
         torso_quat: float = 0.0  # 1.0
         torso_roll: float = 0.0
         torso_pitch: float = 0.0
+        torso_yaw_vel: float = 0.0
         lin_vel_xy: float = 1.0
         lin_vel_z: float = 1.0
         ang_vel_xy: float = 1.0

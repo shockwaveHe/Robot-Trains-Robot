@@ -166,6 +166,7 @@ class OnlineReplayBuffer:
 
     def reset(self):
         self._size = 0
+        self._raw_obs.clear()
         self._truncated_temp = False
         self.is_overwriting = False
 
@@ -178,18 +179,19 @@ class OnlineReplayBuffer:
             pre_return = self._return[i]
 
     def sample_all(self) -> tuple:
+        current_size = self._size
         return (
-            torch.FloatTensor(self._obs[: self._size - 1]).to(self._device),
-            torch.FloatTensor(self._privileged_obs[: self._size - 1]).to(self._device),
-            torch.FloatTensor(self._action[: self._size - 1]).to(self._device),
-            torch.FloatTensor(self._reward[: self._size - 1]).to(self._device),
-            torch.FloatTensor(self._obs[1 : self._size]).to(self._device),
-            torch.FloatTensor(self._privileged_obs[1 : self._size]).to(self._device),
-            torch.FloatTensor(self._action[1 : self._size]).to(self._device),
-            torch.FloatTensor(self._terminated[: self._size - 1]).to(self._device),
-            torch.FloatTensor(self._truncated[: self._size - 1]).to(self._device),
-            torch.FloatTensor(self._return[: self._size - 1]).to(self._device),
-            torch.FloatTensor(self._action_logprob[: self._size - 1]).to(self._device),
+            torch.FloatTensor(self._obs[: current_size - 1]).to(self._device),
+            torch.FloatTensor(self._privileged_obs[: current_size - 1]).to(self._device),
+            torch.FloatTensor(self._action[: current_size - 1]).to(self._device),
+            torch.FloatTensor(self._reward[: current_size - 1]).to(self._device),
+            torch.FloatTensor(self._obs[1 : current_size]).to(self._device),
+            torch.FloatTensor(self._privileged_obs[1 : current_size]).to(self._device),
+            torch.FloatTensor(self._action[1 : current_size]).to(self._device),
+            torch.FloatTensor(self._terminated[: current_size - 1]).to(self._device),
+            torch.FloatTensor(self._truncated[: current_size - 1]).to(self._device),
+            torch.FloatTensor(self._return[: current_size - 1]).to(self._device),
+            torch.FloatTensor(self._action_logprob[: current_size - 1]).to(self._device),
         )
 
     def sample(self, batch_size: int, sample_validation: bool = False) -> tuple:
@@ -246,7 +248,7 @@ class OnlineReplayBuffer:
             terminals=self._terminated[: self._size],
             truncated=self._truncated[: self._size],
             returns=self._return[: self._size],
-            anvanatage=self._action_logprob[: self._size],
+            advantage=self._action_logprob[: self._size],
             size=self._size,
         )
         with open(os.path.join(path, "raw_obs.pkl"), "wb") as f:
@@ -268,7 +270,7 @@ class OnlineReplayBuffer:
         if "truncated" in data.keys():
             self._truncated[self._size : self._size + data_size] = data["truncated"]
         self._return[self._size : self._size + data_size] = data["returns"]
-        self._action_logprob[self._size : self._size + data_size] = data["anvanatage"]
+        self._action_logprob[self._size : self._size + data_size] = data["advantage"]
         self._truncated[self._size + data_size - 1] = True
         if os.path.exists(os.path.join(path, "raw_obs.pkl")):
             with open(os.path.join(path, "raw_obs.pkl"), "rb") as f:
