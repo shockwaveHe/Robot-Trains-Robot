@@ -123,7 +123,7 @@ class OnlineConfig:
     use_lr_decay: bool = True
     is_clip_value: bool = False
     set_adam_eps: bool = True
-    use_residual: bool = True
+    use_residual: bool = False
 
 class GaussianPolicyNetwork(nn.Module):
     def __init__(self, observation_size: int, hidden_layers: tuple, action_size: int, preprocess_observations_fn, activation_fn=nn.SiLU):
@@ -301,11 +301,11 @@ def train():
     policy_net = GaussianPolicyNetwork(obs_dim, (64, 64), action_dim, lambda x, _: x)
     value_net = ValueNetwork(obs_dim, lambda x, _: x, (64, 64))
 
+    with open('tests/logging/ppo/policy_net.pt', 'rb') as f:
+        policy_net.load_state_dict(torch.load(f))
+    with open('tests/logging/ppo/value_net.pt', 'rb') as f:
+        value_net.load_state_dict(torch.load(f))
     if config.use_residual:
-        with open('tests/logging/ppo/policy_net.pt', 'rb') as f:
-            policy_net.load_state_dict(torch.load(f))
-        with open('tests/logging/ppo/value_net.pt', 'rb') as f:
-            value_net.load_state_dict(torch.load(f))
         policy_net, base_policy_net = make_residual_policy(policy_net)
     else:
         base_policy_net = None

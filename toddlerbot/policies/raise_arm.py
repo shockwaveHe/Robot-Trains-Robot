@@ -81,18 +81,19 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         self.rng = np.random.default_rng()
         self.num_obs_history = self.cfg.obs.frame_stack
         self.obs_size = self.finetune_cfg.num_single_obs
-        self.last_action = np.zeros(self.num_action)
-        self.last_last_action = np.zeros(self.num_action)
+
         self.is_real = False # hardcode to False for zmq, etc.
 
-        self.shoulder_motor_idx = 16
+        self.shoulder_motor_idx = [16, 19, 21, 23, 26, 28]
         self.motor_speed_limits = np.array([0.05])
         self.hand_z_dist_base = 0.266
         self.arm_radius = 0.1685
         self.hand_z_dist_terminal = 0.43
-        self.action_mask = np.array([self.shoulder_motor_idx])
+        self.action_mask = np.array(self.shoulder_motor_idx)
         self.num_action = self.action_mask.shape[0]
         self.default_action = self.default_motor_pos[self.action_mask]
+        self.last_action = np.zeros(self.num_action)
+        self.last_last_action = np.zeros(self.num_action)
         self.last_action_target = self.default_action
         self.last_raw_action = None
         self.is_stopped = False
@@ -126,6 +127,10 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
             value_hidden_layer_sizes=self.finetune_cfg.value_hidden_layer_sizes,
             policy_hidden_layer_sizes=self.finetune_cfg.policy_hidden_layer_sizes,
         )
+        # self.load_networks('results/stored/toddlerbot_raise_arm_real_world_20250309_172254', data_only=False)
+
+        if self.finetune_cfg.use_residual:
+            self._make_residual_policy()
 
         self.obs_history = np.zeros(self.num_obs_history * self.obs_size)
         self.privileged_obs_history = np.zeros(
@@ -154,11 +159,43 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
             self.load_ckpts(ckpts)
         input("press ENTER to start")
 
-    def get_obs(self, obs: Obs, command: np.ndarray=None, phase_signal=None, last_action=None) -> Obs:
+    def get_obs(
+        self, obs: Obs, command: np.ndarray=None, phase_signal=None, last_action=None
+    ) -> Tuple[np.ndarray, np.ndarray]:
         motor_pos_delta = obs.motor_pos - self.default_motor_pos
-        # import ipdb; ipdb.set_trace()
-        obs_arr = motor_pos_delta[self.shoulder_motor_idx] * self.obs_scales.dof_pos
-        privileged_obs_arr = motor_pos_delta[self.shoulder_motor_idx] * self.obs_scales.dof_pos
+        # state_ref_ds = np.asarray(self.motion_ref.get_state_ref_ds(self.state_ref, 0.0, command))
+        # self.state_ref = np.asarray(
+        #     self.motion_ref.get_state_ref(self.state_ref, 0.0, command)
+        # )
+
+        obs_arr = np.concatenate(
+            [
+                # self.phase_signal if phase_signal is None else phase_signal,  # (2, )
+                # command[self.command_obs_indices],  # (3, )
+                motor_pos_delta * self.obs_scales.dof_pos,  # (30, )
+                obs.motor_vel * self.obs_scales.dof_vel,  # (30, )
+                # self.last_action if last_action is None else last_action,  # (12, )
+                # motor_pos_error,
+                # obs.lin_vel * self.obs_scales.lin_vel,
+                obs.ang_vel * self.obs_scales.ang_vel,  # (3, )
+                obs.euler * self.obs_scales.euler,  # (3, )
+            ]
+        )
+        privileged_obs_arr = np.concatenate(
+            [
+                # self.phase_signal if phase_signal is None else phase_signal,  # (2, )
+                # command[self.command_obs_indices],  # (3, )
+                motor_pos_delta * self.obs_scales.dof_pos,  # (30, )
+                obs.motor_vel * self.obs_scales.dof_vel,  # (30, )
+                # self.last_action if last_action is None else last_action,  # (12, )
+                obs.motor_pos,  # (30, ) change from motor_pos_error
+                obs.lin_vel * self.obs_scales.lin_vel,  # (3, )
+                obs.ang_vel * self.obs_scales.ang_vel,  # (3, )
+                obs.euler * self.obs_scales.euler,  # (3, )
+                # obs.ee_force * self.obs_scales.ee_force,  # (3, )
+                # obs.ee_torque * self.obs_scales.ee_torque,  # (3, )
+            ]
+        )
 
         self.obs_history = np.roll(self.obs_history, obs_arr.size)
         self.obs_history[: obs_arr.size] = obs_arr
@@ -166,8 +203,9 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
             self.privileged_obs_history, privileged_obs_arr.size
         )
         self.privileged_obs_history[: privileged_obs_arr.size] = privileged_obs_arr
+
         return self.obs_history, self.privileged_obs_history
-    
+
     def get_raw_action(self, obs: Obs) -> np.ndarray:
         motor_target = obs.motor_pos.copy()
         action_target = motor_target[self.action_mask]
@@ -181,7 +219,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         raw_action = (action_target - self.default_action) / self.action_scale
         return raw_action
 
-    # TODO: add a timeout and truncation?
+       # TODO: add a timeout and truncation?
     def step(self, obs: Obs, is_real: bool = True):
         if self.need_reset:
             self.reset(obs)
@@ -199,18 +237,18 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
             )
         cur_time = time.time()
         if cur_time - self.traj_start_time < self.prep_duration:
-            action = np.asarray(
+            motor_target = np.asarray(
                 interpolate_action(time.time() - self.traj_start_time, self.prep_time, self.prep_action)
             )
-            return {}, action, obs
+            return {}, motor_target, obs
 
         if self.finetune_cfg.update_mode == 'local':
             self.sim.set_motor_angles(obs.motor_pos)
             self.sim.forward()
             hand_pos = self.sim.get_hand_pos()
-            hand_z_dist = hand_pos["left"][2]
-            if hand_z_dist > self.max_hand_z:
-                self.max_hand_z = hand_z_dist
+            hand_z_dist = np.array([hand_pos["left"][2], hand_pos["right"][2]])
+            if hand_z_dist.max() > self.max_hand_z:
+                self.max_hand_z = hand_z_dist.max()
                 print(f"max z reached: {self.max_hand_z}")
             obs.hand_z_dist = hand_z_dist
 
@@ -232,16 +270,16 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
             self.remote_client.ready_to_update = False
         
         if self.learning_stage == "online": # use deterministic action during offline learning
-            action, action_logprob = self.get_action(obs_arr, deterministic=False, is_real=is_real)
+            action_pi, action_real, action_logprob = self.get_action(obs_arr, deterministic=False, is_real=is_real)
         else:
             # data collection stage
-            action = self.get_raw_action(obs)
+            action_pi = self.get_raw_action(obs)
             action_logprob = 0.0
 
         if self.finetune_cfg.update_mode == 'local':
-            reward_dict = self._compute_reward(obs, action)
+            reward_dict = self._compute_reward(obs, action_real)
             self.last_last_action = self.last_action.copy()
-            self.last_action = action.copy()
+            self.last_action = action_pi.copy()
 
             reward = (
                 sum(reward_dict.values())
@@ -250,8 +288,10 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
                 reward_dict,
                 obs,
                 reward=reward,
-                hand_z_dist=obs.hand_z_dist,
-                action=action[0]
+                hand_z_dist_left=obs.hand_z_dist[0],
+                hand_z_dist_right=obs.hand_z_dist[1],
+                action_pi=action_pi[0],
+                action_real=action_real[0],
             )
         else:
             reward = 0.0
@@ -275,7 +315,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         self.replay_buffer.store(
             obs_arr,
             privileged_obs_arr,
-            action,
+            action_pi,
             reward,
             self.is_done(obs),
             truncated,
@@ -288,10 +328,10 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
             # import ipdb; ipdb.set_trace()
 
         if is_real:
-            delayed_action = action
+            delayed_action = action_real
         else:
-            self.action_buffer = np.roll(self.action_buffer, action.size)
-            self.action_buffer[: action.size] = action
+            self.action_buffer = np.roll(self.action_buffer, action_real.size)
+            self.action_buffer[: action_real.size] = action_real
             delayed_action = self.action_buffer[-self.num_action :]
         # import ipdb; ipdb.set_trace()
 
@@ -339,7 +379,8 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
             self.replay_buffer.save_compressed(self.exp_folder)
 
     def is_done(self, obs: Obs) -> bool:
-        return obs.hand_z_dist > self.hand_z_dist_terminal
+        # TODO potentially some bugs after is done
+        return obs.hand_z_dist.max() > self.hand_z_dist_terminal
 
     def is_truncated(self) -> bool:
         return self.current_steps >= self.step_limit
@@ -367,7 +408,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
     # h = r * (1 - cos(theta))
     # theta = acos(1 - h / r)
     def _reward_arm_position(self, obs: Obs, action: np.ndarray) -> np.ndarray:
-        return np.arccos(1 - np.clip(obs.hand_z_dist - self.hand_z_dist_base, 0, np.inf) / self.arm_radius)
+        return np.arccos(1 - np.clip(obs.hand_z_dist - self.hand_z_dist_base, 0, np.inf) / self.arm_radius).sum()
 
     def _reward_arm_action_rate(self, obs: Obs, action: np.ndarray) -> np.ndarray:
         error = np.square(action - self.last_action)

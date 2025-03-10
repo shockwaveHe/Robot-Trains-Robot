@@ -181,7 +181,7 @@ class RemoteServer:
                             feet_y_dist = feet_pos["left"][1] - feet_pos["right"][1]
                             raw_obs.feet_y_dist = feet_y_dist
                             hand_pos = self.policy.sim.get_hand_pos()
-                            raw_obs.hand_z_dist = hand_pos["left"][2]
+                            raw_obs.hand_z_dist = np.array([hand_pos["left"][2], hand_pos["right"][2]])
                             reward_dict = self.policy._compute_reward(raw_obs, msg['a'])
                             reward = sum(reward_dict.values()) * self.policy.control_dt
                             self.policy.last_last_action = self.policy.last_action.copy()
@@ -203,6 +203,8 @@ class RemoteServer:
                                 current_Q=current_Q,
                                 current_value=current_value,
                                 current_adv=current_adv,
+                                raw_action=raw_obs.raw_action_mean,
+                                base_action=raw_obs.base_action_mean,
                                 # walk_command=control_inputs["walk_x"],
                             )
                             replay_buffer.store(

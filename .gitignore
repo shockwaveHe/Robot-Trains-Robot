@@ -183,3 +183,4 @@ standard_bot
 # Datasets
 **/.DS_Store
 tests
+*.pkl
