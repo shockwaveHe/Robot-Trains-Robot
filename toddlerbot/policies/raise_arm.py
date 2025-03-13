@@ -154,7 +154,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
             robot, vis_type=self.finetune_cfg.sim_vis_type, hang_force=0.0, n_frames=1
         )
 
-        self.control_dt = 0.001
+        self.control_dt = 0.02
         if len(ckpts) > 0:
             self.load_ckpts(ckpts)
         input("press ENTER to start")

@@ -70,7 +70,7 @@ class ValueLearner:
         self, replay_buffer: OnlineReplayBuffer
     ) -> float:
         _, s, _, _, _, _, _, _, _, Return, _ = replay_buffer.sample(self._batch_size)
-        value_loss = F.mse_loss(self._value_opt(s), Return.squeeze())
+        value_loss = F.mse_loss(self._value_opt(s).squeeze(), Return.squeeze())
         # import ipdb; ipdb.set_trace()
         self._optimizer.zero_grad()
         value_loss.backward()
@@ -85,7 +85,7 @@ class ValueLearner:
         valid_losses = []
         for _ in range(100):
             _, s, _, _, _, _, _, _, _, Return, _ = replay_buffer.sample(self._batch_size, sample_validation=True)
-            value_loss = F.mse_loss(self._value(s), Return.squeeze())
+            value_loss = F.mse_loss(self._value(s).squeeze(), Return.squeeze())
             valid_losses.append(value_loss.item())
         valid_loss = sum(valid_losses) / len(valid_losses)
         if valid_loss < self._best_valid_loss:
@@ -132,6 +132,7 @@ class QLearner:
 
         self._gamma = config.gamma
         self._batch_size = config.value_batch_size
+        self._best_valid_loss = float('inf')
 
 
     def __call__(
@@ -143,11 +144,11 @@ class QLearner:
     def update(
         self, replay_buffer: OnlineReplayBuffer
     ) -> float:
-        _, s, a, r, _, s_n, a_n, term, _, _, _ = replay_buffer.sample(self._batch_size)
-        with torch.no_grad():
-            target_Q = r.squeeze() + (1 - term.squeeze()) * self._gamma * self._target_Q(s_n, a_n)
-        Q = self._Q(s, a)
-        Q_loss = F.mse_loss(Q, target_Q.squeeze())
+        _, s, a, r, _, s_n, a_n, term, _, Return, _ = replay_buffer.sample(self._batch_size)
+        # with torch.no_grad():
+        #     target_Q = r.squeeze() + (1 - term.squeeze()) * self._gamma * self._target_Q(s_n, a_n)
+        Q = self._Q(s, a).squeeze()
+        Q_loss = F.mse_loss(Q, Return.squeeze())
         self._optimizer.zero_grad()
         Q_loss.backward()
         self._optimizer.step()
@@ -159,6 +160,22 @@ class QLearner:
 
         return Q_loss.item()
 
+    def valid(
+        self, replay_buffer: OnlineReplayBuffer
+    ) -> float:
+        valid_losses = []
+        for _ in range(100):
+            _, s, a, r, _, s_n, a_n, term, _, Return, _ = replay_buffer.sample(self._batch_size, sample_validation=True)
+            with torch.no_grad():
+                Q = self._Q(s, a).squeeze()
+                Q_loss = F.mse_loss(Q, Return.squeeze())
+                valid_losses.append(Q_loss.item())
+        valid_loss = sum(valid_losses) / len(valid_losses)
+        if valid_loss < self._best_valid_loss:
+            self._best_valid_loss = valid_loss
+            self._best_model_dict = deepcopy(self._Q.state_dict())
+            print(f'Best model updated with valid loss {valid_loss}')
+        return valid_loss
 
     def save(
         self, path: str
@@ -208,6 +225,10 @@ class IQL_QV_Learner:
             self._value_net.parameters(), 
             lr=config.value_lr,
             )
+        self.best_q_loss = float('inf')
+        self.best_v_loss = float('inf')
+        self._best_q_state = deepcopy(self._Q_net.state_dict())
+        self._best_v_state = deepcopy(self._value_net.state_dict())
 
     def expectile_loss(self, loss: torch.Tensor)->torch.Tensor:
         weight = torch.where(loss > 0, self._omega, (1 - self._omega))
@@ -280,6 +301,14 @@ class IQL_QV_Learner:
                 valid_q_losses.append(q_loss.item())
         valid_q_loss = sum(valid_q_losses) / len(valid_q_losses)
         valid_v_loss = sum(valid_v_losses) / len(valid_v_losses)
+        if valid_q_loss < self.best_q_loss:
+            self.best_q_loss = valid_q_loss
+            self._best_q_state = deepcopy(self._Q_net.state_dict())
+            print(f'Best Q model updated with valid loss {valid_q_loss}')
+        if valid_v_loss < self.best_v_loss:
+            self.best_v_loss = valid_v_loss
+            self._best_v_state = deepcopy(self._value_net.state_dict())
+            print(f'Best V model updated with valid loss {valid_v_loss}')
         return valid_q_loss, valid_v_loss
     
     def get_advantage(self, s, a)->torch.Tensor:

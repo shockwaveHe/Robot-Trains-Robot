@@ -829,21 +829,20 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.control_inputs = {}
         lin_vel, _ = self.get_tracking_data()
         # print('ang_vel:', ang_vel - obs.ang_vel, 'euler:', euler - obs.euler)
-        if msg is not None:
-            control_inputs = msg.control_inputs
-            obs.ee_force = msg.arm_force
-            obs.ee_torque = msg.arm_torque
-            obs.arm_ee_pos = msg.arm_ee_pos
-            obs.lin_vel = msg.lin_vel + lin_vel
-            # obs.ang_vel = ang_vel
-            # obs.euler = euler
-            obs.is_done = msg.is_done
-            obs.state_ref = self.state_ref[:29]
-            # print("control inputs:", control_inputs)
-            if msg.is_stopped:
-                self.stopped = True
-                print("Stopped!")
-                return {}, np.zeros(self.num_action), obs
+        control_inputs = msg.control_inputs
+        obs.ee_force = msg.arm_force
+        obs.ee_torque = msg.arm_torque
+        obs.arm_ee_pos = msg.arm_ee_pos
+        obs.lin_vel = msg.lin_vel + lin_vel
+        # obs.ang_vel = ang_vel
+        # obs.euler = euler
+        obs.is_done = msg.is_done
+        obs.state_ref = self.state_ref[:29]
+        # print("control inputs:", control_inputs)
+        if msg.is_stopped:
+            self.stopped = True
+            print("Stopped!")
+            return {}, np.zeros(self.num_action), obs
         else:
             obs.is_done = False
         # import ipdb; ipdb.set_trace()
@@ -854,7 +853,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         self.phase_signal = self.get_phase_signal(
             time_curr
-        )  # TODO: should this similar to obs.time?
+        ) 
         obs_arr, privileged_obs_arr = self.get_obs(obs, command)
 
         if self.total_steps == self.finetune_cfg.offline_total_steps:

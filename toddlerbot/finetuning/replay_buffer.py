@@ -194,21 +194,23 @@ class OnlineReplayBuffer:
             torch.FloatTensor(self._action_logprob[: current_size - 1]).to(self._device),
         )
 
-    def sample(self, batch_size: int, sample_validation: bool = False) -> tuple:
+    def sample(self, batch_size: int, sample_validation: bool = False, no_term=False) -> tuple:
         assert self._size > 0, "Buffer is empty"
         assert self._size > self._validation_size
-        if sample_validation:
-            valid_indices = np.flatnonzero(1 - self._truncated[: self._validation_size - 1])
+        # import ipdb; ipdb.set_trace()
+        if no_term:
+            valid_indices = np.flatnonzero((1 - self._terminated) * (1 - self._truncated))
         else:
-            valid_indices = np.flatnonzero(1 - self._truncated[self._validation_size: self._size - 1])
+            valid_indices = np.flatnonzero(1 - self._truncated)
+        valid_indices = valid_indices[: self._validation_size - 1] if sample_validation else valid_indices[self._validation_size:-1]
+
         # If the number of valid indices is less than the batch size,
         # sample with replacement; otherwise, you can sample without replacement.
         if valid_indices.size < batch_size:
             ind = self.rng.choice(valid_indices, size=batch_size, replace=True)
         else:
             ind = self.rng.choice(valid_indices, size=batch_size, replace=False)
-        if not sample_validation:
-            ind += self._validation_size
+
         return (
             torch.FloatTensor(self._obs[ind]).to(self._device),
             torch.FloatTensor(self._privileged_obs[ind]).to(self._device),

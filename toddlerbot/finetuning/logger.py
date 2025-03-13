@@ -345,8 +345,8 @@ class FinetuneLogger:
         # if self.update_step_counter % self.log_interval_steps == 0:
         #     self._flush_update_csv()
         
-        # if self.update_step_counter % self.plot_interval_steps == 0:
-        #     self.plot_queue.put((self.plot_updates, []))
+        if self.update_step_counter % self.plot_interval_steps == 0:
+            self.plot_queue.put((self.plot_updates, []))
 
 
     def _flush_update_csv(self):
