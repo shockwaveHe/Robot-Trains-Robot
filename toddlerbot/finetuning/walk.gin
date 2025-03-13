@@ -30,3 +30,4 @@ OnlineConfig.epsilon = 0.1
 
 FinetuneConfig.use_residual = True
 FinetuneConfig.residual_action_scale = 0.1
+FinetuneConfig.update_mode = "local"

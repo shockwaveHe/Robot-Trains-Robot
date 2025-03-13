@@ -230,7 +230,6 @@ class GaussianPolicyNetwork(nn.Module):
     ) -> torch.distributions.transformed_distribution.TransformedDistribution:
         obs = self.preprocess_observations_fn(obs, processer_params)
         mu, log_std = self.mlp(obs).chunk(2, dim=-1)
-        # import ipdb; ipdb.set_trace()
         log_std = soft_clamp(log_std, self._log_std_bound[0], self._log_std_bound[1])
         std = log_std.exp()
         dist = Normal(mu, std)
