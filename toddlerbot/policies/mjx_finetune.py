@@ -130,7 +130,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         else:
             assert self.finetune_cfg.update_mode == "remote"
             self.remote_client = RemoteClient(
-                server_ip="192.168.0.227",
+                server_ip="172.24.68.176",
                 server_port=5007,
                 exp_folder=self.exp_folder,
             )
@@ -809,15 +809,29 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             )
             return {}, motor_target, obs
 
+        msg = None
+        while self.is_real and msg is None:
+            msg = self.zmq_receiver.get_msg()
+
+        if self.is_paused:
+            return {}, obs.motor_pos, obs
+
+        if msg.is_paused and not self.is_paused:
+            self.timer.stop()
+            self.is_paused = True
+            print("Paused!")
+        elif not msg.is_paused and self.is_paused:
+            self.need_reset = True
+            self.is_prepared = False
+            self.is_paused = False
+            print("Resumed!")
+            return {}, motor_target, obs
+
         if self.need_reset:
             self.reset(obs)
             self.need_reset = False
 
         time_curr = self.step_curr * self.control_dt
-
-        msg = None
-        while self.is_real and msg is None:
-            msg = self.zmq_receiver.get_msg()
 
         if self.finetune_cfg.update_mode == "local":
             self.sim.set_motor_angles(obs.motor_pos)
@@ -925,7 +939,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                     action_pi,
                     reward,
                     self.is_done(obs),
-                    truncated,
+                    truncated or self.is_paused,
                     action_logprob,
                     raw_obs=deepcopy(obs),
                 )

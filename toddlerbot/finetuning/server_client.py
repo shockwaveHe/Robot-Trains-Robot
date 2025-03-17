@@ -173,7 +173,7 @@ class RemoteServer:
                                 )
                                 privileged_obs_history[: latest_priv.size] = latest_priv
 
-                            # Use the original OnlineReplayBuffer's store method.
+                            log_dict = {}
                             if self.policy.name == 'walk_finetune' or self.policy.name == 'raise_arm':
                                 raw_obs = msg['raw_obs']
                                 self.policy.sim.set_motor_angles(raw_obs.motor_pos)
@@ -182,9 +182,11 @@ class RemoteServer:
                             if self.policy.name == 'walk_finetune':
                                 feet_pos = self.policy.sim.get_feet_pos()
                                 feet_y_dist = feet_pos["left"][1] - feet_pos["right"][1]
+                                log_dict['feet_y_dist'] = feet_y_dist
                                 raw_obs.feet_y_dist = feet_y_dist
                             elif self.policy.name == 'raise_arm':
                                 hand_pos = self.policy.sim.get_hand_pos()
+                                log_dict['hand_z_dist'] = hand_pos["left"][2]
                                 raw_obs.hand_z_dist = np.array([hand_pos["left"][2], hand_pos["right"][2]])
                             elif self.policy.name == 'swing':
                                 self.policy.fx_buffer.append(msg['raw_obs'].ee_force[0])
@@ -193,9 +195,9 @@ class RemoteServer:
                                 if len(self.policy.fx_buffer) < self.policy.swing_buffer_size // 2:
                                     continue
                                 self.policy.Ax, self.policy.freq_x, self.policy.phase_x, self.policy.offset_x, self.policy.error_x = self.policy._fit_sine_to_buffer(self.fx_buffer)
+                                log_dict['Ax'], log_dict['freq_x'], log_dict['error_x'] = self.policy.Ax, self.policy.freq_x, self.policy.error_x
                             reward_dict = self.policy._compute_reward(raw_obs, msg['a'])
                             reward = sum(reward_dict.values()) * self.policy.control_dt
-                            import ipdb; ipdb.set_trace()
                             self.policy.last_last_action = self.policy.last_action.copy()
                             self.policy.last_action = msg['a'].copy()
                             current_Q = self.policy.Q_net(
@@ -210,13 +212,12 @@ class RemoteServer:
                                 reward_dict,
                                 raw_obs,
                                 reward=reward,
-                                feet_dist=feet_y_dist,
-                                hand_dist=hand_pos["left"][2],
                                 current_Q=current_Q,
                                 current_value=current_value,
                                 current_adv=current_adv,
                                 raw_action=raw_obs.raw_action_mean,
                                 base_action=raw_obs.base_action_mean,
+                                **log_dict
                                 # walk_command=control_inputs["walk_x"],
                             )
                             replay_buffer.store(

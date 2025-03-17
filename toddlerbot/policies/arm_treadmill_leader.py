@@ -96,6 +96,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         self.speed_period = 60.0
         self.walk_speed_range = [0.2, 0.2]
 
+        self.paused = False
         self.treadmill_pause_time = time.time()
 
     def close(self):
@@ -186,6 +187,12 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         control_inputs = {"walk_x": self.walk_x, "walk_y": self.walk_y, "walk_turn": 0.0}
 
         self.stopped = keyboard_inputs["stop"]
+        if self.paused and keyboard_inputs["resume"]:
+            print("Resuming the system")
+            self.paused = False
+        if not self.paused and keyboard_inputs["pause"]:
+            print("Pausing the system")
+            self.paused = True
         self.update_speed(obs)
         self.speed += keyboard_inputs["speed_delta"]
         self.force += keyboard_inputs["force_delta"]
@@ -206,6 +213,13 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
             control_inputs = {"walk_x": 0.0, "walk_y": 0.0, "walk_turn": 0.0}
             print("Stopping the system")
 
+        if self.paused:
+            self.speed = 0.0
+            self.walk_x = 0.0
+            self.walk_y = 0.0
+            # How to stop at current pose
+            control_inputs = {"walk_x": 0.0, "walk_y": 0.0, "walk_turn": 0.0}
+
         # compile data to send to follower
         assert control_inputs is not None
         lin_vel = obs.arm_ee_vel.copy()
@@ -221,24 +235,16 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
             arm_ee_pos=obs.arm_ee_pos,
             lin_vel=lin_vel, # TODO: check if this is correct
             is_done=is_done,
-            is_stopped=self.stopped
+            is_stopped=self.stopped,
+            is_paused=self.paused
         )
         # import ipdb; ipdb.set_trace()
-        print(f"Speed: {self.speed}, Force: {self.force}, Walk: ({self.walk_x}, {self.walk_y}), Arm Delta: {self.z_pos_delta}")
+        # if not self.paused:
+            # print(f"Speed: {self.speed}, Force: {self.force}, Walk: ({self.walk_x}, {self.walk_y}), Arm Delta: {self.z_pos_delta}")
         self.zmq_sender.send_msg(msg)
         msg_recv = self.zmq_receiver.get_msg()
         if msg_recv is not None and msg_recv.is_stopped:
             self.timer.reset()
-            msg = ZMQMessage(
-                time=time.time(),
-                control_inputs=control_inputs,
-                arm_force=np.zeros(3),
-                arm_torque=np.zeros(3),
-                arm_ee_pos=np.zeros(3),
-                lin_vel=lin_vel,
-                is_done=True
-            ) # TODO: note that arm ee pos and vel needs to rotate 45 degree!
-            self.zmq_sender.send_msg(msg)
             self.speed = 0.0
             self.walk_x = 0.0
             self.walk_y = 0.0
@@ -259,7 +265,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
             self.serial_thread.join()
             self.arm_shm.close()
             self.arm_shm.unlink()
-        return control_inputs, action
+        return control_inputs, action, obs
 
     def serial_thread_func(self):
         # Configure the serial connection

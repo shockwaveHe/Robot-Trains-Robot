@@ -14,6 +14,8 @@ keyboard_actions = {
     "speed_delta": None,
     "force_delta": None,
     "z_pos_delta": None,
+    "pause": None,
+    "resume": None,
 }
 
 
@@ -64,6 +66,8 @@ class Keyboard:
         self.key_inputs["walk_y_delta"] = 0.0
         self.key_inputs["z_pos_delta"] = 0.0
         self.key_inputs["stop"] = False
+        self.key_inputs["pause"] = False
+        self.key_inputs["resume"] = False
 
     def on_press(self, key):
         """Handles key press events."""
@@ -99,6 +103,10 @@ class Keyboard:
                 self.key_inputs["z_pos_delta"] = -0.01
             elif key.char == "9":
                 self.key_inputs["z_pos_delta"] = 0.01
+            elif key.char == "P":
+                self.key_inputs["pause"] = True
+            elif key.char == "R":
+                self.key_inputs["resume"] = True
         except AttributeError:
             # Handle special keys (if necessary)
             pass

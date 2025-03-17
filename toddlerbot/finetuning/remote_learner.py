@@ -46,22 +46,22 @@ if __name__ == "__main__":
         is_real=False
     )
     print(policy.value_net, policy.policy_net)
-    policy.replay_buffer.load_compressed("")
-    value_net_path = "tests/value_net_all.pth"
+    # policy.replay_buffer.load_compressed("")
+    value_net_path = "tests/value_net_new.pth"
     if current_task == "walk_finetune":
         recalculate_reward = False
         if os.path.exists(value_net_path) and not recalculate_reward:
             print('existing value net found')
             policy.value_net.load_state_dict(torch.load(value_net_path))
 
-        else:
+        elif len(policy.replay_buffer) > 0:
             policy.recalculate_reward()
             policy.offline_abppo_learner.fit_q_v(policy.replay_buffer)
             policy.replay_buffer.reset()
             with open(value_net_path, 'wb') as f:
                 torch.save(policy.value_net.state_dict(), f)
         print("Replay buffer size:", len(policy.replay_buffer))
-    server = RemoteServer(host='192.168.0.227', port=5007, policy=policy)
+    server = RemoteServer(host='172.24.68.176', port=5007, policy=policy)
     server.start_receiving_data()
 
     while not server.exp_folder:
