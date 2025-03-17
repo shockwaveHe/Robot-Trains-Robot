@@ -188,6 +188,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         self.logger = FinetuneLogger(self.exp_folder)
 
+        self.is_paused = False
         self.total_steps = 0
         self.num_updates = 0
         self.timer = Timer()
@@ -794,18 +795,20 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
     # @profile()
     def step(self, obs: Obs, is_real: bool = True):
         if not self.is_prepared:
+            self.traj_start_time = time.time()
             self.is_prepared = True
-            self.prep_duration = 7.0 if is_real else 0.0
+            self.prep_duration = 5.0 if is_real else 0.0
             self.prep_time, self.prep_action = self.move(
                 -self.control_dt,
-                self.init_motor_pos,
+                obs.motor_pos,
                 self.default_motor_pos,
                 self.prep_duration,
-                end_time=5.0 if is_real else 0.0,
+                end_time=2.0 if is_real else 0.0,
             )
-        if obs.time < self.prep_duration:
+        time_curr = time.time()
+        if time_curr - self.traj_start_time < self.prep_duration:
             motor_target = np.asarray(
-                interpolate_action(obs.time, self.prep_time, self.prep_action)
+                interpolate_action(time_curr - self.traj_start_time, self.prep_time, self.prep_action)
             )
             return {}, motor_target, obs
 
@@ -813,8 +816,6 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         while self.is_real and msg is None:
             msg = self.zmq_receiver.get_msg()
 
-        if self.is_paused:
-            return {}, obs.motor_pos, obs
 
         if msg.is_paused and not self.is_paused:
             self.timer.stop()
@@ -825,7 +826,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             self.is_prepared = False
             self.is_paused = False
             print("Resumed!")
-            return {}, motor_target, obs
+            return {}, obs.motor_pos, obs
+        if self.is_paused:
+            return {}, obs.motor_pos, obs
 
         if self.need_reset:
             self.reset(obs)
@@ -857,8 +860,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             self.stopped = True
             print("Stopped!")
             return {}, np.zeros(self.num_action), obs
-        else:
-            obs.is_done = False
+
         # import ipdb; ipdb.set_trace()
         if len(control_inputs) == 0:
             command = self.fixed_command

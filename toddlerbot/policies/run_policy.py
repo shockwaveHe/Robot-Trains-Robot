@@ -298,6 +298,7 @@ def run_policy(
     # print(timeit.timeit(lambda: policy.motion_ref.get_state_ref(policy.state_ref, 0.0, command), number=100000))
     # print(timeit.timeit(lambda: policy.motion_ref.get_state_ref_ds(policy.state_ref, 0.0, command), number=100000))
     start_time = time.time()
+    is_paused = False
     try:
         while step_idx < n_steps_total and not getattr(policy, "stopped", False):
             step_start = time.time()
@@ -376,6 +377,16 @@ def run_policy(
 
             sim.step()
             sim_step_time = time.time()
+
+            if isinstance(sim, RealWorld) and isinstance(policy, MJXFinetunePolicy):
+                if not is_paused and policy.is_paused and sim.has_dynamixel:
+                    is_paused = True
+                    sim.dynamixel_controller.client.set_torque_enabled(sim.dynamixel_controller.motor_ids, False)
+                    print("Policy Paused!")
+                if is_paused and not policy.is_paused:
+                    is_paused = False
+                    sim.dynamixel_controller.client.set_torque_enabled(sim.dynamixel_controller.motor_ids, True)
+                    print("Policy Resumed!")
 
             obs_list.append(obs)
             control_inputs_list.append(control_inputs)
