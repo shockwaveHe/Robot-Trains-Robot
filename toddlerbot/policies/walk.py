@@ -22,6 +22,7 @@ class WalkPolicy(MJXPolicy, policy_name="walk"):
         joystick: Optional[Joystick] = None,
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
         exp_folder: Optional[str] = "",
+        use_torch: bool = False,
     ):
         """Initializes the class with configuration for a walking environment.
 
@@ -32,13 +33,22 @@ class WalkPolicy(MJXPolicy, policy_name="walk"):
             ckpt (str, optional): Path to a checkpoint file for loading pre-trained models. Defaults to an empty string.
             joystick (Optional[Joystick], optional): Joystick instance for manual control. Defaults to None.
             fixed_command (Optional[npt.NDArray[np.float32]], optional): Predefined command array for the robot. Defaults to None.
+            use_torch (bool, optional): Flag indicating whether to use PyTorch for neural network models. Defaults to False.
         """
         env_cfg = get_env_config("walk")
         self.cycle_time = env_cfg.action.cycle_time
         self.command_discount_factor = np.array([0.5, 1.0, 0.75], dtype=np.float32)
 
         super().__init__(
-            name, robot, init_motor_pos, ckpt, joystick, fixed_command, env_cfg
+            name,
+            robot,
+            init_motor_pos,
+            ckpt,
+            joystick,
+            fixed_command,
+            env_cfg,
+            use_torch,
+            exp_folder,
         )
 
     def get_phase_signal(self, time_curr: float):

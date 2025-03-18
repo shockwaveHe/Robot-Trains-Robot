@@ -1,3 +1,6 @@
 [submodule "toddlerbot/brax"]
 	path = toddlerbot/brax
 	url = git@github.com:hshi74/brax.git
+[submodule "toddlerbot/rsl_rl"]
+	path = toddlerbot/rsl_rl
+	url = git@github.com:hshi74/rsl_rl.git

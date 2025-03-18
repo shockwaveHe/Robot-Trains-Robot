@@ -76,9 +76,7 @@ def set_latency_timer(latency_value: int = 1):
         modified = False
         for i, line in enumerate(lines):
             if "LATENCY_TIMER" in line:
-                if lines[i] != f"LATENCY_TIMER = {latency_value}\n":
-                    lines[i] = f"LATENCY_TIMER = {latency_value}\n"
-
+                lines[i] = f"LATENCY_TIMER = {latency_value}\n"
                 modified = True
                 break
 
@@ -269,15 +267,6 @@ class DynamixelController(BaseController):
             open_client.port_handler.is_using = False
             open_client.disconnect()
 
-    def reboot_motors(self):
-        """Reboots the Dynamixel motors.
-
-        This method reboots the motors by sending a reboot command to the Dynamixel client. It then waits for a short duration to ensure that the motors have time to reboot.
-        """
-        open_clients: List[DynamixelClient] = list(DynamixelClient.OPEN_CLIENTS)  # type: ignore
-        for open_client in open_clients:
-            open_client.reboot(self.motor_ids)
-
     # Only disable the torque, but stay connected through comm. If no id is provided, disable all motors
     def disable_motors(self, ids=None):
         """Disables the torque for specified motors or all motors if no IDs are provided.
@@ -418,7 +407,7 @@ class DynamixelController(BaseController):
 
         for i, motor_id in enumerate(self.motor_ids):
             state_dict[motor_id] = JointState(
-                time=time, pos=pos_arr[i], vel=vel_arr[i], cur=cur_arr[i]
+                time=time, pos=pos_arr[i], vel=vel_arr[i], tor=cur_arr[i]
             )
 
         # log(f"End... {time.time()}", header="Dynamixel", level="warning")

@@ -1,0 +1,10 @@
+{
+    "documentId": "1fb5d9a88ac086a053c4340b",
+    "outputFormat": "urdf",
+    "assemblyName": "sysID_XM430-W210",
+    "robotName": "sysID_XM430-W210",
+    "mergeSTLs": "all",
+    "mergeSTLsCollisions": true,
+    "simplifySTLs": "all",
+    "maxSTLSize": 1
+}

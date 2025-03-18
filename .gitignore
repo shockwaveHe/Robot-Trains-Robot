@@ -10,6 +10,9 @@ wandb/
 tests/images/
 toddlerbot/policies/checkpoints/*dp.pth
 
+toddlerbot/FoundationStereo/
+toddlerbot/depth_anything_v2/
+
 ### Python ###
 
 # Byte-compiled / optimized / DLL files

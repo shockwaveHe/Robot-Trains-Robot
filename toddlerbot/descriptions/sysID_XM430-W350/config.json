@@ -1,0 +1,50 @@
+{
+    "general": {
+        "is_fixed": true,
+        "has_imu": false,
+        "has_dynamixel": true,
+        "dynamixel_baudrate": 2000000,
+        "solref": [
+            0.004,
+            1
+        ],
+        "is_neck_closed_loop": false,
+        "is_waist_closed_loop": false,
+        "is_knee_closed_loop": false,
+        "is_ankle_closed_loop": false
+    },
+    "joints": {
+        "joint_0": {
+            "is_passive": false,
+            "transmission": "none",
+            "group": "none",
+            "lower_limit": -1.5707963267948966,
+            "upper_limit": 1.5707963267948966,
+            "damping": 0.19,
+            "armature": 0.01,
+            "frictionloss": 0.063,
+            "id": 0,
+            "type": "dynamixel",
+            "spec": "XM430-W350",
+            "control_mode": "extended_position",
+            "init_pos": 1.3700834628155487,
+            "default_pos": 0.0,
+            "kp_real": 2700.0,
+            "ki_real": 0.0,
+            "kd_real": 0.0,
+            "kff2_real": 0.0,
+            "kff1_real": 0.0,
+            "kp_sim": 21.09375,
+            "kd_sim": 0.0,
+            "tau_max": 2.9772999086218017,
+            "q_dot_max": 4.615795422549468,
+            "tau_q_dot_max": 0.07315966996344872,
+            "q_dot_tau_max": 0.5803069987704684,
+            "coeffs": [
+                -0.06500947413722895,
+                -0.3930827785415047,
+                3.2585125509033115
+            ]
+        }
+    }
+}

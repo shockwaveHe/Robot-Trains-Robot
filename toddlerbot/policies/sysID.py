@@ -60,6 +60,8 @@ class SysIDFixedPolicy(BasePolicy, policy_name="sysID"):
             kp_list: List[float] = []
             if "330" in robot.name:
                 kp_list = list(range(900, 2400, 300))
+            elif "2XL" in robot.name:
+                kp_list = list(range(300, 1200, 300))
             else:
                 kp_list = list(range(1500, 3600, 300))
 

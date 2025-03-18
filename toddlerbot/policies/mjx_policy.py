@@ -7,19 +7,47 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import numpy.typing as npt
+import torch
+import yaml
 from brax.io import model
 from brax.training.agents.ppo import networks as ppo_networks
 
+from toddlerbot.locomotion.actor_critic import ActorCritic
 from toddlerbot.locomotion.mjx_config import MJXConfig
 from toddlerbot.locomotion.ppo_config import PPOConfig
 from toddlerbot.policies import BasePolicy
-from toddlerbot.reference.motion_ref import MotionReference
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
-from toddlerbot.utils.math_utils import interpolate_action
+from toddlerbot.utils.math_utils import interpolate_action  # , soft_clamp
 
 # from toddlerbot.utils.misc_utils import profile
+
+
+def load_runner_config(train_cfg: PPOConfig):
+    with open("toddlerbot/locomotion/rsl_config.yaml", "r") as f:
+        config = yaml.safe_load(f)
+        for key, value in config["runner"].items():
+            config[key] = value
+
+        del config["runner"]
+
+        config["policy"]["actor_hidden_dims"] = train_cfg.policy_hidden_layer_sizes
+        config["policy"]["critic_hidden_dims"] = train_cfg.value_hidden_layer_sizes
+        config["max_iterations"] = train_cfg.num_timesteps // (
+            train_cfg.num_envs * train_cfg.unroll_length
+        )
+        config["save_interval"] = config["max_iterations"] // train_cfg.num_evals
+        config["num_steps_per_env"] = train_cfg.unroll_length
+        config["algorithm"]["gamma"] = train_cfg.discounting
+        config["algorithm"]["num_learning_epochs"] = train_cfg.num_updates_per_batch
+        config["algorithm"]["learning_rate"] = train_cfg.learning_rate
+        config["algorithm"]["entropy_coef"] = train_cfg.entropy_cost
+        config["algorithm"]["clip_param"] = train_cfg.clipping_epsilon
+        config["algorithm"]["num_mini_batches"] = train_cfg.num_minibatches
+        config["seed"] = train_cfg.seed
+
+    return config
 
 
 class MJXPolicy(BasePolicy, policy_name="mjx"):
@@ -34,7 +62,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         joystick: Optional[Joystick] = None,
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
         cfg: Optional[MJXConfig] = None,
-        motion_ref: Optional[MotionReference] = None,
+        use_torch: bool = False,
         exp_folder: Optional[str] = "",
         need_warmup: Optional[bool] = True,
     ):
@@ -48,8 +76,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             joystick (Optional[Joystick]): Joystick instance for manual control, if available.
             fixed_command (Optional[npt.NDArray[np.float32]]): Fixed command array, if any.
             cfg (Optional[MJXConfig]): Configuration object containing control parameters.
-            motion_ref (Optional[MotionReference]): Reference for motion planning.
-
+            use_torch (bool): Flag to indicate whether to use PyTorch for inference.
         Raises:
             AssertionError: If `cfg` is not provided.
         """
@@ -59,7 +86,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
 
         self.ckpt = ckpt
         self.cfg = cfg
-        self.motion_ref = motion_ref
+        self.use_torch = use_torch
 
         self.command_obs_indices = cfg.commands.command_obs_indices
         self.commmand_range = np.array(cfg.commands.command_range, dtype=np.float32)
@@ -112,8 +139,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         self.num_action = self.action_mask.shape[0]
         self.default_action = np.concatenate(default_action)
 
-        self.jit_inference_fn = None
-        self.rng = None
+        self.inference_fn = None
 
         # Filter
         self.filter_type = self.cfg.action.filter_type
@@ -167,46 +193,71 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             else:
                 policy_name = self.name
 
-            train_cfg = PPOConfig()
-            make_networks_factory = functools.partial(
-                ppo_networks.make_ppo_networks,
-                policy_hidden_layer_sizes=train_cfg.policy_hidden_layer_sizes,
-                value_hidden_layer_sizes=train_cfg.value_hidden_layer_sizes,
-            )
-
-            ppo_network = make_networks_factory(
-                self.cfg.obs.num_single_obs,
-                self.cfg.obs.num_single_privileged_obs,
-                self.num_action,
-            )
-            make_policy = ppo_networks.make_inference_fn(ppo_network)
-
             if len(self.ckpt) > 0:
                 run_name = f"{self.robot.name}_{policy_name}_ppo_{self.ckpt}"
-                policy_path = os.path.join("results", run_name, "best_policy")
-                if not os.path.exists(policy_path):
-                    policy_path = os.path.join("results", run_name, "policy")
+
+                if self.use_torch:
+                    policy_path = os.path.join("results", run_name, "model_best.pt")
+                else:
+                    policy_path = os.path.join("results", run_name, "best_policy")
+                    if not os.path.exists(policy_path):
+                        policy_path = os.path.join("results", run_name, "policy")
             else:
                 policy_path = os.path.join(
                     "toddlerbot", "policies", "checkpoints", f"{policy_name}_policy"
                 )
 
             print(f"Loading policy from {policy_path}")
+            train_cfg = PPOConfig()
 
-            params = model.load_params(policy_path)
-            inference_fn = make_policy(params, deterministic=True)
-            jit_inference_fn = jax.jit(inference_fn)
-            rng = jax.random.PRNGKey(0)
-            jit_inference_fn(self.obs_history, rng)[0].block_until_ready()
+            if self.use_torch:
+                runner_config = load_runner_config(train_cfg)
+                alg_class = eval(runner_config["policy"].pop("class_name"))
+                actor_critic: ActorCritic = alg_class(
+                    self.cfg.obs.num_single_obs * self.cfg.obs.frame_stack,
+                    self.cfg.obs.num_single_privileged_obs * self.cfg.obs.c_frame_stack,
+                    self.num_action,
+                    **runner_config["policy"],
+                )
+                state_dict = torch.load(policy_path, map_location="cpu")
+                actor_critic.load_state_dict(state_dict["model_state_dict"])
+                actor_critic.eval()
+
+                def policy(obs: torch.Tensor):
+                    with torch.no_grad():
+                        action = actor_critic.act_inference(obs)
+                        # action = soft_clamp(action, -1.0, 1.0)
+                        return action
+
+            else:
+                make_networks_factory = functools.partial(
+                    ppo_networks.make_ppo_networks,
+                    policy_hidden_layer_sizes=train_cfg.policy_hidden_layer_sizes,
+                    value_hidden_layer_sizes=train_cfg.value_hidden_layer_sizes,
+                )
+
+                ppo_network = make_networks_factory(
+                    self.cfg.obs.num_single_obs,
+                    self.cfg.obs.num_single_privileged_obs,
+                    self.num_action,
+                )
+                make_policy = ppo_networks.make_inference_fn(ppo_network)
+
+                params = model.load_params(policy_path)
+                inference_fn = jax.jit(make_policy(params, deterministic=True))
+                rng = jax.random.PRNGKey(0)
+
+                def policy(obs: jax.Array):
+                    return inference_fn(obs, rng)[0]
 
             # Store results in the shared container
-            result_container["jit_inference_fn"] = jit_inference_fn
-            result_container["rng"] = rng
+            result_container["inference_fn"] = policy
+
         finally:
             # Signal that the thread is done
             event.set()
 
-    def reset(self):
+    def reset(self, obs: Obs = None):
         """Resets the internal state of the policy to its initial configuration.
 
         This method clears the observation history, phase signal, command list, and action buffer. It also sets the standing state to True and initializes the last action and current step counter to zero.
@@ -269,18 +320,16 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             )
 
         if obs.time < self.prep_duration:
-            action = np.asarray(
+            action_np = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
             )
-            return {}, action, None
+            return {}, action_np, None
 
-        if self.jit_inference_fn is None or self.rng is None:
+        if self.inference_fn is None:
             self.warmup_event.wait()  # Block until the event is set
-            self.jit_inference_fn = self.warmup_result["jit_inference_fn"]
-            self.rng = self.warmup_result["rng"]
+            self.inference_fn = self.warmup_result["inference_fn"]
 
-        assert self.jit_inference_fn is not None, "jit_inference_fn is not set!"
-        assert self.rng is not None, "rng is not set!"
+        assert self.inference_fn is not None, "inference_fn is not set!"
 
         time_curr = self.step_curr * self.control_dt
 
@@ -328,14 +377,18 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
         # else:
         # obs_history = self.obs_history
 
-        jit_action, _ = self.jit_inference_fn(jnp.asarray(self.obs_history), self.rng)
-
-        action = np.asarray(jit_action, dtype=np.float32).copy()
-        if is_real:
-            delayed_action = action
+        if self.use_torch:
+            action = self.inference_fn(torch.tensor(self.obs_history))
+            action_np = action.numpy().copy()
         else:
-            self.action_buffer = np.roll(self.action_buffer, action.size)
-            self.action_buffer[: action.size] = action
+            action = self.inference_fn(jnp.asarray(self.obs_history))
+            action_np = np.asarray(action, dtype=np.float32).copy()
+
+        if is_real:
+            delayed_action = action_np
+        else:
+            self.action_buffer = np.roll(self.action_buffer, action_np.size)
+            self.action_buffer[: action_np.size] = action_np
             delayed_action = self.action_buffer[-self.num_action :]
 
         action_target = self.default_action + self.action_scale * delayed_action

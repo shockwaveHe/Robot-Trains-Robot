@@ -186,7 +186,8 @@ def get_default_config(
             if motor_name in joint_dyn_config:
                 for param_name in joint_dyn_config[motor_name]:
                     joint_dict[param_name] = joint_dyn_config[motor_name][param_name]
-            elif joint_name in joint_dyn_config:
+
+            if joint_name in joint_dyn_config:
                 for param_name in joint_dyn_config[joint_name]:
                     joint_dict[param_name] = joint_dyn_config[joint_name][param_name]
 
@@ -260,19 +261,27 @@ def main() -> None:
         else:
             general_config["ee_name"] = "hand"
         general_config["foot_name"] = "ank_roll_link"
-        general_config["offsets"] = {
-            "torso_z": 0.33605,
-            "default_torso_z": 0.3267,
-            "foot_to_com_x": 0.0027,
-            "foot_to_com_y": 0.0364,
-            "hip_roll_to_pitch_z": 0.024,
-            "hip_pitch_to_knee_z": 0.096,
-            "knee_to_ank_pitch_z": 0.1,
-            # "imu_x": 0.0282,
-            # "imu_y": 0.0,
-            # "imu_z": 0.105483,
-            # "imu_zaxis": "-1 0 0",
-        }
+        # TODO: Remove the hard code
+        if "2xm" in args.robot:
+            general_config["offsets"] = {
+                "torso_z": 0.34427,
+                "default_torso_z": 0.33544,
+                "foot_to_com_x": 0.0027,
+                "foot_to_com_y": 0.037,
+                "hip_roll_to_pitch_z": 0.02375,
+                "hip_pitch_to_knee_z": 0.1427,
+                "knee_to_ank_pitch_z": 0.1,
+            }
+        else:
+            general_config["offsets"] = {
+                "torso_z": 0.33605,
+                "default_torso_z": 0.3267,
+                "foot_to_com_x": 0.0027,
+                "foot_to_com_y": 0.037,
+                "hip_roll_to_pitch_z": 0.024,
+                "hip_pitch_to_knee_z": 0.14295,
+                "knee_to_ank_pitch_z": 0.1,
+            }
 
     # if general_config["has_imu"]:
     #     imu_config_path = os.path.join(robot_dir, "config_imu.json")
@@ -295,10 +304,19 @@ def main() -> None:
         raise ValueError(f"{motor_config_path} not found!")
 
     joint_dyn_config: Dict[str, Dict[str, float]] = {}
+    motor_name_list = [
+        str(motor_config["motor"]) for motor_config in motor_config.values()
+    ]
+    actuation_params_path = os.path.join(
+        "toddlerbot", "descriptions", "actuation_params.json"
+    )
+    for motor_name in motor_name_list:
+        with open(actuation_params_path, "r") as f:
+            actuation_params = json.load(f)
+
+        joint_dyn_config[motor_name] = actuation_params[motor_name]
+
     if "sysID" not in args.robot:
-        motor_name_list = [
-            str(motor_config["motor"]) for motor_config in motor_config.values()
-        ]
         for motor_name in motor_name_list:
             sysID_result_path = os.path.join(
                 "toddlerbot",
@@ -309,7 +327,7 @@ def main() -> None:
             with open(sysID_result_path, "r") as f:
                 sysID_result = json.load(f)
 
-            joint_dyn_config[motor_name] = sysID_result["joint_0"]
+            joint_dyn_config[motor_name].update(sysID_result["joint_0"])
 
     dynamics_config_path = os.path.join(robot_dir, "config_dynamics.json")
     if os.path.exists(dynamics_config_path):

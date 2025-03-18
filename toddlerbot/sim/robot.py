@@ -20,7 +20,6 @@ class Robot:
         self.collision_config_path = os.path.join(
             self.root_path, "config_collision.json"
         )
-        self.cache_path = os.path.join(self.root_path, f"{self.name}_cache.pkl")
 
         self.load_robot_config()
 

@@ -1,0 +1,7 @@
+{
+    "joint_0": {
+        "damping": 0.19,
+        "armature": 0.01,
+        "frictionloss": 0.063
+    }
+}

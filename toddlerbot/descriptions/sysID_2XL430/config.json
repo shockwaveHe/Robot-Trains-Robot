@@ -20,25 +20,31 @@
             "group": "none",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
-            "damping": 0.12,
-            "armature": 0.0042,
-            "frictionloss": 0.292,
+            "damping": 0.1,
+            "armature": 0.0096,
+            "frictionloss": 0.0,
             "id": 0,
             "type": "dynamixel",
             "spec": "2XL430",
             "control_mode": "extended_position",
-            "init_pos": 3.141592653589793,
+            "init_pos": 0.0,
             "default_pos": 0.0,
-            "kp_real": 2100.0,
+            "kp_real": 900.0,
             "ki_real": 0.0,
             "kd_real": 0.0,
             "kff2_real": 0.0,
             "kff1_real": 0.0,
-            "kp_sim": 16.40625,
+            "kp_sim": 7.03125,
             "kd_sim": 0.0,
-            "tau_max": 1.55,
-            "q_dot_tau_max": 3.24,
-            "q_dot_max": 19.91
+            "tau_max": 0.8005590608852245,
+            "q_dot_max": 5.730247474651529,
+            "tau_q_dot_max": 0.03811962021488902,
+            "q_dot_tau_max": 0.7145852583116885,
+            "coeffs": [
+                0.0,
+                -0.1519749825529242,
+                0.9105199721873308
+            ]
         }
     }
 }

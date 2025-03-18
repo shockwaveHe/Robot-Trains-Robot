@@ -11,8 +11,8 @@ But there are some details that we would like to further elaborate on in this se
 becomes vert quick once you're familiar with it.
 
 #. To start with, you need to 3D-print the calibration devices. You can find all the sliced plates for calibration devices in the 
-   `MakerWorld <TODO>`_. 
-   and the CAD files in the `Onshape document <https://cad.onshape.com/documents/1370cb70ae00945ee5a1ab36/w/85acc7b52cedd4ba2555673b/e/17c137b0672e3543d7aeafe2>`_.
+   `MakerWorld <https://makerworld.com/en/models/1068768>`_. 
+   and the CAD files in the `Onshape document <https://cad.onshape.com/documents/1370cb70ae00945ee5a1ab36>`_.
    
 #. When inserting the calibration devices, you may encounter friction due to the tight fit. Once secured, they should click into place, locking the joints. 
    If the joints still move, check for obstructing cables or incorrect insertion.
@@ -40,7 +40,7 @@ becomes vert quick once you're familiar with it.
 
    ::
 
-      python toddlerbot/policies/stand.py --robot <robot_name> --sim real
+      python toddlerbot/policies/run_policy.py --policy stand --robot <robot_name> --sim real
 
 
 More Fine-tuning
@@ -51,7 +51,13 @@ which could totally happen due to the backlash in the joints,
 you can further fine-tune the zero point by running this script:
 ::
 
-    python toddlerbot/policies/calibrate.py
+    python toddlerbot/policies/run_policy.py --policy calibrate --robot <robot_name> --sim real
 
 This script basically runs a PID control with the torso pitch feedback from IMU. 
 You can find more information in the ``calibrate.py`` script.
+
+When you run this script, the robot will stand up and try to maintain an upright position. When 
+you think the robot is standing upright, you can press ``Ctrl+C`` to stop the script. IMPORTANT:
+Please make sure to hold the robot when you stop the script, as the motors will be disabled and 
+the robot will fall over.
+The script will then save the zero point to the configuration file.

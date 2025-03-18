@@ -3,18 +3,21 @@
 Assembly
 ========================
 
+Before you begin, rest assured that building a humanoid from scratch is entirely feasible, even if you have little experience with robotics. 
+In that case, you'll learn a lot throughout the process! In fact, two CS majors have already successfully built ToddlerBot from scratch.
+
 To ensure a smooth and enjoyable assembly session, we provide three types of resources to help you go through the process:
 
 #. **Assembly Manual**: A detailed step-by-step guide to help you through the assembly process.
-#. **Assembly Video**: Videos that walk you through the assembly process.
-#. **OnShape**: The `online CAD document <https://cad.onshape.com/documents/ff1e767f256dd9c8abf2206a/w/1279ebbeb00aff2fc147aa43/e/c34cebff72a1144191e86b88>`_ for your reference.
+#. **Assembly Video**: The `YouTube playlist <https://www.youtube.com/playlist?list=PLX0JY1vogaVYRRxF5sH4IedZpfX7meuz0>`_ has videos that walk you through the assembly process.
+#. **Onshape**: The `online CAD document <https://cad.onshape.com/documents/ff1e767f256dd9c8abf2206a>`_ for your reference.
 
 The recommended assembly order follows the sequence of the sections below.
 
 Please make sure that you **read the assembly manual carefully** before start building. 
-If you're unsure about any step, refer to the assembly video, Sketchfab model, or OnShape document for guidance.
+If you're unsure about any step, refer to the assembly video or Onshape document for guidance.
 
-Still need help after looking at all of these? Open a GitHub issue, and we'll be happy to assist! 
+Still get stuck after looking at all of these? Open a GitHub issue, and we're here to help you! 
 
 Assembly Manual
 -------------------
@@ -31,7 +34,7 @@ Arm Assembly
     <div style="display: flex; gap: 20px; justify-content: center; align-items: center;">
         <!-- Left Column: YouTube Video -->
         <div style="flex: 1;">
-            <iframe width="100%" height="400" src="https://www.youtube.com/embed/F5B1QpU0Evo?si=BIskkx0BLHmeJcUj" 
+            <iframe width="100%" height="400" src="https://www.youtube.com/embed/4s4Mopyyyr4" 
                 title="YouTube video player" frameborder="0" allowfullscreen>
             </iframe>
         </div>
@@ -46,7 +49,7 @@ Leg Assembly
     <div style="display: flex; gap: 20px; justify-content: center; align-items: center;">
         <!-- Left Column: YouTube Video -->
         <div style="flex: 1;">
-            <iframe width="100%" height="400" src="https://www.youtube.com/embed/F5B1QpU0Evo?si=BIskkx0BLHmeJcUj" 
+            <iframe width="100%" height="400" src="https://www.youtube.com/embed/xGX_YkVmZvQ" 
                 title="YouTube video player" frameborder="0" allowfullscreen>
             </iframe>
         </div>
@@ -60,7 +63,7 @@ Camera Cables
     <div style="display: flex; gap: 20px; justify-content: center; align-items: center;">
         <!-- Left Column: YouTube Video -->
         <div style="flex: 1;">
-            <iframe width="100%" height="400" src="https://www.youtube.com/embed/F5B1QpU0Evo?si=BIskkx0BLHmeJcUj" 
+            <iframe width="100%" height="400" src="https://www.youtube.com/embed/kzG2ModXqfc" 
                 title="YouTube video player" frameborder="0" allowfullscreen>
             </iframe>
         </div>
@@ -74,7 +77,7 @@ Speaker Cables
     <div style="display: flex; gap: 20px; justify-content: center; align-items: center;">
         <!-- Left Column: YouTube Video -->
         <div style="flex: 1;">
-            <iframe width="100%" height="400" src="https://www.youtube.com/embed/F5B1QpU0Evo?si=BIskkx0BLHmeJcUj" 
+            <iframe width="100%" height="400" src="https://www.youtube.com/embed/lukhqvumUzQ" 
                 title="YouTube video player" frameborder="0" allowfullscreen>
             </iframe>
         </div>
@@ -88,7 +91,7 @@ Head Assembly
     <div style="display: flex; gap: 20px; justify-content: center; align-items: center;">
         <!-- Left Column: YouTube Video -->
         <div style="flex: 1;">
-            <iframe width="100%" height="400" src="https://www.youtube.com/embed/F5B1QpU0Evo?si=BIskkx0BLHmeJcUj" 
+            <iframe width="100%" height="400" src="https://www.youtube.com/embed/FU-npUvBt00" 
                 title="YouTube video player" frameborder="0" allowfullscreen>
             </iframe>
         </div>
@@ -103,7 +106,7 @@ Waist Assembly
     <div style="display: flex; gap: 20px; justify-content: center; align-items: center;">
         <!-- Left Column: YouTube Video -->
         <div style="flex: 1;">
-            <iframe width="100%" height="400" src="https://www.youtube.com/embed/F5B1QpU0Evo?si=BIskkx0BLHmeJcUj" 
+            <iframe width="100%" height="400" src="https://www.youtube.com/embed/oJEtc8Vn6mM" 
                 title="YouTube video player" frameborder="0" allowfullscreen>
             </iframe>
         </div>
@@ -118,7 +121,7 @@ Torso Assembly
     <div style="display: flex; gap: 20px; justify-content: center; align-items: center;">
         <!-- Left Column: YouTube Video -->
         <div style="flex: 1;">
-            <iframe width="100%" height="400" src="https://www.youtube.com/embed/F5B1QpU0Evo?si=BIskkx0BLHmeJcUj" 
+            <iframe width="100%" height="400" src="https://www.youtube.com/embed/hHZQepIfq6o" 
                 title="YouTube video player" frameborder="0" allowfullscreen>
             </iframe>
         </div>
@@ -133,7 +136,7 @@ ID the Motors
     <div style="display: flex; gap: 20px; justify-content: center; align-items: center;">
         <!-- Left Column: YouTube Video -->
         <div style="flex: 1;">
-            <iframe width="100%" height="400" src="https://www.youtube.com/embed/F5B1QpU0Evo?si=BIskkx0BLHmeJcUj" 
+            <iframe width="100%" height="400" src="https://www.youtube.com/embed/q3mCdYYJPNY" 
                 title="YouTube video player" frameborder="0" allowfullscreen>
             </iframe>
         </div>
@@ -148,7 +151,7 @@ Wiring
     <div style="display: flex; gap: 20px; justify-content: center; align-items: center;">
         <!-- Left Column: YouTube Video -->
         <div style="flex: 1;">
-            <iframe width="100%" height="400" src="https://www.youtube.com/embed/F5B1QpU0Evo?si=BIskkx0BLHmeJcUj" 
+            <iframe width="100%" height="400" src="https://www.youtube.com/embed/gDMCFXmWQb8" 
                 title="YouTube video player" frameborder="0" allowfullscreen>
             </iframe>
         </div>
@@ -163,14 +166,14 @@ Power Board
     <div style="display: flex; gap: 20px; justify-content: center; align-items: center;">
         <!-- Left Column: YouTube Video -->
         <div style="flex: 1;">
-            <iframe width="100%" height="400" src="https://www.youtube.com/embed/F5B1QpU0Evo?si=BIskkx0BLHmeJcUj" 
+            <iframe width="100%" height="400" src="https://www.youtube.com/embed/C4dC8QYalOA" 
                 title="YouTube video player" frameborder="0" allowfullscreen>
             </iframe>
         </div>
     </div>
 
 
-Jetson Power Cable
+Jetson Power Cables
 ---------------------------------------
 
 .. raw:: html
@@ -178,7 +181,7 @@ Jetson Power Cable
     <div style="display: flex; gap: 20px; justify-content: center; align-items: center;">
         <!-- Left Column: YouTube Video -->
         <div style="flex: 1;">
-            <iframe width="100%" height="400" src="https://www.youtube.com/embed/F5B1QpU0Evo?si=BIskkx0BLHmeJcUj" 
+            <iframe width="100%" height="400" src="https://www.youtube.com/embed/nK02RLfJBTM" 
                 title="YouTube video player" frameborder="0" allowfullscreen>
             </iframe>
         </div>
@@ -193,7 +196,7 @@ Power Supply Cables
     <div style="display: flex; gap: 20px; justify-content: center; align-items: center;">
         <!-- Left Column: YouTube Video -->
         <div style="flex: 1;">
-            <iframe width="100%" height="400" src="https://www.youtube.com/embed/F5B1QpU0Evo?si=BIskkx0BLHmeJcUj" 
+            <iframe width="100%" height="400" src="https://www.youtube.com/embed/A5iL168LYlc" 
                 title="YouTube video player" frameborder="0" allowfullscreen>
             </iframe>
         </div>
@@ -208,7 +211,7 @@ Standing Test
     <div style="display: flex; gap: 20px; justify-content: center; align-items: center;">
         <!-- Left Column: YouTube Video -->
         <div style="flex: 1;">
-            <iframe width="100%" height="400" src="https://www.youtube.com/embed/F5B1QpU0Evo?si=BIskkx0BLHmeJcUj" 
+            <iframe width="100%" height="400" src="https://www.youtube.com/embed/U8UijFsCQRA" 
                 title="YouTube video player" frameborder="0" allowfullscreen>
             </iframe>
         </div>
@@ -223,7 +226,7 @@ Standing Test
     <div style="display: flex; gap: 20px; justify-content: center; align-items: center;">
         <!-- Left Column: YouTube Video -->
         <div style="flex: 1;">
-            <iframe width="100%" height="400" src="https://www.youtube.com/embed/F5B1QpU0Evo?si=BIskkx0BLHmeJcUj" 
+            <iframe width="100%" height="400" src="https://www.youtube.com/embed/g-DO9xOXTno" 
                 title="YouTube video player" frameborder="0" allowfullscreen>
             </iframe>
         </div>

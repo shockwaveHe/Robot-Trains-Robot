@@ -340,6 +340,8 @@ class MJXEnv(PipelineEnv):
             self.obs_size += 4
             self.privileged_obs_size += 4
 
+        self.embedding = jnp.empty(0)
+
         # noise
         self.obs_noise_scale = self.cfg.noise.obs_noise_scale * jnp.concatenate(
             [
@@ -357,14 +359,9 @@ class MJXEnv(PipelineEnv):
                 jnp.ones(3) * self.cfg.noise.euler,
             ]
         )
+        self.tau_limit_scale = self.cfg.noise.tau_limit_scale
         self.backlash_scale = self.cfg.noise.backlash_scale
         self.backlash_activation = self.cfg.noise.backlash_activation
-
-        self.kp_range = self.cfg.domain_rand.kp_range
-        self.kd_range = self.cfg.domain_rand.kd_range
-        self.tau_max_range = self.cfg.domain_rand.tau_max_range
-        self.q_dot_tau_max_range = self.cfg.domain_rand.q_dot_tau_max_range
-        self.q_dot_max_range = self.cfg.domain_rand.q_dot_max_range
 
         self.push_interval = np.ceil(self.cfg.domain_rand.push_interval_s / self.dt)
         self.push_lin_vel = self.cfg.domain_rand.push_lin_vel
@@ -414,17 +411,7 @@ class MJXEnv(PipelineEnv):
         Returns:
             State: The initialized state of the environment, including pipeline state, observations, rewards, and other relevant information.
         """
-        (
-            rng,
-            rng_torso_yaw,
-            rng_action,
-            rng_command,
-            rng_kp,
-            rng_kd,
-            rng_tau_max,
-            rng_q_dot_tau_max,
-            rng_q_dot_max,
-        ) = jax.random.split(rng, 9)
+        rng, rng_torso_yaw, rng_action, rng_command = jax.random.split(rng, 4)
 
         state_info = {
             "rng": rng,
@@ -490,11 +477,6 @@ class MJXEnv(PipelineEnv):
         state_info["butter_past_outputs"] = jnp.tile(
             last_action_target, (self.filter_order, 1)
         )
-        state_info["controller_kp"] = self.controller.kp.copy()
-        state_info["controller_kd"] = self.controller.kd.copy()
-        state_info["controller_tau_max"] = self.controller.tau_max.copy()
-        state_info["controller_q_dot_tau_max"] = self.controller.q_dot_tau_max.copy()
-        state_info["controller_q_dot_max"] = self.controller.q_dot_max.copy()
         state_info["tendon_length"] = pipeline_state.ten_length[-4:]
         state_info["default_action"] = self.default_action.copy() + jax.random.uniform(
             rng_action,
@@ -503,41 +485,15 @@ class MJXEnv(PipelineEnv):
             maxval=self.action_noise_scale,
         )
 
-        if self.add_domain_rand:
-            state_info["controller_kp"] *= jax.random.uniform(
-                rng_kp,
-                (self.nu,),
-                minval=self.kp_range[0],
-                maxval=self.kp_range[1],
-            )
-            state_info["controller_kd"] *= jax.random.uniform(
-                rng_kd,
-                (self.nu,),
-                minval=self.kd_range[0],
-                maxval=self.kd_range[1],
-            )
-            state_info["controller_tau_max"] *= jax.random.uniform(
-                rng_tau_max,
-                (self.nu,),
-                minval=self.tau_max_range[0],
-                maxval=self.tau_max_range[1],
-            )
-            state_info["controller_q_dot_tau_max"] *= jax.random.uniform(
-                rng_q_dot_tau_max,
-                (self.nu,),
-                minval=self.q_dot_tau_max_range[0],
-                maxval=self.q_dot_tau_max_range[1],
-            )
-            state_info["controller_q_dot_max"] *= jax.random.uniform(
-                rng_q_dot_max,
-                (self.nu,),
-                minval=self.q_dot_max_range[0],
-                maxval=self.q_dot_max_range[1],
-            )
-
-        obs_history = jnp.zeros(self.num_obs_history * self.obs_size)
-        privileged_obs_history = jnp.zeros(
-            self.num_privileged_obs_history * self.privileged_obs_size
+        obs_history = jnp.concatenate(
+            [jnp.zeros(self.num_obs_history * self.obs_size), self.embedding], axis=-1
+        )
+        privileged_obs_history = jnp.concatenate(
+            [
+                jnp.zeros(self.num_privileged_obs_history * self.privileged_obs_size),
+                self.embedding,
+            ],
+            axis=-1,
         )
         obs, privileged_obs = self._get_obs(
             pipeline_state,
@@ -572,6 +528,7 @@ class MJXEnv(PipelineEnv):
         Returns:
             base.State: The updated state of the system after applying the control action over the specified number of frames.
         """
+        rng, tau_limit_rng = jax.random.split(state.info["rng"], 2)
 
         progress = jnp.minimum(
             state.info.get("episode_num", 0) / self.cfg.hang.hang_force_decay_episodes,
@@ -594,11 +551,7 @@ class MJXEnv(PipelineEnv):
                 pipeline_state.q[self.q_start_idx + self.motor_indices],
                 pipeline_state.qd[self.qd_start_idx + self.motor_indices],
                 action,
-                state.info["controller_kp"],
-                state.info["controller_kd"],
-                state.info["controller_tau_max"],
-                state.info["controller_q_dot_tau_max"],
-                state.info["controller_q_dot_max"],
+                self.tau_limit_scale * jax.random.normal(tau_limit_rng, action.shape),
             )
 
             # concatenate hang_motors dim to ctrl
@@ -1011,15 +964,26 @@ class MJXEnv(PipelineEnv):
         # obs = jnp.clip(obs, -100.0, 100.0)
 
         # stack observations through time
-        obs = jnp.roll(obs_history, obs.size).at[: obs.size].set(obs)
+        obs_history = obs_history.at[: self.num_obs_history * self.obs_size].set(
+            jnp.roll(obs_history[: self.num_obs_history * self.obs_size], obs.size)
+        )
+        obs_history = obs_history.at[: obs.size].set(obs)
 
-        privileged_obs = (
-            jnp.roll(privileged_obs_history, privileged_obs.size)
-            .at[: privileged_obs.size]
-            .set(privileged_obs)
+        privileged_obs_history = privileged_obs_history.at[
+            : self.num_privileged_obs_history * self.privileged_obs_size
+        ].set(
+            jnp.roll(
+                privileged_obs_history[
+                    : self.num_privileged_obs_history * self.privileged_obs_size
+                ],
+                privileged_obs.size,
+            )
+        )
+        privileged_obs_history = privileged_obs_history.at[: privileged_obs.size].set(
+            privileged_obs
         )
 
-        return obs, privileged_obs
+        return obs_history, privileged_obs_history
 
     def _compute_reward(
         self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array

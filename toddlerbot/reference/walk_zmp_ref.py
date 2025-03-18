@@ -160,6 +160,18 @@ class WalkZMPReference(MotionReference):
     def get_state_ref(
         self, state_curr: ArrayType, time_curr: float | ArrayType, command: ArrayType
     ) -> ArrayType:
+        """Generate a reference state for a robotic system based on the current state, time, and command inputs.
+
+        This function calculates the desired joint and motor positions for a robot by integrating the current state with the given command inputs. It interpolates neck, waist, and arm positions, and determines leg joint positions based on whether the robot is in a static pose or dynamic motion. The function returns a concatenated array representing the path state, motor positions, joint positions, and stance mask.
+
+        Args:
+            state_curr (ArrayType): The current state of the robot.
+            time_curr (float | ArrayType): The current time or time array.
+            command (ArrayType): Command inputs for the robot's movement.
+
+        Returns:
+            ArrayType: A concatenated array of the path state, motor positions, joint positions, and stance mask.
+        """
         path_state = self.integrate_path_state(state_curr, command)
 
         joint_pos = self.default_joint_pos.copy()
@@ -182,7 +194,11 @@ class WalkZMPReference(MotionReference):
 
         ref_idx = (command[2] * (self.arm_ref_size - 2)).astype(int)
         # Linearly interpolate between p_start and p_end
-        arm_joint_pos = self.arm_joint_pos_ref[ref_idx]
+        arm_joint_pos = np.where(
+            command[2] > 0,
+            self.arm_joint_pos_ref[ref_idx],
+            self.default_joint_pos[self.arm_joint_indices],
+        )
         joint_pos = inplace_update(joint_pos, self.arm_joint_indices, arm_joint_pos)
         motor_pos = inplace_update(
             motor_pos, self.arm_motor_indices, self.arm_ik(arm_joint_pos)
@@ -196,6 +212,32 @@ class WalkZMPReference(MotionReference):
         )
         step_idx = np.round(time_curr / self.dt).astype(int)
 
+        # # Normalize the current time within the cycle
+        # cycle_phase = (time_curr / self.cycle_time) % 1.0
+        # # Determine if the current phase is in single support or double support
+        # in_single_support = np.logical_or(
+        #     np.logical_and(
+        #         self.double_support_ratio / 2 <= cycle_phase, cycle_phase < 0.5
+        #     ),
+        #     0.5 + self.double_support_ratio / 2 <= cycle_phase,
+        # )
+        # in_single_support = np.logical_and(in_single_support, ~is_static_pose)
+        # # Set waist_roll_pos based on the current support phase
+        # waist_roll_pos = np.where(
+        #     ~in_single_support,
+        #     0.0,
+        #     np.sin(
+        #         2
+        #         * np.pi
+        #         * np.where(
+        #             cycle_phase < 0.5,
+        #             -np.clip(cycle_phase - self.double_support_ratio / 2, 0, None),
+        #             np.clip(cycle_phase - 0.5 - self.double_support_ratio / 2, 0, None),
+        #         )
+        #         / self.single_support_ratio
+        #     )
+        #     * self.waist_roll_max,
+        # )
         waist_roll_pos = np.interp(
             command[3],
             np.array([-1, 0, 1]),
@@ -216,7 +258,37 @@ class WalkZMPReference(MotionReference):
             motor_pos, self.waist_motor_indices, self.waist_ik(waist_joint_pos)
         )
 
+        def get_leg_joint_pos_init() -> ArrayType:
+            """Calculates the initial positions of the leg joints based on the desired center of mass (CoM) position.
+
+            This function computes the initial leg joint positions by first determining the current CoM position and then applying a proportional-derivative (PD) controller to minimize the error between the current and desired CoM positions. The resulting control values are used to compute the leg joint positions through inverse kinematics.
+
+            Returns:
+                ArrayType: The initial positions of the leg joints.
+            """
+            state_ref = np.concatenate((path_state, motor_pos, joint_pos))
+            qpos = self.get_qpos_ref(state_ref)
+            data = self.forward(qpos)
+
+            com_pos = np.array(data.subtree_com[0], dtype=np.float32)
+            # PD controller on CoM position
+            com_pos_error = self.desired_com[:2] - com_pos[:2]
+            com_ctrl = self.com_kp * com_pos_error
+            leg_joint_pos = self.com_ik(0, com_ctrl[0], com_ctrl[1])
+            return leg_joint_pos
+
         def get_leg_joint_pos() -> ArrayType:
+            """Retrieve the position of the leg joints based on the nearest command index and step index.
+
+            This function calculates the leg joint positions by looking up precomputed values
+            and adjusting them based on the waist roll position. It uses the nearest command
+            index to find the appropriate lookup table and applies modulo arithmetic with the
+            step index to cycle through the lookup values. Adjustments are made to the hip
+            roll positions to account for the waist roll.
+
+            Returns:
+                ArrayType: An array representing the adjusted positions of the leg joints.
+            """
             leg_joint_pos = self.leg_joint_pos_lookup[nearest_command_idx][
                 (step_idx % self.lookup_length[nearest_command_idx]).astype(int)
             ]
@@ -228,7 +300,9 @@ class WalkZMPReference(MotionReference):
             )
             return leg_joint_pos
 
-        leg_joint_pos = get_leg_joint_pos()
+        leg_joint_pos = conditional_update(
+            is_static_pose, get_leg_joint_pos_init, get_leg_joint_pos
+        )
         joint_pos = inplace_update(joint_pos, self.leg_joint_indices, leg_joint_pos)
         motor_pos = inplace_update(
             motor_pos, self.leg_motor_indices, self.leg_ik(leg_joint_pos)

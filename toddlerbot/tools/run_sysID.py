@@ -12,7 +12,8 @@ import optuna
 from optuna.logging import _get_library_root_logger
 
 from toddlerbot.sim import Obs
-from toddlerbot.sim.mujoco_control import MotorController
+
+# from toddlerbot.sim.mujoco_control import MotorController
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.misc_utils import log
@@ -56,6 +57,7 @@ def load_datasets(robot: Robot, data_path: str):
     motor_angles_list: List[Dict[str, float]] = data_dict["motor_angles_list"]
 
     obs_pos_dict: Dict[str, List[npt.NDArray[np.float32]]] = {}
+    obs_vel_dict: Dict[str, List[npt.NDArray[np.float32]]] = {}
     action_dict: Dict[str, List[npt.NDArray[np.float32]]] = {}
     kp_dict: Dict[str, List[float]] = {}
 
@@ -72,6 +74,14 @@ def load_datasets(robot: Robot, data_path: str):
 
         obs_pos = np.array(obs_pos_list)
 
+        obs_vel_list: List[List[float]] = []
+        for obs in obs_list[idx_range]:
+            motor_vel_obs = dict(zip(robot.motor_ordering, obs.motor_vel))
+            joint_vel_obs = motor_vel_obs  # TODO: Implement joint velocity calculation
+            obs_vel_list.append(list(joint_vel_obs.values()))
+
+        obs_vel = np.array(obs_vel_list)
+
         action = np.array(
             [
                 list(motor_angles.values())
@@ -81,10 +91,12 @@ def load_datasets(robot: Robot, data_path: str):
 
         if joint_name not in obs_pos_dict:
             obs_pos_dict[joint_name] = []
+            obs_vel_dict[joint_name] = []
             action_dict[joint_name] = []
             kp_dict[joint_name] = []
 
         obs_pos_dict[joint_name].append(obs_pos)
+        obs_vel_dict[joint_name].append(obs_vel)
         action_dict[joint_name].append(action)
         kp_dict[joint_name].append(kp)
 
@@ -119,14 +131,15 @@ def load_datasets(robot: Robot, data_path: str):
                 motor_kps = {joint_name: joints_config[motor_names[0]]["kp_real"]}
                 set_obs_and_action(joint_name, motor_kps, slice(start_idx, None))
 
-    return obs_pos_dict, action_dict, kp_dict
+    return obs_pos_dict, obs_vel_dict, action_dict, kp_dict
 
 
 def optimize_parameters(
     robot: Robot,
     sim_name: str,
     joint_name: str,
-    obs_list: List[npt.NDArray[np.float32]],
+    obs_pos_list: List[npt.NDArray[np.float32]],
+    obs_vel_list: List[npt.NDArray[np.float32]],
     action_list: List[npt.NDArray[np.float32]],
     kp_list: List[float],
     n_iters: int = 1000,
@@ -136,9 +149,11 @@ def optimize_parameters(
     # gain_range: Tuple[float, float, float] = (0, 50, 0.1),
     damping_range: Tuple[float, float, float] = (0.0, 0.5, 1e-3),
     armature_range: Tuple[float, float, float] = (0.0, 0.01, 1e-4),
-    frictionloss_range: Tuple[float, float, float] = (0.0, 1.0, 1e-3),
-    q_dot_tau_max_range: Tuple[float, float, float] = (0.0, 5.0, 1e-2),
-    q_dot_max_range: Tuple[float, float, float] = (5.0, 10.0, 1e-1),
+    frictionloss_range: Tuple[float, float, float] = (0.0, 0.5, 1e-3),
+    # q_dot_tau_max_range: Tuple[float, float, float] = (0.0, 5.0, 1e-2),
+    # q_dot_max_range: Tuple[float, float, float] = (5.0, 10.0, 1e-1),
+    vel_weight: float = 0.05,
+    fft_weight: float = 0.0,
 ):
     """Optimize the parameters of a robot joint using simulation and Optuna.
 
@@ -174,16 +189,17 @@ def optimize_parameters(
     else:
         raise ValueError("Invalid simulator")
 
-    if "sysID" in robot.name:
-        tau_max_range: Tuple[float, float, float] = (0.0, 2.0, 1e-2)
-        if "XC330" in robot.name:
-            tau_max_range = (0.0, 1.0, 1e-2)
-        elif "XM430" in robot.name:
-            tau_max_range = (0.0, 3.0, 1e-2)
+    # if "sysID" in robot.name:
+    #     tau_max_range: Tuple[float, float, float] = (0.0, 2.0, 1e-2)
+    #     if "XC330" in robot.name:
+    #         tau_max_range = (0.0, 1.0, 1e-2)
+    #     elif "XM430" in robot.name:
+    #         tau_max_range = (0.0, 3.0, 1e-2)
 
     motor_names = robot.joint_to_motor_name[joint_name]
     joint_idx = robot.joint_ordering.index(joint_name)
-    joint_pos_real = np.concatenate([obs[:, joint_idx] for obs in obs_list])
+    joint_pos_real = np.concatenate([obs[:, joint_idx] for obs in obs_pos_list])
+    joint_vel_real = np.concatenate([obs[:, joint_idx] for obs in obs_vel_list])
 
     def early_stop_check(
         study: optuna.Study, trial: optuna.Trial, early_stopping_rounds: int
@@ -234,21 +250,22 @@ def optimize_parameters(
         }
         sim.set_joint_dynamics(joint_dyn)
 
-        if "sysID" in robot.name:
-            tau_max = trial.suggest_float(
-                "tau_max", *tau_max_range[:2], step=tau_max_range[2]
-            )
-            q_dot_tau_max = trial.suggest_float(
-                "q_dot_tau_max", *q_dot_tau_max_range[:2], step=q_dot_tau_max_range[2]
-            )
-            q_dot_max = trial.suggest_float(
-                "q_dot_max", *q_dot_max_range[:2], step=q_dot_max_range[2]
-            )
-            sim.set_motor_dynamics(
-                dict(tau_max=tau_max, q_dot_tau_max=q_dot_tau_max, q_dot_max=q_dot_max)
-            )
+        # if "sysID" in robot.name:
+        #     tau_max = trial.suggest_float(
+        #         "tau_max", *tau_max_range[:2], step=tau_max_range[2]
+        #     )
+        #     q_dot_tau_max = trial.suggest_float(
+        #         "q_dot_tau_max", *q_dot_tau_max_range[:2], step=q_dot_tau_max_range[2]
+        #     )
+        #     q_dot_max = trial.suggest_float(
+        #         "q_dot_max", *q_dot_max_range[:2], step=q_dot_max_range[2]
+        #     )
+        #     sim.set_motor_dynamics(
+        #         dict(tau_max=tau_max, q_dot_tau_max=q_dot_tau_max, q_dot_max=q_dot_max)
+        #     )
 
         joint_pos_sim_list: List[npt.NDArray[np.float32]] = []
+        joint_vel_sim_list: List[npt.NDArray[np.float32]] = []
         for action, kp in zip(action_list, kp_list):
             sim.set_motor_kps(dict(zip(motor_names, [kp] * len(motor_names))))
 
@@ -260,32 +277,43 @@ def optimize_parameters(
                 assert obs.joint_pos is not None
                 joint_pos_sim_list.append(obs.joint_pos[joint_idx])
 
+                assert obs.joint_vel is not None
+                joint_vel_sim_list.append(obs.joint_vel[joint_idx])
+
         joint_pos_sim = np.array(joint_pos_sim_list)
+        joint_vel_sim = np.array(joint_vel_sim_list)
 
         # RMSE
         error = np.sqrt(np.mean((joint_pos_real - joint_pos_sim) ** 2))
 
-        # FFT (Fourier Transform) of the joint position data and reference data
-        joint_pos_sim_fft = np.fft.fft(joint_pos_sim)
-        joint_pos_real_fft = np.fft.fft(joint_pos_real)
+        if vel_weight > 0:
+            # RMSE of joint velocities
+            error_vel = np.sqrt(np.mean((joint_vel_real - joint_vel_sim) ** 2))
+            error += vel_weight * error_vel
 
-        joint_pos_sim_fft_freq = np.fft.fftfreq(len(joint_pos_sim_fft), d=sim.dt)
-        joint_pos_real_fft_freq = np.fft.fftfreq(len(joint_pos_real_fft), d=sim.dt)
+        if fft_weight > 0:
+            # FFT (Fourier Transform) of the joint position data and reference data
+            joint_pos_sim_fft = np.fft.fft(joint_pos_sim)
+            joint_pos_real_fft = np.fft.fft(joint_pos_real)
 
-        magnitude_sim = np.abs(joint_pos_sim_fft[: len(joint_pos_sim_fft) // 2])
-        magnitude_real = np.abs(joint_pos_real_fft[: len(joint_pos_real_fft) // 2])
+            joint_pos_sim_fft_freq = np.fft.fftfreq(len(joint_pos_sim_fft), d=sim.dt)
+            joint_pos_real_fft_freq = np.fft.fftfreq(len(joint_pos_real_fft), d=sim.dt)
 
-        magnitude_sim_filtered = magnitude_sim[
-            joint_pos_sim_fft_freq[: len(joint_pos_sim_fft) // 2] < freq_max
-        ]
-        magnitude_real_filtered = magnitude_real[
-            joint_pos_real_fft_freq[: len(joint_pos_real_fft) // 2] < freq_max
-        ]
-        error_fft = np.sqrt(
-            np.mean((magnitude_real_filtered - magnitude_sim_filtered) ** 2)
-        )
+            magnitude_sim = np.abs(joint_pos_sim_fft[: len(joint_pos_sim_fft) // 2])
+            magnitude_real = np.abs(joint_pos_real_fft[: len(joint_pos_real_fft) // 2])
 
-        return error + error_fft * 0.01
+            magnitude_sim_filtered = magnitude_sim[
+                joint_pos_sim_fft_freq[: len(joint_pos_sim_fft) // 2] < freq_max
+            ]
+            magnitude_real_filtered = magnitude_real[
+                joint_pos_real_fft_freq[: len(joint_pos_real_fft) // 2] < freq_max
+            ]
+            error_fft = np.sqrt(
+                np.mean((magnitude_real_filtered - magnitude_sim_filtered) ** 2)
+            )
+            error += fft_weight * error_fft
+
+        return error
 
     sampler: optuna.samplers.BaseSampler | None = None
     if sampler_name == "TPE":
@@ -305,29 +333,34 @@ def optimize_parameters(
     )
 
     initial_trial = dict(
-        damping=float(sim.model.joint(joint_name).damping),
-        armature=float(sim.model.joint(joint_name).armature),
-        frictionloss=float(sim.model.joint(joint_name).frictionloss),
+        damping=sim.model.joint(joint_name).damping.item(),
+        armature=sim.model.joint(joint_name).armature.item(),
+        frictionloss=sim.model.joint(joint_name).frictionloss.item(),
     )
-    if "sysID" in robot.name:
-        assert isinstance(sim.controller, MotorController)
-        initial_trial.update(
-            dict(
-                tau_max=float(sim.controller.tau_max),
-                q_dot_tau_max=float(sim.controller.q_dot_tau_max),
-                q_dot_max=float(sim.controller.q_dot_max),
-            )
-        )
+    # if "sysID" in robot.name:
+    #     assert isinstance(sim.controller, MotorController)
+    #     initial_trial.update(
+    #         dict(
+    #             tau_max=float(sim.controller.tau_max),
+    #             q_dot_tau_max=float(sim.controller.q_dot_tau_max),
+    #             q_dot_max=float(sim.controller.q_dot_max),
+    #         )
+    #     )
 
     study.enqueue_trial(initial_trial)
 
-    study.optimize(
-        objective,
-        n_trials=n_iters,
-        n_jobs=1,
-        show_progress_bar=True,
-        callbacks=[partial(early_stop_check, early_stopping_rounds=early_stop_rounds)],
-    )
+    try:
+        study.optimize(
+            objective,
+            n_trials=n_iters,
+            n_jobs=1,
+            show_progress_bar=True,
+            callbacks=[
+                partial(early_stop_check, early_stopping_rounds=early_stop_rounds)
+            ],
+        )
+    except KeyboardInterrupt:
+        pass
 
     log(
         f"Best parameters: {study.best_params}; best value: {study.best_value}",
@@ -344,6 +377,7 @@ def optimize_all(
     robot: Robot,
     sim_name: str,
     obs_pos_dict: Dict[str, List[npt.NDArray[np.float32]]],
+    obs_vel_dict: Dict[str, List[npt.NDArray[np.float32]]],
     action_dict: Dict[str, List[npt.NDArray[np.float32]]],
     kp_dict: Dict[str, List[float]],
     n_iters: int,
@@ -372,6 +406,7 @@ def optimize_all(
             str,
             List[npt.NDArray[np.float32]],
             List[npt.NDArray[np.float32]],
+            List[npt.NDArray[np.float32]],
             List[float],
             int,
             int,
@@ -382,6 +417,7 @@ def optimize_all(
             sim_name,
             joint_name,
             obs_pos_dict[joint_name],
+            obs_vel_dict[joint_name],
             action_dict[joint_name],
             kp_dict[joint_name],
             n_iters,
@@ -415,6 +451,7 @@ def evaluate(
     robot: Robot,
     sim_name: str,
     obs_pos_dict: Dict[str, List[npt.NDArray[np.float32]]],
+    obs_vel_dict: Dict[str, List[npt.NDArray[np.float32]]],
     action_dict: Dict[str, List[npt.NDArray[np.float32]]],
     kp_dict: Dict[str, List[float]],
     opt_params_dict: Dict[str, Dict[str, float]],
@@ -467,6 +504,8 @@ def evaluate(
     time_seq_real_dict: Dict[str, List[float]] = {}
     joint_pos_sim_dict: Dict[str, List[float]] = {}
     joint_pos_real_dict: Dict[str, List[float]] = {}
+    joint_vel_sim_dict: Dict[str, List[float]] = {}
+    joint_vel_real_dict: Dict[str, List[float]] = {}
     action_sim_dict: Dict[str, List[float]] = {}
     action_real_dict: Dict[str, List[float]] = {}
 
@@ -478,9 +517,12 @@ def evaluate(
         motor_names = robot.joint_to_motor_name[joint_name]
         joint_idx = robot.joint_ordering.index(joint_name)
         joint_pos_real = np.concatenate([obs[:, joint_idx] for obs in obs_list])
+        joint_vel_real = np.concatenate(
+            [obs[:, joint_idx] for obs in obs_vel_dict[joint_name]]
+        )
 
         if sim_name == "mujoco":
-            sim = MuJoCoSim(robot, fixed_base=True)
+            sim = MuJoCoSim(robot, fixed_base=True, vis_type="render")
         else:
             raise ValueError("Invalid simulator")
 
@@ -493,16 +535,17 @@ def evaluate(
         }
         sim.set_joint_dynamics(joint_dyn)
 
-        if "sysID" in robot.name:
-            sim.set_motor_dynamics(
-                dict(
-                    tau_max=opt_params_dict[joint_name]["tau_max"],
-                    q_dot_tau_max=opt_params_dict[joint_name]["q_dot_tau_max"],
-                    q_dot_max=opt_params_dict[joint_name]["q_dot_max"],
-                )
-            )
+        # if "sysID" in robot.name:
+        #     sim.set_motor_dynamics(
+        #         dict(
+        #             tau_max=opt_params_dict[joint_name]["tau_max"],
+        #             q_dot_tau_max=opt_params_dict[joint_name]["q_dot_tau_max"],
+        #             q_dot_max=opt_params_dict[joint_name]["q_dot_max"],
+        #         )
+        #     )
 
         joint_pos_sim_list: List[npt.NDArray[np.float32]] = []
+        joint_vel_sim_list: List[npt.NDArray[np.float32]] = []
         for action, kp in zip(action_list, kp_list):
             sim.set_motor_kps(dict(zip(motor_names, [kp] * len(motor_names))))
             for a in action:
@@ -513,12 +556,17 @@ def evaluate(
                 assert obs.joint_pos is not None
                 joint_pos_sim_list.append(obs.joint_pos[joint_idx])
 
-        joint_pos_sim = np.array(joint_pos_sim_list)
+                assert obs.joint_vel is not None
+                joint_vel_sim_list.append(obs.joint_vel[joint_idx])
 
-        error = np.sqrt(np.mean((joint_pos_real - joint_pos_sim) ** 2))
+        joint_pos_sim = np.array(joint_pos_sim_list)
+        joint_vel_sim = np.array(joint_vel_sim_list)
+
+        pos_rror = np.sqrt(np.mean((joint_pos_real - joint_pos_sim) ** 2))
+        vel_error = np.sqrt(np.mean((joint_vel_real - joint_vel_sim) ** 2))
 
         log(
-            f"{joint_name} root mean squared error: {error}",
+            f"{joint_name} pos RMSE: {pos_rror}, vel RMSE: {vel_error}",
             header="SysID",
             level="info",
         )
@@ -533,11 +581,16 @@ def evaluate(
         joint_pos_sim_dict[joint_name] = joint_pos_sim.tolist()
         joint_pos_real_dict[joint_name] = joint_pos_real.tolist()
 
+        joint_vel_sim_dict[joint_name] = joint_vel_sim.tolist()
+        joint_vel_real_dict[joint_name] = joint_vel_real.tolist()
+
         action_all = np.concatenate(
             [action[:, joint_idx] for action in action_list]
         ).tolist()
         action_sim_dict[joint_name] = action_all
         action_real_dict[joint_name] = action_all
+
+        sim.save_recording(exp_folder_path, 0.02, 2)
 
         sim.close()
 
@@ -636,7 +689,7 @@ def main():
     parser.add_argument(
         "--early-stop",
         type=int,
-        default=200,
+        default=100,
         help="The number of iterations to early stop the optimization.",
     )
     parser.add_argument(
@@ -645,6 +698,12 @@ def main():
         default="",
         required=True,
         help="The name of the run.",
+    )
+    parser.add_argument(
+        "--eval",
+        type=str,
+        default="",
+        help="Evaluate the optimized parameters.",
     )
     args = parser.parse_args()
 
@@ -655,43 +714,51 @@ def main():
         raise ValueError("Invalid experiment folder path")
 
     robot = Robot(args.robot)
+    obs_pos_dict, obs_vel_dict, action_dict, kp_dict = load_datasets(robot, data_path)
 
     exp_name = f"{robot.name}_sysID_{args.sim}_optim"
-    time_str = time.strftime("%Y%m%d_%H%M%S")
-    exp_folder_path = f"results/{exp_name}_{time_str}"
+    if args.eval:
+        exp_folder_path = f"results/{exp_name}_{args.eval}"
+        opt_params_dict = json.load(
+            open(os.path.join(exp_folder_path, "opt_params.json"))
+        )
+        opt_values_dict = json.load(
+            open(os.path.join(exp_folder_path, "opt_values.json"))
+        )
+    else:
+        time_str = time.strftime("%Y%m%d_%H%M%S")
+        exp_folder_path = f"results/{exp_name}_{time_str}"
 
-    os.makedirs(exp_folder_path, exist_ok=True)
+        os.makedirs(exp_folder_path, exist_ok=True)
+        with open(os.path.join(exp_folder_path, "opt_config.json"), "w") as f:
+            json.dump(vars(args), f, indent=4)
 
-    with open(os.path.join(exp_folder_path, "opt_config.json"), "w") as f:
-        json.dump(vars(args), f, indent=4)
-
-    obs_pos_dict, action_dict, kp_dict = load_datasets(robot, data_path)
-
-    ###### Optimize the hyperparameters ######
-    # optimize_parameters(
-    #     robot,
-    #     args.sim,
-    #     "waist_yaw",
-    #     obs_pos_dict["waist_yaw"],
-    #     action_dict["waist_yaw"],
-    #     args.n_iters,
-    # )
-
-    opt_params_dict, opt_values_dict = optimize_all(
-        robot,
-        args.sim,
-        obs_pos_dict,
-        action_dict,
-        kp_dict,
-        args.n_iters,
-        args.early_stop,
-    )
+        ###### Optimize the hyperparameters ######
+        # optimize_parameters(
+        #     robot,
+        #     args.sim,
+        #     "waist_yaw",
+        #     obs_pos_dict["waist_yaw"],
+        #     action_dict["waist_yaw"],
+        #     args.n_iters,
+        # )
+        opt_params_dict, opt_values_dict = optimize_all(
+            robot,
+            args.sim,
+            obs_pos_dict,
+            obs_vel_dict,
+            action_dict,
+            kp_dict,
+            args.n_iters,
+            args.early_stop,
+        )
 
     ##### Evaluate the optimized parameters in the simulation ######
     evaluate(
         robot,
         args.sim,
         obs_pos_dict,
+        obs_vel_dict,
         action_dict,
         kp_dict,
         opt_params_dict,

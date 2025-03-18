@@ -10,11 +10,13 @@ ToddlerBot is a low-cost, open-source humanoid robot platform designed for scala
 
 If you want to know more about ToddlerBot, here are some useful links:
 
-`Paper <https://example.com>`__  |  
+`Paper <https://arxiv.org/abs/2502.00893>`__  |  
 `Website <https://toddlerbot.github.io/>`__  |  
 `Video <https://youtu.be/A43QxHSgLyM>`__  |  
 `Code <https://github.com/hshi74/toddlerbot>`__  |  
-`Tweet <https://twitter.com/your-tweet>`__
+`Tweet <https://x.com/HaochenShi74/status/1886599720279400732>`__ | 
+`Onshape <https://cad.onshape.com/documents/ff1e767f256dd9c8abf2206a>`__ |
+`MakerWorld <https://makerworld.com/en/models/1068768>`__
 
 Getting Started
 ------------------------

@@ -12,7 +12,7 @@ We present one solution as shown in the image below. We use 300mm 4040 aluminum 
 
 Pay attention to how we arrange the extrusions and place the connectors to maximize the stability of the stand.
 We use 5 sets of 4040 corner connectors in total. For the 3D-printed connector between 2020 and 4040, you can find the 
-sliced plate in the `MakerWorld <TODO>`_ and the CAD file in the `Onshape document <https://cad.onshape.com/documents/caabd85045529e21c4b05cfa/w/8f6e213e9c75338d5ebc1268/e/73d1df14bd5f609f48f47e4d>`_. 
+sliced plate in the `MakerWorld <https://makerworld.com/en/models/1068768>`_ and the CAD file in the `Onshape document <https://cad.onshape.com/documents/caabd85045529e21c4b05cfa>`_. 
 We also put optional 3D-printed feet in the same document in case you want to avoid scratching the floor or the table.
 
 .. note::

@@ -1,10 +1,8 @@
-import glob
 import os
 import platform
 from typing import List, Optional
 
 import serial.tools.list_ports as list_ports
-from serial.tools.list_ports_linux import SysFS
 
 from toddlerbot.utils.misc_utils import log
 
@@ -18,30 +16,15 @@ def find_ports(target: str) -> List[str]:
     Returns:
         A list of strings representing the open ports on the target.
     """
-    if target == "dynamixel":
-        keyword = "Serial"
-    else:
-        keyword = target
-
     ports = list(list_ports.comports())
-    if len(ports) == 0:
-        port_names = glob.glob("/dev/ttyCH9344USB*")
-        ports.extend(
-            [
-                info
-                for info in [SysFS(d) for d in port_names]
-                if info.subsystem != "platform"
-            ]
-        )
-
     target_ports: List[str] = []
 
     os_type = platform.system()
 
     for port, desc, hwid in ports:
         # Adjust the condition below according to your board's unique identifier or pattern
-        # print(port, desc, hwid)
-        if keyword in desc:
+        print(port, desc, hwid)
+        if target in desc:
             if os_type != "Windows":
                 port = port.replace("cu", "tty")
 

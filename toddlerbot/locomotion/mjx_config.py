@@ -147,11 +147,6 @@ class MJXConfig:
         body_mass_range: List[float] = field(default_factory=lambda: [-0.2, 0.2])
         ee_mass_range: List[float] = field(default_factory=lambda: [0.0, 0.1])
         other_mass_range: List[float] = field(default_factory=lambda: [0.0, 0.0])
-        kp_range: List[float] = field(default_factory=lambda: [0.9, 1.1])
-        kd_range: List[float] = field(default_factory=lambda: [0.9, 1.1])
-        tau_max_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
-        q_dot_tau_max_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
-        q_dot_max_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
         push_interval_s: int = 2  # seconds
         push_lin_vel: float = 0.5
         push_ang_vel: float = 1.0
@@ -166,13 +161,14 @@ class MJXConfig:
         dof_vel: float = 2.0
         ang_vel: float = 5.0
         euler: float = 2.0
+        tau_limit_scale: float = 0.1
         backlash_scale: float = 0.02
         backlash_activation: float = 0.1
 
     @gin.configurable
     @dataclass
     class HangConfig:
-        init_hang_force: float = 2.0
+        init_hang_force: float = 0.0
         final_hang_force: float = 0.0
         hang_force_decay_episodes: float = 200.0
         tendon_kp: float = 0.0

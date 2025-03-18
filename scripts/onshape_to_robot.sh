@@ -23,6 +23,15 @@ while [[ $# -gt 0 ]]; do
             # DOC_ID_LIST="ff1e767f256dd9c8abf2206a"
             # ASSEMBLY_LIST="$BODY_NAME"
             ;;
+            toddlerbot_2xm)
+            BODY_NAME="toddlerbot_2xm"
+            ARM_NAME="arm_umi"
+            LEG_NAME="leg_2xm"
+            # DOC_ID_LIST="ff1e767f256dd9c8abf2206a 873c4e55df11ed20432d2975 873c4e55df11ed20432d2975 1b5c9dbba7df364619e54663 1b5c9dbba7df364619e54663"
+            # ASSEMBLY_LIST="$BODY_NAME left_$LEG_NAME right_$LEG_NAME left_$ARM_NAME right_$ARM_NAME"
+            DOC_ID_LIST="d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe"
+            ASSEMBLY_LIST="left_$LEG_NAME right_$LEG_NAME"
+            ;;
             toddlerbot_gripper)
             BODY_NAME="toddlerbot"
             ARM_NAME="arm_gripper"
@@ -49,34 +58,35 @@ while [[ $# -gt 0 ]]; do
             # DOC_ID_LIST="ff1e767f256dd9c8abf2206a"
             # ASSEMBLY_LIST="$BODY_NAME"
             ;;
-            toddlerbot_active)
-            BODY_NAME="toddlerbot_active"
-            ARM_NAME="arm_active"
-            LEG_NAME="leg_active"
-            DOC_ID_LIST="6f1a2a766fbbc097a49abb91 d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe cddbcb685a34c68f46ce1d48 cddbcb685a34c68f46ce1d48"
-            ASSEMBLY_LIST="$BODY_NAME left_$LEG_NAME right_$LEG_NAME left_$ARM_NAME right_$ARM_NAME"
-            # DOC_ID_LIST="6f1a2a766fbbc097a49abb91"
-            # ASSEMBLY_LIST="$BODY_NAME"
-            ;;
             sysID_XC330)
             DOC_ID_LIST="1fb5d9a88ac086a053c4340b"
             ASSEMBLY_LIST="sysID_XC330"
+            BODY_NAME="sysID_XC330"
             ;;
             sysID_XC430)
             DOC_ID_LIST="1fb5d9a88ac086a053c4340b"
             ASSEMBLY_LIST="sysID_XC430"
+            BODY_NAME="sysID_XC430"
             ;;
             sysID_2XC430)
             DOC_ID_LIST="1fb5d9a88ac086a053c4340b"
             ASSEMBLY_LIST="sysID_2XC430"
+            BODY_NAME="sysID_2XC430"
             ;;
             sysID_2XL430)
             DOC_ID_LIST="1fb5d9a88ac086a053c4340b"
             ASSEMBLY_LIST="sysID_2XL430"
+            BODY_NAME="sysID_2XL430"
             ;;
-            sysID_XM430)
+            sysID_XM430-W210)
             DOC_ID_LIST="1fb5d9a88ac086a053c4340b"
-            ASSEMBLY_LIST="sysID_XM430"
+            ASSEMBLY_LIST="sysID_XM430-W210"
+            BODY_NAME="sysID_XM430-W210"
+            ;;
+            sysID_XM430-W350)
+            DOC_ID_LIST="1fb5d9a88ac086a053c4340b"
+            ASSEMBLY_LIST="sysID_XM430-W350"
+            BODY_NAME="sysID_XM430-W350"
             ;;
             *)
             echo -e "${YELLOW}Unknown robot name: $ROBOT_NAME.${NC}"
@@ -173,7 +183,7 @@ if [ "$run_convert" == "y" ]; then
     python -m mujoco.viewer --mjcf=$URDF_PATH
 
     printf "Processing...\n\n"
-    python $REPO_NAME/descriptions/process_mjcf.py --robot $ROBOT_NAME --generate-hanging
+    python $REPO_NAME/descriptions/process_mjcf.py --robot $ROBOT_NAME
 else
     printf "Process skipped.\n\n"
 fi

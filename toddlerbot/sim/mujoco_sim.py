@@ -28,7 +28,6 @@ class MuJoCoSim(BaseSim):
         n_frames: int = 20,
         dt: float = 0.001,
         fixed_base: bool = False,
-        hang_force: float = 0.0,
         xml_path: str = "",
         xml_str: str = "",
         assets: Any = None,
@@ -52,9 +51,7 @@ class MuJoCoSim(BaseSim):
         self.n_frames = n_frames
         self.dt = dt
         self.control_dt = n_frames * dt
-        self.fixed_base = fixed_base  # DISCUSS, do I still need this?
-        self.hang_force = hang_force
-        self.tendon_kp = 0
+        self.fixed_base = fixed_base
 
         if len(xml_str) > 0 and assets is not None:
             model = mujoco.MjModel.from_xml_string(xml_str, assets)
@@ -64,14 +61,9 @@ class MuJoCoSim(BaseSim):
                     xml_path = find_robot_file_path(
                         robot.name, suffix="_fixed_scene.xml"
                     )
-                elif hang_force > 0.0:
-                    xml_path = find_robot_file_path(
-                        robot.name, suffix="_hang_scene.xml"
-                    )
                 else:
                     xml_path = find_robot_file_path(robot.name, suffix="_scene.xml")
 
-            print(xml_path)
             model = mujoco.MjModel.from_xml_path(xml_path)
 
         self.model = model
@@ -124,42 +116,18 @@ class MuJoCoSim(BaseSim):
         elif vis_type == "view":
             self.visualizer = MuJoCoViewer(robot, self.model, self.data)
 
-        self.hang_motors = 12 if self.hang_force > 0.0 else 0
-        self.hang_dofs = 8 if self.hang_force > 0.0 else 0
-
-        self.default_qpos = np.array(self.model.keyframe("home").qpos, dtype=np.float32)
-        self.data.qpos = self.default_qpos.copy()
-
-    def reset(self):
-        self.load_keyframe()
-        return self.get_observation()
-
-    def is_done(self, obs: Obs) -> bool:
-        torso_height = obs.pos[2]
-        return torso_height < 0.2 or torso_height > 0.4
-
-    def load_keyframe(self):
-        self.default_qpos = np.array(self.model.keyframe("home").qpos, dtype=np.float32)
-        self.data.qpos = self.default_qpos.copy()
-        self.data.qvel = np.zeros(self.model.nv, dtype=np.float32)
-        self.data.ctrl = self.model.keyframe("home").ctrl.copy()
-        target_body_id = mujoco.mj_name2id(
-            self.model, mujoco.mjtObj.mjOBJ_BODY, "target"
-        )
-        self.forward()
-        if target_body_id != -1:
-            mocap_id = self.model.body("target").mocapid[0]
-
-            self.data.mocap_pos[mocap_id] = self.data.xpos[
-                self.model.body("attachment").id
-            ]
-            mujoco.mju_mat2Quat(
-                self.data.mocap_quat[mocap_id],
-                self.data.xmat[self.model.body("attachment").id],
+        try:
+            self.default_qpos = np.array(
+                self.model.keyframe("home").qpos, dtype=np.float32
             )
+            self.data.qpos = self.default_qpos.copy()
+            self.forward()
 
-        self.left_foot_transform = self.get_body_transofrm(self.left_foot_name)
-        self.right_foot_transform = self.get_body_transofrm(self.right_foot_name)
+            self.left_foot_transform = self.get_body_transofrm(self.left_foot_name)
+            self.right_foot_transform = self.get_body_transofrm(self.right_foot_name)
+
+        except KeyError:
+            print("No keyframe named 'home' found in the model.")
 
     def get_body_transofrm(self, body_name: str):
         """Computes the transformation matrix for a specified body.
@@ -325,43 +293,43 @@ class MuJoCoSim(BaseSim):
         joint_pos_arr = np.array(joint_pos, dtype=np.float32)
         joint_vel_arr = np.array(joint_vel, dtype=np.float32)
 
-        # if self.fixed_base: # TODO: resolve better
-        #     torso_lin_vel = np.zeros(3, dtype=np.float32)
-        #     torso_ang_vel = np.zeros(3, dtype=np.float32)
-        #     torso_pos = np.zeros(3, dtype=np.float32)
-        #     torso_euler = np.zeros(3, dtype=np.float32)
-        # else:
-        lin_vel_global = np.array(
-            self.data.body("torso").cvel[3:],
-            dtype=np.float32,
-            copy=True,
-        )
-        ang_vel_global = np.array(
-            self.data.body("torso").cvel[:3],
-            dtype=np.float32,
-            copy=True,
-        )
-        torso_pos = np.array(
-            self.data.body("torso").xpos,
-            dtype=np.float32,
-            copy=True,
-        )
-        torso_quat = np.array(
-            self.data.body("torso").xquat,
-            dtype=np.float32,
-            copy=True,
-        )
-        if np.linalg.norm(torso_quat) == 0:
-            torso_quat = np.array([1, 0, 0, 0], dtype=np.float32)
+        if self.fixed_base:
+            torso_lin_vel = np.zeros(3, dtype=np.float32)
+            torso_ang_vel = np.zeros(3, dtype=np.float32)
+            torso_pos = np.zeros(3, dtype=np.float32)
+            torso_euler = np.zeros(3, dtype=np.float32)
+        else:
+            lin_vel_global = np.array(
+                self.data.body("torso").cvel[3:],
+                dtype=np.float32,
+                copy=True,
+            )
+            ang_vel_global = np.array(
+                self.data.body("torso").cvel[:3],
+                dtype=np.float32,
+                copy=True,
+            )
+            torso_pos = np.array(
+                self.data.body("torso").xpos,
+                dtype=np.float32,
+                copy=True,
+            )
+            torso_quat = np.array(
+                self.data.body("torso").xquat,
+                dtype=np.float32,
+                copy=True,
+            )
+            if np.linalg.norm(torso_quat) == 0:
+                torso_quat = np.array([1, 0, 0, 0], dtype=np.float32)
 
-        torso_lin_vel = np.asarray(rotate_vec(lin_vel_global, quat_inv(torso_quat)))
-        torso_ang_vel = np.asarray(rotate_vec(ang_vel_global, quat_inv(torso_quat)))
+            torso_lin_vel = np.asarray(rotate_vec(lin_vel_global, quat_inv(torso_quat)))
+            torso_ang_vel = np.asarray(rotate_vec(ang_vel_global, quat_inv(torso_quat)))
 
-        torso_euler = np.asarray(quat2euler(torso_quat))
-        torso_euler_delta = torso_euler - self.torso_euler_prev
-        torso_euler_delta = (torso_euler_delta + np.pi) % (2 * np.pi) - np.pi
-        torso_euler = self.torso_euler_prev + torso_euler_delta
-        self.torso_euler_prev = np.asarray(torso_euler, dtype=np.float32)
+            torso_euler = np.asarray(quat2euler(torso_quat))
+            torso_euler_delta = torso_euler - self.torso_euler_prev
+            torso_euler_delta = (torso_euler_delta + np.pi) % (2 * np.pi) - np.pi
+            torso_euler = self.torso_euler_prev + torso_euler_delta
+            self.torso_euler_prev = np.asarray(torso_euler, dtype=np.float32)
 
         obs = Obs(
             time=time,
@@ -375,7 +343,6 @@ class MuJoCoSim(BaseSim):
             joint_pos=joint_pos_arr,
             joint_vel=joint_vel_arr,
         )
-        obs.is_done = self.is_done(obs)
         return obs
 
     def get_mass(self) -> float:
@@ -540,51 +507,11 @@ class MuJoCoSim(BaseSim):
         This method iterates over the number of frames defined by `n_frames`, updating the control inputs using the controller's step method based on the current position and velocity of the motors. It then advances the simulation state using Mujoco's `mj_step` function. If a visualizer is provided, it updates the visualization with the current simulation data.
         """
         for _ in range(self.n_frames):
-            self.data.ctrl[: self.data.ctrl.shape[0] - self.hang_motors] = (
-                self.controller.step(
-                    self.data.qpos[self.q_start_idx + self.motor_indices],
-                    self.data.qvel[self.qd_start_idx + self.motor_indices],
-                    self.target_motor_angles,
-                )
+            self.data.ctrl = self.controller.step(
+                self.data.qpos[self.q_start_idx + self.motor_indices],
+                self.data.qvel[self.qd_start_idx + self.motor_indices],
+                self.target_motor_angles,
             )
-            if self.hang_force > 0.0:
-                # import ipdb; ipdb.set_trace()
-                torso_position = self.data.xpos[self.model.body("torso").id][:2]
-                position_offset = [
-                    [0.022, 0.045],
-                    [-0.022, 0.045],
-                    [0.022, -0.045],
-                    [-0.022, -0.045],
-                ]
-                tendon_lengths = [
-                    self.data.tendon(tendon_name).length
-                    for tendon_name in [
-                        "tendon_left_front",
-                        "tendon_left_back",
-                        "tendon_right_front",
-                        "tendon_right_back",
-                    ]
-                ]
-                actuator_forces = []
-                for i, hang_position in enumerate(
-                    ["left_front", "left_back", "right_front", "right_back"]
-                ):
-                    self.data.actuator("hang_" + hang_position).ctrl = (
-                        -self.hang_force
-                        - self.tendon_kp * (tendon_lengths[i] - np.mean(tendon_lengths))
-                    )
-                    actuator_forces.append(
-                        self.data.actuator("hang_" + hang_position).ctrl
-                    )
-                    self.data.actuator("hang_" + hang_position + "_x").ctrl = (
-                        torso_position[0] + position_offset[i][0]
-                    )
-                    self.data.actuator("hang_" + hang_position + "_y").ctrl = (
-                        torso_position[1] + position_offset[i][1]
-                    )
-                    # site_id = self.data.site("torso_" + hang_position + "_site").id
-                    # self.data.actuator("hang_" + hang_position + "_x").ctrl = self.data.xpos[site_id][0] + self.model.opt.timestep * self.data.cvel[site_id][3]
-                    # self.data.actuator("hang_" + hang_position + "_y").ctrl = self.data.xpos[site_id][1] + self.model.opt.timestep * self.data.cvel[site_id][4]
             mujoco.mj_step(self.model, self.data)
 
         if self.visualizer is not None:
@@ -654,9 +581,8 @@ class MuJoCoSim(BaseSim):
         self,
         exp_folder_path: str,
         dt: float,
-        render_every: int = 1,
+        render_every: int,
         name: str = "mujoco.mp4",
-        cameras: List[str] = ["perspective", "side", "top", "front"],
     ):
         """Saves a recording of the current MuJoCo simulation.
 
@@ -667,13 +593,7 @@ class MuJoCoSim(BaseSim):
             name (str, optional): The name of the output video file. Defaults to "mujoco.mp4".
         """
         if isinstance(self.visualizer, MuJoCoRenderer):
-            self.visualizer.save_recording(
-                exp_folder_path, dt, render_every, name, cameras
-            )
-
-    def init_recording(self):
-        if isinstance(self.visualizer, MuJoCoRenderer):
-            self.visualizer.init_recording()
+            self.visualizer.save_recording(exp_folder_path, dt, render_every, name)
 
     def close(self):
         """Closes the visualizer if it is currently open."""

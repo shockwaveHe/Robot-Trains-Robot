@@ -2,11 +2,13 @@
 
 ![ToddlerBot](docs/_static/banner.png)
 
-**[ArXiv](https://arxiv.org/abs/YOUR_PAPER_ID)** |
+**[Paper](https://arxiv.org/abs/2502.00893)** |
 **[Website](https://toddlerbot.github.io/)** |
 **[Video](https://youtu.be/A43QxHSgLyM)** | 
-**[Tweet](https://twitter.com/YOUR_TWEET)** |
-**[Documentation](https://github.com/toddlerbot/toddlerbot.github.io/wiki)**
+**[Tweet](https://x.com/HaochenShi74/status/1886599720279400732)** |
+**[Documentation](https://hshi74.github.io/toddlerbot)** |
+**[Onshape](https://cad.onshape.com/documents/ff1e767f256dd9c8abf2206a)** |
+**[MakerWorld](https://makerworld.com/en/models/1068768)**
 
 ToddlerBot is a low-cost, open-source humanoid robot platform designed for scalable policy learning and research in robotics and AI.
 
@@ -16,7 +18,7 @@ Built entirely in Python, it is **fully pip-installable** (python >= 3.10) for s
 
 
 ## Setup
-Refer to [this page]() for instructions to setup.
+Refer to [this page](https://hshi74.github.io/toddlerbot/software/01_setup.html) for instructions to setup.
 
 
 ## Walkthrough
@@ -42,7 +44,7 @@ Refer to [this page]() for instructions to setup.
 
     to verify our installation.
 
-- The `toddlerbot` folder contains all the source code. You can find a detailed API documentation [here]().
+- The `toddlerbot` folder contains all the source code. You can find a detailed API documentation [here](https://hshi74.github.io/toddlerbot/sections/06_api.html).
 
 
 ## Submitting an Issue
@@ -50,7 +52,7 @@ For easier maintenance, we will ONLY monitor GitHub Issues and likely ignore que
 We welcome issues related to anything we’ve open-sourced, not just the codebase.
 
 Before submitting an issue, please ensure you have:
-- Read the [documentation](), including the [Tips and Tricks]() section.
+- Read the [documentation](https://hshi74.github.io/toddlerbot), including the [Tips and Tricks](https://hshi74.github.io/toddlerbot/sections/05_tips_and_tricks.html) section.
 - Checked the comments in the scripts.
 - Carefully reviewed the assembly manual.
 - Watched the assembly videos.
@@ -63,7 +65,7 @@ We truly appreciate your feedback and will do our best to address it!
 
 ## Community
 
-See [our website]() for links to join the Discord or WeChat community!
+See [our website](https://toddlerbot.github.io/) for links to join the Discord or WeChat community!
 
 ## Contributing  
 
@@ -76,7 +78,12 @@ We welcome contributions from the community! To contribute, just follow the stan
 ## Citation
 If you use ToddlerBot for published research, please cite:
 ```
-
+@article{shi2025toddlerbot,
+  title={ToddlerBot: Open-Source ML-Compatible Humanoid Platform for Loco-Manipulation},
+  author={Shi, Haochen and Wang, Weizhuo and Song, Shuran and Liu, C. Karen},
+  journal={arXiv preprint arXiv:2502.00893},
+  year={2025}
+}
 ```
 
 ## License  

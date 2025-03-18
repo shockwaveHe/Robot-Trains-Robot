@@ -410,9 +410,9 @@
       </material>
     </visual>
     <collision name="left_hip_pitch_link_collision">
-      <origin xyz="-0.009275000542402267 -0.004349999129772186 0.05247500166296959" rpy="0 0 0"/>
+      <origin xyz="-0.005438103005193841 -0.004840145161154905 0.05247500166296959" rpy="0.0 0.0 0.0"/>
       <geometry>
-        <box size="0.05855000019073486 0.042399998754262924 0.10495000332593918"/>
+        <capsule radius="0.03603217800708148" length="0.03288564731177622"/>
       </geometry>
     </collision>
     <inertial>

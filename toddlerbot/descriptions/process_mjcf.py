@@ -315,15 +315,21 @@ def add_keyframes(root: ET.Element, robot: Robot, is_fixed: bool):
         else:
             qpos_str += "0 0 "
 
+        # TODO: Remove the hard code
+        if "2xm" in robot.name:
+            hip_pitch = 0.155334
+        else:
+            hip_pitch = 0.145689
+
         if "active" in robot.name:
             qpos_str += (
-                "0.145689 0 0 -0.534732 -0.379457 0 "
-                + "-0.145689 0 0 0.534732 0.379457 0 "
+                f"{hip_pitch} 0 0 -0.534732 -0.379457 0 "
+                + f"-{hip_pitch} 0 0 0.534732 0.379457 0 "
             )
         else:
             qpos_str += (
-                "0.145689 0 0 0 -0.534732 -0.534757 -0.534707 -0.379457 0 -0.534732 -0.534757 -0.534707 "
-                + "-0.145689 0 0 0 0.534732 0.534757 0.534707 0.379457 0 0.534732 0.534757 0.534707 "
+                f"{hip_pitch} 0 0 0 -0.534732 -0.534757 -0.534707 -0.379457 0 -0.534732 -0.534757 -0.534707 "
+                + f"-{hip_pitch} 0 0 0 0.534732 0.534757 0.534707 0.379457 0 0.534732 0.534757 0.534707 "
             )
 
     if has_upper_body:  # arms
@@ -396,7 +402,8 @@ def add_default_settings(
     ET.SubElement(collision_default, "geom", {"group": "3"})
 
     for motor_name, torque_limit in zip(
-        ["XM430", "XC430", "2XC430", "XL430", "2XL430", "XC330"], [3, 2, 2, 2, 2, 1]
+        ["XM430-W350", "XM430-W210", "XC430", "2XC430", "XL430", "2XL430", "XC330"],
+        [4, 3, 2, 2, 2, 2, 1],
     ):
         has_motor = False
         for joint_config in joints_config.values():
@@ -938,7 +945,9 @@ def add_ee_sites(root: ET.Element, ee_name: str):
         else:
             bottom_center_pos = [
                 geom_pos[0],
-                geom_pos[1] + geom_size[1] if i == 0 else geom_pos[1] - geom_size[1],
+                geom_pos[1] + geom_size[1]
+                if geom_pos[1] > 0
+                else geom_pos[1] - geom_size[1],
                 geom_pos[2],
             ]
 

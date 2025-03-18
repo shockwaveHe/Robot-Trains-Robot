@@ -20,9 +20,9 @@
             "group": "none",
             "lower_limit": -1.5707963267948966,
             "upper_limit": 1.5707963267948966,
-            "damping": 0.127,
-            "armature": 0.004,
-            "frictionloss": 0.069,
+            "damping": 0.091,
+            "armature": 0.0043,
+            "frictionloss": 0.043,
             "id": 0,
             "type": "dynamixel",
             "spec": "XC430",
@@ -36,9 +36,15 @@
             "kff1_real": 0.0,
             "kp_sim": 16.40625,
             "kd_sim": 0.0,
-            "tau_max": 1.45,
-            "q_dot_tau_max": 4.99,
-            "q_dot_max": 10.0
+            "tau_max": 1.1399101334585207,
+            "q_dot_max": 6.878368866343523,
+            "tau_q_dot_max": 0.10166990812152102,
+            "q_dot_tau_max": 0.36109486276857866,
+            "coeffs": [
+                -0.008205836743789477,
+                -0.10132959820874908,
+                1.1846039472255387
+            ]
         }
     }
 }

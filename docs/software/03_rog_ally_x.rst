@@ -18,7 +18,9 @@ Run the ``.exe`` file and select the following options:
 Access to the Joystick
 ----------------------
 
-Modify the control mode of the joystick to "Gamepad" in the ROG Armoury Crate software.
+Modify the control mode of the joystick to "Gamepad". 
+
+Follow this tutorial if you're not sure how: `How to Switch Between Gamepad and Desktop Controls on ASUS ROG Ally X (2024) <https://youtu.be/LQcqXoamMew?si=QzriIBUd1PBgJPQf>`_.
 
 
 Addtional Packages

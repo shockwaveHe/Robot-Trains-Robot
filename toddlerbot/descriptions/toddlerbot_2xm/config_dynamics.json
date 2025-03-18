@@ -1,0 +1,22 @@
+{
+    "waist_roll": {
+        "damping": 0.488,
+        "armature": 0.0018,
+        "frictionloss": 0.03
+    },
+    "waist_yaw": {
+        "damping": 0.108,
+        "armature": 0.0053,
+        "frictionloss": 0.001
+    },
+    "left_hip_yaw_driven": {
+        "damping": 0.0,
+        "armature": 0.0,
+        "frictionloss": 0.685
+    },
+    "right_hip_yaw_driven": {
+        "damping": 0.0,
+        "armature": 0.0,
+        "frictionloss": 0.685
+    }
+}

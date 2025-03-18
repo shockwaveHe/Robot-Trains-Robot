@@ -1,0 +1,382 @@
+{
+    "torso": {
+        "has_collision": true,
+        "contact_pairs": [
+            "floor"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "pelvis_link": {
+        "has_collision": true,
+        "contact_pairs": [
+            "floor"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "left_hip_pitch_link": {
+        "has_collision": false,
+        "contact_pairs": [
+            "floor"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "left_thigh_link": {
+        "has_collision": true,
+        "contact_pairs": [
+            "floor"
+        ],
+        "type": "capsule",
+        "scale": [
+            1.0,
+            1.0
+        ]
+    },
+    "ank_roll_link": {
+        "has_collision": true,
+        "contact_pairs": [
+            "floor",
+            "ank_roll_link_2"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "right_hip_pitch_link": {
+        "has_collision": false,
+        "contact_pairs": [
+            "floor"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "right_thigh_link": {
+        "has_collision": true,
+        "contact_pairs": [
+            "floor"
+        ],
+        "type": "capsule",
+        "scale": [
+            1.0,
+            1.0
+        ]
+    },
+    "ank_roll_link_2": {
+        "has_collision": true,
+        "contact_pairs": [
+            "floor",
+            "ank_roll_link"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "left_calf_link": {
+        "has_collision": false,
+        "contact_pairs": [
+            "floor"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "right_calf_link": {
+        "has_collision": false,
+        "contact_pairs": [
+            "floor"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "left_ank_pitch_link": {
+        "has_collision": true,
+        "contact_pairs": [
+            "floor",
+            "right_ank_pitch_link"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.1
+        ]
+    },
+    "right_ank_pitch_link": {
+        "has_collision": true,
+        "contact_pairs": [
+            "floor",
+            "left_ank_pitch_link"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.1
+        ]
+    },
+    "head": {
+        "has_collision": false,
+        "contact_pairs": [
+            "floor"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "2xl430_gears": {
+        "has_collision": true,
+        "contact_pairs": [
+            "floor"
+        ],
+        "type": "sphere",
+        "scale": [
+            0.9
+        ]
+    },
+    "2xl430_gears_2": {
+        "has_collision": true,
+        "contact_pairs": [
+            "floor"
+        ],
+        "type": "sphere",
+        "scale": [
+            0.9
+        ]
+    },
+    "2xl430_gears_3": {
+        "has_collision": true,
+        "contact_pairs": [
+            "floor"
+        ],
+        "type": "sphere",
+        "scale": [
+            0.9
+        ]
+    },
+    "hand": {
+        "has_collision": true,
+        "contact_pairs": [
+            "floor"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "2xl430_gears_4": {
+        "has_collision": true,
+        "contact_pairs": [
+            "floor"
+        ],
+        "type": "sphere",
+        "scale": [
+            0.9
+        ]
+    },
+    "2xl430_gears_5": {
+        "has_collision": true,
+        "contact_pairs": [
+            "floor"
+        ],
+        "type": "sphere",
+        "scale": [
+            0.9
+        ]
+    },
+    "2xl430_gears_6": {
+        "has_collision": true,
+        "contact_pairs": [
+            "floor"
+        ],
+        "type": "sphere",
+        "scale": [
+            0.9
+        ]
+    },
+    "hand_2": {
+        "has_collision": true,
+        "contact_pairs": [
+            "floor"
+        ],
+        "type": "box",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "spur_1m_20t": {
+        "has_collision": false
+    },
+    "waist_gears": {
+        "has_collision": false
+    },
+    "spiral_bevel_1m_14t_30deg": {
+        "has_collision": false
+    },
+    "spiral_bevel_1m_14t_30deg_2": {
+        "has_collision": false
+    },
+    "spur_gear_21_teeth": {
+        "has_collision": false
+    },
+    "spur_gear_21_teeth_2": {
+        "has_collision": false
+    },
+    "hip_yaw_link": {
+        "has_collision": false
+    },
+    "bearing_683": {
+        "has_collision": false
+    },
+    "bearing_683_2": {
+        "has_collision": false
+    },
+    "xm430_plate": {
+        "has_collision": false
+    },
+    "knee_rod": {
+        "has_collision": false
+    },
+    "knee_rod_2": {
+        "has_collision": false
+    },
+    "hip_yaw_link_2": {
+        "has_collision": false
+    },
+    "bearing_683_3": {
+        "has_collision": false
+    },
+    "bearing_683_4": {
+        "has_collision": false
+    },
+    "xm430_plate_2": {
+        "has_collision": false
+    },
+    "knee_rod_3": {
+        "has_collision": false
+    },
+    "knee_rod_4": {
+        "has_collision": false
+    },
+    "sho_pitch_link": {
+        "has_collision": false
+    },
+    "spur_1m_24t_drive": {
+        "has_collision": false
+    },
+    "spur_1m_24t_driven": {
+        "has_collision": false
+    },
+    "sho_yaw_link": {
+        "has_collision": false
+    },
+    "spur_1m_24t_drive_2": {
+        "has_collision": false
+    },
+    "spur_1m_24t_driven_2": {
+        "has_collision": false
+    },
+    "elb_yaw_link": {
+        "has_collision": false
+    },
+    "spur_1m_24t_driven_3": {
+        "has_collision": false
+    },
+    "spur_1m_24t_drive_3": {
+        "has_collision": false
+    },
+    "wrist_bearing_plate": {
+        "has_collision": false
+    },
+    "sho_pitch_link_2": {
+        "has_collision": false
+    },
+    "spur_1m_24t_drive_4": {
+        "has_collision": false
+    },
+    "spur_1m_24t_driven_4": {
+        "has_collision": false
+    },
+    "sho_yaw_link_2": {
+        "has_collision": false
+    },
+    "spur_1m_24t_drive_5": {
+        "has_collision": false
+    },
+    "spur_1m_24t_driven_5": {
+        "has_collision": false
+    },
+    "elb_yaw_link_2": {
+        "has_collision": false
+    },
+    "spur_1m_24t_driven_6": {
+        "has_collision": false
+    },
+    "spur_1m_24t_drive_6": {
+        "has_collision": false
+    },
+    "wrist_bearing_plate_2": {
+        "has_collision": false
+    },
+    "neck_yaw_link_v2": {
+        "has_collision": false
+    },
+    "motor_plate": {
+        "has_collision": false
+    },
+    "neck_rod": {
+        "has_collision": false
+    },
+    "neck_rod_2": {
+        "has_collision": false
+    },
+    "bearing_683_5": {
+        "has_collision": false
+    },
+    "bearing_683_6": {
+        "has_collision": false
+    },
+    "spur_gear_18_teeth": {
+        "has_collision": false
+    },
+    "spur_gear_18_teeth_2": {
+        "has_collision": false
+    }
+}

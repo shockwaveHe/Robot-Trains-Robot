@@ -395,9 +395,9 @@ def run_policy(
             step_idx += 1
 
             p_bar_steps = int(1 / policy.control_dt)
-            # if step_idx % p_bar_steps == 0:
-            #     print(f"Step: {step_idx}/{n_steps_total}")
-            #     p_bar.update(p_bar_steps)
+            if step_idx % p_bar_steps == 0:
+                print(f"Step: {step_idx}/{n_steps_total}")
+                p_bar.update(p_bar_steps)
 
             step_end = time.time()
 
@@ -586,17 +586,11 @@ def main(args=None):
         type=str,
         default="toddlerbot",
         help="The name of the robot. Need to match the name in descriptions.",
-        choices=[
-            "toddlerbot",
-            "toddlerbot_gripper",
-            "toddlerbot_arms",
-            "toddlerbot_active",
-        ],
     )
     parser.add_argument(
         "--sim",
         type=str,
-        default="arm_toddler",
+        default="mujoco",
         help="The name of the simulator to use.",
         choices=["arm_toddler", "mujoco", "real", "finetune", "real_mock"],
     )
@@ -639,6 +633,12 @@ def main(args=None):
         default="",
         nargs="+",
         help="The policy checkpoint to load for RL policies.",
+    )
+    parser.add_argument(
+        "--torch",
+        action="store_true",
+        default=False,
+        help="Use PyTorch or JAX.",
     )
     parser.add_argument(
         "--command",
@@ -703,7 +703,9 @@ def main(args=None):
     if args.sim == "mujoco":
         fixed_base = "fixed" in args.policy
         sim = MuJoCoSim(
-            robot, vis_type=args.vis, fixed_base=fixed_base, hang_force=args.hang_force
+            robot,
+            vis_type=args.vis,
+            fixed_base=fixed_base,  # hang_force=args.hang_force
         )
         init_motor_pos = sim.get_observation().motor_pos
     elif args.sim == "arm_toddler":
@@ -756,9 +758,9 @@ def main(args=None):
             args.ckpt = args.ckpt[0]
 
     if "replay" in args.policy:
-        assert args.robot in args.run_name, (
-            "The robot name needs to be in the run name to ensure a successful replay"
-        )
+        # assert args.robot in args.run_name, (
+        #     "The robot name needs to be in the run name to ensure a successful replay"
+        # )
         policy = PolicyClass(args.policy, robot, init_motor_pos, args.run_name)
 
     elif "teleop_leader" in args.policy:
@@ -820,6 +822,7 @@ def main(args=None):
                 init_motor_pos=init_motor_pos,
                 ckpt=args.ckpt,
                 fixed_command=fixed_command,
+                use_torch=args.torch,
             )
 
     elif issubclass(PolicyClass, DPPolicy):

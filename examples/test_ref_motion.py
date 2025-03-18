@@ -66,11 +66,7 @@ def test_ref_motion(
                         axis = 7
 
                     if axis is not None:
-                        command[axis] = np.interp(
-                            input,
-                            [-1, 0, 1],
-                            [command_range[axis][1], 0.0, command_range[axis][0]],
-                        )
+                        command[axis] = input
 
             elif "balance" in motion_ref.name:
                 for task, input in control_inputs.items():

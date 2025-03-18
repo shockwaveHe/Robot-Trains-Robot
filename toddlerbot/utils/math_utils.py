@@ -2,10 +2,25 @@ import math
 from dataclasses import is_dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
+import torch
+import torch.nn.functional as F
 from scipy.signal import chirp
 
 from toddlerbot.utils.array_utils import ArrayType
 from toddlerbot.utils.array_utils import array_lib as np
+
+
+def soft_clamp(
+    x: torch.Tensor,
+    _min: Optional[torch.Tensor] = None,
+    _max: Optional[torch.Tensor] = None,
+) -> torch.Tensor:
+    # clamp tensor values while mataining the gradient
+    if _max is not None:
+        x = _max - F.softplus(_max - x)
+    if _min is not None:
+        x = _min + F.softplus(x - _min)
+    return x
 
 
 def get_random_sine_signal_config(
