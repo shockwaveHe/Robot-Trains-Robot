@@ -235,7 +235,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             )  # no-blocking plot
 
     def close(self):
-        self.sim.close()
+        if hasattr(self, "sim"):
+            self.sim.close()
         self.logger.close()
         self.zmq_receiver.close()
         if self.finetune_cfg.update_mode == "local":

@@ -83,7 +83,7 @@ class RemoteReplayBuffer:
     def reset(self):
         self._count = 0
         self.is_overwriting = False
-        self.client.send_experience({"type": "reset"})
+        # self.client.send_experience({"type": "reset"})
 
 
 class OnlineReplayBuffer:

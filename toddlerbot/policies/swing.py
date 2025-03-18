@@ -86,7 +86,7 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         self.num_obs_history = self.cfg.obs.frame_stack
         self.obs_size = self.finetune_cfg.num_single_obs
 
-        self.is_real = True
+        self.is_real = is_real
 
         self.active_motor_idx = [4, 7, 10, 13]
         self.motor_speed_limits = np.array([0.05])
@@ -116,7 +116,8 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         else:
             assert self.finetune_cfg.update_mode == 'remote'
             self.remote_client = RemoteClient(
-                server_ip='192.168.0.227', 
+                # server_ip='192.168.0.227', 
+                server_ip="172.24.68.176",
                 server_port=5007,
                 exp_folder=self.exp_folder,
             )
@@ -164,7 +165,8 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         self.control_dt = 0.02
         if len(ckpts) > 0:
             self.load_ckpts(ckpts)
-        input("press ENTER to start")
+        if is_real:
+            input("press ENTER to start")
 
         self.swing_buffer_size = 100
         self.fx_buffer = deque(maxlen=self.swing_buffer_size)
@@ -274,6 +276,7 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
             rmse = np.sqrt(np.mean((buffer - fit_vals)**2))
             return (*params, rmse)
         except:
+            import ipdb; ipdb.set_trace()
             return 0, 0, 0, 0, np.inf
 
     def step(self, obs: Obs, is_real: bool = True):
@@ -369,6 +372,12 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
             )
             self.policy_net.load_state_dict(self.remote_client.new_state_dict)
             self.remote_client.ready_to_update = False
+            self.need_reset = True
+
+            # motor_target = self.state_ref[13 : 13 + self.robot.nu].copy()
+            motor_target = self.default_motor_pos.copy()
+            motor_target[self.action_mask] = self.last_action_target
+            return {}, motor_target, obs
         
         if self.learning_stage == "online": # use deterministic action during offline learning
             action_pi, action_real, action_logprob = self.get_action(obs_arr, deterministic=False, is_real=is_real)

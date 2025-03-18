@@ -179,8 +179,7 @@ class NetFTSensor:
                 sum_tz / count
             ])
         else:
-            avg_force = np.zeros(3)
-            avg_torque = np.zeros(3)
+            raise NetFTException("No new data available")
 
         # Update smoothing window timestamp
         self._last_smoothed_time = current_time

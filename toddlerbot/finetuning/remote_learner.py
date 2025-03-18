@@ -3,6 +3,7 @@ import gin
 import ipdb
 import time
 import torch
+import argparse
 import traceback
 import numpy as np
 from toddlerbot.sim.robot import Robot
@@ -19,9 +20,12 @@ dynamic_import_policies("toddlerbot.policies")
 NUM_ACTIONS = 12
 
 if __name__ == "__main__":
-    robot = Robot("toddlerbot")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--task", type=str, default="walk")
+    args = parser.parse_args()
+    robot = Robot("toddlerbot_2xm")
     init_motor_pos = np.zeros(len(robot.motor_ordering), dtype=np.float32)
-    current_task = "walk"
+    current_task = args.task
     env_cfg = get_env_config(current_task)
     finetune_cfg = get_finetune_config(current_task)
     if current_task == "walk":

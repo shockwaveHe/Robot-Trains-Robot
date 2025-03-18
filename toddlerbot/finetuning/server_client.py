@@ -174,8 +174,8 @@ class RemoteServer:
                                 privileged_obs_history[: latest_priv.size] = latest_priv
 
                             log_dict = {}
+                            raw_obs = msg['raw_obs']
                             if self.policy.name == 'walk_finetune' or self.policy.name == 'raise_arm':
-                                raw_obs = msg['raw_obs']
                                 self.policy.sim.set_motor_angles(raw_obs.motor_pos)
                                 self.policy.sim.forward()
 
@@ -190,12 +190,13 @@ class RemoteServer:
                                 raw_obs.hand_z_dist = np.array([hand_pos["left"][2], hand_pos["right"][2]])
                             elif self.policy.name == 'swing':
                                 self.policy.fx_buffer.append(msg['raw_obs'].ee_force[0])
-                                # self.policy.fy_buffer.append(msg['raw_obs'].ee_force[1])
-                                # self.policy.fz_buffer.append(msg['raw_obs'].ee_force[2])
+                                self.policy.fy_buffer.append(msg['raw_obs'].ee_force[1])
+                                self.policy.fz_buffer.append(msg['raw_obs'].ee_force[2])
                                 if len(self.policy.fx_buffer) < self.policy.swing_buffer_size // 2:
                                     continue
-                                self.policy.Ax, self.policy.freq_x, self.policy.phase_x, self.policy.offset_x, self.policy.error_x = self.policy._fit_sine_to_buffer(self.fx_buffer)
-                                log_dict['Ax'], log_dict['freq_x'], log_dict['error_x'] = self.policy.Ax, self.policy.freq_x, self.policy.error_x
+                                self.policy.Ax, self.policy.freq_x, self.policy.phase_x, self.policy.offset_x, self.policy.error_x = self.policy._fit_sine_to_buffer(self.policy.fx_buffer)
+                                log_dict['fx'], log_dict['Ax'], log_dict['freq_x'], log_dict['error_x'] = msg['raw_obs'].ee_force[0], self.policy.Ax, self.policy.freq_x, self.policy.error_x
+                            # import ipdb; ipdb.set_trace()
                             reward_dict = self.policy._compute_reward(raw_obs, msg['a'])
                             reward = sum(reward_dict.values()) * self.policy.control_dt
                             self.policy.last_last_action = self.policy.last_action.copy()
