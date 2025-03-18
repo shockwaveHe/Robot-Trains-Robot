@@ -6,7 +6,7 @@ ObsConfig.num_single_obs = 74
 ObsConfig.num_single_privileged_obs = 80
 ObsConfig.frame_stack = 10
 
-ActionConfig.action_scale = 0.5
+ActionConfig.action_scale = 1.0
 
 ActionConfig.filter_type = "ema"
-ActionConfig.filter_cutoff = 0.3
+ActionConfig.filter_cutoff = 0.5

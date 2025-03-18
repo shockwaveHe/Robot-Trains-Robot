@@ -92,7 +92,7 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         self.motor_speed_limits = np.array([0.1])
 
         self.action_mask = np.array(self.active_motor_idx)
-        self.action_deltas = deque(maxlen=self.finetune_cfg.action_window_size)
+        self.vel_deltas = deque(maxlen=self.finetune_cfg.action_window_size)
         self.num_action = self.action_mask.shape[0]
         if self.finetune_cfg.symmetric_action:
             self.num_action //= 2
@@ -189,9 +189,10 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         self.health_z_force = 40
         self.freq_tolerance = 1.0
         self.amplitude = 0.8
-        self.period = 2
+        self.period = 1.5
 
         self.phase_signal = np.zeros(2, dtype=np.float32)
+        self.last_motor_vel = np.zeros(self.action_mask.shape[0])
 
     def get_obs(
         self, obs: Obs, command: np.ndarray=None, phase_signal=None, last_action=None
@@ -420,6 +421,7 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         if time_elapsed < self.total_steps * self.control_dt:
             time.sleep(self.total_steps * self.control_dt - time_elapsed)
 
+        self.last_motor_vel = obs.motor_vel[self.action_mask].copy()
         if (len(self.replay_buffer) + 1) % 400 == 0:
             print(
                 f"Data size: {len(self.replay_buffer)}, Steps: {self.total_steps}, Fps: {self.total_steps / self.timer.elapsed()}"
@@ -432,6 +434,12 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
             self.current_steps = 0
             print("Truncated! Resetting...")
 
+        # action_real = np.array([
+        #     self.amplitude * np.sin(2*np.pi*time_curr/self.period),
+        #     - self.amplitude * (1 - np.cos(2*np.pi*time_curr/self.period)) / 2,
+        # ])
+        # action_real += np.random.rand(self.num_action) * 2.0 - 1.0
+        # action_pi = action_real.copy()
         self.replay_buffer.store(
             obs_arr,
             privileged_obs_arr,
@@ -460,8 +468,6 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         # import ipdb; ipdb.set_trace()
 
         action_target = self.default_action + self.action_scale * delayed_action
-        # action_target = self.default_action[:self.num_action] + self.amplitude * np.sin(2*np.pi*time_curr/self.period)
-        # action_target = np.concatenate([-action_target, action_target])
         if self.filter_type == "ema":
             action_target = exponential_moving_average(
                 self.ema_alpha, action_target, self.last_action_target
@@ -541,26 +547,8 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         """Reward consistent action direction using a 30-step window"""
             
         # Calculate new delta and its squared magnitude
-        current_delta = action - self.last_action
-        self.action_deltas.append(np.sum(current_delta))
-        
-        # Calculate directional consistency using autocorrelation
-        if len(self.action_deltas) >= 2:
-            # Get reference to the underlying array for vector ops
-            deltas = np.array(self.action_deltas)
-            
-            # Calculate normalized autocorrelation (lag=1)
-            mean = np.mean(deltas)
-            var = np.var(deltas) + 1e-6
-            autocorr = ((deltas[:-1] - mean) * (deltas[1:] - mean)).sum() / var
-            
-            # Combine magnitude and directional consistency
-            mag_penalty = -0.5 * np.tanh(np.sum(self.action_deltas) * 100)
-            dir_reward = 0.5 * np.tanh(autocorr)
-            
-            return mag_penalty + dir_reward
-            
-        return 0.0
+        self.vel_deltas.append(obs.motor_vel[self.action_mask] - self.last_motor_vel)
+        return -np.sum(np.square(self.vel_deltas).mean(axis=0))
     
     def _reward_swing_spectrum(self, obs: Obs, action: np.ndarray) -> np.ndarray:
         """Reward combination of low frequency and large amplitude"""
