@@ -333,6 +333,7 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
             motor_target = np.asarray(
                 interpolate_action(cur_time - self.traj_start_time, self.prep_time, self.prep_action)
             )
+            self.last_action_target = motor_target[self.action_mask]
             return {}, motor_target, obs
 
         # if len(self.fx_buffer) < self.swing_buffer_size // 2:
@@ -518,6 +519,13 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
     
     def _reward_swing_progress(self, obs: Obs, action: np.ndarray) -> np.ndarray:
         return np.abs(obs.euler[1] * obs.ang_vel[1])
+    
+    def _reward_swing_consistency(self, obs: Obs, action: np.ndarray) -> np.ndarray:
+        action_moment = action[self.num_action//2:] - self.last_action[self.num_action//2:]
+        return obs.ang_vel[1] * action_moment.mean()
+    
+    def _reward_action_symmetry(self, obs: Obs, action: np.ndarray) -> np.ndarray:
+        return -np.square(action[:self.num_action//2] + action[self.num_action//2:]).mean()
     
     def _reward_swing_spectrum(self, obs: Obs, action: np.ndarray) -> np.ndarray:
         """Reward combination of low frequency and large amplitude"""

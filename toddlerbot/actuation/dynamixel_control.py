@@ -238,7 +238,7 @@ class DynamixelController(BaseController):
         self.client.sync_write(self.motor_ids, self.config.kFF1, 90, 2)
         # self.client.sync_write(self.motor_ids, self.config.current_limit, 102, 2)
 
-        # self.client.set_torque_enabled(self.motor_ids, True)
+        self.client.set_torque_enabled(self.motor_ids, True)
 
         time.sleep(0.2)
 
