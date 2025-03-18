@@ -64,9 +64,9 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         self.action_mask = np.array(self.active_motor_idx)
         self.timer = Timer()
         self.num_privileged_obs_history = self.finetune_cfg.frame_stack
-        if self.finetune_cfg.symmetric_action:
-            self.num_privileged_obs_history -= self.action_mask.size // 2
         self.privileged_obs_size = self.finetune_cfg.num_single_privileged_obs
+        if self.finetune_cfg.symmetric_action:
+            self.privileged_obs_size -= self.action_mask.size // 2
         self.privileged_obs_history_size = (
             self.privileged_obs_size * self.num_privileged_obs_history
         )
@@ -83,6 +83,7 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
             exp_folder=exp_folder,
             need_warmup=False
         )
+        self.action_mask = np.array(self.active_motor_idx)
 
         # self.control_dt = 0.1
         self.robot = robot
@@ -92,9 +93,8 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         self.num_obs_history = self.cfg.obs.frame_stack
         self.obs_size = self.finetune_cfg.num_single_obs
         if self.finetune_cfg.symmetric_action:
-            self.num_obs_history -= self.action_mask.size // 2
+            self.obs_size -= (self.action_mask.size // 2)
         self.is_real = is_real
-
         self.vel_deltas = deque(maxlen=self.finetune_cfg.action_window_size)
         self.num_action = self.action_mask.shape[0]
         self.default_action = np.zeros(self.num_action)
@@ -145,6 +145,7 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
             self._residual_action_scale = self.finetune_cfg.residual_action_scale
 
         self.obs_history = np.zeros(self.num_obs_history * self.obs_size)
+        self.obs_history_size = self.num_obs_history * self.obs_size
         self.privileged_obs_history = np.zeros(
             self.num_privileged_obs_history * self.privileged_obs_size
         )
@@ -233,7 +234,6 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
             self.privileged_obs_history, privileged_obs_arr.size
         )
         self.privileged_obs_history[: privileged_obs_arr.size] = privileged_obs_arr
-        import ipdb; ipdb.set_trace()
         return self.obs_history, self.privileged_obs_history
 
     def get_raw_action(self, obs: Obs) -> np.ndarray:
