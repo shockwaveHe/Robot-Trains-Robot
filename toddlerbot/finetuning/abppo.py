@@ -107,8 +107,11 @@ class BehaviorProximalPolicyOptimization:
         pre_tanh_sample = new_dist.rsample()
         if isinstance(new_dist, TransformedDistribution):
             pre_tanh_sample = new_dist.transforms[-1].inv(pre_tanh_sample)
-        log_det_jac = self._policy.forward_log_det_jacobian(pre_tanh_sample) # return 2.0 * (torch.log(torch.tensor(2.0)) - x - F.softplus(-2.0 * x))
-        entropy_loss = torch.sum(new_dist.base_dist.entropy() + log_det_jac, dim=-1) * self._entropy_weight
+            log_det_jac = self._policy.forward_log_det_jacobian(pre_tanh_sample) # return 2.0 * (torch.log(torch.tensor(2.0)) - x - F.softplus(-2.0 * x))
+            entropy_loss = torch.sum(new_dist.base_dist.entropy() + log_det_jac, dim=-1) * self._entropy_weight
+        else:
+            assert isinstance(new_dist, torch.distributions.normal.Normal)
+            entropy_loss = torch.sum(new_dist.entropy(), dim=-1) * self._entropy_weight
         return entropy_loss
     
     def set_old_policy(
@@ -150,10 +153,14 @@ class BehaviorProximalPolicyOptimization:
         dist = self._policy(s)
         if not deterministic:
             action = dist.sample()
-        else:    
-            action = dist.base_dist.mode
-            for transform in dist.transforms:
-                action = transform(action)
+        else:
+            if isinstance(dist, TransformedDistribution):
+                action = dist.base_dist.mode
+                for transform in dist.transforms:
+                    action = transform(action)
+            else:
+                assert isinstance(dist, torch.distributions.normal.Normal)
+                action = dist.mean    
         # clip 
         action = action.clamp(-1., 1.)
         log_prob = dist.log_prob(action)

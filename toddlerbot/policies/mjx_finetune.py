@@ -592,7 +592,11 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         if deterministic:
             # Deterministic: use mode
-            actions_pi = action_dist.base_dist.mode
+            if isinstance(action_dist, torch.distributions.TransformedDistribution):
+                actions_pi = action_dist.base_dist.mode
+            else:
+                assert isinstance(action_dist, torch.distributions.Normal)
+                actions_pi = action_dist.mean
             for transform in action_dist.transforms:
                 actions_pi = transform(actions_pi)
         else:
@@ -602,9 +606,13 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         if self.finetune_cfg.use_residual:
             base_action_dist = self.base_policy_net_opt(obs_tensor.to(self.inference_device))
-            base_actions = base_action_dist.base_dist.mode
-            for transform in base_action_dist.transforms:
-                base_actions = transform(base_actions)
+            if isinstance(base_action_dist, torch.distributions.TransformedDistribution):
+                base_actions = base_action_dist.base_dist.mode
+                for transform in base_action_dist.transforms:
+                    base_actions = transform(base_actions)
+            else:
+                assert isinstance(base_action_dist, torch.distributions.Normal)
+                base_actions = base_action_dist.mean
             actions_real = self._residual_action_scale * actions_pi + base_actions
         else:
             actions_real = actions_pi

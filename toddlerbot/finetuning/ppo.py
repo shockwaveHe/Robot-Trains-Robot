@@ -85,13 +85,21 @@ class PPO:
         with torch.no_grad():
             dist = self._policy_net(s)
             if deterministic:
-                a_pi = torch.tanh(dist.base_dist.loc)
+                if isinstance(dist, TransformedDistribution):
+                    a_pi = torch.tanh(dist.base_dist.loc)
+                else:
+                    assert isinstance(dist, torch.distributions.Normal)
+                    a_pi = dist.loc
             else:
                 a_pi = dist.sample()
             a_logprob = dist.log_prob(a_pi).sum(axis=-1, keepdim=True)
         if self.use_residual:
             base_dist = self._base_policy_net(s)
-            a_real = a_pi + torch.tanh(base_dist.base_dist.loc)
+            if isinstance(base_dist, TransformedDistribution):
+                a_real = a_pi + torch.tanh(base_dist.base_dist.loc)
+            else:
+                assert isinstance(base_dist, torch.distributions.Normal)
+                a_real = a_pi + base_dist.loc
             a_real.clamp_(-1.0 + CONST_EPS, 1.0 - CONST_EPS)
         else:
             a_real = a_pi
@@ -126,6 +134,7 @@ class PPO:
                     log_det_jac = self._policy_net.forward_log_det_jacobian(pre_tanh_sample) # return 2.0 * (torch.log(torch.tensor(2.0)) - x - F.softplus(-2.0 * x))
                     dist_entropy = torch.sum(new_dist.base_dist.entropy() + log_det_jac, dim=-1, keepdim=True)
                 else:
+                    assert isinstance(new_dist, torch.distributions.Normal)
                     dist_entropy = new_dist.entropy().sum(1, keepdim=True)
                 a_logprob_now = new_dist.log_prob(actions[index])
 
