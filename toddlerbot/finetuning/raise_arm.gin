@@ -10,18 +10,19 @@ FinetuneConfig.offline_total_steps = 0
 FinetuneConfig.offline_initial_steps = 5000
 FinetuneConfig.update_mode = "remote"
 FinetuneConfig.frame_stack = 15
-FinetuneConfig.use_residual = True
+FinetuneConfig.use_residual = False
+FinetuneConfig.use_tanh = False
 
 
-FinetuneRewardScales.arm_action_rate = 1.0
-FinetuneRewardScales.arm_action_acc = 0.2
-FinetuneRewardScales.arm_position = 20.0
+FinetuneRewardScales.arm_action_rate = 4.0
+FinetuneRewardScales.arm_action_acc = 1.0
+FinetuneRewardScales.arm_position = 1.0
 FinetuneRewardScales.survival = 10.0
 
 OnlineConfig.batch_size = 1024
 OnlineConfig.mini_batch_size = 128
 OnlineConfig.is_clip_value = True
-OnlineConfig.lr_c = 5e-4
-OnlineConfig.lr_a = 3e-4
-OnlineConfig.entropy_coef = 0.05
+OnlineConfig.lr_c = 2e-4
+OnlineConfig.lr_a = 1e-4
+OnlineConfig.entropy_coef = 0.01
 OnlineConfig.K_epochs = 20

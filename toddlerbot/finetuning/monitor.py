@@ -13,7 +13,7 @@ import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 
 class CSVMonitor:
-    def __init__(self, file_name, user='toddie', host='10.5.6.248', window=100, ema=0.2, ncols=4, interval=100):
+    def __init__(self, file_name, task="walk_finetune", user='toddie', host='10.5.6.248', window=100, ema=0.2, ncols=4, interval=100):
         """
         Initialize the CSV monitor.
         """
@@ -24,6 +24,7 @@ class CSVMonitor:
         self.file_name = file_name
         self.user = user
         self.host = host
+        self.task = task
         self.remote_file = None
         self.window = window
         self.ema_alpha = ema
@@ -50,11 +51,12 @@ class CSVMonitor:
         """
         find_cmd = (
             f'ssh {self.user}@{self.host} '
-            f'"ls -td ~/projects/toddlerbot/results/toddlerbot_walk_finetune_real_world_* 2>/dev/null | head -n 1"'
+            f'"ls -td ~/projects/toddlerbot_internal/results/toddlerbot_2xm_{self.task}_real_world_* 2>/dev/null | head -n 1"'
         )
         try:
             latest_folder = subprocess.check_output(find_cmd, shell=True, universal_newlines=True).strip()
             if latest_folder:
+                print("Latest results folder:", latest_folder)
                 return latest_folder
         except subprocess.CalledProcessError:
             pass
@@ -281,10 +283,11 @@ if __name__ == '__main__':
                         help="Number of subplots per row")
     parser.add_argument('--interval', type=int, default=30,
                         help="Plot update interval in milliseconds")
+    parser.add_argument('--task', default="walk_finetune")
     args = parser.parse_args()
 
     file_name = "training_rewards"
-    monitor = CSVMonitor(file_name=file_name, user=args.user, host=args.host,
+    monitor = CSVMonitor(file_name=file_name, user=args.user, host=args.host, task=args.task,
                          window=args.window, ema=args.ema, ncols=args.ncols, interval=args.interval)
 
     # Block until a valid CSV file and its header are found.

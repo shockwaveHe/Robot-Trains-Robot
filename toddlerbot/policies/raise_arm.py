@@ -13,22 +13,11 @@ from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
 from toddlerbot.utils.math_utils import interpolate_action
-from tqdm import tqdm
-from toddlerbot.sim import Obs
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
-from toddlerbot.policies.mjx_policy import MJXPolicy
 from toddlerbot.finetuning.replay_buffer import OnlineReplayBuffer, RemoteReplayBuffer
 from toddlerbot.finetuning.server_client import RemoteClient
-from toddlerbot.finetuning.dynamics import DynamicsNetwork, BaseDynamics
 from toddlerbot.finetuning.utils import Timer
-from toddlerbot.reference.walk_zmp_ref import WalkZMPReference
-from toddlerbot.sim.robot import Robot
-from toddlerbot.finetuning.networks import load_jax_params, load_jax_params_into_pytorch
-import toddlerbot.finetuning.networks as networks
-from toddlerbot.finetuning.finetune_config import FinetuneConfig
-from toddlerbot.utils.math_utils import interpolate_action, exponential_moving_average, inverse_exponential_moving_average
-from toddlerbot.utils.comm_utils import ZMQNode, ZMQMessage
-from toddlerbot.utils.misc_utils import log, profile
+from toddlerbot.utils.math_utils import exponential_moving_average, inverse_exponential_moving_average
 from toddlerbot.finetuning.logger import FinetuneLogger
 
 class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
@@ -83,12 +72,12 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         self.obs_size = self.finetune_cfg.num_single_obs
 
         self.is_real = False # hardcode to False for zmq, etc.
-
+        self.is_paused = False
         self.shoulder_motor_idx = [16, 19, 21, 23, 26, 28]
         self.motor_speed_limits = np.array([0.05])
         self.hand_z_dist_base = 0.266
         self.arm_radius = 0.1685
-        self.hand_z_dist_terminal = 0.43
+        self.hand_z_dist_terminal = 0.5
         self.action_mask = np.array(self.shoulder_motor_idx)
         self.num_action = self.action_mask.shape[0]
         self.default_action = self.default_motor_pos[self.action_mask]
@@ -113,7 +102,8 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         else:
             assert self.finetune_cfg.update_mode == 'remote'
             self.remote_client = RemoteClient(
-                server_ip='192.168.0.227', 
+                # server_ip='192.168.0.227', 
+                server_ip="172.24.68.176",
                 server_port=5007,
                 exp_folder=self.exp_folder,
             )
@@ -131,6 +121,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
 
         if self.finetune_cfg.use_residual:
             self._make_residual_policy()
+            self._residual_action_scale = self.finetune_cfg.residual_action_scale
 
         self.obs_history = np.zeros(self.num_obs_history * self.obs_size)
         self.privileged_obs_history = np.zeros(
@@ -151,7 +142,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
 
         self.max_hand_z = -np.inf
         self.sim = MuJoCoSim(
-            robot, vis_type=self.finetune_cfg.sim_vis_type, hang_force=0.0, n_frames=1
+            robot, vis_type=self.finetune_cfg.sim_vis_type, n_frames=1
         )
 
         self.control_dt = 0.02
@@ -227,14 +218,15 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
 
         if not self.is_prepared:
             self.is_prepared = True
-            self.prep_duration = 7.0 if is_real else 0.0
+            self.prep_duration = 5.0 if is_real else 0.0
             self.prep_time, self.prep_action = self.move(
                 -self.control_dt,
-                self.init_motor_pos,
+                obs.motor_pos,
                 self.default_motor_pos,
                 self.prep_duration,
-                end_time=5.0 if is_real else 0.0,
+                end_time=2.0 if is_real else 0.0,
             )
+
         cur_time = time.time()
         if cur_time - self.traj_start_time < self.prep_duration:
             motor_target = np.asarray(
@@ -268,6 +260,12 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
             )
             self.policy_net.load_state_dict(self.remote_client.new_state_dict)
             self.remote_client.ready_to_update = False
+            self.need_reset = True
+
+            # motor_target = self.state_ref[13 : 13 + self.robot.nu].copy()
+            motor_target = self.default_motor_pos.copy()
+            motor_target[self.action_mask] = self.last_action_target
+            return {}, motor_target, obs
         
         if self.learning_stage == "online": # use deterministic action during offline learning
             action_pi, action_real, action_logprob = self.get_action(obs_arr, deterministic=False, is_real=is_real)
@@ -397,7 +395,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         )
         self.last_action = np.zeros(self.num_action)
         self.traj_start_time = time.time()
-
+        self.is_prepared = False
         print("Reset done!")
 
     def _reward_survival(self, obs: Obs, action: np.ndarray) -> np.ndarray:
