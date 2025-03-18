@@ -218,9 +218,10 @@ class EnsembleDynamicsNetwork(nn.Module):
     
 class GaussianPolicyNetwork(nn.Module):
     def __init__(
-        self, observation_size: int, hidden_layers: Tuple[int], action_size: int, preprocess_observations_fn, activation_fn = torch.nn.SiLU
+        self, observation_size: int, hidden_layers: Tuple[int], action_size: int, preprocess_observations_fn, activation_fn = torch.nn.SiLU, use_tanh: bool = True
     ) -> None:
         super().__init__()
+        self.use_tanh = use_tanh
         self.preprocess_observations_fn = preprocess_observations_fn
         self.mlp = MLP([observation_size] + list(hidden_layers) + [action_size * 2], activation_fn=activation_fn, layer_norm=False, activate_final=False)
         self._log_std_bound = (-10., 2.)
@@ -233,7 +234,8 @@ class GaussianPolicyNetwork(nn.Module):
         log_std = soft_clamp(log_std, self._log_std_bound[0], self._log_std_bound[1])
         std = log_std.exp()
         dist = Normal(mu, std)
-        dist = TransformedDistribution(dist, [TanhTransform(cache_size=1)])
+        if self.use_tanh:
+            dist = TransformedDistribution(dist, [TanhTransform(cache_size=1)])
         return dist
     
     def select_action(self, obs: torch.Tensor, is_sample: bool = True, processer_params=None) -> torch.Tensor:

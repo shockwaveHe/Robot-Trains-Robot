@@ -42,6 +42,7 @@ class FinetuneConfig:
     value_update_steps: int = int(1e4)
     dynamics_update_steps: int = 256
     target_update_freq: int = 2  # Matches the value from the argparse config
+    use_tanh: bool = False  # Use tanh transformation for the action distribution
     
     # Discounting and learning rates
     gamma: float = 0.99 

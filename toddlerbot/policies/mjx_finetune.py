@@ -268,6 +268,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             hidden_layers=policy_hidden_layer_sizes,
             action_size=action_size,
             activation_fn=activation_fn,
+            use_tanh=self.finetune_cfg.use_tanh,
         ).to(self.inference_device)
         self.policy_net_opt = (
             torch.compile(self.policy_net) if self.is_real else self.policy_net
