@@ -216,6 +216,7 @@ class FinetuneConfig:
         action_symmetry: float = 0.0
         swing_consistency: float = 0.0
         action_smoothness: float = 0.0
+        action_scale: float = 0.0
 
     def __post_init__(self):
         self.finetune_reward_scales = self.FinetuneRewardScales()

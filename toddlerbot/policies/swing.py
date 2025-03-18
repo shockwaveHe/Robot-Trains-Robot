@@ -89,7 +89,7 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         self.is_real = is_real
 
         self.active_motor_idx = [4, 7, 10, 13]
-        self.motor_speed_limits = np.array([0.05])
+        self.motor_speed_limits = np.array([0.1])
 
         self.action_mask = np.array(self.active_motor_idx)
         self.action_deltas = deque(maxlen=self.finetune_cfg.action_window_size)
@@ -188,6 +188,8 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         self.health_xy_force = 10
         self.health_z_force = 40
         self.freq_tolerance = 1.0
+        self.amplitude = 0.8
+        self.period = 2
 
         self.phase_signal = np.zeros(2, dtype=np.float32)
 
@@ -458,7 +460,8 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         # import ipdb; ipdb.set_trace()
 
         action_target = self.default_action + self.action_scale * delayed_action
-        
+        # action_target = self.default_action[:self.num_action] + self.amplitude * np.sin(2*np.pi*time_curr/self.period)
+        # action_target = np.concatenate([-action_target, action_target])
         if self.filter_type == "ema":
             action_target = exponential_moving_average(
                 self.ema_alpha, action_target, self.last_action_target
@@ -552,8 +555,8 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
             autocorr = ((deltas[:-1] - mean) * (deltas[1:] - mean)).sum() / var
             
             # Combine magnitude and directional consistency
-            mag_penalty = -0.5 * np.tanh(np.sum(self.action_deltas) / 100)
-            dir_reward = 0.5 * np.tanh(autocorr * 5)
+            mag_penalty = -0.5 * np.tanh(np.sum(self.action_deltas) * 100)
+            dir_reward = 0.5 * np.tanh(autocorr)
             
             return mag_penalty + dir_reward
             
@@ -648,3 +651,8 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         error = np.square(action - 2 * self.last_action + self.last_last_action)
         reward = -np.mean(error)
         return reward
+    
+    def _reward_action_scale(self, obs: Obs, action: np.ndarray) -> np.ndarray:
+        if self.finetune_cfg.symmetric_action:
+            action = np.concatenate([-action, action])
+        return np.square(action - self.default_action).mean()
