@@ -22,7 +22,7 @@
     },
     "waist_act_1": {
         "motor": "XC330",
-        "init_pos": 1.9957090616226196,
+        "init_pos": 2.0171847343444824,
         "default_pos": 0,
         "kp": 1500.0,
         "ki": 0.0,
@@ -32,7 +32,7 @@
     },
     "waist_act_2": {
         "motor": "XC330",
-        "init_pos": 1.5278449058532715,
+        "init_pos": 1.541650652885437,
         "default_pos": 0,
         "kp": 1500.0,
         "ki": 0.0,
@@ -42,7 +42,7 @@
     },
     "left_hip_pitch": {
         "motor": "XM430-W350",
-        "init_pos": 3.110913038253784,
+        "init_pos": 3.113981008529663,
         "default_pos": 0.155334,
         "kp": 2100.0,
         "ki": 0.0,
@@ -52,7 +52,7 @@
     },
     "left_hip_roll": {
         "motor": "XM430-W350",
-        "init_pos": 2.960582971572876,
+        "init_pos": 2.9283692836761475,
         "default_pos": 0,
         "kp": 2100.0,
         "ki": 0.0,
@@ -62,7 +62,7 @@
     },
     "left_hip_yaw_drive": {
         "motor": "XC330",
-        "init_pos": 5.414952278137207,
+        "init_pos": 5.3996124267578125,
         "default_pos": 0,
         "gear_ratio": 0.8571428571428571,
         "kp": 1500.0,
@@ -73,7 +73,7 @@
     },
     "left_knee_act": {
         "motor": "XM430-W210",
-        "init_pos": 0.777728259563446,
+        "init_pos": 0.7424467206001282,
         "default_pos": -0.534732,
         "kp": 2700.0,
         "ki": 0.0,
@@ -103,7 +103,7 @@
     },
     "right_hip_pitch": {
         "motor": "XM430-W350",
-        "init_pos": 2.0586023330688477,
+        "init_pos": 2.057068347930908,
         "default_pos": -0.155334,
         "kp": 2100.0,
         "ki": 0.0,
@@ -113,7 +113,7 @@
     },
     "right_hip_roll": {
         "motor": "XM430-W350",
-        "init_pos": 0.13345633447170258,
+        "init_pos": 0.13499030470848083,
         "default_pos": 0,
         "kp": 2100.0,
         "ki": 0.0,
@@ -123,7 +123,7 @@
     },
     "right_hip_yaw_drive": {
         "motor": "XC330",
-        "init_pos": 1.2624661922454834,
+        "init_pos": 2.6261751651763916,
         "default_pos": 0,
         "gear_ratio": 0.8571428571428571,
         "kp": 1500.0,
@@ -134,7 +134,7 @@
     },
     "right_knee_act": {
         "motor": "XM430-W210",
-        "init_pos": 4.8596510887146,
+        "init_pos": 4.898000717163086,
         "default_pos": 0.534732,
         "kp": 2700.0,
         "ki": 0.0,

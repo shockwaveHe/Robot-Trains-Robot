@@ -8,25 +8,24 @@ FinetuneConfig.dynamics_hidden_layer_sizes = (512, 256, 128)
 
 FinetuneConfig.num_policy = 1
 FinetuneConfig.offline_total_steps = 0
-FinetuneConfig.offline_initial_steps = 5000
+FinetuneConfig.offline_initial_steps = 0
 FinetuneConfig.update_mode = "local"
 FinetuneConfig.frame_stack = 10
-FinetuneConfig.use_residual = True
 
 FinetuneRewardScales.survival = 0.0
 FinetuneRewardScales.fx_sine_amplitude = 1.0
 FinetuneRewardScales.fx_sine_fit = 1.0
-FinetuneRewardScales.fz_sine_amplitude = 1.0
-FinetuneRewardScales.fz_sing_fit = 1.0
+FinetuneRewardScales.fz_sine_amplitude = 0.0
+FinetuneRewardScales.fz_sine_fit = 0.0
 FinetuneRewardScales.fy_suppression = 1.0
 FinetuneRewardScales.phase_alignment = 1.0
-FinetuneRewardScales.frequency_consistency = 1.0
-FinetuneRewardScales.energy_efficiency = 1.0
+FinetuneRewardScales.frequency_consistency = 0.0
+FinetuneRewardScales.energy_efficiency = 0.0
 FinetuneRewardScales.swing_symmetry = 1.0
 FinetuneRewardScales.arm_action_rate = 1.0
 FinetuneRewardScales.arm_action_acc = 0.2
 
-OnlineConfig.batch_size = 50240
+OnlineConfig.batch_size = 1024
 OnlineConfig.mini_batch_size = 128
 OnlineConfig.is_clip_value = True
 OnlineConfig.lr_c = 1e-4
