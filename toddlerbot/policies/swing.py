@@ -57,9 +57,15 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         # import ipdb; ipdb.set_trace()
 
         self.finetune_cfg: FinetuneConfig = finetune_cfg
+        # self.active_motor_idx = [4, 7, 10, 13]
+        self.active_motor_idx = [4, 10]
+        self.motor_speed_limits = np.array([0.1])
 
+        self.action_mask = np.array(self.active_motor_idx)
         self.timer = Timer()
         self.num_privileged_obs_history = self.finetune_cfg.frame_stack
+        if self.finetune_cfg.symmetric_action:
+            self.num_privileged_obs_history -= self.action_mask.size // 2
         self.privileged_obs_size = self.finetune_cfg.num_single_privileged_obs
         self.privileged_obs_history_size = (
             self.privileged_obs_size * self.num_privileged_obs_history
@@ -85,18 +91,16 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         self.rng = np.random.default_rng()
         self.num_obs_history = self.cfg.obs.frame_stack
         self.obs_size = self.finetune_cfg.num_single_obs
-
+        if self.finetune_cfg.symmetric_action:
+            self.num_obs_history -= self.action_mask.size // 2
         self.is_real = is_real
 
-        self.active_motor_idx = [4, 7, 10, 13]
-        self.motor_speed_limits = np.array([0.1])
-
-        self.action_mask = np.array(self.active_motor_idx)
         self.vel_deltas = deque(maxlen=self.finetune_cfg.action_window_size)
         self.num_action = self.action_mask.shape[0]
+        self.default_action = np.zeros(self.num_action)
         if self.finetune_cfg.symmetric_action:
             self.num_action //= 2
-        self.default_action = self.default_motor_pos[self.action_mask]
+        # self.default_action = self.default_motor_pos[self.action_mask]
         self.last_action = np.zeros(self.num_action)
         self.last_last_action = np.zeros(self.num_action)
         self.last_action_target = self.default_action
@@ -202,8 +206,8 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
             [
                 self.phase_signal,  # (2, )
                 # command[self.command_obs_indices],  # (3, )
-                motor_pos_delta * self.obs_scales.dof_pos,  # (30, )
-                obs.motor_vel * self.obs_scales.dof_vel,  # (30, )
+                motor_pos_delta[self.action_mask] * self.obs_scales.dof_pos,  # (30, )
+                obs.motor_vel[self.action_mask] * self.obs_scales.dof_vel,  # (30, )
                 self.last_action,  # (6, )
                 obs.ang_vel * self.obs_scales.ang_vel,  # (3, )
                 obs.euler * self.obs_scales.euler,  # (3, )
@@ -213,8 +217,8 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
             [
                 self.phase_signal,  # (2, )
                 # command[self.command_obs_indices],  # (3, )
-                motor_pos_delta * self.obs_scales.dof_pos,  # (30, )
-                obs.motor_vel * self.obs_scales.dof_vel,  # (30, )
+                motor_pos_delta[self.action_mask] * self.obs_scales.dof_pos,  # (30, )
+                obs.motor_vel[self.action_mask] * self.obs_scales.dof_vel,  # (30, )
                 self.last_action,  # (6, )
                 obs.ang_vel * self.obs_scales.ang_vel,  # (3, )
                 obs.euler * self.obs_scales.euler,  # (3, )
@@ -229,7 +233,7 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
             self.privileged_obs_history, privileged_obs_arr.size
         )
         self.privileged_obs_history[: privileged_obs_arr.size] = privileged_obs_arr
-
+        import ipdb; ipdb.set_trace()
         return self.obs_history, self.privileged_obs_history
 
     def get_raw_action(self, obs: Obs) -> np.ndarray:

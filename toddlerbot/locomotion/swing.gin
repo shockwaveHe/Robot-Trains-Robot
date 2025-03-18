@@ -2,9 +2,9 @@ CommandsConfig.command_range = []
 CommandsConfig.deadzone = []
 CommandsConfig.command_obs_indices = []
 
-ObsConfig.num_single_obs = 74
-ObsConfig.num_single_privileged_obs = 80
-ObsConfig.frame_stack = 10
+ObsConfig.num_single_obs = 14
+ObsConfig.num_single_privileged_obs = 20
+ObsConfig.frame_stack = 5
 
 ActionConfig.action_scale = 1.0
 
