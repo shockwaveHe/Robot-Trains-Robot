@@ -8,6 +8,7 @@ import numpy as np
 
 class NetFTException(Exception):
     pass
+
 class NetFTSensor:
     RDT_PORT = 49152
     RDT_RECORD_SIZE = 36

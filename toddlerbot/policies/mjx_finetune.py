@@ -31,7 +31,7 @@ from toddlerbot.utils.math_utils import (
     exponential_moving_average,
 )
 from toddlerbot.utils.comm_utils import ZMQNode, ZMQMessage
-from toddlerbot.utils.misc_utils import log
+from toddlerbot.utils.misc_utils import log, profile
 from toddlerbot.finetuning.logger import FinetuneLogger
 
 try:
@@ -200,7 +200,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.learning_stage = "offline"
 
         self.sim = MuJoCoSim(
-            robot, vis_type=self.finetune_cfg.sim_vis_type, hang_force=0.0, n_frames=1
+            robot, vis_type=self.finetune_cfg.sim_vis_type, n_frames=1
         )
         self.min_y_feet_dist = self.finetune_cfg.finetune_rewards.min_feet_y_dist
         self.max_y_feet_dist = self.finetune_cfg.finetune_rewards.max_feet_y_dist
@@ -595,11 +595,11 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             # Deterministic: use mode
             if isinstance(action_dist, torch.distributions.TransformedDistribution):
                 actions_pi = action_dist.base_dist.mode
+                for transform in action_dist.transforms:
+                    actions_pi = transform(actions_pi)
             else:
                 assert isinstance(action_dist, torch.distributions.Normal)
                 actions_pi = action_dist.mean
-            for transform in action_dist.transforms:
-                actions_pi = transform(actions_pi)
         else:
             # Stochastic: sample raw pre-tanh actions
             actions_pi = action_dist.sample()  # action is transformed so no need to clamp
@@ -807,7 +807,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         )
         print("Switched to online learning!")
 
-    # @profile()
+    @profile()
     def step(self, obs: Obs, is_real: bool = True):
         if not self.is_prepared:
             self.traj_start_time = time.time()

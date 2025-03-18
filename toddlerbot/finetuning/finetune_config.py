@@ -202,7 +202,7 @@ class FinetuneConfig:
         fx_sine_amplitude: float = 0.0
         fx_sine_fit: float = 0.0
         fz_sine_amplitude: float = 0.0
-        fz_sing_fit: float = 0.0
+        fz_sine_fit: float = 0.0
         fy_suppression: float = 0.0
         phase_alignment: float = 0.0
         frequency_consistency: float = 0.0

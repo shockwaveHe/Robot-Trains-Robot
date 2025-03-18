@@ -86,7 +86,7 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         self.num_obs_history = self.cfg.obs.frame_stack
         self.obs_size = self.finetune_cfg.num_single_obs
 
-        self.is_real = is_real
+        self.is_real = True
 
         self.active_motor_idx = [4, 7, 10, 13]
         self.motor_speed_limits = np.array([0.05])
@@ -99,6 +99,7 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         self.last_action_target = self.default_action
         self.last_raw_action = None
         self.is_stopped = False
+        self.is_paused = False
         self.action_shift_steps = 1
 
         if self.finetune_cfg.update_mode == 'local':
@@ -247,6 +248,7 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
     
     def _fit_sine_to_buffer(self, buffer):
         """Helper function for sine wave fitting"""
+        # import ipdb; ipdb.set_trace()
         if len(buffer) < self.swing_buffer_size // 2:
             return 0, 0, 0, 0, np.inf  # Return defaults for partial buffers
         
@@ -281,18 +283,36 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
 
         if not self.is_prepared:
             self.is_prepared = True
-            self.prep_duration = 7.0 if is_real else 0.0
+            self.prep_duration = 5.0 if is_real else 0.0
             self.prep_time, self.prep_action = self.move(
                 -self.control_dt,
-                self.init_motor_pos,
+                obs.motor_pos,
                 self.default_motor_pos,
                 self.prep_duration,
-                end_time=5.0 if is_real else 0.0,
+                end_time=2.0 if is_real else 0.0,
             )
 
         msg = None
         while self.is_real and msg is None:
             msg = self.zmq_receiver.get_msg()
+
+        if msg.is_paused and not self.is_paused:
+            self.timer.stop()
+            self.is_paused = True
+            print("Paused!")
+        elif not msg.is_paused and self.is_paused:
+            self.need_reset = True
+            self.is_prepared = False
+            self.is_paused = False
+            print("Resumed!")
+            return {}, obs.motor_pos, obs
+        if self.is_paused:
+            return {}, obs.motor_pos, obs
+
+        if msg.is_stopped:
+            self.stopped = True
+            print("Stopped!")
+            return {}, np.zeros(self.num_action), obs
 
         obs.ee_force = msg.arm_force
         obs.ee_torque = msg.arm_torque
@@ -304,7 +324,7 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         cur_time = time.time()
         if cur_time - self.traj_start_time < self.prep_duration:
             motor_target = np.asarray(
-                interpolate_action(time.time() - self.traj_start_time, self.prep_time, self.prep_action)
+                interpolate_action(cur_time - self.traj_start_time, self.prep_time, self.prep_action)
             )
             return {}, motor_target, obs
 
@@ -324,11 +344,11 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
                 )
             return {}, motor_target, obs
 
-        if self.is_real:
-            # TODO: verify fit results via plotting
+        # TODO: verify fit results via plotting
+        if self.finetune_cfg.update_mode == "local":
             self.Ax, self.freq_x, self.phase_x, self.offset_x, self.error_x = self._fit_sine_to_buffer(self.fx_buffer)
-            # self.Ay, self.freq_y, self.phase_y, self.offset_y, self.error_y = self._fit_sine_to_buffer(self.fy_buffer)
-            # self.Az, self.freq_z, self.phase_z, self.offset_z, self.error_z = self._fit_sine_to_buffer(self.fz_buffer)
+        # self.Ay, self.freq_y, self.phase_y, self.offset_y, self.error_y = self._fit_sine_to_buffer(self.fy_buffer)
+        # self.Az, self.freq_z, self.phase_z, self.offset_z, self.error_z = self._fit_sine_to_buffer(self.fz_buffer)
         
         time_curr = self.step_curr * self.control_dt
 
@@ -371,6 +391,11 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
                 reward=reward,
                 action_pi=action_pi.mean(),
                 action_real=action_real.mean(),
+                fx=obs.ee_force[0],
+                fy=obs.ee_force[1],
+                Ax=self.Ax,
+                freq_x=self.freq_x,
+                phase_x=self.error_x,
             )
         else:
             reward = 0.0
@@ -397,7 +422,7 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
             action_pi,
             reward,
             self.is_done(obs),
-            truncated,
+            truncated or self.is_paused,
             action_logprob,
             raw_obs=deepcopy(obs),
         )
@@ -478,7 +503,7 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         )
         self.last_action = np.zeros(self.num_action)
         self.traj_start_time = time.time()
-
+        self.is_prepared = False
         print("Reset done!")
 
     def _reward_survival(self, obs: Obs, action: np.ndarray) -> np.ndarray:

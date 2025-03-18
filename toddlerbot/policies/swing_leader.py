@@ -39,43 +39,57 @@ class SwingLeaderPolicy(BasePolicy, policy_name="swing_leader"):
         self.reset_duration = 5.0
         self.reset_end_time = 1.0
         self.reset_time = None
-
+        self.keyboard = Keyboard()
         self.ft_sensor = NetFTSensor()
-        self.speed_stall_window = 3
-        self.speed_delta_buffer = deque(maxlen=self.speed_stall_window)
-        for _ in range(self.speed_stall_window):
-            self.speed_delta_buffer.append(np.random.rand())
+        self.control_dt = 0.02
+        self.total_steps = 0
 
+        self.control_dt = 0.02
+        self.total_steps = 0
         self.timer = Timer()
         self.timer.start()
         self.init_speed = 0.05
         self.warmup_time = 10.0
         self.speed_period = 60.0
         self.walk_speed_range = [0.2, 0.2]
-
-        self.treadmill_pause_time = time.time()
+        self.paused = False
+        self.healthy_force_x = [-10.0, 10.0]
+        self.healthy_force_y = [-3.0, 3.0]
 
     def close(self):
         self.zmq_sender.close()
         self.zmq_receiver.close()
 
     def is_done(self, obs: Obs):
-        return False
+        return obs.ee_force[0] < self.healthy_force_x[0] or obs.ee_force[0] > self.healthy_force_x[1] \
+            or obs.ee_force[1] < self.healthy_force_y[0] or obs.ee_force[1] > self.healthy_force_y[1]
     
     def step(
         self, obs: Obs, is_real: bool = False
     ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
+        keyboard_inputs = self.keyboard.get_keyboard_input()
+        self.stopped = keyboard_inputs["stop"]
+        if self.paused and keyboard_inputs["resume"]:
+            print("Resuming the system")
+            self.paused = False
+        if not self.paused and keyboard_inputs["pause"]:
+            print("Pausing the system")
+            self.paused = True
+        self.keyboard.reset()
 
         action = self.default_motor_pos.copy()
         ee_force, ee_torque = self.ft_sensor.get_smoothed_data()
         control_inputs = {}
         # print('lin vel', lin_vel, 'speed', self.speed, 'arm_vel', obs.arm_ee_vel)
+        obs.ee_force = ee_force
+        obs.ee_torque = ee_torque
         is_done = self.is_done(obs)
         msg = ZMQMessage(
             time=time.time(),
             arm_force=ee_force,
             arm_torque=ee_torque,
-            is_stopped=is_done
+            is_stopped=is_done or self.stopped,
+            is_paused=self.paused,
         )
         # import ipdb; ipdb.set_trace()
         self.zmq_sender.send_msg(msg)
@@ -90,10 +104,15 @@ class SwingLeaderPolicy(BasePolicy, policy_name="swing_leader"):
                     break
                 time.sleep(0.1)
             print("Follower started")
+            self.total_steps = 0
             self.timer.start()
 
+        time_elapsed = self.timer.elapsed()
+        if time_elapsed < self.total_steps * self.control_dt:
+            time.sleep(self.total_steps * self.control_dt - time_elapsed)
+        self.total_steps += 1
 
-        return control_inputs, action
+        return control_inputs, action, obs
 
 
     def reset(self, obs: Obs = None) -> Obs:

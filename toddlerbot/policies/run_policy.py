@@ -34,7 +34,7 @@ from toddlerbot.policies.sysID import SysIDFixedPolicy
 from toddlerbot.policies.teleop_follower_pd import TeleopFollowerPDPolicy
 from toddlerbot.policies.teleop_joystick import TeleopJoystickPolicy
 from toddlerbot.policies.teleop_leader import TeleopLeaderPolicy
-from toddlerbot.sim import BaseSim, Obs
+from toddlerbot.sim import BaseSim, Obs, DummySim
 from toddlerbot.sim.arm import BaseArm, get_arm_class
 from toddlerbot.sim.arm_toddler_sim import ArmToddlerSim
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
@@ -344,7 +344,7 @@ def run_policy(
                 sim.dynamixel_controller.disable_motors(policy.disable_motor_indices)
                 policy.toggle_motor = False
 
-            control_inputs, motor_target, obs = policy.step(obs, "real" in sim.name)
+            control_inputs, motor_target, obs = policy.step(obs, "real" in sim.name or "swing" in policy.name)
 
             if policy.is_done(obs) or policy.is_truncated():
                 # TODO: add is_done to more policies
@@ -394,10 +394,10 @@ def run_policy(
 
             step_idx += 1
 
-            p_bar_steps = int(1 / policy.control_dt)
-            if step_idx % p_bar_steps == 0:
-                print(f"Step: {step_idx}/{n_steps_total}")
-                p_bar.update(p_bar_steps)
+            # p_bar_steps = int(1 / policy.control_dt)
+            # if step_idx % p_bar_steps == 0:
+                # print(f"Step: {step_idx}/{n_steps_total}")
+                # p_bar.update(p_bar_steps)
 
             step_end = time.time()
 
@@ -592,7 +592,7 @@ def main(args=None):
         type=str,
         default="mujoco",
         help="The name of the simulator to use.",
-        choices=["arm_toddler", "mujoco", "real", "finetune", "real_mock"],
+        choices=["arm_toddler", "mujoco", "real", "finetune", "real_mock", "dummy"],
     )
     parser.add_argument(
         "--vis",
@@ -734,6 +734,11 @@ def main(args=None):
     elif args.sim == "finetune":
         sim = RealWorldFinetuning(robot)
         init_motor_pos = sim.get_observation().motor_pos
+    elif args.sim == "dummy":
+        sim = DummySim()
+        init_motor_pos = np.array(
+            list(robot.default_motor_angles.values()), dtype=np.float32
+        )
     else:
         raise ValueError("Unknown simulator")
 
@@ -849,7 +854,7 @@ def main(args=None):
         policy = PolicyClass(
             args.policy, robot, init_motor_pos, init_arm_pos=obs.arm_ee_pos, ip=args.ip
         )
-    elif "talk" in args.policy:
+    elif "talk" in args.policy or len(args.ip) > 0:
         policy = PolicyClass(args.policy, robot, init_motor_pos, ip=args.ip)  # type:ignore
     else:
         policy = PolicyClass(args.policy, robot, init_motor_pos)

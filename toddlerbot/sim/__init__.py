@@ -79,3 +79,34 @@ class BaseSim(ABC):
 
     def is_done(self, obs: Obs) -> bool:
         pass
+
+
+class DummySim(BaseSim):
+    def __init__(self):
+        super().__init__("dummy")
+
+    def set_motor_target(self, motor_angles: Dict[str, float]):
+        pass
+
+    def set_motor_kps(self, motor_kps: Dict[str, float]):
+        pass
+
+    def step(self):
+        pass
+
+    def get_observation(self) -> Obs:
+        return Obs(
+            time=0.0,
+            motor_pos=np.zeros(3, dtype=np.float32),
+            motor_vel=np.zeros(3, dtype=np.float32),
+            motor_tor=np.zeros(3, dtype=np.float32),
+        )
+
+    def close(self):
+        pass
+
+    def reset(self) -> Obs:
+        return self.get_observation()
+
+    def is_done(self, obs: Obs) -> bool:
+        return False
