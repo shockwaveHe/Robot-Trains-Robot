@@ -92,7 +92,10 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         self.motor_speed_limits = np.array([0.05])
 
         self.action_mask = np.array(self.active_motor_idx)
+        self.action_deltas = deque(maxlen=self.finetune_cfg.action_window_size)
         self.num_action = self.action_mask.shape[0]
+        if self.finetune_cfg.symmetric_action:
+            self.num_action //= 2
         self.default_action = self.default_motor_pos[self.action_mask]
         self.last_action = np.zeros(self.num_action)
         self.last_last_action = np.zeros(self.num_action)
@@ -441,13 +444,17 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         if truncated:
             self.update_policy()
             # import ipdb; ipdb.set_trace()
-
+        if self.finetune_cfg.symmetric_action:
+            action_real = np.concatenate([-action_real, action_real])
         if is_real:
             delayed_action = action_real
         else:
             self.action_buffer = np.roll(self.action_buffer, action_real.size)
             self.action_buffer[: action_real.size] = action_real
-            delayed_action = self.action_buffer[-self.num_action :]
+            if self.finetune_cfg.symmetric_action:
+                delayed_action = self.action_buffer[-self.num_action * 2:]
+            else:
+                delayed_action = self.action_buffer[-self.num_action:]
         # import ipdb; ipdb.set_trace()
 
         action_target = self.default_action + self.action_scale * delayed_action
@@ -526,6 +533,31 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
     
     def _reward_action_symmetry(self, obs: Obs, action: np.ndarray) -> np.ndarray:
         return -np.square(action[:self.num_action//2] + action[self.num_action//2:]).mean()
+    
+    def _reward_action_smoothness(self, obs: Obs, action: np.ndarray) -> np.ndarray:
+        """Reward consistent action direction using a 30-step window"""
+            
+        # Calculate new delta and its squared magnitude
+        current_delta = action - self.last_action
+        self.action_deltas.append(np.sum(current_delta))
+        
+        # Calculate directional consistency using autocorrelation
+        if len(self.action_deltas) >= 2:
+            # Get reference to the underlying array for vector ops
+            deltas = np.array(self.action_deltas)
+            
+            # Calculate normalized autocorrelation (lag=1)
+            mean = np.mean(deltas)
+            var = np.var(deltas) + 1e-6
+            autocorr = ((deltas[:-1] - mean) * (deltas[1:] - mean)).sum() / var
+            
+            # Combine magnitude and directional consistency
+            mag_penalty = -0.5 * np.tanh(np.sum(self.action_deltas) / 100)
+            dir_reward = 0.5 * np.tanh(autocorr * 5)
+            
+            return mag_penalty + dir_reward
+            
+        return 0.0
     
     def _reward_swing_spectrum(self, obs: Obs, action: np.ndarray) -> np.ndarray:
         """Reward combination of low frequency and large amplitude"""

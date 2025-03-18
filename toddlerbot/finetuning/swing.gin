@@ -9,7 +9,7 @@ FinetuneConfig.dynamics_hidden_layer_sizes = (512, 256, 128)
 FinetuneConfig.num_policy = 1
 FinetuneConfig.offline_total_steps = 0
 FinetuneConfig.offline_initial_steps = 0
-FinetuneConfig.update_mode = "remote"
+FinetuneConfig.update_mode = "local"
 FinetuneConfig.frame_stack = 10
 
 FinetuneRewardScales.survival = 0.0
@@ -29,6 +29,7 @@ FinetuneRewardScales.swing_spectrum = 0.0
 FinetuneRewardScales.torso_pitch = 5.0
 FinetuneRewardScales.arm_action_rate = 0.4
 FinetuneRewardScales.arm_action_acc = 0.2
+FinetuneRewardScales.action_smoothness = 0.0
 
 OnlineConfig.batch_size = 1024
 OnlineConfig.mini_batch_size = 128
@@ -42,3 +43,4 @@ OnlineConfig.epsilon = 0.1
 FinetuneConfig.use_tanh = False
 FinetuneConfig.use_residual = False
 FinetuneConfig.residual_action_scale = 0.1
+FinetuneConfig.symmetric_action = True
