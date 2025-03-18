@@ -25,9 +25,9 @@ class RealWorldFinetuning(BaseSim):
         self.arm_ee_pos = np.ndarray(shape=(3,), dtype=np.float64, buffer=self.arm_shm.buf[64:88])
         self.arm_ee_vel = np.ndarray(shape=(3,), dtype=np.float64, buffer=self.arm_shm.buf[88:112])
         self.Tr_base = np.array([
-            [0.5299193,  0.8480481,  0.0000000],
-            [-0.8480481,  0.5299193,  0.0000000],
-            [0.0000000,  0.0000000,  1.0000000]
+            [0.8191521,  0.5735765,  0.0000000],
+			[-0.5735765,  0.8191521,  0.0000000],
+			[0.0000000,  0.0000000,  1.0000000]
         ])
     
     def force_schedule(self):

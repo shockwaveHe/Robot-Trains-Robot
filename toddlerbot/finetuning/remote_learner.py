@@ -46,6 +46,7 @@ if __name__ == "__main__":
         is_real=False
     )
     print(policy.value_net, policy.policy_net)
+    policy.replay_buffer.keep_data_after_reset = True
     # policy.replay_buffer.load_compressed("")
     value_net_path = "tests/value_net_new.pth"
     if current_task == "walk_finetune":

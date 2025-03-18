@@ -345,9 +345,15 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             return np.zeros(3), time.time()
 
         result = self.tracker.get_position(self.finetune_cfg.object_name)
-        if len(result[2]) == 0:
-            log("No object found in the tracker", header="Tracker", level="warning")
-            return np.zeros(3), time.time()
+        if not result or len(result[2]) == 0:
+            for _ in range(10):
+                result = self.tracker.get_position(self.finetune_cfg.object_name)
+                if result and len(result[2]) > 0:
+                    break
+                time.sleep(0.001)
+            if not result or len(result[2]) == 0:
+                log("No object found in the tracker", header="Tracker", level="warning")
+                return np.zeros(3), time.time()
         current_time = time.time()
         current_pos = np.array(result[2][0][2:5]) / 1000
         current_euler = np.array(result[2][0][5:8])
@@ -777,12 +783,12 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         # input('switch stage?')
         if self.finetune_cfg.update_mode == "local" and len(self.replay_buffer) > 0:
             # self.update_policy()
-            self.offline_abppo_learner.fit_q_v(self.replay_buffer)
             save_offline_buffer = input("Save offline buffer? y/n:")
             while save_offline_buffer not in ["y", "n"]:
                 save_offline_buffer = input("Save offline buffer? y/n:")
             if save_offline_buffer == "y":
                 self.replay_buffer.save_compressed(self.exp_folder)
+            self.offline_abppo_learner.fit_q_v(self.replay_buffer)
         self.replay_buffer.reset()
         self.learning_stage = "online"
         self.online_ppo_learner.set_networks(self.value_net, self.policy_net)

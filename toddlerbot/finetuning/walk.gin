@@ -19,7 +19,7 @@ FinetuneRewardScales.stand_still = 0.0
 FinetuneRewardScales.feet_air_time = 0.0
 FinetuneRewardScales.feet_clearance = 0.0
 
-OnlineConfig.batch_size = 10240
+OnlineConfig.batch_size = 1024
 OnlineConfig.mini_batch_size = 128
 OnlineConfig.is_clip_value = True
 OnlineConfig.lr_c = 1e-4
@@ -33,7 +33,7 @@ FinetuneConfig.residual_action_scale = 0.1
 FinetuneConfig.update_mode = "remote"
 
 FinetuneConfig.buffer_valid_size = 0
-FinetuneConfig.offline_total_steps = 0_000
+FinetuneConfig.offline_total_steps = 100_000
 FinetuneConfig.offline_initial_steps = 100_000
 FinetuneConfig.bppo_steps = 200
 FinetuneConfig.abppo_update_steps = 3

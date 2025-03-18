@@ -97,6 +97,7 @@ class OnlineReplayBuffer:
         validation_size: int = 0,
         seed: int = 0,
         enlarge_when_full: int = 0,
+        keep_data_after_reset: bool = False,  # New parameter
     ):
         self._device = device
         self._dtype = np.float32
@@ -121,9 +122,11 @@ class OnlineReplayBuffer:
         self._size = 0
         self._validation_size = validation_size
         self._max_size = max_size
+        self.keep_data_after_reset = keep_data_after_reset
+        self._current_start = 0  # Tracks sampling start index
 
     def __len__(self):
-        return self._size
+        return self._size - self._current_start
 
     def store(
         self,
@@ -159,14 +162,16 @@ class OnlineReplayBuffer:
                 self.is_overwriting = True
                 self._size = 0
 
-    # Shift the action sequence by shift_steps for offline data collection
     def shift_action(self, shift_steps: int) -> None:
         self._action = np.roll(self._action, -shift_steps)
         self._size -= shift_steps
 
     def reset(self):
-        self._size = 0
-        self._raw_obs.clear()
+        if self.keep_data_after_reset:
+            self._current_start = self._size
+        else:
+            self._raw_obs.clear()
+            self._size = 0
         self._truncated_temp = False
         self.is_overwriting = False
 
@@ -180,37 +185,36 @@ class OnlineReplayBuffer:
 
     def sample_all(self) -> tuple:
         current_size = self._size
+        start = self._current_start
         return (
-            torch.FloatTensor(self._obs[: current_size - 1]).to(self._device),
-            torch.FloatTensor(self._privileged_obs[: current_size - 1]).to(self._device),
-            torch.FloatTensor(self._action[: current_size - 1]).to(self._device),
-            torch.FloatTensor(self._reward[: current_size - 1]).to(self._device),
-            torch.FloatTensor(self._obs[1 : current_size]).to(self._device),
-            torch.FloatTensor(self._privileged_obs[1 : current_size]).to(self._device),
-            torch.FloatTensor(self._action[1 : current_size]).to(self._device),
-            torch.FloatTensor(self._terminated[: current_size - 1]).to(self._device),
-            torch.FloatTensor(self._truncated[: current_size - 1]).to(self._device),
-            torch.FloatTensor(self._return[: current_size - 1]).to(self._device),
-            torch.FloatTensor(self._action_logprob[: current_size - 1]).to(self._device),
+            torch.FloatTensor(self._obs[start: current_size - 1]).to(self._device),
+            torch.FloatTensor(self._privileged_obs[start: current_size - 1]).to(self._device),
+            torch.FloatTensor(self._action[start: current_size - 1]).to(self._device),
+            torch.FloatTensor(self._reward[start: current_size - 1]).to(self._device),
+            torch.FloatTensor(self._obs[start + 1: current_size]).to(self._device),
+            torch.FloatTensor(self._privileged_obs[start + 1: current_size]).to(self._device),
+            torch.FloatTensor(self._action[start + 1: current_size]).to(self._device),
+            torch.FloatTensor(self._terminated[start: current_size - 1]).to(self._device),
+            torch.FloatTensor(self._truncated[start: current_size - 1]).to(self._device),
+            torch.FloatTensor(self._return[start: current_size - 1]).to(self._device),
+            torch.FloatTensor(self._action_logprob[start: current_size - 1]).to(self._device),
         )
 
     def sample(self, batch_size: int, sample_validation: bool = False, no_term=False) -> tuple:
-        assert self._size > 0, "Buffer is empty"
         assert self._size > self._validation_size
-        # import ipdb; ipdb.set_trace()
         if no_term:
-            valid_indices = np.flatnonzero((1 - self._terminated) * (1 - self._truncated))
+            condition = (1 - self._terminated[self._current_start: self._size]) * (1 - self._truncated[self._current_start: self._size])
         else:
-            valid_indices = np.flatnonzero(1 - self._truncated)
-        valid_indices = valid_indices[: self._validation_size - 1] if sample_validation else valid_indices[self._validation_size:-1]
-
-        # If the number of valid indices is less than the batch size,
-        # sample with replacement; otherwise, you can sample without replacement.
+            condition = 1 - self._truncated[self._current_start: self._size]
+        valid_indices = np.flatnonzero(condition) + self._current_start
+        if sample_validation:
+            valid_indices = valid_indices[: self._validation_size - 1]
+        else:
+            valid_indices = valid_indices[self._validation_size:-1]
         if valid_indices.size < batch_size:
             ind = self.rng.choice(valid_indices, size=batch_size, replace=True)
         else:
             ind = self.rng.choice(valid_indices, size=batch_size, replace=False)
-
         return (
             torch.FloatTensor(self._obs[ind]).to(self._device),
             torch.FloatTensor(self._privileged_obs[ind]).to(self._device),
@@ -322,7 +326,6 @@ class OnlineReplayBuffer:
         self._max_size += new_size
         self._raw_obs = deque(self._raw_obs, maxlen=int(self._max_size))
         print(f"Buffer size is enlarged to {self._max_size}")
-
 
 class OfflineReplayBuffer(OnlineReplayBuffer):
     def __init__(

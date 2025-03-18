@@ -72,12 +72,12 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         # TODO: put this logic and reset to realworld finetuning sim?
         self.x_force_threshold = 0.5
         self.treadmill_speed_inc_kp = 2.5
-        self.treadmill_speed_dec_kp = 2.5
+        self.treadmill_speed_dec_kp = 5.0
         self.treadmill_speed_force_kp = 1.0
-        self.treadmill_speed_pos_kp = -10.0
+        self.treadmill_speed_pos_kp = -20.0
         self.ee_force_x_ema = 0.0
         self.ee_force_x_ema_alpha = 0.2
-        self.arm_healthy_ee_pos_y = np.array([0.06, 0.22])
+        self.arm_healthy_ee_pos_y = np.array([-0.3, 0.3])
         self.arm_healthy_ee_force_z = np.array([-10.0, 40.0])
         self.arm_healthy_ee_force_xy = np.array([-5.0, 5.0])
         self.healthy_torso_roll = np.array([-0.5, 0.5])
@@ -119,6 +119,8 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
                 speed_stalled = False
                 break
         delta_arm_pos_x = obs.arm_ee_pos[0] - self.init_arm_pos[0]
+        delta_arm_pos_y = obs.arm_ee_pos[1] - self.init_arm_pos[1]
+        # print(f"Delta Arm Pos X, Y: {delta_arm_pos_x:.4f}, {delta_arm_pos_y:.4f}, Force X, Y: {obs.ee_force[0]:.4f}, {obs.ee_force[1]:.4f} Delta Speed: {delta_speed:.4f}")
         self.speed_delta_buffer.append(delta_speed)
         if speed_stalled:
             print(f"Speed delta stalled at {delta_speed}")
@@ -136,8 +138,8 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
             self.speed -= delta_speed
             self.speed = max(0.0, self.speed)
         self.speed = np.clip(self.speed, 0.0, self.max_speed)
-        # print(f"Delta Arm Pos X: {delta_arm_pos_x}, Force X: {obs.ee_force[0]}, Delta Speed: {delta_speed}")
-        print(f"Delta Arm pose x: {delta_arm_pos_x:.3f}, Arm pose: {obs.arm_ee_pos[0]:.3f} {obs.arm_ee_pos[1]:.3f}, Arm vel: {obs.arm_ee_vel[0]:.3g} {obs.arm_ee_vel[1]:.3g}, Force: {obs.ee_force[0]:.3f} {obs.ee_force[1]:.3f} {obs.ee_force[2]:.3f}")
+        print(f"Delta Arm Pos X, Y: {delta_arm_pos_x:.4f}, {delta_arm_pos_y:.4f}, Force X, Y: {obs.ee_force[0]:.4f}, {obs.ee_force[1]:.4f} Delta Speed: {delta_speed:.4f}")
+        # print(f"Delta Arm pose x: {delta_arm_pos_x:.3f}, Arm pose: {obs.arm_ee_pos[0]:.3f} {obs.arm_ee_pos[1]:.3f}, Arm vel: {obs.arm_ee_vel[0]:.3g} {obs.arm_ee_vel[1]:.3g}, Force: {obs.ee_force[0]:.3f} {obs.ee_force[1]:.3f} {obs.ee_force[2]:.3f}")
     # speed not enough is x negative
     # note: calibrate zero at: toddlerbot/tools/calibration/calibrate_zero.py --robot toddlerbot_arms
     # note: zero points can be accessed in config_motors.json
@@ -160,7 +162,8 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         if obs.ee_force[2] < self.arm_healthy_ee_force_z[0] or obs.ee_force[2] > self.arm_healthy_ee_force_z[1]:
             print(f"Force Z of {obs.ee_force[2]} is out of range")
             return True
-        if obs.arm_ee_pos[1] < self.arm_healthy_ee_pos_y[0] or obs.arm_ee_pos[1] > self.arm_healthy_ee_pos_y[1]:
+        delta_arm_pos_y = obs.arm_ee_pos[1] - self.init_arm_pos[1]
+        if delta_arm_pos_y < self.arm_healthy_ee_pos_y[0] or delta_arm_pos_y > self.arm_healthy_ee_pos_y[1]:
             print(f"Position Y of {obs.arm_ee_pos[2]} is out of range")
             return True
         if obs.ee_force[0] > self.arm_healthy_ee_force_xy[1] or obs.ee_force[1] > self.arm_healthy_ee_force_xy[1]:
@@ -239,8 +242,8 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
             is_paused=self.paused
         )
         # import ipdb; ipdb.set_trace()
-        # if not self.paused:
-            # print(f"Speed: {self.speed}, Force: {self.force}, Walk: ({self.walk_x}, {self.walk_y}), Arm Delta: {self.z_pos_delta}")
+        if not self.paused:
+            print(f"Speed: {self.speed}, Force: {self.force}, Walk: ({self.walk_x}, {self.walk_y}), Arm Delta: {self.z_pos_delta}")
         self.zmq_sender.send_msg(msg)
         msg_recv = self.zmq_receiver.get_msg()
         if msg_recv is not None and msg_recv.is_stopped:
