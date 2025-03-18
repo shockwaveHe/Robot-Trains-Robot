@@ -188,14 +188,8 @@ class RemoteServer:
                                 hand_pos = self.policy.sim.get_hand_pos()
                                 log_dict['hand_z_dist'] = hand_pos["left"][2]
                                 raw_obs.hand_z_dist = np.array([hand_pos["left"][2], hand_pos["right"][2]])
-                            elif self.policy.name == 'swing':
-                                self.policy.fx_buffer.append(msg['raw_obs'].ee_force[0])
-                                self.policy.fy_buffer.append(msg['raw_obs'].ee_force[1])
-                                self.policy.fz_buffer.append(msg['raw_obs'].ee_force[2])
-                                if len(self.policy.fx_buffer) < self.policy.swing_buffer_size // 2:
-                                    continue
-                                self.policy.Ax, self.policy.freq_x, self.policy.phase_x, self.policy.offset_x, self.policy.error_x = self.policy._fit_sine_to_buffer(self.policy.fx_buffer)
-                                log_dict['fx'], log_dict['Ax'], log_dict['freq_x'], log_dict['error_x'] = msg['raw_obs'].ee_force[0], self.policy.Ax, self.policy.freq_x, self.policy.error_x
+                                # self.policy.Ax, self.policy.freq_x, self.policy.phase_x, self.policy.offset_x, self.policy.error_x = self.policy._fit_sine_to_buffer(self.policy.fx_buffer)
+                                # log_dict['fx'], log_dict['Ax'], log_dict['freq_x'], log_dict['error_x'] = msg['raw_obs'].ee_force[0], self.policy.Ax, self.policy.freq_x, self.policy.error_x
                             # import ipdb; ipdb.set_trace()
                             reward_dict = self.policy._compute_reward(raw_obs, msg['a'])
                             reward = sum(reward_dict.values()) * self.policy.control_dt

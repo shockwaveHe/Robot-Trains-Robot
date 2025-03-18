@@ -61,8 +61,10 @@ class SwingLeaderPolicy(BasePolicy, policy_name="swing_leader"):
         self.zmq_receiver.close()
 
     def is_done(self, obs: Obs):
-        return obs.ee_force[0] < self.healthy_force_x[0] or obs.ee_force[0] > self.healthy_force_x[1] \
-            or obs.ee_force[1] < self.healthy_force_y[0] or obs.ee_force[1] > self.healthy_force_y[1]
+        # TODO: handle done situation
+        # return obs.ee_force[0] < self.healthy_force_x[0] or obs.ee_force[0] > self.healthy_force_x[1] \
+        #     or obs.ee_force[1] < self.healthy_force_y[0] or obs.ee_force[1] > self.healthy_force_y[1]
+        return False
     
     def step(
         self, obs: Obs, is_real: bool = False
@@ -118,12 +120,12 @@ class SwingLeaderPolicy(BasePolicy, policy_name="swing_leader"):
     def reset(self, obs: Obs = None) -> Obs:
         self.timer.reset()
         control_inputs = {}
-        msg = ZMQMessage(
-            time=time.time(),
-            control_inputs=control_inputs,
-            is_done=True
-        )
-        self.zmq_sender.send_msg(msg)
+        # msg = ZMQMessage(
+        #     time=time.time(),
+        #     control_inputs=control_inputs,
+        #     is_done=True
+        # )
+        # self.zmq_sender.send_msg(msg)
         print("Reset done")
 
         self.timer.start()

@@ -135,6 +135,7 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
 
         if self.finetune_cfg.use_residual:
             self._make_residual_policy()
+            self._residual_action_scale = self.finetune_cfg.residual_action_scale
 
         self.obs_history = np.zeros(self.num_obs_history * self.obs_size)
         self.privileged_obs_history = np.zeros(
@@ -168,10 +169,13 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         if is_real:
             input("press ENTER to start")
 
-        self.swing_buffer_size = 100
+        self.swing_buffer_size = self.finetune_cfg.swing_buffer_size
+        self.min_freq, self.max_freq = 0.0, 5.0
         self.fx_buffer = deque(maxlen=self.swing_buffer_size)
         self.fy_buffer = deque(maxlen=self.swing_buffer_size)
         self.fz_buffer = deque(maxlen=self.swing_buffer_size)
+        self.pitch_buffer = deque(maxlen=self.swing_buffer_size)
+        self.time_buffer = deque(maxlen=self.swing_buffer_size)
 
         self.t_vals = np.linspace(0, self.swing_buffer_size * self.control_dt,  # Assuming 1/control_dt Hz
                                  self.swing_buffer_size)
@@ -312,17 +316,17 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         if self.is_paused:
             return {}, obs.motor_pos, obs
 
-        if msg.is_stopped:
-            self.stopped = True
-            print("Stopped!")
-            return {}, np.zeros(self.num_action), obs
+        # if msg.is_stopped:
+        #     self.stopped = True
+        #     print("Stopped!")
+        #     return {}, np.zeros(self.num_action), obs
 
         obs.ee_force = msg.arm_force
         obs.ee_torque = msg.arm_torque
 
-        self.fx_buffer.append(obs.ee_force[0])
-        self.fy_buffer.append(obs.ee_force[1])
-        self.fz_buffer.append(obs.ee_force[2])
+        # self.fx_buffer.append(obs.ee_force[0])
+        # self.fy_buffer.append(obs.ee_force[1])
+        # self.fz_buffer.append(obs.ee_force[2])
 
         cur_time = time.time()
         if cur_time - self.traj_start_time < self.prep_duration:
@@ -331,25 +335,25 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
             )
             return {}, motor_target, obs
 
-        if len(self.fx_buffer) < self.swing_buffer_size // 2:
-            motor_target = self.default_motor_pos.copy()
-            # Store ee_force data to remote replay buffer
-            if self.finetune_cfg.update_mode == 'remote':
-                self.replay_buffer.store(
-                    self.obs_history, 
-                    self.privileged_obs_history, 
-                    self.last_action, 
-                    0, 
-                    False, 
-                    False, 
-                    0, 
-                    raw_obs=deepcopy(obs)
-                )
-            return {}, motor_target, obs
+        # if len(self.fx_buffer) < self.swing_buffer_size // 2:
+        #     motor_target = self.default_motor_pos.copy()
+        #     # Store ee_force data to remote replay buffer
+        #     if self.finetune_cfg.update_mode == 'remote':
+        #         self.replay_buffer.store(
+        #             self.obs_history, 
+        #             self.privileged_obs_history, 
+        #             self.last_action, 
+        #             0, 
+        #             False, 
+        #             False, 
+        #             0, 
+        #             raw_obs=deepcopy(obs)
+        #         )
+        #     return {}, motor_target, obs
 
         # TODO: verify fit results via plotting
-        if self.finetune_cfg.update_mode == "local":
-            self.Ax, self.freq_x, self.phase_x, self.offset_x, self.error_x = self._fit_sine_to_buffer(self.fx_buffer)
+        # if self.finetune_cfg.update_mode == "local":
+        #     self.Ax, self.freq_x, self.phase_x, self.offset_x, self.error_x = self._fit_sine_to_buffer(self.fx_buffer)
         # self.Ay, self.freq_y, self.phase_y, self.offset_y, self.error_y = self._fit_sine_to_buffer(self.fy_buffer)
         # self.Az, self.freq_z, self.phase_z, self.offset_z, self.error_z = self._fit_sine_to_buffer(self.fz_buffer)
         
@@ -402,9 +406,6 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
                 action_real=action_real.mean(),
                 fx=obs.ee_force[0],
                 fy=obs.ee_force[1],
-                Ax=self.Ax,
-                freq_x=self.freq_x,
-                phase_x=self.error_x,
             )
         else:
             reward = 0.0
@@ -430,7 +431,7 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
             privileged_obs_arr,
             action_pi,
             reward,
-            self.is_done(obs),
+            msg.is_stopped,
             truncated or self.is_paused,
             action_logprob,
             raw_obs=deepcopy(obs),
@@ -481,7 +482,6 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
 
 
     def close(self):
-        self.sim.close()
         self.logger.close()
         save_networks = input("Save networks? y/n:")
         while save_networks not in ["y", "n"]:
@@ -491,9 +491,6 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         save_buffer = input("Save replay buffer? y/n:")
         if save_buffer == "y":
             self.replay_buffer.save_compressed(self.exp_folder)
-
-    def is_done(self, obs: Obs) -> bool:
-        return obs.ee_force[:2].max() > self.health_xy_force or obs.ee_force[2] > self.health_z_force
 
     def is_truncated(self) -> bool:
         return self.current_steps >= self.step_limit
@@ -515,11 +512,42 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         self.is_prepared = False
         print("Reset done!")
 
-    def _reward_survival(self, obs: Obs, action: np.ndarray) -> np.ndarray:
-        if self.is_done(obs):
-            print("done reward")
-        return self.is_done(obs)
-
+    def _reward_torso_pitch(self, obs: Obs, action: np.ndarray) -> np.ndarray:
+        """Encourage large torso pitch deviations"""
+        return np.clip(np.abs(obs.euler[1]), 0, 0.5)
+    
+    def _reward_swing_progress(self, obs: Obs, action: np.ndarray) -> np.ndarray:
+        return np.abs(obs.euler[1] * obs.ang_vel[1])
+    
+    def _reward_swing_spectrum(self, obs: Obs, action: np.ndarray) -> np.ndarray:
+        """Reward combination of low frequency and large amplitude"""
+        self.pitch_buffer.append(obs.euler[1])
+        self.time_buffer.append(obs.time)
+        
+        if len(self.pitch_buffer) < self.swing_buffer_size // 2:  # Minimum window for meaningful FFT
+            return 0.0
+            
+        # Compute FFT
+        pitch_series = np.array(self.pitch_buffer)
+        dt = np.mean(np.diff(self.time_buffer))
+        freqs = np.fft.rfftfreq(len(pitch_series), d=dt)
+        fft_vals = np.abs(np.fft.rfft(pitch_series - np.mean(pitch_series)))
+        
+        # Find dominant frequency
+        dominant_idx = np.argmax(fft_vals[1:]) + 1  # Skip DC component
+        dominant_freq = freqs[dominant_idx]
+        dominant_amp = fft_vals[dominant_idx]
+        
+        # Frequency reward component (higher reward for lower frequencies)
+        freq_reward = np.exp(-5 * (dominant_freq - self.min_freq))
+        
+        # Amplitude reward component
+        amp_reward = np.tanh(dominant_amp / 2.0)  # Scale based on expected amplitudes
+        cutoff_idx = np.searchsorted(freqs, self.max_freq)
+        high_freq_energy = np.sum(fft_vals[cutoff_idx:])
+        # import ipdb; ipdb.set_trace()
+        return freq_reward * amp_reward
+    
     def _reward_fx_sine_amplitude(self, obs: Obs, action: np.ndarray) -> np.ndarray:
         """Reward for large Fx amplitude"""
         return np.clip(self.Ax, 0, 10)  # Clip to prevent exploding rewards
@@ -539,6 +567,7 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
 
     def _reward_fy_suppression(self, obs: Obs, action: np.ndarray) -> np.ndarray:
         """Penalize Fy deviations"""
+        self.fy_buffer.append(obs.ee_force[1])
         fy_amp = np.max(self.fy_buffer) - np.min(self.fy_buffer)
         # return -np.tanh(10*(fy_amp - self.fy_tolerance))
         return -np.tanh(10*(fy_amp))
@@ -565,6 +594,7 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
 
     def _reward_swing_symmetry(self, obs: Obs, action: np.ndarray) -> np.ndarray:
         """Reward symmetric positive/negative Fx swings"""
+        self.fx_buffer.append(obs.ee_force[0])
         pos_peak = np.max(self.fx_buffer)
         neg_peak = np.abs(np.min(self.fx_buffer))
         return 1 - np.abs(pos_peak - neg_peak)/(pos_peak + neg_peak + 1e-6)
