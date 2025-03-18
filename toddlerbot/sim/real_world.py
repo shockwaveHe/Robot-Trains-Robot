@@ -32,6 +32,8 @@ class RealWorld(BaseSim):
 
         # TODO: Fix the mate directions in the URDF and remove the negated_motor_names
         self.negated_motor_names: List[str] = [
+            "left_hip_pitch",
+            "right_hip_pitch",
             "neck_pitch_act",
             "left_sho_roll",
             "right_sho_roll",
