@@ -17,8 +17,12 @@ from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.finetuning.replay_buffer import OnlineReplayBuffer, RemoteReplayBuffer
 from toddlerbot.finetuning.server_client import RemoteClient
 from toddlerbot.finetuning.utils import Timer
-from toddlerbot.utils.math_utils import exponential_moving_average, inverse_exponential_moving_average
+from toddlerbot.utils.math_utils import (
+    exponential_moving_average,
+    inverse_exponential_moving_average,
+)
 from toddlerbot.finetuning.logger import FinetuneLogger
+
 
 class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
     def __init__(
@@ -33,7 +37,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         env_cfg: Optional[Dict] = None,
         finetune_cfg: Optional[Dict] = None,
         is_real: bool = True,
-        ip: Optional[str] = None
+        ip: Optional[str] = None,
     ):
         if env_cfg is None:
             env_cfg = get_env_config("raise_arm", exp_folder)
@@ -60,18 +64,26 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
             fixed_command,
             env_cfg,
             exp_folder=exp_folder,
-            need_warmup=False
+            need_warmup=False,
         )
 
         # self.control_dt = 0.1
         self.robot = robot
-        self.device = "cuda" if torch.cuda.is_available() and self.finetune_cfg.update_mode == 'local' else "cpu"
-        self.inference_device = "cuda" if torch.cuda.is_available() and self.finetune_cfg.update_mode == 'local' else "cpu"
+        self.device = (
+            "cuda"
+            if torch.cuda.is_available() and self.finetune_cfg.update_mode == "local"
+            else "cpu"
+        )
+        self.inference_device = (
+            "cuda"
+            if torch.cuda.is_available() and self.finetune_cfg.update_mode == "local"
+            else "cpu"
+        )
         self.rng = np.random.default_rng()
         self.num_obs_history = self.cfg.obs.frame_stack
         self.obs_size = self.finetune_cfg.num_single_obs
 
-        self.is_real = False # hardcode to False for zmq, etc.
+        self.is_real = False  # hardcode to False for zmq, etc.
         self.is_paused = False
         self.shoulder_motor_idx = [16, 19, 21, 23, 26, 28]
         self.motor_speed_limits = np.array([0.05])
@@ -88,7 +100,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         self.is_stopped = False
         self.action_shift_steps = 1
 
-        if self.finetune_cfg.update_mode == 'local':
+        if self.finetune_cfg.update_mode == "local":
             self.replay_buffer = OnlineReplayBuffer(
                 self.device,
                 self.obs_size * self.num_obs_history,
@@ -100,14 +112,21 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
             )
             self.remote_client = None
         else:
-            assert self.finetune_cfg.update_mode == 'remote'
+            assert self.finetune_cfg.update_mode == "remote"
             self.remote_client = RemoteClient(
-                # server_ip='192.168.0.227', 
+                # server_ip='192.168.0.227',
                 server_ip="172.24.68.176",
                 server_port=5007,
                 exp_folder=self.exp_folder,
             )
-            self.replay_buffer = RemoteReplayBuffer(self.remote_client, self.finetune_cfg.buffer_size, num_obs_history=self.num_obs_history, num_privileged_obs_history=self.num_privileged_obs_history, enlarge_when_full=self.finetune_cfg.update_interval * self.finetune_cfg.enlarge_when_full)
+            self.replay_buffer = RemoteReplayBuffer(
+                self.remote_client,
+                self.finetune_cfg.buffer_size,
+                num_obs_history=self.num_obs_history,
+                num_privileged_obs_history=self.num_privileged_obs_history,
+                enlarge_when_full=self.finetune_cfg.update_interval
+                * self.finetune_cfg.enlarge_when_full,
+            )
 
         self._make_networks(
             observation_size=self.finetune_cfg.frame_stack * self.obs_size,
@@ -127,7 +146,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         self.privileged_obs_history = np.zeros(
             self.num_privileged_obs_history * self.privileged_obs_size
         )
-        
+
         self.logger = FinetuneLogger(self.exp_folder)
 
         self.num_updates = 0
@@ -141,9 +160,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         self.learning_stage = "offline"
 
         self.max_hand_z = -np.inf
-        self.sim = MuJoCoSim(
-            robot, vis_type=self.finetune_cfg.sim_vis_type, n_frames=1
-        )
+        self.sim = MuJoCoSim(robot, vis_type=self.finetune_cfg.sim_vis_type, n_frames=1)
 
         self.control_dt = 0.02
         if len(ckpts) > 0:
@@ -151,7 +168,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         input("press ENTER to start")
 
     def get_obs(
-        self, obs: Obs, command: np.ndarray=None, phase_signal=None, last_action=None
+        self, obs: Obs, command: np.ndarray = None, phase_signal=None, last_action=None
     ) -> Tuple[np.ndarray, np.ndarray]:
         motor_pos_delta = obs.motor_pos - self.default_motor_pos
         # state_ref_ds = np.asarray(self.motion_ref.get_state_ref_ds(self.state_ref, 0.0, command))
@@ -200,7 +217,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
     def get_raw_action(self, obs: Obs) -> np.ndarray:
         motor_target = obs.motor_pos.copy()
         action_target = motor_target[self.action_mask]
-        
+
         if self.filter_type == "ema":
             action_target = inverse_exponential_moving_average(
                 self.ema_alpha, action_target, self.last_raw_action
@@ -210,7 +227,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         raw_action = (action_target - self.default_action) / self.action_scale
         return raw_action
 
-       # TODO: add a timeout and truncation?
+    # TODO: add a timeout and truncation?
     def step(self, obs: Obs, is_real: bool = True):
         if self.need_reset:
             self.reset(obs)
@@ -230,11 +247,13 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         cur_time = time.time()
         if cur_time - self.traj_start_time < self.prep_duration:
             motor_target = np.asarray(
-                interpolate_action(time.time() - self.traj_start_time, self.prep_time, self.prep_action)
+                interpolate_action(
+                    time.time() - self.traj_start_time, self.prep_time, self.prep_action
+                )
             )
             return {}, motor_target, obs
 
-        if self.finetune_cfg.update_mode == 'local':
+        if self.finetune_cfg.update_mode == "local":
             self.sim.set_motor_angles(obs.motor_pos)
             self.sim.forward()
             hand_pos = self.sim.get_hand_pos()
@@ -248,7 +267,9 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         if self.total_steps == self.finetune_cfg.offline_total_steps:
             self.switch_learning_stage()
             if len(self.replay_buffer) > 0:
-                self.replay_buffer.shift_action(self.action_shift_steps) # TODO: only support continuous data collection, no offline updates in between
+                self.replay_buffer.shift_action(
+                    self.action_shift_steps
+                )  # TODO: only support continuous data collection, no offline updates in between
 
         if self.remote_client is not None and self.remote_client.ready_to_update:
             # import ipdb; ipdb.set_trace()
@@ -256,7 +277,9 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
             print(f"Updated policy network to {self.num_updates}!")
             assert not torch.allclose(
                 self.policy_net.mlp.layers[0].weight,
-                self.remote_client.new_state_dict["mlp.layers.0.weight"].to(self.inference_device)
+                self.remote_client.new_state_dict["mlp.layers.0.weight"].to(
+                    self.inference_device
+                ),
             )
             self.policy_net.load_state_dict(self.remote_client.new_state_dict)
             self.remote_client.ready_to_update = False
@@ -266,22 +289,24 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
             motor_target = self.default_motor_pos.copy()
             motor_target[self.action_mask] = self.last_action_target
             return {}, motor_target, obs
-        
-        if self.learning_stage == "online": # use deterministic action during offline learning
-            action_pi, action_real, action_logprob = self.get_action(obs_arr, deterministic=False, is_real=is_real)
+
+        if (
+            self.learning_stage == "online"
+        ):  # use deterministic action during offline learning
+            action_pi, action_real, action_logprob = self.get_action(
+                obs_arr, deterministic=False, is_real=is_real
+            )
         else:
             # data collection stage
             action_pi = self.get_raw_action(obs)
             action_logprob = 0.0
 
-        if self.finetune_cfg.update_mode == 'local':
+        if self.finetune_cfg.update_mode == "local":
             reward_dict = self._compute_reward(obs, action_real)
             self.last_last_action = self.last_action.copy()
             self.last_action = action_pi.copy()
 
-            reward = (
-                sum(reward_dict.values())
-            )  # TODO: verify, why multiply by dt?
+            reward = sum(reward_dict.values())  # TODO: verify, why multiply by dt?
             self.logger.log_step(
                 reward_dict,
                 obs,
@@ -302,8 +327,19 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
             print(
                 f"Data size: {len(self.replay_buffer)}, Steps: {self.total_steps}, Fps: {self.total_steps / self.timer.elapsed()}"
             )
-        time_to_update = (self.learning_stage == "offline" and (len(self.replay_buffer) >= self.finetune_cfg.offline_initial_steps and len(self.replay_buffer) + 1) % self.finetune_cfg.update_interval == 0) or (self.learning_stage == "online" and len(self.replay_buffer) == self.finetune_cfg.online.batch_size - 1)
-        truncated = time_to_update and self.finetune_cfg.update_mode == 'local'
+        time_to_update = (
+            self.learning_stage == "offline"
+            and (
+                len(self.replay_buffer) >= self.finetune_cfg.offline_initial_steps
+                and len(self.replay_buffer) + 1
+            )
+            % self.finetune_cfg.update_interval
+            == 0
+        ) or (
+            self.learning_stage == "online"
+            and len(self.replay_buffer) == self.finetune_cfg.online.batch_size - 1
+        )
+        truncated = time_to_update and self.finetune_cfg.update_mode == "local"
 
         if self.is_truncated():
             truncated = True
@@ -334,7 +370,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         # import ipdb; ipdb.set_trace()
 
         action_target = self.default_action + self.action_scale * delayed_action
-        
+
         if self.filter_type == "ema":
             action_target = exponential_moving_average(
                 self.ema_alpha, action_target, self.last_action_target
@@ -363,7 +399,6 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
 
         return control_inputs, motor_target, obs
 
-
     def close(self):
         self.sim.close()
         self.logger.close()
@@ -382,7 +417,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
 
     def is_truncated(self) -> bool:
         return self.current_steps >= self.step_limit
-    
+
     def reset(self, obs: Obs = None):
         # mjx policy reset
         self.timer.stop()
@@ -402,18 +437,22 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         if self.is_done(obs):
             print("done reward")
         return self.is_done(obs)
-    
+
     # h = r * (1 - cos(theta))
     # theta = acos(1 - h / r)
     def _reward_arm_position(self, obs: Obs, action: np.ndarray) -> np.ndarray:
-        return np.arccos(1 - np.clip(obs.hand_z_dist - self.hand_z_dist_base, 0, np.inf) / self.arm_radius).sum()
+        return np.arccos(
+            1
+            - np.clip(obs.hand_z_dist - self.hand_z_dist_base, 0, np.inf)
+            / self.arm_radius
+        ).sum()
 
-    def _reward_arm_action_rate(self, obs: Obs, action: np.ndarray) -> np.ndarray:
+    def _reward_action_rate(self, obs: Obs, action: np.ndarray) -> np.ndarray:
         error = np.square(action - self.last_action)
         reward = -np.mean(error)
         return reward
 
-    def _reward_arm_action_acc(self, obs: Obs, action: np.ndarray) -> np.ndarray:
+    def _reward_action_acc(self, obs: Obs, action: np.ndarray) -> np.ndarray:
         error = np.square(action - 2 * self.last_action + self.last_last_action)
         reward = -np.mean(error)
         return reward

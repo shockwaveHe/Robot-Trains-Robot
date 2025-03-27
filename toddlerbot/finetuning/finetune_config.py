@@ -28,7 +28,7 @@ class FinetuneConfig:
     policy_hidden_layer_sizes: Tuple[int, ...] = (512, 256, 128)
     value_hidden_layer_sizes: Tuple[int, ...] = (512, 256, 128)
     dynamics_hidden_layer_sizes: Tuple[int, ...] = (512, 256, 128)
-    
+
     # Evaluation and episode configuration
     num_evals: int = 1000
     ope_rollout_length: int = 200
@@ -36,22 +36,22 @@ class FinetuneConfig:
     rollout_batch_size: int = 32
     buffer_size: int = 105_000
     buffer_valid_size: int = 5000
-    
+
     # Update configuration
     num_updates_per_batch: int = 4
     value_update_steps: int = int(1e4)
     dynamics_update_steps: int = 256
     target_update_freq: int = 2  # Matches the value from the argparse config
     use_tanh: bool = False  # Use tanh transformation for the action distribution
-    
+
     # Discounting and learning rates
-    gamma: float = 0.99 
+    gamma: float = 0.99
     value_lr: float = 1e-4
     policy_lr: float = 1e-4
     Q_lr: float = 1e-4
     bc_lr: float = 1e-4  # Added from argparse (BehaviorCloning learning rate)
     bppo_lr: float = 2e-4  # Added from argparse (BPPO learning rate)
-    dynamics_lr: float = 1e-4 
+    dynamics_lr: float = 1e-4
 
     # Batch sizes
     policy_batch_size: int = 512  # Matches argparse config
@@ -70,7 +70,7 @@ class FinetuneConfig:
     decay: float = 0.96  # Added from argparse
     is_bppo_lr_decay: bool = False  # Added from argparse
     decay_steps: int = 50_000_000
-    
+
     # Exploration and initialization
     update_interval: int = 10_00
     enlarge_when_full: bool = True
@@ -90,10 +90,10 @@ class FinetuneConfig:
     eval_step: int = 200  # Added from argparse
 
     # Miscellaneous
-    is_iql: bool = False # Added from argparse
-    update_mode: str = "remote" # remote or local
+    is_iql: bool = False  # Added from argparse
+    update_mode: str = "remote"  # remote or local
     kl_update: bool = False  # Added from argparse
-    log_freq: int = 10 
+    log_freq: int = 10
     valid_freq: int = 1e3
     frame_stack: int = 15
     use_double_q: bool = True  # Matches argparse (`is_double_q`)
@@ -149,7 +149,7 @@ class FinetuneConfig:
         K_epochs: int = 20
         gamma: float = 0.99
         lamda: float = 0.95
-        epsilon: float = 0.1 # PPO clip ratio
+        epsilon: float = 0.1  # PPO clip ratio
         entropy_coef: float = 0.01
         lr_a: float = 1e-4
         lr_c: float = 1e-4
@@ -163,7 +163,7 @@ class FinetuneConfig:
         is_state_norm: bool = False
         is_eval_state_norm: bool = False
         is_double_q: bool = True
-    
+
     @gin.configurable
     @dataclass
     class FinetuneRewardScales:
@@ -184,8 +184,8 @@ class FinetuneConfig:
         energy: float = 0.0
         neck_action_rate: float = 0.0  # 1e-2
         neck_action_acc: float = 0.0  # 1e-2
-        arm_action_rate: float = 0.0  # 1e-2
-        arm_action_acc: float = 0.0  # 1e-2
+        action_rate: float = 0.0  # 1e-2
+        action_acc: float = 0.0  # 1e-2
         waist_action_rate: float = 0.0  # 1e-2
         waist_action_acc: float = 0.0  # 1e-2
         leg_action_rate: float = 0.0
@@ -202,10 +202,10 @@ class FinetuneConfig:
         arm_force_z: float = 0.0
         arm_force_y: float = 0.0
         arm_position: float = 0.0
-        fx_sine_amplitude: float = 0.0
-        fx_sine_fit: float = 0.0
-        fz_sine_amplitude: float = 0.0
-        fz_sine_fit: float = 0.0
+        fx_sine_amp: float = 0.0
+        fx_sine_freq: float = 0.0
+        fz_sine_amp: float = 0.0
+        fz_sine_freq: float = 0.0
         fy_suppression: float = 0.0
         phase_alignment: float = 0.0
         frequency_consistency: float = 0.0

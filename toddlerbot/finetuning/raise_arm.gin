@@ -14,8 +14,8 @@ FinetuneConfig.use_residual = False
 FinetuneConfig.use_tanh = False
 
 
-FinetuneRewardScales.arm_action_rate = 4.0
-FinetuneRewardScales.arm_action_acc = 1.0
+FinetuneRewardScales.action_rate = 4.0
+FinetuneRewardScales.action_acc = 1.0
 FinetuneRewardScales.arm_position = 1.0
 FinetuneRewardScales.survival = 10.0
 
