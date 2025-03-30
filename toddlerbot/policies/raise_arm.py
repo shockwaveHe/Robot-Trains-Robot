@@ -92,6 +92,12 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         self.hand_z_dist_terminal = 0.5
         self.action_mask = np.array(self.shoulder_motor_idx)
         self.num_action = self.action_mask.shape[0]
+
+        self.default_motor_pos[18] = np.pi / 2
+        self.default_motor_pos[20] = -np.pi / 2
+        self.default_motor_pos[25] = -np.pi / 2
+        self.default_motor_pos[27] = np.pi / 2
+
         self.default_action = self.default_motor_pos[self.action_mask]
         self.last_action = np.zeros(self.num_action)
         self.last_last_action = np.zeros(self.num_action)
@@ -434,9 +440,10 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         print("Reset done!")
 
     def _reward_survival(self, obs: Obs, action: np.ndarray) -> np.ndarray:
-        if self.is_done(obs):
-            print("done reward")
-        return self.is_done(obs)
+        # if self.is_done(obs):
+        #     print("done reward")
+        # return self.is_done(obs)
+        return 1.0
 
     # h = r * (1 - cos(theta))
     # theta = acos(1 - h / r)

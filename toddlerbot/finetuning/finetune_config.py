@@ -120,9 +120,10 @@ class FinetuneConfig:
     healty_torso_roll: np.ndarray = np.array([-0.5, 0.5])
     healty_torso_pitch: np.ndarray = np.array([-0.5, 0.5])
     pos_error_threshold: float = 0.05
-    swing_buffer_size: int = 100
+    swing_buffer_size: int = 1000
     action_window_size: int = 30
     symmetric_action: bool = False
+    swing_squat: bool = False
 
     use_residual: bool = False
     residual_action_scale: float = 0.1
@@ -216,7 +217,6 @@ class FinetuneConfig:
         action_symmetry: float = 0.0
         swing_consistency: float = 0.0
         action_smoothness: float = 0.0
-        action_scale: float = 0.0
 
     def __post_init__(self):
         self.finetune_reward_scales = self.FinetuneRewardScales()

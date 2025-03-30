@@ -12,15 +12,27 @@ import time
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 
+
 class CSVMonitor:
-    def __init__(self, file_name, task="walk_finetune", user='toddie', host='10.5.6.248', window=100, ema=0.2, ncols=4, interval=100):
+    def __init__(
+        self,
+        file_name,
+        task="walk_finetune",
+        user="arya",
+        host="10.5.6.248",
+        window=100,
+        ema=0.2,
+        ncols=4,
+        interval=100,
+    ):
         """
         Initialize the CSV monitor.
         """
         # Use TkAgg to allow key press events.
         import matplotlib
+
         matplotlib.use("TkAgg")
-        
+
         self.file_name = file_name
         self.user = user
         self.host = host
@@ -50,11 +62,13 @@ class CSVMonitor:
         (This command lists directories matching a pattern and returns the newest one.)
         """
         find_cmd = (
-            f'ssh {self.user}@{self.host} '
+            f"ssh {self.user}@{self.host} "
             f'"ls -td ~/projects/toddlerbot_internal/results/toddlerbot_2xm_{self.task}_real_world_* 2>/dev/null | head -n 1"'
         )
         try:
-            latest_folder = subprocess.check_output(find_cmd, shell=True, universal_newlines=True).strip()
+            latest_folder = subprocess.check_output(
+                find_cmd, shell=True, universal_newlines=True
+            ).strip()
             if latest_folder:
                 print("Latest results folder:", latest_folder)
                 return latest_folder
@@ -71,22 +85,34 @@ class CSVMonitor:
         while True:
             remote_folder = self.find_latest_results_folder()
             if remote_folder:
-                self.remote_file = os.path.join(remote_folder, f'{self.file_name}.csv')
+                self.remote_file = os.path.join(remote_folder, f"{self.file_name}.csv")
                 break
             print("No results folder found yet, waiting...")
             time.sleep(2)
 
-        head_cmd = ['ssh', f'{self.user}@{self.host}', 'head', '-n', '1', self.remote_file]
+        head_cmd = [
+            "ssh",
+            f"{self.user}@{self.host}",
+            "head",
+            "-n",
+            "1",
+            self.remote_file,
+        ]
         print("Waiting for CSV file and headers to be available...")
         while True:
             try:
-                header_output = subprocess.check_output(head_cmd, universal_newlines=True)
+                header_output = subprocess.check_output(
+                    head_cmd, universal_newlines=True
+                )
                 header_line = header_output.strip()
                 if header_line:
                     header_reader = csv.reader(io.StringIO(header_line))
                     self.header = next(header_reader)
                     self.num_columns = len(self.header)
-                    self.ema_data = [collections.deque(maxlen=self.window) for _ in range(self.num_columns)]
+                    self.ema_data = [
+                        collections.deque(maxlen=self.window)
+                        for _ in range(self.num_columns)
+                    ]
                     print("Detected columns:", self.header)
                     return
             except subprocess.CalledProcessError:
@@ -125,7 +151,10 @@ class CSVMonitor:
                     if len(self.ema_data[i]) == 0:
                         ema_val = val
                     else:
-                        ema_val = self.ema_alpha * val + (1 - self.ema_alpha) * self.ema_data[i][-1]
+                        ema_val = (
+                            self.ema_alpha * val
+                            + (1 - self.ema_alpha) * self.ema_data[i][-1]
+                        )
                     self.ema_data[i].append(ema_val)
 
     def start_tail(self):
@@ -133,10 +162,19 @@ class CSVMonitor:
         Start the SSH tail process to follow the remote CSV file.
         The '-n {window}' option grabs the last few lines initially.
         """
-        tail_cmd = ['ssh', f'{self.user}@{self.host}', 'tail', '-n', str(self.window), '-F', self.remote_file]
+        tail_cmd = [
+            "ssh",
+            f"{self.user}@{self.host}",
+            "tail",
+            "-n",
+            str(self.window),
+            "-F",
+            self.remote_file,
+        ]
         try:
-            self.tail_proc = subprocess.Popen(tail_cmd, stdout=subprocess.PIPE,
-                                              universal_newlines=True, bufsize=1)
+            self.tail_proc = subprocess.Popen(
+                tail_cmd, stdout=subprocess.PIPE, universal_newlines=True, bufsize=1
+            )
         except Exception as e:
             raise RuntimeError(f"Error starting tail process: {e}")
         self.reader_thread = threading.Thread(target=self._remote_data_reader)
@@ -151,7 +189,9 @@ class CSVMonitor:
         ncols = self.ncols
         nrows = math.ceil(self.num_columns / ncols)
         self.fig, self.axes = plt.subplots(nrows, ncols, figsize=(ncols * 4, nrows * 3))
-        self.fig.canvas.manager.set_window_title(f"CSV Monitor - {self.file_name.replace('_', ' ').title()}")
+        self.fig.canvas.manager.set_window_title(
+            f"CSV Monitor - {self.file_name.replace('_', ' ').title()}"
+        )
 
         # Flatten the axes array.
         if isinstance(self.axes, plt.Axes):
@@ -160,13 +200,13 @@ class CSVMonitor:
             self.axes = self.axes.flatten()
 
         # Hide any extra subplots.
-        for ax in self.axes[self.num_columns:]:
+        for ax in self.axes[self.num_columns :]:
             ax.set_visible(False)
 
         self.lines = []
         for i in range(self.num_columns):
             ax = self.axes[i]
-            line, = ax.plot([], [], lw=1)
+            (line,) = ax.plot([], [], lw=1)
             ax.set_title(self.header[i], fontsize=10, pad=2)
             ax.grid(True)
             # Remove x-axis ticks except for the subplots in the last row.
@@ -195,13 +235,18 @@ class CSVMonitor:
                         self.axes[i].set_ylim(ymin, ymax)
             return self.lines
 
-        self.anim = animation.FuncAnimation(self.fig, animate, init_func=init_func,
-                                            interval=self.interval, blit=False,
-                                            cache_frame_data=False)
+        self.anim = animation.FuncAnimation(
+            self.fig,
+            animate,
+            init_func=init_func,
+            interval=self.interval,
+            blit=False,
+            cache_frame_data=False,
+        )
         self.fig.tight_layout()
 
         # Connect the key press events.
-        self.fig.canvas.mpl_connect('key_press_event', self.on_key)
+        self.fig.canvas.mpl_connect("key_press_event", self.on_key)
 
     def on_key(self, event):
         """
@@ -209,10 +254,10 @@ class CSVMonitor:
          - 'q' closes the plot window (and quits the program).
          - 'r' reloads the file by calling find_latest_results_folder and restarting the tail.
         """
-        if event.key == 'q':
+        if event.key == "q":
             print("Exiting...")
             plt.close(self.fig)
-        elif event.key == 'r':
+        elif event.key == "r":
             print("Reloading file...")
             self.reload_file()
 
@@ -226,7 +271,7 @@ class CSVMonitor:
         """
         new_folder = self.find_latest_results_folder()
         if new_folder:
-            new_file = os.path.join(new_folder, f'{self.file_name}.csv')
+            new_file = os.path.join(new_folder, f"{self.file_name}.csv")
             if new_file == self.remote_file:
                 print("Remote file is the same. No update.")
                 return
@@ -238,16 +283,30 @@ class CSVMonitor:
             # Update the remote file and clear the stored EMA data.
             self.remote_file = new_file
             with self.data_lock:
-                self.ema_data = [collections.deque(maxlen=self.window) for _ in range(self.num_columns)]
+                self.ema_data = [
+                    collections.deque(maxlen=self.window)
+                    for _ in range(self.num_columns)
+                ]
             # Optionally, update the header from the new file.
-            head_cmd = ['ssh', f'{self.user}@{self.host}', 'head', '-n', '1', self.remote_file]
+            head_cmd = [
+                "ssh",
+                f"{self.user}@{self.host}",
+                "head",
+                "-n",
+                "1",
+                self.remote_file,
+            ]
             try:
-                header_output = subprocess.check_output(head_cmd, universal_newlines=True)
+                header_output = subprocess.check_output(
+                    head_cmd, universal_newlines=True
+                )
                 header_line = header_output.strip()
                 header_reader = csv.reader(io.StringIO(header_line))
                 new_header = next(header_reader)
                 if len(new_header) != self.num_columns:
-                    print("Warning: new file has a different number of columns. Continuing with old configuration.")
+                    print(
+                        "Warning: new file has a different number of columns. Continuing with old configuration."
+                    )
                 else:
                     self.header = new_header
                     # Update the subplot titles.
@@ -269,26 +328,42 @@ class CSVMonitor:
         if self.reader_thread:
             self.reader_thread.join(timeout=1)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Monitor a remote CSV file over SSH and plot each column (with EMA smoothing)."
     )
-    parser.add_argument('--user', help="SSH username", default="toddie")
-    parser.add_argument('--host', help="SSH host (or IP address)", default="10.5.6.248")
-    parser.add_argument('--window', type=int, default=500,
-                        help="Number of data points to display")
-    parser.add_argument('--ema', type=float, default=0.5,
-                        help="EMA smoothing factor (alpha) between 0 and 1")
-    parser.add_argument('--ncols', type=int, default=5,
-                        help="Number of subplots per row")
-    parser.add_argument('--interval', type=int, default=30,
-                        help="Plot update interval in milliseconds")
-    parser.add_argument('--task', default="walk_finetune")
+    parser.add_argument("--user", help="SSH username", default="arya")
+    parser.add_argument("--host", help="SSH host (or IP address)", default="10.5.6.248")
+    parser.add_argument(
+        "--window", type=int, default=500, help="Number of data points to display"
+    )
+    parser.add_argument(
+        "--ema",
+        type=float,
+        default=0.5,
+        help="EMA smoothing factor (alpha) between 0 and 1",
+    )
+    parser.add_argument(
+        "--ncols", type=int, default=5, help="Number of subplots per row"
+    )
+    parser.add_argument(
+        "--interval", type=int, default=30, help="Plot update interval in milliseconds"
+    )
+    parser.add_argument("--task", default="walk_finetune")
     args = parser.parse_args()
 
     file_name = "training_rewards"
-    monitor = CSVMonitor(file_name=file_name, user=args.user, host=args.host, task=args.task,
-                         window=args.window, ema=args.ema, ncols=args.ncols, interval=args.interval)
+    monitor = CSVMonitor(
+        file_name=file_name,
+        user=args.user,
+        host=args.host,
+        task=args.task,
+        window=args.window,
+        ema=args.ema,
+        ncols=args.ncols,
+        interval=args.interval,
+    )
 
     # Block until a valid CSV file and its header are found.
     monitor.fetch_header()
