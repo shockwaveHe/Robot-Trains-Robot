@@ -1,5 +1,5 @@
-FinetuneConfig.num_single_obs = 14
-FinetuneConfig.num_single_privileged_obs = 20
+FinetuneConfig.num_single_obs = 26
+FinetuneConfig.num_single_privileged_obs = 32
 FinetuneConfig.policy_hidden_layer_sizes = (512, 256, 128)
 FinetuneConfig.value_hidden_layer_sizes = (512, 256, 128)
 FinetuneConfig.dynamics_hidden_layer_sizes = (512, 256, 128)

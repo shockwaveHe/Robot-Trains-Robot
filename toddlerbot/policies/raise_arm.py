@@ -85,12 +85,12 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
 
         self.is_real = False  # hardcode to False for zmq, etc.
         self.is_paused = False
-        self.shoulder_motor_idx = [16, 23]
-        self.action_delta_limit = 1 * self.control_dt
+        self.active_motor_idx = [16, 19, 21, 23, 26, 28]
+        self.action_delta_limit = 2 * self.control_dt
         self.hand_z_dist_base = 0.266
         self.arm_radius = 0.1685
         self.hand_z_dist_terminal = 0.5
-        self.action_mask = np.array(self.shoulder_motor_idx)
+        self.action_mask = np.array(self.active_motor_idx)
         self.num_action = self.action_mask.shape[0]
 
         self.default_motor_pos[18] = np.pi / 2
@@ -426,6 +426,9 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
             ((self.n_steps_delay + 1) * self.num_action), dtype=np.float32
         )
         self.last_action = np.zeros(self.num_action)
+        self.last_last_action = np.zeros(self.num_action)
+        self.last_action_target = self.default_action
+        self.last_raw_action = None
         self.traj_start_time = time.time()
         self.is_prepared = False
         print("Reset done!")
