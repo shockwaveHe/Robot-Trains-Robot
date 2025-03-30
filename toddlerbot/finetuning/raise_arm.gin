@@ -11,11 +11,11 @@ FinetuneConfig.offline_initial_steps = 5000
 FinetuneConfig.update_mode = "remote"
 FinetuneConfig.frame_stack = 15
 FinetuneConfig.use_residual = False
-FinetuneConfig.use_tanh = True
+FinetuneConfig.use_tanh = False
 
 
-FinetuneRewardScales.action_rate = 0.0
-FinetuneRewardScales.action_acc = 0.0
+FinetuneRewardScales.action_rate = 0.2
+FinetuneRewardScales.action_acc = 0.1
 FinetuneRewardScales.arm_position = 1.0
 FinetuneRewardScales.survival = 1.0
 

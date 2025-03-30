@@ -86,7 +86,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         self.is_real = False  # hardcode to False for zmq, etc.
         self.is_paused = False
         self.shoulder_motor_idx = [16, 23]
-        self.motor_speed_limits = np.array([1.0])
+        self.action_delta_limit = 1 * self.control_dt
         self.hand_z_dist_base = 0.266
         self.arm_radius = 0.1685
         self.hand_z_dist_terminal = 0.5
@@ -168,7 +168,6 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         self.max_hand_z = -np.inf
         self.sim = MuJoCoSim(robot, vis_type=self.finetune_cfg.sim_vis_type, n_frames=1)
 
-        self.control_dt = 0.02
         if len(ckpts) > 0:
             self.load_ckpts(ckpts)
         input("press ENTER to start")
@@ -374,11 +373,11 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
                 self.ema_alpha, action_target, self.last_action_target
             )
 
-        # clip diff(action_target, last_action_target) to motor_speed_limits
+        # clip diff(action_target, last_action_target) to action_delta_limit
         action_target = np.clip(
             action_target,
-            self.last_action_target - self.motor_speed_limits,
-            self.last_action_target + self.motor_speed_limits,
+            self.last_action_target - self.action_delta_limit,
+            self.last_action_target + self.action_delta_limit,
         )
         self.last_action_target = action_target.copy()
 

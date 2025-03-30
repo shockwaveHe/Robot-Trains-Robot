@@ -5,3 +5,5 @@ CommandsConfig.command_obs_indices = []
 ObsConfig.num_single_obs = 14
 ObsConfig.num_single_privileged_obs = 20
 ObsConfig.frame_stack = 15
+
+ActionConfig.action_scale = 2.0
