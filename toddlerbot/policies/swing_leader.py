@@ -1,21 +1,17 @@
-from collections import deque
-from multiprocessing import shared_memory
-import struct
-import threading
 import time
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 
 import numpy as np
 import numpy.typing as npt
-import serial
 
+from toddlerbot.finetuning.utils import Timer
 from toddlerbot.policies import BasePolicy
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.keyboard import Keyboard
 from toddlerbot.utils.comm_utils import ZMQMessage, ZMQNode
-from toddlerbot.finetuning.utils import Timer
 from toddlerbot.utils.ft_utils import NetFTSensor
+
 
 class SwingLeaderPolicy(BasePolicy, policy_name="swing_leader"):
     def __init__(
@@ -65,7 +61,7 @@ class SwingLeaderPolicy(BasePolicy, policy_name="swing_leader"):
         # return obs.ee_force[0] < self.healthy_force_x[0] or obs.ee_force[0] > self.healthy_force_x[1] \
         #     or obs.ee_force[1] < self.healthy_force_y[0] or obs.ee_force[1] > self.healthy_force_y[1]
         return False
-    
+
     def step(
         self, obs: Obs, is_real: bool = False
     ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
@@ -115,7 +111,6 @@ class SwingLeaderPolicy(BasePolicy, policy_name="swing_leader"):
         self.total_steps += 1
 
         return control_inputs, action, obs
-
 
     def reset(self, obs: Obs = None) -> Obs:
         self.timer.reset()
