@@ -85,8 +85,8 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
 
         self.is_real = False  # hardcode to False for zmq, etc.
         self.is_paused = False
-        self.shoulder_motor_idx = [16, 19, 21, 23, 26, 28]
-        self.motor_speed_limits = np.array([0.05])
+        self.shoulder_motor_idx = [16, 23]
+        self.motor_speed_limits = np.array([1.0])
         self.hand_z_dist_base = 0.266
         self.arm_radius = 0.1685
         self.hand_z_dist_terminal = 0.5
@@ -173,41 +173,34 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
             self.load_ckpts(ckpts)
         input("press ENTER to start")
 
+        self.phase_signal = np.zeros(2, dtype=np.float32)
+
     def get_obs(
         self, obs: Obs, command: np.ndarray = None, phase_signal=None, last_action=None
     ) -> Tuple[np.ndarray, np.ndarray]:
         motor_pos_delta = obs.motor_pos - self.default_motor_pos
-        # state_ref_ds = np.asarray(self.motion_ref.get_state_ref_ds(self.state_ref, 0.0, command))
-        # self.state_ref = np.asarray(
-        #     self.motion_ref.get_state_ref(self.state_ref, 0.0, command)
-        # )
-
         obs_arr = np.concatenate(
             [
-                # self.phase_signal if phase_signal is None else phase_signal,  # (2, )
+                self.phase_signal,  # (2, )
                 # command[self.command_obs_indices],  # (3, )
-                motor_pos_delta * self.obs_scales.dof_pos,  # (30, )
-                obs.motor_vel * self.obs_scales.dof_vel,  # (30, )
-                # self.last_action if last_action is None else last_action,  # (12, )
-                # motor_pos_error,
-                # obs.lin_vel * self.obs_scales.lin_vel,
+                motor_pos_delta[self.action_mask] * self.obs_scales.dof_pos,  # (30, )
+                obs.motor_vel[self.action_mask] * self.obs_scales.dof_vel,  # (30, )
+                self.last_action,
                 obs.ang_vel * self.obs_scales.ang_vel,  # (3, )
                 obs.euler * self.obs_scales.euler,  # (3, )
             ]
         )
         privileged_obs_arr = np.concatenate(
             [
-                # self.phase_signal if phase_signal is None else phase_signal,  # (2, )
+                self.phase_signal,  # (2, )
                 # command[self.command_obs_indices],  # (3, )
-                motor_pos_delta * self.obs_scales.dof_pos,  # (30, )
-                obs.motor_vel * self.obs_scales.dof_vel,  # (30, )
-                # self.last_action if last_action is None else last_action,  # (12, )
-                obs.motor_pos,  # (30, ) change from motor_pos_error
-                obs.lin_vel * self.obs_scales.lin_vel,  # (3, )
+                motor_pos_delta[self.action_mask] * self.obs_scales.dof_pos,  # (30, )
+                obs.motor_vel[self.action_mask] * self.obs_scales.dof_vel,  # (30, )
+                self.last_action,
                 obs.ang_vel * self.obs_scales.ang_vel,  # (3, )
                 obs.euler * self.obs_scales.euler,  # (3, )
-                # obs.ee_force * self.obs_scales.ee_force,  # (3, )
-                # obs.ee_torque * self.obs_scales.ee_torque,  # (3, )
+                obs.ee_force * self.obs_scales.ee_force,  # (3, )
+                obs.ee_torque * self.obs_scales.ee_torque,  # (3, )
             ]
         )
 
@@ -217,7 +210,6 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
             self.privileged_obs_history, privileged_obs_arr.size
         )
         self.privileged_obs_history[: privileged_obs_arr.size] = privileged_obs_arr
-
         return self.obs_history, self.privileged_obs_history
 
     def get_raw_action(self, obs: Obs) -> np.ndarray:

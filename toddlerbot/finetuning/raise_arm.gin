@@ -1,5 +1,5 @@
-FinetuneConfig.num_single_obs = 66
-FinetuneConfig.num_single_privileged_obs = 99
+FinetuneConfig.num_single_obs = 14
+FinetuneConfig.num_single_privileged_obs = 20
 FinetuneConfig.policy_hidden_layer_sizes = (512, 256, 128)
 FinetuneConfig.value_hidden_layer_sizes = (512, 256, 128)
 FinetuneConfig.dynamics_hidden_layer_sizes = (512, 256, 128)
@@ -11,18 +11,19 @@ FinetuneConfig.offline_initial_steps = 5000
 FinetuneConfig.update_mode = "remote"
 FinetuneConfig.frame_stack = 15
 FinetuneConfig.use_residual = False
-FinetuneConfig.use_tanh = False
+FinetuneConfig.use_tanh = True
 
 
-FinetuneRewardScales.action_rate = 0.4
-FinetuneRewardScales.action_acc = 0.1
+FinetuneRewardScales.action_rate = 0.0
+FinetuneRewardScales.action_acc = 0.0
 FinetuneRewardScales.arm_position = 1.0
 FinetuneRewardScales.survival = 1.0
 
 OnlineConfig.batch_size = 1024
 OnlineConfig.mini_batch_size = 128
 OnlineConfig.is_clip_value = True
-OnlineConfig.lr_c = 2e-4
+OnlineConfig.lr_c = 1e-4
 OnlineConfig.lr_a = 1e-4
 OnlineConfig.entropy_coef = 0.01
 OnlineConfig.K_epochs = 20
+OnlineConfig.epsilon = 0.2
