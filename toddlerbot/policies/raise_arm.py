@@ -66,7 +66,6 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
             exp_folder=exp_folder,
             need_warmup=False,
         )
-
         # self.control_dt = 0.1
         self.robot = robot
         self.device = (
@@ -245,9 +244,10 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         if cur_time - self.traj_start_time < self.prep_duration:
             motor_target = np.asarray(
                 interpolate_action(
-                    time.time() - self.traj_start_time, self.prep_time, self.prep_action
+                    cur_time - self.traj_start_time, self.prep_time, self.prep_action
                 )
             )
+            self.last_action_target = motor_target[self.action_mask]
             return {}, motor_target, obs
 
         if self.finetune_cfg.update_mode == "local":
@@ -310,8 +310,8 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
                 reward=reward,
                 hand_z_dist_left=obs.hand_z_dist[0],
                 hand_z_dist_right=obs.hand_z_dist[1],
-                action_pi=action_pi[0],
-                action_real=action_real[0],
+                action_pi=action_pi.mean(),
+                action_real=action_real.mean(),
             )
         else:
             reward = 0.0
@@ -356,6 +356,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
 
         if truncated:
             self.update_policy()
+            self.need_reset = True
             # import ipdb; ipdb.set_trace()
 
         if is_real:
@@ -373,7 +374,6 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
                 self.ema_alpha, action_target, self.last_action_target
             )
 
-        # clip diff(action_target, last_action_target) to action_delta_limit
         action_target = np.clip(
             action_target,
             self.last_action_target - self.action_delta_limit,
@@ -390,6 +390,7 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         )
         self.total_steps += 1
         self.current_steps += 1
+        self.step_curr += 1
         self.timer.start()
         control_inputs = {}
         self.control_inputs = control_inputs
@@ -418,10 +419,12 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
     def reset(self, obs: Obs = None):
         # mjx policy reset
         self.timer.stop()
+        self.step_curr = 0.0
         self.obs_history = np.zeros(self.obs_history_size, dtype=np.float32)
         self.privileged_obs_history = np.zeros(
             self.privileged_obs_history_size, dtype=np.float32
         )
+        self.phase_signal = np.zeros(2, dtype=np.float32)
         self.action_buffer = np.zeros(
             ((self.n_steps_delay + 1) * self.num_action), dtype=np.float32
         )
