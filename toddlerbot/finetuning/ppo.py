@@ -14,9 +14,10 @@ from toddlerbot.finetuning.finetune_config import FinetuneConfig
 from toddlerbot.finetuning.logger import FinetuneLogger
 from toddlerbot.finetuning.utils import CONST_EPS
 
+
 class PPO:
     def __init__(
-        self, 
+        self,
         device: torch.device,
         config: FinetuneConfig,
         policy_net: GaussianPolicyNetwork,
@@ -43,42 +44,69 @@ class PPO:
 
         self._config = config
         self._device = device
-        self._logger = logger # TODO: improve logging, seperate online offline?
+        self._logger = logger  # TODO: improve logging, seperate online offline?
 
-        self._policy_net = deepcopy(policy_net).to(self.device) # deepcopy to keep policy on inference device
-        self._base_policy_net = deepcopy(base_policy_net).to(self.device) if base_policy_net is not None else None
+        self._policy_net = deepcopy(policy_net).to(
+            self.device
+        )  # deepcopy to keep policy on inference device
+        self._base_policy_net = (
+            deepcopy(base_policy_net).to(self.device)
+            if base_policy_net is not None
+            else None
+        )
         # if args.scale_strategy == 'dynamic' or args.scale_strategy == 'number': # DISCUSS
         #     self.critic = ValueReluMLP(args).to(self.device)
         # else:
         self._value_net = value_net.to(self.device)
-        
-        if self.set_adam_eps:  # Trick 9: set Adam epsilon=1e-5
-            self.optimizer_actor = torch.optim.Adam(self._policy_net.parameters(), lr=self.lr_a, eps=1e-5)
-            self.optimizer_critic = torch.optim.Adam(self._value_net.parameters(), lr=self.lr_c, eps=1e-5)
-        else:
-            self.optimizer_actor = torch.optim.Adam(self._policy_net.parameters(), lr=self.lr_a)
-            self.optimizer_critic = torch.optim.Adam(self._value_net.parameters(), lr=self.lr_c)
 
-    def evaluate_value(self, replay_buffer: OnlineReplayBuffer, steps = 20000):
+        if self.set_adam_eps:  # Trick 9: set Adam epsilon=1e-5
+            self.optimizer_actor = torch.optim.Adam(
+                self._policy_net.parameters(), lr=self.lr_a, eps=1e-5
+            )
+            self.optimizer_critic = torch.optim.Adam(
+                self._value_net.parameters(), lr=self.lr_c, eps=1e-5
+            )
+        else:
+            self.optimizer_actor = torch.optim.Adam(
+                self._policy_net.parameters(), lr=self.lr_a
+            )
+            self.optimizer_critic = torch.optim.Adam(
+                self._value_net.parameters(), lr=self.lr_c
+            )
+
+        self.beta = config.beta
+        if self.beta > 0.0:
+            from pink.cnrl import ColoredNoiseProcess
+
+            self.cnp = ColoredNoiseProcess(
+                beta=self.beta,
+                size=(policy_net.action_size, config.episode_length),
+                rng=np.random.default_rng(),
+            )
+
+    def evaluate_value(self, replay_buffer: OnlineReplayBuffer, steps=20000):
         mean_value = []
-        for _ in tqdm(range(steps), desc='check buffer value'):
+        for _ in tqdm(range(steps), desc="check buffer value"):
             _, s_p, _, _, _, _, _, _, _, Return, _ = replay_buffer.sample(512)
             value = self._value_net(s_p)
             mean_value.append(torch.mean(value.cpu().detach()).item())
 
-        print('mean value score: {}'.format(np.mean(mean_value)))
+        print("mean value score: {}".format(np.mean(mean_value)))
 
     def load(self, path: str) -> None:
-        policy_path = os.path.join(path, 'policy_net.pt')
-        value_path = os.path.join(path, 'value_net.pt')
-        self._policy_net.load_state_dict(torch.load(policy_path, map_location=self._device))
-        self._value_net.load_state_dict(torch.load(value_path, map_location=self.device))
-
+        policy_path = os.path.join(path, "policy_net.pt")
+        value_path = os.path.join(path, "value_net.pt")
+        self._policy_net.load_state_dict(
+            torch.load(policy_path, map_location=self._device)
+        )
+        self._value_net.load_state_dict(
+            torch.load(value_path, map_location=self.device)
+        )
 
     def set_networks(self, value_net: ValueNetwork, policy_net: GaussianPolicyNetwork):
         self._value_net.load_state_dict(value_net.state_dict())
         self._policy_net.load_state_dict(policy_net.state_dict())
-        print('Successfully set networks from pretraining')
+        print("Successfully set networks from pretraining")
 
     def get_action(self, s, deterministic=False):
         s = torch.unsqueeze(torch.tensor(s, dtype=torch.float), 0).to(self.device)
@@ -88,10 +116,19 @@ class PPO:
                 if isinstance(dist, TransformedDistribution):
                     a_pi = torch.tanh(dist.base_dist.loc)
                 else:
-                    assert isinstance(dist, torch.distributions.Normal)
                     a_pi = dist.loc
             else:
-                a_pi = dist.sample()
+                if self.beta == 0.0:
+                    a_pi = dist.sample()
+                else:
+                    noise = torch.from_numpy(self.cnp.sample()).to(self.device)
+                    if isinstance(dist, TransformedDistribution):
+                        a_pi = dist.base_dist.mean + dist.base_dist.stddev * noise
+                        for transform in dist.transforms:
+                            a_pi = transform(a_pi)
+                    else:
+                        a_pi = dist.mean + dist.stddev * noise
+
             a_logprob = dist.log_prob(a_pi).sum(axis=-1, keepdim=True)
         if self.use_residual:
             base_dist = self._base_policy_net(s)
@@ -103,45 +140,72 @@ class PPO:
             a_real.clamp_(-1.0 + CONST_EPS, 1.0 - CONST_EPS)
         else:
             a_real = a_pi
-        return a_pi.cpu().numpy().flatten(), a_real.cpu().numpy().flatten(), a_logprob.cpu().numpy()
+        return (
+            a_pi.cpu().numpy().flatten(),
+            a_real.cpu().numpy().flatten(),
+            a_logprob.cpu().numpy(),
+        )
 
     def update(self, replay_buffer: OnlineReplayBuffer, current_steps):
-        states, sp, actions, rewards, s_, sp_, _, terms, truncs, _, a_logprob_old = replay_buffer.sample_all()
+        states, sp, actions, rewards, s_, sp_, _, terms, truncs, _, a_logprob_old = (
+            replay_buffer.sample_all()
+        )
         # reset immediately after sampling to let remote client continue collecting data
         replay_buffer.reset()
         # Compute advantage
         gae = 0
         advantage = torch.zeros_like(rewards)
         with torch.no_grad():
-            values = self._value_net(sp) # "old" value calculated at the start of the update
+            values = self._value_net(
+                sp
+            )  # "old" value calculated at the start of the update
             next_values = self._value_net(sp_)
-            deltas = rewards.flatten() + self.gamma * (1.0 - terms.flatten()) * next_values - values
+            deltas = (
+                rewards.flatten()
+                + self.gamma * (1.0 - terms.flatten()) * next_values
+                - values
+            )
             for step in reversed(range(len(deltas))):
-                gae = deltas[step] + self.gamma * self.lamda * gae * (1.0 - terms[step]) * (1.0 - truncs[step])
+                gae = deltas[step] + self.gamma * self.lamda * gae * (
+                    1.0 - terms[step]
+                ) * (1.0 - truncs[step])
                 advantage[step] = gae
             returns = advantage.flatten() + values
             if self.use_adv_norm:
                 advantage = (advantage - advantage.mean()) / (advantage.std() + 1e-5)
         actor_losses, critic_losses = [], []
-        pbar = tqdm(range(self.K_epochs), desc='PPO training')
+        pbar = tqdm(range(self.K_epochs), desc="PPO training")
         for i in pbar:
             # Random sampling and no repetition. 'False' indicates that training will continue even if the number of samples in the last time is less than mini_batch_size
-            for index in BatchSampler(SubsetRandomSampler(range(len(states))), self.mini_batch_size, False):
+            for index in BatchSampler(
+                SubsetRandomSampler(range(len(states))), self.mini_batch_size, False
+            ):
                 new_dist = self._policy_net(states[index])
                 # dist_entropy = new_dist.base_dist.entropy().sum(1, keepdim=True)
                 if isinstance(new_dist, TransformedDistribution):
                     pre_tanh_sample = new_dist.transforms[-1].inv(new_dist.rsample())
-                    log_det_jac = self._policy_net.forward_log_det_jacobian(pre_tanh_sample) # return 2.0 * (torch.log(torch.tensor(2.0)) - x - F.softplus(-2.0 * x))
-                    dist_entropy = torch.sum(new_dist.base_dist.entropy() + log_det_jac, dim=-1, keepdim=True)
+                    log_det_jac = self._policy_net.forward_log_det_jacobian(
+                        pre_tanh_sample
+                    )  # return 2.0 * (torch.log(torch.tensor(2.0)) - x - F.softplus(-2.0 * x))
+                    dist_entropy = torch.sum(
+                        new_dist.base_dist.entropy() + log_det_jac, dim=-1, keepdim=True
+                    )
                 else:
                     assert isinstance(new_dist, torch.distributions.Normal)
                     dist_entropy = new_dist.entropy().sum(1, keepdim=True)
                 a_logprob_now = new_dist.log_prob(actions[index])
 
-                ratios = torch.exp(a_logprob_now.sum(1, keepdim=True) - a_logprob_old[index])
+                ratios = torch.exp(
+                    a_logprob_now.sum(1, keepdim=True) - a_logprob_old[index]
+                )
                 surr1 = ratios * advantage[index]
-                surr2 = torch.clamp(ratios, 1 - self.epsilon, 1 + self.epsilon) * advantage[index]
-                actor_loss = (-torch.min(surr1, surr2) - self.entropy_coef * dist_entropy).mean()
+                surr2 = (
+                    torch.clamp(ratios, 1 - self.epsilon, 1 + self.epsilon)
+                    * advantage[index]
+                )
+                actor_loss = (
+                    -torch.min(surr1, surr2) - self.entropy_coef * dist_entropy
+                ).mean()
                 actor_losses.append(actor_loss.item())
                 self.optimizer_actor.zero_grad()
                 actor_loss.backward()
@@ -150,11 +214,19 @@ class PPO:
                 self.optimizer_actor.step()
 
                 # Critic loss
-                current_values = self._value_net(sp[index]) # "new" value calculated after the actor update
+                current_values = self._value_net(
+                    sp[index]
+                )  # "new" value calculated after the actor update
                 if self.is_clip_value:
-                    old_value_clipped = values[index] + (current_values - values[index]).clamp(-self.epsilon, self.epsilon)
-                    value_loss = (current_values - returns[index].detach().float()).pow(2)
-                    value_loss_clipped = (old_value_clipped - returns[index].detach().float()).pow(2)
+                    old_value_clipped = values[index] + (
+                        current_values - values[index]
+                    ).clamp(-self.epsilon, self.epsilon)
+                    value_loss = (current_values - returns[index].detach().float()).pow(
+                        2
+                    )
+                    value_loss_clipped = (
+                        old_value_clipped - returns[index].detach().float()
+                    ).pow(2)
                     critic_loss = torch.max(value_loss, value_loss_clipped).mean()
                 else:
                     critic_loss = F.mse_loss(returns[index], current_values).mean()
@@ -171,18 +243,20 @@ class PPO:
                     current_values=current_values.mean().item(),
                     actor_loss=actor_loss.item(),
                     dist_entropy=dist_entropy.mean().item(),
-                    critic_loss=critic_loss.item()
+                    critic_loss=critic_loss.item(),
                 )
-                pbar.set_description(f'PPO training step {i} (actor_loss: {actor_loss.item()}, critic_loss: {critic_loss.item()})')
+                pbar.set_description(
+                    f"PPO training step {i} (actor_loss: {actor_loss.item()}, critic_loss: {critic_loss.item()})"
+                )
         if self.use_lr_decay:
             self.lr_decay(current_steps)
         return np.mean(actor_losses), np.mean(critic_losses)
-    
+
     def lr_decay(self, current_steps):
         # TODO: decay by max train steps or train steps per iteration
         lr_a_now = self.lr_a * (1 - current_steps / self.max_train_step)
         lr_c_now = self.lr_c * (1 - current_steps / self.max_train_step)
         for p in self.optimizer_actor.param_groups:
-            p['lr'] = lr_a_now
+            p["lr"] = lr_a_now
         for p in self.optimizer_critic.param_groups:
-            p['lr'] = lr_c_now
+            p["lr"] = lr_c_now

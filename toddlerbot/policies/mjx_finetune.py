@@ -199,9 +199,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.need_reset = True
         self.learning_stage = "offline"
 
-        self.sim = MuJoCoSim(
-            robot, vis_type=self.finetune_cfg.sim_vis_type, n_frames=1
-        )
+        self.sim = MuJoCoSim(robot, vis_type=self.finetune_cfg.sim_vis_type, n_frames=1)
         self.min_y_feet_dist = self.finetune_cfg.finetune_rewards.min_feet_y_dist
         self.max_y_feet_dist = self.finetune_cfg.finetune_rewards.max_feet_y_dist
 
@@ -270,6 +268,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             action_size=action_size,
             activation_fn=activation_fn,
             use_tanh=self.finetune_cfg.use_tanh,
+            noise_std_type=self.finetune_cfg.noise_std_type,
         ).to(self.inference_device)
         self.policy_net_opt = (
             torch.compile(self.policy_net) if self.is_real else self.policy_net
@@ -317,7 +316,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.base_policy_net.requires_grad_(False)
         self.base_policy_net.eval()
         self.base_policy_net_opt = (
-            torch.compile(self.base_policy_net) if self.is_real else self.base_policy_net
+            torch.compile(self.base_policy_net)
+            if self.is_real
+            else self.base_policy_net
         )
 
     def _init_tracker(self):
@@ -603,12 +604,18 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 actions_pi = action_dist.mean
         else:
             # Stochastic: sample raw pre-tanh actions
-            actions_pi = action_dist.sample()  # action is transformed so no need to clamp
+            actions_pi = (
+                action_dist.sample()
+            )  # action is transformed so no need to clamp
         log_prob = action_dist.log_prob(actions_pi).sum()
 
         if self.finetune_cfg.use_residual:
-            base_action_dist = self.base_policy_net_opt(obs_tensor.to(self.inference_device))
-            if isinstance(base_action_dist, torch.distributions.TransformedDistribution):
+            base_action_dist = self.base_policy_net_opt(
+                obs_tensor.to(self.inference_device)
+            )
+            if isinstance(
+                base_action_dist, torch.distributions.TransformedDistribution
+            ):
                 base_actions = base_action_dist.base_dist.mode
                 for transform in base_action_dist.transforms:
                     base_actions = transform(base_actions)
@@ -619,7 +626,11 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         else:
             actions_real = actions_pi
         actions_real.clamp_(-1.0 + CONST_EPS, 1.0 - CONST_EPS)
-        return actions_pi.cpu().numpy().flatten(), actions_real.cpu().numpy().flatten(), log_prob.cpu().numpy().flatten()
+        return (
+            actions_pi.cpu().numpy().flatten(),
+            actions_real.cpu().numpy().flatten(),
+            log_prob.cpu().numpy().flatten(),
+        )
 
     def reset(self, obs: Obs = None):
         # mjx policy reset
@@ -707,7 +718,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             obs_arr, privileged_obs_arr = self.get_obs(
                 obs, command, phase_signal, last_action
             )
-            action_pi, action_real, _ = self.get_action(obs_arr, deterministic=True, is_real=False)
+            action_pi, action_real, _ = self.get_action(
+                obs_arr, deterministic=True, is_real=False
+            )
             obs.state_ref = self.state_ref[:29]
             feet_pos = self.sim.get_feet_pos()
             feet_y_dist = feet_pos["left"][1] - feet_pos["right"][1]
@@ -824,14 +837,15 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         time_curr = time.time()
         if time_curr - self.traj_start_time < self.prep_duration:
             motor_target = np.asarray(
-                interpolate_action(time_curr - self.traj_start_time, self.prep_time, self.prep_action)
+                interpolate_action(
+                    time_curr - self.traj_start_time, self.prep_time, self.prep_action
+                )
             )
             return {}, motor_target, obs
 
         msg = None
         while self.is_real and msg is None:
             msg = self.zmq_receiver.get_msg()
-
 
         if msg.is_paused and not self.is_paused:
             self.timer.stop()
@@ -883,9 +897,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         else:
             command = self.get_command(control_inputs)
 
-        self.phase_signal = self.get_phase_signal(
-            time_curr
-        ) 
+        self.phase_signal = self.get_phase_signal(time_curr)
         obs_arr, privileged_obs_arr = self.get_obs(obs, command)
 
         if self.total_steps == self.finetune_cfg.offline_total_steps:
