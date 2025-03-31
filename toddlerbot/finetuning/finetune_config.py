@@ -188,10 +188,10 @@ class FinetuneConfig:
         leg_motor_pos: float = 0.0
         motor_torque: float = 0.0
         energy: float = 0.0
-        neck_action_rate: float = 0.0  # 1e-2
-        neck_action_acc: float = 0.0  # 1e-2
         action_rate: float = 0.0  # 1e-2
         action_acc: float = 0.0  # 1e-2
+        neck_action_rate: float = 0.0  # 1e-2
+        neck_action_acc: float = 0.0  # 1e-2
         waist_action_rate: float = 0.0  # 1e-2
         waist_action_acc: float = 0.0  # 1e-2
         leg_action_rate: float = 0.0
@@ -210,18 +210,9 @@ class FinetuneConfig:
         arm_position: float = 0.0
         fx_sine_amp: float = 0.0
         fx_sine_freq: float = 0.0
+        fx: float = 0.0
         fz_sine_amp: float = 0.0
         fz_sine_freq: float = 0.0
-        fy_suppression: float = 0.0
-        phase_alignment: float = 0.0
-        frequency_consistency: float = 0.0
-        energy_efficiency: float = 0.0
-        swing_symmetry: float = 0.0
-        swing_progress: float = 0.0
-        swing_spectrum: float = 0.0
-        action_symmetry: float = 0.0
-        swing_consistency: float = 0.0
-        action_smoothness: float = 0.0
 
     def __post_init__(self):
         self.finetune_reward_scales = self.FinetuneRewardScales()

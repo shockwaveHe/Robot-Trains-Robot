@@ -98,8 +98,8 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         self.default_motor_pos[27] = np.pi / 2
 
         self.default_action = self.default_motor_pos[self.action_mask]
-        self.last_action = np.zeros(self.num_action)
-        self.last_last_action = np.zeros(self.num_action)
+        self.last_action = np.zeros(self.num_action, dtype=np.float32)
+        self.last_last_action = np.zeros(self.num_action, dtype=np.float32)
         self.last_action_target = self.default_action
         self.last_raw_action = None
         self.is_stopped = False
@@ -147,9 +147,11 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
             self._make_residual_policy()
             self._residual_action_scale = self.finetune_cfg.residual_action_scale
 
-        self.obs_history = np.zeros(self.num_obs_history * self.obs_size)
+        self.obs_history = np.zeros(
+            self.num_obs_history * self.obs_size, dtype=np.float32
+        )
         self.privileged_obs_history = np.zeros(
-            self.num_privileged_obs_history * self.privileged_obs_size
+            self.num_privileged_obs_history * self.privileged_obs_size, dtype=np.float32
         )
 
         self.logger = FinetuneLogger(self.exp_folder)
@@ -428,8 +430,8 @@ class RaiseArmPolicy(MJXFinetunePolicy, policy_name="raise_arm"):
         self.action_buffer = np.zeros(
             ((self.n_steps_delay + 1) * self.num_action), dtype=np.float32
         )
-        self.last_action = np.zeros(self.num_action)
-        self.last_last_action = np.zeros(self.num_action)
+        self.last_action = np.zeros(self.num_action, dtype=np.float32)
+        self.last_last_action = np.zeros(self.num_action, dtype=np.float32)
         self.last_action_target = self.default_action
         self.last_raw_action = None
         self.traj_start_time = time.time()
