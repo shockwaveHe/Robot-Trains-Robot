@@ -48,6 +48,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         init_motor_pos: npt.NDArray[np.float32],
         ckpts: List[str],
         ip: str,
+        eval_mode: bool,
         joystick,
         fixed_command,
         env_cfg,
@@ -57,6 +58,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         **kwargs,
     ):
         # set these before super init
+        self.eval_mode = eval_mode
         self.is_stopped = False
         self.finetune_cfg: FinetuneConfig = finetune_cfg
 

@@ -21,7 +21,12 @@ from toddlerbot.arm_policies import (
     get_arm_policy_class,
     get_arm_policy_names,
 )
-from toddlerbot.policies import BasePolicy, get_policy_class, get_policy_names, dynamic_import_policies
+from toddlerbot.policies import (
+    BasePolicy,
+    get_policy_class,
+    get_policy_names,
+    dynamic_import_policies,
+)
 from toddlerbot.policies.balance_pd import BalancePDPolicy
 from toddlerbot.policies.calibrate import CalibratePolicy
 from toddlerbot.policies.dp_policy import DPPolicy
@@ -344,7 +349,9 @@ def run_policy(
                 sim.dynamixel_controller.disable_motors(policy.disable_motor_indices)
                 policy.toggle_motor = False
 
-            control_inputs, motor_target, obs = policy.step(obs, "real" in sim.name or "swing" in policy.name)
+            control_inputs, motor_target, obs = policy.step(
+                obs, "real" in sim.name or "swing" in policy.name
+            )
 
             if policy.is_done(obs) or policy.is_truncated():
                 # TODO: add is_done to more policies
@@ -381,11 +388,15 @@ def run_policy(
             if isinstance(sim, RealWorld) and isinstance(policy, MJXFinetunePolicy):
                 if not is_paused and policy.is_paused and sim.has_dynamixel:
                     is_paused = True
-                    sim.dynamixel_controller.client.set_torque_enabled(sim.dynamixel_controller.motor_ids, False)
+                    sim.dynamixel_controller.client.set_torque_enabled(
+                        sim.dynamixel_controller.motor_ids, False
+                    )
                     print("Policy Paused!")
                 if is_paused and not policy.is_paused:
                     is_paused = False
-                    sim.dynamixel_controller.client.set_torque_enabled(sim.dynamixel_controller.motor_ids, True)
+                    sim.dynamixel_controller.client.set_torque_enabled(
+                        sim.dynamixel_controller.motor_ids, True
+                    )
                     print("Policy Resumed!")
 
             obs_list.append(obs)
@@ -396,8 +407,8 @@ def run_policy(
 
             # p_bar_steps = int(1 / policy.control_dt)
             # if step_idx % p_bar_steps == 0:
-                # print(f"Step: {step_idx}/{n_steps_total}")
-                # p_bar.update(p_bar_steps)
+            # print(f"Step: {step_idx}/{n_steps_total}")
+            # p_bar.update(p_bar_steps)
 
             step_end = time.time()
 
@@ -691,6 +702,12 @@ def main(args=None):
         default=True,
         help="Skip the plot functions.",
     )
+    parser.add_argument(
+        "--eval",
+        action="store_true",
+        default=False,
+        help="Evaluation mode for the real-world policy.",
+    )
     args = parser.parse_args()
 
     robot = Robot(args.robot)
@@ -819,6 +836,7 @@ def main(args=None):
                 fixed_command=fixed_command,
                 exp_folder=exp_folder_path,
                 ip=args.ip,
+                eval_mode=args.eval,
             )
         else:
             policy = PolicyClass(
