@@ -16,6 +16,8 @@ FinetuneConfig.use_tanh = False
 FinetuneConfig.residual_action_scale = 0.1
 FinetuneConfig.symmetric_action = True
 FinetuneConfig.swing_squat = False
+FinetuneConfig.beta = 0.0
+FinetuneConfig.noise_std_type = "log"
 
 FinetuneRewardScales.survival = 0.0
 FinetuneRewardScales.fx_sine_amp = 1.0

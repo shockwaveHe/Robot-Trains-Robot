@@ -38,9 +38,9 @@ class FinetuneConfig:
     buffer_valid_size: int = 5000
 
     # Pink Noise
-    beta = 0.0  # Added from argparse (Pink Noise)
-    episode_length = 1000  # Added from argparse (Pink Noise)
-    noise_std_type = "learned"
+    beta: float = 0.0  # Added from argparse (Pink Noise)
+    episode_length: int = 1000  # Added from argparse (Pink Noise)
+    noise_std_type: str = "learned"
 
     # Update configuration
     num_updates_per_batch: int = 4

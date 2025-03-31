@@ -100,7 +100,7 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
             "right_knee",
             "right_ankle_pitch",
         ]
-        self.action_delta_limit = 2 * self.control_dt
+        self.action_delta_limit = 5 * self.control_dt
         self.action_mask = np.array(self.active_motor_idx)
         self.num_active_motors = self.action_mask.shape[0]
         self.action_deltas = deque(maxlen=self.finetune_cfg.action_window_size)
@@ -472,6 +472,9 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
             action_target = self.motion_ref.com_ik(com_z_target)[self.com_ik_indices]
         else:
             action_target = self.default_action + self.action_scale * delayed_action
+            # lower = self.motor_limits[self.action_mask, 0]
+            # upper = self.motor_limits[self.action_mask, 1]
+            # action_target = 0.5 * (delayed_action + 1) * (upper - lower) + lower
 
         if self.filter_type == "ema":
             action_target = exponential_moving_average(
