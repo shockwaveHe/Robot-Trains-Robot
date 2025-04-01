@@ -29,8 +29,8 @@ while [[ $# -gt 0 ]]; do
             LEG_NAME="leg_2xm"
             # DOC_ID_LIST="ff1e767f256dd9c8abf2206a 873c4e55df11ed20432d2975 873c4e55df11ed20432d2975 1b5c9dbba7df364619e54663 1b5c9dbba7df364619e54663"
             # ASSEMBLY_LIST="$BODY_NAME left_$LEG_NAME right_$LEG_NAME left_$ARM_NAME right_$ARM_NAME"
-            DOC_ID_LIST="d364b4c22233fe6e37effabe d364b4c22233fe6e37effabe"
-            ASSEMBLY_LIST="left_$LEG_NAME right_$LEG_NAME"
+            DOC_ID_LIST="6f1a2a766fbbc097a49abb91"
+            ASSEMBLY_LIST="$BODY_NAME"
             ;;
             toddlerbot_gripper)
             BODY_NAME="toddlerbot"
