@@ -1,5 +1,5 @@
 import platform
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor  # , as_completed
 from typing import Any, Dict, List
 
 import numpy as np
@@ -8,6 +8,7 @@ from toddlerbot.actuation import JointState
 from toddlerbot.sim import BaseSim, Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.file_utils import find_ports
+# from toddlerbot.utils.misc_utils import profile
 
 
 class RealWorld(BaseSim):
@@ -170,25 +171,25 @@ class RealWorld(BaseSim):
             An observation object containing processed sensor data, including motor states and, if available, IMU angular velocity and Euler angles.
         """
         results: Dict[str, Any] = {}
-        futures: Dict[str, Any] = {}
+        # futures: Dict[str, Any] = {}
         if self.has_dynamixel:
-            # results["dynamixel"] = self.dynamixel_controller.get_motor_state(retries)
-            futures["dynamixel"] = self.executor.submit(
-                self.dynamixel_controller.get_motor_state, retries
-            )
+            results["dynamixel"] = self.dynamixel_controller.get_motor_state(retries)
+            # futures["dynamixel"] = self.executor.submit(
+            #     self.dynamixel_controller.get_motor_state, retries
+            # )
 
         if self.has_imu:
-            # results["imu"] = self.imu.get_state()
-            futures["imu"] = self.executor.submit(self.imu.get_state)
+            results["imu"] = self.imu.get_state()
+            # futures["imu"] = self.executor.submit(self.imu.get_state)
 
-        # start_times = {key: time.time() for key in futures.keys()}
-        for future in as_completed(futures.values()):
-            for key, f in futures.items():
-                if f is future:
-                    # end_time = time.time()
-                    results[key] = future.result()
-                    # log(f"Time taken for {key}: {end_time - start_times[key]}", header=snake2camel(self.name), level="debug")
-                    break
+        # # start_times = {key: time.time() for key in futures.keys()}
+        # for future in as_completed(futures.values()):
+        #     for key, f in futures.items():
+        #         if f is future:
+        #             # end_time = time.time()
+        #             results[key] = future.result()
+        #             # log(f"Time taken for {key}: {end_time - start_times[key]}", header=snake2camel(self.name), level="debug")
+        #             break
 
         obs = self.process_motor_reading(results)
 

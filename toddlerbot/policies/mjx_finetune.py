@@ -1,38 +1,40 @@
 import os
 import time
-import numpy as np
+from copy import deepcopy
 from dataclasses import asdict
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
-from copy import deepcopy
-import torch
+
+import numpy as np
 import numpy.typing as npt
+import torch
 from tqdm import tqdm
-from toddlerbot.sim import Obs
-from toddlerbot.sim.mujoco_sim import MuJoCoSim
-from toddlerbot.policies.mjx_policy import MJXPolicy
-from toddlerbot.finetuning.replay_buffer import OnlineReplayBuffer, RemoteReplayBuffer
-from toddlerbot.finetuning.server_client import RemoteClient
-from toddlerbot.finetuning.dynamics import DynamicsNetwork, BaseDynamics
-from toddlerbot.finetuning.utils import Timer, CONST_EPS
-from toddlerbot.reference.walk_zmp_ref import WalkZMPReference
-from toddlerbot.sim.robot import Robot
-from toddlerbot.finetuning.networks import load_jax_params, load_jax_params_into_pytorch
+
 import toddlerbot.finetuning.networks as networks
 from toddlerbot.finetuning.abppo import (
-    AdaptiveBehaviorProximalPolicyOptimization,
     ABPPO_Offline_Learner,
+    AdaptiveBehaviorProximalPolicyOptimization,
 )
-from toddlerbot.finetuning.ppo import PPO
+from toddlerbot.finetuning.dynamics import BaseDynamics, DynamicsNetwork
 from toddlerbot.finetuning.finetune_config import FinetuneConfig
-from toddlerbot.utils.math_utils import (
-    interpolate_action,
-    euler2quat,
-    euler2mat,
-    exponential_moving_average,
-)
-from toddlerbot.utils.comm_utils import ZMQNode, ZMQMessage
-from toddlerbot.utils.misc_utils import log, profile
 from toddlerbot.finetuning.logger import FinetuneLogger
+from toddlerbot.finetuning.networks import load_jax_params, load_jax_params_into_pytorch
+from toddlerbot.finetuning.ppo import PPO
+from toddlerbot.finetuning.replay_buffer import OnlineReplayBuffer, RemoteReplayBuffer
+from toddlerbot.finetuning.server_client import RemoteClient
+from toddlerbot.finetuning.utils import CONST_EPS, Timer
+from toddlerbot.policies.mjx_policy import MJXPolicy
+from toddlerbot.reference.walk_zmp_ref import WalkZMPReference
+from toddlerbot.sim import Obs
+from toddlerbot.sim.mujoco_sim import MuJoCoSim
+from toddlerbot.sim.robot import Robot
+from toddlerbot.utils.comm_utils import ZMQMessage, ZMQNode
+from toddlerbot.utils.math_utils import (
+    euler2mat,
+    euler2quat,
+    exponential_moving_average,
+    interpolate_action,
+)
+from toddlerbot.utils.misc_utils import log  # , profile
 
 try:
     from pyvicon_datastream import tools
@@ -399,24 +401,28 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         return lin_vel, current_time
 
-    def save_networks(self):
+    def save_networks(self, suffix=""):
         policy_path = os.path.join(self.exp_folder, "policy")
-        if not os.path.exists(policy_path):
-            os.makedirs(policy_path)
+
+        os.makedirs(policy_path, exist_ok=True)
         torch.save(
-            self.policy_net.state_dict(), os.path.join(policy_path, "policy_net.pth")
+            self.policy_net.state_dict(),
+            os.path.join(policy_path, f"policy_net{suffix}.pth"),
         )
         torch.save(
-            self.value_net.state_dict(), os.path.join(policy_path, "value_net.pth")
+            self.value_net.state_dict(),
+            os.path.join(policy_path, f"value_net{suffix}.pth"),
         )
-        torch.save(self.Q_net.state_dict(), os.path.join(policy_path, "Q_net.pth"))
+        torch.save(
+            self.Q_net.state_dict(), os.path.join(policy_path, f"Q_net{suffix}.pth")
+        )
         torch.save(
             self.dynamics_net.state_dict(),
-            os.path.join(policy_path, "dynamics_net.pth"),
+            os.path.join(policy_path, f"dynamics_net{suffix}.pth"),
         )
         self.logger.save_state(self.exp_folder)
 
-    def load_networks(self, exp_folder, data_only=True):
+    def load_networks(self, exp_folder, data_only=True, suffix="_best"):
         policy_path = os.path.join(exp_folder, "policy")
         buffer_path = os.path.join(exp_folder, "buffer.npz")
         assert (os.path.exists(policy_path) and not data_only) or os.path.exists(
@@ -426,16 +432,16 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         if os.path.exists(policy_path) and not data_only:
             org_policy_net = deepcopy(self.policy_net)
             self.policy_net.load_state_dict(
-                torch.load(os.path.join(policy_path, "policy_net.pth"))
+                torch.load(os.path.join(policy_path, f"policy_net{suffix}.pth"))
             )
             self.value_net.load_state_dict(
-                torch.load(os.path.join(policy_path, "value_net.pth"))
+                torch.load(os.path.join(policy_path, f"value_net{suffix}.pth"))
             )
             self.Q_net.load_state_dict(
-                torch.load(os.path.join(policy_path, "Q_net.pth"))
+                torch.load(os.path.join(policy_path, f"Q_net{suffix}.pth"))
             )
             self.dynamics_net.load_state_dict(
-                torch.load(os.path.join(policy_path, "dynamics_net.pth"))
+                torch.load(os.path.join(policy_path, f"dynamics_net{suffix}.pth"))
             )
             if torch.allclose(
                 org_policy_net.mlp.layers[0].weight,
@@ -823,7 +829,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         )
         print("Switched to online learning!")
 
-    @profile()
+    # @profile()
     def step(self, obs: Obs, is_real: bool = True):
         if not self.is_prepared:
             self.traj_start_time = time.time()

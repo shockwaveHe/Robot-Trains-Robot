@@ -213,6 +213,7 @@ class FinetuneConfig:
         fx: float = 0.0
         fz_sine_amp: float = 0.0
         fz_sine_freq: float = 0.0
+        action_symmetry: float = 0.0
 
     def __post_init__(self):
         self.finetune_reward_scales = self.FinetuneRewardScales()
