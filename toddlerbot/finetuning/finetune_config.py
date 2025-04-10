@@ -159,6 +159,7 @@ class FinetuneConfig:
         entropy_coef: float = 0.01
         lr_a: float = 1e-4
         lr_c: float = 1e-4
+        num_envs: int = 1
 
         use_adv_norm: bool = True
         use_grad_clip: bool = True

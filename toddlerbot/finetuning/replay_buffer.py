@@ -97,7 +97,7 @@ class OnlineReplayBuffer:
         validation_size: int = 0,
         seed: int = 0,
         enlarge_when_full: int = 0,
-        keep_data_after_reset: bool = False,  # New parameter
+        keep_data_after_reset: bool = True,  # New parameter
     ):
         self._device = device
         self._dtype = np.float32

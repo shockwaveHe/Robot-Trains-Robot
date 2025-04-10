@@ -216,25 +216,25 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
     def load_ckpts(self, ckpts):
         for ckpt in ckpts:
             self.load_networks(ckpt, data_only=False)
-            self.recalculate_reward()
-        if len(self.replay_buffer):
-            org_policy_net = deepcopy(self.policy_net)
-            self.logger.plot_queue.put(
-                (self.logger.plot_rewards, [])
-            )  # no-blocking plot
+            # self.recalculate_reward()
+        # if len(self.replay_buffer):
+        #     org_policy_net = deepcopy(self.policy_net)
+        #     self.logger.plot_queue.put(
+        #         (self.logger.plot_rewards, [])
+        #     )  # no-blocking plot
 
-            for _ in range(self.finetune_cfg.abppo_update_steps):
-                self.offline_abppo_learner.update(self.replay_buffer)
+        #     for _ in range(self.finetune_cfg.abppo_update_steps):
+        #         self.offline_abppo_learner.update(self.replay_buffer)
 
-            # import ipdb; ipdb.set_trace()
-            self.policy_net.load_state_dict(self.abppo._policy_net.state_dict())
-            assert not torch.allclose(
-                org_policy_net.mlp.layers[0].weight,
-                self.policy_net.mlp.layers[0].weight,
-            )
-            self.logger.plot_queue.put(
-                (self.logger.plot_updates, [])
-            )  # no-blocking plot
+        #     # import ipdb; ipdb.set_trace()
+        #     self.policy_net.load_state_dict(self.abppo._policy_net.state_dict())
+        #     assert not torch.allclose(
+        #         org_policy_net.mlp.layers[0].weight,
+        #         self.policy_net.mlp.layers[0].weight,
+        #     )
+        #     self.logger.plot_queue.put(
+        #         (self.logger.plot_updates, [])
+        #     )  # no-blocking plot
 
     def close(self):
         if hasattr(self, "sim"):

@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import numpy.typing as npt
 import torch
+import torch._dynamo
 
 from toddlerbot.finetuning.finetune_config import FinetuneConfig, get_finetune_config
 from toddlerbot.finetuning.logger import FinetuneLogger
@@ -25,6 +26,8 @@ from toddlerbot.utils.math_utils import (
     inverse_exponential_moving_average,
 )
 # from toddlerbot.utils.misc_utils import profile
+
+torch._dynamo.config.suppress_errors = True
 
 
 class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
@@ -90,6 +93,19 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         self.num_obs_history = self.cfg.obs.frame_stack
         self.obs_size = self.finetune_cfg.num_single_obs
 
+        self.env_counter = 1
+        self.n_steps_per_env = (
+            self.finetune_cfg.online.batch_size // self.finetune_cfg.online.num_envs
+        )
+
+        self.m = 3.6
+        theta_0 = np.pi / 6  # maximum angle (radians)
+        L = 0.45
+        # Under small-angle assumptions:
+        self.desired_fx_amp = self.m * 9.81 * theta_0
+        self.desired_fx_freq = np.sqrt(9.81 / L) / (2 * np.pi)
+        self.cycle_time = 1 / self.desired_fx_freq
+
         self.is_real = is_real
         self.is_paused = False
         self.active_motor_idx = [4, 7, 9, 10, 13, 15]
@@ -101,16 +117,18 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
             "right_knee",
             "right_ankle_pitch",
         ]
-        self.action_delta_limit = 5 * self.control_dt
+        self.action_delta_limit = 0.1
         self.action_mask = np.array(self.active_motor_idx)
         self.num_active_motors = self.action_mask.shape[0]
         self.action_deltas = deque(maxlen=self.finetune_cfg.action_window_size)
         self.vel_deltas = deque(maxlen=self.finetune_cfg.action_window_size)
         if self.finetune_cfg.swing_squat:
-            self.motion_ref = BalancePDReference(robot, self.control_dt)
-            self.com_ik_indices = [x - 4 for x in self.active_motor_idx]
-            self.num_action = 1
-            self.default_action = -0.04
+            # self.motion_ref = BalancePDReference(robot, self.control_dt)
+            # self.com_ik_indices = [x - 4 for x in self.active_motor_idx]
+            self.num_action = 2
+            self.default_action = np.zeros(
+                self.num_active_motors, dtype=np.float32
+            )  # np.array([1, self.desired_fx_freq])
             self.action_scale = 1.0
         else:
             self.num_action = self.num_active_motors
@@ -125,7 +143,7 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         self.last_action_target = self.default_action
         self.last_raw_action = None
         self.is_stopped = False
-        self.action_shift_steps = 1
+        self.action_shift_steps = 0
 
         if self.finetune_cfg.update_mode == "local":
             self.replay_buffer = OnlineReplayBuffer(
@@ -209,13 +227,6 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         # self.amplitude = 0.8
         # self.period = 1.5
 
-        self.m = 3.6
-        theta_0 = np.pi / 6  # maximum angle (radians)
-        L = 0.45
-        # Under small-angle assumptions:
-        self.desired_fx_amp = self.m * 9.81 * theta_0
-        self.desired_fx_freq = np.sqrt(9.81 / L) / (2 * np.pi)
-        self.cycle_time = 1 / self.desired_fx_freq
         self.phase_signal = np.zeros(2, dtype=np.float32)
 
         self.reward_list = []
@@ -275,10 +286,10 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
             )
             self.last_raw_action = action_target
 
-        if self.finetune_cfg.swing_squat:
-            knee_angle, hip_pitch_angle = action_target[1], action_target[0]
-            com_pos = self.motion_ref.com_fk(knee_angle, hip_pitch_angle)
-            action_target = np.array([com_pos[2]])
+        # if self.finetune_cfg.swing_squat:
+        #     knee_angle, hip_pitch_angle = action_target[1], action_target[0]
+        #     com_pos = self.motion_ref.com_fk(knee_angle, hip_pitch_angle)
+        #     action_target = np.array([com_pos[2]])
 
         raw_action = (action_target - self.default_action) / self.action_scale
         return raw_action
@@ -420,8 +431,13 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
             action_real_copy = action_real.copy()
         else:
             # data collection stage
-            action_pi = self.get_raw_action(obs)
-            action_logprob = 0.0
+            # action_pi = self.get_raw_action(obs)
+            # action_real = action_pi.copy()
+            # action_logprob = 0.0
+            action_pi, action_real, action_logprob = self.get_action(
+                obs_arr, deterministic=self.eval_mode, is_real=is_real
+            )
+            action_real_copy = action_real.copy()
 
         if self.finetune_cfg.update_mode == "local":
             reward_dict = self._compute_reward(obs, action_real)
@@ -444,15 +460,15 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
                 f"Data size: {len(self.replay_buffer)}, Steps: {self.total_steps}, Fps: {self.total_steps / self.timer.elapsed()}"
             )
         time_to_update = (
-            not self.eval_mode
-            and self.learning_stage == "offline"
-            and (
-                len(self.replay_buffer) >= self.finetune_cfg.offline_initial_steps
-                and len(self.replay_buffer) + 1
-            )
-            % self.finetune_cfg.update_interval
-            == 0
-        ) or (
+            #     not self.eval_mode
+            #     and self.learning_stage == "offline"
+            #     and (
+            #         len(self.replay_buffer) >= self.finetune_cfg.offline_initial_steps
+            #         and len(self.replay_buffer) + 1
+            #     )
+            #     % self.finetune_cfg.update_interval
+            #     == 0
+            # ) or (
             not self.eval_mode
             and self.learning_stage == "online"
             and len(self.replay_buffer) == self.finetune_cfg.online.batch_size - 1
@@ -475,6 +491,10 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
             raw_obs=deepcopy(obs),
         )
 
+        if len(self.replay_buffer) == self.env_counter * self.n_steps_per_env:
+            self.need_reset = True
+            self.env_counter += 1
+
         if truncated:
             reward_epi = np.mean(self.reward_list)
             self.reward_epi_list.append(reward_epi)
@@ -484,7 +504,8 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
                 print(f"Best reward: {self.reward_epi_best}")
 
             self.update_policy()
-            self.need_reset = True
+            self.env_counter = 1
+            # self.need_reset = True
             # import ipdb; ipdb.set_trace()
 
         if not self.finetune_cfg.swing_squat and self.finetune_cfg.symmetric_action:
@@ -502,13 +523,27 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         # import ipdb; ipdb.set_trace()
 
         if self.finetune_cfg.swing_squat:
-            com_z_target = self.default_action + self.action_scale * delayed_action[0]
-            com_z_target = np.clip(
-                com_z_target,
-                self.motion_ref.com_z_limits[0],
-                self.motion_ref.com_z_limits[1],
-            )
-            action_target = self.motion_ref.com_ik(com_z_target)[self.com_ik_indices]
+            # com_z_target = self.default_action + self.action_scale * delayed_action[0]
+            # com_z_target = np.clip(
+            #     com_z_target,
+            #     self.motion_ref.com_z_limits[0],
+            #     self.motion_ref.com_z_limits[1],
+            # )
+            # action_target = self.motion_ref.com_ik(com_z_target)[self.com_ik_indices]
+
+            # A = self.default_action[0] + 4 * (delayed_action[0] + 1)
+
+            A = 2.0
+            # omega = 0.4 + 0.4 * 0.5 * (delayed_action[1] + 1)
+            omega = 0.6
+            action_target = [  # self.default_motor_pos[self.action_mask].copy()
+                A * np.sin(2 * np.pi * omega * time_curr),
+                0.0,
+                0.0,
+                -A * np.sin(2 * np.pi * omega * time_curr),
+                0.0,
+                0.0,
+            ]
         else:
             action_target = self.default_action + self.action_scale * delayed_action
             # lower = self.motor_limits[self.action_mask, 0]
