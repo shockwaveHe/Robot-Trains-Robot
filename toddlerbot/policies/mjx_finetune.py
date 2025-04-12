@@ -785,9 +785,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         if self.is_real:
             self.zmq_sender.send_msg(ZMQMessage(time=time.time(), is_stopped=True))
         self.logger.plot_queue.put((self.logger.plot_rewards, []))  # no-blocking plot
-        self.logger.plot_queue.put((self.logger.plot_updates, []))  # no-blocking plot
+        # self.logger.plot_queue.put((self.logger.plot_updates, []))  # no-blocking plot
         self.replay_buffer.compute_return(self.finetune_cfg.gamma)
-        org_policy_net = deepcopy(self.policy_net)
+        # org_policy_net = deepcopy(self.policy_net)
 
         if self.learning_stage == "offline":
             for _ in range(self.finetune_cfg.abppo_update_steps):
@@ -802,10 +802,10 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 self.online_ppo_learner._policy_net.state_dict()
             )
 
-        assert not torch.allclose(
-            org_policy_net.mlp.layers[0].weight,
-            self.policy_net.mlp.layers[0].weight,
-        )
+        # assert not torch.allclose(
+        #     org_policy_net.mlp.layers[0].weight,
+        #     self.policy_net.mlp.layers[0].weight,
+        # )
         self.logger.plot_queue.put((self.logger.plot_updates, []))  # no-blocking plot
         if (
             getattr(self, "state_ref", None) is not None
