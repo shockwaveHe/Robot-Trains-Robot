@@ -54,7 +54,7 @@ lines_torque = {k: ax2.plot([], [], label=f"Torque {k}")[0] for k in torque_data
 # Setup axes limits and grid
 for ax in (ax1, ax2):
     ax.set_xlim(0, window_size)
-    ax.set_ylim(-30, 30)  # Adjust as needed based on your expected range
+    ax.set_ylim(-40, 40)  # Adjust as needed based on your expected range
     ax.legend()
     ax.grid(True)
 
@@ -66,6 +66,7 @@ def update_plot(frame):
     try:
         # Retrieve the latest sensor data
         force, torque = sensor.get_smoothed_data()
+        print(f"Force: {force}, Torque: {torque}")
 
         # Update measured force and torque deques
         for i, axis in enumerate(["x", "y", "z"]):

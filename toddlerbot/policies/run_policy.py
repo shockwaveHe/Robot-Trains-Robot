@@ -1,6 +1,5 @@
 import argparse
 import bisect
-
 import json
 import os
 import pickle
@@ -23,9 +22,9 @@ from toddlerbot.arm_policies import (
 )
 from toddlerbot.policies import (
     BasePolicy,
+    dynamic_import_policies,
     get_policy_class,
     get_policy_names,
-    dynamic_import_policies,
 )
 from toddlerbot.policies.balance_pd import BalancePDPolicy
 from toddlerbot.policies.calibrate import CalibratePolicy
@@ -39,7 +38,7 @@ from toddlerbot.policies.sysID import SysIDFixedPolicy
 from toddlerbot.policies.teleop_follower_pd import TeleopFollowerPDPolicy
 from toddlerbot.policies.teleop_joystick import TeleopJoystickPolicy
 from toddlerbot.policies.teleop_leader import TeleopLeaderPolicy
-from toddlerbot.sim import BaseSim, Obs, DummySim
+from toddlerbot.sim import BaseSim, DummySim, Obs
 from toddlerbot.sim.arm import BaseArm, get_arm_class
 from toddlerbot.sim.arm_toddler_sim import ArmToddlerSim
 from toddlerbot.sim.mujoco_sim import MuJoCoSim
@@ -58,7 +57,6 @@ from toddlerbot.visualization.vis_plot import (
     plot_motor_vel_tor_mapping,
     # plot_path_tracking,
 )
-
 
 # Call this to import all policies dynamically
 dynamic_import_policies("toddlerbot.policies")
@@ -372,6 +370,7 @@ def run_policy(
                 print(f"motor_angles: {motor_angles}")
                 print(f"robot.motor_ordering: {robot.motor_ordering}")
                 print(f"motor_target: {motor_target}")
+
                 # import ipdb; ipdb.set_trace()
             set_action_time = time.time()
 
@@ -426,7 +425,7 @@ def run_policy(
             # TODO: debug this part, -200
             time_until_next_step = start_time + policy.control_dt * step_idx - step_end
             # print(f"time_until_next_step: {time_until_next_step * 1000:.2f} ms")
-            if ("real" in sim.name or vis_type == "view") and time_until_next_step > 0:
+            if time_until_next_step > 0:
                 time.sleep(time_until_next_step)
 
     except Exception as e:

@@ -35,7 +35,7 @@ class SwingLeaderPolicy(BasePolicy, policy_name="swing_leader"):
         self.reset_duration = 5.0
         self.reset_end_time = 1.0
         self.reset_time = None
-        self.keyboard = Keyboard()
+        # self.keyboard = Keyboard()
         self.ft_sensor = NetFTSensor()
         self.control_dt = 0.02
         self.total_steps = 0
@@ -65,15 +65,15 @@ class SwingLeaderPolicy(BasePolicy, policy_name="swing_leader"):
     def step(
         self, obs: Obs, is_real: bool = False
     ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
-        keyboard_inputs = self.keyboard.get_keyboard_input()
-        self.stopped = keyboard_inputs["stop"]
-        if self.paused and keyboard_inputs["resume"]:
-            print("Resuming the system")
-            self.paused = False
-        if not self.paused and keyboard_inputs["pause"]:
-            print("Pausing the system")
-            self.paused = True
-        self.keyboard.reset()
+        # keyboard_inputs = self.keyboard.get_keyboard_input()
+        # self.stopped = keyboard_inputs["stop"]
+        # if self.paused and keyboard_inputs["resume"]:
+        #     print("Resuming the system")
+        #     self.paused = False
+        # if not self.paused and keyboard_inputs["pause"]:
+        #     print("Pausing the system")
+        #     self.paused = True
+        # self.keyboard.reset()
 
         action = self.default_motor_pos.copy()
         ee_force, ee_torque = self.ft_sensor.get_smoothed_data()
@@ -86,8 +86,11 @@ class SwingLeaderPolicy(BasePolicy, policy_name="swing_leader"):
             time=time.time(),
             arm_force=ee_force,
             arm_torque=ee_torque,
-            is_stopped=is_done or self.stopped,
+            arm_ee_pos=np.zeros(3, dtype=np.float32),
+            arm_ee_vel=np.zeros(3, dtype=np.float32),
+            is_stopped=is_done,  # or self.stopped,
             is_paused=self.paused,
+            external_guidance_stage="free",
         )
         # import ipdb; ipdb.set_trace()
         self.zmq_sender.send_msg(msg)
@@ -114,7 +117,7 @@ class SwingLeaderPolicy(BasePolicy, policy_name="swing_leader"):
 
     def reset(self, obs: Obs = None) -> Obs:
         self.timer.reset()
-        control_inputs = {}
+        # control_inputs = {}
         # msg = ZMQMessage(
         #     time=time.time(),
         #     control_inputs=control_inputs,

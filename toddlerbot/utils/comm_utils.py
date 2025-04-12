@@ -20,10 +20,15 @@ class ZMQMessage:
     arm_force: Optional[npt.NDArray[np.float32]] = None
     arm_torque: Optional[npt.NDArray[np.float32]] = None
     arm_ee_pos: Optional[npt.NDArray[np.float32]] = None
+    arm_ee_vel: Optional[npt.NDArray[np.float32]] = None
+    ee_pos_target: Optional[npt.NDArray[np.float32]] = None
     lin_vel: Optional[npt.NDArray[np.float32]] = None
     is_done: Optional[bool] = False
     is_stopped: Optional[bool] = False
     is_paused: Optional[bool] = False
+    total_steps: Optional[bool] = False
+    external_guidance_stage: Optional[str] = "enhance"
+
 
 def sync_time(ip: str):
     assert len(ip) > 0, "IP address must be provided!"
