@@ -19,7 +19,7 @@ class FinetuneLogger:
         self,
         exp_folder: str,
         log_interval_steps: int = 5,
-        plot_interval_steps: int = 1000,
+        plot_interval_steps: int = 1024,
         update_csv: str = "training_updates.csv",
         reward_csv: str = "training_rewards.csv",
         enable_logging: bool = True,
@@ -179,8 +179,8 @@ class FinetuneLogger:
             self._write_reward_csv_line()
 
         # optionally update reward plots
-        if self.env_step_counter % self.plot_interval_steps == 0:
-            self.plot_queue.put((self.plot_updates, []))
+        # if self.env_step_counter % self.plot_interval_steps == 0:
+        #     self.plot_queue.put((self.plot_updates, []))
 
     def set_exp_folder(self, exp_folder: str):
         """Sets the experiment folder for saving logs and plots."""
@@ -351,8 +351,8 @@ class FinetuneLogger:
         # if self.update_step_counter % self.log_interval_steps == 0:
         #     self._flush_update_csv()
 
-        if self.update_step_counter % self.plot_interval_steps == 0:
-            self.plot_queue.put((self.plot_updates, []))
+        # if self.update_step_counter % self.plot_interval_steps == 0:
+        #     self.plot_queue.put((self.plot_updates, []))
 
     def _flush_update_csv(self):
         """

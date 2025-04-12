@@ -775,11 +775,17 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             # )
         self.replay_buffer.compute_return(self.finetune_cfg.gamma)
 
+    def send_step_count(self):
+        self.zmq_sender.send_msg(
+            ZMQMessage(time=time.time(), total_steps=self.total_steps)
+        )
+
     def update_policy(self):
         self.timer.stop()
         if self.is_real:
             self.zmq_sender.send_msg(ZMQMessage(time=time.time(), is_stopped=True))
         self.logger.plot_queue.put((self.logger.plot_rewards, []))  # no-blocking plot
+        self.logger.plot_queue.put((self.logger.plot_updates, []))  # no-blocking plot
         self.replay_buffer.compute_return(self.finetune_cfg.gamma)
         org_policy_net = deepcopy(self.policy_net)
 

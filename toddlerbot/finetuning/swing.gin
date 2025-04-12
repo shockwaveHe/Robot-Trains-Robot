@@ -1,6 +1,6 @@
 
 FinetuneConfig.num_single_obs = 26
-FinetuneConfig.num_single_privileged_obs = 32
+FinetuneConfig.num_single_privileged_obs = 35
 FinetuneConfig.policy_hidden_layer_sizes = (512, 256, 128)
 FinetuneConfig.value_hidden_layer_sizes = (512, 256, 128)
 FinetuneConfig.dynamics_hidden_layer_sizes = (512, 256, 128)
@@ -17,9 +17,8 @@ FinetuneConfig.symmetric_action = True
 FinetuneConfig.swing_squat = False
 FinetuneConfig.beta = 0.0
 FinetuneConfig.noise_std_type = "log"
-FinetuneConfig.swing_buffer_size = 500
+FinetuneConfig.swing_buffer_size = 1000
 
-FinetuneRewardScales.action_symmetry = 0.0
 FinetuneRewardScales.ang_vel_z = 0.0
 FinetuneRewardScales.fx_sine_amp = 1.0
 FinetuneRewardScales.fx_sine_freq = 0.0
@@ -36,6 +35,5 @@ OnlineConfig.is_clip_value = True
 OnlineConfig.lr_c = 1e-4
 OnlineConfig.lr_a = 1e-4
 OnlineConfig.entropy_coef = 0.04
-OnlineConfig.K_epochs = 10
-OnlineConfig.max_train_step = 200000
-OnlineConfig.num_envs = 1
+OnlineConfig.K_epochs = 20
+OnlineConfig.epsilon = 0.2
