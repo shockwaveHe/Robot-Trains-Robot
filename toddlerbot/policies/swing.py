@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import numpy.typing as npt
 import torch
+import torch._dynamo
 
 from toddlerbot.finetuning.finetune_config import FinetuneConfig, get_finetune_config
 from toddlerbot.finetuning.logger import FinetuneLogger
@@ -24,6 +25,12 @@ from toddlerbot.utils.math_utils import (
     interpolate_action,
     inverse_exponential_moving_average,
 )
+# from toddlerbot.utils.misc_utils import profile
+
+torch._dynamo.config.suppress_errors = True
+
+# from toddlerbot.utils.misc_utils import profile
+torch._dynamo.config.suppress_errors = True
 
 
 class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
@@ -89,6 +96,19 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         self.num_obs_history = self.cfg.obs.frame_stack
         self.obs_size = self.finetune_cfg.num_single_obs
 
+        self.env_counter = 1
+        self.n_steps_per_env = (
+            self.finetune_cfg.online.batch_size // self.finetune_cfg.online.num_envs
+        )
+
+        self.m = 3.6
+        theta_0 = np.pi / 6  # maximum angle (radians)
+        L = 0.45
+        # Under small-angle assumptions:
+        self.desired_fx_amp = self.m * 9.81 * theta_0
+        self.desired_fx_freq = np.sqrt(9.81 / L) / (2 * np.pi)
+        self.cycle_time = 1 / self.desired_fx_freq
+
         self.is_real = is_real
         self.is_paused = False
         self.active_motor_idx = [4, 7, 9, 10, 13, 15]
@@ -100,16 +120,18 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
             "right_knee",
             "right_ankle_pitch",
         ]
-        self.action_delta_limit = 5 * self.control_dt
+        self.action_delta_limit = 0.1
         self.action_mask = np.array(self.active_motor_idx)
         self.num_active_motors = self.action_mask.shape[0]
         self.action_deltas = deque(maxlen=self.finetune_cfg.action_window_size)
         self.vel_deltas = deque(maxlen=self.finetune_cfg.action_window_size)
         if self.finetune_cfg.swing_squat:
-            self.motion_ref = BalancePDReference(robot, self.control_dt)
-            self.com_ik_indices = [x - 4 for x in self.active_motor_idx]
-            self.num_action = 1
-            self.default_action = -0.04
+            # self.motion_ref = BalancePDReference(robot, self.control_dt)
+            # self.com_ik_indices = [x - 4 for x in self.active_motor_idx]
+            self.num_action = 2
+            self.default_action = np.zeros(
+                self.num_active_motors, dtype=np.float32
+            )  # np.array([1, self.desired_fx_freq])
             self.action_scale = 1.0
         else:
             self.num_action = self.num_active_motors
@@ -124,7 +146,7 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         self.last_action_target = self.default_action
         self.last_raw_action = None
         self.is_stopped = False
-        self.action_shift_steps = 1
+        self.action_shift_steps = 0
 
         if self.finetune_cfg.update_mode == "local":
             self.replay_buffer = OnlineReplayBuffer(
@@ -188,7 +210,9 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
 
         self.num_updates = 0
         self.total_steps, self.current_steps = 0, 0
-        self.step_limit = int(5e4)
+
+        self.external_guidance_stage = "free"
+        # self.step_limit = int(5e4)
 
         self._init_reward()
         self._make_learners()
@@ -199,8 +223,8 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         if len(ckpts) > 0:
             self.load_ckpts(ckpts)
 
-        if is_real:
-            input("press ENTER to start")
+        # if is_real:
+        #     input("press ENTER to start")
 
         # self.health_xy_force = 10
         # self.health_z_force = 40
@@ -208,15 +232,25 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         # self.amplitude = 0.8
         # self.period = 1.5
 
-        m = 3.5
+        self.m = 3.6
         g = 9.81
-        theta_0 = np.pi / 8  # maximum angle (radians)
+        theta_0 = np.pi / 6  # maximum angle (radians)
         L = 0.55
         # Under small-angle assumptions:
-        self.desired_fx_amp = m * g * theta_0
+        self.desired_fx_amp = self.m * g * theta_0
         self.desired_fx_freq = np.sqrt(g / L) / (2 * np.pi)
         self.cycle_time = 1 / self.desired_fx_freq
         self.phase_signal = np.zeros(2, dtype=np.float32)
+
+        self.reward_list = []
+        self.reward_epi_list = []
+        self.reward_epi_best = -np.inf
+
+        self.ang_vel_z_max = 0.0
+        self.fx_max = 0.0
+        self.fx_amp_max = 0.0
+
+        self.last_msg = None
 
     def get_obs(
         self, obs: Obs, command: np.ndarray = None, phase_signal=None, last_action=None
@@ -244,6 +278,7 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
                 obs.euler * self.obs_scales.euler,  # (3, )
                 obs.ee_force * self.obs_scales.ee_force,  # (3, )
                 obs.ee_torque * self.obs_scales.ee_torque,  # (3, )
+                obs.arm_ee_pos * self.obs_scales.arm_ee_pos,  # (3, )
             ]
         )
 
@@ -265,10 +300,10 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
             )
             self.last_raw_action = action_target
 
-        if self.finetune_cfg.swing_squat:
-            knee_angle, hip_pitch_angle = action_target[1], action_target[0]
-            com_pos = self.motion_ref.com_fk(knee_angle, hip_pitch_angle)
-            action_target = np.array([com_pos[2]])
+        # if self.finetune_cfg.swing_squat:
+        #     knee_angle, hip_pitch_angle = action_target[1], action_target[0]
+        #     com_pos = self.motion_ref.com_fk(knee_angle, hip_pitch_angle)
+        #     action_target = np.array([com_pos[2]])
 
         raw_action = (action_target - self.default_action) / self.action_scale
         return raw_action
@@ -283,6 +318,7 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         )
         return phase_signal
 
+    # @profile()
     def step(self, obs: Obs, is_real: bool = True):
         if self.need_reset:
             self.reset(obs)
@@ -303,6 +339,12 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         while self.is_real and msg is None:
             msg = self.zmq_receiver.get_msg()
 
+        # msg = self.zmq_receiver.get_msg()
+        # if msg is None:
+        #     msg = self.last_msg
+
+        # self.last_msg = msg
+        self.external_guidance_stage = msg.external_guidance_stage
         if msg.is_paused and not self.is_paused:
             self.timer.stop()
             self.is_paused = True
@@ -323,6 +365,8 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
 
         obs.ee_force = msg.arm_force
         obs.ee_torque = msg.arm_torque
+        obs.arm_ee_pos = msg.arm_ee_pos
+        obs.arm_ee_vel = msg.arm_ee_vel
 
         self.fx_buffer.append(obs.ee_force[0])
         self.fy_buffer.append(obs.ee_force[1])
@@ -341,15 +385,26 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         n_buffer = len(self.fx_buffer)
         fx_fft_vals = np.fft.rfft(self.fx_buffer)
         fx_fft_freqs = np.fft.rfftfreq(n_buffer, d=self.control_dt)
-
+        # fx_fft_phase = np.angle(fx_fft_vals)
         # Normalize the amplitude spectrum
         fx_amplitudes = np.abs(fx_fft_vals) / n_buffer * 2
         # Extract the amplitude at the desired frequency by finding the closest bin.
         # fx_freq_idx = np.argmin(np.abs(fx_fft_freqs - self.desired_fx_freq))
 
-        fx_freq_idx = np.argmax(fx_fft_vals[1:]) + 1  # Skip DC component
+        # fx_freq_idx = np.argmax(fx_fft_vals[1:]) + 1  # Skip DC component
+        fx_freq_idx = np.argmax(np.abs(fx_fft_vals[1:])) + 1  # Skip DC component
         self.fx_freq = fx_fft_freqs[fx_freq_idx]
         self.fx_amp = fx_amplitudes[fx_freq_idx]
+
+        if self.fx_amp > self.fx_amp_max:
+            self.fx_amp_max = self.fx_amp
+
+        if abs(obs.ee_force[0]) > self.fx_max:
+            self.fx_max = abs(obs.ee_force[0])
+
+        if abs(obs.ang_vel[2]) > self.ang_vel_z_max:
+            self.ang_vel_z_max = abs(obs.ang_vel[2])
+
         # print(f"fx_freq: {self.fx_freq}, fx_amp: {self.fx_amp}")
         # print(len(self.fx_buffer))
 
@@ -391,8 +446,12 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
             action_real_copy = action_real.copy()
         else:
             # data collection stage
-            action_pi = self.get_raw_action(obs)
-            action_logprob = 0.0
+            # action_pi = self.get_raw_action(obs)
+            # action_logprob = 0.0
+            action_pi, action_real, action_logprob = self.get_action(
+                obs_arr, deterministic=self.eval_mode, is_real=is_real
+            )
+            action_real_copy = action_real.copy()
 
         if self.finetune_cfg.update_mode == "local":
             reward_dict = self._compute_reward(obs, action_real)
@@ -402,35 +461,40 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
             reward = sum(reward_dict.values())  # TODO: verify, why multiply by dt?
         else:
             reward = 0.0
+
+        self.reward_list.append(reward)
+
         # print(reward_dict)
         time_elapsed = self.timer.elapsed()
         if time_elapsed < self.total_steps * self.control_dt:
             time.sleep(self.total_steps * self.control_dt - time_elapsed)
 
-        if (len(self.replay_buffer) + 1) % 400 == 0:
+        if (len(self.replay_buffer) + 1) % 200 == 0:
             print(
                 f"Data size: {len(self.replay_buffer)}, Steps: {self.total_steps}, Fps: {self.total_steps / self.timer.elapsed()}"
             )
+            self.send_step_count()
+
         time_to_update = (
-            not self.eval_mode
-            and self.learning_stage == "offline"
-            and (
-                len(self.replay_buffer) >= self.finetune_cfg.offline_initial_steps
-                and len(self.replay_buffer) + 1
-            )
-            % self.finetune_cfg.update_interval
-            == 0
-        ) or (
+            #     not self.eval_mode
+            #     and self.learning_stage == "offline"
+            #     and (
+            #         len(self.replay_buffer) >= self.finetune_cfg.offline_initial_steps
+            #         and len(self.replay_buffer) + 1
+            #     )
+            #     % self.finetune_cfg.update_interval
+            #     == 0
+            # ) or (
             not self.eval_mode
             and self.learning_stage == "online"
             and len(self.replay_buffer) == self.finetune_cfg.online.batch_size - 1
         )
         truncated = time_to_update and self.finetune_cfg.update_mode == "local"
 
-        if self.is_truncated():
-            truncated = True
-            self.current_steps = 0
-            print("Truncated! Resetting...")
+        # if self.is_truncated():
+        #     truncated = True
+        #     self.current_steps = 0
+        #     print("Truncated! Resetting...")
 
         self.replay_buffer.store(
             obs_arr,
@@ -444,8 +508,31 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         )
 
         if truncated:
+            reward_epi = np.mean(self.reward_list)
+            self.reward_epi_list.append(reward_epi)
+            if (
+                reward_epi > self.reward_epi_best
+                and self.external_guidance_stage == "free"
+            ):
+                self.reward_epi_best = reward_epi
+                self.save_networks(suffix="_best")
+                print(f"Best reward: {self.reward_epi_best}")
+
             self.update_policy()
             self.need_reset = True
+            self.env_counter += 1
+
+        if truncated:
+            reward_epi = np.mean(self.reward_list)
+            self.reward_epi_list.append(reward_epi)
+            if reward_epi > self.reward_epi_best:
+                self.reward_epi_best = reward_epi
+                self.save_networks(suffix="_best")
+                print(f"Best reward: {self.reward_epi_best}")
+
+            self.update_policy()
+            self.env_counter = 1
+            # self.need_reset = True
             # import ipdb; ipdb.set_trace()
 
         if not self.finetune_cfg.swing_squat and self.finetune_cfg.symmetric_action:
@@ -463,13 +550,27 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         # import ipdb; ipdb.set_trace()
 
         if self.finetune_cfg.swing_squat:
-            com_z_target = self.default_action + self.action_scale * delayed_action[0]
-            com_z_target = np.clip(
-                com_z_target,
-                self.motion_ref.com_z_limits[0],
-                self.motion_ref.com_z_limits[1],
-            )
-            action_target = self.motion_ref.com_ik(com_z_target)[self.com_ik_indices]
+            # com_z_target = self.default_action + self.action_scale * delayed_action[0]
+            # com_z_target = np.clip(
+            #     com_z_target,
+            #     self.motion_ref.com_z_limits[0],
+            #     self.motion_ref.com_z_limits[1],
+            # )
+            # action_target = self.motion_ref.com_ik(com_z_target)[self.com_ik_indices]
+
+            # A = self.default_action[0] + 4 * (delayed_action[0] + 1)
+
+            A = 2.0
+            # omega = 0.4 + 0.4 * 0.5 * (delayed_action[1] + 1)
+            omega = 0.6
+            action_target = [  # self.default_motor_pos[self.action_mask].copy()
+                A * np.sin(2 * np.pi * omega * time_curr),
+                0.0,
+                0.0,
+                -A * np.sin(2 * np.pi * omega * time_curr),
+                0.0,
+                0.0,
+            ]
         else:
             action_target = self.default_action + self.action_scale * delayed_action
             # lower = self.motor_limits[self.action_mask, 0]
@@ -522,13 +623,13 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         while save_networks not in ["y", "n"]:
             save_networks = input("Save networks? y/n:")
         if save_networks == "y":
-            self.save_networks()
+            self.save_networks(suffix="_final")
         save_buffer = input("Save replay buffer? y/n:")
         if save_buffer == "y":
             self.replay_buffer.save_compressed(self.exp_folder)
 
-    def is_truncated(self) -> bool:
-        return self.current_steps >= self.step_limit
+    # def is_truncated(self) -> bool:
+    #     return self.current_steps >= self.step_limit
 
     def reset(self, obs: Obs = None):
         # mjx policy reset
@@ -553,6 +654,7 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         self.fz_buffer.clear()
         self.pitch_buffer.clear()
         self.time_buffer.clear()
+        self.reward_list = []
         print("Reset done!")
 
     def _reward_survival(self, obs: Obs, action: np.ndarray) -> np.ndarray:
@@ -567,7 +669,7 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
 
     def _reward_fx_sine_amp(self, obs: Obs, action: np.ndarray) -> np.ndarray:
         """Reward for large Fx amplitude"""
-        reward = np.exp(-0.01 * (self.fx_amp - self.desired_fx_amp) ** 2)
+        reward = np.exp(-0.005 * (self.fx_amp - self.desired_fx_amp) ** 2)
         return reward
         # return np.square(0.5 * self.fx_amp)
 
@@ -581,7 +683,7 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
 
     def _reward_fz_sine_amp(self, obs: Obs, action: np.ndarray) -> np.ndarray:
         """Reward for appropriate Fz amplitude"""
-        reward = np.exp(-0.01 * (self.fz_amp - self.desired_fz_amp) ** 2)
+        reward = np.exp(-0.005 * (self.fz_amp - self.desired_fz_amp) ** 2)
         return reward
 
     def _reward_fz_sine_freq(self, obs: Obs, action: np.ndarray) -> np.ndarray:
@@ -597,4 +699,13 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
     def _reward_action_acc(self, obs: Obs, action: np.ndarray) -> np.ndarray:
         error = np.square(action - 2 * self.last_action + self.last_last_action)
         reward = -np.mean(error)
+        return reward
+
+    def _reward_action_symmetry(self, obs: Obs, action: np.ndarray) -> np.ndarray:
+        return -np.square(
+            action[: self.num_action // 2] + action[self.num_action // 2 :]
+        ).mean()
+
+    def _reward_ang_vel_z(self, obs: Obs, action: np.ndarray) -> np.ndarray:
+        reward = np.exp(-0.01 * obs.ang_vel[2] ** 2)
         return reward

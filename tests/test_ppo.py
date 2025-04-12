@@ -12,7 +12,8 @@ from copy import deepcopy
 
 import os
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from tqdm import tqdm
 from toddlerbot.finetuning.logger import FinetuneLogger
@@ -20,33 +21,49 @@ import torch.nn.functional as F
 
 CONST_EPS = 1e-6
 
+
 # Assuming these are defined elsewhere in your codebase
 class MLP(nn.Module):
-    def __init__(self, layers, activation_fn=nn.SiLU, layer_norm=False, activate_final=False):
+    def __init__(
+        self, layers, activation_fn=nn.SiLU, layer_norm=False, activate_final=False
+    ):
         super().__init__()
         self.layers = nn.ModuleList()
         for i in range(len(layers) - 1):
-            self.layers.append(nn.Linear(layers[i], layers[i+1]))
+            self.layers.append(nn.Linear(layers[i], layers[i + 1]))
             if i < len(layers) - 2 or activate_final:
                 self.layers.append(activation_fn())
         if layer_norm:
             self.layers.append(nn.LayerNorm(layers[-1]))
-    
+
     def forward(self, x):
         for layer in self.layers:
             x = layer(x)
         return x
 
+
 def soft_clamp(x, low, high):
     return low + (high - low) * torch.sigmoid((x - low) / (high - low))
 
+
 # Your provided classes (pasted here for completeness)
 class OnlineReplayBuffer:
-    def __init__(self, device: torch.device, obs_dim: int, privileged_obs_dim: int, action_dim: int, max_size: int, seed: int = 0, enlarge_when_full: int = 0):
+    def __init__(
+        self,
+        device: torch.device,
+        obs_dim: int,
+        privileged_obs_dim: int,
+        action_dim: int,
+        max_size: int,
+        seed: int = 0,
+        enlarge_when_full: int = 0,
+    ):
         self._device = device
         self._dtype = np.float32
         self._obs = np.zeros((max_size, obs_dim), dtype=self._dtype)
-        self._privileged_obs = np.zeros((max_size, privileged_obs_dim), dtype=self._dtype)
+        self._privileged_obs = np.zeros(
+            (max_size, privileged_obs_dim), dtype=self._dtype
+        )
         self._action = np.zeros((max_size, action_dim), dtype=self._dtype)
         self._reward = np.zeros((max_size, 1), dtype=self._dtype)
         self._terminated = np.zeros((max_size, 1), dtype=self._dtype)
@@ -63,7 +80,17 @@ class OnlineReplayBuffer:
     def __len__(self):
         return self._size
 
-    def store(self, s: np.ndarray, s_p: np.ndarray, a: np.ndarray, r: np.ndarray, done: bool, truncated: bool, a_logprob: np.ndarray, raw_obs=None):
+    def store(
+        self,
+        s: np.ndarray,
+        s_p: np.ndarray,
+        a: np.ndarray,
+        r: np.ndarray,
+        done: bool,
+        truncated: bool,
+        a_logprob: np.ndarray,
+        raw_obs=None,
+    ):
         self._obs[self._size] = s
         self._action[self._size] = a
         self._reward[self._size] = r
@@ -93,18 +120,25 @@ class OnlineReplayBuffer:
 
     def sample_all(self):
         return (
-            torch.FloatTensor(self._obs[:self._size-1]).to(self._device),
-            torch.FloatTensor(self._privileged_obs[:self._size-1]).to(self._device),
-            torch.FloatTensor(self._action[:self._size-1]).to(self._device),
-            torch.FloatTensor(self._reward[:self._size-1]).to(self._device),
-            torch.FloatTensor(self._obs[1:self._size]).to(self._device) if self._size < self._max_size else torch.FloatTensor(self._obs[:1]).to(self._device),
-            torch.FloatTensor(self._privileged_obs[1:self._size]).to(self._device) if self._size < self._max_size else torch.FloatTensor(self._privileged_obs[:1]).to(self._device),
-            torch.FloatTensor(self._action[1:self._size]).to(self._device) if self._size < self._max_size else torch.FloatTensor(self._action[:1]).to(self._device),
-            torch.FloatTensor(self._terminated[:self._size-1]).to(self._device),
-            torch.FloatTensor(self._truncated[:self._size-1]).to(self._device),
-            torch.FloatTensor(self._return[:self._size-1]).to(self._device),
-            torch.FloatTensor(self._action_logprob[:self._size-1]).to(self._device),
+            torch.FloatTensor(self._obs[: self._size - 1]).to(self._device),
+            torch.FloatTensor(self._privileged_obs[: self._size - 1]).to(self._device),
+            torch.FloatTensor(self._action[: self._size - 1]).to(self._device),
+            torch.FloatTensor(self._reward[: self._size - 1]).to(self._device),
+            torch.FloatTensor(self._obs[1 : self._size]).to(self._device)
+            if self._size < self._max_size
+            else torch.FloatTensor(self._obs[:1]).to(self._device),
+            torch.FloatTensor(self._privileged_obs[1 : self._size]).to(self._device)
+            if self._size < self._max_size
+            else torch.FloatTensor(self._privileged_obs[:1]).to(self._device),
+            torch.FloatTensor(self._action[1 : self._size]).to(self._device)
+            if self._size < self._max_size
+            else torch.FloatTensor(self._action[:1]).to(self._device),
+            torch.FloatTensor(self._terminated[: self._size - 1]).to(self._device),
+            torch.FloatTensor(self._truncated[: self._size - 1]).to(self._device),
+            torch.FloatTensor(self._return[: self._size - 1]).to(self._device),
+            torch.FloatTensor(self._action_logprob[: self._size - 1]).to(self._device),
         )
+
 
 @gin.configurable
 class OnlineConfig:
@@ -125,12 +159,23 @@ class OnlineConfig:
     set_adam_eps: bool = True
     use_residual: bool = False
 
+
 class GaussianPolicyNetwork(nn.Module):
-    def __init__(self, observation_size: int, hidden_layers: tuple, action_size: int, preprocess_observations_fn, activation_fn=nn.SiLU):
+    def __init__(
+        self,
+        observation_size: int,
+        hidden_layers: tuple,
+        action_size: int,
+        preprocess_observations_fn,
+        activation_fn=nn.SiLU,
+    ):
         super().__init__()
         self.preprocess_observations_fn = preprocess_observations_fn
-        self.mlp = MLP([observation_size] + list(hidden_layers) + [action_size * 2], activation_fn=activation_fn)
-        self._log_std_bound = (-10., 2.)
+        self.mlp = MLP(
+            [observation_size] + list(hidden_layers) + [action_size * 2],
+            activation_fn=activation_fn,
+        )
+        self._log_std_bound = (-10.0, 2.0)
 
     def forward(self, obs: torch.Tensor, processer_params=None):
         obs = self.preprocess_observations_fn(obs, processer_params)
@@ -140,23 +185,40 @@ class GaussianPolicyNetwork(nn.Module):
         dist = Normal(mu, std)
         dist = TransformedDistribution(dist, [TanhTransform(cache_size=1)])
         return dist
-    
+
     def forward_log_det_jacobian(self, x):
         # 2 * (log(2) - x - softplus(-2x))
         return 2.0 * (torch.log(torch.tensor(2.0)) - x - F.softplus(-2.0 * x))
 
+
 class ValueNetwork(nn.Module):
-    def __init__(self, observation_size, preprocess_observations_fn, hidden_layers, activation_fn=nn.SiLU):
+    def __init__(
+        self,
+        observation_size,
+        preprocess_observations_fn,
+        hidden_layers,
+        activation_fn=nn.SiLU,
+    ):
         super().__init__()
         self.preprocess_observations_fn = preprocess_observations_fn
-        self.mlp = MLP([observation_size] + list(hidden_layers) + [1], activation_fn=activation_fn)
+        self.mlp = MLP(
+            [observation_size] + list(hidden_layers) + [1], activation_fn=activation_fn
+        )
 
     def forward(self, obs, processer_params=None):
         obs = self.preprocess_observations_fn(obs, processer_params)
         return self.mlp(obs).squeeze(-1)
 
+
 class PPO:
-    def __init__(self, device: torch.device, config: OnlineConfig, policy_net: GaussianPolicyNetwork, value_net: ValueNetwork, base_policy_net: Optional[GaussianPolicyNetwork] = None):
+    def __init__(
+        self,
+        device: torch.device,
+        config: OnlineConfig,
+        policy_net: GaussianPolicyNetwork,
+        value_net: ValueNetwork,
+        base_policy_net: Optional[GaussianPolicyNetwork] = None,
+    ):
         self.batch_size = config.batch_size
         self.mini_batch_size = config.mini_batch_size
         self.max_train_step = config.max_train_step
@@ -175,11 +237,21 @@ class PPO:
         self.is_clip_value = config.is_clip_value
         self.device = device
         self._policy_net = deepcopy(policy_net).to(self.device)
-        self._base_policy_net = base_policy_net.to(self.device) if base_policy_net is not None else None
+        self._base_policy_net = (
+            base_policy_net.to(self.device) if base_policy_net is not None else None
+        )
         self._value_net = value_net.to(self.device)
-        self.optimizer_actor = torch.optim.Adam(self._policy_net.parameters(), lr=self.lr_a, eps=1e-5 if self.set_adam_eps else 1e-8)
-        self.optimizer_critic = torch.optim.Adam(self._value_net.parameters(), lr=self.lr_c, eps=1e-5 if self.set_adam_eps else 1e-8)
-        self._logger = FinetuneLogger('tests/logging/ppo', plot_interval_steps=500)
+        self.optimizer_actor = torch.optim.Adam(
+            self._policy_net.parameters(),
+            lr=self.lr_a,
+            eps=1e-5 if self.set_adam_eps else 1e-8,
+        )
+        self.optimizer_critic = torch.optim.Adam(
+            self._value_net.parameters(),
+            lr=self.lr_c,
+            eps=1e-5 if self.set_adam_eps else 1e-8,
+        )
+        self._logger = FinetuneLogger("tests/logging/ppo", plot_interval_steps=500)
 
     def get_action(self, s, deterministic=False):
         s = torch.unsqueeze(torch.tensor(s, dtype=torch.float), 0).to(self.device)
@@ -196,54 +268,91 @@ class PPO:
             a_real.clamp_(-1.0 + CONST_EPS, 1.0 - CONST_EPS)
         else:
             a_real = a_pi
-        return a_pi.cpu().numpy().flatten(), a_real.cpu().numpy().flatten(), a_logprob.cpu().numpy(),
+        return (
+            a_pi.cpu().numpy().flatten(),
+            a_real.cpu().numpy().flatten(),
+            a_logprob.cpu().numpy(),
+        )
 
     def update(self, replay_buffer: OnlineReplayBuffer, current_steps):
-        states, sp, actions, rewards, s_, sp_, _, terms, truncs, _, a_logprob_old = replay_buffer.sample_all()
+        states, sp, actions, rewards, s_, sp_, _, terms, truncs, _, a_logprob_old = (
+            replay_buffer.sample_all()
+        )
         gae = 0
         advantage = torch.zeros_like(rewards)
         with torch.no_grad():
-            values = self._value_net(sp) # "old" value calculated at the start of the update
+            values = self._value_net(
+                sp
+            )  # "old" value calculated at the start of the update
             next_values = self._value_net(sp_)
-            deltas = rewards.flatten() + self.gamma * (1.0 - terms.flatten()) * next_values - values
+            deltas = (
+                rewards.flatten()
+                + self.gamma * (1.0 - terms.flatten()) * next_values
+                - values
+            )
             for step in reversed(range(len(deltas))):
-                gae = deltas[step] + self.gamma * self.lamda * gae * (1.0 - terms[step]) * (1.0 - truncs[step])
+                gae = deltas[step] + self.gamma * self.lamda * gae * (
+                    1.0 - terms[step]
+                ) * (1.0 - truncs[step])
                 advantage[step] = gae
             returns = advantage.flatten() + values
             if self.use_adv_norm:
                 advantage = (advantage - advantage.mean()) / (advantage.std() + 1e-5)
         actor_losses, critic_losses = [], []
-        pbar = tqdm(range(self.K_epochs), desc='PPO training')
+        pbar = tqdm(range(self.K_epochs), desc="PPO training")
         for i in pbar:
-            for index in BatchSampler(SubsetRandomSampler(range(len(states))), self.mini_batch_size, False):  # Fixed indexing
+            for index in BatchSampler(
+                SubsetRandomSampler(range(len(states))), self.mini_batch_size, False
+            ):  # Fixed indexing
                 new_dist = self._policy_net(states[index])
                 # dist_entropy = new_dist.base_dist.entropy().sum(1, keepdim=True)
                 if isinstance(new_dist, TransformedDistribution):
                     pre_tanh_sample = new_dist.transforms[-1].inv(new_dist.rsample())
-                    log_det_jac = self._policy_net.forward_log_det_jacobian(pre_tanh_sample) # return 2.0 * (torch.log(torch.tensor(2.0)) - x - F.softplus(-2.0 * x))
-                    dist_entropy = torch.sum(new_dist.base_dist.entropy() + log_det_jac, dim=-1, keepdim=True)
+                    log_det_jac = self._policy_net.forward_log_det_jacobian(
+                        pre_tanh_sample
+                    )  # return 2.0 * (torch.log(torch.tensor(2.0)) - x - F.softplus(-2.0 * x))
+                    dist_entropy = torch.sum(
+                        new_dist.base_dist.entropy() + log_det_jac, dim=-1, keepdim=True
+                    )
                 else:
                     dist_entropy = new_dist.entropy().sum(1, keepdim=True)
                 a_logprob_now = new_dist.log_prob(actions[index])
 
-                ratios = torch.exp(a_logprob_now.sum(1, keepdim=True) - a_logprob_old[index])
+                ratios = torch.exp(
+                    a_logprob_now.sum(1, keepdim=True) - a_logprob_old[index]
+                )
                 surr1 = ratios * advantage[index]
-                surr2 = torch.clamp(ratios, 1 - self.epsilon, 1 + self.epsilon) * advantage[index]
-                actor_loss = (-torch.min(surr1, surr2) - self.entropy_coef * dist_entropy).mean()
+                surr2 = (
+                    torch.clamp(ratios, 1 - self.epsilon, 1 + self.epsilon)
+                    * advantage[index]
+                )
+                actor_loss = (
+                    -torch.min(surr1, surr2) - self.entropy_coef * dist_entropy
+                ).mean()
                 actor_losses.append(actor_loss.item())
                 self.optimizer_actor.zero_grad()
                 actor_loss.backward()
                 if self.use_grad_clip:
                     torch.nn.utils.clip_grad_norm_(self._policy_net.parameters(), 0.5)
                 self.optimizer_actor.step()
-                current_values = self._value_net(sp[index]) # "new" value calculated after the actor update
+                current_values = self._value_net(
+                    sp[index]
+                )  # "new" value calculated after the actor update
                 if self.is_clip_value:
-                    old_value_clipped = values[index] + (current_values - values[index]).clamp(-self.epsilon, self.epsilon)
-                    value_loss = (current_values - returns[index].detach().float()).pow(2)
-                    value_loss_clipped = (old_value_clipped - returns[index].detach().float()).pow(2)
+                    old_value_clipped = values[index] + (
+                        current_values - values[index]
+                    ).clamp(-self.epsilon, self.epsilon)
+                    value_loss = (current_values - returns[index].detach().float()).pow(
+                        2
+                    )
+                    value_loss_clipped = (
+                        old_value_clipped - returns[index].detach().float()
+                    ).pow(2)
                     critic_loss = torch.max(value_loss, value_loss_clipped).mean()
                 else:
-                    critic_loss = nn.functional.mse_loss(returns[index], current_values).mean()
+                    critic_loss = nn.functional.mse_loss(
+                        returns[index], current_values
+                    ).mean()
                 critic_losses.append(critic_loss.item())
                 self.optimizer_critic.zero_grad()
                 critic_loss.backward()
@@ -257,9 +366,11 @@ class PPO:
                     current_values=current_values.mean().item(),
                     actor_loss=actor_loss.item(),
                     dist_entropy=dist_entropy.mean().item(),
-                    critic_loss=critic_loss.item()
+                    critic_loss=critic_loss.item(),
                 )
-                pbar.set_description(f'PPO training step {i} (actor_loss: {actor_loss.item()}, critic_loss: {critic_loss.item()})')
+                pbar.set_description(
+                    f"PPO training step {i} (actor_loss: {actor_loss.item()}, critic_loss: {critic_loss.item()})"
+                )
         if self.use_lr_decay:
             self.lr_decay(current_steps)
         replay_buffer.reset()
@@ -269,9 +380,10 @@ class PPO:
         lr_a_now = self.lr_a * (1 - current_steps / self.max_train_step)
         lr_c_now = self.lr_c * (1 - current_steps / self.max_train_step)
         for p in self.optimizer_actor.param_groups:
-            p['lr'] = lr_a_now
+            p["lr"] = lr_a_now
         for p in self.optimizer_critic.param_groups:
-            p['lr'] = lr_c_now
+            p["lr"] = lr_c_now
+
 
 def make_residual_policy(policy_net):
     base_policy_net = deepcopy(policy_net)
@@ -286,6 +398,7 @@ def make_residual_policy(policy_net):
     base_policy_net.eval()
     return policy_net, base_policy_net
 
+
 # Training Loop
 def train():
     env = gym.make("Pendulum-v1")
@@ -293,25 +406,31 @@ def train():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     obs_dim = env.observation_space.shape[0]
     action_dim = env.action_space.shape[0]
-    action_scale = (env.action_space.high[0] - env.action_space.low[0]) / 2  # 2.0 for Pendulum
-    action_bias = (env.action_space.high[0] + env.action_space.low[0]) / 2  # 0.0 for Pendulum
+    action_scale = (
+        env.action_space.high[0] - env.action_space.low[0]
+    ) / 2  # 2.0 for Pendulum
+    action_bias = (
+        env.action_space.high[0] + env.action_space.low[0]
+    ) / 2  # 0.0 for Pendulum
 
     config = OnlineConfig()
-    replay_buffer = OnlineReplayBuffer(device, obs_dim, obs_dim, action_dim, max_size=2 * config.batch_size)
+    replay_buffer = OnlineReplayBuffer(
+        device, obs_dim, obs_dim, action_dim, max_size=2 * config.batch_size
+    )
     policy_net = GaussianPolicyNetwork(obs_dim, (64, 64), action_dim, lambda x, _: x)
     value_net = ValueNetwork(obs_dim, lambda x, _: x, (64, 64))
 
-    with open('tests/logging/ppo/policy_net.pt', 'rb') as f:
-        policy_net.load_state_dict(torch.load(f))
-    with open('tests/logging/ppo/value_net.pt', 'rb') as f:
-        value_net.load_state_dict(torch.load(f))
+    # with open('tests/logging/ppo/policy_net.pt', 'rb') as f:
+    #     policy_net.load_state_dict(torch.load(f))
+    # with open('tests/logging/ppo/value_net.pt', 'rb') as f:
+    #     value_net.load_state_dict(torch.load(f))
     if config.use_residual:
         policy_net, base_policy_net = make_residual_policy(policy_net)
     else:
         base_policy_net = None
     ppo = PPO(device, config, policy_net, value_net, base_policy_net)
 
-    max_steps = int(1e5)
+    max_steps = int(1e6)
     episode_reward = 0
     episode_steps = 0
     total_steps = 0
@@ -335,16 +454,19 @@ def train():
 
         if terminated or truncated:
             # print(f"Episode ended at step {total_steps}, Reward: {episode_reward}")
-            ppo._logger.log_update(episode_reward=episode_reward, episode_steps=episode_steps)
+            ppo._logger.log_update(
+                episode_reward=episode_reward, episode_steps=episode_steps
+            )
             episode_reward = 0
             episode_steps = 0
             s, _ = env.reset()
 
     if not config.use_residual:
-        with open('tests/logging/ppo/policy_net.pt', 'wb') as f:
+        with open("tests/logging/ppo/policy_net.pt", "wb") as f:
             torch.save(ppo._policy_net.state_dict(), f)
-        with open('tests/logging/ppo/value_net.pt', 'wb') as f:
+        with open("tests/logging/ppo/value_net.pt", "wb") as f:
             torch.save(ppo._value_net.state_dict(), f)
+
 
 if __name__ == "__main__":
     train()

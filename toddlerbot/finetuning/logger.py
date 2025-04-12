@@ -4,7 +4,8 @@ import csv
 import math
 import numpy as np
 import matplotlib
-matplotlib.use('Agg')  # for writing figures without an active X server
+
+matplotlib.use("Agg")  # for writing figures without an active X server
 import matplotlib.pyplot as plt
 from collections import defaultdict
 from threading import Thread
@@ -18,12 +19,12 @@ class FinetuneLogger:
         self,
         exp_folder: str,
         log_interval_steps: int = 5,
-        plot_interval_steps: int = 1000,
+        plot_interval_steps: int = 1024,
         update_csv: str = "training_updates.csv",
         reward_csv: str = "training_rewards.csv",
         enable_logging: bool = True,
         enable_profiling: bool = False,
-        smooth_factor: float = 0.9
+        smooth_factor: float = 0.0,
     ):
         """
         :param exp_folder: where to store CSV logs and plots
@@ -36,15 +37,17 @@ class FinetuneLogger:
         :param smooth_factor: EMA smoothing factor for plots (None or 0 disables smoothing)
         """
         self.exp_folder = exp_folder
-        assert os.path.exists(exp_folder), f"Experiment folder '{exp_folder}' does not exist."
+        assert os.path.exists(exp_folder), (
+            f"Experiment folder '{exp_folder}' does not exist."
+        )
 
         self.enable_logging = enable_logging
         self.enable_profiling = enable_profiling
         self.smooth_factor = smooth_factor
 
         # Timers and counts for profiling
-        self.profiling_data = defaultdict(float)   # e.g. {"log_step": 0.034, ...}
-        self.profiling_counts = defaultdict(int)   # e.g. {"log_step": 100, ...}
+        self.profiling_data = defaultdict(float)  # e.g. {"log_step": 0.034, ...}
+        self.profiling_counts = defaultdict(int)  # e.g. {"log_step": 100, ...}
 
         # ====== Per-STEP (reward) logging ======
         self.env_step_counter = 0
@@ -68,7 +71,6 @@ class FinetuneLogger:
 
         self.start_time = time.time()
 
-
     def save_state(self, exp_folder: str):
         """Saves the current state of the logger to a pickle file."""
         state = {
@@ -82,21 +84,19 @@ class FinetuneLogger:
         np.savez_compressed(os.path.join(exp_folder, "logger.npz"), **state)
         print(f"Logger state saved to {exp_folder}")
 
-
     def load_state(self, exp_folder: str):
         """Loads the logger state from a pickle file."""
         logger_path = os.path.join(exp_folder, "logger.npz")
         state = np.load(logger_path, allow_pickle=True)
-        
+
         self.env_step_counter = state["env_step_counter"]
         self.reward_term_histories = state["reward_term_histories"]
         self.update_step_counter = state["update_step_counter"]
         self.update_metrics_list = state["update_metrics_list"]
         self.profiling_data = state["profiling_data"]
         self.profiling_counts = state["profiling_counts"]
-        
-        print(f"Logger state loaded from {logger_path}")
 
+        print(f"Logger state loaded from {logger_path}")
 
     def _plot_worker(self):
         """Worker thread that handles plotting tasks to avoid blocking the main thread."""
@@ -107,7 +107,6 @@ class FinetuneLogger:
             func, args = task
             func(*args)
             self.plot_queue.task_done()
-
 
     def _ema(self, data, alpha):
         """
@@ -147,6 +146,7 @@ class FinetuneLogger:
         log_dict["ee_force_z"] = obs.ee_force[2]
         log_dict["ee_pos_x"] = obs.arm_ee_pos[0]
         log_dict["ee_pos_y"] = obs.arm_ee_pos[1]
+        log_dict["ee_pos_z"] = obs.arm_ee_pos[2]
         log_dict["torso_roll"] = obs.euler[0]
         log_dict["torso_pitch"] = obs.euler[1]
         log_dict["torso_yaw"] = obs.euler[2]
@@ -157,7 +157,9 @@ class FinetuneLogger:
                 if value.size == 1:
                     log_dict[key] = value.item()
                 else:
-                    assert value.size == 3, f"Expected 3-element array for {key}, got {value}"
+                    assert value.size == 3, (
+                        f"Expected 3-element array for {key}, got {value}"
+                    )
                     log_dict[f"{key}_x"] = value[0]
                     log_dict[f"{key}_y"] = value[1]
                     log_dict[f"{key}_z"] = value[2]
@@ -177,8 +179,8 @@ class FinetuneLogger:
             self._write_reward_csv_line()
 
         # optionally update reward plots
-        if self.env_step_counter % self.plot_interval_steps == 0:
-            self.plot_queue.put((self.plot_updates, []))
+        # if self.env_step_counter % self.plot_interval_steps == 0:
+        #     self.plot_queue.put((self.plot_updates, []))
 
     def set_exp_folder(self, exp_folder: str):
         """Sets the experiment folder for saving logs and plots."""
@@ -186,7 +188,7 @@ class FinetuneLogger:
         self.reward_csv_path = os.path.join(exp_folder, "training_rewards.csv")
         self.update_csv_path = os.path.join(exp_folder, "training_updates.csv")
         self.reward_header_written = False
-        
+
     def reset(self):
         """Clears all reward histories and resets counters."""
         self.env_step_counter = 0
@@ -197,7 +199,7 @@ class FinetuneLogger:
         self.profiling_data = defaultdict(float)
         self.profiling_counts = defaultdict(int)
         self.start_time = time.time()
-        
+
     def _write_reward_csv_line(self):
         """
         Appends one row to the 'reward_csv_path' with the current step's reward data.
@@ -220,12 +222,11 @@ class FinetuneLogger:
             write_header_now = True
             self.reward_header_written = True
 
-        with open(self.reward_csv_path, mode='a', newline='') as f:
+        with open(self.reward_csv_path, mode="a", newline="") as f:
             writer = csv.writer(f)
             if write_header_now:
                 writer.writerow(column_names)
             writer.writerow(column_values)
-
 
     def plot_rewards(self):
         """
@@ -241,7 +242,9 @@ class FinetuneLogger:
         ncols = 3
         nrows = math.ceil(len(reward_term_names) / ncols)
         # import ipdb; ipdb.set_trace()
-        fig, axes = plt.subplots(nrows, ncols, figsize=(5*ncols, 4*nrows), sharex=True)
+        fig, axes = plt.subplots(
+            nrows, ncols, figsize=(5 * ncols, 4 * nrows), sharex=True
+        )
         axes = axes.flatten()
 
         for idx, rname in enumerate(reward_term_names):
@@ -286,6 +289,7 @@ class FinetuneLogger:
                 total += data.mean()
         except ValueError as _:
             import traceback
+
             traceback.print_exc()
             print(key, data.shape)
         # Avoid division by zero (if total is 0 at any step)
@@ -307,7 +311,12 @@ class FinetuneLogger:
         fig2, ax2 = plt.subplots(figsize=(10, 6))
         # Generate distinct colors for each term (using, e.g., tab10)
         colors = plt.cm.tab10(np.linspace(0, 1, len(sorted_terms)))
-        ax2.stackplot(steps, *props_sorted, labels=[term[4:] for term in sorted_terms], colors=colors)
+        ax2.stackplot(
+            steps,
+            *props_sorted,
+            labels=[term[4:] for term in sorted_terms],
+            colors=colors,
+        )
         ax2.set_title("Stacked Reward Proportions Over Time")
         ax2.set_xlabel("Env Steps")
         ax2.set_ylabel("Proportion of Total Reward")
@@ -330,10 +339,7 @@ class FinetuneLogger:
             return
 
         self.update_step_counter += 1
-        data_point = {
-            "time": time.time(),
-            "update_step": self.update_step_counter
-        }
+        data_point = {"time": time.time(), "update_step": self.update_step_counter}
         # store all user-provided metrics
         for key, val in kwargs.items():
             data_point[key] = val
@@ -344,10 +350,9 @@ class FinetuneLogger:
         # if you want immediate CSV writing, you can do it here:
         # if self.update_step_counter % self.log_interval_steps == 0:
         #     self._flush_update_csv()
-        
-        if self.update_step_counter % self.plot_interval_steps == 0:
-            self.plot_queue.put((self.plot_updates, []))
 
+        # if self.update_step_counter % self.plot_interval_steps == 0:
+        #     self.plot_queue.put((self.plot_updates, []))
 
     def _flush_update_csv(self):
         """
@@ -372,7 +377,7 @@ class FinetuneLogger:
             rows.append(row)
 
         # 2) write CSV
-        with open(self.update_csv_path, mode='w', newline='') as f:
+        with open(self.update_csv_path, mode="w", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=all_keys)
             writer.writeheader()
             writer.writerows(rows)
@@ -400,7 +405,9 @@ class FinetuneLogger:
 
         ncols = 3
         nrows = math.ceil(len(metric_keys) / ncols)
-        fig, axes = plt.subplots(nrows, ncols, figsize=(5*ncols, 4*nrows), sharex=False)
+        fig, axes = plt.subplots(
+            nrows, ncols, figsize=(5 * ncols, 4 * nrows), sharex=False
+        )
         axes = axes.flatten()
 
         for idx, mkey in enumerate(metric_keys):

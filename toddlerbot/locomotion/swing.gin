@@ -3,7 +3,7 @@ CommandsConfig.deadzone = []
 CommandsConfig.command_obs_indices = []
 
 ObsConfig.num_single_obs = 26
-ObsConfig.num_single_privileged_obs = 32
+ObsConfig.num_single_privileged_obs = 35
 ObsConfig.frame_stack = 15
 
 ActionConfig.action_scale = 2.0

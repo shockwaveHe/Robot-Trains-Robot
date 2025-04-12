@@ -159,6 +159,7 @@ class FinetuneConfig:
         entropy_coef: float = 0.01
         lr_a: float = 1e-4
         lr_c: float = 1e-4
+        num_envs: int = 1
 
         use_adv_norm: bool = True
         use_grad_clip: bool = True
@@ -213,6 +214,7 @@ class FinetuneConfig:
         fx: float = 0.0
         fz_sine_amp: float = 0.0
         fz_sine_freq: float = 0.0
+        action_symmetry: float = 0.0
 
     def __post_init__(self):
         self.finetune_reward_scales = self.FinetuneRewardScales()
