@@ -199,10 +199,8 @@ class PPO:
                     a_logprob_now.sum(1, keepdim=True) - a_logprob_old[index]
                 )
                 surr1 = ratios * advantage[index]
-                surr2 = (
-                    torch.clamp(ratios, 1 - self.epsilon, 1 + self.epsilon)
-                    * advantage[index]
-                )
+                ratios_clipped = torch.clamp(ratios, 1 - self.epsilon, 1 + self.epsilon)
+                surr2 = ratios_clipped * advantage[index]
                 actor_loss = (
                     -torch.min(surr1, surr2) - self.entropy_coef * dist_entropy
                 ).mean()
@@ -236,9 +234,14 @@ class PPO:
                 if self.use_grad_clip:
                     torch.nn.utils.clip_grad_norm_(self._value_net.parameters(), 0.5)
                 self.optimizer_critic.step()
+
+                clamped_mask = (ratios < 1 - self.epsilon) | (ratios > 1 + self.epsilon)
+                clamped_fraction = clamped_mask.sum().item() / self.mini_batch_size
                 self._logger.log_update(
                     a_logprob_now=a_logprob_old[index].mean().item(),
                     ratios=ratios.mean().item(),
+                    ratios_clipped=ratios_clipped.mean().item(),
+                    clamped_fraction=clamped_fraction,
                     adv=advantage[index].mean().item(),
                     current_values=current_values.mean().item(),
                     actor_loss=actor_loss.item(),

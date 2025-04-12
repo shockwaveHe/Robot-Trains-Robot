@@ -25,6 +25,7 @@ def get_env_config(env: str, save_path: str = None) -> "MJXConfig":
             f.writelines(gin.operative_config_str())
     return env_config
 
+
 @gin.configurable
 @dataclass
 class MJXConfig:
@@ -56,6 +57,7 @@ class MJXConfig:
         euler: float = 1.0
         ee_force: float = 1.0
         ee_torque: float = 1.0
+        arm_ee_pos: float = 1.0
         # height_measurements: float = 5.0
 
     @gin.configurable

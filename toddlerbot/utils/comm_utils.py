@@ -24,6 +24,9 @@ class ZMQMessage:
     is_done: Optional[bool] = False
     is_stopped: Optional[bool] = False
     is_paused: Optional[bool] = False
+    total_steps: Optional[int] = 0
+    external_guidance_stage: Optional[str] = "enhance"
+
 
 def sync_time(ip: str):
     assert len(ip) > 0, "IP address must be provided!"

@@ -187,30 +187,44 @@ class OnlineReplayBuffer:
         current_size = self._size
         start = self._current_start
         return (
-            torch.FloatTensor(self._obs[start: current_size - 1]).to(self._device),
-            torch.FloatTensor(self._privileged_obs[start: current_size - 1]).to(self._device),
-            torch.FloatTensor(self._action[start: current_size - 1]).to(self._device),
-            torch.FloatTensor(self._reward[start: current_size - 1]).to(self._device),
-            torch.FloatTensor(self._obs[start + 1: current_size]).to(self._device),
-            torch.FloatTensor(self._privileged_obs[start + 1: current_size]).to(self._device),
-            torch.FloatTensor(self._action[start + 1: current_size]).to(self._device),
-            torch.FloatTensor(self._terminated[start: current_size - 1]).to(self._device),
-            torch.FloatTensor(self._truncated[start: current_size - 1]).to(self._device),
-            torch.FloatTensor(self._return[start: current_size - 1]).to(self._device),
-            torch.FloatTensor(self._action_logprob[start: current_size - 1]).to(self._device),
+            torch.FloatTensor(self._obs[start : current_size - 1]).to(self._device),
+            torch.FloatTensor(self._privileged_obs[start : current_size - 1]).to(
+                self._device
+            ),
+            torch.FloatTensor(self._action[start : current_size - 1]).to(self._device),
+            torch.FloatTensor(self._reward[start : current_size - 1]).to(self._device),
+            torch.FloatTensor(self._obs[start + 1 : current_size]).to(self._device),
+            torch.FloatTensor(self._privileged_obs[start + 1 : current_size]).to(
+                self._device
+            ),
+            torch.FloatTensor(self._action[start + 1 : current_size]).to(self._device),
+            torch.FloatTensor(self._terminated[start : current_size - 1]).to(
+                self._device
+            ),
+            torch.FloatTensor(self._truncated[start : current_size - 1]).to(
+                self._device
+            ),
+            torch.FloatTensor(self._return[start : current_size - 1]).to(self._device),
+            torch.FloatTensor(self._action_logprob[start : current_size - 1]).to(
+                self._device
+            ),
         )
 
-    def sample(self, batch_size: int, sample_validation: bool = False, no_term=False) -> tuple:
+    def sample(
+        self, batch_size: int, sample_validation: bool = False, no_term=False
+    ) -> tuple:
         assert self._size > self._validation_size
         if no_term:
-            condition = (1 - self._terminated[self._current_start: self._size]) * (1 - self._truncated[self._current_start: self._size])
+            condition = (1 - self._terminated[self._current_start : self._size]) * (
+                1 - self._truncated[self._current_start : self._size]
+            )
         else:
-            condition = 1 - self._truncated[self._current_start: self._size]
+            condition = 1 - self._truncated[self._current_start : self._size]
         valid_indices = np.flatnonzero(condition) + self._current_start
         if sample_validation:
             valid_indices = valid_indices[: self._validation_size - 1]
         else:
-            valid_indices = valid_indices[self._validation_size:-1]
+            valid_indices = valid_indices[self._validation_size : -1]
         if valid_indices.size < batch_size:
             ind = self.rng.choice(valid_indices, size=batch_size, replace=True)
         else:
@@ -326,6 +340,7 @@ class OnlineReplayBuffer:
         self._max_size += new_size
         self._raw_obs = deque(self._raw_obs, maxlen=int(self._max_size))
         print(f"Buffer size is enlarged to {self._max_size}")
+
 
 class OfflineReplayBuffer(OnlineReplayBuffer):
     def __init__(
