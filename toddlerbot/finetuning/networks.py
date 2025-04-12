@@ -44,6 +44,28 @@ def load_jax_params_into_pytorch(pt_model: torch.nn.Module, jax_params: dict):
             layer.bias.copy_(b)
 
 
+def load_rsl_params_into_pytorch(pt_model: torch.nn.Module, rsl_params: dict):
+    """
+    Copies parameters from a JAX parameter dictionary into the corresponding
+    PyTorch model. This function assumes that pt_model is an MLP-like structure
+    with a series of Linear layers in the same order as JAX's 'hidden_0', 'hidden_1', etc.
+    """
+    # Extract layers from the PyTorch model.
+    # We assume a Sequential or a Module with ordered layers that correspond to the JAX layers.
+    # If your model is structured differently, adapt this accordingly.
+    linear_layers = [m for m in pt_model.modules() if isinstance(m, torch.nn.Linear)]
+
+    with torch.no_grad():
+        for i, layer in enumerate(linear_layers):
+            # For each linear layer in PyTorch, find the corresponding hidden_i block in JAX params
+            kernel_key = f"actor.{2 * i}"
+            rsl_kernel = rsl_params[f"{kernel_key}.weight"]  # shape (in_dim, out_dim)
+            rsl_bias = rsl_params[f"{kernel_key}.bias"]  # shape (out_dim,)
+
+            layer.weight.copy_(rsl_kernel)
+            layer.bias.copy_(rsl_bias)
+
+
 def soft_clamp(
     x: torch.Tensor,
     _min: Optional[torch.Tensor] = None,

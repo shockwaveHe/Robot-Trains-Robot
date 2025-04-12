@@ -21,6 +21,7 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
         init_motor_pos: npt.NDArray[np.float32],
         ckpts: str = "",
         ip: str = "",
+        eval_mode: bool = False,
         joystick: Optional[Joystick] = None,
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
         exp_folder: Optional[str] = "",
@@ -48,6 +49,7 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
             init_motor_pos,
             ckpts,
             ip,
+            eval_mode,
             joystick,
             fixed_command,
             env_cfg,
@@ -248,7 +250,7 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
         torso_yaw_vel = obs.ang_vel[2]
         reward = -np.abs(torso_yaw_vel)
         return reward
-    
+
     # def _reward_feet_air_time(self, obs: Obs, action: np.ndarray) -> float:
     #     # Reward air time.
     #     contact_filter = np.logical_or(info["stance_mask"], info["last_stance_mask"])

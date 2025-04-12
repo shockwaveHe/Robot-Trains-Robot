@@ -17,7 +17,7 @@ from toddlerbot.finetuning.abppo import (
 from toddlerbot.finetuning.dynamics import BaseDynamics, DynamicsNetwork
 from toddlerbot.finetuning.finetune_config import FinetuneConfig
 from toddlerbot.finetuning.logger import FinetuneLogger
-from toddlerbot.finetuning.networks import load_jax_params, load_jax_params_into_pytorch
+from toddlerbot.finetuning.networks import load_rsl_params_into_pytorch
 from toddlerbot.finetuning.ppo import PPO
 from toddlerbot.finetuning.replay_buffer import OnlineReplayBuffer, RemoteReplayBuffer
 from toddlerbot.finetuning.server_client import RemoteClient
@@ -159,18 +159,17 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             policy_hidden_layer_sizes=self.finetune_cfg.policy_hidden_layer_sizes,
         )
 
-        if len(self.ckpt) > 0:
-            run_name = f"{self.robot.name}_{self.name}_ppo_{self.ckpt}"
-            policy_path = os.path.join("results", run_name, "best_policy")
-            if not os.path.exists(policy_path):
-                policy_path = os.path.join("results", run_name, "policy")
-        else:
-            policy_path = os.path.join(
-                "toddlerbot", "policies", "checkpoints", "walk_policy"
-            )
-        print(f"Loading pretrained model from {policy_path}")
-        jax_params = load_jax_params(policy_path)
-        load_jax_params_into_pytorch(self.policy_net, jax_params[1]["params"])
+        if len(ckpts) > 0:
+            run_name = f"{self.robot.name}_walk_ppo_{ckpts[0]}_torch"
+            policy_path = os.path.join("results", run_name, "model_best.pt")
+            if os.path.exists(policy_path):
+                print(f"Loading pretrained model from {policy_path}")
+                # jax_params = load_jax_params(policy_path)
+                # load_jax_params_into_pytorch(self.policy_net, jax_params[1]["params"])
+                rsl_params = torch.load(os.path.join(policy_path))["model_state_dict"]
+                load_rsl_params_into_pytorch(self.policy_net, rsl_params)
+            else:
+                self.load_ckpts(ckpts)
 
         if self.finetune_cfg.use_residual:
             self._make_residual_policy()
@@ -184,7 +183,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             self.zmq_receiver = ZMQNode(type="receiver")
             assert len(ip) > 0, "Please provide the IP address of the sender"
             self.zmq_sender = ZMQNode(type="sender", ip=ip)
-            self._init_tracker()
+            # self._init_tracker()
         else:
             self.zmq_receiver = None
             self.zmq_sender = None
@@ -203,20 +202,18 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.need_reset = True
         self.learning_stage = "offline"
 
-        self.sim = MuJoCoSim(robot, vis_type=self.finetune_cfg.sim_vis_type, n_frames=1)
-        self.min_y_feet_dist = self.finetune_cfg.finetune_rewards.min_feet_y_dist
-        self.max_y_feet_dist = self.finetune_cfg.finetune_rewards.max_feet_y_dist
+        # self.sim = MuJoCoSim(robot, vis_type=self.finetune_cfg.sim_vis_type, n_frames=1)
+        # self.min_y_feet_dist = self.finetune_cfg.finetune_rewards.min_feet_y_dist
+        # self.max_y_feet_dist = self.finetune_cfg.finetune_rewards.max_feet_y_dist
 
-        if len(ckpts) > 0:
-            self.load_ckpts(ckpts)
-
-        if self.is_real:
-            input("press ENTER to start")
+        # if self.is_real:
+        #     input("press ENTER to start")
 
     def load_ckpts(self, ckpts):
         for ckpt in ckpts:
             self.load_networks(ckpt, data_only=False)
             # self.recalculate_reward()
+
         # if len(self.replay_buffer):
         #     org_policy_net = deepcopy(self.policy_net)
         #     self.logger.plot_queue.put(
@@ -807,10 +804,10 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         #     self.policy_net.mlp.layers[0].weight,
         # )
         self.logger.plot_queue.put((self.logger.plot_updates, []))  # no-blocking plot
-        if (
-            getattr(self, "state_ref", None) is not None
-        ):  # hack to only rollout in walk tasks.
-            self.rollout_sim()
+        # if (
+        #     getattr(self, "state_ref", None) is not None
+        # ):  # hack to only rollout in walk tasks.
+        #     self.rollout_sim()
         if self.is_real:
             self.need_reset = True
             self.zmq_sender.send_msg(ZMQMessage(time=time.time(), is_stopped=False))
@@ -880,21 +877,21 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         time_curr = self.step_curr * self.control_dt
 
-        if self.finetune_cfg.update_mode == "local":
-            self.sim.set_motor_angles(obs.motor_pos)
-            self.sim.forward()
-            feet_pos = self.sim.get_feet_pos()
-            feet_y_dist = feet_pos["left"][1] - feet_pos["right"][1]
-            obs.feet_y_dist = feet_y_dist
+        # if self.finetune_cfg.update_mode == "local":
+        #     self.sim.set_motor_angles(obs.motor_pos)
+        #     self.sim.forward()
+        #     feet_pos = self.sim.get_feet_pos()
+        #     feet_y_dist = feet_pos["left"][1] - feet_pos["right"][1]
+        #     obs.feet_y_dist = feet_y_dist
         control_inputs: Dict[str, float] = {}
         self.control_inputs = {}
-        lin_vel, _ = self.get_tracking_data()
+        # lin_vel, _ = self.get_tracking_data()
         # print('ang_vel:', ang_vel - obs.ang_vel, 'euler:', euler - obs.euler)
         control_inputs = msg.control_inputs
         obs.ee_force = msg.arm_force
         obs.ee_torque = msg.arm_torque
         obs.arm_ee_pos = msg.arm_ee_pos
-        obs.lin_vel = msg.lin_vel + lin_vel
+        obs.lin_vel = msg.lin_vel  # + lin_vel
         # obs.ang_vel = ang_vel
         # obs.euler = euler
         obs.is_done = msg.is_done
@@ -949,7 +946,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                     reward_dict,
                     obs,
                     reward=reward,
-                    feet_dist=feet_y_dist,
+                    # feet_dist=feet_y_dist,
                     walk_command=control_inputs["walk_x"],
                 )
             else:
