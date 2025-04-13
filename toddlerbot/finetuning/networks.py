@@ -62,8 +62,21 @@ def load_rsl_params_into_pytorch(pt_model: torch.nn.Module, rsl_params: dict):
             rsl_kernel = rsl_params[f"{kernel_key}.weight"]  # shape (in_dim, out_dim)
             rsl_bias = rsl_params[f"{kernel_key}.bias"]  # shape (out_dim,)
 
-            layer.weight.copy_(rsl_kernel)
-            layer.bias.copy_(rsl_bias)
+            rsl_kernel_torch = torch.tensor(rsl_kernel, dtype=layer.weight.dtype)
+            rsl_bias_torch = torch.tensor(rsl_bias, dtype=layer.bias.dtype)
+
+            # Resize kernel
+            target_weight = torch.zeros_like(layer.weight)
+            min_rows = min(layer.weight.shape[0], rsl_kernel_torch.shape[0])
+            min_cols = min(layer.weight.shape[1], rsl_kernel_torch.shape[1])
+            target_weight[:min_rows, :min_cols] = rsl_kernel_torch[:min_rows, :min_cols]
+            layer.weight.copy_(target_weight)
+
+            # Resize bias
+            target_bias = torch.zeros_like(layer.bias)
+            min_bias = min(layer.bias.shape[0], rsl_bias_torch.shape[0])
+            target_bias[:min_bias] = rsl_bias_torch[:min_bias]
+            layer.bias.copy_(target_bias)
 
 
 def soft_clamp(

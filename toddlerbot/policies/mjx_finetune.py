@@ -464,9 +464,12 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             print(f"Loaded pretrained model from {policy_path}")
 
         if os.path.exists(os.path.join(exp_folder, "buffer.npz")):
-            self.replay_buffer.load_compressed(exp_folder)
-            # import ipdb; ipdb.set_trace()
-            print(f"Loaded replay buffer from {exp_folder}")
+            try:
+                self.replay_buffer.load_compressed(exp_folder)
+                # import ipdb; ipdb.set_trace()
+                print(f"Loaded replay buffer from {exp_folder}")
+            except Exception as e:
+                print(f"Error loading replay buffer: {e}")
 
     def _make_learners(self):
         """Make PPO learners with a PyTorch implementation."""
