@@ -24,17 +24,20 @@ OnlineConfig.mini_batch_size = 128
 OnlineConfig.is_clip_value = True
 OnlineConfig.lr_c = 1e-4
 OnlineConfig.lr_a = 1e-4
-OnlineConfig.entropy_coef = 0.01
+OnlineConfig.entropy_coef = 0.04
 OnlineConfig.K_epochs = 20
-OnlineConfig.epsilon = 0.1
-
-FinetuneConfig.use_residual = True
-FinetuneConfig.residual_action_scale = 0.1
-FinetuneConfig.update_mode = "remote"
+OnlineConfig.epsilon = 0.2
 
 FinetuneConfig.buffer_valid_size = 0
 FinetuneConfig.offline_total_steps = 0
 FinetuneConfig.offline_initial_steps = 0
+FinetuneConfig.update_mode = "remote"
+FinetuneConfig.frame_stack = 15
+FinetuneConfig.use_residual = True
+FinetuneConfig.use_tanh = False
+FinetuneConfig.residual_action_scale = 0.1
+FinetuneConfig.beta = 0.0
+FinetuneConfig.noise_std_type = "log"
 FinetuneConfig.bppo_steps = 200
 FinetuneConfig.abppo_update_steps = 3
 FinetuneConfig.is_state_norm = False

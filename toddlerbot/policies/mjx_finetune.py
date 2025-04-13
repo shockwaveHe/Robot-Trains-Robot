@@ -169,7 +169,14 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 rsl_params = torch.load(os.path.join(policy_path))["model_state_dict"]
                 load_rsl_params_into_pytorch(self.policy_net, rsl_params)
             else:
-                self.load_ckpts(ckpts)
+                self.load_ckpts(
+                    [
+                        os.path.join(
+                            "results",
+                            f"{self.robot.name}_{self.name}_real_world_{ckpts[0]}",
+                        )
+                    ]
+                )
 
         if self.finetune_cfg.use_residual:
             self._make_residual_policy()
@@ -201,6 +208,10 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         self.need_reset = True
         self.learning_stage = "offline"
+
+        self.reward_list = []
+        self.reward_epi_list = []
+        self.reward_epi_best = -np.inf
 
         # self.sim = MuJoCoSim(robot, vis_type=self.finetune_cfg.sim_vis_type, n_frames=1)
         # self.min_y_feet_dist = self.finetune_cfg.finetune_rewards.min_feet_y_dist
@@ -398,7 +409,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         return lin_vel, current_time
 
-    def save_networks(self, suffix=""):
+    def save_networks(self, suffix="_best"):
         policy_path = os.path.join(self.exp_folder, "policy")
 
         os.makedirs(policy_path, exist_ok=True)
@@ -952,6 +963,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             else:
                 reward = 0.0
 
+            self.reward_list.append(reward)
+
             time_elapsed = self.timer.elapsed()
             if time_elapsed < self.total_steps * self.control_dt:
                 time.sleep(self.total_steps * self.control_dt - time_elapsed)
@@ -986,6 +999,16 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 )
 
                 if truncated:
+                    reward_epi = np.mean(self.reward_list)
+                    self.reward_epi_list.append(reward_epi)
+                    if (
+                        reward_epi > self.reward_epi_best
+                        # and self.external_guidance_stage == "free"
+                    ):
+                        self.reward_epi_best = reward_epi
+                        self.save_networks(suffix="_best")
+                        print(f"Best reward: {self.reward_epi_best}")
+
                     self.update_policy()
 
         if is_real:
