@@ -1,6 +1,7 @@
 FinetuneRewardScales.ang_vel_z = 5.0
 FinetuneRewardScales.ang_vel_xy = 2.0
-FinetuneRewardScales.arm_force_y = 0.0
+FinetuneRewardScales.arm_force_x = 0.0
+FinetuneRewardScales.arm_force_y = 1.0
 FinetuneRewardScales.arm_force_z = 2.0
 FinetuneRewardScales.feet_distance = 0.0
 FinetuneRewardScales.leg_action_rate = 0.05

@@ -1074,8 +1074,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         self.healthy_z_range = self.finetune_cfg.finetune_rewards.healthy_z_range
         self.tracking_sigma = self.finetune_cfg.finetune_rewards.tracking_sigma
-        self.arm_force_z_sigma = self.finetune_cfg.finetune_rewards.arm_force_z_sigma
+        self.arm_force_x_sigma = self.finetune_cfg.finetune_rewards.arm_force_x_sigma
         self.arm_force_y_sigma = self.finetune_cfg.finetune_rewards.arm_force_y_sigma
+        self.arm_force_z_sigma = self.finetune_cfg.finetune_rewards.arm_force_z_sigma
 
     def _compute_reward(self, obs: Obs, action: np.ndarray):
         reward_dict: Dict[str, np.ndarray] = {}

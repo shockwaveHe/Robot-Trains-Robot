@@ -206,15 +206,20 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
         reward = -np.where(is_done, 1.0, 0.0)
         return reward
 
-    def _reward_arm_force_z(self, obs: Obs, action: np.ndarray) -> np.ndarray:
-        # import ipdb; ipdb.set_trace()
-        ee_force_z = obs.ee_force[2]
-        reward = np.exp(-self.arm_force_z_sigma * np.abs(ee_force_z))
+    def _reward_arm_force_x(self, obs: Obs, action: np.ndarray) -> np.ndarray:
+        ee_force_x = obs.ee_force[0]
+        reward = np.exp(-self.arm_force_x_sigma * np.abs(ee_force_x))
         return reward
 
     def _reward_arm_force_y(self, obs: Obs, action: np.ndarray) -> np.ndarray:
         ee_force_y = obs.ee_force[1]
         reward = np.exp(-self.arm_force_y_sigma * np.abs(ee_force_y))
+        return reward
+
+    def _reward_arm_force_z(self, obs: Obs, action: np.ndarray) -> np.ndarray:
+        # import ipdb; ipdb.set_trace()
+        ee_force_z = obs.ee_force[2]
+        reward = np.exp(-self.arm_force_z_sigma * np.abs(ee_force_z))
         return reward
 
     def _reward_torso_roll(self, obs: Obs, action: np.ndarray) -> float:
