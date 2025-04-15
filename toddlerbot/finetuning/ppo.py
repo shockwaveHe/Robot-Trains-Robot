@@ -76,8 +76,7 @@ class PPO:
         self.optimizer_actor = None
         self.optimizer_critic = None
         if optimize_z:
-            latent_name = "latent_z_323"
-            with open(f"toddlerbot/finetuning/{latent_name}.pt", "rb") as f:
+            with open("toddlerbot/finetuning/latent_z.pt", "rb") as f:
                 initial_latents = torch.load(f).to(self.device)
 
             self.latent_z = nn.Parameter(initial_latents.clone(), requires_grad=True)
@@ -298,6 +297,7 @@ class PPO:
                     actor_loss=actor_loss.item(),
                     dist_entropy=dist_entropy.mean().item(),
                     critic_loss=critic_loss.item(),
+                    latent_z=self.get_latent(),
                 )
                 pbar.set_description(
                     f"PPO training step {i} (actor_loss: {actor_loss.item()}, critic_loss: {critic_loss.item()})"
@@ -322,4 +322,4 @@ class PPO:
         if self.latent_z is None:
             return None
 
-        return self.latent_z.detach().clone()
+        return self.latent_z.detach().cpu().clone()

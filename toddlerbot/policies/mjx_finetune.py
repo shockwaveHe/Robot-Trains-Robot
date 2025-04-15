@@ -184,7 +184,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 # jax_params = load_jax_params(policy_path)
                 # load_jax_params_into_pytorch(self.policy_net, jax_params[1]["params"])
                 rsl_params = torch.load(os.path.join(policy_path))["model_state_dict"]
-                load_rsl_params_into_pytorch(self.policy_net, rsl_params)
+                load_rsl_params_into_pytorch(
+                    self.policy_net, self.value_net, rsl_params
+                )
             else:
                 self.load_ckpts(
                     [

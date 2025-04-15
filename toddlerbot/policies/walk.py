@@ -111,4 +111,4 @@ class WalkPolicy(MJXPolicy, policy_name="walk"):
         else:
             self.is_standing = False
 
-        return control_inputs, motor_target, None
+        return control_inputs, motor_target, obs

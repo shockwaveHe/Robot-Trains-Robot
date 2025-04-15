@@ -45,7 +45,9 @@ def load_jax_params_into_pytorch(pt_model: torch.nn.Module, jax_params: dict):
             layer.bias.copy_(b)
 
 
-def load_rsl_params_into_pytorch(pt_model: torch.nn.Module, rsl_params: dict):
+def load_rsl_params_into_pytorch(
+    pt_model: torch.nn.Module, value_net: torch.nn.Module, rsl_params: dict
+):
     """
     Copies parameters from a JAX parameter dictionary into the corresponding
     PyTorch model. This function assumes that pt_model is an MLP-like structure
@@ -54,15 +56,42 @@ def load_rsl_params_into_pytorch(pt_model: torch.nn.Module, rsl_params: dict):
     # Extract layers from the PyTorch model.
     # We assume a Sequential or a Module with ordered layers that correspond to the JAX layers.
     # If your model is structured differently, adapt this accordingly.
-    linear_layers = [m for m in pt_model.modules() if isinstance(m, torch.nn.Linear)]
+    policy_linear_layers = [
+        m for m in pt_model.modules() if isinstance(m, torch.nn.Linear)
+    ]
+    value_linear_layers = [
+        m for m in value_net.modules() if isinstance(m, torch.nn.Linear)
+    ]
 
     with torch.no_grad():
-        for i, layer in enumerate(linear_layers):
+        for i, layer in enumerate(policy_linear_layers):
             # For each linear layer in PyTorch, find the corresponding hidden_i block in JAX params
             if i < 4:
                 kernel_key = f"actor.{2 * i}"
             else:
                 kernel_key = f"film_layers.{i - 4}.film"
+
+            rsl_kernel = rsl_params[f"{kernel_key}.weight"]  # shape (in_dim, out_dim)
+            rsl_bias = rsl_params[f"{kernel_key}.bias"]  # shape (out_dim,)
+
+            rsl_kernel_torch = torch.tensor(rsl_kernel, dtype=layer.weight.dtype)
+            rsl_bias_torch = torch.tensor(rsl_bias, dtype=layer.bias.dtype)
+
+            # Resize kernel
+            target_weight = torch.zeros_like(layer.weight)
+            min_rows = min(layer.weight.shape[0], rsl_kernel_torch.shape[0])
+            min_cols = min(layer.weight.shape[1], rsl_kernel_torch.shape[1])
+            target_weight[:min_rows, :min_cols] = rsl_kernel_torch[:min_rows, :min_cols]
+            layer.weight.copy_(target_weight)
+
+            # Resize bias
+            target_bias = torch.zeros_like(layer.bias)
+            min_bias = min(layer.bias.shape[0], rsl_bias_torch.shape[0])
+            target_bias[:min_bias] = rsl_bias_torch[:min_bias]
+            layer.bias.copy_(target_bias)
+
+        for i, layer in enumerate(value_linear_layers):
+            kernel_key = f"critic.{2 * i}"
 
             rsl_kernel = rsl_params[f"{kernel_key}.weight"]  # shape (in_dim, out_dim)
             rsl_bias = rsl_params[f"{kernel_key}.bias"]  # shape (out_dim,)
@@ -372,7 +401,7 @@ class GaussianPolicyNetwork(nn.Module):
         self.film_layers = film_layers
 
     def forward(
-        self, obs: torch.Tensor, processer_params=None, z=None
+        self, obs: torch.Tensor, z=None, processer_params=None
     ) -> torch.distributions.transformed_distribution.TransformedDistribution:
         obs = self.preprocess_observations_fn(obs, processer_params)
         if self.noise_std_type == "scalar":
@@ -419,9 +448,9 @@ class GaussianPolicyNetwork(nn.Module):
             layer_idx += 1
 
             # Activation
-            if isinstance(self.mlp.layers[layer_idx], nn.SiLU):
-                h = self.mlp.layers[layer_idx](h)
-                layer_idx += 1
+            if isinstance(self.mlp.activation, nn.SiLU):
+                h = self.mlp.activation(h)
+            # layer_idx += 1
 
             # Apply FiLM if available
             if film_idx < len(self.film_layers):
