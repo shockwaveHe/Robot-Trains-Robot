@@ -119,6 +119,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             f"Observation size: {self.obs_size}, Privileged observation size: {self.privileged_obs_size}"
         )
 
+        if self.eval_mode:
+            self.finetune_cfg.update_mode = "local"
+
         if self.finetune_cfg.update_mode == "local":
             self.replay_buffer = OnlineReplayBuffer(
                 self.device,
@@ -181,6 +184,21 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         if self.finetune_cfg.use_residual:
             self._make_residual_policy()
             self._residual_action_scale = self.finetune_cfg.residual_action_scale
+
+        # loading residual policy
+        if self.eval_mode:
+            try:
+                self.load_ckpts(
+                    [
+                        os.path.join(
+                            "results",
+                            f"{self.robot.name}_{self.name}_real_world_{ckpts[1]}",
+                        )
+                    ]
+                )
+                print("Residual policy loaded successfully")
+            except Exception as e:
+                print("residual policy not loaded correstly: ", e)
 
         self.obs_history = np.zeros(self.num_obs_history * self.obs_size)
         self.privileged_obs_history = np.zeros(
@@ -463,7 +481,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             # self.logger.load_state(os.path.join(exp_folder, "logger.pkl"))
             print(f"Loaded pretrained model from {policy_path}")
 
-        if os.path.exists(os.path.join(exp_folder, "buffer.npz")):
+        if not self.eval_mode and os.path.exists(
+            os.path.join(exp_folder, "buffer.npz")
+        ):
             try:
                 self.replay_buffer.load_compressed(exp_folder)
                 # import ipdb; ipdb.set_trace()
@@ -941,9 +961,20 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         deterministic = (
             self.learning_stage == "offline"
         )  # use deterministic action during offline learning
-        action_pi, action_real, action_logprob = self.get_action(
-            obs_arr, deterministic=deterministic, is_real=is_real
-        )
+        # action_pi, action_real, action_logprob = self.get_action(
+        #     obs_arr, deterministic=deterministic, is_real=is_real
+        # )
+        if self.learning_stage == "online":
+            action_pi, action_real, action_logprob = self.get_action(
+                obs_arr, deterministic=self.eval_mode, is_real=is_real
+            )
+            action_real_copy = action_real.copy()
+        else:
+            action_pi, action_real, action_logprob = self.get_action(
+                obs_arr, deterministic=self.eval_mode, is_real=is_real
+            )
+            action_real_copy = action_real.copy()
+
         obs.raw_action_mean = action_pi.mean()
         obs.base_action_mean = (action_real - action_pi).mean()
         if msg is not None:
@@ -961,6 +992,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                     obs,
                     reward=reward,
                     # feet_dist=feet_y_dist,
+                    action_pi=action_pi.mean(),
+                    action_real=action_real_copy.mean(),
                     walk_command=control_inputs["walk_x"],
                 )
             else:
@@ -981,12 +1014,14 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 control_inputs["walk_x"] != 0 or control_inputs["walk_y"] != 0
             ):
                 time_to_update = (
-                    self.learning_stage == "offline"
+                    not self.eval_mode
+                    and self.learning_stage == "offline"
                     and (len(self.replay_buffer) + 1)
                     % self.finetune_cfg.update_interval
                     == 0
                 ) or (
-                    self.learning_stage == "online"
+                    not self.eval_mode
+                    and self.learning_stage == "online"
                     and len(self.replay_buffer) == self.finetune_cfg.online.batch_size
                 )
                 truncated = time_to_update and self.finetune_cfg.update_mode == "local"

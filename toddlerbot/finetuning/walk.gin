@@ -25,7 +25,7 @@ OnlineConfig.mini_batch_size = 128
 OnlineConfig.is_clip_value = True
 OnlineConfig.lr_c = 1e-4
 OnlineConfig.lr_a = 1e-4
-OnlineConfig.entropy_coef = 0.04
+OnlineConfig.entropy_coef = 0.005
 OnlineConfig.K_epochs = 20
 OnlineConfig.epsilon = 0.2
 
