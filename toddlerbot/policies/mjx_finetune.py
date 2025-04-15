@@ -1014,15 +1014,22 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             # import ipdb; ipdb.set_trace()
             self.num_updates += 1
             print(f"Updated policy network to {self.num_updates}!")
-            assert not torch.allclose(
-                self.policy_net.mlp.layers[0].weight,
-                self.remote_client.new_state_dict["mlp.layers.0.weight"],
-            )
-            self.policy_net.load_state_dict(self.remote_client.new_state_dict)
+            # assert not torch.allclose(
+            #     self.policy_net.mlp.layers[0].weight,
+            #     self.remote_client.new_state_dict["mlp.layers.0.weight"],
+            # )
+            if self.finetune_cfg.optimize_z:
+                self.online_ppo_learner.latent_z = self.remote_client.new_state_dict[
+                    "latent_z"
+                ].clone()
+            else:
+                self.policy_net.load_state_dict(self.remote_client.new_state_dict)
+
             self.remote_client.ready_to_update = False
-        deterministic = (
-            self.learning_stage == "offline"
-        )  # use deterministic action during offline learning
+
+        # deterministic = (
+        #     self.learning_stage == "offline"
+        # )  # use deterministic action during offline learning
         # action_pi, action_real, action_logprob = self.get_action(
         #     obs_arr, deterministic=deterministic, is_real=is_real
         # )

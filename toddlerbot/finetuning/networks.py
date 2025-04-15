@@ -8,6 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Normal, TanhTransform
 from torch.distributions.transformed_distribution import TransformedDistribution
+# from toddlerbot.utils.misc_utils import profile
 
 
 def load_jax_params(path: str) -> Any:
@@ -136,24 +137,25 @@ class FiLMLayer(nn.Module):
         self.register_buffer("beta_mean", torch.zeros(1))
         self.register_buffer("count", torch.zeros(1))
 
+    # @profile()
     def forward(self, hidden, z):
         # Generate modulation parameters
         film_params = self.film(z)
         gamma, beta = torch.chunk(film_params, 2, dim=-1)
 
         # Update running statistics (for monitoring only)
-        if self.training:
-            with torch.no_grad():
-                batch_mean_gamma = gamma.mean()
-                batch_mean_beta = beta.mean()
-                total = self.count + gamma.numel()
-                self.gamma_mean = (
-                    self.gamma_mean * self.count + batch_mean_gamma * gamma.numel()
-                ) / total
-                self.beta_mean = (
-                    self.beta_mean * self.count + batch_mean_beta * gamma.numel()
-                ) / total
-                self.count = total
+        # if self.training:
+        #     with torch.no_grad():
+        #         batch_mean_gamma = gamma.mean()
+        #         batch_mean_beta = beta.mean()
+        #         total = self.count + gamma.numel()
+        #         self.gamma_mean = (
+        #             self.gamma_mean * self.count + batch_mean_gamma * gamma.numel()
+        #         ) / total
+        #         self.beta_mean = (
+        #             self.beta_mean * self.count + batch_mean_beta * gamma.numel()
+        #         ) / total
+        #         self.count = total
 
         # Apply feature-wise transformation
         return gamma * hidden + beta
@@ -400,6 +402,7 @@ class GaussianPolicyNetwork(nn.Module):
         self._log_std_bound = (-10.0, 2.0)
         self.film_layers = film_layers
 
+    # @profile()
     def forward(
         self, obs: torch.Tensor, z=None, processer_params=None
     ) -> torch.distributions.transformed_distribution.TransformedDistribution:
@@ -436,6 +439,7 @@ class GaussianPolicyNetwork(nn.Module):
         # 2 * (log(2) - x - softplus(-2x))
         return 2.0 * (torch.log(torch.tensor(2.0)) - x - F.softplus(-2.0 * x))
 
+    # @profile()
     def actor_forward(self, observations, z):
         h = observations
         layer_idx = 0
