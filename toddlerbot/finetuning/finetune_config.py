@@ -1,6 +1,7 @@
-from dataclasses import dataclass, field, asdict
-from typing import Optional, Tuple, List
 import os
+from dataclasses import asdict, dataclass, field
+from typing import List, Optional, Tuple
+
 import gin
 import numpy as np
 
@@ -132,6 +133,8 @@ class FinetuneConfig:
 
     use_residual: bool = False
     residual_action_scale: float = 0.1
+
+    optimize_z: bool = False
 
     @gin.configurable
     @dataclass

@@ -7,6 +7,8 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 import numpy as np
 import numpy.typing as npt
 import torch
+import torch.nn as nn
+import yaml
 from tqdm import tqdm
 
 import toddlerbot.finetuning.networks as networks
@@ -17,7 +19,7 @@ from toddlerbot.finetuning.abppo import (
 from toddlerbot.finetuning.dynamics import BaseDynamics, DynamicsNetwork
 from toddlerbot.finetuning.finetune_config import FinetuneConfig
 from toddlerbot.finetuning.logger import FinetuneLogger
-from toddlerbot.finetuning.networks import load_rsl_params_into_pytorch
+from toddlerbot.finetuning.networks import FiLMLayer, load_rsl_params_into_pytorch
 from toddlerbot.finetuning.ppo import PPO
 from toddlerbot.finetuning.replay_buffer import OnlineReplayBuffer, RemoteReplayBuffer
 from toddlerbot.finetuning.server_client import RemoteClient
@@ -25,7 +27,6 @@ from toddlerbot.finetuning.utils import CONST_EPS, Timer
 from toddlerbot.policies.mjx_policy import MJXPolicy
 from toddlerbot.reference.walk_zmp_ref import WalkZMPReference
 from toddlerbot.sim import Obs
-from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.comm_utils import ZMQMessage, ZMQNode
 from toddlerbot.utils.math_utils import (
@@ -69,6 +70,19 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.privileged_obs_history_size = (
             self.privileged_obs_size * self.num_privileged_obs_history
         )
+
+        self.autoencoder_config = None
+        if self.finetune_cfg.optimize_z:
+            with open(
+                os.path.join("toddlerbot", "autoencoder", "config.yaml"), "r"
+            ) as f:
+                autoencoder_config = yaml.safe_load(f)
+                # autoencoder_config["data"]["time_str"] = dynamics_time_str
+                if autoencoder_config["model"]["dynamics_type"] == "params":
+                    autoencoder_config["model"]["num_split"] = 2
+                elif autoencoder_config["model"]["dynamics_type"] == "hyper":
+                    autoencoder_config["model"]["num_split"] = 1
+                self.autoencoder_config = autoencoder_config
 
         super().__init__(
             name,
@@ -163,7 +177,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         )
 
         if len(ckpts) > 0:
-            run_name = f"{self.robot.name}_walk_ppo_{ckpts[0]}_torch"
+            run_name = f"{self.robot.name}_walk_ppo_{ckpts[0]}"
             policy_path = os.path.join("results", run_name, "model_best.pt")
             if os.path.exists(policy_path):
                 print(f"Loading pretrained model from {policy_path}")
@@ -180,6 +194,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                         )
                     ]
                 )
+
+        if self.finetune_cfg.optimize_z:
+            self.finetune_cfg.use_residual = False
 
         if self.finetune_cfg.use_residual:
             self._make_residual_policy()
@@ -291,6 +308,29 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         # Create policy network
         # Note: Ensure that your policy MLP ends with parametric_action_distribution.param_size units
+        autoencoder_cfg = self.autoencoder_config
+
+        film_layers = None
+        if autoencoder_cfg is not None:
+            latent_dim = (
+                autoencoder_cfg["model"]["n_embd"]
+                * autoencoder_cfg["model"]["num_splits"]
+            )
+            self.latent_dim = latent_dim
+            film_layers = nn.ModuleList()
+            film_layers.append(FiLMLayer(latent_dim, policy_hidden_layer_sizes[0]))
+            for i in range(1, len(policy_hidden_layer_sizes)):
+                film_layers.append(FiLMLayer(latent_dim, policy_hidden_layer_sizes[i]))
+
+            for film_layer in film_layers:
+                nn.init.constant_(film_layer.film.weight, 0.0)
+                nn.init.constant_(
+                    film_layer.film.bias[: film_layer.film.out_features // 2], 1.0
+                )
+                nn.init.constant_(
+                    film_layer.film.bias[film_layer.film.out_features // 2 :], 0.0
+                )
+
         self.policy_net = networks.GaussianPolicyNetwork(
             observation_size=observation_size,
             preprocess_observations_fn=preprocess_observations_fn,
@@ -299,6 +339,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             activation_fn=activation_fn,
             use_tanh=self.finetune_cfg.use_tanh,
             noise_std_type=self.finetune_cfg.noise_std_type,
+            film_layers=film_layers,
         ).to(self.inference_device)
         self.policy_net_opt = (
             torch.compile(self.policy_net) if self.is_real else self.policy_net
@@ -514,6 +555,8 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             self.value_net,
             self.logger,
             self.base_policy_net if self.finetune_cfg.use_residual else None,
+            optimize_z=self.finetune_cfg.optimize_z,
+            autoencoder_cfg=self.autoencoder_config,
         )
 
     def _sample_command(self, last_command: Optional[np.ndarray] = None) -> np.ndarray:
@@ -629,8 +672,14 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
     ) -> Tuple[np.ndarray, Dict[str, Any]]:
         # import ipdb; ipdb.set_trace()
         obs_tensor = torch.as_tensor(obs_arr, dtype=torch.float32).squeeze(0)
+        latent_tensor = self.online_ppo_learner.get_latent()
         # TODO: change name to reuse _opt networks
-        action_dist = self.policy_net_opt(obs_tensor.to(self.inference_device))
+        action_dist = self.policy_net_opt(
+            obs_tensor.to(self.inference_device),
+            latent_tensor.to(self.inference_device)
+            if latent_tensor is not None
+            else None,
+        )
 
         if deterministic:
             # Deterministic: use mode
@@ -891,6 +940,16 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         msg = None
         while self.is_real and msg is None:
             msg = self.zmq_receiver.get_msg()
+
+        # TODO: remove this for the real world
+        msg = ZMQMessage(
+            time=time_curr,
+            control_inputs={"walk_x": 0.1, "walk_y": 0.0, "walk_turn": 0.0},
+            lin_vel=np.zeros(3, dtype=np.float32),
+            arm_force=np.zeros(3, dtype=np.float32),
+            arm_torque=np.zeros(3, dtype=np.float32),
+            arm_ee_pos=np.zeros(3, dtype=np.float32),
+        )
 
         if msg.is_paused and not self.is_paused:
             self.timer.stop()

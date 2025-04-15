@@ -869,6 +869,7 @@ def main(args=None):
                 exp_folder=exp_folder_path,
                 ip=args.ip,
                 eval_mode=args.eval,
+                is_real="real" in sim.name,
             )
         else:
             policy = PolicyClass(
