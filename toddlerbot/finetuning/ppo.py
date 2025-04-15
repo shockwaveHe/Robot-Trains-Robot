@@ -30,6 +30,7 @@ class PPO:
         logger: FinetuneLogger,
         base_policy_net: Optional[GaussianPolicyNetwork] = None,
         optimize_z: bool = False,
+        optimize_critic: bool = False,
         autoencoder_cfg: Optional[dict] = None,
     ) -> None:
         self.batch_size = config.online.batch_size
@@ -49,6 +50,7 @@ class PPO:
         self.is_clip_value = config.online.is_clip_value
         self.device = device
         self.optimize_z = optimize_z
+        self.optimizer_critic = optimize_critic
         self.autoencoder_cfg = autoencoder_cfg
 
         self._config = config
@@ -90,20 +92,18 @@ class PPO:
                 [self.latent_z], lr=self.latent_lr
             )
         else:
-            if self.set_adam_eps:  # Trick 9: set Adam epsilon=1e-5
-                self.optimizer_actor = torch.optim.Adam(
-                    self._policy_net.parameters(), lr=self.lr_a, eps=1e-5
-                )
-                self.optimizer_critic = torch.optim.Adam(
-                    self._value_net.parameters(), lr=self.lr_c, eps=1e-5
-                )
-            else:
-                self.optimizer_actor = torch.optim.Adam(
-                    self._policy_net.parameters(), lr=self.lr_a
-                )
-                self.optimizer_critic = torch.optim.Adam(
-                    self._value_net.parameters(), lr=self.lr_c
-                )
+            self.optimizer_actor = torch.optim.Adam(
+                self._policy_net.parameters(),
+                lr=self.lr_a,
+                eps=1e-5 if self.set_adam_eps else 1e-8,
+            )
+
+        if optimize_critic:
+            self.optimizer_critic = torch.optim.Adam(
+                self._value_net.parameters(),
+                lr=self.lr_c,
+                eps=1e-5 if self.set_adam_eps else 1e-8,
+            )
 
         self.beta = config.beta
         if self.beta > 0.0:

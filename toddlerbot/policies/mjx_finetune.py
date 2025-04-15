@@ -558,6 +558,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             self.logger,
             self.base_policy_net if self.finetune_cfg.use_residual else None,
             optimize_z=self.finetune_cfg.optimize_z,
+            optimize_critic=self.finetune_cfg.optimize_critic,
             autoencoder_cfg=self.autoencoder_config,
         )
 

@@ -135,6 +135,7 @@ class FinetuneConfig:
     residual_action_scale: float = 0.1
 
     optimize_z: bool = False
+    optimize_critic: bool = False
 
     @gin.configurable
     @dataclass
