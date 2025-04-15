@@ -942,14 +942,14 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             msg = self.zmq_receiver.get_msg()
 
         # TODO: remove this for the real world
-        msg = ZMQMessage(
-            time=time_curr,
-            control_inputs={"walk_x": 0.1, "walk_y": 0.0, "walk_turn": 0.0},
-            lin_vel=np.zeros(3, dtype=np.float32),
-            arm_force=np.zeros(3, dtype=np.float32),
-            arm_torque=np.zeros(3, dtype=np.float32),
-            arm_ee_pos=np.zeros(3, dtype=np.float32),
-        )
+        # msg = ZMQMessage(
+        #     time=time_curr,
+        #     control_inputs={"walk_x": 0.1, "walk_y": 0.0, "walk_turn": 0.0},
+        #     lin_vel=np.zeros(3, dtype=np.float32),
+        #     arm_force=np.zeros(3, dtype=np.float32),
+        #     arm_torque=np.zeros(3, dtype=np.float32),
+        #     arm_ee_pos=np.zeros(3, dtype=np.float32),
+        # )
 
         if msg.is_paused and not self.is_paused:
             self.timer.stop()

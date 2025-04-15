@@ -76,7 +76,7 @@ class PPO:
         self.optimizer_actor = None
         self.optimizer_critic = None
         if optimize_z:
-            latent_name = "latent_z_1000"
+            latent_name = "latent_z_323"
             with open(f"toddlerbot/finetuning/{latent_name}.pt", "rb") as f:
                 initial_latents = torch.load(f).to(self.device)
 
@@ -140,10 +140,10 @@ class PPO:
         self._policy_net.load_state_dict(policy_net.state_dict())
         print("Successfully set networks from pretraining")
 
-    def get_action(self, s, deterministic=False, z=None):
+    def get_action(self, s, deterministic=False):
         s = torch.unsqueeze(torch.tensor(s, dtype=torch.float), 0).to(self.device)
         with torch.no_grad():
-            dist = self._policy_net(s, z)
+            dist = self._policy_net(s, self.latent_z)
             if deterministic:
                 if isinstance(dist, TransformedDistribution):
                     a_pi = torch.tanh(dist.base_dist.loc)
