@@ -60,9 +60,9 @@ def load_rsl_params_into_pytorch(
     policy_linear_layers = [
         m for m in pt_model.modules() if isinstance(m, torch.nn.Linear)
     ]
-    value_linear_layers = [
-        m for m in value_net.modules() if isinstance(m, torch.nn.Linear)
-    ]
+    # value_linear_layers = [
+    #     m for m in value_net.modules() if isinstance(m, torch.nn.Linear)
+    # ]
 
     with torch.no_grad():
         for i, layer in enumerate(policy_linear_layers):
@@ -91,27 +91,27 @@ def load_rsl_params_into_pytorch(
             target_bias[:min_bias] = rsl_bias_torch[:min_bias]
             layer.bias.copy_(target_bias)
 
-        for i, layer in enumerate(value_linear_layers):
-            kernel_key = f"critic.{2 * i}"
+        # for i, layer in enumerate(value_linear_layers):
+        #     kernel_key = f"critic.{2 * i}"
 
-            rsl_kernel = rsl_params[f"{kernel_key}.weight"]  # shape (in_dim, out_dim)
-            rsl_bias = rsl_params[f"{kernel_key}.bias"]  # shape (out_dim,)
+        #     rsl_kernel = rsl_params[f"{kernel_key}.weight"]  # shape (in_dim, out_dim)
+        #     rsl_bias = rsl_params[f"{kernel_key}.bias"]  # shape (out_dim,)
 
-            rsl_kernel_torch = torch.tensor(rsl_kernel, dtype=layer.weight.dtype)
-            rsl_bias_torch = torch.tensor(rsl_bias, dtype=layer.bias.dtype)
+        #     rsl_kernel_torch = torch.tensor(rsl_kernel, dtype=layer.weight.dtype)
+        #     rsl_bias_torch = torch.tensor(rsl_bias, dtype=layer.bias.dtype)
 
-            # Resize kernel
-            target_weight = torch.zeros_like(layer.weight)
-            min_rows = min(layer.weight.shape[0], rsl_kernel_torch.shape[0])
-            min_cols = min(layer.weight.shape[1], rsl_kernel_torch.shape[1])
-            target_weight[:min_rows, :min_cols] = rsl_kernel_torch[:min_rows, :min_cols]
-            layer.weight.copy_(target_weight)
+        #     # Resize kernel
+        #     target_weight = torch.zeros_like(layer.weight)
+        #     min_rows = min(layer.weight.shape[0], rsl_kernel_torch.shape[0])
+        #     min_cols = min(layer.weight.shape[1], rsl_kernel_torch.shape[1])
+        #     target_weight[:min_rows, :min_cols] = rsl_kernel_torch[:min_rows, :min_cols]
+        #     layer.weight.copy_(target_weight)
 
-            # Resize bias
-            target_bias = torch.zeros_like(layer.bias)
-            min_bias = min(layer.bias.shape[0], rsl_bias_torch.shape[0])
-            target_bias[:min_bias] = rsl_bias_torch[:min_bias]
-            layer.bias.copy_(target_bias)
+        #     # Resize bias
+        #     target_bias = torch.zeros_like(layer.bias)
+        #     min_bias = min(layer.bias.shape[0], rsl_bias_torch.shape[0])
+        #     target_bias[:min_bias] = rsl_bias_torch[:min_bias]
+        #     layer.bias.copy_(target_bias)
 
 
 def soft_clamp(
