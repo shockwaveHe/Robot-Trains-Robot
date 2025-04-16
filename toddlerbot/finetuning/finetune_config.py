@@ -184,9 +184,11 @@ class FinetuneConfig:
         torso_roll: float = 0.0
         torso_pitch: float = 0.0
         torso_yaw_vel: float = 0.0
-        lin_vel_xy: float = 0.0
+        lin_vel_x: float = 0.0
+        lin_vel_y: float = 0.0
         lin_vel_z: float = 0.0
-        ang_vel_xy: float = 0.0
+        ang_vel_x: float = 0.0
+        ang_vel_y: float = 0.0
         ang_vel_z: float = 0.0
         neck_motor_pos: float = 0.0
         arm_motor_pos: float = 0.0
