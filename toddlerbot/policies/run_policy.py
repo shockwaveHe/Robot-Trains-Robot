@@ -898,7 +898,7 @@ def main(args=None):
         policy = PolicyClass(
             args.policy, robot, init_motor_pos, args.ckpt, fixed_command=fixed_command
         )
-    elif "at" in args.policy:  # Arm Treadmill
+    elif "at_leader" in args.policy:  # Arm Treadmill
         while (obs.arm_ee_pos == 0.0).all():
             obs = sim.get_observation()
             time.sleep(0.1)
