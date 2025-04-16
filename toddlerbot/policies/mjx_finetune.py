@@ -489,6 +489,10 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             self.dynamics_net.state_dict(),
             os.path.join(policy_path, f"dynamics_net{suffix}.pth"),
         )
+        torch.save(
+            {"latent_z": self.online_ppo_learner.latent_z},
+            os.path.join(policy_path, f"latent_z{suffix}.pt"),
+        )
         self.logger.save_state(self.exp_folder)
 
     def load_networks(self, exp_folder, data_only=True, suffix="_best"):
