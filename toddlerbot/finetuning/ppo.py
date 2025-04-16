@@ -84,12 +84,20 @@ class PPO:
             self.latent_z = nn.Parameter(initial_latents.clone(), requires_grad=True)
             # self.all_latents = self.latent_z.detach()
             # Create an optimizer for the latent parameters
-            self.latent_lr = float(
-                self.autoencoder_cfg["train"].get("latent_lr", self.lr_a)
-            )
-            # self.latent_lr_ratio = self.latent_lr / self.lr_a
-            self.latent_optimizer = torch.optim.AdamW(
-                [self.latent_z], lr=self.latent_lr
+            # Total number of training steps for decay
+
+            initial_lr = float(self.autoencoder_cfg["train"].get("latent_lr"))
+            decay_factor = float(self.autoencoder_cfg["train"].get("latent_decay"))
+            decay_steps = self.autoencoder_cfg["train"].get("latent_steps")
+            step_size = self.autoencoder_cfg["train"].get("latent_step_size")
+
+            def stepwise_decay(step):
+                decay_count = min(step // step_size, decay_steps // step_size)
+                return max(decay_factor, 1.0 - decay_factor * decay_count)
+
+            self.latent_optimizer = torch.optim.AdamW([self.latent_z], lr=initial_lr)
+            self.latent_lr_scheduler = torch.optim.lr_scheduler.LambdaLR(
+                self.latent_optimizer, stepwise_decay
             )
         else:
             self.optimizer_actor = torch.optim.Adam(
@@ -285,6 +293,8 @@ class PPO:
 
                     self.optimizer_critic.step()
 
+                self.latent_lr_scheduler.step()
+
                 clamped_mask = (ratios < 1 - self.epsilon) | (ratios > 1 + self.epsilon)
                 clamped_fraction = clamped_mask.sum().item() / self.mini_batch_size
                 self._logger.log_update(
@@ -297,6 +307,15 @@ class PPO:
                     actor_loss=actor_loss.item(),
                     dist_entropy=dist_entropy.mean().item(),
                     critic_loss=critic_loss.item(),
+                    actor_lr=self.optimizer_actor.param_groups[0]["lr"]
+                    if self.optimizer_actor
+                    else None,
+                    critic_lr=self.optimizer_critic.param_groups[0]["lr"]
+                    if self.optimizer_critic
+                    else None,
+                    latent_lr=self.latent_optimizer.param_groups[0]["lr"]
+                    if self.latent_optimizer
+                    else None,
                     latent_z=self.get_latent(),
                 )
                 pbar.set_description(

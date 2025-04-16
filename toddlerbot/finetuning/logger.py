@@ -357,6 +357,9 @@ class FinetuneLogger:
         data_point = {"time": time.time(), "update_step": self.update_step_counter}
         # store all user-provided metrics
         for key, val in kwargs.items():
+            if val is None:
+                continue
+
             data_point[key] = val
 
         # add to our list of updates
