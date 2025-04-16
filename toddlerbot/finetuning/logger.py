@@ -2,22 +2,20 @@ import csv
 import math
 import os
 import time
-
-import matplotlib
-import numpy as np
-
-matplotlib.use("Agg")  # for writing figures without an active X server
 from collections import defaultdict
 from queue import Queue
 from threading import Thread
 
 import matplotlib.pyplot as plt
+import numpy as np
 import torch
 from matplotlib.collections import LineCollection
 from scipy.signal import lfilter, lfilter_zi
 from sklearn.manifold import TSNE
 
 from toddlerbot.sim import Obs
+
+# for writing figures without an active X server
 
 
 class FinetuneLogger:
@@ -255,6 +253,7 @@ class FinetuneLogger:
         if len(reward_term_names) == 0:
             return
 
+        plt.switch_backend("Agg")
         ncols = 3
         nrows = math.ceil(len(reward_term_names) / ncols)
         # import ipdb; ipdb.set_trace()
@@ -406,6 +405,7 @@ class FinetuneLogger:
         Creates a grid of subplots for any metrics that have been logged via log_update().
         Each metric becomes its own subplot.
         """
+        plt.switch_backend("Agg")
         if not self.enable_logging:
             return
 
@@ -499,7 +499,7 @@ class FinetuneLogger:
         trajectory_embedded = embedded[n_initial:]
 
         # Create plot
-        plt.figure(figsize=(10, 8))
+        fig = plt.figure(figsize=(8, 6))
 
         if dim == 2:
             # Plot initial points
@@ -565,4 +565,5 @@ class FinetuneLogger:
         # Save the figure
         output_path = os.path.join(log_dir, f"latent_dynamics_{dim}d.png")
         plt.savefig(output_path, dpi=300, bbox_inches="tight")
+        plt.close(fig)
         print(f"Visualization saved to {output_path}")
