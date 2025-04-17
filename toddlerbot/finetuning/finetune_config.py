@@ -134,6 +134,7 @@ class FinetuneConfig:
     use_residual: bool = False
     residual_action_scale: float = 0.1
 
+    use_latent: bool = False
     optimize_z: bool = False
     optimize_critic: bool = False
 

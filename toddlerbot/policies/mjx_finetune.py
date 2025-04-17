@@ -72,7 +72,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         )
 
         self.autoencoder_config = None
-        if self.finetune_cfg.optimize_z:
+        if self.finetune_cfg.use_latent:
             with open(
                 os.path.join("toddlerbot", "autoencoder", "config.yaml"), "r"
             ) as f:
@@ -197,7 +197,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                     ]
                 )
 
-        if self.finetune_cfg.optimize_z:
+        if self.finetune_cfg.use_latent:
             self.finetune_cfg.use_residual = False
 
         if self.finetune_cfg.use_residual:
@@ -561,6 +561,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             self.value_net,
             self.logger,
             self.base_policy_net if self.finetune_cfg.use_residual else None,
+            use_latent=self.finetune_cfg.use_latent,
             optimize_z=self.finetune_cfg.optimize_z,
             optimize_critic=self.finetune_cfg.optimize_critic,
             autoencoder_cfg=self.autoencoder_config,

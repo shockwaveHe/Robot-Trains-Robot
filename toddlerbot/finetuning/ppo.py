@@ -29,6 +29,7 @@ class PPO:
         value_net: ValueNetwork,
         logger: FinetuneLogger,
         base_policy_net: Optional[GaussianPolicyNetwork] = None,
+        use_latent: bool = False,
         optimize_z: bool = False,
         optimize_critic: bool = False,
         autoencoder_cfg: Optional[dict] = None,
@@ -49,6 +50,7 @@ class PPO:
         self.use_adv_norm = config.online.use_adv_norm
         self.is_clip_value = config.online.is_clip_value
         self.device = device
+        self.use_latent = use_latent
         self.optimize_z = optimize_z
         self.optimizer_critic = optimize_critic
         self.autoencoder_cfg = autoencoder_cfg
@@ -77,15 +79,17 @@ class PPO:
         self.latent_optimizer = None
         self.optimizer_actor = None
         self.optimizer_critic = None
-        if optimize_z:
+
+        if use_latent:
             with open("toddlerbot/finetuning/latent_z.pt", "rb") as f:
                 initial_latents = torch.load(f).to(self.device)
 
             self.latent_z = nn.Parameter(initial_latents.clone(), requires_grad=True)
+
+        if optimize_z:
             # self.all_latents = self.latent_z.detach()
             # Create an optimizer for the latent parameters
             # Total number of training steps for decay
-
             initial_lr = float(self.autoencoder_cfg["train"].get("latent_lr"))
             decay_factor = float(self.autoencoder_cfg["train"].get("latent_decay"))
             decay_steps = self.autoencoder_cfg["train"].get("latent_steps")
@@ -263,6 +267,7 @@ class PPO:
                         torch.nn.utils.clip_grad_norm_([self.latent_z], 1.0)
 
                     self.latent_optimizer.step()
+                    self.latent_lr_scheduler.step()
 
                 # Critic loss
                 current_values = self._value_net(
@@ -292,8 +297,6 @@ class PPO:
                         )
 
                     self.optimizer_critic.step()
-
-                self.latent_lr_scheduler.step()
 
                 clamped_mask = (ratios < 1 - self.epsilon) | (ratios > 1 + self.epsilon)
                 clamped_fraction = clamped_mask.sum().item() / self.mini_batch_size
