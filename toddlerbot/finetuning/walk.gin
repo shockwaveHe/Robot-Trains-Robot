@@ -45,5 +45,5 @@ FinetuneConfig.bppo_steps = 200
 FinetuneConfig.abppo_update_steps = 3
 FinetuneConfig.is_state_norm = False
 FinetuneConfig.use_latent = True
-FinetuneConfig.optimize_z = False
+FinetuneConfig.optimize_z = True
 FinetuneConfig.optimize_critic = True

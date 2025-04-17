@@ -822,7 +822,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             feet_y_dist = feet_pos["left"][1] - feet_pos["right"][1]
             obs.feet_y_dist = feet_y_dist
             reward_dict = self._compute_reward(obs, action_real)
-            total_reward += sum(reward_dict.values())  # * self.control_dt
+            total_reward += sum(reward_dict.values()) * self.control_dt
 
             obs = self.sim.get_observation()
             step_curr += 1
@@ -847,9 +847,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 self.replay_buffer[i]
             )
             reward_dict = self._compute_reward(raw_obs, action)
-            self.replay_buffer._reward[i] = sum(
-                reward_dict.values()
-            )  # * self.control_dt
+            self.replay_buffer._reward[i] = sum(reward_dict.values()) * self.control_dt
             if not (done or trunc):
                 self.last_last_action = self.last_action.copy()
                 self.last_action = action.copy()
@@ -1061,7 +1059,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 self.last_action = action_real.copy()
 
                 reward = (
-                    sum(reward_dict.values())  # * self.control_dt
+                    sum(reward_dict.values()) * self.control_dt
                 )  # TODO: verify, why multiply by dt?
                 self.logger.log_step(
                     reward_dict,

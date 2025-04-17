@@ -208,9 +208,7 @@ class RemoteServer:
                             # log_dict['fx'], log_dict['Ax'], log_dict['freq_x'], log_dict['error_x'] = msg['raw_obs'].ee_force[0], self.policy.Ax, self.policy.freq_x, self.policy.error_x
                             # import ipdb; ipdb.set_trace()
                             reward_dict = self.policy._compute_reward(raw_obs, msg["a"])
-                            reward = sum(
-                                reward_dict.values()
-                            )  # * self.policy.control_dt
+                            reward = sum(reward_dict.values()) * self.policy.control_dt
                             self.policy.last_last_action = (
                                 self.policy.last_action.copy()
                             )
