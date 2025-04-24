@@ -103,7 +103,9 @@ class MotionReference(ABC):
         self.neck_gear_ratio = self._get_gear_ratios(neck_motor_names)
         self.neck_joint_limits = np.array(
             [
-                self.robot.joint_limits["neck_yaw_driven"],
+                self.robot.joint_limits["neck_yaw_driven"]
+                if "neck_yaw_driven" in self.robot.joint_limits.keys()
+                else self.robot.joint_limits["neck_yaw"],
                 self.robot.joint_limits["neck_pitch"],
             ],
             dtype=np.float32,
@@ -142,8 +144,12 @@ class MotionReference(ABC):
         """
         self.waist_coef = np.array(
             [
-                self.robot.config["general"]["offsets"]["waist_roll_coef"],
-                self.robot.config["general"]["offsets"]["waist_yaw_coef"],
+                self.robot.config["general"]["offsets"]["waist_roll_coef"]
+                if "waist_roll_coef" in self.robot.config["general"]["offsets"].keys()
+                else 1.0,
+                self.robot.config["general"]["offsets"]["waist_yaw_coef"]
+                if "waist_yaw_coef" in self.robot.config["general"]["offsets"].keys()
+                else 1.0,
             ],
             dtype=np.float32,
         )
@@ -611,11 +617,12 @@ class MotionReference(ABC):
         qpos = inplace_update(qpos, 7 + self.mj_motor_indices, motor_pos_ref)
         qpos = inplace_update(qpos, 7 + self.mj_joint_indices, joint_pos_ref)
 
-        passive_pos_ref = (
-            state_ref[13 + self.robot.nu + self.passive_joint_indices]
-            * self.passive_joint_signs
-        )
-        qpos = inplace_update(qpos, 7 + self.mj_passive_indices, passive_pos_ref)
+        if len(self.mj_passive_indices) > 0:
+            passive_pos_ref = (
+                state_ref[13 + self.robot.nu + self.passive_joint_indices]
+                * self.passive_joint_signs
+            )
+            qpos = inplace_update(qpos, 7 + self.mj_passive_indices, passive_pos_ref)
 
         waist_joint_pos = state_ref[13 + self.robot.nu + self.waist_joint_indices]
         waist_euler = np.array([waist_joint_pos[0], 0.0, waist_joint_pos[1]])

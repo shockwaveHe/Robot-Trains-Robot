@@ -1,0 +1,69 @@
+root_name: pelvis
+ground_height: 0.00
+scale: 1.0
+ik_match_table:
+  left_ee_center:
+    vicon_frame_name: "left_hand_pose"
+    frame_type: "site"
+    pos_weight: 100
+    rot_weight: 100
+    pos_offset: [0.0, 0.0, 0.0]
+    rot_offset: [1.0, 0.0, 0.0, 0.0] # w x y z
+  right_ee_center:
+    vicon_frame_name: "right_hand_pose"
+    frame_type: "site"
+    pos_weight: 100
+    rot_weight: 100
+    pos_offset: [0.0, 0.0, 0.0]
+    rot_offset: [1.0, 0.0, 0.0, 0.0]
+  head:
+    vicon_frame_name: "head_pose"
+    frame_type: "body"
+    pos_weight: 100
+    rot_weight: 10
+    pos_offset: [0.0, 0.0, 0.0]
+    rot_offset: [1.0, 0.0, 0.0, 0.0]
+  torso:
+    vicon_frame_name: "torso_target"
+    frame_type: "body"
+    pos_weight: 100
+    rot_weight: 100
+    pos_offset: [0.0, 0.0, 0.0]
+    rot_offset: [1.0, 0.0, 0.0, 0.0]
+  # left_calf_link:
+  #   vicon_frame_name: "left_knee_target"
+  #   frame_type: "body"
+  #   pos_weight: 10
+  #   rot_weight: 10
+  #   pos_offset: [0.0, 0.0, 0.0]
+  #   rot_offset: [0.0, 0.0, 0.0, 1.0]
+  # right_calf_link:
+  #   vicon_frame_name: "right_knee_target"
+  #   frame_type: "body"
+  #   pos_weight: 10
+  #   rot_weight: 10
+  #   pos_offset: [0.0, 0.0, 0.0]
+  #   rot_offset: [0.0, 0.0, 0.0, 1.0]
+  ank_roll_link:
+    vicon_frame_name: "left_foot_target"
+    frame_type: "body"
+    pos_weight: 1000
+    rot_weight: 100
+    pos_offset: [0.0, 0.0, 0.0]
+    rot_offset: [1.0, 0.0, 0.0, 0.0]
+  ank_roll_link_2:
+    vicon_frame_name: "right_foot_target"
+    frame_type: "body"
+    pos_weight: 1000
+    rot_weight: 100
+    pos_offset: [0.0, 0.0, 0.0]
+    rot_offset: [1.0, 0.0, 0.0, 0.0]
+  # waist_gears:
+  #   vicon_frame_name: "waist_target"
+  #   frame_type: "body"
+  #   pos_weight: 1000
+  #   rot_weight: 10
+  #   pos_offset: [0.0, 0.0, 0.0]
+  #   rot_offset: [0.0, 0.0, 0.0, 1.0]
+
+anchor_list: ["torso", "left_calf_link", "right_calf_link", "ank_roll_link", "ank_roll_link_2", "waist_gears", "right_ee_center", "head"]

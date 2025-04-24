@@ -65,14 +65,20 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
         self.task = task
         prep = "kneel" if task == "pick" else "hold"
 
-        self.neck_pitch_idx = robot.motor_ordering.index("neck_pitch_act")
+        self.neck_pitch_idx = (
+            robot.motor_ordering.index("neck_pitch_act")
+            if "neck_pitch_act" in robot.motor_ordering
+            else robot.motor_ordering.index("neck_pitch")
+        )
         if task == "hug":
             self.neck_pitch_ratio = 1.0
         elif task == "pick":
             self.neck_pitch_ratio = 0.75
+        elif task == "teleop_vr":
+            self.neck_pitch_ratio = 0.0
         else:
-            self.neck_pitch_ratio = 1.0
-
+            # self.neck_pitch_ratio = 1.0
+            self.neck_pitch_ratio = 0.0
         # self.neck_pitch_ratio = 0.0
         self.num_arm_motors = 7
 
@@ -120,6 +126,24 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
         else:
             return self.arm_motor_pos
 
+    def get_neck_motor_pos(self, obs: Obs) -> npt.NDArray[np.float32]:
+        """Retrieves the current positions of the arm motors.
+
+        If the arm motor positions have been explicitly set, returns those values.
+        Otherwise, extracts and returns the positions from the manipulation motor
+        positions using predefined arm motor indices.
+
+        Args:
+            obs (Obs): The observation object containing relevant data.
+
+        Returns:
+            npt.NDArray[np.float32]: An array of arm motor positions.
+        """
+        if self.neck_motor_pos is None:
+            return self.manip_motor_pos[self.neck_motor_indices]
+        else:
+            return self.neck_motor_pos
+
     def step(
         self, obs: Obs, is_real: bool = False
     ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
@@ -147,7 +171,6 @@ class TeleopFollowerPDPolicy(BalancePDPolicy, policy_name="teleop_follower_pd"):
             motor_target[self.leg_motor_indices] = self.manip_motor_pos[
                 self.leg_motor_indices
             ]
-
         # Log the data
         if self.is_ended:
             self.is_ended = False

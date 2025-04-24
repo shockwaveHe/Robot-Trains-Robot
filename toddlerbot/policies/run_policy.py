@@ -570,8 +570,8 @@ def main(args=None):
     parser.add_argument(
         "--task",
         type=str,
-        default="hug",
-        choices=["hug", "pick", "grasp"],
+        default="",
+        # choices=["hug", "pick", "grasp"],
         help="The name of the task.",
     )
     parser.add_argument(
@@ -580,6 +580,19 @@ def main(args=None):
         dest="plot",
         default=True,
         help="Skip the plot functions.",
+    )
+
+    parser.add_argument(
+        "--teleop_mujoco_path",
+        type=str,
+        default="toddlerbot/descriptions/toddlerbot_active/toddlerbot_active_scene_teleop.xml",
+        help="The xml configuration file for the teleop mujoco simulation.",
+    )
+    parser.add_argument(
+        "--teleop_ik_config",
+        type=str,
+        default="toddlerbot/manipulation/teleoperation/ik_configs/quest_toddy.yaml",
+        help="The ik configuration file for the teleop mujoco simulation.",
     )
     args = parser.parse_args(args)
 
@@ -641,6 +654,15 @@ def main(args=None):
     elif "push_cart" in args.policy:
         policy = PolicyClass(args.policy, robot, init_motor_pos, args.ckpt)
 
+    elif "teleop_vr_leader" in args.policy:
+        policy = PolicyClass(
+            args.policy,
+            robot,
+            init_motor_pos,
+            args.teleop_mujoco_path,
+            args.teleop_ik_config,
+            ip=args.ip,
+        )
     elif issubclass(PolicyClass, MJXPolicy):
         fixed_command = None
         if len(args.command) > 0:

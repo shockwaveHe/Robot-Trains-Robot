@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "retarget_lib"
+version = "0.0.1"
+dependencies = [
+  "loop_rate_limiters",
+  "mink",
+  "mujoco",
+  "numpy",
+  "scipy",
+  "pyvicon-datastream",
+]
+requires-python = ">=3.9"
+authors = [
+  {name = "Joao Pedro Araujo"},
+]
+description = "A library of tools for human motion retargeting."
+readme = "README.md"
+license = {file = "LICENSE"}

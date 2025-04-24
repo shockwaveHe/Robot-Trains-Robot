@@ -1,0 +1,14 @@
+# Adapted from ARCap: https://github.com/Ericcsr/ARCap
+# IP at my home:
+# LOCAL_HOST = "10.128.156.68"
+# VR_HOST = "10.128.138.61"
+
+# IP at the lab:
+LOCAL_HOST = "192.168.0.29"
+VR_HOST = "192.168.0.47"
+
+DEPTH_CMD_PORT = 12321
+IK_RESULT_PORT = 12345
+POSE_CMD_PORT = 12346
+ROKOKO_PORT = 14043
+HAND_INFO_PORT = 65432

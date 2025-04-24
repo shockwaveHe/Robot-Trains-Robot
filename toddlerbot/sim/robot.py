@@ -232,8 +232,16 @@ class Robot:
             List[float]: A list containing the calculated waist roll and yaw angles.
         """
         offsets = self.config["general"]["offsets"]
-        waist_roll = offsets["waist_roll_coef"] * (-motor_pos[0] + motor_pos[1])
-        waist_yaw = offsets["waist_yaw_coef"] * (motor_pos[0] + motor_pos[1])
+        waist_roll = (
+            offsets["waist_roll_coef"] * (-motor_pos[0] + motor_pos[1])
+            if "waist_roll_coef" in offsets.keys()
+            else 1.0 * (-motor_pos[0] + motor_pos[1])
+        )
+        waist_yaw = (
+            offsets["waist_yaw_coef"] * (motor_pos[0] + motor_pos[1])
+            if "waist_yaw_coef" in offsets.keys()
+            else 1.0 * (motor_pos[0] + motor_pos[1])
+        )
         return [waist_roll, waist_yaw]
 
     def waist_ik(self, waist_pos: List[float]) -> List[float]:
@@ -246,8 +254,16 @@ class Robot:
             List[float]: A list containing the calculated positions for the two waist actuators.
         """
         offsets = self.config["general"]["offsets"]
-        roll = waist_pos[0] / offsets["waist_roll_coef"]
-        yaw = waist_pos[1] / offsets["waist_yaw_coef"]
+        roll = (
+            waist_pos[0] / offsets["waist_roll_coef"]
+            if "waist_roll_coef" in offsets.keys()
+            else waist_pos[0]
+        )
+        yaw = (
+            waist_pos[1] / offsets["waist_yaw_coef"]
+            if "waist_yaw_coef" in offsets.keys()
+            else waist_pos[1]
+        )
         waist_act_1 = (-roll + yaw) / 2
         waist_act_2 = (roll + yaw) / 2
         return [waist_act_1, waist_act_2]

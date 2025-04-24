@@ -115,6 +115,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         self.step_curr = 0
 
         self.arm_motor_pos = None
+        self.neck_motor_pos = None
         self.camera_frame: npt.NDArray[np.uint8] | None = None
         self.camera_time_list: List[float] = []
         self.camera_frame_list: List[npt.NDArray[np.uint8]] = []
@@ -123,6 +124,9 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         self.arm_delta_max = 0.2
         self.last_gripper_pos = np.zeros(2, dtype=np.float32)
         self.gripper_delta_max = 0.5
+
+        self.last_neck_motor_pos = None
+        self.neck_delta_max = 0.1
 
         self.left_sho_pitch_idx = robot.motor_ordering.index("left_sho_pitch")
         self.right_sho_pitch_idx = robot.motor_ordering.index("right_sho_pitch")
@@ -165,7 +169,7 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         self.time_start = self.prep_duration
 
         self.is_ready = False
-        self.manip_duration = 0.0
+        self.manip_duration = 1.0  # 0.0
         self.manip_motor_pos = self.default_motor_pos.copy()
 
     def reset(self):
@@ -251,6 +255,17 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
             npt.NDArray[np.float32]: An array of the arm motor positions.
         """
         return self.manip_motor_pos[self.arm_motor_indices]
+
+    def get_neck_motor_pos(self, obs: Obs) -> npt.NDArray[np.float32]:
+        """Retrieve the positions of the arm motors from the observation data.
+
+        Args:
+            obs (Obs): The observation data containing motor positions.
+
+        Returns:
+            npt.NDArray[np.float32]: An array of the arm motor positions.
+        """
+        return self.manip_motor_pos[self.neck_motor_indices]
 
     def step(
         self, obs: Obs, is_real: bool = False
@@ -338,8 +353,20 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         if msg is not None:
             # print(f"latency: {abs(time.time() - msg.time) * 1000:.2f} ms")
             if abs(time.time() - msg.time) < 1:
-                self.arm_motor_pos = msg.action
-                if self.last_arm_motor_pos is not None:
+                if msg.action is None:
+                    self.arm_motor_pos = self.last_arm_motor_pos
+                    self.neck_motor_pos = self.last_neck_motor_pos
+                elif hasattr(self, "task") and self.task == "teleop_vr":
+                    self.arm_motor_pos = msg.action[2:]
+                    self.neck_motor_pos = msg.action[:2]
+                else:
+                    self.arm_motor_pos = msg.action
+                # else:
+                #     print(f"\naction received")
+                if (
+                    self.last_arm_motor_pos is not None
+                    and self.arm_motor_pos is not None
+                ):
                     self.arm_motor_pos = np.clip(
                         self.arm_motor_pos,
                         self.last_arm_motor_pos - self.arm_delta_max,
@@ -347,6 +374,15 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
                     )
                 self.last_arm_motor_pos = self.arm_motor_pos
 
+                if (
+                    self.last_neck_motor_pos is not None
+                    and self.neck_motor_pos is not None
+                ):
+                    self.neck_motor_pos = np.clip(
+                        (self.neck_motor_pos + self.last_neck_motor_pos) / 2,
+                        self.last_neck_motor_pos - self.neck_delta_max,
+                        self.last_neck_motor_pos + self.neck_delta_max,
+                    )
                 if (
                     self.robot.has_gripper
                     and self.arm_motor_pos is not None
@@ -368,6 +404,12 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
                         self.arm_motor_pos,
                         self.motor_limits[self.arm_motor_indices, 0],
                         self.motor_limits[self.arm_motor_indices, 1],
+                    )
+                if self.neck_motor_pos is not None:
+                    self.neck_motor_pos = np.clip(
+                        self.neck_motor_pos,
+                        self.motor_limits[self.neck_motor_indices, 0],
+                        self.motor_limits[self.neck_motor_indices, 1],
                     )
             else:
                 print("\nstale message received, discarding")
@@ -401,6 +443,8 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
         arm_motor_pos = self.get_arm_motor_pos(obs)
         arm_joint_pos = self.balance_ref.arm_fk(arm_motor_pos)
 
+        neck_motor_pos = self.get_neck_motor_pos(obs)
+        neck_joint_pos = self.balance_ref.neck_fk(neck_motor_pos)
         if self.state_ref is None:
             manip_joint_pos = np.array(
                 list(
@@ -425,6 +469,8 @@ class BalancePDPolicy(BasePolicy, policy_name="balance_pd"):
                 self.balance_ref.get_state_ref(state_ref, 0.0, command)
             )
 
+        self.state_ref[13 + self.neck_motor_indices] = neck_motor_pos
+        self.state_ref[13 + self.robot.nu + self.neck_joint_indices] = neck_joint_pos
         self.state_ref[13 + self.arm_motor_indices] = arm_motor_pos
         self.state_ref[13 + self.robot.nu + self.arm_joint_indices] = arm_joint_pos
         self.state_ref = np.asarray(

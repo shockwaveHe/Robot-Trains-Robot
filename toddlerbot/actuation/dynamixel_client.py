@@ -24,6 +24,7 @@ ADDR_PRESENT_CURRENT = 126
 ADDR_PRESENT_POS_VEL = 128
 ADDR_PRESENT_POS_VEL_CUR = 126
 ADDR_PRESENT_V_IN = 144
+ADDR_PRESENT_TEMPERATURE = 146
 
 # Data Byte Length
 LEN_MODEL_NUMBER = 2
@@ -35,6 +36,7 @@ LEN_PRESENT_POS_VEL_CUR = 10
 LEN_GOAL_POSITION = 4
 LEN_GOAL_CURRENT = 2
 LEN_PRESENT_V_IN = 2
+LEN_PRESENT_TEMPERATURE = 1
 
 DEFAULT_POS_SCALE = 2.0 * np.pi / 4096  # 0.088 degrees
 # See http://emanual.robotis.com/docs/en/dxl/x/xh430-v210/#goal-velocity
@@ -289,6 +291,9 @@ class DynamixelClient:
     def read_vin(self, retries: int = 0) -> Tuple[float, npt.NDArray[np.float32]]:
         """Reads the input voltage to the motors."""
         return self.sync_read(ADDR_PRESENT_V_IN, LEN_PRESENT_V_IN, DEFAULT_V_IN_SCALE)
+
+    def read_temp(self, retries: int = 0) -> Tuple[float, npt.NDArray[np.float32]]:
+        return self.sync_read(ADDR_PRESENT_TEMPERATURE, LEN_PRESENT_TEMPERATURE, 1.0)
 
     # @profile()
     def read_pos_vel(
