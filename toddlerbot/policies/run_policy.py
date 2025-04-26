@@ -869,6 +869,7 @@ def main(args=None):
                 exp_folder=exp_folder_path,
                 ip=args.ip,
                 eval_mode=args.eval,
+                is_real="real" in sim.name,
             )
         else:
             policy = PolicyClass(
@@ -897,12 +898,10 @@ def main(args=None):
         policy = PolicyClass(
             args.policy, robot, init_motor_pos, args.ckpt, fixed_command=fixed_command
         )
-    elif "at" in args.policy:  # Arm Treadmill
-        if not args.eval:
-            while (obs.arm_ee_pos == 0.0).all():
-                obs = sim.get_observation()
-                time.sleep(0.1)
-
+    elif "at_leader" in args.policy:  # Arm Treadmill
+        while (obs.arm_ee_pos == 0.0).all():
+            obs = sim.get_observation()
+            time.sleep(0.1)
         policy = PolicyClass(
             args.policy,
             robot,

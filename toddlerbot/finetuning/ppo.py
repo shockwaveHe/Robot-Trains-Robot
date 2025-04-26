@@ -1,17 +1,22 @@
+import os
 from copy import deepcopy
 from typing import Optional
-import torch
-import torch.nn.functional as F
-from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
 
 import numpy as np
-from tqdm import tqdm
-import os
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 from torch.distributions.transformed_distribution import TransformedDistribution
-from toddlerbot.finetuning.networks import GaussianPolicyNetwork, ValueNetwork
-from toddlerbot.finetuning.replay_buffer import OnlineReplayBuffer
+from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
+from tqdm import tqdm
+
 from toddlerbot.finetuning.finetune_config import FinetuneConfig
 from toddlerbot.finetuning.logger import FinetuneLogger
+from toddlerbot.finetuning.networks import (
+    GaussianPolicyNetwork,
+    ValueNetwork,
+)
+from toddlerbot.finetuning.replay_buffer import OnlineReplayBuffer
 from toddlerbot.finetuning.utils import CONST_EPS
 
 
@@ -24,7 +29,11 @@ class PPO:
         value_net: ValueNetwork,
         logger: FinetuneLogger,
         base_policy_net: Optional[GaussianPolicyNetwork] = None,
-    ):
+        use_latent: bool = False,
+        optimize_z: bool = False,
+        optimize_critic: bool = False,
+        autoencoder_cfg: Optional[dict] = None,
+    ) -> None:
         self.batch_size = config.online.batch_size
         self.mini_batch_size = config.online.mini_batch_size
         self.max_train_step = config.online.max_train_step
@@ -41,6 +50,10 @@ class PPO:
         self.use_adv_norm = config.online.use_adv_norm
         self.is_clip_value = config.online.is_clip_value
         self.device = device
+        self.use_latent = use_latent
+        self.optimize_z = optimize_z
+        self.optimizer_critic = optimize_critic
+        self.autoencoder_cfg = autoencoder_cfg
 
         self._config = config
         self._device = device
@@ -59,19 +72,49 @@ class PPO:
         # else:
         self._value_net = value_net.to(self.device)
 
-        if self.set_adam_eps:  # Trick 9: set Adam epsilon=1e-5
-            self.optimizer_actor = torch.optim.Adam(
-                self._policy_net.parameters(), lr=self.lr_a, eps=1e-5
-            )
-            self.optimizer_critic = torch.optim.Adam(
-                self._value_net.parameters(), lr=self.lr_c, eps=1e-5
+        # register the optimizable latents
+        # Create a learnable parameter tensor initialized with initial_latents
+
+        self.latent_z = None
+        self.latent_optimizer = None
+        self.optimizer_actor = None
+        self.optimizer_critic = None
+
+        if use_latent:
+            with open("toddlerbot/finetuning/latent_z.pt", "rb") as f:
+                initial_latents = torch.load(f).to(self.device)
+
+            self.latent_z = nn.Parameter(initial_latents.clone(), requires_grad=True)
+
+        if optimize_z:
+            # self.all_latents = self.latent_z.detach()
+            # Create an optimizer for the latent parameters
+            # Total number of training steps for decay
+            initial_lr = float(self.autoencoder_cfg["train"].get("latent_lr"))
+            decay_factor = float(self.autoencoder_cfg["train"].get("latent_decay"))
+            decay_steps = self.autoencoder_cfg["train"].get("latent_steps")
+            step_size = self.autoencoder_cfg["train"].get("latent_step_size")
+
+            def stepwise_decay(step):
+                decay_count = min(step // step_size, decay_steps // step_size)
+                return max(decay_factor, 1.0 - decay_factor * decay_count)
+
+            self.latent_optimizer = torch.optim.AdamW([self.latent_z], lr=initial_lr)
+            self.latent_lr_scheduler = torch.optim.lr_scheduler.LambdaLR(
+                self.latent_optimizer, stepwise_decay
             )
         else:
             self.optimizer_actor = torch.optim.Adam(
-                self._policy_net.parameters(), lr=self.lr_a
+                self._policy_net.parameters(),
+                lr=self.lr_a,
+                eps=1e-5 if self.set_adam_eps else 1e-8,
             )
+
+        if optimize_critic:
             self.optimizer_critic = torch.optim.Adam(
-                self._value_net.parameters(), lr=self.lr_c
+                self._value_net.parameters(),
+                lr=self.lr_c,
+                eps=1e-5 if self.set_adam_eps else 1e-8,
             )
 
         self.beta = config.beta
@@ -111,7 +154,7 @@ class PPO:
     def get_action(self, s, deterministic=False):
         s = torch.unsqueeze(torch.tensor(s, dtype=torch.float), 0).to(self.device)
         with torch.no_grad():
-            dist = self._policy_net(s)
+            dist = self._policy_net(s, self.latent_z)
             if deterministic:
                 if isinstance(dist, TransformedDistribution):
                     a_pi = torch.tanh(dist.base_dist.loc)
@@ -180,7 +223,7 @@ class PPO:
             for index in BatchSampler(
                 SubsetRandomSampler(range(len(states))), self.mini_batch_size, False
             ):
-                new_dist = self._policy_net(states[index])
+                new_dist = self._policy_net(states[index], self.latent_z)
                 # dist_entropy = new_dist.base_dist.entropy().sum(1, keepdim=True)
                 if isinstance(new_dist, TransformedDistribution):
                     pre_tanh_sample = new_dist.transforms[-1].inv(new_dist.rsample())
@@ -205,11 +248,26 @@ class PPO:
                     -torch.min(surr1, surr2) - self.entropy_coef * dist_entropy
                 ).mean()
                 actor_losses.append(actor_loss.item())
-                self.optimizer_actor.zero_grad()
-                actor_loss.backward()
-                if self.use_grad_clip:
-                    torch.nn.utils.clip_grad_norm_(self._policy_net.parameters(), 1.0)
-                self.optimizer_actor.step()
+
+                if self.optimizer_actor:
+                    self.optimizer_actor.zero_grad()
+                    actor_loss.backward()
+                    if self.use_grad_clip:
+                        torch.nn.utils.clip_grad_norm_(
+                            self._policy_net.parameters(), 1.0
+                        )
+                    self.optimizer_actor.step()
+
+                if self.latent_optimizer:
+                    # Update the latent parameters
+                    self.latent_optimizer.zero_grad()
+                    if not self.optimizer_actor:
+                        actor_loss.backward()
+                    if self.use_grad_clip:
+                        torch.nn.utils.clip_grad_norm_([self.latent_z], 1.0)
+
+                    self.latent_optimizer.step()
+                    self.latent_lr_scheduler.step()
 
                 # Critic loss
                 current_values = self._value_net(
@@ -229,11 +287,16 @@ class PPO:
                 else:
                     critic_loss = F.mse_loss(returns[index], current_values).mean()
                 critic_losses.append(critic_loss.item())
-                self.optimizer_critic.zero_grad()
-                critic_loss.backward()
-                if self.use_grad_clip:
-                    torch.nn.utils.clip_grad_norm_(self._value_net.parameters(), 1.0)
-                self.optimizer_critic.step()
+
+                if self.optimizer_critic:
+                    self.optimizer_critic.zero_grad()
+                    critic_loss.backward()
+                    if self.use_grad_clip:
+                        torch.nn.utils.clip_grad_norm_(
+                            self._value_net.parameters(), 1.0
+                        )
+
+                    self.optimizer_critic.step()
 
                 clamped_mask = (ratios < 1 - self.epsilon) | (ratios > 1 + self.epsilon)
                 clamped_fraction = clamped_mask.sum().item() / self.mini_batch_size
@@ -247,6 +310,16 @@ class PPO:
                     actor_loss=actor_loss.item(),
                     dist_entropy=dist_entropy.mean().item(),
                     critic_loss=critic_loss.item(),
+                    actor_lr=self.optimizer_actor.param_groups[0]["lr"]
+                    if self.optimizer_actor
+                    else None,
+                    critic_lr=self.optimizer_critic.param_groups[0]["lr"]
+                    if self.optimizer_critic
+                    else None,
+                    latent_lr=self.latent_optimizer.param_groups[0]["lr"]
+                    if self.latent_optimizer
+                    else None,
+                    latent_z=self.get_latent(),
                 )
                 pbar.set_description(
                     f"PPO training step {i} (actor_loss: {actor_loss.item()}, critic_loss: {critic_loss.item()})"
@@ -259,7 +332,16 @@ class PPO:
         # TODO: decay by max train steps or train steps per iteration
         lr_a_now = self.lr_a * (1 - current_steps / self.max_train_step)
         lr_c_now = self.lr_c * (1 - current_steps / self.max_train_step)
-        for p in self.optimizer_actor.param_groups:
-            p["lr"] = lr_a_now
-        for p in self.optimizer_critic.param_groups:
-            p["lr"] = lr_c_now
+        if self.optimizer_actor:
+            for p in self.optimizer_actor.param_groups:
+                p["lr"] = lr_a_now
+
+        if self.optimizer_critic:
+            for p in self.optimizer_critic.param_groups:
+                p["lr"] = lr_c_now
+
+    def get_latent(self):
+        if self.latent_z is None:
+            return None
+
+        return self.latent_z.detach().cpu().clone()

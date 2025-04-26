@@ -83,7 +83,7 @@ class CalibratePolicy(BasePolicy, policy_name="calibrate"):
             action = np.asarray(
                 interpolate_action(obs.time, self.prep_time, self.prep_action)
             )
-            return {}, action
+            return {}, action, obs
 
         # PD+I controller to maintain torso pitch at 0
         error = obs.euler[1] + 0.05  # 0.05 cancels some backlash
@@ -108,4 +108,4 @@ class CalibratePolicy(BasePolicy, policy_name="calibrate"):
         )
         motor_target = np.array(list(motor_angles.values()), dtype=np.float32)
 
-        return {}, motor_target
+        return {}, motor_target, obs

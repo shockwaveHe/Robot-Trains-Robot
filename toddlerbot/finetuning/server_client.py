@@ -185,27 +185,27 @@ class RemoteServer:
 
                             log_dict = {}
                             raw_obs = msg["raw_obs"]
-                            if (
-                                self.policy.name == "walk_finetune"
-                                or self.policy.name == "raise_arm"
-                            ):
-                                self.policy.sim.set_motor_angles(raw_obs.motor_pos)
-                                self.policy.sim.forward()
+                            # if (
+                            #     self.policy.name == "walk_finetune"
+                            #     or self.policy.name == "raise_arm"
+                            # ):
+                            #     self.policy.sim.set_motor_angles(raw_obs.motor_pos)
+                            #     self.policy.sim.forward()
 
-                            if self.policy.name == "walk_finetune":
-                                feet_pos = self.policy.sim.get_feet_pos()
-                                feet_y_dist = feet_pos["left"][1] - feet_pos["right"][1]
-                                log_dict["feet_y_dist"] = feet_y_dist
-                                raw_obs.feet_y_dist = feet_y_dist
-                            elif self.policy.name == "raise_arm":
-                                hand_pos = self.policy.sim.get_hand_pos()
-                                log_dict["hand_z_dist_left"] = hand_pos["left"][2]
-                                log_dict["hand_z_dist_right"] = hand_pos["right"][2]
-                                raw_obs.hand_z_dist = np.array(
-                                    [hand_pos["left"][2], hand_pos["right"][2]]
-                                )
-                                # self.policy.Ax, self.policy.freq_x, self.policy.phase_x, self.policy.offset_x, self.policy.error_x = self.policy._fit_sine_to_buffer(self.policy.fx_buffer)
-                                # log_dict['fx'], log_dict['Ax'], log_dict['freq_x'], log_dict['error_x'] = msg['raw_obs'].ee_force[0], self.policy.Ax, self.policy.freq_x, self.policy.error_x
+                            # if self.policy.name == "walk_finetune":
+                            #     feet_pos = self.policy.sim.get_feet_pos()
+                            #     feet_y_dist = feet_pos["left"][1] - feet_pos["right"][1]
+                            #     log_dict["feet_y_dist"] = feet_y_dist
+                            #     raw_obs.feet_y_dist = feet_y_dist
+                            # elif self.policy.name == "raise_arm":
+                            #     hand_pos = self.policy.sim.get_hand_pos()
+                            #     log_dict["hand_z_dist_left"] = hand_pos["left"][2]
+                            #     log_dict["hand_z_dist_right"] = hand_pos["right"][2]
+                            #     raw_obs.hand_z_dist = np.array(
+                            #         [hand_pos["left"][2], hand_pos["right"][2]]
+                            #     )
+                            # self.policy.Ax, self.policy.freq_x, self.policy.phase_x, self.policy.offset_x, self.policy.error_x = self.policy._fit_sine_to_buffer(self.policy.fx_buffer)
+                            # log_dict['fx'], log_dict['Ax'], log_dict['freq_x'], log_dict['error_x'] = msg['raw_obs'].ee_force[0], self.policy.Ax, self.policy.freq_x, self.policy.error_x
                             # import ipdb; ipdb.set_trace()
                             reward_dict = self.policy._compute_reward(raw_obs, msg["a"])
                             reward = sum(reward_dict.values()) * self.policy.control_dt

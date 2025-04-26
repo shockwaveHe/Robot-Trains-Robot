@@ -64,7 +64,7 @@ class MJXConfig:
     @dataclass
     class ActionConfig:
         action_parts: List[str] = field(default_factory=lambda: ["leg"])
-        action_scale: float = 0.25
+        action_scale: float = 0.35
         filter_type: str = "none"
         filter_order: int = 4
         filter_cutoff: float = 10.0

@@ -1,17 +1,21 @@
-import os
-import time
 import csv
 import math
-import numpy as np
-import matplotlib
-
-matplotlib.use("Agg")  # for writing figures without an active X server
-import matplotlib.pyplot as plt
+import os
+import time
 from collections import defaultdict
-from threading import Thread
 from queue import Queue
-from toddlerbot.sim import Obs
+from threading import Thread
+
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
+from matplotlib.collections import LineCollection
 from scipy.signal import lfilter, lfilter_zi
+from sklearn.manifold import TSNE
+
+from toddlerbot.sim import Obs
+
+# for writing figures without an active X server
 
 
 class FinetuneLogger:
@@ -44,6 +48,16 @@ class FinetuneLogger:
         self.enable_logging = enable_logging
         self.enable_profiling = enable_profiling
         self.smooth_factor = smooth_factor
+
+        self.latent_trajectory = {}
+        with open("toddlerbot/finetuning/initial_latents.pt", "rb") as f:
+            train_initial_latents = torch.load(f)
+
+        with open("toddlerbot/finetuning/latent_z.pt", "rb") as f:
+            initial_latents = torch.load(f)
+
+        self.latent_trajectory["initial_latents"] = train_initial_latents.clone()
+        self.latent_trajectory["optimized_latents"] = [initial_latents.clone()]
 
         # Timers and counts for profiling
         self.profiling_data = defaultdict(float)  # e.g. {"log_step": 0.034, ...}
@@ -239,6 +253,7 @@ class FinetuneLogger:
         if len(reward_term_names) == 0:
             return
 
+        plt.switch_backend("Agg")
         ncols = 3
         nrows = math.ceil(len(reward_term_names) / ncols)
         # import ipdb; ipdb.set_trace()
@@ -330,7 +345,7 @@ class FinetuneLogger:
     # ------------------------------------------------------------------
     # 2) PER-UPDATE LOGGING (for Q, V, Policy, OPE, etc.)
     # ------------------------------------------------------------------
-    def log_update(self, **kwargs):
+    def log_update(self, latent_z=None, **kwargs):
         """
         Called each time you do an offline update (BPPO, Q, V, OPE, etc.).
         We allow arbitrary keyword arguments.
@@ -342,10 +357,16 @@ class FinetuneLogger:
         data_point = {"time": time.time(), "update_step": self.update_step_counter}
         # store all user-provided metrics
         for key, val in kwargs.items():
+            if val is None:
+                continue
+
             data_point[key] = val
 
         # add to our list of updates
         self.update_metrics_list.append(data_point)
+
+        if latent_z is not None:
+            self.latent_trajectory["optimized_latents"].append(latent_z.clone())
 
         # if you want immediate CSV writing, you can do it here:
         # if self.update_step_counter % self.log_interval_steps == 0:
@@ -387,6 +408,7 @@ class FinetuneLogger:
         Creates a grid of subplots for any metrics that have been logged via log_update().
         Each metric becomes its own subplot.
         """
+        plt.switch_backend("Agg")
         if not self.enable_logging:
             return
 
@@ -435,6 +457,10 @@ class FinetuneLogger:
         plt.close(fig)
         print(f"Saved update plot to {path}")
 
+        if len(self.latent_trajectory["optimized_latents"]) > 1:
+            self.visualize_latent_dynamics(self.exp_folder)
+            self.visualize_latent_dynamics(self.exp_folder, dim=3)
+
     def close(self):
         """Shut down the plotting thread."""
         self.plot_rewards()
@@ -443,3 +469,104 @@ class FinetuneLogger:
         self._write_reward_csv_line()
         self.plot_queue.put(None)  # Sentinel to shut down the thread
         self.plot_thread.join()
+
+    def visualize_latent_dynamics(self, log_dir, dim=2):
+        """
+        Visualize latent dynamics using t-SNE
+
+        Args:
+            initial_latents: torch.Tensor of shape (n_samples, latent_dim) - initial latent points
+            latent_trajectory: torch.Tensor of shape (n_steps, latent_dim) - optimization trajectory
+            output_path: str - path to save the visualization
+            dim: int - 2 or 3 for 2D or 3D visualization
+        """
+        initial_latents = self.latent_trajectory["initial_latents"]
+        latent_trajectory = self.latent_trajectory["optimized_latents"]
+        if len(latent_trajectory) == 0:
+            print("No latent trajectory to visualize.")
+            return
+        # Convert to numpy if they're torch tensors
+        initial_latents = initial_latents.cpu().numpy()
+        latent_trajectory = torch.concatenate(latent_trajectory).cpu().numpy()
+
+        # Combine all points for t-SNE
+        all_points = np.vstack([initial_latents, latent_trajectory])
+
+        # Apply t-SNE
+        tsne = TSNE(n_components=dim, random_state=42, perplexity=30)
+        embedded = tsne.fit_transform(all_points)
+
+        # Split back into initial points and trajectory
+        n_initial = initial_latents.shape[0]
+        initial_embedded = embedded[:n_initial]
+        trajectory_embedded = embedded[n_initial:]
+
+        # Create plot
+        fig = plt.figure(figsize=(8, 6))
+
+        if dim == 2:
+            # Plot initial points
+            plt.scatter(
+                initial_embedded[:, 0],
+                initial_embedded[:, 1],
+                color="blue",
+                alpha=0.5,
+                label="Initial Latents",
+            )
+
+            # Plot trajectory with color progression
+            points = trajectory_embedded.reshape(-1, 1, 2)
+            segments = np.concatenate([points[:-1], points[1:]], axis=1)
+
+            # Create a continuous norm to map from time step to colors
+            norm = plt.Normalize(0, len(trajectory_embedded))
+            lc = LineCollection(segments, cmap="viridis", norm=norm)
+            lc.set_array(np.arange(len(trajectory_embedded)))
+            lc.set_linewidth(2)
+            line = plt.gca().add_collection(lc)
+
+            # Add colorbar
+            plt.colorbar(line, label="Optimization Step")
+
+            plt.xlabel("t-SNE 1")
+            plt.ylabel("t-SNE 2")
+
+        elif dim == 3:
+            ax = plt.axes(projection="3d")
+
+            # Plot initial points
+            ax.scatter3D(
+                initial_embedded[:, 0],
+                initial_embedded[:, 1],
+                initial_embedded[:, 2],
+                color="blue",
+                alpha=0.5,
+                label="Initial Latents",
+            )
+
+            # Plot trajectory with color progression
+            sc = ax.scatter3D(
+                trajectory_embedded[:, 0],
+                trajectory_embedded[:, 1],
+                trajectory_embedded[:, 2],
+                c=np.arange(len(trajectory_embedded)),
+                cmap="viridis",
+                label="Optimization Trajectory",
+            )
+
+            # Add colorbar
+            plt.colorbar(sc, label="Optimization Step")
+
+            ax.set_xlabel("t-SNE 1")
+            ax.set_ylabel("t-SNE 2")
+            ax.set_zlabel("t-SNE 3")
+
+        plt.title("Latent Space Dynamics Visualization")
+        plt.legend()
+        plt.tight_layout()
+
+        # Save the figure
+        output_path = os.path.join(log_dir, f"latent_dynamics_{dim}d.png")
+        plt.savefig(output_path, dpi=300, bbox_inches="tight")
+        plt.close(fig)
+        print(f"Visualization saved to {output_path}")

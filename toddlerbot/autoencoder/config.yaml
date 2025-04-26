@@ -9,11 +9,15 @@ model:
   input_noise_factor: 0.001
   latent_noise_factor: 0.01
   is_vae: False
+  save_finetune_model: True
+  dynamics_type: "hyper" # "hyper" or "param"
+  num_splits: 1
 
 data:
   batch_size: 32
   num_workers: 0
-  time_str: "20250303_001738"
+  time_str: "20250329_195335"
+  normalize_params: True
 
 train:
   optimizer:
@@ -23,14 +27,28 @@ train:
 
   lr_scheduler:
   finetune: False
-  # pretrain_model: '/path/pretrain_model/encoder.ckpt'
-
+  pretrain_model: ''
+  # pretrain_model: '/move/u/hukaizhe/projects/toddlerbot/toddlerbot/autoencoder/results/dynamics_encoder_20250402_022233/lightning_logs/wsox8mgd/checkpoints/epoch=99-val_loss=0.0166.ckpt'
+  latent_mode: 'film' # 'film' or 'concat'
+  train_mode: 'co-train' # 'co-train' or 'film-only'
+  autoencoder_loss_coef: 0.0
+  film_lr: 5e-5
+  autoencoder_lr: 1e-4
+  latent_lr: 5e-3
+  latent_decay: 0.2
+  latent_steps: 5000
+  latent_step_size: 500
+  adapt_all_lr: False
+  use_eval_latents: False
+  cotrain_actors: False # optimize_z related
+  cotrain_critic: False # optimize_z related
+  optimize_autoencoder: True
   loss_func:
     _target_: torch.nn.MSELoss
     reduction: mean
 
   trainer:
-    _target_:  pytorch_lightning.trainer.Trainer
+    _target_: pytorch_lightning.trainer.Trainer
     strategy: 'auto'
     max_epochs: 100
     check_val_every_n_epoch: True

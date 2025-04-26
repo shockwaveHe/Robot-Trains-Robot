@@ -21,6 +21,7 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
         init_motor_pos: npt.NDArray[np.float32],
         ckpts: str = "",
         ip: str = "",
+        eval_mode: bool = False,
         joystick: Optional[Joystick] = None,
         fixed_command: Optional[npt.NDArray[np.float32]] = None,
         exp_folder: Optional[str] = "",
@@ -48,6 +49,7 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
             init_motor_pos,
             ckpts,
             ip,
+            eval_mode,
             joystick,
             fixed_command,
             env_cfg,
@@ -129,15 +131,27 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
         )  # DISCUSS: angle_diff = 3, dot_product = -0.03, result super small
         return reward
 
-    def _reward_lin_vel_xy(self, obs: Obs, action: np.ndarray) -> np.ndarray:
-        lin_vel = obs.lin_vel[:2]  # TODO: rotate to local? or get it from treadmill
+    def _reward_lin_vel_x(self, obs: Obs, action: np.ndarray) -> np.ndarray:
+        lin_vel = obs.lin_vel[0]  # TODO: rotate to local? or get it from treadmill
         # array([-0.00291435, -0.00068869, -0.00109268])
         # TODO: verify where we get lin vel from
         # TODO: change treadmill speed according to force x, or estimate from IMU + joint_position
         # TODO: compare which is better
-        lin_vel_ref = obs.state_ref[7:9]
+        lin_vel_ref = obs.state_ref[7]
         # print('lin_vel_ref', lin_vel_ref)
-        error = np.linalg.norm(lin_vel - lin_vel_ref, axis=-1)
+        error = np.abs(lin_vel - lin_vel_ref)
+        reward = np.exp(-self.tracking_sigma * error**2)
+        return reward
+
+    def _reward_lin_vel_y(self, obs: Obs, action: np.ndarray) -> np.ndarray:
+        lin_vel = obs.lin_vel[1]  # TODO: rotate to local? or get it from treadmill
+        # array([-0.00291435, -0.00068869, -0.00109268])
+        # TODO: verify where we get lin vel from
+        # TODO: change treadmill speed according to force x, or estimate from IMU + joint_position
+        # TODO: compare which is better
+        lin_vel_ref = obs.state_ref[8]
+        # print('lin_vel_ref', lin_vel_ref)
+        error = np.abs(lin_vel - lin_vel_ref)
         reward = np.exp(-self.tracking_sigma * error**2)
         return reward
 
@@ -148,11 +162,19 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
         reward = np.exp(-self.tracking_sigma * error**2)
         return reward
 
-    def _reward_ang_vel_xy(self, obs: Obs, action: np.ndarray) -> np.ndarray:
+    def _reward_ang_vel_x(self, obs: Obs, action: np.ndarray) -> np.ndarray:
         # DISCUSS: array([-2.9682509e-28,  3.4297700e-28,  4.7041364e-28], dtype=float32), very small, reward near 1 ~0.1~1.0
-        ang_vel = obs.ang_vel[:2]
-        ang_vel_ref = obs.state_ref[10:12]
-        error = np.linalg.norm(ang_vel - ang_vel_ref, axis=-1)
+        ang_vel = obs.ang_vel[0]
+        ang_vel_ref = obs.state_ref[10]
+        error = np.abs(ang_vel - ang_vel_ref)
+        reward = np.exp(-self.tracking_sigma / 4 * error**2)
+        return reward
+
+    def _reward_ang_vel_y(self, obs: Obs, action: np.ndarray) -> np.ndarray:
+        # DISCUSS: array([-2.9682509e-28,  3.4297700e-28,  4.7041364e-28], dtype=float32), very small, reward near 1 ~0.1~1.0
+        ang_vel = obs.ang_vel[1]
+        ang_vel_ref = obs.state_ref[11]
+        error = np.abs(ang_vel - ang_vel_ref)
         reward = np.exp(-self.tracking_sigma / 4 * error**2)
         return reward
 
@@ -204,15 +226,20 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
         reward = -np.where(is_done, 1.0, 0.0)
         return reward
 
-    def _reward_arm_force_z(self, obs: Obs, action: np.ndarray) -> np.ndarray:
-        # import ipdb; ipdb.set_trace()
-        ee_force_z = obs.ee_force[2]
-        reward = np.exp(-self.arm_force_z_sigma * np.abs(ee_force_z))
+    def _reward_arm_force_x(self, obs: Obs, action: np.ndarray) -> np.ndarray:
+        ee_force_x = obs.ee_force[0]
+        reward = np.exp(-self.arm_force_x_sigma * np.abs(ee_force_x))
         return reward
 
     def _reward_arm_force_y(self, obs: Obs, action: np.ndarray) -> np.ndarray:
         ee_force_y = obs.ee_force[1]
         reward = np.exp(-self.arm_force_y_sigma * np.abs(ee_force_y))
+        return reward
+
+    def _reward_arm_force_z(self, obs: Obs, action: np.ndarray) -> np.ndarray:
+        # import ipdb; ipdb.set_trace()
+        ee_force_z = obs.ee_force[2]
+        reward = np.exp(-self.arm_force_z_sigma * np.abs(ee_force_z))
         return reward
 
     def _reward_torso_roll(self, obs: Obs, action: np.ndarray) -> float:
@@ -248,7 +275,7 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
         torso_yaw_vel = obs.ang_vel[2]
         reward = -np.abs(torso_yaw_vel)
         return reward
-    
+
     # def _reward_feet_air_time(self, obs: Obs, action: np.ndarray) -> float:
     #     # Reward air time.
     #     contact_filter = np.logical_or(info["stance_mask"], info["last_stance_mask"])

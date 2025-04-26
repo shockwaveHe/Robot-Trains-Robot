@@ -1,6 +1,7 @@
-from dataclasses import dataclass, field, asdict
-from typing import Optional, Tuple, List
 import os
+from dataclasses import asdict, dataclass, field
+from typing import List, Optional, Tuple
+
 import gin
 import numpy as np
 
@@ -133,13 +134,18 @@ class FinetuneConfig:
     use_residual: bool = False
     residual_action_scale: float = 0.1
 
+    use_latent: bool = False
+    optimize_z: bool = False
+    optimize_critic: bool = False
+
     @gin.configurable
     @dataclass
     class FinetuneRewardsConfig:
         healthy_z_range: List[float] = field(default_factory=lambda: [0.2, 0.4])
         tracking_sigma: float = 100.0
-        arm_force_z_sigma: float = 0.1
+        arm_force_x_sigma: float = 0.1
         arm_force_y_sigma: float = 0.1
+        arm_force_z_sigma: float = 0.1
         min_feet_y_dist: float = 0.06
         max_feet_y_dist: float = 0.13
         torso_roll_range: List[float] = field(default_factory=lambda: [-0.1, 0.1])
@@ -179,9 +185,11 @@ class FinetuneConfig:
         torso_roll: float = 0.0
         torso_pitch: float = 0.0
         torso_yaw_vel: float = 0.0
-        lin_vel_xy: float = 0.0
+        lin_vel_x: float = 0.0
+        lin_vel_y: float = 0.0
         lin_vel_z: float = 0.0
-        ang_vel_xy: float = 0.0
+        ang_vel_x: float = 0.0
+        ang_vel_y: float = 0.0
         ang_vel_z: float = 0.0
         neck_motor_pos: float = 0.0
         arm_motor_pos: float = 0.0
@@ -206,8 +214,9 @@ class FinetuneConfig:
         feet_clearance: float = 0.0
         stand_still: float = 0.0  # 1.0
         align_ground: float = 0.0  # 1.0
-        arm_force_z: float = 0.0
+        arm_force_x: float = 0.0
         arm_force_y: float = 0.0
+        arm_force_z: float = 0.0
         arm_position: float = 0.0
         fx_sine_amp: float = 0.0
         fx_sine_freq: float = 0.0

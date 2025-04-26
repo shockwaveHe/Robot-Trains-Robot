@@ -7,6 +7,8 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 import numpy as np
 import numpy.typing as npt
 import torch
+import torch.nn as nn
+import yaml
 from tqdm import tqdm
 
 import toddlerbot.finetuning.networks as networks
@@ -17,7 +19,7 @@ from toddlerbot.finetuning.abppo import (
 from toddlerbot.finetuning.dynamics import BaseDynamics, DynamicsNetwork
 from toddlerbot.finetuning.finetune_config import FinetuneConfig
 from toddlerbot.finetuning.logger import FinetuneLogger
-from toddlerbot.finetuning.networks import load_jax_params, load_jax_params_into_pytorch
+from toddlerbot.finetuning.networks import FiLMLayer, load_rsl_params_into_pytorch
 from toddlerbot.finetuning.ppo import PPO
 from toddlerbot.finetuning.replay_buffer import OnlineReplayBuffer, RemoteReplayBuffer
 from toddlerbot.finetuning.server_client import RemoteClient
@@ -25,7 +27,6 @@ from toddlerbot.finetuning.utils import CONST_EPS, Timer
 from toddlerbot.policies.mjx_policy import MJXPolicy
 from toddlerbot.reference.walk_zmp_ref import WalkZMPReference
 from toddlerbot.sim import Obs
-from toddlerbot.sim.mujoco_sim import MuJoCoSim
 from toddlerbot.sim.robot import Robot
 from toddlerbot.utils.comm_utils import ZMQMessage, ZMQNode
 from toddlerbot.utils.math_utils import (
@@ -69,6 +70,19 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.privileged_obs_history_size = (
             self.privileged_obs_size * self.num_privileged_obs_history
         )
+
+        self.autoencoder_config = None
+        if self.finetune_cfg.use_latent:
+            with open(
+                os.path.join("toddlerbot", "autoencoder", "config.yaml"), "r"
+            ) as f:
+                autoencoder_config = yaml.safe_load(f)
+                # autoencoder_config["data"]["time_str"] = dynamics_time_str
+                if autoencoder_config["model"]["dynamics_type"] == "params":
+                    autoencoder_config["model"]["num_split"] = 2
+                elif autoencoder_config["model"]["dynamics_type"] == "hyper":
+                    autoencoder_config["model"]["num_split"] = 1
+                self.autoencoder_config = autoencoder_config
 
         super().__init__(
             name,
@@ -119,6 +133,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             f"Observation size: {self.obs_size}, Privileged observation size: {self.privileged_obs_size}"
         )
 
+        if self.eval_mode:
+            self.finetune_cfg.update_mode = "local"
+
         if self.finetune_cfg.update_mode == "local":
             self.replay_buffer = OnlineReplayBuffer(
                 self.device,
@@ -150,6 +167,10 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         # import pickle
         # with open('buffer_mock.pkl', 'rb') as f:
         #     self.replay_buffer: OnlineReplayBuffer = pickle.load(f)
+        # if self.finetune_cfg.use_latent and self.finetune_cfg.use_residual:
+        #     autoencoder_config_copy = deepcopy(self.autoencoder_config)
+        #     self.autoencoder_config = None
+
         self._make_networks(
             observation_size=self.finetune_cfg.frame_stack * self.obs_size,
             privileged_observation_size=self.finetune_cfg.frame_stack
@@ -159,22 +180,70 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             policy_hidden_layer_sizes=self.finetune_cfg.policy_hidden_layer_sizes,
         )
 
-        if len(self.ckpt) > 0:
-            run_name = f"{self.robot.name}_{self.name}_ppo_{self.ckpt}"
-            policy_path = os.path.join("results", run_name, "best_policy")
-            if not os.path.exists(policy_path):
-                policy_path = os.path.join("results", run_name, "policy")
-        else:
-            policy_path = os.path.join(
-                "toddlerbot", "policies", "checkpoints", "walk_policy"
-            )
-        print(f"Loading pretrained model from {policy_path}")
-        jax_params = load_jax_params(policy_path)
-        load_jax_params_into_pytorch(self.policy_net, jax_params[1]["params"])
+        if len(ckpts) > 0:
+            run_name = f"{self.robot.name}_walk_ppo_{ckpts[0]}"
+            policy_path = os.path.join("results", run_name, "model_best.pt")
+            if os.path.exists(policy_path):
+                print(f"Loading pretrained model from {policy_path}")
+                # jax_params = load_jax_params(policy_path)
+                # load_jax_params_into_pytorch(self.policy_net, jax_params[1]["params"])
+                rsl_params = torch.load(os.path.join(policy_path))["model_state_dict"]
+                load_rsl_params_into_pytorch(
+                    self.policy_net, self.value_net, rsl_params
+                )
+            else:
+                self.load_ckpts(
+                    [
+                        os.path.join(
+                            "results",
+                            f"{self.robot.name}_{self.name}_real_world_{ckpts[0]}",
+                        )
+                    ]
+                )
+
+        if self.finetune_cfg.use_latent:
+            self.finetune_cfg.use_residual = False
 
         if self.finetune_cfg.use_residual:
             self._make_residual_policy()
             self._residual_action_scale = self.finetune_cfg.residual_action_scale
+
+        # if self.finetune_cfg.use_latent and self.finetune_cfg.use_residual:
+        #     self.autoencoder_config = autoencoder_config_copy
+        #     self._make_networks(
+        #         observation_size=self.finetune_cfg.frame_stack * self.obs_size,
+        #         privileged_observation_size=self.finetune_cfg.frame_stack
+        #         * self.privileged_obs_size,
+        #         action_size=self.num_action,
+        #         value_hidden_layer_sizes=self.finetune_cfg.value_hidden_layer_sizes,
+        #         policy_hidden_layer_sizes=self.finetune_cfg.policy_hidden_layer_sizes,
+        #     )
+
+        #     run_name = f"{self.robot.name}_walk_ppo_{ckpts[1]}"
+        #     policy_path = os.path.join("results", run_name, "model_best.pt")
+        #     if os.path.exists(policy_path):
+        #         print(f"Loading pretrained model from {policy_path}")
+        #         # jax_params = load_jax_params(policy_path)
+        #         # load_jax_params_into_pytorch(self.policy_net, jax_params[1]["params"])
+        #         rsl_params = torch.load(os.path.join(policy_path))["model_state_dict"]
+        #         load_rsl_params_into_pytorch(
+        #             self.policy_net, self.value_net, rsl_params
+        #         )
+
+        # loading residual policy
+        if self.eval_mode:
+            try:
+                self.load_ckpts(
+                    [
+                        os.path.join(
+                            "results",
+                            f"{self.robot.name}_{self.name}_real_world_{ckpts[1]}",
+                        )
+                    ]
+                )
+                print("Residual policy loaded successfully")
+            except Exception as e:
+                print("residual policy not loaded correstly: ", e)
 
         self.obs_history = np.zeros(self.num_obs_history * self.obs_size)
         self.privileged_obs_history = np.zeros(
@@ -184,7 +253,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             self.zmq_receiver = ZMQNode(type="receiver")
             assert len(ip) > 0, "Please provide the IP address of the sender"
             self.zmq_sender = ZMQNode(type="sender", ip=ip)
-            self._init_tracker()
+            # self._init_tracker()
         else:
             self.zmq_receiver = None
             self.zmq_sender = None
@@ -194,8 +263,10 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         self.is_paused = False
         self.total_steps = 0
+        self.total_training_steps = 50000
         self.num_updates = 0
         self.timer = Timer()
+        self.last_msg = None
 
         self._init_reward()
         self._make_learners()
@@ -203,20 +274,22 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         self.need_reset = True
         self.learning_stage = "offline"
 
-        self.sim = MuJoCoSim(robot, vis_type=self.finetune_cfg.sim_vis_type, n_frames=1)
-        self.min_y_feet_dist = self.finetune_cfg.finetune_rewards.min_feet_y_dist
-        self.max_y_feet_dist = self.finetune_cfg.finetune_rewards.max_feet_y_dist
+        self.reward_list = []
+        self.reward_epi_list = []
+        self.reward_epi_best = -np.inf
 
-        if len(ckpts) > 0:
-            self.load_ckpts(ckpts)
+        # self.sim = MuJoCoSim(robot, vis_type=self.finetune_cfg.sim_vis_type, n_frames=1)
+        # self.min_y_feet_dist = self.finetune_cfg.finetune_rewards.min_feet_y_dist
+        # self.max_y_feet_dist = self.finetune_cfg.finetune_rewards.max_feet_y_dist
 
-        if self.is_real:
-            input("press ENTER to start")
+        # if self.is_real:
+        #     input("press ENTER to start")
 
     def load_ckpts(self, ckpts):
         for ckpt in ckpts:
             self.load_networks(ckpt, data_only=False)
             # self.recalculate_reward()
+
         # if len(self.replay_buffer):
         #     org_policy_net = deepcopy(self.policy_net)
         #     self.logger.plot_queue.put(
@@ -265,6 +338,29 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         # Create policy network
         # Note: Ensure that your policy MLP ends with parametric_action_distribution.param_size units
+        autoencoder_cfg = self.autoencoder_config
+
+        film_layers = None
+        if autoencoder_cfg is not None:
+            latent_dim = (
+                autoencoder_cfg["model"]["n_embd"]
+                * autoencoder_cfg["model"]["num_splits"]
+            )
+            self.latent_dim = latent_dim
+            film_layers = nn.ModuleList()
+            film_layers.append(FiLMLayer(latent_dim, policy_hidden_layer_sizes[0]))
+            for i in range(1, len(policy_hidden_layer_sizes)):
+                film_layers.append(FiLMLayer(latent_dim, policy_hidden_layer_sizes[i]))
+
+            for film_layer in film_layers:
+                nn.init.constant_(film_layer.film.weight, 0.0)
+                nn.init.constant_(
+                    film_layer.film.bias[: film_layer.film.out_features // 2], 1.0
+                )
+                nn.init.constant_(
+                    film_layer.film.bias[film_layer.film.out_features // 2 :], 0.0
+                )
+
         self.policy_net = networks.GaussianPolicyNetwork(
             observation_size=observation_size,
             preprocess_observations_fn=preprocess_observations_fn,
@@ -273,6 +369,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             activation_fn=activation_fn,
             use_tanh=self.finetune_cfg.use_tanh,
             noise_std_type=self.finetune_cfg.noise_std_type,
+            film_layers=film_layers,
         ).to(self.inference_device)
         self.policy_net_opt = (
             torch.compile(self.policy_net) if self.is_real else self.policy_net
@@ -311,12 +408,13 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
     def _make_residual_policy(self):
         self.base_policy_net = deepcopy(self.policy_net)
         # make the last layer of the residual policy network to have zero weights, we will only tune the residual network
-        self.policy_net.mlp.layers[-1].weight.data = torch.zeros_like(
-            self.policy_net.mlp.layers[-1].weight
-        )
-        self.policy_net.mlp.layers[-1].bias.data = torch.zeros_like(
-            self.policy_net.mlp.layers[-1].bias
-        )
+        if not self.finetune_cfg.use_latent:
+            self.policy_net.mlp.layers[-1].weight.data = torch.zeros_like(
+                self.policy_net.mlp.layers[-1].weight
+            )
+            self.policy_net.mlp.layers[-1].bias.data = torch.zeros_like(
+                self.policy_net.mlp.layers[-1].bias
+            )
         self.base_policy_net.requires_grad_(False)
         self.base_policy_net.eval()
         self.base_policy_net_opt = (
@@ -401,7 +499,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         return lin_vel, current_time
 
-    def save_networks(self, suffix=""):
+    def save_networks(self, suffix="_best"):
         policy_path = os.path.join(self.exp_folder, "policy")
 
         os.makedirs(policy_path, exist_ok=True)
@@ -419,6 +517,10 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         torch.save(
             self.dynamics_net.state_dict(),
             os.path.join(policy_path, f"dynamics_net{suffix}.pth"),
+        )
+        torch.save(
+            {"latent_z": self.online_ppo_learner.latent_z},
+            os.path.join(policy_path, f"latent_z{suffix}.pt"),
         )
         self.logger.save_state(self.exp_folder)
 
@@ -455,10 +557,15 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             # self.logger.load_state(os.path.join(exp_folder, "logger.pkl"))
             print(f"Loaded pretrained model from {policy_path}")
 
-        if os.path.exists(os.path.join(exp_folder, "buffer.npz")):
-            self.replay_buffer.load_compressed(exp_folder)
-            # import ipdb; ipdb.set_trace()
-            print(f"Loaded replay buffer from {exp_folder}")
+        if not self.eval_mode and os.path.exists(
+            os.path.join(exp_folder, "buffer.npz")
+        ):
+            try:
+                self.replay_buffer.load_compressed(exp_folder)
+                # import ipdb; ipdb.set_trace()
+                print(f"Loaded replay buffer from {exp_folder}")
+            except Exception as e:
+                print(f"Error loading replay buffer: {e}")
 
     def _make_learners(self):
         """Make PPO learners with a PyTorch implementation."""
@@ -483,6 +590,10 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             self.value_net,
             self.logger,
             self.base_policy_net if self.finetune_cfg.use_residual else None,
+            use_latent=self.finetune_cfg.use_latent,
+            optimize_z=self.finetune_cfg.optimize_z,
+            optimize_critic=self.finetune_cfg.optimize_critic,
+            autoencoder_cfg=self.autoencoder_config,
         )
 
     def _sample_command(self, last_command: Optional[np.ndarray] = None) -> np.ndarray:
@@ -598,8 +709,14 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
     ) -> Tuple[np.ndarray, Dict[str, Any]]:
         # import ipdb; ipdb.set_trace()
         obs_tensor = torch.as_tensor(obs_arr, dtype=torch.float32).squeeze(0)
+        latent_tensor = self.online_ppo_learner.get_latent()
         # TODO: change name to reuse _opt networks
-        action_dist = self.policy_net_opt(obs_tensor.to(self.inference_device))
+        action_dist = self.policy_net_opt(
+            obs_tensor.to(self.inference_device),
+            latent_tensor.to(self.inference_device)
+            if latent_tensor is not None
+            else None,
+        )
 
         if deterministic:
             # Deterministic: use mode
@@ -775,10 +892,20 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             # )
         self.replay_buffer.compute_return(self.finetune_cfg.gamma)
 
-    def send_step_count(self):
-        self.zmq_sender.send_msg(
-            ZMQMessage(time=time.time(), total_steps=self.total_steps)
-        )
+    def send_step_count(self, obs=None):
+        if obs is None:
+            self.zmq_sender.send_msg(
+                ZMQMessage(time=time.time(), total_steps=self.total_steps)
+            )
+        else:
+            self.zmq_sender.send_msg(
+                ZMQMessage(
+                    time=time.time(),
+                    total_steps=self.total_steps,
+                    torso_roll=obs.euler[0],
+                    torso_pitch=obs.euler[1],
+                )
+            )
 
     def update_policy(self):
         self.timer.stop()
@@ -807,10 +934,10 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         #     self.policy_net.mlp.layers[0].weight,
         # )
         self.logger.plot_queue.put((self.logger.plot_updates, []))  # no-blocking plot
-        if (
-            getattr(self, "state_ref", None) is not None
-        ):  # hack to only rollout in walk tasks.
-            self.rollout_sim()
+        # if (
+        #     getattr(self, "state_ref", None) is not None
+        # ):  # hack to only rollout in walk tasks.
+        #     self.rollout_sim()
         if self.is_real:
             self.need_reset = True
             self.zmq_sender.send_msg(ZMQMessage(time=time.time(), is_stopped=False))
@@ -857,9 +984,27 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             )
             return {}, motor_target, obs
 
-        msg = None
-        while self.is_real and msg is None:
+        if self.last_msg is None:
+            msg = None
+            while self.is_real and msg is None:
+                msg = self.zmq_receiver.get_msg()
+        else:
             msg = self.zmq_receiver.get_msg()
+
+        if msg is None:
+            msg = self.last_msg
+        else:
+            self.last_msg = msg
+
+        # TODO: remove this for the real world
+        # msg = ZMQMessage(
+        #     time=time_curr,
+        #     control_inputs={"walk_x": 0.1, "walk_y": 0.0, "walk_turn": 0.0},
+        #     lin_vel=np.zeros(3, dtype=np.float32),
+        #     arm_force=np.zeros(3, dtype=np.float32),
+        #     arm_torque=np.zeros(3, dtype=np.float32),
+        #     arm_ee_pos=np.zeros(3, dtype=np.float32),
+        # )
 
         if msg.is_paused and not self.is_paused:
             self.timer.stop()
@@ -880,21 +1025,21 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         time_curr = self.step_curr * self.control_dt
 
-        if self.finetune_cfg.update_mode == "local":
-            self.sim.set_motor_angles(obs.motor_pos)
-            self.sim.forward()
-            feet_pos = self.sim.get_feet_pos()
-            feet_y_dist = feet_pos["left"][1] - feet_pos["right"][1]
-            obs.feet_y_dist = feet_y_dist
+        # if self.finetune_cfg.update_mode == "local":
+        #     self.sim.set_motor_angles(obs.motor_pos)
+        #     self.sim.forward()
+        #     feet_pos = self.sim.get_feet_pos()
+        #     feet_y_dist = feet_pos["left"][1] - feet_pos["right"][1]
+        #     obs.feet_y_dist = feet_y_dist
         control_inputs: Dict[str, float] = {}
         self.control_inputs = {}
-        lin_vel, _ = self.get_tracking_data()
+        # lin_vel, _ = self.get_tracking_data()
         # print('ang_vel:', ang_vel - obs.ang_vel, 'euler:', euler - obs.euler)
         control_inputs = msg.control_inputs
         obs.ee_force = msg.arm_force
         obs.ee_torque = msg.arm_torque
         obs.arm_ee_pos = msg.arm_ee_pos
-        obs.lin_vel = msg.lin_vel + lin_vel
+        obs.lin_vel = msg.lin_vel  # + lin_vel
         # obs.ang_vel = ang_vel
         # obs.euler = euler
         obs.is_done = msg.is_done
@@ -917,22 +1062,44 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         if self.total_steps == self.finetune_cfg.offline_total_steps:
             self.switch_learning_stage()
 
-        if self.remote_client is not None and self.remote_client.ready_to_update:
+        if (
+            self.remote_client is not None
+            and self.remote_client.ready_to_update
+            and self.total_steps < self.total_training_steps
+        ):
             # import ipdb; ipdb.set_trace()
             self.num_updates += 1
             print(f"Updated policy network to {self.num_updates}!")
-            assert not torch.allclose(
-                self.policy_net.mlp.layers[0].weight,
-                self.remote_client.new_state_dict["mlp.layers.0.weight"],
-            )
-            self.policy_net.load_state_dict(self.remote_client.new_state_dict)
+            # assert not torch.allclose(
+            #     self.policy_net.mlp.layers[0].weight,
+            #     self.remote_client.new_state_dict["mlp.layers.0.weight"],
+            # )
+            if self.finetune_cfg.optimize_z:
+                self.online_ppo_learner.latent_z = self.remote_client.new_state_dict[
+                    "latent_z"
+                ].clone()
+            else:
+                self.policy_net.load_state_dict(self.remote_client.new_state_dict)
+
             self.remote_client.ready_to_update = False
-        deterministic = (
-            self.learning_stage == "offline"
-        )  # use deterministic action during offline learning
-        action_pi, action_real, action_logprob = self.get_action(
-            obs_arr, deterministic=deterministic, is_real=is_real
-        )
+
+        # deterministic = (
+        #     self.learning_stage == "offline"
+        # )  # use deterministic action during offline learning
+        # action_pi, action_real, action_logprob = self.get_action(
+        #     obs_arr, deterministic=deterministic, is_real=is_real
+        # )
+        if self.learning_stage == "online":
+            action_pi, action_real, action_logprob = self.get_action(
+                obs_arr, deterministic=self.eval_mode, is_real=is_real
+            )
+            action_real_copy = action_real.copy()
+        else:
+            action_pi, action_real, action_logprob = self.get_action(
+                obs_arr, deterministic=self.eval_mode, is_real=is_real
+            )
+            action_real_copy = action_real.copy()
+
         obs.raw_action_mean = action_pi.mean()
         obs.base_action_mean = (action_real - action_pi).mean()
         if msg is not None:
@@ -949,11 +1116,15 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                     reward_dict,
                     obs,
                     reward=reward,
-                    feet_dist=feet_y_dist,
+                    # feet_dist=feet_y_dist,
+                    action_pi=action_pi.mean(),
+                    action_real=action_real_copy.mean(),
                     walk_command=control_inputs["walk_x"],
                 )
             else:
                 reward = 0.0
+
+            self.reward_list.append(reward)
 
             time_elapsed = self.timer.elapsed()
             if time_elapsed < self.total_steps * self.control_dt:
@@ -963,17 +1134,19 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 print(
                     f"Data size: {len(self.replay_buffer)}, Steps: {self.total_steps}, Fps: {self.total_steps / self.timer.elapsed()}"
                 )
-
+            self.send_step_count(obs)
             if len(control_inputs) > 0 and (
                 control_inputs["walk_x"] != 0 or control_inputs["walk_y"] != 0
             ):
                 time_to_update = (
-                    self.learning_stage == "offline"
+                    not self.eval_mode
+                    and self.learning_stage == "offline"
                     and (len(self.replay_buffer) + 1)
                     % self.finetune_cfg.update_interval
                     == 0
                 ) or (
-                    self.learning_stage == "online"
+                    not self.eval_mode
+                    and self.learning_stage == "online"
                     and len(self.replay_buffer) == self.finetune_cfg.online.batch_size
                 )
                 truncated = time_to_update and self.finetune_cfg.update_mode == "local"
@@ -989,6 +1162,16 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                 )
 
                 if truncated:
+                    reward_epi = np.mean(self.reward_list)
+                    self.reward_epi_list.append(reward_epi)
+                    if (
+                        reward_epi > self.reward_epi_best
+                        # and self.external_guidance_stage == "free"
+                    ):
+                        self.reward_epi_best = reward_epi
+                        self.save_networks(suffix="_best")
+                        print(f"Best reward: {self.reward_epi_best}")
+
                     self.update_policy()
 
         if is_real:
@@ -1051,8 +1234,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         self.healthy_z_range = self.finetune_cfg.finetune_rewards.healthy_z_range
         self.tracking_sigma = self.finetune_cfg.finetune_rewards.tracking_sigma
-        self.arm_force_z_sigma = self.finetune_cfg.finetune_rewards.arm_force_z_sigma
+        self.arm_force_x_sigma = self.finetune_cfg.finetune_rewards.arm_force_x_sigma
         self.arm_force_y_sigma = self.finetune_cfg.finetune_rewards.arm_force_y_sigma
+        self.arm_force_z_sigma = self.finetune_cfg.finetune_rewards.arm_force_z_sigma
 
     def _compute_reward(self, obs: Obs, action: np.ndarray):
         reward_dict: Dict[str, np.ndarray] = {}
