@@ -898,11 +898,18 @@ def main(args=None):
             args.policy, robot, init_motor_pos, args.ckpt, fixed_command=fixed_command
         )
     elif "at" in args.policy:  # Arm Treadmill
-        while (obs.arm_ee_pos == 0.0).all():
-            obs = sim.get_observation()
-            time.sleep(0.1)
+        if not args.eval:
+            while (obs.arm_ee_pos == 0.0).all():
+                obs = sim.get_observation()
+                time.sleep(0.1)
+
         policy = PolicyClass(
-            args.policy, robot, init_motor_pos, init_arm_pos=obs.arm_ee_pos, ip=args.ip
+            args.policy,
+            robot,
+            init_motor_pos,
+            init_arm_pos=obs.arm_ee_pos,
+            ip=args.ip,
+            eval_mode=args.eval,
         )
     elif "talk" in args.policy or len(args.ip) > 0:
         policy = PolicyClass(args.policy, robot, init_motor_pos, ip=args.ip)  # type:ignore

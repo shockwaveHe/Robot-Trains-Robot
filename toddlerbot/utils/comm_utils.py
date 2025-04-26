@@ -28,6 +28,8 @@ class ZMQMessage:
     is_paused: Optional[bool] = False
     total_steps: Optional[int] = 0
     external_guidance_stage: Optional[str] = "enhance"
+    torso_roll: Optional[float] = None
+    torso_pitch: Optional[float] = None
 
 
 def sync_time(ip: str):
