@@ -55,7 +55,8 @@ class FinetuneLogger:
 
         with open("toddlerbot/finetuning/latent_z.pt", "rb") as f:
             initial_latents = torch.load(f)
-
+            if type(initial_latents) == dict:
+                initial_latents = initial_latents["latent_z"]
         self.latent_trajectory["initial_latents"] = train_initial_latents.clone()
         self.latent_trajectory["optimized_latents"] = [initial_latents.clone()]
 

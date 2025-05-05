@@ -82,7 +82,10 @@ class PPO:
 
         if use_latent:
             with open("toddlerbot/finetuning/latent_z.pt", "rb") as f:
-                initial_latents = torch.load(f).to(self.device)
+                initial_latents = torch.load(f)
+                if type(initial_latents) == dict:
+                    initial_latents = initial_latents["latent_z"]
+                initial_latents = initial_latents.to(self.device)
 
             self.latent_z = nn.Parameter(initial_latents.clone(), requires_grad=True)
 

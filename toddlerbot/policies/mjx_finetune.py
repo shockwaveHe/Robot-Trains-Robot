@@ -263,10 +263,12 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
 
         self.is_paused = False
         self.total_steps = 0
-        self.total_training_steps = 50000
+        self.total_training_steps = 75000
         self.num_updates = 0
         self.timer = Timer()
         self.last_msg = None
+        if self.eval_mode:
+            self.last_msg = ZMQMessage(time=time.time())
 
         self._init_reward()
         self._make_learners()
@@ -654,6 +656,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             ),
         )
         command = np.concatenate([pose_command, walk_command])
+        command = np.array([0, 0, 0, 0, 0, 0.2, 0, 0])
         return command
 
     def get_obs(
@@ -1039,7 +1042,13 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         obs.ee_force = msg.arm_force
         obs.ee_torque = msg.arm_torque
         obs.arm_ee_pos = msg.arm_ee_pos
-        obs.lin_vel = msg.lin_vel  # + lin_vel
+        if self.eval_mode:
+            obs.lin_vel = np.array([0.2, 0, 0])
+            obs.ee_force = np.zeros(3)
+            obs.ee_torque = np.zeros(3)
+            obs.arm_ee_pos = np.zeros(3)
+        else:
+            obs.lin_vel = msg.lin_vel  # + lin_vel
         # obs.ang_vel = ang_vel
         # obs.euler = euler
         obs.is_done = msg.is_done
@@ -1051,7 +1060,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             return {}, np.zeros(self.num_action), obs
 
         # import ipdb; ipdb.set_trace()
-        if len(control_inputs) == 0:
+        if self.eval_mode or len(control_inputs) == 0:
             command = self.fixed_command
         else:
             command = self.get_command(control_inputs)
@@ -1119,7 +1128,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                     # feet_dist=feet_y_dist,
                     action_pi=action_pi.mean(),
                     action_real=action_real_copy.mean(),
-                    walk_command=control_inputs["walk_x"],
+                    walk_command=control_inputs["walk_x"]
+                    if not self.eval_mode
+                    else self.fixed_command[5],
                 )
             else:
                 reward = 0.0
@@ -1135,8 +1146,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
                     f"Data size: {len(self.replay_buffer)}, Steps: {self.total_steps}, Fps: {self.total_steps / self.timer.elapsed()}"
                 )
             self.send_step_count(obs)
-            if len(control_inputs) > 0 and (
-                control_inputs["walk_x"] != 0 or control_inputs["walk_y"] != 0
+            if (self.eval_mode) or (
+                len(control_inputs) > 0
+                and (control_inputs["walk_x"] != 0 or control_inputs["walk_y"] != 0)
             ):
                 time_to_update = (
                     not self.eval_mode
