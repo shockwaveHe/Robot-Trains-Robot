@@ -903,7 +903,12 @@ def main(args=None):
             obs = sim.get_observation()
             time.sleep(0.1)
         policy = PolicyClass(
-            args.policy, robot, init_motor_pos, init_arm_pos=obs.arm_ee_pos, ip=args.ip
+            args.policy,
+            robot,
+            init_motor_pos,
+            init_arm_pos=obs.arm_ee_pos,
+            ip=args.ip,
+            eval_mode=args.eval,
         )
     elif "talk" in args.policy or len(args.ip) > 0:
         policy = PolicyClass(args.policy, robot, init_motor_pos, ip=args.ip)  # type:ignore
