@@ -18,9 +18,6 @@ from toddlerbot.manipulation.teleoperation.data_processing.ip_config import *
 from toddlerbot.manipulation.teleoperation.data_processing.retarget_lib.src.retarget_lib import (
     mink_retarget,
 )
-from toddlerbot.manipulation.teleoperation.data_processing.retarget_lib.src.retarget_lib.utils.draw import (
-    draw_frame_batch,
-)
 from toddlerbot.manipulation.teleoperation.data_processing.rigid_body_sento import (
     create_primitive_shape,
 )

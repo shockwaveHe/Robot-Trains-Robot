@@ -2,12 +2,19 @@
 import socket
 import time
 from argparse import ArgumentParser
+
 import numpy as np
-from scipy.spatial.transform import Rotation
 import pybullet as pb
-from toddlerbot.manipulation.teleoperation.data_processing.rigid_body_sento import create_primitive_shape
 from ip_config import *
-from quest_robot_module import QuestRightArmLeapModule, QuestLeftArmGripperNoRokokoModule
+from quest_robot_module import (
+    QuestLeftArmGripperNoRokokoModule,
+    QuestRightArmLeapModule,
+)
+from scipy.spatial.transform import Rotation
+
+from toddlerbot.manipulation.teleoperation.data_processing.rigid_body_sento import (
+    create_primitive_shape,
+)
 
 if __name__ == "__main__":
     parser = ArgumentParser()

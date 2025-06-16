@@ -1,23 +1,20 @@
 import argparse
-import json
-import os
-import pathlib
 
 import mujoco as mj
 import mujoco.viewer as mjv
 import numpy as np
-
-from toddlerbot.manipulation.teleoperation.data_processing import toddy_quest_module
-from toddlerbot.manipulation.teleoperation.data_processing.ip_config import *
-from toddlerbot.manipulation.teleoperation.data_processing.rigid_body_sento import create_primitive_shape
-from toddlerbot.manipulation.teleoperation.data_processing.retarget_lib.src.retarget_lib import mink_retarget
-from toddlerbot.manipulation.teleoperation.data_processing.retarget_lib.src.retarget_lib.utils.draw import draw_frame
+import yaml
 from loop_rate_limiters import RateLimiter
 from scipy.spatial.transform import Rotation as R
-import pybullet as pb
-import json
-import socket
-import yaml
+
+from toddlerbot.manipulation.teleoperation.data_processing.ip_config import *
+from toddlerbot.manipulation.teleoperation.data_processing.retarget_lib.src.retarget_lib import (
+    mink_retarget,
+)
+from toddlerbot.manipulation.teleoperation.data_processing.retarget_lib.src.retarget_lib.utils.draw import (
+    draw_frame,
+)
+
 
 def yaml_table_2_dict(yaml_table):
     """

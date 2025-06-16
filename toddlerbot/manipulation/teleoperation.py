@@ -1,7 +1,5 @@
 import argparse
-import json
 import os
-import pathlib
 import socket
 import time
 
@@ -19,7 +17,6 @@ from toddlerbot.manipulation.teleoperation.data_processing.retarget_lib.src.reta
     mink_retarget,
 )
 from toddlerbot.manipulation.teleoperation.data_processing.retarget_lib.src.retarget_lib.utils.draw import (
-    draw_frame,
     draw_frame_batch,
 )
 from toddlerbot.manipulation.teleoperation.data_processing.rigid_body_sento import (
