@@ -22,7 +22,7 @@ from toddlerbot.manipulation.teleoperation.data_processing.retarget_lib.src.reta
     draw_frame,
     draw_frame_batch,
 )
-from toddlerbot.manipulation.teleoperation.data_processing.rigidbodySento import (
+from toddlerbot.manipulation.teleoperation.data_processing.rigid_body_sento import (
     create_primitive_shape,
 )
 from toddlerbot.manipulation.utils.teleop_utils import *

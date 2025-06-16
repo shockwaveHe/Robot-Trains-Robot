@@ -5,7 +5,7 @@ from argparse import ArgumentParser
 import numpy as np
 from scipy.spatial.transform import Rotation
 import pybullet as pb
-from rigidbodySento import create_primitive_shape
+from toddlerbot.manipulation.teleoperation.data_processing.rigid_body_sento import create_primitive_shape
 from ip_config import *
 from quest_robot_module import QuestRightArmLeapModule, QuestLeftArmGripperNoRokokoModule
 
