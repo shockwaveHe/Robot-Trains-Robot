@@ -47,3 +47,4 @@ FinetuneConfig.is_state_norm = False
 FinetuneConfig.use_latent = True
 FinetuneConfig.optimize_z = True
 FinetuneConfig.optimize_critic = True
+FinetuneConfig.exp_type = "walk"

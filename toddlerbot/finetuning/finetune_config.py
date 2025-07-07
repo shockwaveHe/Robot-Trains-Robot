@@ -137,6 +137,7 @@ class FinetuneConfig:
     use_latent: bool = False
     optimize_z: bool = False
     optimize_critic: bool = False
+    exp_type: str = "walk"
 
     @gin.configurable
     @dataclass

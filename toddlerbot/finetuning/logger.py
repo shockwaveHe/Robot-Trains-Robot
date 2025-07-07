@@ -29,6 +29,7 @@ class FinetuneLogger:
         enable_logging: bool = True,
         enable_profiling: bool = False,
         smooth_factor: float = 0.0,
+        exp_type: str = "walk", # "walk" or "swing"
     ):
         """
         :param exp_folder: where to store CSV logs and plots
@@ -48,18 +49,22 @@ class FinetuneLogger:
         self.enable_logging = enable_logging
         self.enable_profiling = enable_profiling
         self.smooth_factor = smooth_factor
+        if exp_type == "walk":
+            self.exp_type = "walk"
+            self.latent_trajectory = {}
+            with open("toddlerbot/finetuning/initial_latents.pt", "rb") as f:
+                train_initial_latents = torch.load(f)
 
-        self.latent_trajectory = {}
-        with open("toddlerbot/finetuning/initial_latents.pt", "rb") as f:
-            train_initial_latents = torch.load(f)
-
-        with open("toddlerbot/finetuning/latent_z.pt", "rb") as f:
-            initial_latents = torch.load(f)
-            if type(initial_latents) == dict:
-                initial_latents = initial_latents["latent_z"]
-        self.latent_trajectory["initial_latents"] = train_initial_latents.clone()
-        self.latent_trajectory["optimized_latents"] = [initial_latents.clone()]
-
+            with open("toddlerbot/finetuning/latent_z.pt", "rb") as f:
+                initial_latents = torch.load(f)
+                if type(initial_latents) == dict:
+                    initial_latents = initial_latents["latent_z"]
+            self.latent_trajectory["initial_latents"] = train_initial_latents.clone()
+            self.latent_trajectory["optimized_latents"] = [initial_latents.clone()]
+        elif exp_type == "swing":
+            self.exp_type = "swing"
+        else:
+            raise ValueError(f"Unknown exp_type: {exp_type}. Use 'walk' or 'swing'.")
         # Timers and counts for profiling
         self.profiling_data = defaultdict(float)  # e.g. {"log_step": 0.034, ...}
         self.profiling_counts = defaultdict(int)  # e.g. {"log_step": 100, ...}
@@ -409,7 +414,8 @@ class FinetuneLogger:
         Creates a grid of subplots for any metrics that have been logged via log_update().
         Each metric becomes its own subplot.
         """
-        plt.switch_backend("Agg")
+        if self.exp_type == "walk":
+            plt.switch_backend("Agg")
         if not self.enable_logging:
             return
 
@@ -457,10 +463,10 @@ class FinetuneLogger:
         plt.savefig(path)
         plt.close(fig)
         print(f"Saved update plot to {path}")
-
-        if len(self.latent_trajectory["optimized_latents"]) > 1:
-            self.visualize_latent_dynamics(self.exp_folder)
-            self.visualize_latent_dynamics(self.exp_folder, dim=3)
+        if self.exp_type == "walk":
+            if len(self.latent_trajectory["optimized_latents"]) > 1:
+                self.visualize_latent_dynamics(self.exp_folder)
+                self.visualize_latent_dynamics(self.exp_folder, dim=3)
 
     def close(self):
         """Shut down the plotting thread."""

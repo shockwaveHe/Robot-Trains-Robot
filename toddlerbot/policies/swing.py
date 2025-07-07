@@ -166,7 +166,11 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
             value_hidden_layer_sizes=self.finetune_cfg.value_hidden_layer_sizes,
             policy_hidden_layer_sizes=self.finetune_cfg.policy_hidden_layer_sizes,
         )
-        # self.load_networks('results/stored/toddlerbot_raise_arm_real_world_20250309_172254', data_only=False)
+        # self.load_networks(
+        #     "results/toddlerbot_2xm_swing_real_world_20250426_153420",
+        #     data_only=False,
+        #     suffix="_final",
+        # )
 
         if self.finetune_cfg.use_residual:
             self._make_residual_policy()
@@ -233,6 +237,7 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
         self.fx_amp_max = 0.0
 
         self.last_msg = None
+        self.total_train_steps = 25000
 
     def get_obs(
         self, obs: Obs, command: np.ndarray = None, phase_signal=None, last_action=None
@@ -471,7 +476,11 @@ class SwingPolicy(MJXFinetunePolicy, policy_name="swing"):
             and self.learning_stage == "online"
             and len(self.replay_buffer) == self.finetune_cfg.online.batch_size - 1
         )
-        truncated = time_to_update and self.finetune_cfg.update_mode == "local"
+        truncated = (
+            time_to_update
+            and self.finetune_cfg.update_mode == "local"
+            and self.total_steps < self.total_train_steps
+        )
 
         # if self.is_truncated():
         #     truncated = True

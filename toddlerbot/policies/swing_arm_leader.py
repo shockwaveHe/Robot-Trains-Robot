@@ -69,13 +69,23 @@ class SwingArmLeaderPolicy(BasePolicy, policy_name="swing_arm_leader"):
         # self.modes = ["free", "free", "free"]
         self.modes = ["enhance", "free", "surpress"]
         self.mode = "free"
-        self.expected_total_steps = 50000
-        # self.mode_partition = np.array([0.3, 0.5, 0.8, 1.0]) * self.expected_total_steps
+        self.expected_total_steps = 25000
 
-        # self.mode_sequence = ["enhance", "free", "surpress", "free"]
-        self.mode_partition = np.array([0.4, 1.0]) * self.expected_total_steps
+        # different mode partitioning
+        
+        # self.mode_partition = (
+        #     np.array([0.2, 0.4, 0.6, 0.8, 1.0]) * self.expected_total_steps
+        # )
+        # self.mode_sequence = ["free_0", "enhance", "free_1", "surpress", "free_2"]
 
-        self.mode_sequence = ["surpress", "free"]
+        # self.mode_partition = np.array([1.0]) * self.expected_total_steps
+        # self.mode_sequence = ["free_0"]
+
+        self.mode_partition = np.array([0.4, 0.8, 1.0]) * self.expected_total_steps
+        self.mode_sequence = ["free_0", "enhance", "free_1"]
+
+        # self.mode_partition = np.array([0.4, 0.8, 1.0]) * self.expected_total_steps
+        # self.mode_sequence = ["free_0", "surpress", "free_1"]
 
         assert len(self.mode_sequence) == len(self.mode_partition)
         self.mode_sequence_steps = {
@@ -90,16 +100,19 @@ class SwingArmLeaderPolicy(BasePolicy, policy_name="swing_arm_leader"):
         self.external_force_cycle = 0
 
         self.external_guidance_mode = "random"
-        self.guidance_list = range(0, 5)
-        self.guidance_num = 1
+        # self.external_guidance_mode = "systematic"
+        self.guidance_list = range(1, 5)
+        self.guidance_num = 3
         self.guidance_steps = np.random.choice(
-            self.guidance_list, size=self.guidance_num
+            self.guidance_list, size=self.guidance_num, replace=False
         )
         print("guidance steps:", self.guidance_steps)
 
         self.supress_list = range(0, 4)
         self.supress_num = 1
-        self.supress_steps = np.random.choice(self.supress_list, size=self.supress_num)
+        self.supress_steps = np.random.choice(
+            self.supress_list, size=self.supress_num, replace=False
+        )
         print("supress steps:", self.supress_steps)
         self.init_speed = 0.05
         self.warmup_time = 0.0
@@ -253,7 +266,6 @@ class SwingArmLeaderPolicy(BasePolicy, policy_name="swing_arm_leader"):
         self.ee_vel = np.ndarray(
             shape=(3,), dtype=np.float64, buffer=self.arm_shm.buf[88:112]
         )
-        input("Press Enter to start the system...")
 
     def close(self):
         self.zmq_sender.close()
@@ -294,29 +306,29 @@ class SwingArmLeaderPolicy(BasePolicy, policy_name="swing_arm_leader"):
         if len(self.fx_buffer) < self.swing_buffer_size // 5:
             # print("Not enough data to get the current fx angle")
             return 0.0
-        if mode == "enhance":
+        if "enhance" in mode:
             if self.external_guidance_mode == "systematic":
-                if self.external_force_cycle % self.external_force_period == 0:
-                    return self.get_current_fx_angle()
-                else:
-                    return 0.0
+                # if self.external_force_cycle % self.external_force_period == 0:
+                return self.get_current_fx_angle()
+                # else:
+                #     return 0.0
             elif self.external_guidance_mode == "random":
                 if self.external_force_cycle in self.guidance_steps:
                     return self.get_current_fx_angle()
                 else:
                     return 0.0
-        elif mode == "surpress":
+        elif "surpress" in mode:
             if self.external_guidance_mode == "systematic":
-                if self.external_force_cycle % self.external_force_period == 0:
-                    return self.get_current_fx_angle() + np.pi
-                else:
-                    return 0.0
+                # if self.external_force_cycle % self.external_force_period == 0:
+                return self.get_current_fx_angle() + np.pi
+                # else:
+                #     return 0.0
             elif self.external_guidance_mode == "random":
                 if self.external_force_cycle in self.supress_steps:
                     return self.get_current_fx_angle() + np.pi
                 else:
                     return 0.0
-        elif mode == "free":
+        elif "free" in mode:
             return 0.0
         else:
             raise ValueError(f"Unknown mode: {mode}")
@@ -449,7 +461,7 @@ class SwingArmLeaderPolicy(BasePolicy, policy_name="swing_arm_leader"):
         # print(
         #     f"z_pos: {self.z_pos}, ee_force: {self.ee_force}, ee_torque: {self.ee_torque}, ee_pos: {self.ee_pos}, ee_vel: {self.ee_vel}"
         # )
-        if self.close_loop:
+        if self.follower_steps > 0 and self.close_loop:
             self.fx_buffer.append(self.ee_force[0])
             self.fy_buffer.append(self.ee_force[1])
             self.fz_buffer.append(self.ee_force[2])
@@ -468,9 +480,6 @@ class SwingArmLeaderPolicy(BasePolicy, policy_name="swing_arm_leader"):
             )
 
             n_buffer = len(self.fx_buffer)
-            # assert len(self.reference_pos_buffer) == n_buffer, (
-            #     "Reference pos buffer length mismatch"
-            # )
             if n_buffer < self.swing_buffer_size / 4:
                 self.fx_phase = 0
                 self.ee_pos1_phase = 0
@@ -555,16 +564,16 @@ class SwingArmLeaderPolicy(BasePolicy, policy_name="swing_arm_leader"):
                 self.timer.reset()
                 self.external_force_cycle = 0
                 if self.external_guidance_mode == "random":
-                    if self.mode == "enhance":
+                    if "enhance" in self.mode:
                         self.guidance_steps = np.random.choice(
-                            self.guidance_list, size=self.guidance_num
+                            self.guidance_list, size=self.guidance_num, replace=False
                         )
                         print("guidance steps:", self.guidance_steps)
-                    elif self.mode == "surpress":
+                    elif "surpress" in self.mode:
                         self.supress_steps = np.random.choice(
-                            self.supress_list, size=self.supress_num
+                            self.supress_list, size=self.supress_num, replace=False
                         )
-                        print("supress steps:", self.supress_steps)
+                        print("surpress steps:", self.supress_steps)
 
                 print("Waiting for the follower to start...")
                 while True:

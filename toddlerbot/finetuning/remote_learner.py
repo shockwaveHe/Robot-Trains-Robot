@@ -31,8 +31,7 @@ if __name__ == "__main__":
     finetune_cfg = get_finetune_config(current_task)
     if current_task == "walk":
         current_task += "_finetune"
-    finetune_cfg.update_mode = "local"
-    # ckpt_folder = "results/stored/toddlerbot_walk_finetune_real_world_20250211_101354"
+
     # ckpt_folders = ["20250414_192943_latent_torch_film_4e-5_gamma_0.97_ldr_nm"]
     ckpt_folders = ["20250422_030939_latent_torch_film_4e-5_ar_0.3_ldr"]
     # ckpt_folders = ["20250423_074441_torch_ldr_baseline"]
@@ -41,8 +40,6 @@ if __name__ == "__main__":
     #     "20250424_202645_latent_torch_z_film_5e-5_residual",
     # ]
 
-    # policy.abppo_offline_learner.update(policy.replay_buffer)
-    # policy.logger.plot_updates()
     PolicyClass = get_policy_class(current_task)
     policy: MJXFinetunePolicy = PolicyClass(
         current_task,

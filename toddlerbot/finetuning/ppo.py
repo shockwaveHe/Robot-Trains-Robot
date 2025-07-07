@@ -54,6 +54,7 @@ class PPO:
         self.optimize_z = optimize_z
         self.optimizer_critic = optimize_critic
         self.autoencoder_cfg = autoencoder_cfg
+        self.exp_type = config.exp_type
 
         self._config = config
         self._device = device
@@ -79,46 +80,61 @@ class PPO:
         self.latent_optimizer = None
         self.optimizer_actor = None
         self.optimizer_critic = None
+        if self.exp_type == "walk":
+            if use_latent:
+                with open("toddlerbot/finetuning/latent_z.pt", "rb") as f:
+                    initial_latents = torch.load(f)
+                    if type(initial_latents) == dict:
+                        initial_latents = initial_latents["latent_z"]
+                    initial_latents = initial_latents.to(self.device)
 
-        if use_latent:
-            with open("toddlerbot/finetuning/latent_z.pt", "rb") as f:
-                initial_latents = torch.load(f)
-                if type(initial_latents) == dict:
-                    initial_latents = initial_latents["latent_z"]
-                initial_latents = initial_latents.to(self.device)
+                self.latent_z = nn.Parameter(initial_latents.clone(), requires_grad=True)
 
-            self.latent_z = nn.Parameter(initial_latents.clone(), requires_grad=True)
+            if optimize_z:
+                # self.all_latents = self.latent_z.detach()
+                # Create an optimizer for the latent parameters
+                # Total number of training steps for decay
+                initial_lr = float(self.autoencoder_cfg["train"].get("latent_lr"))
+                decay_factor = float(self.autoencoder_cfg["train"].get("latent_decay"))
+                decay_steps = self.autoencoder_cfg["train"].get("latent_steps")
+                step_size = self.autoencoder_cfg["train"].get("latent_step_size")
 
-        if optimize_z:
-            # self.all_latents = self.latent_z.detach()
-            # Create an optimizer for the latent parameters
-            # Total number of training steps for decay
-            initial_lr = float(self.autoencoder_cfg["train"].get("latent_lr"))
-            decay_factor = float(self.autoencoder_cfg["train"].get("latent_decay"))
-            decay_steps = self.autoencoder_cfg["train"].get("latent_steps")
-            step_size = self.autoencoder_cfg["train"].get("latent_step_size")
+                def stepwise_decay(step):
+                    decay_count = min(step // step_size, decay_steps // step_size)
+                    return max(decay_factor, 1.0 - decay_factor * decay_count)
 
-            def stepwise_decay(step):
-                decay_count = min(step // step_size, decay_steps // step_size)
-                return max(decay_factor, 1.0 - decay_factor * decay_count)
+                self.latent_optimizer = torch.optim.AdamW([self.latent_z], lr=initial_lr)
+                self.latent_lr_scheduler = torch.optim.lr_scheduler.LambdaLR(
+                    self.latent_optimizer, stepwise_decay
+                )
+            else:
+                self.optimizer_actor = torch.optim.Adam(
+                    self._policy_net.parameters(),
+                    lr=self.lr_a,
+                    eps=1e-5 if self.set_adam_eps else 1e-8,
+                )
 
-            self.latent_optimizer = torch.optim.AdamW([self.latent_z], lr=initial_lr)
-            self.latent_lr_scheduler = torch.optim.lr_scheduler.LambdaLR(
-                self.latent_optimizer, stepwise_decay
-            )
-        else:
-            self.optimizer_actor = torch.optim.Adam(
-                self._policy_net.parameters(),
-                lr=self.lr_a,
-                eps=1e-5 if self.set_adam_eps else 1e-8,
-            )
-
-        if optimize_critic:
-            self.optimizer_critic = torch.optim.Adam(
-                self._value_net.parameters(),
-                lr=self.lr_c,
-                eps=1e-5 if self.set_adam_eps else 1e-8,
-            )
+            if optimize_critic:
+                self.optimizer_critic = torch.optim.Adam(
+                    self._value_net.parameters(),
+                    lr=self.lr_c,
+                    eps=1e-5 if self.set_adam_eps else 1e-8,
+                )
+        elif self.exp_type == "swing":
+            if self.set_adam_eps:  # Trick 9: set Adam epsilon=1e-5
+                self.optimizer_actor = torch.optim.Adam(
+                    self._policy_net.parameters(), lr=self.lr_a, eps=1e-5
+                )
+                self.optimizer_critic = torch.optim.Adam(
+                    self._value_net.parameters(), lr=self.lr_c, eps=1e-5
+                )
+            else:
+                self.optimizer_actor = torch.optim.Adam(
+                    self._policy_net.parameters(), lr=self.lr_a
+                )
+                self.optimizer_critic = torch.optim.Adam(
+                    self._value_net.parameters(), lr=self.lr_c
+                )
 
         self.beta = config.beta
         if self.beta > 0.0:
@@ -157,7 +173,7 @@ class PPO:
     def get_action(self, s, deterministic=False):
         s = torch.unsqueeze(torch.tensor(s, dtype=torch.float), 0).to(self.device)
         with torch.no_grad():
-            dist = self._policy_net(s, self.latent_z)
+            dist = self._policy_net(s, self.latent_z) if self.exp_type == "walk" else self._policy_net(s)
             if deterministic:
                 if isinstance(dist, TransformedDistribution):
                     a_pi = torch.tanh(dist.base_dist.loc)
@@ -226,7 +242,7 @@ class PPO:
             for index in BatchSampler(
                 SubsetRandomSampler(range(len(states))), self.mini_batch_size, False
             ):
-                new_dist = self._policy_net(states[index], self.latent_z)
+                new_dist = self._policy_net(states[index], self.latent_z) if self.exp_type == "walk" else self._policy_net(states[index])
                 # dist_entropy = new_dist.base_dist.entropy().sum(1, keepdim=True)
                 if isinstance(new_dist, TransformedDistribution):
                     pre_tanh_sample = new_dist.transforms[-1].inv(new_dist.rsample())

@@ -130,12 +130,13 @@ def soft_clamp(
 class FiLMLayer(nn.Module):
     """Feature-wise Linear Modulation layer with statistics tracking."""
 
-    def __init__(self, latent_dim, hidden_dim):
+    def __init__(self, latent_dim, hidden_dim, debug=False):
         super().__init__()
         self.film = nn.Linear(latent_dim, 2 * hidden_dim)
         self.register_buffer("gamma_mean", torch.zeros(1))
         self.register_buffer("beta_mean", torch.zeros(1))
         self.register_buffer("count", torch.zeros(1))
+        self.debug = debug
 
     # @profile()
     def forward(self, hidden, z):
@@ -144,18 +145,18 @@ class FiLMLayer(nn.Module):
         gamma, beta = torch.chunk(film_params, 2, dim=-1)
 
         # Update running statistics (for monitoring only)
-        # if self.training:
-        #     with torch.no_grad():
-        #         batch_mean_gamma = gamma.mean()
-        #         batch_mean_beta = beta.mean()
-        #         total = self.count + gamma.numel()
-        #         self.gamma_mean = (
-        #             self.gamma_mean * self.count + batch_mean_gamma * gamma.numel()
-        #         ) / total
-        #         self.beta_mean = (
-        #             self.beta_mean * self.count + batch_mean_beta * gamma.numel()
-        #         ) / total
-        #         self.count = total
+        if self.training and self.debug:
+            with torch.no_grad():
+                batch_mean_gamma = gamma.mean()
+                batch_mean_beta = beta.mean()
+                total = self.count + gamma.numel()
+                self.gamma_mean = (
+                    self.gamma_mean * self.count + batch_mean_gamma * gamma.numel()
+                ) / total
+                self.beta_mean = (
+                    self.beta_mean * self.count + batch_mean_beta * gamma.numel()
+                ) / total
+                self.count = total
 
         # Apply feature-wise transformation
         return gamma * hidden + beta
