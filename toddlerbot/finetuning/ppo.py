@@ -88,7 +88,9 @@ class PPO:
                         initial_latents = initial_latents["latent_z"]
                     initial_latents = initial_latents.to(self.device)
 
-                self.latent_z = nn.Parameter(initial_latents.clone(), requires_grad=True)
+                self.latent_z = nn.Parameter(
+                    initial_latents.clone(), requires_grad=True
+                )
 
             if optimize_z:
                 # self.all_latents = self.latent_z.detach()
@@ -103,7 +105,9 @@ class PPO:
                     decay_count = min(step // step_size, decay_steps // step_size)
                     return max(decay_factor, 1.0 - decay_factor * decay_count)
 
-                self.latent_optimizer = torch.optim.AdamW([self.latent_z], lr=initial_lr)
+                self.latent_optimizer = torch.optim.AdamW(
+                    [self.latent_z], lr=initial_lr
+                )
                 self.latent_lr_scheduler = torch.optim.lr_scheduler.LambdaLR(
                     self.latent_optimizer, stepwise_decay
                 )
@@ -173,7 +177,11 @@ class PPO:
     def get_action(self, s, deterministic=False):
         s = torch.unsqueeze(torch.tensor(s, dtype=torch.float), 0).to(self.device)
         with torch.no_grad():
-            dist = self._policy_net(s, self.latent_z) if self.exp_type == "walk" else self._policy_net(s)
+            dist = (
+                self._policy_net(s, self.latent_z)
+                if self.exp_type == "walk"
+                else self._policy_net(s)
+            )
             if deterministic:
                 if isinstance(dist, TransformedDistribution):
                     a_pi = torch.tanh(dist.base_dist.loc)
@@ -242,7 +250,11 @@ class PPO:
             for index in BatchSampler(
                 SubsetRandomSampler(range(len(states))), self.mini_batch_size, False
             ):
-                new_dist = self._policy_net(states[index], self.latent_z) if self.exp_type == "walk" else self._policy_net(states[index])
+                new_dist = (
+                    self._policy_net(states[index], self.latent_z)
+                    if self.exp_type == "walk"
+                    else self._policy_net(states[index])
+                )
                 # dist_entropy = new_dist.base_dist.entropy().sum(1, keepdim=True)
                 if isinstance(new_dist, TransformedDistribution):
                     pre_tanh_sample = new_dist.transforms[-1].inv(new_dist.rsample())

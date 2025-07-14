@@ -251,8 +251,12 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         # self.total_training_steps = 75000
         self.num_updates = 0
         self.timer = Timer()
+
+        import pdb
+
+        pdb.set_trace()
         # self.last_msg = None
-        
+
         # if self.eval_mode:
         #     self.last_msg = ZMQMessage(time=time.time())
 
@@ -266,7 +270,9 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         # self.reward_epi_list = []
         # self.reward_epi_best = -np.inf
         if self.exp_type != "walk":
-            self.sim = MuJoCoSim(robot, vis_type=self.finetune_cfg.sim_vis_type, n_frames=1)
+            self.sim = MuJoCoSim(
+                robot, vis_type=self.finetune_cfg.sim_vis_type, n_frames=1
+            )
             self.min_y_feet_dist = self.finetune_cfg.finetune_rewards.min_feet_y_dist
             self.max_y_feet_dist = self.finetune_cfg.finetune_rewards.max_feet_y_dist
             if self.is_real:
@@ -581,7 +587,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             # optimize_critic=self.finetune_cfg.optimize_critic,
             # autoencoder_cfg=self.autoencoder_config,
         )
-    
+
     def sample_walk_command(self):
         # Sample random angles uniformly between 0 and 2*pi
         theta = self.rng.uniform(low=0, high=2 * np.pi, size=(1,))
@@ -589,15 +595,11 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         x_max = np.where(
             np.sin(theta) > 0, self.command_range[5][1], -self.command_range[5][0]
         )
-        x = self.rng.uniform(low=self.deadzone, high=x_max, size=(1,)) * np.sin(
-            theta
-        )
+        x = self.rng.uniform(low=self.deadzone, high=x_max, size=(1,)) * np.sin(theta)
         y_max = np.where(
             np.cos(theta) > 0, self.command_range[6][1], -self.command_range[6][0]
         )
-        y = self.rng.uniform(low=self.deadzone, high=y_max, size=(1,)) * np.cos(
-            theta
-        )
+        y = self.rng.uniform(low=self.deadzone, high=y_max, size=(1,)) * np.cos(theta)
         z = np.zeros(1)
         return np.concatenate([x, y, z])
 
@@ -618,7 +620,7 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             ),
         )
         return np.concatenate([x, y, z])
-    
+
     def _sample_command(self, last_command: Optional[np.ndarray] = None) -> np.ndarray:
         # Randomly sample an index from the command list
         if last_command is not None:
@@ -1274,7 +1276,6 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         # self.arm_force_z_sigma = self.finetune_cfg.finetune_rewards.arm_force_z_sigma
         # self.arm_force_y_sigma = self.finetune_cfg.finetune_rewards.arm_force_y_sigma
         # self.arm_force_x_sigma = self.finetune_cfg.finetune_rewards.arm_force_x_sigma
-        
 
     def _compute_reward(self, obs: Obs, action: np.ndarray):
         reward_dict: Dict[str, np.ndarray] = {}
