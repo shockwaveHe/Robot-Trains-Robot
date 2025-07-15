@@ -15,9 +15,15 @@ from toddlerbot.finetuning.abppo import (
     AdaptiveBehaviorProximalPolicyOptimization,
 )
 from toddlerbot.locomotion.mjx_config import get_env_config
+from toddlerbot.finetuning.finetune_config import FinetuneConfig
+from toddlerbot.finetuning.replay_buffer import OnlineReplayBuffer, RemoteReplayBuffer
+from toddlerbot.finetuning.server_client import RemoteClient
 from toddlerbot.policies.mjx_finetune import MJXFinetunePolicy
 from toddlerbot.finetuning.networks import FiLMLayer, load_rsl_params_into_pytorch
+from toddlerbot.reference.walk_zmp_ref import WalkZMPReference
 from toddlerbot.finetuning.ppo import PPO
+from toddlerbot.utils.comm_utils import ZMQMessage, ZMQNode
+from toddlerbot.finetuning.logger import FinetuneLogger
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
@@ -26,7 +32,7 @@ from toddlerbot.utils.math_utils import euler2quat
 from toddlerbot.utils.comm_utils import ZMQMessage
 import toddlerbot.finetuning.networks as networks
 from toddlerbot.finetuning.dynamics import BaseDynamics, DynamicsNetwork
-from toddlerbot.utils.misc_utils import log 
+from toddlerbot.utils.misc_utils import log
 from toddlerbot.finetuning.utils import CONST_EPS, Timer
 from toddlerbot.utils.math_utils import (
     euler2mat,
@@ -34,6 +40,7 @@ from toddlerbot.utils.math_utils import (
     exponential_moving_average,
     interpolate_action,
 )
+
 
 class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
     def __init__(
@@ -50,6 +57,8 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
         env_cfg: Optional[Dict] = None,
         finetune_cfg: Optional[Dict] = None,
         is_real: bool = True,
+        *args,
+        **kwargs,
     ):
         if env_cfg is None:
             env_cfg = get_env_config("walk")
@@ -65,20 +74,17 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
         self.min_feet_y_dist = finetune_cfg.finetune_rewards.min_feet_y_dist
         self.max_feet_y_dist = finetune_cfg.finetune_rewards.max_feet_y_dist
 
-        super().__init__(
-            name,
-            robot,
-            init_motor_pos,
-            ckpts,
-            ip,
-            eval_mode,
-            joystick,
-            fixed_command,
-            env_cfg,
-            finetune_cfg,
-            exp_folder=exp_folder,
-            is_real=is_real,
+        # set these before super init
+        self.eval_mode = eval_mode
+        self.is_stopped = False
+        self.finetune_cfg: FinetuneConfig = finetune_cfg
+
+        self.num_privileged_obs_history = self.finetune_cfg.frame_stack
+        self.privileged_obs_size = self.finetune_cfg.num_single_privileged_obs
+        self.privileged_obs_history_size = (
+            self.privileged_obs_size * self.num_privileged_obs_history
         )
+
         self.autoencoder_config = None
         if self.finetune_cfg.use_latent:
             with open(
@@ -91,13 +97,109 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
                 elif autoencoder_config["model"]["dynamics_type"] == "hyper":
                     autoencoder_config["model"]["num_split"] = 1
                 self.autoencoder_config = autoencoder_config
+
+        super(MJXFinetunePolicy, self).__init__(
+            name,
+            robot,
+            init_motor_pos,
+            "",
+            joystick,
+            fixed_command,
+            env_cfg,
+            need_warmup=False,
+            exp_folder=exp_folder,
+        )
+        self.robot = robot
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.inference_device = "cpu"
+        if "seed" in kwargs:
+            self.rng = np.random.default_rng(kwargs["seed"])
+        else:
+            self.rng = np.random.default_rng()
+        self.motion_ref = WalkZMPReference(
+            robot,
+            self.cfg.sim.timestep * self.cfg.action.n_frames,
+            self.cfg.action.cycle_time,
+            self.cfg.action.waist_roll_max,
+        )
+        self.command_range = np.array(
+            self.cfg.commands.command_range
+        )  # TODO: set command range to x>0, y~0 and z=0, turn_change = 0
+        self.deadzone = (
+            np.array(self.cfg.commands.deadzone)
+            if len(self.cfg.commands.deadzone) > 1
+            else self.cfg.commands.deadzone[0]
+        )
+        self.zero_chance = self.cfg.commands.zero_chance
+        self.turn_chance = self.cfg.commands.turn_chance
+
+        self.ref_start_idx = 13
+
+        self.num_obs_history = self.cfg.obs.frame_stack
+        self.obs_size = self.finetune_cfg.num_single_obs
+        self.last_action = np.zeros(self.num_action)
+        self.last_last_action = np.zeros(self.num_action)
+        self.last_action_target = self.default_action
+        self.is_real = is_real
+
+        print(
+            f"Observation size: {self.obs_size}, Privileged observation size: {self.privileged_obs_size}"
+        )
+
         if self.eval_mode:
             self.finetune_cfg.update_mode = "local"
+
+        if self.finetune_cfg.update_mode == "local":
+            self.replay_buffer = OnlineReplayBuffer(
+                self.device,
+                self.obs_size * self.num_obs_history,
+                self.privileged_obs_size * self.num_privileged_obs_history,
+                self.num_action,
+                self.finetune_cfg.buffer_size,
+                enlarge_when_full=self.finetune_cfg.update_interval
+                * self.finetune_cfg.enlarge_when_full,
+                validation_size=self.finetune_cfg.buffer_valid_size,
+            )
+            self.remote_client = None
+        else:
+            assert self.finetune_cfg.update_mode == "remote"
+            self.remote_client = RemoteClient(
+                server_ip="172.24.68.176",
+                server_port=5007,
+                exp_folder=self.exp_folder,
+            )
+            self.replay_buffer = RemoteReplayBuffer(
+                self.remote_client,
+                self.finetune_cfg.buffer_size,
+                num_obs_history=self.num_obs_history,
+                num_privileged_obs_history=self.num_privileged_obs_history,
+                enlarge_when_full=self.finetune_cfg.update_interval
+                * self.finetune_cfg.enlarge_when_full,
+            )
+
+        # import pickle
+        # with open('buffer_mock.pkl', 'rb') as f:
+        #     self.replay_buffer: OnlineReplayBuffer = pickle.load(f)
+        # if self.finetune_cfg.use_latent and self.finetune_cfg.use_residual:
+        #     autoencoder_config_copy = deepcopy(self.autoencoder_config)
+        #     self.autoencoder_config = None
+
+        self._make_networks(
+            observation_size=self.finetune_cfg.frame_stack * self.obs_size,
+            privileged_observation_size=self.finetune_cfg.frame_stack
+            * self.privileged_obs_size,
+            action_size=self.num_action,
+            value_hidden_layer_sizes=self.finetune_cfg.value_hidden_layer_sizes,
+            policy_hidden_layer_sizes=self.finetune_cfg.policy_hidden_layer_sizes,
+        )
+
         if len(ckpts) > 0:
             run_name = f"{self.robot.name}_walk_ppo_{ckpts[0]}"
             policy_path = os.path.join("results", run_name, "model_best.pt")
             if os.path.exists(policy_path):
                 print(f"Loading pretrained model from {policy_path}")
+                # jax_params = load_jax_params(policy_path)
+                # load_jax_params_into_pytorch(self.policy_net, jax_params[1]["params"])
                 rsl_params = torch.load(os.path.join(policy_path))["model_state_dict"]
                 load_rsl_params_into_pytorch(
                     self.policy_net, self.value_net, rsl_params
@@ -114,7 +216,33 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
 
         if self.finetune_cfg.use_latent:
             self.finetune_cfg.use_residual = False
-        
+
+        if self.finetune_cfg.use_residual:
+            self._make_residual_policy()
+            self._residual_action_scale = self.finetune_cfg.residual_action_scale
+
+        # if self.finetune_cfg.use_latent and self.finetune_cfg.use_residual:
+        #     self.autoencoder_config = autoencoder_config_copy
+        #     self._make_networks(
+        #         observation_size=self.finetune_cfg.frame_stack * self.obs_size,
+        #         privileged_observation_size=self.finetune_cfg.frame_stack
+        #         * self.privileged_obs_size,
+        #         action_size=self.num_action,
+        #         value_hidden_layer_sizes=self.finetune_cfg.value_hidden_layer_sizes,
+        #         policy_hidden_layer_sizes=self.finetune_cfg.policy_hidden_layer_sizes,
+        #     )
+
+        #     run_name = f"{self.robot.name}_walk_ppo_{ckpts[1]}"
+        #     policy_path = os.path.join("results", run_name, "model_best.pt")
+        #     if os.path.exists(policy_path):
+        #         print(f"Loading pretrained model from {policy_path}")
+        #         # jax_params = load_jax_params(policy_path)
+        #         # load_jax_params_into_pytorch(self.policy_net, jax_params[1]["params"])
+        #         rsl_params = torch.load(os.path.join(policy_path))["model_state_dict"]
+        #         load_rsl_params_into_pytorch(
+        #             self.policy_net, self.value_net, rsl_params
+        #         )
+
         # loading residual policy
         if self.eval_mode:
             try:
@@ -130,16 +258,40 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
             except Exception as e:
                 print("residual policy not loaded correstly: ", e)
 
+        self.obs_history = np.zeros(self.num_obs_history * self.obs_size)
+        self.privileged_obs_history = np.zeros(
+            self.num_privileged_obs_history * self.privileged_obs_size
+        )
+        if self.is_real:
+            self.zmq_receiver = ZMQNode(type="receiver")
+            assert len(ip) > 0, "Please provide the IP address of the sender"
+            self.zmq_sender = ZMQNode(type="sender", ip=ip)
+            # self._init_tracker()
+        else:
+            self.zmq_receiver = None
+            self.zmq_sender = None
+            self.tracker = None
+
+        self.logger = FinetuneLogger(self.exp_folder)
+
+        self.is_paused = False
+        self.total_steps = 0
         self.total_training_steps = 75000
+        self.num_updates = 0
+        self.timer = Timer()
         self.last_msg = None
-        
         if self.eval_mode:
             self.last_msg = ZMQMessage(time=time.time())
+
+        self._init_reward()
+        self._make_learners()
+
+        self.need_reset = True
+        self.learning_stage = "offline"
 
         self.reward_list = []
         self.reward_epi_list = []
         self.reward_epi_best = -np.inf
-
 
     def get_phase_signal(self, time_curr: float):
         phase_signal = np.array(
@@ -163,6 +315,7 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
 
         # print(f"walk_command: {command}")
         return command
+
     def _make_networks(
         self,
         observation_size: int,
@@ -315,6 +468,7 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
             optimize_critic=self.finetune_cfg.optimize_critic,
             autoencoder_cfg=self.autoencoder_config,
         )
+
     def _sample_command(self, last_command: Optional[np.ndarray] = None) -> np.ndarray:
         # Randomly sample an index from the command list
         if last_command is not None:
@@ -336,7 +490,7 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
             ),
         )
         command = np.concatenate([pose_command, walk_command])
-        command = np.array([0, 0, 0, 0, 0, 0.2, 0, 0]) # tracking command
+        command = np.array([0, 0, 0, 0, 0, 0.2, 0, 0])  # tracking command
         return command
 
     @torch.no_grad()
@@ -473,7 +627,6 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
             self.need_reset = False
 
         time_curr = self.step_curr * self.control_dt
-
 
         control_inputs: Dict[str, float] = {}
         self.control_inputs = {}
@@ -649,6 +802,7 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
             self.is_standing = False
         self.last_torso_yaw = obs.euler[2]
         return control_inputs, motor_target, obs
+
     def _init_reward(self) -> None:
         super()._init_reward()
         self.healthy_z_range = self.finetune_cfg.finetune_rewards.healthy_z_range
