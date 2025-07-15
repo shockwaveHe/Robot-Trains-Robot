@@ -149,7 +149,7 @@ class MJXPolicy(BasePolicy, policy_name="mjx"):
             self.cfg.action.filter_cutoff
             / (self.cfg.action.filter_cutoff + 1 / (self.control_dt * 2 * np.pi))
         )
-        
+
         if need_warmup:
             self.warmup_result: Dict[str, Any] = {}
             self.warmup_event = threading.Event()
