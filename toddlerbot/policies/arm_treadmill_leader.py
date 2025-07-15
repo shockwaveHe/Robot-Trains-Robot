@@ -1,20 +1,20 @@
-from collections import deque
-from multiprocessing import shared_memory
 import struct
 import threading
 import time
+from collections import deque
+from multiprocessing import shared_memory
 from typing import Dict, Optional, Tuple
 
 import numpy as np
 import numpy.typing as npt
 import serial
 
+from toddlerbot.finetuning.utils import Timer
 from toddlerbot.policies import BasePolicy
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.keyboard import Keyboard
 from toddlerbot.utils.comm_utils import ZMQMessage, ZMQNode
-from toddlerbot.finetuning.utils import Timer
 
 
 class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
@@ -129,6 +129,9 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         # arm schedule
         self.total_train_steps = 50000
         self.total_evaluation_steps = 6000
+
+        # Different schedules 
+
         # if self.schedule_type in [
         #     "arm_stepwise",
         #     "arm_treadmill_stepwise",
@@ -239,43 +242,6 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
                 f"set treadmill speed to evaluation speed {self.treadmill_eval_speed / 1000} m/s"
             )
             return
-        # self.ee_force_x_ema = (
-        #     self.ee_force_x_ema_alpha * self.ee_force_x_ema
-        #     + (1 - self.ee_force_x_ema_alpha) * obs.ee_force[0]
-        # )
-        # delta_speed = np.abs(self.ee_force_x_ema) - self.x_force_threshold
-        # speed_stalled = True
-        # for prev_delta_speed in self.speed_delta_buffer:
-        #     if not np.allclose(prev_delta_speed, delta_speed):
-        #         speed_stalled = False
-        #         break
-        # delta_arm_pos_x = obs.arm_ee_pos[0] - self.init_arm_pos[0]
-        # delta_arm_pos_y = obs.arm_ee_pos[1] - self.init_arm_pos[1]
-        # print(
-        #     f"Delta Arm Pos X, Y: {delta_arm_pos_x:.4f}, {delta_arm_pos_y:.4f}, Force X, Y: {obs.ee_force[0]:.4f}, {obs.ee_force[1]:.4f} Delta Speed: {delta_speed:.4f}"
-        # )
-        # self.speed_delta_buffer.append(delta_speed)
-        # if speed_stalled:
-        #     print(f"Speed delta stalled at {delta_speed}")
-        #     return
-        # self.speed += self.treadmill_speed_pos_kp * delta_arm_pos_x
-        # if self.schedule_type in ["arm_feedback_gain_stepwise"]:
-        #     delta_speed = (
-        #         self.arm_feedback_gain_schedule(self.current_train_steps) * delta_speed
-        #     )
-        # else:
-        #     delta_speed = self.treadmill_speed_force_kp * delta_speed
-
-        # delta_speed = np.clip(delta_speed, 0.0, 2.0)
-        # if self.ee_force_x_ema > self.x_force_threshold:
-        #     delta_speed *= self.treadmill_speed_inc_kp
-        #     # print(f"about to increase speed {delta_speed}")
-        #     self.speed += delta_speed
-        # elif self.ee_force_x_ema < 0:
-        #     delta_speed *= self.treadmill_speed_dec_kp
-        #     # print(f"about to decrease speed {delta_speed}")
-        #     self.speed -= delta_speed
-        #     self.speed = max(0.0, self.speed)
 
         self.speed = self.base_speed
         self.speed += self.treadmill_speed_force_kp * obs.ee_force[0]
@@ -304,17 +270,6 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
                 self.speed_wt_peturbation, 0.0, self.max_speed
             )
 
-        # if self.schedule_type in ["treadmill_stepwise", "arm_treadmill_stepwise"]:
-        #     for key, value in self.treadmill_schedule_mapping.items():
-        #         if self.current_train_steps < key:
-        #             self.speed = (
-        #                 self.treadmill_eval_speed * value + (1 - value) * self.speed
-        #             )
-        #             break
-        #     if self.current_train_steps >= self.total_train_steps:
-        #         self.speed = self.treadmill_eval_speed
-        #
-        # # print(f"Delta Speed: {delta_speed:.4f}")
         print(
             f"Force X, Y: {obs.ee_force[0]:.4f}, {obs.ee_force[1]:.4f} treadmill speed: {self.speed:.4f}"
         )
@@ -656,7 +611,7 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         #     self.arm_shm.buf[8:16] = struct.pack('d', self.z_pos_delta)
         #     time.sleep(0.5)
         # input("Press Enter to finish...")
-        # import ipdb; ipdb.set_trace()
+
         cur_force = struct.unpack("d", self.arm_shm.buf[:8])[0]
         print(f"Waiting for force to reset... {cur_force}")
         while cur_force == -1.0:

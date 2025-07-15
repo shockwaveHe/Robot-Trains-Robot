@@ -19,8 +19,12 @@ from toddlerbot.finetuning.abppo import (
 from toddlerbot.finetuning.dynamics import BaseDynamics, DynamicsNetwork
 from toddlerbot.finetuning.finetune_config import FinetuneConfig
 from toddlerbot.finetuning.logger import FinetuneLogger
-from toddlerbot.finetuning.networks import load_jax_params, load_jax_params_into_pytorch
-from toddlerbot.finetuning.networks import FiLMLayer, load_rsl_params_into_pytorch
+from toddlerbot.finetuning.networks import (
+    FiLMLayer,
+    load_jax_params,
+    load_jax_params_into_pytorch,
+    load_rsl_params_into_pytorch,
+)
 from toddlerbot.finetuning.ppo import PPO
 from toddlerbot.finetuning.replay_buffer import OnlineReplayBuffer, RemoteReplayBuffer
 from toddlerbot.finetuning.server_client import RemoteClient
@@ -210,27 +214,6 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             self._make_residual_policy()
             self._residual_action_scale = self.finetune_cfg.residual_action_scale
 
-        # if self.finetune_cfg.use_latent and self.finetune_cfg.use_residual:
-        #     self.autoencoder_config = autoencoder_config_copy
-        #     self._make_networks(
-        #         observation_size=self.finetune_cfg.frame_stack * self.obs_size,
-        #         privileged_observation_size=self.finetune_cfg.frame_stack
-        #         * self.privileged_obs_size,
-        #         action_size=self.num_action,
-        #         value_hidden_layer_sizes=self.finetune_cfg.value_hidden_layer_sizes,
-        #         policy_hidden_layer_sizes=self.finetune_cfg.policy_hidden_layer_sizes,
-        #     )
-
-        #     run_name = f"{self.robot.name}_walk_ppo_{ckpts[1]}"
-        #     policy_path = os.path.join("results", run_name, "model_best.pt")
-        #     if os.path.exists(policy_path):
-        #         print(f"Loading pretrained model from {policy_path}")
-        #         # jax_params = load_jax_params(policy_path)
-        #         # load_jax_params_into_pytorch(self.policy_net, jax_params[1]["params"])
-        #         rsl_params = torch.load(os.path.join(policy_path))["model_state_dict"]
-        #         load_rsl_params_into_pytorch(
-        #             self.policy_net, self.value_net, rsl_params
-        #         )
 
         # loading residual policy
         if self.eval_mode:
@@ -344,27 +327,6 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
         # Note: Ensure that your policy MLP ends with parametric_action_distribution.param_size units
         # autoencoder_cfg = self.autoencoder_config
 
-        # film_layers = None
-        # if autoencoder_cfg is not None:
-        #     latent_dim = (
-        #         autoencoder_cfg["model"]["n_embd"]
-        #         * autoencoder_cfg["model"]["num_splits"]
-        #     )
-        #     self.latent_dim = latent_dim
-        #     film_layers = nn.ModuleList()
-        #     film_layers.append(FiLMLayer(latent_dim, policy_hidden_layer_sizes[0]))
-        #     for i in range(1, len(policy_hidden_layer_sizes)):
-        #         film_layers.append(FiLMLayer(latent_dim, policy_hidden_layer_sizes[i]))
-
-        #     for film_layer in film_layers:
-        #         nn.init.constant_(film_layer.film.weight, 0.0)
-        #         nn.init.constant_(
-        #             film_layer.film.bias[: film_layer.film.out_features // 2], 1.0
-        #         )
-        #         nn.init.constant_(
-        #             film_layer.film.bias[film_layer.film.out_features // 2 :], 0.0
-        #         )
-
         self.policy_net = networks.GaussianPolicyNetwork(
             observation_size=observation_size,
             preprocess_observations_fn=preprocess_observations_fn,
@@ -373,7 +335,6 @@ class MJXFinetunePolicy(MJXPolicy, policy_name="finetune"):
             activation_fn=activation_fn,
             use_tanh=self.finetune_cfg.use_tanh,
             noise_std_type=self.finetune_cfg.noise_std_type,
-            # film_layers=film_layers,
         ).to(self.inference_device)
         self.policy_net_opt = (
             torch.compile(self.policy_net) if self.is_real else self.policy_net

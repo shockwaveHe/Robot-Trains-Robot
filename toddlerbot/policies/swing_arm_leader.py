@@ -1,27 +1,27 @@
-from collections import deque
-from multiprocessing import shared_memory
+import itertools
 import struct
 import threading
 import time
+from collections import deque
+from multiprocessing import shared_memory
 from typing import Dict, Optional, Tuple
 
+import matplotlib
+import matplotlib.animation as animation
+import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import serial
+from scipy.signal import hilbert
 
+from toddlerbot.finetuning.finetune_config import FinetuneConfig, get_finetune_config
+from toddlerbot.finetuning.utils import Timer
+from toddlerbot.locomotion.mjx_config import get_env_config
 from toddlerbot.policies import BasePolicy
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.keyboard import Keyboard
 from toddlerbot.utils.comm_utils import ZMQMessage, ZMQNode
-from toddlerbot.finetuning.utils import Timer
-from toddlerbot.locomotion.mjx_config import get_env_config
-from toddlerbot.finetuning.finetune_config import FinetuneConfig, get_finetune_config
-from scipy.signal import hilbert
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-import itertools
-import matplotlib
 
 matplotlib.use("TkAgg")
 
