@@ -1,0 +1,23 @@
+session_name : walk
+suppress_history : false
+
+windows:
+  - window_name: walk
+    layout: tiled
+    panes:
+      - shell_command:
+        - cd /home/kukabot/Projects/force_ctl/hardware_interfaces/build/applications/force_control_demo
+        - ./force_control_walk
+      - shell_command: 
+        - conda activate toddler
+        - cd /home/kukabot/Projects/toddlerbot_internal
+        - bash ./launch/at_leader.sh
+      - shell_command:
+        - ssh arya@arya-desktop.local
+        - cd ~/projects/toddlerbot_internal
+        - bash ./launch/walk_finetune.sh
+      - shell_command:
+        - ssh montreal
+        - cd /home/hkz/projects/toddlerbot_internal
+        # - bash ./launch/remote_learner.sh
+

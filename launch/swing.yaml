@@ -1,0 +1,18 @@
+session_name : swing
+suppress_history : false
+
+windows:
+  - window_name: swing
+    layout: tiled
+    panes:
+      - shell_command:
+        - cd /home/kukabot/Projects/force_ctl/hardware_interfaces/build/applications/force_control_demo
+        - ./force_control_swing
+      - shell_command: 
+        - conda activate toddler
+        - cd /home/kukabot/Projects/toddlerbot_internal
+        - bash ./launch/swing_arm_leader.sh
+      - shell_command:
+        - ssh arya@arya-desktop.local
+        - cd ~/projects/toddlerbot_internal
+        - bash ./launch/swing.sh
