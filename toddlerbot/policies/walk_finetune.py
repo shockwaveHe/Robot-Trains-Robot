@@ -1,45 +1,42 @@
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
-
 import os
 import time
-import yaml
+from copy import deepcopy
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+
 import numpy as np
 import numpy.typing as npt
 import torch
 import torch.nn as nn
+import yaml
+from scipy.spatial.transform import Rotation
 
-from copy import deepcopy
-from toddlerbot.finetuning.finetune_config import get_finetune_config
+import toddlerbot.finetuning.networks as networks
 from toddlerbot.finetuning.abppo import (
     ABPPO_Offline_Learner,
     AdaptiveBehaviorProximalPolicyOptimization,
 )
-from toddlerbot.locomotion.mjx_config import get_env_config
-from toddlerbot.finetuning.finetune_config import FinetuneConfig
+from toddlerbot.finetuning.dynamics import BaseDynamics, DynamicsNetwork
+from toddlerbot.finetuning.finetune_config import FinetuneConfig, get_finetune_config
+from toddlerbot.finetuning.logger import FinetuneLogger
+from toddlerbot.finetuning.networks import FiLMLayer, load_rsl_params_into_pytorch
+from toddlerbot.finetuning.ppo import PPO
 from toddlerbot.finetuning.replay_buffer import OnlineReplayBuffer, RemoteReplayBuffer
 from toddlerbot.finetuning.server_client import RemoteClient
+from toddlerbot.finetuning.utils import CONST_EPS, Timer
+from toddlerbot.locomotion.mjx_config import get_env_config
 from toddlerbot.policies.mjx_finetune import MJXFinetunePolicy
-from toddlerbot.finetuning.networks import FiLMLayer, load_rsl_params_into_pytorch
 from toddlerbot.reference.walk_zmp_ref import WalkZMPReference
-from toddlerbot.finetuning.ppo import PPO
-from toddlerbot.utils.comm_utils import ZMQMessage, ZMQNode
-from toddlerbot.finetuning.logger import FinetuneLogger
 from toddlerbot.sim import Obs
 from toddlerbot.sim.robot import Robot
 from toddlerbot.tools.joystick import Joystick
-from scipy.spatial.transform import Rotation
-from toddlerbot.utils.math_utils import euler2quat
-from toddlerbot.utils.comm_utils import ZMQMessage
-import toddlerbot.finetuning.networks as networks
-from toddlerbot.finetuning.dynamics import BaseDynamics, DynamicsNetwork
-from toddlerbot.utils.misc_utils import log
-from toddlerbot.finetuning.utils import CONST_EPS, Timer
+from toddlerbot.utils.comm_utils import ZMQMessage, ZMQNode
 from toddlerbot.utils.math_utils import (
     euler2mat,
     euler2quat,
     exponential_moving_average,
     interpolate_action,
 )
+from toddlerbot.utils.misc_utils import log
 
 
 class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
@@ -177,13 +174,6 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
                 * self.finetune_cfg.enlarge_when_full,
             )
 
-        # import pickle
-        # with open('buffer_mock.pkl', 'rb') as f:
-        #     self.replay_buffer: OnlineReplayBuffer = pickle.load(f)
-        # if self.finetune_cfg.use_latent and self.finetune_cfg.use_residual:
-        #     autoencoder_config_copy = deepcopy(self.autoencoder_config)
-        #     self.autoencoder_config = None
-
         self._make_networks(
             observation_size=self.finetune_cfg.frame_stack * self.obs_size,
             privileged_observation_size=self.finetune_cfg.frame_stack
@@ -220,28 +210,6 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
         if self.finetune_cfg.use_residual:
             self._make_residual_policy()
             self._residual_action_scale = self.finetune_cfg.residual_action_scale
-
-        # if self.finetune_cfg.use_latent and self.finetune_cfg.use_residual:
-        #     self.autoencoder_config = autoencoder_config_copy
-        #     self._make_networks(
-        #         observation_size=self.finetune_cfg.frame_stack * self.obs_size,
-        #         privileged_observation_size=self.finetune_cfg.frame_stack
-        #         * self.privileged_obs_size,
-        #         action_size=self.num_action,
-        #         value_hidden_layer_sizes=self.finetune_cfg.value_hidden_layer_sizes,
-        #         policy_hidden_layer_sizes=self.finetune_cfg.policy_hidden_layer_sizes,
-        #     )
-
-        #     run_name = f"{self.robot.name}_walk_ppo_{ckpts[1]}"
-        #     policy_path = os.path.join("results", run_name, "model_best.pt")
-        #     if os.path.exists(policy_path):
-        #         print(f"Loading pretrained model from {policy_path}")
-        #         # jax_params = load_jax_params(policy_path)
-        #         # load_jax_params_into_pytorch(self.policy_net, jax_params[1]["params"])
-        #         rsl_params = torch.load(os.path.join(policy_path))["model_state_dict"]
-        #         load_rsl_params_into_pytorch(
-        #             self.policy_net, self.value_net, rsl_params
-        #         )
 
         # loading residual policy
         if self.eval_mode:
@@ -565,8 +533,7 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
     def step(
         self, obs: Obs, is_real: bool = False
     ) -> Tuple[Dict[str, float], npt.NDArray[np.float32]]:
-        # control_inputs, motor_target, obs = super().step(obs, is_real)
-        # copy the original step function to here
+        # control_inputs, motor_target, obs = super().step(obs, is_real) copied below
         if not self.is_prepared:
             self.traj_start_time = time.time()
             self.is_prepared = True

@@ -4,10 +4,10 @@ import numpy as np
 import numpy.typing as npt
 
 from toddlerbot.policies import BasePolicy
-from toddlerbot.policies.stand import StandPolicy
+from toddlerbot.policies.balance_pd import BalancePDPolicy
 from toddlerbot.policies.mjx_policy import MJXPolicy
 from toddlerbot.policies.reset_pd import ResetPDPolicy
-from toddlerbot.policies.balance_pd import BalancePDPolicy
+from toddlerbot.policies.stand import StandPolicy
 from toddlerbot.policies.walk import WalkPolicy
 from toddlerbot.sensing.camera import Camera
 from toddlerbot.sim import Obs
