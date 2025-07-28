@@ -82,7 +82,7 @@ class PPO:
         self.optimizer_critic = None
         if self.exp_type == "walk":
             if use_latent:
-                with open("toddlerbot/finetuning/latent_z.pt", "rb") as f:
+                with open("toddlerbot/finetuning/latent_z_release.pt", "rb") as f:
                     initial_latents = torch.load(f)
                     if type(initial_latents) == dict:
                         initial_latents = initial_latents["latent_z"]

@@ -29,7 +29,7 @@ class FinetuneLogger:
         enable_logging: bool = True,
         enable_profiling: bool = False,
         smooth_factor: float = 0.0,
-        exp_type: str = "walk", # "walk" or "swing"
+        exp_type: str = "walk",  # "walk" or "swing"
     ):
         """
         :param exp_folder: where to store CSV logs and plots
@@ -55,7 +55,7 @@ class FinetuneLogger:
             with open("toddlerbot/finetuning/initial_latents.pt", "rb") as f:
                 train_initial_latents = torch.load(f)
 
-            with open("toddlerbot/finetuning/latent_z.pt", "rb") as f:
+            with open("toddlerbot/finetuning/latent_z_release.pt", "rb") as f:
                 initial_latents = torch.load(f)
                 if type(initial_latents) == dict:
                     initial_latents = initial_latents["latent_z"]
