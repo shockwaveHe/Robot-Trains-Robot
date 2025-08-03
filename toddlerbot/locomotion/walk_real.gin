@@ -4,7 +4,7 @@ CommandsConfig.command_range = [
     [0.0, 1.0],
     [-1.0, 1.0],
     [-1.0, 1.0],
-    [-0.1, 0.3],
+    [-0.1, 0.2],
     [-0.1, 0.1],
     [-0.5, 0.5]
 ]
@@ -17,7 +17,7 @@ RewardScales.torso_pitch = 0.5
 RewardScales.lin_vel_xy = 5.0
 RewardScales.ang_vel_xy = 2.0
 RewardScales.ang_vel_z = 5.0
-RewardScales.feet_air_time = 500.0
+RewardScales.feet_air_time = 200.0
 RewardScales.feet_distance = 1.0
 RewardScales.feet_slip = 0.05
 RewardScales.feet_clearance = 1.0
@@ -25,7 +25,7 @@ RewardScales.collision = 0.1
 RewardScales.stand_still = 1.0
 RewardScales.align_ground = 1.0
 RewardScales.energy = 0.05
-RewardScales.leg_action_acc = 0.05
-RewardScales.leg_action_rate = 0.05
 
-RewardsConfig.min_feet_y_dist = 0.07
+ActionConfig.filter_type = "ema"
+
+RewardsConfig.min_feet_y_dist = 0.05

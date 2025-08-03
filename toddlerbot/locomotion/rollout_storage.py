@@ -37,6 +37,7 @@ class RolloutStorage:
         actions_shape,
         rnd_state_shape=None,
         device="cpu",
+        action_frame_stack=1,
     ):
         # store inputs
         self.device = device
@@ -83,6 +84,7 @@ class RolloutStorage:
         self.advantages = torch.zeros(
             num_transitions_per_env, num_envs, 1, device=self.device
         )
+        actions_shape[0] = actions_shape[0] // action_frame_stack
         self.mu = torch.zeros(
             num_transitions_per_env, num_envs, *actions_shape, device=self.device
         )

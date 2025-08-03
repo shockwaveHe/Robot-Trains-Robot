@@ -14,8 +14,11 @@ import torch.nn as nn
 import torch.optim as optim
 from rsl_rl.modules.rnd import RandomNetworkDistillation
 from rsl_rl.utils import string_to_callable
-
-from toddlerbot.autoencoder.dataset import ParamsDataset
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.manifold import TSNE
+from matplotlib.collections import LineCollection
+from toddlerbot.autoencoder.dataset import HyperparameterDataset
 from toddlerbot.autoencoder.network import EncoderDecoder
 from toddlerbot.locomotion.actor_critic import ActorCritic
 from toddlerbot.locomotion.rollout_storage import RolloutStorage
@@ -23,6 +26,7 @@ from toddlerbot.locomotion.rollout_storage import RolloutStorage
 
 class PPO:
     """Proximal Policy Optimization algorithm (https://arxiv.org/abs/1707.06347)."""
+    """Adapted from the implementation in rsl_rl."""
 
     actor_critic: ActorCritic
     """The actor critic module."""
@@ -30,6 +34,7 @@ class PPO:
     def __init__(
         self,
         actor_critic,
+        optimize_z: bool=False,
         num_learning_epochs=1,
         num_mini_batches=1,
         clip_param=0.2,
@@ -37,7 +42,7 @@ class PPO:
         lam=0.95,
         value_loss_coef=1.0,
         entropy_coef=0.0,
-        autoencoder_loss_coef=1.0,
+        autoencoder_loss_coef=0.0,
         learning_rate=1e-3,
         max_grad_norm=1.0,
         use_clipped_value_loss=True,
@@ -52,12 +57,12 @@ class PPO:
         autoencoder_cfg: dict | None = None,
     ):
         self.device = device
-
+        self.optimize_z = optimize_z
         self.desired_kl = desired_kl
         self.schedule = schedule
         self.learning_rate = learning_rate
         self.normalize_advantage_per_mini_batch = normalize_advantage_per_mini_batch
-
+        self.current_ratio = None
         # RND components
         if rnd_cfg is not None:
             # Create RND module
@@ -104,23 +109,50 @@ class PPO:
             (
                 self.autoencoder,
                 self.autoencoder_loss_func,
-                self.params_dataloader,
+                self.train_params_dataloader,
+                self.eval_params_dataloader,
                 self.latent_dim,
             ) = self.build_autoencoder(autoencoder_cfg)
-            params = self.autoencoder.parameters()
-            self.autoencoder_optimizer = optim.AdamW(params, lr=1e-3, weight_decay=5e-3)
+            self.optimize_autoencoder = autoencoder_cfg["train"].get("optimize_autoencoder", True) and not self.optimize_z # no need to optimize encoder when optimize z
+            if self.optimize_autoencoder:
+                params = self.autoencoder.parameters()
+                self.autoencoder_lr = float(autoencoder_cfg["train"].get("autoencoder_lr", self.learning_rate))
+                self.autoencoder_lr_ratio = self.autoencoder_lr / self.learning_rate
+                self.autoencoder_optimizer = optim.AdamW(params, lr=self.autoencoder_lr, weight_decay=5e-3)
+                self.autoencoder_loss_coef = float(autoencoder_cfg["train"].get("autoencoder_loss_coef", autoencoder_loss_coef))
+            else:
+                self.autoencoder_optimizer = None
+                self.autoencoder_loss_coef = 0.0
+            self.autoencoder_cfg = autoencoder_cfg
+            self.latent_mode = autoencoder_cfg["train"]["latent_mode"] # concat or FiLM
+            self.film_lr = float(autoencoder_cfg["train"].get("film_lr", self.learning_rate))
+            self.film_lr_ratio = self.film_lr / self.learning_rate
+            self.adapt_all_lr = autoencoder_cfg["train"].get("adapt_all_lr", False)
+            self.optimize_single_z = self.autoencoder_cfg["train"]["optimize_single_z"]
         else:
             self.autoencoder = None
-            self.autoencoder_loss_func = None
-            self.params_dataloader = None
+            self.autoencoder_loss_coef = 0.0
+            self.train_params_dataloader = None
+            self.eval_params_dataloader = None
             self.latent_dim = None
             self.autoencoder_optimizer = None
+            self.latent_mode = None
+            self.adapt_all_lr = False
+            self.optimize_single_z = False
 
+        self.latent_z = None
+        self.latent_optimizer = None
         # PPO components
         self.actor_critic = actor_critic
         self.actor_critic.to(self.device)
         # Create optimizer
-        self.optimizer = optim.Adam(self.actor_critic.parameters(), lr=learning_rate)
+        self.build_optimizer()
+        # from muon import Muon
+        # muon_params = [p for p in self.actor_critic.parameters() if p.ndim >= 2]
+        # # Find everything else -- these should be optimized by AdamW
+        # adamw_params = [p for p in self.actor_critic.parameters() if p.ndim < 2]
+        # # Create the optimizer
+        # self.optimizers = [Muon(muon_params, lr=0.02, momentum=0.95, rank=0, world_size=1), torch.optim.AdamW(adamw_params)]
         # Create rollout storage
         self.storage: RolloutStorage = None  # type: ignore
         self.transition = RolloutStorage.Transition()
@@ -131,46 +163,86 @@ class PPO:
         self.num_mini_batches = num_mini_batches
         self.value_loss_coef = value_loss_coef
         self.entropy_coef = entropy_coef
-        self.autoencoder_loss_coef = autoencoder_loss_coef
         self.gamma = gamma
         self.lam = lam
         self.max_grad_norm = max_grad_norm
         self.use_clipped_value_loss = use_clipped_value_loss
+        self.num_z_envs = 0
+        self.all_latents = None
+        self.latent_trajectory = {}
+        if self.autoencoder is not None:
+            self.all_latents, _ = self.get_latents()
+            self.all_latents = self.all_latents.detach()
+
+    def build_optimizer(self):
+        """Configure trainable parameters based on film_training_mode"""
+        if self.autoencoder is None:
+            self.optimizer = optim.Adam(self.actor_critic.parameters(), lr=self.learning_rate)
+            self.film_optimizer = None
+
+        elif self.optimize_z:
+            params = []
+            if self.autoencoder_cfg["train"]["cotrain_critic"]:
+                for param in self.actor_critic.critic.parameters():
+                    if param.requires_grad:
+                        params.append(param)
+            if self.autoencoder_cfg["train"]["cotrain_actors"]:
+                for param in self.actor_critic.actor.parameters():
+                    if param.requires_grad:
+                        params.append(param)
+            if len(params):
+                self.optimizer = optim.Adam(params, lr=self.learning_rate)
+            else:
+                self.optimizer = None
+            self.film_optimizer = None
+        
+        elif self.actor_critic.training_mode == "co-train":
+            # FiLM learning rate is 1e-5, while others are 1e-4
+            film_params = []
+            for film_layer in self.actor_critic.film_layers:
+                film_params += list(film_layer.parameters())
+            # Add other parameters
+            other_params = []
+            for param in self.actor_critic.actor.parameters():
+                if param.requires_grad:
+                    other_params.append(param)
+            for param in self.actor_critic.critic.parameters():
+                if param.requires_grad:
+                    other_params.append(param)
+
+            self.optimizer = optim.Adam(other_params, lr=self.learning_rate)
+            self.film_optimizer = optim.Adam(film_params, lr=self.film_lr)
+        
+        elif self.actor_critic.training_mode == "film-only":
+            # Only train FiLM layers
+            film_params = []
+            for film_layer in self.actor_critic.film_layers:
+                film_params += list(film_layer.parameters())
+            # Add critic parameters
+            critic_params = []
+            for param in self.actor_critic.critic.parameters():
+                if param.requires_grad:
+                    critic_params.append(param)
+            # Combine parameters
+            self.optimizer = optim.Adam(critic_params, lr=self.learning_rate)
+            self.film_optimizer = optim.Adam(film_params, lr=self.film_lr, weight_decay=5e-3)
+            
+        else:
+            raise ValueError(f"Invalid film_training_mode: {self.actor_critic.film_training_mode}")
 
     def build_autoencoder(self, autoencoder_cfg: dict):
         train_cfg = autoencoder_cfg["train"]
         model_cfg = autoencoder_cfg["model"]
         data_cfg = autoencoder_cfg["data"]
-        self.data_root = os.path.join(
-            os.path.dirname(__file__),
-            "..",
-            "..",
-            "results",
-            f"dynamics_model_{data_cfg['time_str']}",
-        )
-        # Check the root path
-        # assert os.path.exists(self.data_root), f'{self.data_root} not exists'
-        with open(os.path.join(self.data_root, "summary.json"), "r") as f:
-            summary = json.load(f)
 
-        input_dim = summary["history"] * (
-            summary["observation_size"] + summary["action_size"]
-        )
-        first_layer_size = (input_dim + 1) * summary["hidden_layers"][0]
-        param_size = 0
-        for i in range(len(summary["hidden_layers"]) + 1):
-            if i == 0:
-                param_size += (input_dim + 1) * summary["hidden_layers"][i]
-            elif i == len(summary["hidden_layers"]):
-                param_size += (summary["hidden_layers"][i - 1] + 1) * summary[
-                    "observation_size"
-                ]
-            else:
-                param_size += (summary["hidden_layers"][i - 1] + 1) * summary[
-                    "hidden_layers"
-                ][i]
 
-        input_splits = [first_layer_size, param_size - first_layer_size]
+        params_dataset = HyperparameterDataset(data_cfg)
+
+        # normalize the parameters
+        if data_cfg["normalize_params"]:
+            params_dataset.normalize_params()
+        
+        input_splits = [params_dataset.params.shape[1]]
 
         autoencoder = EncoderDecoder(
             input_splits,
@@ -181,7 +253,15 @@ class PPO:
             model_cfg["latent_noise_factor"],
             model_cfg["is_vae"],
         ).to(self.device)
-
+        if len(autoencoder_cfg["train"].get("pretrain_model", "")) > 0: 
+            encoder_ckpt = torch.load(autoencoder_cfg["train"]["pretrain_model"], map_location="cpu")
+            weights_dict = {}
+            weights = encoder_ckpt["state_dict"]
+            for k, v in weights.items():
+                new_k = k.replace("model.", "") if "model." in k else k
+                weights_dict[new_k] = v
+            autoencoder.load_state_dict(weights_dict)
+            print("Loading encoders from {}".format(autoencoder_cfg["train"]["pretrain_model"]))
         # Instantiate the reconstruction loss function from the config
         recon_loss_func = nn.MSELoss()
         # Get the KL weight from the config if in VAE mode (default to 1.0 if not specified)
@@ -200,17 +280,34 @@ class PPO:
 
             return total_loss
 
-        params_dataset = ParamsDataset(data_cfg)
-        params_dataloader = torch.utils.data.DataLoader(
-            params_dataset,
-            batch_size=data_cfg["batch_size"],
-            num_workers=data_cfg["num_workers"],
-        )
+        latent_dim = model_cfg["n_embd"] * len(input_splits)
 
-        latent_dim = model_cfg["n_embd"] * 2
+        return autoencoder, loss_func, params_dataset.train_dataloader, params_dataset.eval_dataloader, latent_dim
 
-        return autoencoder, loss_func, params_dataloader, latent_dim
+    def configure_optimize_z(self, num_envs):
+        # get average latent z from the train envs
+        use_eval_latents = self.autoencoder_cfg["train"].get("use_eval_latents", False)
+        initial_latents, _ = self.get_latents(get_eval_latents=use_eval_latents)
+        self.latent_trajectory['initial_latents'] = initial_latents.clone()
+        self.latent_trajectory['optimized_latents'] = []
 
+        initial_latents = initial_latents.mean(dim=0, keepdim=True)
+        if not self.autoencoder_cfg["train"]["optimize_single_z"]:
+            initial_latents = initial_latents.expand(num_envs, -1)
+        self.num_z_envs = num_envs
+        
+        # register the optimizable latents
+        # Create a learnable parameter tensor initialized with initial_latents
+        self.latent_z = nn.Parameter(initial_latents.clone(), requires_grad=True)
+        self.all_latents = self.latent_z.detach()
+        # Create an optimizer for the latent parameters
+        self.latent_lr = float(self.autoencoder_cfg["train"].get("latent_lr", self.learning_rate))
+        self.latent_lr_ratio = self.latent_lr / self.learning_rate
+        self.latent_optimizer = optim.AdamW([self.latent_z], lr=self.latent_lr)
+        
+        print(f"Initialized optimizable latents with shape: {self.latent_z.shape}")
+        print(f"Using Adam optimizer with learning rate: {self.latent_lr}")
+        
     def init_storage(
         self,
         num_envs,
@@ -241,11 +338,12 @@ class PPO:
     def train_mode(self):
         self.actor_critic.train()
 
-    def act(self, obs, critic_obs):
+    def act(self, obs, critic_obs, latents=None):
         if self.actor_critic.is_recurrent:
             self.transition.hidden_states = self.actor_critic.get_hidden_states()
         # Compute the actions and values
-        self.transition.actions = self.actor_critic.act(obs).detach()
+        self.transition.actions, action_real = self.actor_critic.act(obs, latents)
+        self.transition.actions, action_real = self.transition.actions.detach(), action_real.detach()
         self.transition.values = self.actor_critic.evaluate(critic_obs).detach()
         self.transition.actions_log_prob = self.actor_critic.get_actions_log_prob(
             self.transition.actions
@@ -255,7 +353,7 @@ class PPO:
         # need to record obs and critic_obs before env.step()
         self.transition.observations = obs
         self.transition.critic_observations = critic_obs
-        return self.transition.actions
+        return action_real
 
     def process_env_step(self, rewards, dones, infos):
         # Record the rewards and dones
@@ -297,6 +395,46 @@ class PPO:
             self.lam,
             normalize_advantage=not self.normalize_advantage_per_mini_batch,
         )
+
+    def get_latents(self, get_recon_loss=False, get_eval_latents=False):
+        autoencoder_loss = torch.tensor(0.0).to(self.device)
+        if self.optimize_z and self.latent_z is not None:
+            if self.optimize_single_z and self.num_z_envs > 0:
+                return self.latent_z.expand(self.num_z_envs, -1), autoencoder_loss
+            return self.latent_z, autoencoder_loss
+        params_dataloader = self.eval_params_dataloader if get_eval_latents else self.train_params_dataloader
+        if self.autoencoder is not None:
+            if self.optimize_autoencoder or self.all_latents is None or get_eval_latents:
+                all_latents = []
+                # recon_loss = 0.0
+                for batch in params_dataloader:
+                    z, mean, logvar = self.autoencoder.encode(batch)
+                    z = torch.clamp(z, -1.0, 1.0)
+                    if get_recon_loss and self.autoencoder_loss_coef > 0.0:
+                        x_recon = self.autoencoder.decode(z)
+                        # Compute reconstruction loss for this batch
+                        recon_loss = self.autoencoder_loss_func(
+                            x_recon, mean, logvar, batch
+                        )
+                        autoencoder_loss += recon_loss  
+                    all_latents.append(z)
+                # Concatenate all latent vectors into a single tensor
+                all_latents = torch.cat(all_latents, dim=0).flatten(start_dim=1)
+            else:
+                all_latents = self.all_latents
+        else:
+            all_latents = None
+        return all_latents, autoencoder_loss
+    
+    def get_infer_latents(self):
+        # TODO: deal with this awkward logic..
+        if self.optimize_z and self.latent_z is not None:
+            if self.optimize_single_z:
+                return self.latent_z.expand(self.num_z_envs, -1).detach().clone()
+            return self.latent_z.detach().clone()
+        else:
+            assert self.all_latents is not None
+            return self.all_latents.clone()
 
     def update(self):  # noqa: C901
         mean_value_loss = 0
@@ -356,42 +494,6 @@ class PPO:
                     advantages_batch = (advantages_batch - advantages_batch.mean()) / (
                         advantages_batch.std() + 1e-8
                     )
-
-            autoencoder_loss = 0.0
-            if self.autoencoder is not None:
-                all_latents = []
-                for batch in self.params_dataloader:
-                    # Forward pass through autoencoder
-                    # batch_noise = batch
-                    # self.autoencoder.add_noise(
-                    #     batch, self.autoencoder.input_noise_factor
-                    # )
-                    z, mean, logvar = self.autoencoder.encode(batch)
-                    # z_noise = z
-                    # self.autoencoder.add_noise(
-                    #     z, self.autoencoder.latent_noise_factor
-                    # )
-                    z = torch.clamp(z, -1.0, 1.0)
-                    x_recon = self.autoencoder.decode(z)
-
-                    # Compute reconstruction loss for this batch
-                    recon_loss = self.autoencoder_loss_func(
-                        x_recon, mean, logvar, batch
-                    )
-                    autoencoder_loss += recon_loss
-                    # Store latent vectors
-                    all_latents.append(z)
-
-                # Concatenate all latent vectors into a single tensor
-                all_latents = torch.cat(all_latents, dim=0).flatten(start_dim=1)
-                all_latents_batch = all_latents[env_indices_batch]
-                obs_batch = torch.cat(
-                    [obs_batch[:, : -self.latent_dim], all_latents_batch], dim=1
-                )
-                critic_obs_batch = torch.cat(
-                    [critic_obs_batch[:, : -self.latent_dim], all_latents_batch], dim=1
-                )
-
             # Perform symmetric augmentation
             if self.symmetry and self.symmetry["use_data_augmentation"]:
                 # augmentation using symmetry
@@ -421,11 +523,27 @@ class PPO:
                 advantages_batch = advantages_batch.repeat(num_aug, 1)
                 returns_batch = returns_batch.repeat(num_aug, 1)
 
+            if self.autoencoder is not None:
+                all_latents, autoencoder_loss = self.get_latents(get_recon_loss=self.optimize_autoencoder and self.autoencoder_loss_coef > 0.0)
+                all_latents = all_latents[env_indices_batch]
+                if self.latent_mode == "concat":
+                    obs_batch = torch.cat(
+                        [obs_batch[:, : -self.latent_dim], all_latents], dim=1
+                    )
+                    critic_obs_batch = torch.cat(
+                        [critic_obs_batch[:, : -self.latent_dim], all_latents], dim=1
+                    )
+                    all_latents = None
+
+            else:
+                autoencoder_loss = torch.tensor(0.0).to(self.device)
+                all_latents = None
+
             # Recompute actions log prob and entropy for current batch of transitions
             # Note: we need to do this because we updated the actor_critic with the new parameters
             # -- actor
             self.actor_critic.act(
-                obs_batch, masks=masks_batch, hidden_states=hid_states_batch[0]
+                obs_batch, z=all_latents, masks=masks_batch, hidden_states=hid_states_batch[0]
             )
             actions_log_prob_batch = self.actor_critic.get_actions_log_prob(
                 actions_batch
@@ -459,14 +577,25 @@ class PPO:
                         self.learning_rate = max(1e-5, self.learning_rate / 1.5)
                     elif kl_mean < self.desired_kl / 2.0 and kl_mean > 0.0:
                         self.learning_rate = min(1e-2, self.learning_rate * 1.5)
-
-                    for param_group in self.optimizer.param_groups:
-                        param_group["lr"] = self.learning_rate
+                    if self.optimizer is not None:
+                        for param_group in self.optimizer.param_groups:
+                            param_group["lr"] = self.learning_rate
+                    if self.adapt_all_lr:
+                        if self.film_optimizer is not None:
+                            for param_group in self.film_optimizer.param_groups:
+                                param_group["lr"] = self.learning_rate * self.film_lr_ratio
+                        if self.autoencoder_optimizer is not None:
+                            for param_group in self.autoencoder_optimizer.param_groups:
+                                param_group["lr"] = self.learning_rate * self.autoencoder_lr_ratio
+                        if self.latent_optimizer is not None:
+                            for param_group in self.latent_optimizer.param_groups:
+                                param_group["lr"] = self.learning_rate * self.latent_lr_ratio
 
             # Surrogate loss
             ratio = torch.exp(
                 actions_log_prob_batch - torch.squeeze(old_actions_log_prob_batch)
             )
+            self.current_ratio = ratio.mean().item()
             surrogate = -torch.squeeze(advantages_batch) * ratio
             surrogate_clipped = -torch.squeeze(advantages_batch) * torch.clamp(
                 ratio, 1.0 - self.clip_param, 1.0 + self.clip_param
@@ -508,7 +637,7 @@ class PPO:
 
                 # actions predicted by the actor for symmetrically-augmented observations
                 mean_actions_batch = self.actor_critic.act_inference(
-                    obs_batch.detach().clone()
+                    obs_batch.detach().clone(), all_latents.detach().clone()
                 )
 
                 # compute the symmetrically augmented actions
@@ -546,17 +675,27 @@ class PPO:
 
             # Gradient step
             # -- For PPO
-            self.optimizer.zero_grad()
+            if self.optimizer is not None:
+                self.optimizer.zero_grad()
             if self.autoencoder_optimizer:
                 self.autoencoder_optimizer.zero_grad()
+            if self.film_optimizer:
+                self.film_optimizer.zero_grad()
+            if self.latent_optimizer:
+                self.latent_optimizer.zero_grad()
 
             loss.backward()
             nn.utils.clip_grad_norm_(self.actor_critic.parameters(), self.max_grad_norm)
 
-            self.optimizer.step()
+            if self.optimizer is not None:
+                self.optimizer.step()
             if self.autoencoder_optimizer:
                 self.autoencoder_optimizer.step()
-
+            if self.film_optimizer:
+                self.film_optimizer.step()
+            if self.latent_optimizer:
+                self.latent_optimizer.step()
+                # self.latent_trajectory['optimized_latents'].append(self.latent_z.detach().cpu().numpy())
             # -- For RND
             if self.rnd_optimizer:
                 self.rnd_optimizer.zero_grad()
@@ -576,8 +715,13 @@ class PPO:
             # -- Autoencoder loss
             if mean_autoencoder_loss is not None:
                 mean_autoencoder_loss += autoencoder_loss.item()
+            # -- Latent loss
+
 
         # -- For PPO
+        self.all_latents = self.get_latents(get_recon_loss=True)[0]
+        if self.all_latents is not None:
+            self.all_latents = self.all_latents.detach()
         num_updates = self.num_learning_epochs * self.num_mini_batches
         mean_value_loss /= num_updates
         mean_surrogate_loss /= num_updates
@@ -602,3 +746,88 @@ class PPO:
             mean_symmetry_loss,
             mean_autoencoder_loss,
         )
+
+    def visualize_latent_dynamics(self, log_dir, it, dim=2):
+        """
+        Visualize latent dynamics using t-SNE
+        
+        Args:
+            initial_latents: torch.Tensor of shape (n_samples, latent_dim) - initial latent points
+            latent_trajectory: torch.Tensor of shape (n_steps, latent_dim) - optimization trajectory
+            output_path: str - path to save the visualization
+            dim: int - 2 or 3 for 2D or 3D visualization
+        """
+        initial_latents = self.latent_trajectory['initial_latents']
+        latent_trajectory = self.latent_trajectory['optimized_latents']
+        if len(latent_trajectory) == 0:
+            print("No latent trajectory to visualize.")
+            return
+        # Convert to numpy if they're torch tensors
+        initial_latents = initial_latents.cpu().numpy()
+        latent_trajectory = torch.concatenate(latent_trajectory).cpu().numpy()
+        
+        # Combine all points for t-SNE
+        all_points = np.vstack([initial_latents, latent_trajectory])
+        
+        # Apply t-SNE
+        tsne = TSNE(n_components=dim, random_state=42, perplexity=30)
+        embedded = tsne.fit_transform(all_points)
+        
+        # Split back into initial points and trajectory
+        n_initial = initial_latents.shape[0]
+        initial_embedded = embedded[:n_initial]
+        trajectory_embedded = embedded[n_initial:]
+        
+        # Create plot
+        plt.figure(figsize=(10, 8))
+        
+        if dim == 2:
+            # Plot initial points
+            plt.scatter(initial_embedded[:, 0], initial_embedded[:, 1], 
+                    color='blue', alpha=0.5, label='Initial Latents')
+            
+            # Plot trajectory with color progression
+            points = trajectory_embedded.reshape(-1, 1, 2)
+            segments = np.concatenate([points[:-1], points[1:]], axis=1)
+            
+            # Create a continuous norm to map from time step to colors
+            norm = plt.Normalize(0, len(trajectory_embedded))
+            lc = LineCollection(segments, cmap='viridis', norm=norm)
+            lc.set_array(np.arange(len(trajectory_embedded)))
+            lc.set_linewidth(2)
+            line = plt.gca().add_collection(lc)
+            
+            # Add colorbar
+            plt.colorbar(line, label='Optimization Step')
+            
+            plt.xlabel('t-SNE 1')
+            plt.ylabel('t-SNE 2')
+            
+        elif dim == 3:
+            ax = plt.axes(projection='3d')
+            
+            # Plot initial points
+            ax.scatter3D(initial_embedded[:, 0], initial_embedded[:, 1], initial_embedded[:, 2],
+                        color='blue', alpha=0.5, label='Initial Latents')
+            
+            # Plot trajectory with color progression
+            sc = ax.scatter3D(trajectory_embedded[:, 0], trajectory_embedded[:, 1], trajectory_embedded[:, 2],
+                            c=np.arange(len(trajectory_embedded)), cmap='viridis', 
+                            label='Optimization Trajectory')
+            
+            # Add colorbar
+            plt.colorbar(sc, label='Optimization Step')
+            
+            ax.set_xlabel('t-SNE 1')
+            ax.set_ylabel('t-SNE 2')
+            ax.set_zlabel('t-SNE 3')
+        
+        plt.title('Latent Space Dynamics Visualization')
+        plt.legend()
+        plt.tight_layout()
+        
+        # Save the figure
+        output_path = os.path.join(log_dir, f"latent_dynamics_it_{it}_{dim}d.png")
+        plt.savefig(output_path, dpi=300, bbox_inches='tight')
+        print(f"Visualization saved to {output_path}")
+

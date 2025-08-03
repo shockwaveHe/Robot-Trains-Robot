@@ -142,11 +142,11 @@ class MJXConfig:
     class DomainRandConfig:
         add_domain_rand: bool = True
         friction_range: List[float] = field(default_factory=lambda: [0.5, 2.0])
-        damping_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
-        armature_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
-        frictionloss_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
+        damping_range: List[float] = field(default_factory=lambda: [0.5, 1.5])
+        armature_range: List[float] = field(default_factory=lambda: [0.5, 1.5])
+        frictionloss_range: List[float] = field(default_factory=lambda: [0.5, 1.5])
         gravity_range: List[float] = field(default_factory=lambda: [1.0, 1.0])
-        body_mass_range: List[float] = field(default_factory=lambda: [-0.2, 0.2])
+        body_mass_range: List[float] = field(default_factory=lambda: [-0.3, 0.3])
         ee_mass_range: List[float] = field(default_factory=lambda: [0.0, 0.1])
         other_mass_range: List[float] = field(default_factory=lambda: [0.0, 0.0])
         push_interval_s: int = 2  # seconds
@@ -170,6 +170,7 @@ class MJXConfig:
     @gin.configurable
     @dataclass
     class HangConfig:
+        use_hang: bool = False
         init_hang_force: float = 0.0
         final_hang_force: float = 0.0
         hang_force_decay_episodes: float = 200.0

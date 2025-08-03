@@ -24,17 +24,10 @@ import mediapy as media
 import mujoco
 import numpy as np
 import numpy.typing as npt
-import optax
 import torch
 import yaml
 from brax import base, envs
-from brax.io import model
-from brax.io.torch import jax_to_torch, torch_to_jax
-from brax.training.agents.ppo import networks as ppo_networks
-from brax.training.agents.ppo import train as ppo
-from flax.training import orbax_utils
 from moviepy.editor import VideoFileClip, clips_array
-from orbax import checkpoint as ocp
 from tqdm import tqdm
 
 import wandb
@@ -75,7 +68,6 @@ dynamic_import_envs("toddlerbot.locomotion")
 # jax.config.update("jax_debug_nans", True)
 # jax.config.update("jax_enable_x64", True)
 # jax.config.update("jax_disable_jit", True)
-
 
 def render_video(
     env: MJXEnv,
@@ -183,8 +175,6 @@ def log_metrics(
     if "eval/avg_episode_length" in metrics:
         log_string += f"""{"Mean episode length:":>{pad}} {metrics["eval/avg_episode_length"]:.3f}\n"""
 
-    if "hang_force" in metrics:
-        log_string += f"""{"Hang force:":>{pad}} {metrics["hang_force"]:.3f}\n"""
     if "episode_num" in metrics:
         log_string += f"""{"Episode num:":>{pad}} {metrics["episode_num"]}\n"""
 
@@ -204,7 +194,6 @@ def get_body_mass_attr_range(
     body_mass_range: List[float],
     ee_mass_range: List[float],
     other_mass_range: List[float],
-    init_hang_force: float,
     num_envs: int,
 ):
     """Generates a range of body mass attributes for a robot across multiple environments.
@@ -226,7 +215,7 @@ def get_body_mass_attr_range(
         the attribute values across all environments.
     """
 
-    suffix = "_hang_scene.xml" if init_hang_force > 0 else "_scene.xml"
+    suffix = "_scene.xml"
     xml_path: str = find_robot_file_path(robot.name, suffix=suffix)
     torso_name = "torso"
     ee_name = robot.config["general"]["ee_name"]
@@ -315,8 +304,9 @@ def domain_randomize(
     frictionloss_range: List[float],
     gravity_range: List[float],
     body_mass_attr_range: Optional[Dict[str, jax.Array | npt.NDArray[np.float32]]],
+    load_eval_values: Optional[bool] = False,
 ) -> Tuple[base.System, base.System]:
-    """Randomizes the physical parameters of a system within specified ranges.
+    """Randomizes the physical parameters of a system within specified ranges. Store the randomized parameters in a file.
 
     Args:
         sys (base.System): The system whose parameters are to be randomized.
@@ -326,6 +316,7 @@ def domain_randomize(
         armature_range (List[float]): Range for randomizing armature values.
         frictionloss_range (List[float]): Range for randomizing friction loss values.
         body_mass_attr_range (Optional[Dict[str, jax.Array | npt.NDArray[np.float32]]]): Optional dictionary specifying ranges for body mass attributes.
+        load_eval_values (Optional[bool]): A hack to store both train and eval dr parameters in the same file. If True, uses the last values from the ranges for evaluation; otherwise, uses the first values.
 
     Returns:
         Tuple[base.System, base.System]: A tuple containing the randomized system and the in_axes configuration for JAX transformations.
@@ -380,12 +371,28 @@ def domain_randomize(
         return friction, damping, armature, frictionloss, gravity
 
     friction, damping, armature, frictionloss, gravity = rand(rng)
-
+    print(f"Friction range: {friction_range}")
+    print(f"Damping range: {damping_range}")
+    print(f"Armature range: {armature_range}")
+    print(f"Friction loss range: {frictionloss_range}")
+    print(f"Gravity range: {gravity_range}")
     body_mass_attr = {}
     if body_mass_attr_range is not None:
-        for k, v in body_mass_attr_range.items():
-            if isinstance(v, jnp.ndarray):
-                body_mass_attr[k] = v[: rng.shape[0]]
+        if load_eval_values:
+            for k, v in body_mass_attr_range.items():
+                if isinstance(v, jnp.ndarray):
+                    body_mass_attr[k] = v[-rng.shape[0]:]
+            sys = sys.replace(
+                actuator_acc0=body_mass_attr_range["actuator_acc0"][-rng.shape[0]:]
+            )
+            
+        else:
+            for k, v in body_mass_attr_range.items():
+                if isinstance(v, jnp.ndarray):
+                    body_mass_attr[k] = v[: rng.shape[0]]
+            sys = sys.replace(
+                actuator_acc0=body_mass_attr_range["actuator_acc0"][: rng.shape[0]]
+            )
 
     new_opt = sys.opt.replace(gravity=gravity)
 
@@ -405,17 +412,24 @@ def domain_randomize(
         **body_mass_attr,
     }
 
-    if body_mass_attr_range is not None:
-        sys = sys.replace(
-            actuator_acc0=body_mass_attr_range["actuator_acc0"][: rng.shape[0]]
-        )
-
     in_axes = jax.tree.map(lambda x: None, sys)
     in_axes = in_axes.tree_replace(in_axes_dict)
     sys = sys.tree_replace(sys_dict)
     sys = sys.replace(opt=new_opt)
     in_axes = in_axes.replace(opt=in_axes.opt.replace(gravity=0))
 
+    if os.path.exists(os.path.join(exp_folder_path, "dr_params.pkl")):
+        # the training dr params already exists, append the eval params to it
+        with open(os.path.join(exp_folder_path, "dr_params.pkl"), "rb") as f:
+            train_sys_dict, train_in_axes_dict = pickle.load(f)
+        for key in train_sys_dict:
+            assert key in sys_dict, f"Key {key} not found in sys_dict"
+            sys_dict[key] = jnp.concatenate(
+                [train_sys_dict[key], sys_dict[key]], axis=0
+            )
+            assert in_axes_dict[key] == train_in_axes_dict[key], (
+                f"In axes for {key} do not match"
+            )
     with open(os.path.join(exp_folder_path, "dr_params.pkl"), "wb") as f:
         pickle.dump((sys_dict, in_axes_dict), f)
 
@@ -427,10 +441,15 @@ def domain_randomize_from_file(
     rng: jax.Array,
     sys_dict: Dict[str, Any],
     in_axes_dict: Dict[str, Any],
+    load_eval_values: Optional[bool] = False,
     # embeddings: jax.Array,
 ) -> Tuple[base.System, base.System]:
-    for key in sys_dict:
-        sys_dict[key] = sys_dict[key][: rng.shape[0]]
+    if load_eval_values:
+        for key in sys_dict:
+            sys_dict[key] = sys_dict[key][-rng.shape[0]:]
+    else:
+        for key in sys_dict:
+            sys_dict[key] = sys_dict[key][:rng.shape[0]]      
 
     # embeddings = embeddings[: rng.shape[0]]
     in_axes = jax.tree.map(lambda x: None, sys)
@@ -452,11 +471,11 @@ def load_runner_config(train_cfg: PPOConfig):
         config["max_iterations"] = train_cfg.num_timesteps // (
             train_cfg.num_envs * train_cfg.unroll_length
         )
-        config["num_steps_per_env"] = train_cfg.unroll_length
+        config["num_steps_per_env"] = train_cfg.unroll_length # TODO: ???
         config["algorithm"]["gamma"] = train_cfg.discounting
         config["algorithm"]["num_learning_epochs"] = train_cfg.num_updates_per_batch
         config["algorithm"]["learning_rate"] = train_cfg.learning_rate
-        config["algorithm"]["entropy_coef"] = train_cfg.entropy_cost
+        config["algorithm"]["entropy_coef"] = train_cfg.entropy_cost # change the entropy cost for entropy coeff
         config["algorithm"]["clip_param"] = train_cfg.clipping_epsilon
         config["algorithm"]["num_mini_batches"] = train_cfg.num_minibatches
         config["seed"] = train_cfg.seed
@@ -467,13 +486,11 @@ def load_runner_config(train_cfg: PPOConfig):
 def train(
     env: MJXEnv,
     eval_env: MJXEnv,
-    make_networks_factory: Any,
     train_cfg: PPOConfig,
     run_name: str,
     restore_path: str,
-    use_symmetry: bool,
-    dynamics_time_str: str,
-    use_torch: bool,
+    optimize_z: bool,
+    sweep_run: bool,
 ):
     """Trains a reinforcement learning agent using the Proximal Policy Optimization (PPO) algorithm.
 
@@ -485,14 +502,11 @@ def train(
         make_networks_factory (Any): Factory function to create neural network models.
         train_cfg (PPOConfig): Configuration settings for the PPO training process.
         run_name (str): Name of the training run, used for organizing results.
-        restore_path (str): Path to restore a previous checkpoint, if any.
+        restore_path (str): Path to restore the checkpoints and dr params from stage one.
+        optimize_z (bool): Whether to optimize the dynamics latent for stage two.
     """
-    exp_folder_path = os.path.join("results", run_name)
+    exp_folder_path = os.path.join("results_sweep" if sweep_run else "results", run_name)
     os.makedirs(exp_folder_path, exist_ok=True)
-
-    restore_checkpoint_path = (
-        os.path.abspath(restore_path) if len(restore_path) > 0 else None
-    )
 
     # Save train config to a file and print it
     train_config_dict = dataclass2dict(train_cfg)  # Convert dataclass to dictionary
@@ -518,386 +532,218 @@ def train(
         os.path.join(exp_folder_path, "locomotion"),
     )
 
-    domain_randomize_fn = None
-    if env.add_domain_rand:
-        if len(dynamics_time_str) > 0:
-            dynamics_dir = os.path.join(
-                "results", f"dynamics_model_{dynamics_time_str}"
-            )
-            with open(os.path.join(dynamics_dir, "dr_params.pkl"), "rb") as f:
-                dr_params = pickle.load(f)
+    print("Runner Config:")
+    runner_config = load_runner_config(train_cfg)
 
-            sys_dict = {
-                key: value[: train_cfg.num_envs] for key, value in dr_params[0].items()
-            }
-            in_axes_dict = dr_params[1]
+    train_domain_randomize_fn, eval_domain_randomize_fn = None, None
+    with open(
+        os.path.join("toddlerbot", "autoencoder", "config.yaml"), "r"
+    ) as f:
+        # load stage two related configs
+        autoencoder_config = yaml.safe_load(f)
+        runner_config["algorithm"]["autoencoder_cfg"] = autoencoder_config
+        autoencoder_config["data"]["time_str"] = restore_path # TODO: get the true time_str
+    if optimize_z:
+        assert restore_path is not None, "Restore path is required when optimizing the latent code."
+        # stage two finetuning
 
-            # if env.cfg.obs.latent_dim == 2048:
-            #     embeddings = np.load(os.path.join(latent_dir, "embeddings.npy"))
-            # else:
-            #     flattened_params = [
-            #         v.reshape(v.shape[0], -1) for v in dr_params[0].values()
-            #     ]
-            #     embeddings = np.concatenate(flattened_params, axis=1)
+        with open(os.path.join("results", restore_path, "dr_params.pkl"), "rb") as f:
+            dr_params = pickle.load(f)
 
-            # embeddings = (
-            #     embeddings[: train_cfg.num_envs]
-            #     / np.linalg.norm(embeddings, axis=-1).mean()
-            # )
-            domain_randomize_fn = functools.partial(
-                domain_randomize_from_file,
-                sys_dict=sys_dict,
-                in_axes_dict=in_axes_dict,
-                # embeddings=embeddings,
-            )
+        sys_dict = {
+            key: value[: train_cfg.num_envs] for key, value in dr_params[0].items()
+        }
+        in_axes_dict = dr_params[1]
 
-        else:
-            body_mass_attr_range = None
-            if not env.fixed_base:
-                body_mass_attr_range = get_body_mass_attr_range(
-                    env.robot,
-                    env.cfg.domain_rand.body_mass_range,
-                    env.cfg.domain_rand.ee_mass_range,
-                    env.cfg.domain_rand.other_mass_range,
-                    env.cfg.hang.init_hang_force,
-                    train_cfg.num_envs,
-                )
-
-            domain_randomize_fn = functools.partial(
-                domain_randomize,
-                exp_folder_path=exp_folder_path,
-                friction_range=env.cfg.domain_rand.friction_range,
-                damping_range=env.cfg.domain_rand.damping_range,
-                armature_range=env.cfg.domain_rand.armature_range,
-                frictionloss_range=env.cfg.domain_rand.frictionloss_range,
-                gravity_range=env.cfg.domain_rand.gravity_range,
-                body_mass_attr_range=body_mass_attr_range,
-            )
-
-    if use_torch:
-        # The number of environment steps executed for every training step.
-        key = jax.random.PRNGKey(train_cfg.seed)
-        global_key, local_key = jax.random.split(key)
-        del key
-        local_key = jax.random.fold_in(local_key, jax.process_index())
-        local_key, key_env, eval_key = jax.random.split(local_key, 3)
-        # key_networks should be global, so that networks are initialized the same
-        # way for different processes.
-        # key_policy, key_value = jax.random.split(global_key)
-        del global_key
-
-        v_randomization_fn = None
-        if domain_randomize_fn is not None:
-            randomization_rng = jax.random.split(key_env, train_cfg.num_envs)
-            v_randomization_fn = functools.partial(
-                domain_randomize_fn, rng=randomization_rng
-            )
-
-        # if isinstance(environment, envs.Env):
-        wrap_for_training = envs.training.wrap
-        # else:
-        #     wrap_for_training = envs_v1.wrappers.wrap_for_training
-
-        env = wrap_for_training(
-            env,
-            episode_length=train_cfg.episode_length,
-            randomization_fn=v_randomization_fn,
+        train_domain_randomize_fn = functools.partial(
+            domain_randomize_from_file,
+            sys_dict=sys_dict,
+            in_axes_dict=in_axes_dict,
+            # embeddings=embeddings,
         )
-
-        # TODO: Save data when the base policy is working
-        rsl_env = RSLWrapper(
-            env, device="cuda:0", exp_folder_path="", train_cfg=train_cfg
+        eval_domain_randomize_fn = functools.partial(
+            train_domain_randomize_fn,
+            load_eval_values=True,
         )
-        runner_config = load_runner_config(train_cfg)
-        if len(dynamics_time_str) > 0:
-            with open(
-                os.path.join("toddlerbot", "autoencoder", "config.yaml"), "r"
-            ) as f:
-                autoencoder_config = yaml.safe_load(f)
-                autoencoder_config["data"]["time_str"] = dynamics_time_str
-                runner_config["algorithm"]["autoencoder_cfg"] = autoencoder_config
-
-        if not use_symmetry and "symmetry_cfg" in runner_config["algorithm"]:
-            del runner_config["algorithm"]["symmetry_cfg"]
-
-        # Print the env config
-        print("Runner Config:")
-        print(json.dumps(runner_config, indent=4))  # Pretty-print the config
-
-        runner = OnPolicyRunner(rsl_env, runner_config, run_name, device="cuda:0")
-
-        if len(dynamics_time_str) > 0:
-            dynamics_path = os.path.join(
-                "results", f"dynamics_model_{dynamics_time_str}"
-            )
-            with open(os.path.join(dynamics_path, "summary.json"), "r") as f:
-                summary = json.load(f)
-
-            base_policy_path = os.path.join(
-                "results", summary["run_name"], "model_best.pt"
-            )
-            loaded_dict = torch.load(base_policy_path, weights_only=False)
-
-            old_model_dict = loaded_dict["model_state_dict"]
-            model_dict = runner.alg.actor_critic.state_dict()
-            new_dict = {}
-            for name, param in model_dict.items():
-                if name in old_model_dict:
-                    loaded_param = old_model_dict[name]
-
-                    if param.shape != loaded_param.shape:
-                        print(
-                            f"Shape mismatch for '{name}': model {param.shape}, loaded {loaded_param.shape}"
-                        )
-                        # Assuming first dimension mismatch (common for linear layers' weight matrices)
-                        if param.ndim == 2 and param.shape[1] > loaded_param.shape[1]:
-                            # Calculate padding size
-                            padding_size = param.shape[1] - loaded_param.shape[1]
-
-                            # Pad loaded param with zeros
-                            padded_param = torch.nn.functional.pad(
-                                loaded_param,
-                                (0, padding_size, 0, 0),  # Pad last dimension on right
-                                mode="constant",
-                                value=0,
-                            )
-                            new_dict[name] = padded_param
-                            print(
-                                f"Padded '{name}' with zeros to match shape {padded_param.shape}"
-                            )
-                        else:
-                            # Handle other mismatches if necessary
-                            new_dict[name] = param  # Use original param
-                            print(
-                                f"Using original param for '{name}' due to unsupported shape mismatch."
-                            )
-                    else:
-                        new_dict[name] = loaded_param
-                else:
-                    # If param not in loaded dict, use original param
-                    new_dict[name] = param
-                    print(
-                        f"'{name}' not found in loaded state dict. Using original param."
-                    )
-
-            runner.alg.actor_critic.load_state_dict(new_dict)
-            # runner.alg.optimizer.load_state_dict(loaded_dict["optimizer_state_dict"])
-            # runner.current_learning_iteration = loaded_dict["iter"]
-            # print(loaded_dict["infos"])
-
-        try:
-            runner.learn(
-                num_learning_iterations=runner_config["max_iterations"],
-                init_at_random_ep_len=False,
-            )
-        except KeyboardInterrupt:
-            prof_path = os.path.join(exp_folder_path, "profile_output.lprof")
-            dump_profiling_data(prof_path)
 
     else:
-        wandb.init(
-            project="ToddlerBot",
-            sync_tensorboard=True,
-            name=run_name,
-            config=dataclass2dict(train_cfg),
-        )
-
-        orbax_checkpointer = ocp.PyTreeCheckpointer()
-
-        def policy_params_fn(current_step: int, make_policy: Any, params: Any):
-            # save checkpoints
-            save_args = orbax_utils.save_args_from_target(params)
-            path = os.path.abspath(os.path.join(exp_folder_path, f"{current_step}"))
-            orbax_checkpointer.save(path, params, force=True, save_args=save_args)
-            policy_path = os.path.join(path, "policy")
-            model.save_params(policy_path, (params[0], params[1].policy))
-
-        learning_rate_schedule_fn = optax.cosine_decay_schedule(
-            train_cfg.learning_rate,
-            train_cfg.decay_steps,
-            train_cfg.alpha,
-        )
-
-        train_fn = functools.partial(
-            ppo.train,
-            num_timesteps=train_cfg.num_timesteps,
-            num_evals=train_cfg.num_evals,
-            episode_length=train_cfg.episode_length,
-            unroll_length=train_cfg.unroll_length,
-            num_minibatches=train_cfg.num_minibatches,
-            num_updates_per_batch=train_cfg.num_updates_per_batch,
-            discounting=train_cfg.discounting,
-            learning_rate=train_cfg.learning_rate,
-            learning_rate_schedule_fn=learning_rate_schedule_fn,
-            entropy_cost=train_cfg.entropy_cost,
-            clipping_epsilon=train_cfg.clipping_epsilon,
-            num_envs=train_cfg.num_envs,
-            batch_size=train_cfg.batch_size,
-            seed=train_cfg.seed,
-            network_factory=make_networks_factory,
-            randomization_fn=domain_randomize_fn,
-            render_interval=train_cfg.render_interval,
-            policy_params_fn=policy_params_fn,
-            restore_checkpoint_path=restore_checkpoint_path,
-            run_name=run_name,
-        )
-
-        times = [time.time()]
-
-        last_ckpt_step = 0
-        best_ckpt_step = 0
-        best_episode_reward = -float("inf")
-
-        def progress(num_steps: int, metrics: Dict[str, Any]):
-            nonlocal best_episode_reward, best_ckpt_step, last_ckpt_step
-
-            times.append(time.time())
-
-            if last_ckpt_step > 0:
-                shutil.copy2(
-                    os.path.join(exp_folder_path, str(last_ckpt_step), "policy"),
-                    os.path.join(exp_folder_path, "policy"),
-                )
-
-            last_ckpt_step = num_steps
-
-            episode_reward = float(metrics.get("eval/episode_reward", 0.0))
-            if episode_reward > best_episode_reward:
-                best_episode_reward = episode_reward
-                best_ckpt_step = num_steps
-
-            log_data = log_metrics(
-                metrics, times[-1] - times[0], num_steps, train_cfg.num_timesteps
+        # stage one pretraining
+        body_mass_attr_range = None
+        if not env.fixed_base:
+            body_mass_attr_range = get_body_mass_attr_range(
+                env.robot,
+                env.cfg.domain_rand.body_mass_range,
+                env.cfg.domain_rand.ee_mass_range,
+                env.cfg.domain_rand.other_mass_range,
+                train_cfg.num_train_envs + train_cfg.num_eval_envs,
             )
 
-            # Log metrics to wandb
-            wandb.log(log_data)
-
-        try:
-            _, params, _ = train_fn(
-                environment=env, eval_env=eval_env, progress_fn=progress
-            )
-        except KeyboardInterrupt:
-            prof_path = os.path.join(exp_folder_path, "profile_output.lprof")
-            dump_profiling_data(prof_path)
-
-        shutil.copy2(
-            os.path.join(exp_folder_path, str(best_ckpt_step), "policy"),
-            os.path.join(exp_folder_path, "best_policy"),
+        train_domain_randomize_fn = functools.partial(
+            domain_randomize,
+            exp_folder_path=exp_folder_path,
+            friction_range=env.cfg.domain_rand.friction_range,
+            damping_range=env.cfg.domain_rand.damping_range,
+            armature_range=env.cfg.domain_rand.armature_range,
+            frictionloss_range=env.cfg.domain_rand.frictionloss_range,
+            gravity_range=env.cfg.domain_rand.gravity_range,
+            body_mass_attr_range=body_mass_attr_range,
         )
 
-        print(f"time to jit: {times[1] - times[0]}")
-        print(f"time to train: {times[-1] - times[1]}")
-        print(f"best checkpoint step: {best_ckpt_step}")
-        print(f"best episode reward: {best_episode_reward}")
+        eval_domain_randomize_fn = functools.partial(
+            train_domain_randomize_fn,
+            load_eval_values=True,
+        )
+
+    # The number of environment steps executed for every training step.
+    key = jax.random.PRNGKey(train_cfg.seed)
+    global_key, local_key = jax.random.split(key)
+    del key
+    local_key = jax.random.fold_in(local_key, jax.process_index())
+    local_key, train_key, eval_key = jax.random.split(local_key, 3)
+    # key_networks should be global, so that networks are initialized the same
+    # way for different processes.
+    # key_policy, key_value = jax.random.split(global_key)
+    del global_key
+
+    v_train_randomization_fn = None
+    if train_domain_randomize_fn is not None:
+        train_randomization_rng = jax.random.split(train_key, train_cfg.num_train_envs)
+        v_train_randomization_fn = functools.partial(
+            train_domain_randomize_fn, rng=train_randomization_rng
+        )
+
+    v_eval_randomization_fn = None
+    if eval_domain_randomize_fn is not None:
+        eval_domain_randomize_rng = jax.random.split(eval_key, train_cfg.num_eval_envs)
+        v_eval_randomization_fn = functools.partial(
+            eval_domain_randomize_fn, rng=eval_domain_randomize_rng
+        )
+
+    wrap_for_training = envs.training.wrap
+
+    if optimize_z: # stage two
+        # optimize universal z in the training environment
+        v_eval_randomization_fn = v_train_randomization_fn
+        train_cfg.num_eval_envs = train_cfg.num_train_envs
+       
+    train_env = wrap_for_training(
+        env,
+        episode_length=train_cfg.episode_length,
+        randomization_fn=v_train_randomization_fn,
+    )
+    eval_env = wrap_for_training(
+        eval_env,
+        episode_length=train_cfg.episode_length,
+        randomization_fn=v_eval_randomization_fn,
+    )
+
+    # set exp_folder_path to empty string to avoid saving the rollout trajectories
+    rsl_train_env = RSLWrapper(
+        train_env, device="cuda:0", exp_folder_path="", train_cfg=train_cfg, num_envs=train_cfg.num_train_envs
+    )
+    rsl_eval_env = RSLWrapper(
+        eval_env, device="cuda:0", exp_folder_path="", train_cfg=train_cfg, num_envs=train_cfg.num_eval_envs
+    )
+
+
+    # Print the env config
+    print("Runner Config:")
+    with open(os.path.join(exp_folder_path, "runner_config.json"), "w") as f:
+        json.dump(runner_config, f, indent=4)
+    print(json.dumps(runner_config, indent=4))  # Pretty-print the config
+
+        
+    runner = OnPolicyRunner(rsl_train_env, rsl_eval_env, runner_config, run_name, optimize_z=optimize_z, device="cuda:0")
+    if optimize_z:
+        runner.load(os.path.join("results", restore_path, "model_best.pt"), load_optimizer=False)
+        runner.alg.configure_optimize_z(rsl_eval_env.num_envs)
+
+    try:
+        runner.learn(
+            num_learning_iterations=runner_config["max_iterations"],
+            init_at_random_ep_len=False,
+        )
+    except KeyboardInterrupt:
+        prof_path = os.path.join(exp_folder_path, "profile_output.lprof")
+        dump_profiling_data(prof_path)
 
 
 def evaluate(
-    env: MJXEnv,
-    make_networks_factory: Any,
-    train_cfg: PPOConfig,
+    eval_env: MJXEnv,
+    eval_cfg: PPOConfig,
     run_name: str,
-    use_symmetry: bool,
-    dynamics_time_str: str,
-    use_torch: bool,
-    num_steps: int = 1000,
-    log_every: int = 100,
+    restore_path: str,
+    eval_holdout: bool = False
 ):
     """Evaluates a policy in a given environment using a specified network factory and logs the results.
 
     Args:
-        env (MJXEnv): The environment in which the policy is evaluated.
+        env (MJXEnv): The environment in which the policy is    uated.
         make_networks_factory (Any): A factory function to create network architectures for the policy.
         run_name (str): The name of the run, used for saving and loading policy parameters.
         num_steps (int, optional): The number of steps to evaluate the policy. Defaults to 1000.
         log_every (int, optional): The frequency (in steps) at which metrics are logged. Defaults to 100.
+        eval_holdout (bool, optional): Whether to use the hold out evaluation environment or the training environments for domain randomization. Defaults to False.
     """
-    rng = jax.random.PRNGKey(0)
 
-    # if len(env.cfg.obs.latent_folder) > 0:
-    #     latent_dir = os.path.join("results", env.cfg.obs.latent_folder)
+    eval_domain_randomize_fn = None
+    if eval_env.add_domain_rand and len(restore_path) > 0:
+        with open(os.path.join("results", restore_path, "dr_params.pkl"), "rb") as f:
+            dr_params = pickle.load(f)
 
-    #     if env.cfg.obs.latent_dim == 2048:
-    #         embeddings = np.load(os.path.join(latent_dir, "embeddings.npy"))
-    #     else:
-    #         with open(os.path.join(latent_dir, "dr_params.pkl"), "rb") as f:
-    #             dr_params = pickle.load(f)
-
-    #         flattened_params = [
-    #             v.reshape(v.shape[0], -1) for v in dr_params[0].values()
-    #         ]
-    #         embeddings = np.concatenate(flattened_params, axis=1)
-
-    #     env.embedding = embeddings[0] / np.linalg.norm(embeddings, axis=-1).mean()
-
-    if use_torch:
-        rsl_env = RSLWrapper(env, device="cuda:0")
-        runner_config = load_runner_config(train_cfg)
-        if len(dynamics_time_str) > 0:
-            with open(
-                os.path.join("toddlerbot", "autoencoder", "config.yaml"), "r"
-            ) as f:
-                autoencoder_config = yaml.safe_load(f)
-                autoencoder_config["data"]["time_str"] = dynamics_time_str
-                runner_config["algorithm"]["autoencoder_cfg"] = autoencoder_config
-
-        if not use_symmetry and "symmetry_cfg" in runner_config["algorithm"]:
-            del runner_config["algorithm"]["symmetry_cfg"]
-
-        runner = OnPolicyRunner(
-            rsl_env, runner_config, os.path.join("results", run_name), device="cuda:0"
+        sys_dict = dr_params[0]
+        in_axes_dict = dr_params[1]
+        
+        eval_domain_randomize_fn = functools.partial(
+            domain_randomize_from_file,
+            sys_dict=sys_dict,
+            in_axes_dict=in_axes_dict,
+            load_eval_values=eval_holdout,
         )
-        policy_path = os.path.join("results", run_name, "model_best.pt")
-        runner.load(policy_path)
-        inference_fn = runner.get_inference_policy(device=rsl_env.device)
-
-        def policy(obs: jax.Array):
-            obs_torch = jax_to_torch(obs, device=rsl_env.device)
-            action_torch = inference_fn(obs_torch)
-            # action_torch = soft_clamp(action_torch, -1.0, 1.0)
-            action = torch_to_jax(action_torch)
-            return action
-
-    else:
-        ppo_network = make_networks_factory(
-            env.obs_size, env.privileged_obs_size, env.action_size
+    key = jax.random.PRNGKey(eval_cfg.seed)
+    global_key, local_key = jax.random.split(key)
+    del key
+    local_key = jax.random.fold_in(local_key, jax.process_index())
+    local_key, eval_key = jax.random.split(local_key, 2)
+    v_eval_randomization_fn = None
+    if eval_domain_randomize_fn is not None:
+        eval_domain_randomize_rng = jax.random.split(eval_key, eval_cfg.num_eval_envs)
+        v_eval_randomization_fn = functools.partial(
+            eval_domain_randomize_fn, rng=eval_domain_randomize_rng
         )
-        make_policy = ppo_networks.make_inference_fn(ppo_network)
-        policy_path = os.path.join("results", run_name, "best_policy")
-        if not os.path.exists(policy_path):
-            policy_path = os.path.join("results", run_name, "policy")
+    wrap_for_training = envs.training.wrap
+    eval_env = wrap_for_training(
+        eval_env,
+        episode_length=eval_cfg.episode_length,
+        randomization_fn=v_eval_randomization_fn,
+    )
+    rsl_env = RSLWrapper(eval_env, device="cuda:0", train_cfg=eval_cfg, num_envs=eval_cfg.num_eval_envs)
+    runner_config = load_runner_config(eval_cfg)
+    if len(restore_path) > 0:
+        with open(
+            os.path.join("toddlerbot", "autoencoder", "config.yaml"), "r"
+        ) as f:
+            autoencoder_config = yaml.safe_load(f)
+            autoencoder_config["data"]["time_str"] = restore_path # TODO: get the true time_str
 
-        params = model.load_params(policy_path)
-        inference_fn = jax.jit(make_policy(params, deterministic=True))
+            if eval_holdout:
+                autoencoder_config["data"]["num_train_envs"] = eval_cfg.num_train_envs
+                autoencoder_config["data"]["num_eval_envs"] = eval_cfg.num_eval_envs
+            else:
+                # is eval holdout is False, load the first num_eval_envs of train env as eval env
+                autoencoder_config["data"]["num_train_envs"] = eval_cfg.num_eval_envs
+                autoencoder_config["data"]["num_eval_envs"] = eval_cfg.num_train_envs
+            runner_config["algorithm"]["autoencoder_cfg"] = autoencoder_config
 
-        def policy(obs: jax.Array):
-            return inference_fn(obs, rng)[0]
+    runner = OnPolicyRunner(
+        rsl_env, rsl_env, runner_config, run_name, device="cuda:0"
+    )
+        
+    policy_path = os.path.join("results", run_name, "model_best.pt")
+    runner.load(policy_path)
 
-    jit_reset = jax.jit(env.reset)
-    jit_step = jax.jit(env.step)
-    state = jit_reset(rng)
-
-    times = [time.time()]
-    rollout: List[Any] = [state.pipeline_state]
-    for i in tqdm(range(num_steps), desc="Evaluating"):
-        ctrl = policy(state.obs)
-        state = jit_step(state, ctrl)
-        times.append(time.time())
-        rollout.append(state.pipeline_state)
-        if i % log_every == 0:
-            log_metrics(state.metrics, times[-1] - times[0])
-
-    try:
-        render_video(env, rollout, run_name)
-        wandb.log(
-            {
-                "video": wandb.Video(
-                    os.path.join("results", run_name, "eval.mp4"), format="mp4"
-                )
-            }
-        )
-    except Exception:
-        print("Failed to render the video. Skipped.")
+    runner.eval(-1, eval_train_env=not eval_holdout)
+    runner.eval(-1, zero_z=True, eval_train_env=not eval_holdout)
 
 
 def main(args=None):
@@ -915,7 +761,7 @@ def main(args=None):
     parser.add_argument(
         "--robot",
         type=str,
-        default="toddlerbot",
+        default="toddlerbot_2xm",
         help="The name of the robot. Need to match the name in descriptions.",
     )
     parser.add_argument(
@@ -933,7 +779,7 @@ def main(args=None):
     parser.add_argument(
         "--restore",
         type=str,
-        default="",
+        default=None,
         help="Path to the checkpoint folder.",
     )
     parser.add_argument(
@@ -955,24 +801,29 @@ def main(args=None):
         help="Override config parameters (e.g., SimConfig.timestep=0.01 ObsConfig.frame_stack=10)",
     )
     parser.add_argument(
-        "--dynamics",
+        "--eval-holdout",
+        action="store_true",
+        default=False,
+        help="Evaluate holdout envs.",
+    )
+    parser.add_argument(
+        "--tag",
         type=str,
         default="",
-        help="time str of the dynamics model.",
+        help="suffix for wandb run name"
     )
     parser.add_argument(
-        "--torch",
+        "--optimize-z",
         action="store_true",
         default=False,
-        help="Use torch instead of jax.",
+        help="Optimize the latent code.",
     )
     parser.add_argument(
-        "--symmetry",
+        "--sweep-run",
         action="store_true",
         default=False,
-        help="Use symmetry.",
+        help="Whether to store in the sweep folder.",
     )
-
     args = parser.parse_args()
 
     gin_file_list = [args.env] + args.gin_files.split(" ")
@@ -1034,7 +885,6 @@ def main(args=None):
     )
 
     eval_env_cfg = deepcopy(env_cfg)
-    eval_env_cfg.hang.init_hang_force = 0.0
     eval_env = EnvClass(
         args.env,
         robot,
@@ -1050,14 +900,8 @@ def main(args=None):
         eval_env_cfg,  # type: ignore
         fixed_base="fixed" in args.env,
         add_noise=False,
-        add_domain_rand=False,
+        add_domain_rand=True,
         **kwargs,
-    )
-
-    make_networks_factory = functools.partial(
-        ppo_networks.make_ppo_networks,
-        policy_hidden_layer_sizes=train_cfg.policy_hidden_layer_sizes,
-        value_hidden_layer_sizes=train_cfg.value_hidden_layer_sizes,
     )
 
     if len(args.eval) > 0:
@@ -1069,19 +913,22 @@ def main(args=None):
         "" if len(args.config_override) == 0 else f"_{args.config_override}"
     )
     run_name = f"{robot.name}_{args.env}_ppo{config_override_str}_{time_str}"
-    run_name += "_latent" if len(args.dynamics) > 0 else ""
-    run_name += "_torch" if args.torch else ""
+    run_name += "_z" if args.optimize_z else ""
+    run_name += f"_{args.tag}" if len(args.tag) > 0 else ""
 
+    if args.restore is not None:
+        restore_name = f"{robot.name}_{args.env}_ppo{config_override_str}_{args.restore}"
+        restore_name += f"_{args.tag}" if len(args.tag) > 0 else ""
+    else:
+        restore_name = run_name
     if len(args.eval) > 0:
         if os.path.exists(os.path.join("results", run_name)):
             evaluate(
                 test_env,
-                make_networks_factory,
                 train_cfg,
                 run_name,
-                args.symmetry,
-                args.dynamics,
-                args.torch,
+                restore_path=restore_name,
+                eval_holdout = args.eval_holdout
             )
         else:
             raise FileNotFoundError(f"Run {args.eval} not found.")
@@ -1089,22 +936,17 @@ def main(args=None):
         train(
             env,
             eval_env,
-            make_networks_factory,
             train_cfg,
             run_name,
-            args.restore,
-            args.symmetry,
-            args.dynamics,
-            args.torch,
+            restore_name,
+            args.optimize_z,
+            args.sweep_run
         )
         evaluate(
             test_env,
-            make_networks_factory,
             train_cfg,
             run_name,
-            args.symmetry,
-            args.dynamics,
-            args.torch,
+            restore_path=restore_name, # TODO: check if this is correct
         )
 
 

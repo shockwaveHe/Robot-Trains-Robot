@@ -58,7 +58,10 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
         **kwargs,
     ):
         if env_cfg is None:
-            env_cfg = get_env_config("walk")
+            if is_real:
+                env_cfg = get_env_config("walk_real")
+            else:
+                env_cfg = get_env_config("walk")
         if finetune_cfg is None:
             finetune_cfg = get_finetune_config("walk", exp_folder)
         self.cycle_time = env_cfg.action.cycle_time

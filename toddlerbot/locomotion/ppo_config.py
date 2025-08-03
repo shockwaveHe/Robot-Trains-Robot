@@ -22,8 +22,11 @@ class PPOConfig:
     alpha: float = 0.1
     entropy_cost: float = 5e-4
     clipping_epsilon: float = 0.1
+    num_train_envs: int = 1000
+    num_eval_envs: int = 24
     num_envs: int = 1024
     render_interval: int = 50
-    batch_size: int = 256
+    batch_size: int = 250
     num_minibatches: int = 4
     seed: int = 0
+    use_base_policy: bool = False

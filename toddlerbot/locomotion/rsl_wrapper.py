@@ -10,7 +10,7 @@ import lz4.frame
 import torch
 from brax.io.torch import jax_to_torch, torch_to_jax
 from rsl_rl.env.vec_env import VecEnv
-
+from dotmap import DotMap
 from toddlerbot.locomotion.mjx_env import MJXEnv
 from toddlerbot.locomotion.ppo_config import PPOConfig
 
@@ -67,6 +67,7 @@ class RSLWrapper(VecEnv):
         device: torch.device,
         exp_folder_path: str = "",
         train_cfg: Optional[PPOConfig] = None,
+        num_envs: int = 1,
     ):
         self.env = env
         self.device = device
@@ -80,7 +81,7 @@ class RSLWrapper(VecEnv):
             self.max_episode_length = 1000
             self.key_envs = jax.random.PRNGKey(0)
         else:
-            self.num_envs = train_cfg.num_envs
+            self.num_envs = num_envs
             self.max_episode_length = train_cfg.episode_length
             key = jax.random.PRNGKey(train_cfg.seed)
             self.key_envs = jax.random.split(key, self.num_envs)
@@ -112,7 +113,11 @@ class RSLWrapper(VecEnv):
         return obs_torch, {"observations": {"critic": privileged_obs_torch}}
 
     def reset(self):
-        return self.reset_fn(self.key_envs)
+        self.last_state = self.reset_fn(self.key_envs)
+        return self.last_state
+
+    def render(self, trajectory, **kwargs):
+        return self.env.render(trajectory, **kwargs)
 
     def step(
         self, actions: torch.Tensor
@@ -126,6 +131,11 @@ class RSLWrapper(VecEnv):
         infos = {
             "observations": {"critic": privileged_obs},
             "log": jax_to_torch(state_curr.metrics, device=self.device),
+            "info": state_curr.info,
+            "pipeline_state": DotMap({
+                "q": state_curr.pipeline_state.q,
+                "qd": state_curr.pipeline_state.qd,
+            }),
         }
         self.last_state = state_curr
 

@@ -90,11 +90,11 @@ class MJXEnv(PipelineEnv):
         self.fixed_base = fixed_base
         self.add_noise = add_noise
         self.add_domain_rand = add_domain_rand
-
+        self.use_hang = cfg.hang.use_hang
         # eval in original environment
         if fixed_base:
             xml_path = find_robot_file_path(robot.name, suffix="_fixed_scene.xml")
-        elif cfg.hang.init_hang_force > 0.0:
+        elif self.use_hang:
             xml_path = find_robot_file_path(robot.name, suffix="_hang_scene.xml")
             self.hang_positions = [
                 "left_front",
@@ -144,7 +144,7 @@ class MJXEnv(PipelineEnv):
         self.nq = self.sys.nq
         self.nv = self.sys.nv
 
-        if self.cfg.hang.init_hang_force > 0.0:
+        if self.use_hang:
             self.hang_motors = 12
             self.hang_dofs = 8
             self.nu -= self.hang_motors
@@ -529,22 +529,22 @@ class MJXEnv(PipelineEnv):
             base.State: The updated state of the system after applying the control action over the specified number of frames.
         """
         rng, tau_limit_rng = jax.random.split(state.info["rng"], 2)
-
-        progress = jnp.minimum(
-            state.info.get("episode_num", 0) / self.cfg.hang.hang_force_decay_episodes,
-            1.0,
-        )
-        # hang_force = self.cfg.hang.init_hang_force - progress * (
-        #     self.cfg.hang.init_hang_force - self.cfg.hang.final_hang_force
-        # )
-        phase = progress * jnp.pi
-        # Compute the cosine value, which transitions from 1 to 0
-        cosine_value = 0.5 * (1 + jnp.cos(phase))
-        # Calculate the hang force using the cosine schedule
-        hang_force = self.cfg.hang.final_hang_force + cosine_value * (
-            self.cfg.hang.init_hang_force - self.cfg.hang.final_hang_force
-        )
-        state.info["hang_force"] = hang_force
+        if self.use_hang:
+            progress = jnp.minimum(
+                state.info.get("episode_num", 0) / self.cfg.hang.hang_force_decay_episodes,
+                1.0,
+            )
+            # hang_force = self.cfg.hang.init_hang_force - progress * (
+            #     self.cfg.hang.init_hang_force - self.cfg.hang.final_hang_force
+            # )
+            phase = progress * jnp.pi
+            # Compute the cosine value, which transitions from 1 to 0
+            cosine_value = 0.5 * (1 + jnp.cos(phase))
+            # Calculate the hang force using the cosine schedule
+            hang_force = self.cfg.hang.final_hang_force + cosine_value * (
+                self.cfg.hang.init_hang_force - self.cfg.hang.final_hang_force
+            )
+            state.info["hang_force"] = hang_force
 
         def f(pipeline_state, _):
             ctrl = self.controller.step(
@@ -555,7 +555,7 @@ class MJXEnv(PipelineEnv):
             )
 
             # concatenate hang_motors dim to ctrl
-            if self.hang_motors > 0:
+            if self.use_hang > 0:
                 ctrl = jnp.concatenate([ctrl, jnp.zeros(self.hang_motors)])
                 torso_xy = pipeline_state.q[:2]
                 position_offset = [

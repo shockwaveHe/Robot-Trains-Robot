@@ -2,10 +2,10 @@ algorithm:
   class_name: PPO
   # training parameters
   # -- advantage normalization
-  normalize_advantage_per_mini_batch: false
+  normalize_advantage_per_mini_batch: False
   # -- value function
   value_loss_coef: 1.0
-  clip_param: 0.2
+  clip_param: 0.1
   use_clipped_value_loss: true
   # -- surrogate loss
   desired_kl: 0.01
@@ -39,26 +39,6 @@ algorithm:
   #     predictor_hidden_dims: [-1] # hidden dimensions of predictor network
   #     target_hidden_dims: [-1]  # hidden dimensions of target network
 
-  # -- Symmetry Augmentation
-  symmetry_cfg:
-    use_data_augmentation: false  # this adds symmetric trajectories to the batch
-    use_mirror_loss: true  # this adds symmetry loss term to the loss function
-
-    # string containing the module and function name to import.
-    # Example: "legged_gym.envs.locomotion.anymal_c.symmetry:get_symmetric_states"
-    #
-    # .. code-block:: python
-    #
-    #     @torch.no_grad()
-    #     def get_symmetric_states(
-    #        obs: Optional[torch.Tensor] = None, actions: Optional[torch.Tensor] = None, cfg: "BaseEnvCfg" = None, is_critic: bool = False,
-    #     ) -> Tuple[torch.Tensor, torch.Tensor]:
-    #
-    data_augmentation_func: "toddlerbot.locomotion.symmetry:data_augmentation_func"
-
-    # coefficient for symmetry loss term
-    # if 0, then no symmetry loss is used
-    mirror_loss_coeff: 1.0
 
 policy:
   class_name: ActorCritic
@@ -77,20 +57,23 @@ policy:
 runner:
     num_steps_per_env: 24  # number of steps per environment per iteration
     max_iterations: 1500  # number of policy updates
-    empirical_normalization: false
+    normalization_type: "none" # running_mean_std, empirical, none
     # -- logging parameters
-    save_interval: 50  # check for potential saves every `save_interval` iterations
+    save_interval: 100  # check for potential saves every `save_interval` iterations
     experiment_name: ""
     run_name: ""
     # -- logging writer
     logger: wandb  # tensorboard, neptune, wandb
-    # neptune_project: legged_gym
-    wandb_project: ToddlerBot
+    wandb_project: RTR
     # -- load and resuming
     resume: false
     load_run: -1  # -1 means load latest run
     resume_path: null  # updated from load_run and checkpoint
     checkpoint: -1  # -1 means load latest checkpoint
+    train_render_freq: 1000
+    eval_freq: 100
+    eval_render_freq: 1000
+    eval_steps_per_env: 1000
 
 runner_class_name: OnPolicyRunner
 seed: 1
