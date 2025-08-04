@@ -10,7 +10,8 @@ model:
   latent_noise_factor: 0.01
   is_vae: False
   save_finetune_model: True
- 
+  dynamics_type: "hyper" # "hyper" or "param"
+  num_splits: 1
 data:
   batch_size: 32
   num_workers: 0
@@ -31,10 +32,10 @@ train:
   autoencoder_loss_coef: 0.0
   film_lr: 5e-5
   autoencoder_lr: 1e-4
-  latent_lr: 4e-4
-  # latent_decay: 0.2
-  # latent_steps: 5000
-  # latent_step_size: 500
+  latent_lr: 5e-3 # 5e-3 for real-world exp, 4e-4 for sim
+  latent_decay: 0.2
+  latent_steps: 5000
+  latent_step_size: 500
   adapt_all_lr: False
   use_eval_latents: False
   cotrain_actors: False # optimize_z related
