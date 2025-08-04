@@ -1,4 +1,4 @@
-# ToddlerBot
+# Robot Trains Robot
 
 ![ToddlerBot](docs/_static/banner.png)
 
@@ -6,16 +6,9 @@
 **[Website](https://toddlerbot.github.io/)** |
 **[Video](https://youtu.be/A43QxHSgLyM)** | 
 **[Tweet](https://x.com/HaochenShi74/status/1886599720279400732)** |
-**[Documentation](https://hshi74.github.io/toddlerbot)** |
-**[Onshape](https://cad.onshape.com/documents/ff1e767f256dd9c8abf2206a)** |
-**[MakerWorld](https://makerworld.com/en/models/1068768)**
 
-ToddlerBot is a low-cost, open-source humanoid robot platform designed for scalable policy learning and research in robotics and AI.
-
-This codebase includes low-level control, RL training, DP training, real-world deployment and basically EVERYTHING you need to run ToddlerBot in the real world!
-
-Built entirely in Python, it is **fully pip-installable** (python >= 3.10) for seamless setup and usage!
-
+Robot-Trains-Robot (RTR) is a novel framework where a robotic arm teacher actively supports and guides a humanoid robot student. The RTR system provides protection, learning
+schedule, reward, perturbation, failure detection, and automatic resets. It enables efficient long-term real-world humanoid training with minimal human intervention. 
 
 ## Setup
 Refer to [this page](https://hshi74.github.io/toddlerbot/software/01_setup.html) for instructions to setup.
