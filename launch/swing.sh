@@ -8,6 +8,6 @@ pause() {
     read -p "$msg"
 }
 
-echo "Press enter to runing the swing arm leader"
+echo "Press enter to runing the swing policy"
 cd ~/projects/toddlerbot_internal
 python toddlerbot/policies/run_policy.py --sim real --ip 192.168.110.232 --policy swing --robot toddlerbot_2xm --no-plot

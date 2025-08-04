@@ -15,6 +15,7 @@ windows:
       - shell_command:
         - ssh arya@arya-desktop.local
         - cd ~/projects/toddlerbot_internal
+        - conda activate toddlerbot_internal
         - bash ./launch/walk_finetune.sh
       - shell_command:
         - ssh montreal
