@@ -971,7 +971,6 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
     #     reward *= jnp.linalg.norm(info["command_obs"]) > self.deadzone
     #     return reward
 
-    # TODO: Implement the foot rewards
     # def _reward_feet_clearance(
     #     self, pipeline_state: base.State, info: dict[str, Any], action: jax.Array
     # ) -> jax.Array:
@@ -1008,7 +1007,6 @@ class WalkFinetunePolicy(MJXFinetunePolicy, policy_name="walk_finetune"):
         reward *= np.linalg.norm(self.fixed_command) < self.deadzone
         return reward
 
-    # TODO: Implement the reward for aligning the ground?
     # def _reward_align_ground(self, obs: Obs, action: np.ndarray) -> float:
     #     hip_pitch_joint_pos = jnp.abs(
     #         pipeline_state.q[self.q_start_idx + self.hip_pitch_joint_indices]

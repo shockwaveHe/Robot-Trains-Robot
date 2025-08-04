@@ -600,17 +600,6 @@ class ArmTreadmillLeaderPolicy(BasePolicy, policy_name="at_leader"):
         # input("Press Enter to reset...")
         self.force = -1.0
         self.arm_shm.buf[:8] = struct.pack("d", self.force)
-        # self.force = 30.0
-        # self.arm_shm.buf[:8] = struct.pack('d', self.force)
-        # for _ in range(10):
-        #     self.z_pos_delta = 0.01
-        #     self.arm_shm.buf[8:16] = struct.pack('d', self.z_pos_delta)
-        #     time.sleep(0.5)
-        # for _ in range(10):
-        #     self.z_pos_delta = -0.01
-        #     self.arm_shm.buf[8:16] = struct.pack('d', self.z_pos_delta)
-        #     time.sleep(0.5)
-        # input("Press Enter to finish...")
 
         cur_force = struct.unpack("d", self.arm_shm.buf[:8])[0]
         print(f"Waiting for force to reset... {cur_force}")
