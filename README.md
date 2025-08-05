@@ -16,7 +16,7 @@ Refer to [this page](https://hshi74.github.io/toddlerbot/software/01_setup.html)
 
 ## Walkthrough
 
-- Checkout `examples` for some scripts to start with. Many of them run on a real-world instance of ToddlerBot.
+- Checkout test `examples` for some scripts to start with. Many of them run on a real-world instance of ToddlerBot.
 
 - The `motion` folder contains carefully crafted keyframe animations designed for ToddlerBot. For example, you can run
 
