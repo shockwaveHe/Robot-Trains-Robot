@@ -15,11 +15,11 @@ Our setup overall is similar to [todderbot](https://toddlerbot.github.io/).
 Refer to [this page](https://hshi74.github.io/toddlerbot/software/01_setup.html) for instructions to setup.
 ### Hardware
 
-Toddlerbot: please follow the guidline from [todderbot](https://toddlerbot.github.io/) to setup to robot.</li>
+**Toddlerbot**: follow the guidline from [todderbot](https://toddlerbot.github.io/) to setup the robot.
 
-F/T sensor: 1. Please follow the [manual](https://www.ati-ia.com/app_content/documents/9610-05-1022.pdf) starting from page 19 to setup the F/T sensor communication, and configure the ip to 192.168.2.1.</li>
+**F/T sensor**: lease follow the [manual](https://www.ati-ia.com/app_content/documents/9610-05-1022.pdf) starting from page 19 to setup the F/T sensor communication, and configure the ip to 192.168.2.1. (Mount: TODO)
   
-UR5: Download the driver from [hardware-interface](https://github.com/yifan-hou/hardware_interfaces) and build it. Configure the ip.
+**UR5**: Download the driver from [hardware-interface](https://github.com/yifan-hou/hardware_interfaces) and build it. Configure the ip.
 
 ## Walkthrough
 ### Pretraining Walking Policy
@@ -32,11 +32,18 @@ python -m toddlerbot.locomotion.train_mjx --tag <your tag>
 ```
 python -m toddlerbot.locomotion.train_mjx --tag <the same tag as that above> --optimize-z --restore <yyyymmdd_hhmmss> # timestamp output from stage 1
 ```
-In addition, we have provided our pretrained checkpoint [here](https://drive.google.com/drive/folders/1qed0Z1NnnXZMky64C3kU6-Oziqq3QDdR).
+In addition, we have provided our pretrained checkpoint [here](https://drive.google.com/drive/folders/1qed0Z1NnnXZMky64C3kU6-Oziqq3QDdR). You can download the checkpoint and place it under **results** folder.
  
 ### Real-world Training
 An examplar execution process is presented in the [launch](https://github.com/shockwaveHe/Robot-Trains-Robot/tree/rtr/launch) folder. Please make sure that the robot, computer and remote learner are under the same network.
-#### Real-world Adaptation for Walking Policy (Pretrain Needed)
+
+Before running the experiments, start the hardware driver by running
+```
+cd force_ctl/hardware_interfaces/build/applications/force_control_demo
+./force_control_<task> # task could be chosen from [swing, walk]
+```
+
+### Real-world Adaptation for Walking Policy (Pretrain Needed)
 On computer, run the script to control the arm and treadmill
 ```
 python -m toddlerbot.policies.run_policy --policy at_leader --sim finetune --ip <your robot ip> 
