@@ -56,7 +56,7 @@ On remote learner, run the remote learning script
 ```
 python toddlerbot/policies/run_policy.py --policy walk
 ```
-#### Real-world Learning from Scratch for Swing-up Policy (No Pretrain)
+### Real-world Learning from Scratch for Swing-up Policy (No Pretrain)
 On computer, run the script to control the arm
 ```
 python toddlerbot/policies/run_policy.py --policy swing_arm_leader --ip <your robot ip> --robot toddlerbot_2xm
