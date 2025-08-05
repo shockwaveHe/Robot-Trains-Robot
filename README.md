@@ -3,7 +3,7 @@
 ![ToddlerBot](docs/_static/banner.png)
 
 **[Paper](https://arxiv.org/abs/2502.00893)** |
-**[Website](https://toddlerbot.github.io/)** |
+**[Website](https://robot-trains-robot.github.io/)** |
 **[Video](https://youtu.be/A43QxHSgLyM)** | 
 **[Tweet](https://x.com/HaochenShi74/status/1886599720279400732)** |
 
@@ -11,62 +11,45 @@ Robot-Trains-Robot (RTR) is a novel framework where a robotic arm teacher active
 schedule, reward, perturbation, failure detection, and automatic resets. It enables efficient long-term real-world humanoid training with minimal human intervention. 
 
 ## Setup
+Our setup overall is similar to [todderbot](https://toddlerbot.github.io/). 
 Refer to [this page](https://hshi74.github.io/toddlerbot/software/01_setup.html) for instructions to setup.
 
-
 ## Walkthrough
+### Pretraining walking policy
+The following command execute the training procedure presented in section 3.1 in the paper.
+#### Stage 1 training
+```
+python -m toddlerbot.locomotion.train_mjx --tag <your tag>
+```
+#### Stage 2 training
+```
+python -m toddlerbot.locomotion.train_mjx --tag <the same tag as that above> --optimize-z --restore <yyyymmdd_hhmmss> # timestamp output from stage 1
+```
 
-- Checkout test `examples` for some scripts to start with. Many of them run on a real-world instance of ToddlerBot.
-
-- The `motion` folder contains carefully crafted keyframe animations designed for ToddlerBot. For example, you can run
-
-    ```
-    python toddlerbot/policies/run_policy.py --policy replay --run-name push_up --vis view
-    ```
-
-    to see the push up motion in MuJoCo. You're very welcome to contribute your keyframe animation to our repository by
-    submitting a pull request!
-
-- The `scripts` folder contains some utility bash scripts.
-
-- The `tests` folder have some tests that you can run with 
-
-    ```
-    pytest tests/
-    ``` 
-
-    to verify our installation.
-
-- The `toddlerbot` folder contains all the source code. You can find a detailed API documentation [here](https://hshi74.github.io/toddlerbot/sections/06_api.html).
-
-
-## Submitting an Issue
-For easier maintenance, we will ONLY monitor GitHub Issues and likely ignore questions from other sources.
-We welcome issues related to anything we’ve open-sourced, not just the codebase.
-
-Before submitting an issue, please ensure you have:
-- Read the [documentation](https://hshi74.github.io/toddlerbot), including the [Tips and Tricks](https://hshi74.github.io/toddlerbot/sections/05_tips_and_tricks.html) section.
-- Checked the comments in the scripts.
-- Carefully reviewed the assembly manual.
-- Watched the assembly videos.
-
-If we determine that your issue arises from not following these resources, we are unlikely to respond. 
-However, if you have found a bug, need support for any open-sourced component, or want to submit a feature request, 
-feel free to open an issue.
-
-We truly appreciate your feedback and will do our best to address it!
-
-## Community
-
-See [our website](https://toddlerbot.github.io/) for links to join the Discord or WeChat community!
-
-## Contributing  
-
-We welcome contributions from the community! To contribute, just follow the standard practice:
-1. Fork the repo  
-2. Create a branch (`feature-xyz`)  
-3. Commit & push  
-4. Submit a Pull Request (PR)  
+### Real-world training
+An examplar execution process is presented in the [launch](https://github.com/shockwaveHe/Robot-Trains-Robot/tree/rtr/launch) folder. Please make sure that the robot, computer and remote learner are under the same network.
+#### Real-world adaptation for walking policy (pretrain needed)
+On computer, run the script to control the arm and treadmill
+```
+python -m toddlerbot.policies.run_policy --policy at_leader --sim finetune --ip <your robot ip> 
+```
+On robot, run the finetune script
+```
+python toddlerbot/policies/run_policy.py --sim real --ip <your computer ip> --policy walk_finetune --robot toddlerbot_2xm  --ckpt <pretrained checkpoint>
+```
+On remote learner, run the remote learning script
+```
+python toddlerbot/policies/run_policy.py --policy walk
+```
+#### Real-world learning from scratch for swing-up policy (no pretrain)
+On computer, run the script to control the arm
+```
+python toddlerbot/policies/run_policy.py --policy swing_arm_leader --ip <your robot ip> --robot toddlerbot_2xm
+```
+On robot, run the script to learn the swing-up policy
+```
+python toddlerbot/policies/run_policy.py --sim real --ip <your computer ip> --policy swing --robot toddlerbot_2xm --no-plot
+```
 
 ## Citation
 If you use ToddlerBot for published research, please cite:
