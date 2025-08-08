@@ -116,12 +116,18 @@ class MuJoCoSim(BaseSim):
         elif vis_type == "view":
             self.visualizer = MuJoCoViewer(robot, self.model, self.data)
 
-        self.default_qpos = np.array(self.model.keyframe("home").qpos, dtype=np.float32)
-        self.data.qpos = self.default_qpos.copy()
-        self.forward()
+        try:
+            self.default_qpos = np.array(
+                self.model.keyframe("home").qpos, dtype=np.float32
+            )
+            self.data.qpos = self.default_qpos.copy()
+            self.forward()
 
-        self.left_foot_transform = self.get_body_transofrm(self.left_foot_name)
-        self.right_foot_transform = self.get_body_transofrm(self.right_foot_name)
+            self.left_foot_transform = self.get_body_transofrm(self.left_foot_name)
+            self.right_foot_transform = self.get_body_transofrm(self.right_foot_name)
+
+        except KeyError:
+            print("No keyframe named 'home' found in the model.")
 
     def get_body_transofrm(self, body_name: str):
         """Computes the transformation matrix for a specified body.

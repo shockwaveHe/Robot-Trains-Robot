@@ -515,12 +515,6 @@ def main(args=None):
         type=str,
         default="toddlerbot",
         help="The name of the robot. Need to match the name in descriptions.",
-        choices=[
-            "toddlerbot",
-            "toddlerbot_gripper",
-            "toddlerbot_arms",
-            "toddlerbot_active",
-        ],
     )
     parser.add_argument(
         "--sim",

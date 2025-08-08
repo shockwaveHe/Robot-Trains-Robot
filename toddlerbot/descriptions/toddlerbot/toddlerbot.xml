@@ -318,7 +318,7 @@
                     <joint name="left_wrist_roll" pos="0 0 0" axis="0 0 1" range="-1.91986 1.39626" damping="0.12" armature="0.0042" frictionloss="0.292"/>
                     <geom type="mesh" rgba="0.641499 0.676247 0.697096 1" mesh="left_hand_visual" class="visual"/>
                     <geom name="hand_collision" size="0.025 0.03375 0.037" pos="0.0045 -0.02325 -0.019" type="box" rgba="0.641499 0.676247 0.697096 1" class="collision"/>
-                    <site name="left_ee_center" pos="0.0045 0.010500000000000002 -0.019" type="sphere" size="0.005" rgba="0.9 0.1 0.1 0.8"/>
+                    <site name="left_ee_center" pos="0.0045 -0.057 -0.019" type="sphere" size="0.005" rgba="0.9 0.1 0.1 0.8"/>
                   </body>
                 </body>
               </body>

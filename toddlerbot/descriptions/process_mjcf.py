@@ -938,7 +938,9 @@ def add_ee_sites(root: ET.Element, ee_name: str):
         else:
             bottom_center_pos = [
                 geom_pos[0],
-                geom_pos[1] + geom_size[1] if i == 0 else geom_pos[1] - geom_size[1],
+                geom_pos[1] + geom_size[1]
+                if geom_pos[1] > 0
+                else geom_pos[1] - geom_size[1],
                 geom_pos[2],
             ]
 

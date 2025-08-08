@@ -16,6 +16,7 @@ requires-python = ">=3.10"
 
 dependencies = [
     "adafruit-circuitpython-bno08x",
+    "cmaes",
     "colorama",
     "control==0.9.4",
     "diffusers==0.30.3",
@@ -35,6 +36,7 @@ dependencies = [
     "opencv-python==4.9.0.80",
     "optuna",
     "optuna-dashboard",
+    "psycopg2-binary",
     "pupil_apriltags",
     "pygame",
     "pymunk",

@@ -343,54 +343,15 @@ def domain_randomize(
             )
             * sys.dof_frictionloss
         )
+        return friction, damping, armature, frictionloss
 
-        if body_mass_attr_range is None:
-            body_mass_attr = {
-                "body_mass": sys.body_mass,
-                "body_inertia": sys.body_inertia,
-                "body_invweight0": sys.body_invweight0,
-                "body_subtreemass": sys.body_subtreemass,
-                "dof_M0": sys.dof_M0,
-                "dof_invweight0": sys.dof_invweight0,
-                "tendon_invweight0": sys.tendon_invweight0,
-            }
-        else:
-            body_mass_attr = {
-                "body_mass": body_mass_attr_range["body_mass"][0],
-                "body_inertia": body_mass_attr_range["body_inertia"][0],
-                "body_invweight0": body_mass_attr_range["body_invweight0"][0],
-                "body_subtreemass": body_mass_attr_range["body_subtreemass"][0],
-                "dof_M0": body_mass_attr_range["dof_M0"][0],
-                "dof_invweight0": body_mass_attr_range["dof_invweight0"][0],
-                "tendon_invweight0": body_mass_attr_range["tendon_invweight0"][0],
-            }
-            body_mass_attr_range["body_mass"] = body_mass_attr_range["body_mass"][1:]
-            body_mass_attr_range["body_inertia"] = body_mass_attr_range["body_inertia"][
-                1:
-            ]
-            body_mass_attr_range["body_invweight0"] = body_mass_attr_range[
-                "body_invweight0"
-            ][1:]
-            body_mass_attr_range["body_subtreemass"] = body_mass_attr_range[
-                "body_subtreemass"
-            ][1:]
-            body_mass_attr_range["dof_M0"] = body_mass_attr_range["dof_M0"][1:]
-            body_mass_attr_range["dof_invweight0"] = body_mass_attr_range[
-                "dof_invweight0"
-            ][1:]
-            body_mass_attr_range["tendon_invweight0"] = body_mass_attr_range[
-                "tendon_invweight0"
-            ][1:]
+    friction, damping, armature, frictionloss = rand(rng)
 
-        return (
-            friction,
-            damping,
-            armature,
-            frictionloss,
-            body_mass_attr,
-        )
-
-    friction, damping, armature, frictionloss, body_mass_attr = rand(rng)
+    body_mass_attr = {}
+    if body_mass_attr_range is not None:
+        for k, v in body_mass_attr_range.items():
+            if isinstance(v, jnp.ndarray):
+                body_mass_attr[k] = v[: rng.shape[0]]
 
     in_axes_dict = {
         "geom_friction": 0,
@@ -409,10 +370,9 @@ def domain_randomize(
     }
 
     if body_mass_attr_range is not None:
-        sys = sys.replace(actuator_acc0=body_mass_attr_range["actuator_acc0"][0])
-        body_mass_attr_range["actuator_acc0"] = body_mass_attr_range["actuator_acc0"][
-            1:
-        ]
+        sys = sys.replace(
+            actuator_acc0=body_mass_attr_range["actuator_acc0"][: rng.shape[0]]
+        )
 
     in_axes = jax.tree.map(lambda x: None, sys)
     in_axes = in_axes.tree_replace(in_axes_dict)

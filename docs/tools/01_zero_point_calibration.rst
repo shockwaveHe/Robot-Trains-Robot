@@ -40,7 +40,7 @@ becomes vert quick once you're familiar with it.
 
    ::
 
-      python toddlerbot/policies/stand.py --robot <robot_name> --sim real
+      python toddlerbot/policies/run_policy.py --policy stand --robot <robot_name> --sim real
 
 
 More Fine-tuning
@@ -51,7 +51,13 @@ which could totally happen due to the backlash in the joints,
 you can further fine-tune the zero point by running this script:
 ::
 
-    python toddlerbot/policies/calibrate.py
+    python toddlerbot/policies/run_policy.py --policy calibrate --robot <robot_name> --sim real
 
 This script basically runs a PID control with the torso pitch feedback from IMU. 
 You can find more information in the ``calibrate.py`` script.
+
+When you run this script, the robot will stand up and try to maintain an upright position. When 
+you think the robot is standing upright, you can press ``Ctrl+C`` to stop the script. IMPORTANT:
+Please make sure to hold the robot when you stop the script, as the motors will be disabled and 
+the robot will fall over.
+The script will then save the zero point to the configuration file.
